@@ -1,2 +1,2 @@
 # LiBai
-libai : a lib for large pretrain language model.
+libai : components for large pretrain language models.
