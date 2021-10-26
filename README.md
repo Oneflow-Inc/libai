@@ -1,2 +1,2 @@
 # LiBai
-libai : components for large pretrain language models.
+Li Bai : components for large pretrain language models.
