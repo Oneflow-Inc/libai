@@ -17,11 +17,12 @@ import oneflow as flow
 import oneflow.nn.init as init
 from core import distribute as dist
 from core.utils import init_method_normal, scaled_init_method_normal
-from core.module import ParallelEmbedding, ColumnParallelLinear, RowParallelLinear, ParallelMLP, ParallelLogits
-from core.attention import SelfAttention
+from core.modules import ParallelEmbedding, ColumnParallelLinear, RowParallelLinear, ParallelMLP, ParallelLogits, SelfAttention
+from core.models import register_model
+from core.models.base_model import BaseModel
 
-
-class GPTModel(flow.nn.Module):
+@register_model("GPT-2")
+class GPTModel(BaseModel):
     """GPT-2 language model. The output of the forward method is logits.
     
     Arguments:
@@ -41,13 +42,53 @@ class GPTModel(flow.nn.Module):
         bias_gelu_fusion: whether fuse add bias and gelu.
         bias_dropout_fusion: whether fuse add bias and dropout.
     """
+
+    @classmethod
+    def build_model(cls, args):
+        model = GPTModel(
+            num_layers=args.num_layers,
+            vocab_size=args.vocab_size,
+            hidden_size=args.hidden_size,
+            num_attention_heads=args.num_attention_heads,
+            max_seq_length=args.max_seq_length,
+            embedding_dropout_prob=args.embedding_dropout_prob,
+            attention_dropout_prob=args.attention_dropout_prob,
+            output_dropout_prob=args.output_dropout_prob,
+            init_method_std=args.init_method_std,
+            layernorm_epsilon=args.layernorm_epsilon,
+            enable_amp=args.fp16,
+            checkpoint_activations=args.checkpoint_activations,
+            use_scaled_init_for_output_weights=args.use_scaled_init_for_output_weights,
+            apply_query_key_layer_scaling=args.apply_query_key_layer_scaling,
+            bias_gelu_fusion=args.bias_gelu_fusion,
+            bias_dropout_fusion=args.bias_dropout_fusion,
+        )
+        return model
+    
+    @staticmethod
+    def add_args(parser):
+        parser.add_argument('--num-layers', type=int, default=12, help='number of transformer layer')
+        parser.add_argument('--vocab-size', type=int, default=30000, help='size of vocabulary')
+        parser.add_argument('--hidden-size', type=int, default=512, help='size of hidden state')
+        parser.add_argument('--num-attention-heads', type=int, default=8, help='number of attention heads')
+        parser.add_argument('--embedding-dropout-prob', type=float, default=0., help='dropout probability of embedding')
+        parser.add_argument('--attention-dropout-prob', type=float, default=0., help='dropout probability of attention weights')
+        parser.add_argument('--output-dropout-prob', type=float, default=0., help='dropout probability of output')
+        parser.add_argument('--layernorm-epsilon', type=float, default=1e-5, help='layer normalization epsilon')
+        parser.add_argument('--use-scaled-init-for-output-weights', action='store_true', help='whether to use scaled initialize for output weights')
+        parser.add_argument('--apply-query-key-layer-scaling', action='store_true', help='whether to apply scaling to query and key layer')
+        parser.add_argument('--bias-gelu-fusion', action='store_true', help='whether to fuse bias add and gelu')
+        parser.add_argument('--bias-dropout-fusion', action='store_true', help='whether to fuse bias add and dropout')
+        parser.add_argument("--init-method-std", type=float, default=0.02, help="Standard deviation of the zero mean normal distribution used for weight initialization.",
+    )
+
     def __init__(self, num_layers, vocab_size, hidden_size, num_attention_heads, max_seq_length=1024, 
-                 embedding_dropout_prob=0., attention_dropout_prob=0., output_dropout_prob=0.,
+                 embedding_dropout_prob=0., attention_dropout_prob=0., output_dropout_prob=0., init_method_std=0.02,
                  layernorm_epsilon=1e-5, enable_amp=False, checkpoint_activations=False,
                  use_scaled_init_for_output_weights=False, apply_query_key_layer_scaling=False,
                  bias_gelu_fusion=False, bias_dropout_fusion=False):
         super().__init__()
-        init_method = init_method_normal(std=0.02)
+        init_method = init_method_normal(std=init_method_std)
 
         self.embedding = ParallelEmbedding(hidden_size, 
                                            vocab_size, 

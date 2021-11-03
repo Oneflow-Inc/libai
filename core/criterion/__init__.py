@@ -13,31 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import time
+from core.registry import Registry
 
-import oneflow as flow
+CRITERIONS = Registry('criterion')
 
-from core.config import parse_args
-from core.tokenizer import build_tokenizer
-
-
-_GLOBAL_ARGS = None
-_GLOBAL_TOKENIZER = None
-
-
-def get_args():
-    """Return arguments."""
-    if _GLOBAL_ARGS is None:
-        _GLOBAL_ARGS = parse_args()
-    return _GLOBAL_ARGS
-
-
-def get_tokenizer():
-    """Return tokenizer."""
-    args = get_args()
-    if _GLOBAL_TOKENIZER is None:
-        _GLOBAL_TOKENIZER = build_tokenizer(args)
-    return _GLOBAL_TOKENIZER
-
+def build_criterion(args):
+    return CRITERIONS[args.criterion].build_criterion(args)
+    
+def register_criterion(name):
+    return CRITERIONS.register

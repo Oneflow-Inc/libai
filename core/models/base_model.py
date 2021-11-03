@@ -13,31 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import time
-
 import oneflow as flow
 
-from core.config import parse_args
-from core.tokenizer import build_tokenizer
+class BaseModel(flow.nn.Module):
 
+    @classmethod
+    def build_model(cls, args):
+        return cls(args)
+    
+    @staticmethod
+    def add_args(parser):
+        pass
 
-_GLOBAL_ARGS = None
-_GLOBAL_TOKENIZER = None
-
-
-def get_args():
-    """Return arguments."""
-    if _GLOBAL_ARGS is None:
-        _GLOBAL_ARGS = parse_args()
-    return _GLOBAL_ARGS
-
-
-def get_tokenizer():
-    """Return tokenizer."""
-    args = get_args()
-    if _GLOBAL_TOKENIZER is None:
-        _GLOBAL_TOKENIZER = build_tokenizer(args)
-    return _GLOBAL_TOKENIZER
-
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError()

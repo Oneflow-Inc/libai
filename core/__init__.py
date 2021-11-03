@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import oneflow as flow 
 
 from global_vars import get_args
@@ -33,3 +34,11 @@ def print_ranks(ranks, *args, **kwargs):
 
     if rank in ranks:
         print(*args, **kwargs)
+
+def makedirs_ranks(path, exist_ok=False, ranks=None):
+    rank = flow.env.get_rank()
+    if ranks in None:
+        ranks = range(flow.env.get_world_size())
+    
+    if rank in ranks:
+        os.makedirs(path, exist_ok=exist_ok)
