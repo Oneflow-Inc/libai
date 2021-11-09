@@ -116,13 +116,13 @@ class GPTModel(BaseModel):
 
         token_embeds = self.token_embeddings(token_ids)
         position_embeds = self.position_embeddings(input_ids_shape, past_length)
-        embeds = token_embeds + position_embeds
-        embeds = self.layernorm_embedding(embeds)
-        embeds = self.dropout(embeds)
+        input_embeds = token_embeds + position_embeds
+        input_embeds = self.layernorm_embedding(input_embeds)
+        input_embeds = self.dropout(input_embeds)
         
         attention_mask = self.mask_helper.make_causal_mask(input_ids_shape, past_length=past_length)
 
-        transformer_output = self.transformer(embeds, attention_mask, layer_past=layer_past, use_cache=use_cache)
+        transformer_output = self.transformer(input_embeds, attention_mask, layer_past=layer_past, use_cache=use_cache)
 
         if use_cache:
             transformer_output, presents = transformer_output
@@ -287,7 +287,8 @@ class TransformerLayer(flow.nn.Module):
     def forward(self, hidden_states, attention_mask, layer_past=None, use_cache=False):
         # hidden_states shape: (batch_size, seq_length, hidden_size)
         # sbp: [S(0), B]
-        
+        attention_mask = attention_mask.to_consistent(placement=dist.get_layer_placement(self.layer_idx))
+
         layernorm_output = self.layernorm_1(hidden_states)
         attention_output = self.attention(layernorm_output, attention_mask, layer_past, use_cache)
         
