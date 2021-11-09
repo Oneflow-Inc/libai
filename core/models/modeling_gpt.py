@@ -17,7 +17,7 @@ import oneflow as flow
 import oneflow.nn.init as init
 from core import distribute as dist
 from core.utils import init_method_normal, scaled_init_method_normal
-from core.modules import ParallelEmbedding, ColumnParallelLinear, RowParallelLinear, ParallelMLP, ParallelLogits, SelfAttention
+from core.modules import Embedding, ParallelEmbedding, PositionalEmbedding, ColumnParallelLinear, RowParallelLinear, ParallelMLP, ParallelLogits, SelfAttention, MaskHelper
 from core.models import register_model
 from core.models.base_model import BaseModel
 
@@ -47,7 +47,7 @@ class GPTModel(BaseModel):
     def build_model(cls, args):
         model = GPTModel(
             num_layers=args.num_layers,
-            vocab_size=args.vocab_size,
+            vocab_size=args.padded_vocab_size,
             hidden_size=args.hidden_size,
             num_attention_heads=args.num_attention_heads,
             max_seq_length=args.max_seq_length,
@@ -90,13 +90,14 @@ class GPTModel(BaseModel):
         super().__init__()
         init_method = init_method_normal(std=init_method_std)
 
-        self.embedding = ParallelEmbedding(hidden_size, 
-                                           vocab_size, 
-                                           max_seq_length, 
-                                           embedding_dropout_prob=embedding_dropout_prob,
-                                           init_method=init_method,
-                                           enable_amp=enable_amp)
+        self.token_embeddings = ParallelEmbedding(vocab_size, hidden_size, init_method=init_method, enable_amp=enable_amp)
+        self.position_embeddings = PositionalEmbedding(max_seq_length, hidden_size, init_method=init_method, enable_amp=enable_amp)
+        self.layernorm_embedding = LayerNorm(0, self.hidden_size, eps=layernorm_epsilon)
+        self.dropout = flow.nn.Dropout(embedding_dropout_prob)
         
+        self.mask_helper = MaskHelper()
+        self.mask_helper.build_mask_matrix(max_seq_length)
+
         self.transformer = Transformer(num_layers, hidden_size, num_attention_heads, 
                                        attention_dropout_prob=attention_dropout_prob,
                                        output_dropout_prob=output_dropout_prob,
@@ -109,16 +110,24 @@ class GPTModel(BaseModel):
 
         self.logits = ParallelLogits()
 
-    def forward(self, token_ids, attention_mask, position_ids=None, layer_past=None, use_cache=False):
-        embeddings = self.embedding(token_ids, position_ids=position_ids)
+    def forward(self, token_ids, layer_past=None, use_cache=False):
+        input_ids_shape = token_ids.size()
+        past_length = layer_past[0].size(2) if layer_past is not None else 0
+
+        token_embeds = self.token_embeddings(token_ids)
+        position_embeds = self.position_embeddings(input_ids_shape, past_length)
+        embeds = token_embeds + position_embeds
+        embeds = self.layernorm_embedding(embeds)
+        embeds = self.dropout(embeds)
         
-        transformer_output = self.transformer(embeddings, attention_mask, 
-                                              layer_past=layer_past, use_cache=use_cache)
+        attention_mask = self.mask_helper.make_causal_mask(input_ids_shape, past_length=past_length)
+
+        transformer_output = self.transformer(embeds, attention_mask, layer_past=layer_past, use_cache=use_cache)
 
         if use_cache:
             transformer_output, presents = transformer_output
         
-        output = self.logits(transformer_output, self.embedding.word_embeddings)
+        output = self.logits(transformer_output, self.token_embeddings.weights)
 
         if use_cache:
             output = [output, presents]

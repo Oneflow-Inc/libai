@@ -13,15 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .embedding import ParallelEmbedding
+from .embedding import Embedding, ParallelEmbedding, PositionalEmbedding
 from .linear import ColumnParallelLinear, RowParallelLinear
 from .layer_norm import LayerNorm
 from .mlp import ParallelMLP
 from .logits import ParallelLogits
 from .attention import SelfAttention, CrossAttention
+from .mask_helper import MaskHelper
 
 __all__ = [
+    "Embedding",
     "ParallelEmbedding",
+    "PositionalEmbedding",
     "ColumnParallelLinear",
     "RowParallelLinear",
     "LayerNorm",
@@ -29,4 +32,5 @@ __all__ = [
     "ParallelLogits",
     "SelfAttention",
     "CrossAttention",
+    "MaskHelper",
 ]
