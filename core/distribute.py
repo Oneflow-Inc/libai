@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import oneflow as flow
-from core import get_args
+
 
 _DIST_UTIL = None
 
@@ -31,8 +31,7 @@ def _merge_devices(devices):
 
 
 class _DistributeUtil(object):
-    def __init__(self):
-        args = get_args()
+    def __init__(self, args):
         self._init_parallel_size(args)
         self._init_placement_group(args)
         self._init_parallel_hierarchy()
@@ -111,10 +110,15 @@ class _DistributeUtil(object):
         return self.is_tensor_model_parallel() and self.is_data_parallel()
 
 
+def init_distribute(args):
+    global _DIST_UTIL
+    _DIST_UTIL = _DistributeUtil(args)
+    return 
+
+
 def get_dist_util():
     global _DIST_UTIL
-    if _DIST_UTIL is None:
-        _DIST_UTIL = _DistributeUtil()
+    assert _DIST_UTIL is not None, "please init distribute setting first."
     return _DIST_UTIL
 
 

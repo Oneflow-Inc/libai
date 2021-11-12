@@ -32,6 +32,7 @@ class Embedding(flow.nn.Module):
         self.num_embeddings = num_embeddings
         self.embeddings_dim = embeddings_dim
         self.padding_idx = padding_idx
+        self.enable_amp = enable_amp
 
         self.weights = flow.nn.Parameter(
             flow.empty(
@@ -46,13 +47,12 @@ class Embedding(flow.nn.Module):
         if self.padding_idx is not None:
             with flow.no_grad():
                 self.weights[self.padding_idx].fill_(0)
-
-        if enable_amp:
-            self.weights = flow._C.amp_white_identity(self.weights)
         
 
     def forward(self, input_ids):
-        embeds = flow.gather(self.weights, input_ids, axis=0)
+        if self.enable_amp:
+            weights = flow._C.amp_white_identity(self.weights)
+        embeds = flow._C.gather(self.weights, input_ids, axis=0)
         return embeds
 
 
@@ -71,6 +71,7 @@ class ParallelEmbedding(flow.nn.Module):
         self.num_embeddings = num_embeddings
         self.embeddings_dim = embeddings_dim
         self.padding_idx = padding_idx
+        self.enable_amp = enable_amp
 
         self.weights = flow.nn.Parameter(
             flow.empty(
@@ -86,11 +87,11 @@ class ParallelEmbedding(flow.nn.Module):
             with flow.no_grad():
                 self.weights[self.padding_idx].fill_(0)
 
-        if enable_amp:
-            self.weights = flow._C.amp_white_identity(self.weights)
-
     def forward(self, input_ids):
-        embeds = flow.gather(self.weights, input_ids, axis=0)
+        if self.enable_amp:
+            weights = flow._C.amp_white_identity(self.weights)
+
+        embeds = flow._C.gather(weights, input_ids, axis=0)
         return embeds
 
 
@@ -108,6 +109,7 @@ class PositionalEmbedding(flow.nn.Module):
         super().__init__()
         self.num_embeddings = num_embeddings
         self.embeddings_dim = embeddings_dim
+        self.enable_amp = enable_amp
 
         self.weights = flow.nn.Parameter(
             flow.empty(
@@ -119,8 +121,6 @@ class PositionalEmbedding(flow.nn.Module):
         )
 
         init_method(self.weights)
-        if enable_amp:
-            self.weights = flow._C.amp_white_identity(self.weights)
         
         self.position_ids = flow.arange(
             self.num_embeddings, 
@@ -132,7 +132,10 @@ class PositionalEmbedding(flow.nn.Module):
     def forward(self, input_ids_shape, past_length=0):
         seq_length = input_ids_shape[1]
         position_ids = self.position_ids[:, past_length: past_length + seq_length]
-        position_ids = position_ids.expand_as(input_ids)
+        position_ids = position_ids.expand(*input_ids_shape)
 
-        embeds = flow.gather(self.weights, position_ids, axis=0)
+        if self.enable_amp:
+            weights = flow._C.amp_white_identity(self.weights)
+
+        embeds = flow._C.gather(weights, position_ids, axis=0)
         return embeds

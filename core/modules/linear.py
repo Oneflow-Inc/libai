@@ -15,6 +15,7 @@
 
 import oneflow as flow
 import oneflow.nn.init as init
+from core import distribute as dist
 
 
 class ColumnParallelLinear(flow.nn.Module):
@@ -139,7 +140,7 @@ class RowParallelLinear(flow.nn.Module):
         x = flow.matmul(x, self.weight)
         # x.sbp: [S(0), P] -> [S(0), B]
         x = x.to_consistent(sbp=dist.get_hidden_sbp())
-        if self.dropout > 0.:
+        if self.output_dropout_prob > 0.:
             if self.bias_dropout_fusion:
                 x = flow._C.fused_bias_add_dropout(
                     x, self.bias, p=self.output_dropout_prob, axis=x.ndim - 1

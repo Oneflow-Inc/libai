@@ -17,7 +17,7 @@ import time
 import numpy as np
 import oneflow as flow
 from collections import namedtuple, OrderedDict
-from core import print_rank_0, print_rank_last, print_ranks
+from .utils import print_rank_0, print_rank_last, print_ranks
 
 def item(a):
     """Convert tensor/ndarray to scalar. NOTE: a must has only one element."""
@@ -152,7 +152,7 @@ class TimeMeter(Meter):
     
     @property
     def avg(self):
-        return self.n / self.elapsed_time()
+        return self.n / self.elapsed_time
 
     @property
     def smoothed_value(self):
@@ -162,7 +162,7 @@ class TimeMeter(Meter):
         return val
 
     def get_format_str(self, pattern):
-        return pattern.format(smoothed_value)
+        return pattern.format(self.smoothed_value)
 
 
 class StopWatchMeter(Meter):
@@ -212,7 +212,7 @@ class StopWatchMeter(Meter):
         return pattern.format(smoothed_value)
 
 
-Metric = namedtuple('meter', 'format', 'reset_after_print')
+Metric = namedtuple('Metric', ['meter', 'format', 'reset_after_print'])
 
 class Logger(object):
     """Used for adding, update and print meters."""
@@ -221,17 +221,17 @@ class Logger(object):
         self.metrics = OrderedDict()
 
     def register_metric(self, name, meter, print_format=None, reset_after_print=False):
-        assert name in self.metrics.keys(), f"{name} is already registered."
-        if print_format is not None:
+        assert name not in self.metrics.keys(), f"{name} is already registered."
+        if print_format is None:
             print_format = name + ": {:3f}"
         self.metrics[name] = Metric(meter, print_format, reset_after_print)
 
     def metric(self, name):
-        assert name not in self.metrics.keys(), f"{name} is not registered."
+        assert name in self.metrics.keys(), f"{name} is not registered."
         return self.metrics[name].meter
 
     def meter(self, name, *args, **kwargs):
-        assert name not in self.metrics.keys(), f"{name} is not registered."
+        assert name in self.metrics.keys(), f"{name} is not registered."
         self.metrics[name].meter.update(*args, **kwargs)
 
     def print_metrics(self, ranks=None):

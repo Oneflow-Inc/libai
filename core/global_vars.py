@@ -19,7 +19,7 @@ import time
 
 import oneflow as flow
 
-from core.config import parse_args
+from .config import parse_args
 from core.tokenizer import build_tokenizer
 
 
@@ -29,6 +29,7 @@ _GLOBAL_TOKENIZER = None
 
 def get_args():
     """Return arguments."""
+    global _GLOBAL_ARGS
     if _GLOBAL_ARGS is None:
         _GLOBAL_ARGS = parse_args()
     return _GLOBAL_ARGS
@@ -36,8 +37,9 @@ def get_args():
 
 def get_tokenizer():
     """Return tokenizer."""
-    args = get_args()
+    global _GLOBAL_TOKENIZER
     if _GLOBAL_TOKENIZER is None:
+        args = get_args()
         _GLOBAL_TOKENIZER = build_tokenizer(args)
     return _GLOBAL_TOKENIZER
 

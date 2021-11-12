@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import oneflow as flow
 import oneflow.nn.init as init
 from core import distribute as dist
@@ -34,10 +35,8 @@ class SelfAttention(flow.nn.Module):
         output_layer_init_method: method to initialize the output layer weights. If None, use `init_method`.
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
     """
-    def __init__(self, layer_idx, hidden_size, num_attention_heads, 
-                 attention_dropout_prob=0., output_dropout_prob=0., 
-                 init_method=init.xavier_normal_, output_layer_init_method=None,
-                 apply_query_key_layer_scaling=False):
+    def __init__(self, layer_idx, hidden_size, num_attention_heads, attention_dropout_prob=0., output_dropout_prob=0., 
+                 init_method=init.xavier_normal_, output_layer_init_method=None, bias_dropout_fusion=False, apply_query_key_layer_scaling=False):
         super().__init__()
         self.hidden_size = hidden_size
         if output_layer_init_method is None:
@@ -64,7 +63,7 @@ class SelfAttention(flow.nn.Module):
     def _transpose_for_scores(self, tensor):
         """Convert a 3D tensor [b, s, nh * hs] into a 4D tensor [b, nh, s, hs].
         """
-        bsz, seq_len = hidden_states.size()[:2]
+        bsz, seq_len = tensor.size()[:2]
         tensor = tensor.view(bsz, seq_len, self.num_heads, self.head_size)
         return tensor.permute(0, 2, 1, 3)
 
@@ -130,10 +129,8 @@ class CrossAttention(flow.nn.Module):
         output_layer_init_method: method to initialize the output layer weights. If None, use `init_method`.
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
     """
-    def __init__(self, layer_idx, hidden_size, num_attention_heads, 
-                 attention_dropout_prob=0., output_dropout_prob=0., 
-                 init_method=init.xavier_normal_, output_layer_init_method=None,
-                 apply_query_key_layer_scaling=False):
+    def __init__(self, layer_idx, hidden_size, num_attention_heads, attention_dropout_prob=0., output_dropout_prob=0., 
+                 init_method=init.xavier_normal_, output_layer_init_method=None, bias_dropout_fusion=False, apply_query_key_layer_scaling=False):
         super().__init__()
         self.hidden_size = hidden_size
         if output_layer_init_method is None:

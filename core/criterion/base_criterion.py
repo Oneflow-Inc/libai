@@ -17,6 +17,7 @@ import oneflow as flow
 
 class BaseLoss(flow.nn.Module):
 
+    @classmethod
     def build_criterion(cls, args):
         return cls(args)
 

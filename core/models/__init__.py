@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import importlib
 from core.registry import Registry
 
 MODELS = Registry('model')
@@ -21,4 +23,11 @@ def build_model(args):
     return MODELS[args.model_type].build_model(args)
     
 def register_model(name):
-    return MODELS.register
+    def _register_model(cls):
+        return MODELS.register(name, cls)
+    return _register_model
+
+for file in sorted(os.listdir(os.path.dirname(__file__))):
+    if file.endswith(".py") and not file.startswith("_"):
+        file_name = file[: file.find(".py")]
+        importlib.import_module("core.models." + file_name)

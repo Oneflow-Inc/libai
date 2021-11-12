@@ -17,11 +17,11 @@ import oneflow as flow
 import oneflow.nn.init as init
 from core import distribute as dist
 from core.utils import init_method_normal, scaled_init_method_normal
-from core.modules import Embedding, ParallelEmbedding, PositionalEmbedding, ColumnParallelLinear, RowParallelLinear, ParallelMLP, ParallelLogits, SelfAttention, MaskHelper
+from core.modules import Embedding, ParallelEmbedding, PositionalEmbedding, ColumnParallelLinear, RowParallelLinear, ParallelMLP, LayerNorm, ParallelLogits, SelfAttention, MaskHelper
 from core.models import register_model
 from core.models.base_model import BaseModel
 
-@register_model("GPT-2")
+@register_model("gpt-2")
 class GPTModel(BaseModel):
     """GPT-2 language model. The output of the forward method is logits.
     
@@ -68,7 +68,6 @@ class GPTModel(BaseModel):
     @staticmethod
     def add_args(parser):
         parser.add_argument('--num-layers', type=int, default=12, help='number of transformer layer')
-        parser.add_argument('--vocab-size', type=int, default=30000, help='size of vocabulary')
         parser.add_argument('--hidden-size', type=int, default=512, help='size of hidden state')
         parser.add_argument('--num-attention-heads', type=int, default=8, help='number of attention heads')
         parser.add_argument('--embedding-dropout-prob', type=float, default=0., help='dropout probability of embedding')
@@ -90,10 +89,11 @@ class GPTModel(BaseModel):
         super().__init__()
         init_method = init_method_normal(std=init_method_std)
 
-        self.token_embeddings = ParallelEmbedding(vocab_size, hidden_size, init_method=init_method, enable_amp=enable_amp)
-        self.position_embeddings = PositionalEmbedding(max_seq_length, hidden_size, init_method=init_method, enable_amp=enable_amp)
-        self.layernorm_embedding = LayerNorm(0, self.hidden_size, eps=layernorm_epsilon)
-        self.dropout = flow.nn.Dropout(embedding_dropout_prob)
+        self.embeddings = GPTEmbedding(hidden_size, vocab_size, max_seq_length, 
+                                       init_method=init_method, 
+                                       embedding_dropout_prob=embedding_dropout_prob, 
+                                       layernorm_epsilon=layernorm_epsilon, 
+                                       enable_amp=enable_amp)
         
         self.mask_helper = MaskHelper()
         self.mask_helper.build_mask_matrix(max_seq_length)
@@ -110,28 +110,42 @@ class GPTModel(BaseModel):
 
         self.logits = ParallelLogits()
 
-    def forward(self, token_ids, layer_past=None, use_cache=False):
-        input_ids_shape = token_ids.size()
+    def forward(self, input_ids, layer_past, use_cache):
+        input_ids_shape = input_ids.size()
         past_length = layer_past[0].size(2) if layer_past is not None else 0
 
-        token_embeds = self.token_embeddings(token_ids)
-        position_embeds = self.position_embeddings(input_ids_shape, past_length)
-        input_embeds = token_embeds + position_embeds
-        input_embeds = self.layernorm_embedding(input_embeds)
-        input_embeds = self.dropout(input_embeds)
+        input_embeds = self.embeddings(input_ids, input_ids_shape, past_length)
         
         attention_mask = self.mask_helper.make_causal_mask(input_ids_shape, past_length=past_length)
 
-        transformer_output = self.transformer(input_embeds, attention_mask, layer_past=layer_past, use_cache=use_cache)
+        transformer_output = self.transformer(input_embeds, attention_mask, layer_past, use_cache)
 
         if use_cache:
             transformer_output, presents = transformer_output
         
-        output = self.logits(transformer_output, self.token_embeddings.weights)
+        output = self.logits(transformer_output, self.embeddings.token_embeddings.weights)
 
         if use_cache:
             output = [output, presents]
         return output
+
+
+class GPTEmbedding(flow.nn.Module):
+    def __init__(self, hidden_size, vocab_size, max_seq_length, init_method=init.xavier_normal_, 
+                 embedding_dropout_prob=0., layernorm_epsilon=1e-5, enable_amp=False):
+        super().__init__()
+        self.token_embeddings = ParallelEmbedding(vocab_size, hidden_size, init_method=init_method, enable_amp=enable_amp)
+        self.position_embeddings = PositionalEmbedding(max_seq_length, hidden_size, init_method=init_method, enable_amp=enable_amp)
+        self.layernorm = LayerNorm(0, hidden_size, eps=layernorm_epsilon)
+        self.dropout = flow.nn.Dropout(embedding_dropout_prob)
+    
+    def forward(self, input_ids, input_ids_shape, past_length):
+        token_embeds = self.token_embeddings(input_ids)
+        position_embeds = self.position_embeddings(input_ids_shape, past_length)
+        input_embeds = self.layernorm(token_embeds + position_embeds)
+        input_embeds = self.dropout(input_embeds)
+
+        return input_embeds
 
 
 class Transformer(flow.nn.Module):
@@ -199,7 +213,7 @@ class Transformer(flow.nn.Module):
                 if self.checkpoint_activations:
                     setattr(self, f"layer_checkpoint_{i}", ActivationCheckpointing(i))
 
-        self._build_layers()
+        _build_layers()
         self.layernorm_f = LayerNorm(-1, hidden_size, eps=layernorm_epsilon)
 
     def _get_layer(self, layer_idx):
@@ -273,7 +287,7 @@ class TransformerLayer(flow.nn.Module):
         self.layernorm_1 = LayerNorm(layer_idx, hidden_size, eps=layernorm_epsilon)
 
         self.attention = SelfAttention(layer_idx, hidden_size, num_attention_heads, attention_dropout_prob, output_dropout_prob, init_method, 
-                                       output_layer_init_method=output_layer_init_method, 
+                                       output_layer_init_method=output_layer_init_method, bias_dropout_fusion=bias_dropout_fusion,
                                        apply_query_key_layer_scaling=apply_query_key_layer_scaling)
         
         self.layernorm_2 = LayerNorm(layer_idx, hidden_size, eps=layernorm_epsilon)

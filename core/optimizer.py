@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import oneflow as flow
-from core.modules import ParallelEmbedding, ColumnParallelLinear, RowParallelLinear, LayerNorm
+from core.modules import ParallelEmbedding, ColumnParallelLinear, RowParallelLinear, LayerNorm, Embedding, ParallelEmbedding, PositionalEmbedding
 
 
 def build_grad_scaler(args):
@@ -68,14 +68,14 @@ def _get_params_for_weight_decay_optimization(model):
     for module in model.modules():
         if isinstance(module, LayerNorm):
             no_weight_decay_params["params"].extend(
-                [p for p in list(module.parameters()) if p is not None]
+                [p for p in list(module.parameters(recurse=False)) if p is not None]
             )
         else:
             weight_decay_params["params"].extend(
-                [p for n, p in list(module.parameters()) if p is not None and n != "bias"]
+                [p for n, p in list(module.named_parameters(recurse=False)) if p is not None and n != "bias"]
             )
             no_weight_decay_params["params"].extend(
-                [p for n, p in list(module.parameters()) if p is not None and n == "bias"]
+                [p for n, p in list(module.named_parameters(recurse=False)) if p is not None and n == "bias"]
             )
 
     return weight_decay_params, no_weight_decay_params

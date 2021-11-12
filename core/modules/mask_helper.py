@@ -25,9 +25,12 @@ class MaskHelper(object):
     def build_mask_matrix(self, max_positions=1024):
         """Create casual mask matrix for auto-regressive generation."""
         self.mask = flow.tril(
-            flow.ones((max_positions, max_positions), dtype=flow.int8),
-            placement=dist.get_layer_placement(0),
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+            flow.ones(
+                (max_positions, max_positions), 
+                dtype=flow.int8, 
+                placement=dist.get_layer_placement(0),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+            )
         )
 
     def make_causal_mask(self, input_ids_shape, past_length=0):
@@ -36,7 +39,7 @@ class MaskHelper(object):
         
         bsz, tgt_len = input_ids_shape
         mask = flow.cat([flow.zeros(tgt_len, past_length, dtype=flow.int8), self.mask], dim=-1) if past_length > 0 else self.mask
-        mask = mask[None, None, :, :].expand(bsz, 1, tgt_len, tgt_len: past_length)
+        mask = mask[None, None, :, :].expand(bsz, 1, tgt_len, tgt_len + past_length)
         return mask
     
     def extend_attention_mask(self, attention_mask, tgt_len=None):

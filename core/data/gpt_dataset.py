@@ -27,8 +27,8 @@ class GPTDataLoader(BaseDataLoader):
         subsets = {'train': 0, 'valid': 1, 'eval': 1, 'test': 2}
         data_loader = GPTDataLoader(
             dataset=args.dataset,
-            num_samples=args.num_samples,
-            batch_size=args.global_batch_size,
+            num_samples=args.train_samples,
+            batch_size=args.global_batch_size // args.num_accumulation_steps,
             max_seq_length=args.max_seq_length,
             split=args.split,
             split_index=subsets[subset.lower()],

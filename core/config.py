@@ -13,11 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import argparse
-from core import print_rank_0
+from .utils import print_rank_0
+
+from core.data import DATASETS
+from core.models import MODELS
+from core.criterion import CRITERIONS
 
 
-def parse_args(ignore_unknown_args=False):
+def parse_args(ignore_unknown_args=True):
     """Parse all arguments."""
     parser = argparse.ArgumentParser(description="Arguments", allow_abbrev=False)
 
@@ -31,32 +36,23 @@ def parse_args(ignore_unknown_args=False):
     _add_model_args(parser)
     _add_criterion_args(parser)
 
-    if ignore_unknown_args:
-        args, _ = parser.parse_known_args()
-    else:
-        args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     
     if hasattr(args, "data_type"):
-        from cores.data import DATASETS
         DATASETS[args.data_type].add_args(parser)
 
     if hasattr(args, "model_type"):
-        from cores.models import MODELS
         MODELS[args.model_type].add_args(parser)
     
     if hasattr(args, "criterion"):
-        from cores.criterion import CRITERIONS
         CRITERIONS[args.criterion].add_args(parser)
     
-    if ignore_unknown_args:
-        args, _ = parser.parse_known_args()
-    else:
-        args = parser.parse_args()
+    args = parser.parse_args()
 
     _check_model_size(args)
     _check_parallel_size(args)
     _check_batch_size(args)
-    _check_train_steps(args)
+    _check_train_iters(args)
     _check_lr_decay_and_warmup(args)
 
     args.padded_vocab_size = _pad_vocab_size(
@@ -189,21 +185,21 @@ def _check_batch_size(args):
         )
 
 
-def _check_train_steps(args):
-    if args.train_steps is None and args.train_samples is None:
-        raise ValueError("train_steps and train_samples must be set either")
+def _check_train_iters(args):
+    if args.train_iters is None and args.train_samples is None:
+        raise ValueError("train_iters and train_samples must be set either")
 
-    if args.train_steps is None:
+    if args.train_iters is None:
         if args.train_samples % args.global_batch_size != 0:
             raise ValueError(
                 f"train_samples {args.train_samples} must be divisible by "
                 f"global_batch_size {args.global_batch_size}"
             )
 
-        args.train_steps = args.train_samples // args.global_batch_size
+        args.train_iters = args.train_samples // args.global_batch_size
 
     if args.train_samples is None:
-        args.train_samples = args.train_steps * args.global_batch_size
+        args.train_samples = args.train_iters * args.global_batch_size
 
 
 def _check_lr_decay_and_warmup(args):
@@ -257,7 +253,7 @@ def _print_args(args):
 
 def _add_data_args(parser):
     group = parser.add_argument_group(title="data and dataloader")
-    from core.data import DATASETS
+    print(DATASETS.keys())
     group.add_argument("--data-type", required=True, choices=DATASETS.keys(), help="Dataset type.")
 
     group.add_argument(
@@ -289,6 +285,12 @@ def _add_data_args(parser):
         "--use-external-dataset",
         action="store_true",
         help="Use external megatron dataset.",
+    )
+    group.add_argument(
+        "--make-vocab-size-divisible-by",
+        type=int,
+        default=1,
+        help="make vocabulary size devisible"
     )
 
     return parser
@@ -331,11 +333,11 @@ def _add_training_args(parser):
         "with larger models, sequences, and batch sizes.",
     )
     group.add_argument(
-        "--train-steps",
+        "--train-iters",
         type=int,
         default=None,
         help="Total number of iterations to train over all "
-        "training runs. Note that either train-steps or "
+        "training runs. Note that either train-iters or "
         "train-samples should be provided.",
     )
     group.add_argument(
@@ -343,7 +345,7 @@ def _add_training_args(parser):
         type=int,
         default=None,
         help="Total number of samples to train over all "
-        "training runs. Note that either train-steps or "
+        "training runs. Note that either train-iters or "
         "train-samples should be provided.",
     )
     group.add_argument(
@@ -374,7 +376,7 @@ def _add_training_args(parser):
         type=int,
         default=None,
         help="number of iterations to decay learning rate over,"
-        " If None defaults to `--train-steps`",
+        " If None defaults to `--train-iters`",
     )
     group.add_argument(
         "--lr-warmup-fraction",
@@ -389,11 +391,43 @@ def _add_training_args(parser):
         help="number of iterations to linearly warmup " "learning rate over.",
     )
     group.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.,
+        help="Weight decay coefficient for L2 regularization."
+    )
+    group.add_argument(
+        "--clip-grad",
+        type=float,
+        default=1.0,
+        help="Gradient clipping based on global L2 norm.",
+    )
+    group.add_argument(
         "--min-lr",
         type=float,
         default=0.0,
         help="Minimum value for learning rate. The scheduler"
         "clip values below this threshold.",
+    )
+    group.add_argument(
+        "--adam-beta1",
+        type=float,
+        default=0.9,
+        help="First coefficient for computing running averages of"
+        "gradient and its square",
+    )
+    group.add_argument(
+        "--adam-beta2",
+        type=float,
+        default=0.999,
+        help="Second coefficient for computing running averages of"
+        "gradient and its square",
+    )
+    group.add_argument(
+        "--adam-eps",
+        type=float,
+        default=1e-08,
+        help="Term added to the denominator to improve" "numerical stability",
     )
     group.add_argument("--log", type=str, default="./output", help="log directory")
     group.add_argument(
@@ -416,10 +450,9 @@ def _add_checkpointing_args(parser):
     group = parser.add_argument_group(title="checkpointing")
 
     group.add_argument(
-        "--save",
+        "--save-path",
         type=str,
         default=None,
-        dest="checkpoint_save_path",
         help="Output directory to save checkpoints to.",
     )
     group.add_argument(
@@ -502,7 +535,7 @@ def _add_distributed_args(parser):
     )
     group.add_argument(
         "--num-nodes", type=int, default=1, help="Node/Machine number for training."
-    
+    )
     return parser
 
 
@@ -516,13 +549,11 @@ def _add_misc_args(parser):
 
 def _add_model_args(parser):
     group = parser.add_argument_group(title="model")
-    from core.models import MODELS
     group.add_argument("--model-type", required=True, choices=MODELS.keys(), help="Model architecture.")
     return parser
 
 def _add_criterion_args(parser):
     group = parser.add_argument_group(title="criterion")
-    from core.criterion import CRITERIONS
     group.add_argument("--criterion", default="cross_entropy", choices=CRITERIONS.keys(), help="Criterion.")
     return parser
 

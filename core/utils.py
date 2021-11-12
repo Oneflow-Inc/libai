@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import math
 import oneflow as flow
-from core import get_args
+
 
 def init_method_normal(std):
     """Init method based on N(0, std)."""
@@ -33,4 +34,27 @@ def scaled_init_method_normal(std, num_layers):
     
     return init_
 
+
+def print_rank_0(*args, **kwargs):
+    if flow.env.get_rank() == 0:
+        print(*args, **kwargs)
+
+def print_rank_last(*args, **kwargs):
+    if flow.env.get_rank() == flow.env.get_world_size() - 1:
+        print(*args, **kwargs)
+
+def print_ranks(ranks, *args, **kwargs):
+    rank = flow.env.get_rank()
+    if ranks is None:
+        ranks = range(flow.env.get_world_size())
+
+    if rank in ranks:
+        print(*args, **kwargs)
+
+def makedirs_ranks(path, exist_ok=False, consistent_dst_rank=None):
+    assert path is not None, "please specify the save path."
+    rank = flow.env.get_rank()
+    
+    if consistent_dst_rank is None or consistent_dst_rank == rank:
+        os.makedirs(path, exist_ok=exist_ok)
 

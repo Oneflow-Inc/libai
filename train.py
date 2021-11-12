@@ -13,21 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import importlib
-from core.registry import Registry
+from core.trainer import Trainer
 
-CRITERIONS = Registry('criterion')
-
-def build_criterion(args):
-    return CRITERIONS[args.criterion].build_criterion(args)
-    
-def register_criterion(name):
-    def _register_criterion(cls):
-        return CRITERIONS.register(name, cls)
-    return _register_criterion
-
-for file in sorted(os.listdir(os.path.dirname(__file__))):
-    if file.endswith(".py") and not file.startswith("_"):
-        file_name = file[: file.find(".py")]
-        importlib.import_module("core.criterion." + file_name)
+if __name__ == "__main__":
+    Trainer()()

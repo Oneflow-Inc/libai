@@ -16,29 +16,10 @@
 import os
 import oneflow as flow 
 
-from global_vars import get_args
-from global_vars import get_tokenizer
+from .global_vars import get_args, get_tokenizer
+from .utils import print_rank_0, print_rank_last, print_ranks, makedirs_ranks
 
-def print_rank_0(*args, **kwargs):
-    if flow.env.get_rank() == 0:
-        print(*args, **kwargs)
-
-def print_rank_last(*args, **kwargs):
-    if flow.env.get_rank() == flow.env.get_world_size() - 1:
-        print(*args, **kwargs)
-
-def print_ranks(ranks, *args, **kwargs):
-    rank = flow.env.get_rank()
-    if ranks is None:
-        ranks = range(flow.env.get_world_size())
-
-    if rank in ranks:
-        print(*args, **kwargs)
-
-def makedirs_ranks(path, exist_ok=False, ranks=None):
-    rank = flow.env.get_rank()
-    if ranks in None:
-        ranks = range(flow.env.get_world_size())
-    
-    if rank in ranks:
-        os.makedirs(path, exist_ok=exist_ok)
+import core.data
+import core.models
+import core.criterion
+import core.modules

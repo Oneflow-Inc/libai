@@ -23,6 +23,10 @@ from .base_criterion import BaseLoss
 class ParallelCrossEntropyLoss(BaseLoss):
     def __init__(self, args):
         super().__init__(args)
+    
+    @staticmethod
+    def add_args(parser):
+        parser.add_argument('--reduction', type=str, default="mean", choices=["mean", "sum", "none"], help='reduction method for cross entropy loss.')
 
     def forward(self, logits, labels):
         # logits shape: (batch_size, seq_length, vocab_size)
@@ -33,11 +37,12 @@ class ParallelCrossEntropyLoss(BaseLoss):
         assert labels.ndim == 2
         assert logits.shape[0:2] == labels.shape
 
-        if logits.is_consistent and flow.sbp.split(logits.ndim - 1) in logits.sbp:
-            loss = flow._C.sparse_softmax_cross_entropy_ms(logits, labels, depth=logits.shape[-1])
-        else:
-            loss = flow._C.sparse_softmax_cross_entropy(logits, labels, depth=logits.shape[-1])
+        loss = flow._C.sparse_softmax_cross_entropy(
+            logits.view(-1, logits.shape[-1]), labels.view(-1)
+        )
+        if not logits.is_consistent or flow.sbp.split(logits.ndim - 1) not in logits.sbp:
             loss = flow._C.amp_white_identity(loss)
+        
         if self.reduction == "mean":
             return loss.mean()
         elif self.reduction == "sum":
