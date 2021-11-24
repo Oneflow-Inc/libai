@@ -22,8 +22,8 @@ from oneflow import nn
 from libai.utils import distributed as dist
 
 
-class PositionEmbedding(nn.Module):
-    """Construct the position embeddings.
+class PositionalEmbedding(nn.Module):
+    """Construct the trainable positional embeddings.
     """
 
     def __init__(
