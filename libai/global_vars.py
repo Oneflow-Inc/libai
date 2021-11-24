@@ -14,20 +14,32 @@
 # limitations under the License.
 
 import os
-import importlib
-from core.registry import Registry
+import sys
+import time
 
-DATASETS = Registry('data loader')
+import oneflow as flow
 
-def build_dataset(args, subset):
-    return DATASETS[args.data_type].build_dataset(args, subset)
-    
-def register_dataset(name):
-    def _register_dataset(cls):
-        return DATASETS.register(name, cls)
-    return _register_dataset
+from .config import parse_args
+from libai.tokenizer import build_tokenizer
 
-for file in sorted(os.listdir(os.path.dirname(__file__))):
-    if file.endswith(".py") and not file.startswith("_"):
-        file_name = file[: file.find(".py")]
-        importlib.import_module("core.data." + file_name)
+
+_GLOBAL_ARGS = None
+_GLOBAL_TOKENIZER = None
+
+
+def get_args():
+    """Return arguments."""
+    global _GLOBAL_ARGS
+    if _GLOBAL_ARGS is None:
+        _GLOBAL_ARGS = parse_args()
+    return _GLOBAL_ARGS
+
+
+def get_tokenizer():
+    """Return tokenizer."""
+    global _GLOBAL_TOKENIZER
+    if _GLOBAL_TOKENIZER is None:
+        args = get_args()
+        _GLOBAL_TOKENIZER = build_tokenizer(args)
+    return _GLOBAL_TOKENIZER
+

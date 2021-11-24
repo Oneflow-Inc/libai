@@ -15,11 +15,11 @@
 
 import oneflow as flow
 import oneflow.nn.init as init
-from core import distribute as dist
-from core.utils import init_method_normal, scaled_init_method_normal
-from core.modules import Embedding, ParallelEmbedding, PositionalEmbedding, ColumnParallelLinear, RowParallelLinear, ParallelMLP, LayerNorm, ParallelLogits, SelfAttention, MaskHelper
-from core.models import register_model
-from core.models.base_model import BaseModel
+from libai import distribute as dist
+from libai.utils import init_method_normal, scaled_init_method_normal
+from libai.layers import Embedding, ParallelEmbedding, PositionalEmbedding, ColumnParallelLinear, RowParallelLinear, ParallelMLP, LayerNorm, ParallelLogits, SelfAttention, MaskHelper
+from libai.models import register_model
+from libai.models.base_model import BaseModel
 
 @register_model("gpt-2")
 class GPTModel(BaseModel):

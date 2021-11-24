@@ -14,20 +14,12 @@
 # limitations under the License.
 
 import os
-import importlib
-from core.registry import Registry
+import oneflow as flow 
 
-CRITERIONS = Registry('criterion')
+from .global_vars import get_args, get_tokenizer
+from .utils import print_rank_0, print_rank_last, print_ranks, makedirs_ranks
 
-def build_criterion(args):
-    return CRITERIONS[args.criterion].build_criterion(args)
-    
-def register_criterion(name):
-    def _register_criterion(cls):
-        return CRITERIONS.register(name, cls)
-    return _register_criterion
-
-for file in sorted(os.listdir(os.path.dirname(__file__))):
-    if file.endswith(".py") and not file.startswith("_"):
-        file_name = file[: file.find(".py")]
-        importlib.import_module("core.criterion." + file_name)
+import libai.data
+import libai.models
+import libai.criterion
+import libai.layers

@@ -14,32 +14,20 @@
 # limitations under the License.
 
 import os
-import sys
-import time
+import importlib
+from libai.registry import Registry
 
-import oneflow as flow
+CRITERIONS = Registry('criterion')
 
-from .config import parse_args
-from core.tokenizer import build_tokenizer
+def build_criterion(args):
+    return CRITERIONS[args.criterion].build_criterion(args)
+    
+def register_criterion(name):
+    def _register_criterion(cls):
+        return CRITERIONS.register(name, cls)
+    return _register_criterion
 
-
-_GLOBAL_ARGS = None
-_GLOBAL_TOKENIZER = None
-
-
-def get_args():
-    """Return arguments."""
-    global _GLOBAL_ARGS
-    if _GLOBAL_ARGS is None:
-        _GLOBAL_ARGS = parse_args()
-    return _GLOBAL_ARGS
-
-
-def get_tokenizer():
-    """Return tokenizer."""
-    global _GLOBAL_TOKENIZER
-    if _GLOBAL_TOKENIZER is None:
-        args = get_args()
-        _GLOBAL_TOKENIZER = build_tokenizer(args)
-    return _GLOBAL_TOKENIZER
-
+for file in sorted(os.listdir(os.path.dirname(__file__))):
+    if file.endswith(".py") and not file.startswith("_"):
+        file_name = file[: file.find(".py")]
+        importlib.import_module("core.criterion." + file_name)

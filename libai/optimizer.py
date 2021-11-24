@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import oneflow as flow
-from core.modules import ParallelEmbedding, ColumnParallelLinear, RowParallelLinear, LayerNorm, Embedding, ParallelEmbedding, PositionalEmbedding
+from libai.layers import ParallelEmbedding, ColumnParallelLinear, RowParallelLinear, LayerNorm, Embedding, ParallelEmbedding, PositionalEmbedding
 
 
 def build_grad_scaler(args):

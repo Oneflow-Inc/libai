@@ -15,7 +15,7 @@
 
 import oneflow as flow
 import oneflow.nn.init as init
-from core import distribute as dist
+from libai import distribute as dist
 
 
 class Embedding(flow.nn.Module):

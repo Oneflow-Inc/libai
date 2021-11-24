@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import oneflow as flow
-from core import distribute as dist
+from libai import distribute as dist
 
 
 class MaskHelper(object):
@@ -38,7 +38,9 @@ class MaskHelper(object):
             self.build_mask_matrix()
         
         bsz, tgt_len = input_ids_shape
-        mask = flow.cat([flow.zeros(tgt_len, past_length, dtype=flow.int8), self.mask], dim=-1) if past_length > 0 else self.mask
+        mask = self.mask[:tgt_len, :tgt_len]
+        if past_length > 0:
+            mask = flow.cat([flow.ones(tgt_len, past_length, dtype=flow.int8), mask], dim=-1)
         mask = mask[None, None, :, :].expand(bsz, 1, tgt_len, tgt_len + past_length)
         return mask
     

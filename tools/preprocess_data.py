@@ -31,8 +31,8 @@ try:
 except ImportError:
     nltk_available = False
 
-from core.tokenizer import build_tokenizer
-from core.data import indexed_dataset
+from libai.tokenizer import build_tokenizer
+from libai.data import indexed_dataset
 
 # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
 class CustomLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
@@ -184,3 +184,6 @@ def main():
 
     for key in args.json_keys:
         builders[key].finalize(output_idx_files[key])   # 往idx文件中写数据
+
+if __name__ == '__main__':
+    main()

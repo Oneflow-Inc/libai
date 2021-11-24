@@ -15,7 +15,7 @@
 
 import oneflow as flow
 import oneflow.nn.init as init
-from core import distribute as dist
+from libai import distribute as dist
 
 class LayerNorm(flow.nn.Module):
     """Layer normalization. This is same as nn.LayerNorm but add placement and sbp attribution.

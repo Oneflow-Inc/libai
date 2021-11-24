@@ -16,8 +16,8 @@
 import math
 import oneflow as flow
 import oneflow.nn.init as init
-from core import distribute as dist
-from core.utils import init_method_normal, scaled_init_method_normal
+from libai import distribute as dist
+from libai.utils import init_method_normal, scaled_init_method_normal
 
 from .linear import ColumnParallelLinear, RowParallelLinear
 

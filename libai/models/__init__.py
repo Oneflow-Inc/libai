@@ -15,7 +15,7 @@
 
 import os
 import importlib
-from core.registry import Registry
+from libai.registry import Registry
 
 MODELS = Registry('model')
 

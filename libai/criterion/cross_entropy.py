@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import oneflow as flow
-from core.criterion import register_criterion
+from libai.criterion import register_criterion
 
 from .base_criterion import BaseLoss
 # todo: add other criterion, like kl_div, cross_entropy_with_label_smooth, triple_loss, margin_loss

@@ -14,8 +14,8 @@
 # limitations under the License.
 
 import oneflow as flow
-from core import distribute as dist
-from core.data import register_dataset
+from libai import distribute as dist
+from libai.data import register_dataset
 
 from .base_dataset import BaseDataLoader
 

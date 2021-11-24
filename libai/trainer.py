@@ -16,15 +16,15 @@
 import os
 import oneflow as flow
 from .global_vars import get_args
-from core import distribute as dist
-from core.utils import print_rank_0, makedirs_ranks
-from core.data import build_dataset
-from core.models import build_model
-from core.criterion import build_criterion
-from core.optimizer import build_optimizer, build_lr_scheduler, build_grad_scaler
-from core.meters import Logger, SimpleMeter, AverageMeter, SumMeter, TimeMeter, StopWatchMeter
-from core.modules import ParallelLogits
-from core.models.gpt_model import GPTEmbedding, TransformerLayer, ActivationCheckpointing, Transformer
+from libai import distribute as dist
+from libai.utils import print_rank_0, makedirs_ranks
+from libai.data import build_dataset
+from libai.models import build_model
+from libai.criterion import build_criterion
+from libai.optimizer import build_optimizer, build_lr_scheduler, build_grad_scaler
+from libai.meters import Logger, SimpleMeter, AverageMeter, SumMeter, TimeMeter, StopWatchMeter
+from libai.layers import ParallelLogits
+from libai.models.gpt_model import GPTEmbedding, TransformerLayer, ActivationCheckpointing, Transformer
 
 
 class Trainer(object):

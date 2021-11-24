@@ -17,9 +17,9 @@ import math
 import argparse
 from .utils import print_rank_0
 
-from core.data import DATASETS
-from core.models import MODELS
-from core.criterion import CRITERIONS
+from libai.data import DATASETS
+from libai.models import MODELS
+from libai.criterion import CRITERIONS
 
 
 def parse_args(ignore_unknown_args=True):

@@ -14,12 +14,20 @@
 # limitations under the License.
 
 import os
-import oneflow as flow 
+import importlib
+from libai.registry import Registry
 
-from .global_vars import get_args, get_tokenizer
-from .utils import print_rank_0, print_rank_last, print_ranks, makedirs_ranks
+DATASETS = Registry('data loader')
 
-import core.data
-import core.models
-import core.criterion
-import core.modules
+def build_dataset(args, subset):
+    return DATASETS[args.data_type].build_dataset(args, subset)
+    
+def register_dataset(name):
+    def _register_dataset(cls):
+        return DATASETS.register(name, cls)
+    return _register_dataset
+
+for file in sorted(os.listdir(os.path.dirname(__file__))):
+    if file.endswith(".py") and not file.startswith("_"):
+        file_name = file[: file.find(".py")]
+        importlib.import_module("core.data." + file_name)

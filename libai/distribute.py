@@ -151,3 +151,14 @@ def get_hidden_sbp():
     """ hidden states sbp.
     """
     return get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
+
+
+def get_data_parallel_rank():
+    dist_util = get_dist_util()
+    return flow.env.get_rank() // dist_util.model_paralle_size
+
+
+def get_data_parallel_world_size():
+    dist_util = get_dist_util()
+    return dist_util.data_parallel_size
+
