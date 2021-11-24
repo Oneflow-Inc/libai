@@ -55,3 +55,65 @@ class VocabEmbedding(nn.Module):
         input_embeds = input_embeds.to_consistent(sbp=dist.get_hidden_sbp())
 
         return input_embeds
+
+
+class PositionalEmbedding(nn.Module):
+    """Construct the trainable positional embeddings.
+    """
+
+    def __init__(
+        self, max_sequence_length, hidden_size, init_method,
+    ):
+        super().__init__()
+        self.init_method = init_method
+
+        self.position_embeddings = nn.Parameter(
+            flow.empty(
+                (max_sequence_length, hidden_size),
+                dtype=flow.float32,
+                placement=dist.get_layer_placement(0),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            )
+        )
+        self.init_method(self.position_embeddings)
+
+    def forward(self, position_ids):
+        # Position_embeddings with sbp sign: [B, B]
+        #   [B, B] x [S(0), B] --> [S(0), B]
+        #     ↑         ↑              ↑
+        #   embed    pos_ids       pos_embed
+        position_embeds = flow._C.gather(self.position_embeddings, position_ids, axis=0)
+        return position_embeds
+
+
+class TokenTypeEmbedding(nn.Module):
+    """Construct the token_type embeddings.
+    """
+
+    def __init__(
+        self, num_tokentypes, hidden_size, init_method,
+    ):
+        super().__init__()
+        self.init_method = init_method
+
+        assert num_tokentypes > 0, ""
+        self.tokentype_embeddings = nn.Parameter(
+            flow.empty(
+                (num_tokentypes, hidden_size),
+                dtype=flow.float32,
+                placement=dist.get_layer_placement(0),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            )
+        )
+        self.init_method(self.tokentype_embeddings)
+
+    def forward(self, tokentype_ids):
+        tokentype_embeds = flow._C.gather(
+            self.tokentype_embeddings, tokentype_ids, axis=0
+        )
+        return tokentype_embeds
+
+
+class SinePositionalEmbedding(nn.Module):
+    def __init__(self):
+        super().__init__()
