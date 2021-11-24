@@ -19,6 +19,13 @@ from oneflow import nn
 
 from libai.utils import distributed as dist
 
+__all__ = [
+    "VocabEmbedding",
+    "PositionalEmbedding",
+    "TokenTypeEmbedding",
+    "SinePositionalEmbedding",
+]
+
 
 class VocabEmbedding(nn.Module):
     """Construct the word embeddings.
