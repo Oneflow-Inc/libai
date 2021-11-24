@@ -39,7 +39,7 @@ class VocabEmbedding(nn.Module):
 
         # Word token embedding shape with (vocab_size, hidden_size)
         # sbp: [B, S(0)]
-        self.word_embeddings = nn.Parameter(
+        self.weight = nn.Parameter(
             flow.empty(
                 (vocab_size, hidden_size),
                 dtype=flow.float32,
@@ -48,7 +48,7 @@ class VocabEmbedding(nn.Module):
             )
         )
         # Initialize the word embedding, waiting for model parallel revision
-        self.init_method(self.word_embeddings)
+        self.init_method(self.weight)
 
     def forward(self, input_ids):
         # input_ids with shape (batch_size, seq_len), and sbp sign: [S(0), B]
@@ -57,7 +57,7 @@ class VocabEmbedding(nn.Module):
         # [B, S(0)] x [S(0), B] --> [S(0), P]
         #     ↑           ↑            ↑
         #   embed  input_ids    input_embeds
-        input_embeds = flow._C.gather(self.word_embeddings, input_ids, axis=0)
+        input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
         # Set the embeds sbp from [S(0), P] --> [S(0), B] to get complete embedding results.
         input_embeds = input_embeds.to_consistent(sbp=dist.get_hidden_sbp())
 
@@ -74,7 +74,7 @@ class PositionalEmbedding(nn.Module):
         super().__init__()
         self.init_method = init_method
 
-        self.position_embeddings = nn.Parameter(
+        self.weight = nn.Parameter(
             flow.empty(
                 (max_sequence_length, hidden_size),
                 dtype=flow.float32,
@@ -82,14 +82,14 @@ class PositionalEmbedding(nn.Module):
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )
-        self.init_method(self.position_embeddings)
+        self.init_method(self.weight)
 
     def forward(self, position_ids):
         # Position_embeddings with sbp sign: [B, B]
         #   [B, B] x [S(0), B] --> [S(0), B]
         #     ↑         ↑              ↑
         #   embed    pos_ids       pos_embed
-        position_embeds = flow._C.gather(self.position_embeddings, position_ids, axis=0)
+        position_embeds = flow._C.gather(self.weight, position_ids, axis=0)
         return position_embeds
 
 
@@ -104,7 +104,7 @@ class TokenTypeEmbedding(nn.Module):
         self.init_method = init_method
 
         assert num_tokentypes > 0, ""
-        self.tokentype_embeddings = nn.Parameter(
+        self.weight = nn.Parameter(
             flow.empty(
                 (num_tokentypes, hidden_size),
                 dtype=flow.float32,
@@ -112,11 +112,11 @@ class TokenTypeEmbedding(nn.Module):
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )
-        self.init_method(self.tokentype_embeddings)
+        self.init_method(self.weight)
 
     def forward(self, tokentype_ids):
         tokentype_embeds = flow._C.gather(
-            self.tokentype_embeddings, tokentype_ids, axis=0
+            self.weight, tokentype_ids, axis=0
         )
         return tokentype_embeds
 
