@@ -35,6 +35,8 @@ class VocabEmbedding(nn.Module):
         self, vocab_size, hidden_size, init_method,
     ):
         super().__init__()
+        self.vocab_size = vocab_size
+        self.embedding_dim = hidden_size
         self.init_method = init_method
 
         # Word token embedding shape with (vocab_size, hidden_size)
@@ -63,6 +65,10 @@ class VocabEmbedding(nn.Module):
 
         return input_embeds
 
+    def extra_repr(self) -> str:
+        s = "{vocab_size}, {embedding_dim}"
+        return s.format(**self.__dict__)
+
 
 class PositionalEmbedding(nn.Module):
     """Construct the trainable positional embeddings.
@@ -72,6 +78,8 @@ class PositionalEmbedding(nn.Module):
         self, max_sequence_length, hidden_size, init_method,
     ):
         super().__init__()
+        self.max_sequence_length = max_sequence_length
+        self.embedding_dim = hidden_size
         self.init_method = init_method
 
         self.weight = nn.Parameter(
@@ -92,6 +100,10 @@ class PositionalEmbedding(nn.Module):
         position_embeds = flow._C.gather(self.weight, position_ids, axis=0)
         return position_embeds
 
+    def extra_repr(self) -> str:
+        s = "{max_sequence_length}, {embedding_dim}"
+        return s.format(**self.__dict__)
+
 
 class TokenTypeEmbedding(nn.Module):
     """Construct the token_type embeddings.
@@ -101,9 +113,11 @@ class TokenTypeEmbedding(nn.Module):
         self, num_tokentypes, hidden_size, init_method,
     ):
         super().__init__()
+        self.num_tokentypes = num_tokentypes
+        self.embedding_dim = hidden_size
         self.init_method = init_method
 
-        assert num_tokentypes > 0, ""
+        assert num_tokentypes > 0
         self.weight = nn.Parameter(
             flow.empty(
                 (num_tokentypes, hidden_size),
@@ -115,10 +129,12 @@ class TokenTypeEmbedding(nn.Module):
         self.init_method(self.weight)
 
     def forward(self, tokentype_ids):
-        tokentype_embeds = flow._C.gather(
-            self.weight, tokentype_ids, axis=0
-        )
+        tokentype_embeds = flow._C.gather(self.weight, tokentype_ids, axis=0)
         return tokentype_embeds
+
+    def extra_repr(self) -> str:
+        s = "{num_tokentypes}, {embedding_dim}"
+        return s.format(**self.__dict__)
 
 
 class SinePositionalEmbedding(nn.Module):
