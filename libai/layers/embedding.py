@@ -169,12 +169,12 @@ class SinePositionalEmbedding(nn.Module):
 
         self.embedding_dim = embedding_dim
 
-        posit_range = flow._C.consistent_arange(start=0,
+        position_range = flow._C.consistent_arange(start=0,
                                                 end=embedding_dim,
                                                 step=2,
                                                 placement=dist.get_layer_placement(0),
                                                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-        inv_freq = 1 / (10000 ** (posit_range / embedding_dim))
+        inv_freq = 1 / (10000 ** (position_range / embedding_dim))
         self.register_buffer('inv_freq', inv_freq)
 
     def forward(self, pos_seq, batch_size=None):
@@ -185,3 +185,7 @@ class SinePositionalEmbedding(nn.Module):
             return pos_emb[None, :, :].expand(batch_size, -1, -1)
         else:
             return pos_emb[None, :, :]
+
+    def extra_repr(self) -> str:
+        s = "embedding_dim={embedding_dim}"
+        return s.format(**self.__dict__)
