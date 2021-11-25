@@ -31,26 +31,37 @@ class VocabEmbedding(nn.Module):
     """Construct the word embeddings.
     """
 
-    def __init__(
-        self, vocab_size, hidden_size, init_method,
-    ):
+    def __init__(self, num_embeddings, embedding_dim, init_method, padding_idx=None):
         super().__init__()
-        self.vocab_size = vocab_size
-        self.embedding_dim = hidden_size
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
+        if padding_idx is not None:
+            if padding_idx > 0:
+                assert (
+                    padding_idx < self.num_embeddings
+                ), "Padding_idx must be within num_embeddings"
+            elif padding_idx < 0:
+                assert (
+                    padding_idx >= -self.num_embeddings
+                ), "Padding_idx must be within num_embeddings"
+                padding_idx = self.num_embeddings + padding_idx
+        self.padding_idx = padding_idx
         self.init_method = init_method
 
         # Word token embedding shape with (vocab_size, hidden_size)
         # sbp: [B, S(0)]
         self.weight = nn.Parameter(
             flow.empty(
-                (vocab_size, hidden_size),
+                (num_embeddings, embedding_dim),
                 dtype=flow.float32,
                 placement=dist.get_layer_placement(0),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
             )
         )
-        # Initialize the word embedding, waiting for model parallel revision
+        # Initialize the word embedding
         self.init_method(self.weight)
+        # FIXME(Lxy): Fill padding_idx is not supported in nd_sbp right now.
+        # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
         # input_ids with shape (batch_size, seq_len), and sbp sign: [S(0), B]
@@ -65,8 +76,19 @@ class VocabEmbedding(nn.Module):
 
         return input_embeds
 
+    def _fill_padding_idx_with_zero(self) -> None:
+        if self.padding_idx is not None:
+            with flow.no_grad():
+                self.weight[self.padding_idx] = flow.zeros(
+                    self.embedding_dim,
+                    placement=dist.get_layer_placement(0),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
+
     def extra_repr(self) -> str:
-        s = "{vocab_size}, {embedding_dim}"
+        s = "{num_embeddings}, {embedding_dim}"
+        if self.padding_idx is not None:
+            s += ". padding_idx={padding_idx}"
         return s.format(**self.__dict__)
 
 
@@ -75,16 +97,16 @@ class PositionalEmbedding(nn.Module):
     """
 
     def __init__(
-        self, max_sequence_length, hidden_size, init_method,
+        self, num_embeddings, embedding_dim, init_method,
     ):
         super().__init__()
-        self.max_sequence_length = max_sequence_length
-        self.embedding_dim = hidden_size
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
         self.init_method = init_method
 
         self.weight = nn.Parameter(
             flow.empty(
-                (max_sequence_length, hidden_size),
+                (num_embeddings, embedding_dim),
                 dtype=flow.float32,
                 placement=dist.get_layer_placement(0),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
@@ -101,7 +123,7 @@ class PositionalEmbedding(nn.Module):
         return position_embeds
 
     def extra_repr(self) -> str:
-        s = "{max_sequence_length}, {embedding_dim}"
+        s = "{num_embeddings}, {embedding_dim}"
         return s.format(**self.__dict__)
 
 
@@ -110,17 +132,17 @@ class TokenTypeEmbedding(nn.Module):
     """
 
     def __init__(
-        self, num_tokentypes, hidden_size, init_method,
+        self, num_embeddings, embedding_dim, init_method,
     ):
         super().__init__()
-        self.num_tokentypes = num_tokentypes
-        self.embedding_dim = hidden_size
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
         self.init_method = init_method
 
-        assert num_tokentypes > 0
+        assert num_embeddings > 0
         self.weight = nn.Parameter(
             flow.empty(
-                (num_tokentypes, hidden_size),
+                (num_embeddings, embedding_dim),
                 dtype=flow.float32,
                 placement=dist.get_layer_placement(0),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
@@ -133,7 +155,7 @@ class TokenTypeEmbedding(nn.Module):
         return tokentype_embeds
 
     def extra_repr(self) -> str:
-        s = "{num_tokentypes}, {embedding_dim}"
+        s = "{num_embeddings}, {embedding_dim}"
         return s.format(**self.__dict__)
 
 
