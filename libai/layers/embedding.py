@@ -82,7 +82,8 @@ class VocabEmbedding(nn.Module):
                 self.weight[self.padding_idx] = flow.zeros(
                     self.embedding_dim,
                     placement=dist.get_layer_placement(0),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    sbp=dist.get_nd_sbp(
+                        [flow.sbp.broadcast, flow.sbp.broadcast]),
                 )
 
     def extra_repr(self) -> str:
@@ -163,12 +164,17 @@ class SinePositionalEmbedding(nn.Module):
     """Construct the sin cos positional embeddings.
     """
 
-    def __init__(self, hidden_size):
+    def __init__(self, embedding_dim):
         super().__init__()
-        
-        self.hidden_size = hidden_size
 
-        inv_freq = 1 / (10000 ** (flow._C.arange(0.0, hidden_size, 2.0) / hidden_size))
+        self.embedding_dim = embedding_dim
+
+        posit_range = flow._C.consistent_arange(start=0,
+                                                end=embedding_dim,
+                                                step=2,
+                                                placement=dist.get_layer_placement(0),
+                                                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+        inv_freq = 1 / (10000 ** (posit_range / embedding_dim))
         self.register_buffer('inv_freq', inv_freq)
 
     def forward(self, pos_seq, batch_size=None):
