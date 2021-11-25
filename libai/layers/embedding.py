@@ -87,9 +87,9 @@ class VocabEmbedding(nn.Module):
                 )
 
     def extra_repr(self) -> str:
-        s = "{num_embeddings}, {embedding_dim}"
+        s = "num_embeddings={num_embeddings}, embedding_dim={embedding_dim}"
         if self.padding_idx is not None:
-            s += ". padding_idx={padding_idx}"
+            s += ", padding_idx={padding_idx}"
         return s.format(**self.__dict__)
 
 
@@ -124,7 +124,7 @@ class PositionalEmbedding(nn.Module):
         return position_embeds
 
     def extra_repr(self) -> str:
-        s = "{num_embeddings}, {embedding_dim}"
+        s = "num_embeddings={num_embeddings}, embedding_dim={embedding_dim}"
         return s.format(**self.__dict__)
 
 
@@ -156,7 +156,7 @@ class TokenTypeEmbedding(nn.Module):
         return tokentype_embeds
 
     def extra_repr(self) -> str:
-        s = "{num_embeddings}, {embedding_dim}"
+        s = "num_embeddings={num_embeddings}, embedding_dim={embedding_dim}"
         return s.format(**self.__dict__)
 
 
