@@ -160,5 +160,22 @@ class TokenTypeEmbedding(nn.Module):
 
 
 class SinePositionalEmbedding(nn.Module):
-    def __init__(self):
+    """Construct the sin cos positional embeddings.
+    """
+
+    def __init__(self, hidden_size):
         super().__init__()
+        
+        self.hidden_size = hidden_size
+
+        inv_freq = 1 / (10000 ** (flow._C.arange(0.0, hidden_size, 2.0) / hidden_size))
+        self.register_buffer('inv_freq', inv_freq)
+
+    def forward(self, pos_seq, batch_size=None):
+        sinusoid_inp = flow.ger(pos_seq, self.inv_freq)
+        pos_emb = flow.cat([sinusoid_inp.sin(), sinusoid_inp.cos()], dim=-1)
+
+        if batch_size is not None:
+            return pos_emb[None, :, :].expand(batch_size, -1, -1)
+        else:
+            return pos_emb[None, :, :]
