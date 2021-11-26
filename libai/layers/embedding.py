@@ -192,52 +192,48 @@ class TokenTypeEmbedding(nn.Module):
 
 
 class SinePositionalEmbedding(nn.Module):
-    """Construct the sinusoidal positional embeddings.
+    """Construct the sin cos positional embeddings.
 
     Arguments:
+        num_embeddings: size of vocabulary.
         embedding_dim: dimension of embeddings.
     """
 
-    def __init__(self, embedding_dim, drop_rate=0.0, max_length=5000):
+    def __init__(self, num_embeddings, embedding_dim):
         super().__init__()
 
         self.embedding_dim = embedding_dim
-        self.max_length = max_length
-        self.drop_rate = drop_rate
+        self.num_embeddings = num_embeddings
 
-        self.dropout = nn.Dropout(p=drop_rate)
-
-        pe = flow.zeros(max_length,
-                        embedding_dim,
-                        placement=dist.get_layer_placement(0),
-                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+        position_embedding = flow.zeros(num_embeddings,
+                                        embedding_dim,
+                                        dtype=flow.float32,
+                                        placement=dist.get_layer_placement(0),
+                                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
         position = flow._C.consistent_arange(start=0,
-                                             end=max_length,
+                                             end=num_embeddings,
                                              placement=dist.get_layer_placement(0),
                                              sbp=dist.get_nd_sbp(
                                                  [flow.sbp.broadcast, flow.sbp.broadcast]),
-                                             dtype=flow.float).unsqueeze(1)
+                                             dtype=flow.float32).unsqueeze(1)
         position_range = flow._C.consistent_arange(start=0,
                                                    end=embedding_dim,
                                                    step=2,
                                                    placement=dist.get_layer_placement(0),
                                                    sbp=dist.get_nd_sbp(
                                                        [flow.sbp.broadcast, flow.sbp.broadcast]),
-                                                   dtype=flow.float)
+                                                   dtype=flow.float32)
         div_term = flow.exp(
             position_range * (-math.log(10000.0) / embedding_dim))
 
-        pe[:, 0::2] = flow.sin(position * div_term)
-        pe[:, 1::2] = flow.cos(position * div_term)
-        pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
+        position_embedding[:, 0::2] = flow.sin(position * div_term)
+        position_embedding[:, 1::2] = flow.cos(position * div_term)
+        self.register_buffer('position_embedding', position_embedding)
 
-    def forward(self, x):
-        # x shape: [b, s, h], pe shape: [1, max_length, h]
-        x = x + self.pe[:, :x.size(1)]
-        x = self.dropout(x)
-        return x
+    def forward(self, position_ids):
+        position_embeds = flow._C.gather(self.position_embedding, position_ids, axis=0)
+        return position_embeds
 
     def extra_repr(self) -> str:
-        s = "embedding_dim={embedding_dim}, drop_rate={drop_rate}, max_length={max_length}"
+        s = "num_embeddings={num_embeddings}, embedding_dim={embedding_dim}"
         return s.format(**self.__dict__)
