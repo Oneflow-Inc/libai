@@ -50,8 +50,8 @@ class MLP(nn.Module):
         self.dense_h_to_4h = Linear1D(
             hidden_size,
             ffn_hidden_size,
-            True,
-            "col",
+            bias=True,
+            parallel="col",
             activation="gelu",
             bias_gelu_fusion=True,
             init_method=init_method,
@@ -60,8 +60,8 @@ class MLP(nn.Module):
         self.dense_4h_to_h = Linear1D(
             ffn_hidden_size,
             hidden_size,
-            True,
-            "row",
+            bias=True,
+            parallel="row",
             output_dropout_prob=output_dropout_prob,
             bias_dropout_fusion=True,
             init_method=output_layer_init_method,
