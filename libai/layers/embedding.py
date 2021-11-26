@@ -4,6 +4,7 @@
 import math
 import oneflow as flow
 from oneflow import nn
+from oneflow.nn import init
 
 from libai.utils import distributed as dist
 
@@ -16,10 +17,16 @@ __all__ = [
 
 
 class VocabEmbedding(nn.Module):
-    """Construct the word embeddings.
+    """Construct the word embeddings, which may be splited along vocabulary dimension.
+
+    Arguments:
+        num_embeddings: size of vocabulary.
+        embedding_dim: dimension of embeddings.
+        padding_idx: pad index.
+        init_method: method to initialize weights.
     """
 
-    def __init__(self, num_embeddings, embedding_dim, init_method, padding_idx=None):
+    def __init__(self, num_embeddings, embedding_dim, padding_idx=None, init_method=init.xavier_normal_):
         super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
@@ -82,10 +89,15 @@ class VocabEmbedding(nn.Module):
 
 class PositionalEmbedding(nn.Module):
     """Construct the trainable positional embeddings.
+
+    Arguments:
+        num_embeddings: size of vocabulary.
+        embedding_dim: dimension of embeddings.
+        init_method: method to initialize weights.
     """
 
     def __init__(
-        self, num_embeddings, embedding_dim, init_method,
+        self, num_embeddings, embedding_dim, init_method=init.xavier_normal_,
     ):
         super().__init__()
         self.num_embeddings = num_embeddings
@@ -117,14 +129,31 @@ class PositionalEmbedding(nn.Module):
 
 class TokenTypeEmbedding(nn.Module):
     """Construct the token_type embeddings.
+
+    Arguments:
+        num_embeddings: size of vocabulary.
+        embedding_dim: dimension of embeddings.
+        padding_idx: pad index.
+        init_method: method to initialize weights.
     """
 
     def __init__(
-        self, num_embeddings, embedding_dim, init_method,
+        self, num_embeddings, embedding_dim, padding_idx=None, init_method=init.xavier_normal_,
     ):
         super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
+        if padding_idx is not None:
+            if padding_idx > 0:
+                assert (
+                    padding_idx < self.num_embeddings
+                ), "Padding_idx must be within num_embeddings"
+            elif padding_idx < 0:
+                assert (
+                    padding_idx >= -self.num_embeddings
+                ), "Padding_idx must be within num_embeddings"
+                padding_idx = self.num_embeddings + padding_idx
+        self.padding_idx = padding_idx
         self.init_method = init_method
 
         assert num_embeddings > 0
@@ -137,18 +166,36 @@ class TokenTypeEmbedding(nn.Module):
             )
         )
         self.init_method(self.weight)
+        # FIXME(Lxy): Fill padding_idx is not supported in nd_sbp right now.
+        # self._fill_padding_idx_with_zero()
 
     def forward(self, tokentype_ids):
         tokentype_embeds = flow._C.gather(self.weight, tokentype_ids, axis=0)
         return tokentype_embeds
+    
+    def _fill_padding_idx_with_zero(self) -> None:
+        if self.padding_idx is not None:
+            with flow.no_grad():
+                self.weight[self.padding_idx] = flow.zeros(
+                    self.embedding_dim,
+                    placement=dist.get_layer_placement(0),
+                    sbp=dist.get_nd_sbp(
+                        [flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
+
 
     def extra_repr(self) -> str:
         s = "num_embeddings={num_embeddings}, embedding_dim={embedding_dim}"
+        if self.padding_idx is not None:
+            s += ", padding_idx={padding_idx}"
         return s.format(**self.__dict__)
 
 
 class SinePositionalEmbedding(nn.Module):
-    """Construct the sin cos positional embeddings.
+    """Construct the sinusoidal positional embeddings.
+
+    Arguments:
+        embedding_dim: dimension of embeddings.
     """
 
     def __init__(self, embedding_dim, drop_rate=0.0, max_length=5000):
