@@ -35,7 +35,7 @@ class LayerNorm(nn.Module):
         self,
         normalized_shape,
         eps=1e-5,
-        elementwise_affine: bool = True,
+        elementwise_affine=True,
         *,
         layer_idx=0
     ):
