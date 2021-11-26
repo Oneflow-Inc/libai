@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import math
 import oneflow as flow
 from oneflow import nn
 
@@ -164,28 +165,46 @@ class SinePositionalEmbedding(nn.Module):
     """Construct the sin cos positional embeddings.
     """
 
-    def __init__(self, embedding_dim):
+    def __init__(self, embedding_dim, drop_rate=0.0, max_length=5000):
         super().__init__()
 
         self.embedding_dim = embedding_dim
+        self.max_length = max_length
+        self.drop_rate = drop_rate
 
+        self.dropout = nn.Dropout(p=drop_rate)
+
+        pe = flow.zeros(max_length,
+                        embedding_dim,
+                        placement=dist.get_layer_placement(0),
+                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+        position = flow._C.consistent_arange(start=0,
+                                             end=max_length,
+                                             placement=dist.get_layer_placement(0),
+                                             sbp=dist.get_nd_sbp(
+                                                 [flow.sbp.broadcast, flow.sbp.broadcast]),
+                                             dtype=flow.float).unsqueeze(1)
         position_range = flow._C.consistent_arange(start=0,
-                                                end=embedding_dim,
-                                                step=2,
-                                                placement=dist.get_layer_placement(0),
-                                                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-        inv_freq = 1 / (10000 ** (position_range / embedding_dim))
-        self.register_buffer('inv_freq', inv_freq)
+                                                   end=embedding_dim,
+                                                   step=2,
+                                                   placement=dist.get_layer_placement(0),
+                                                   sbp=dist.get_nd_sbp(
+                                                       [flow.sbp.broadcast, flow.sbp.broadcast]),
+                                                   dtype=flow.float)
+        div_term = flow.exp(
+            position_range * (-math.log(10000.0) / embedding_dim))
 
-    def forward(self, pos_seq, batch_size=None):
-        sinusoid_inp = flow.ger(pos_seq, self.inv_freq)
-        pos_emb = flow.cat([sinusoid_inp.sin(), sinusoid_inp.cos()], dim=-1)
+        pe[:, 0::2] = flow.sin(position * div_term)
+        pe[:, 1::2] = flow.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
 
-        if batch_size is not None:
-            return pos_emb[None, :, :].expand(batch_size, -1, -1)
-        else:
-            return pos_emb[None, :, :]
+    def forward(self, x):
+        # x shape: [b, s, h], pe shape: [1, max_length, h]
+        x = x + self.pe[:, :x.size(1)]
+        x = self.dropout(x)
+        return x
 
     def extra_repr(self) -> str:
-        s = "embedding_dim={embedding_dim}"
+        s = "embedding_dim={embedding_dim}, drop_rate={drop_rate}, max_length={max_length}"
         return s.format(**self.__dict__)
