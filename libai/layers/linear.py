@@ -35,16 +35,16 @@ class Linear1D(nn.Module):
                 | A_p |
 
     Arguments:
-        in_features: size of each input sample
-        out_features: size of each output sample
+        in_features: size of each input sample.
+        out_features: size of each output sample.
         bias: If set to ``False``, the layer will not learn an additive bias. Defaults to ``True``.
         parallel: . Defaults to "data".
-        init_method: method to initialize weight. Defaults to nn.init.xavier_normal_.
         activation: name of activation function after linear layer. 
         If set to ``None``, it will do nothing. Defaults to None.
         bias_gelu_fusion: If set to ``True``, it will fuse bias adding and elementwise gelu activation. Defaults to ``False``.
         output_dropout_prob: Output dropout probability. Defaults to 0.0.
         bias_dropout_fusion: If set to ``True``, it will fuse bias adding and dropout. Defaults to ``False``.
+        init_method: method to initialize weight. Defaults to nn.init.xavier_normal_.
         layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline parallelism. Defaults to 0.
     """
 
@@ -54,11 +54,11 @@ class Linear1D(nn.Module):
         out_features,
         bias=True,
         parallel="data",
-        init_method=nn.init.xavier_normal_,
         activation=None,
         bias_gelu_fusion=False,
         output_dropout_prob=0.0,
         bias_dropout_fusion=False,
+        init_method=nn.init.xavier_normal_,
         *,
         layer_idx=0,  # Enforce layer_idx passed with keyword
     ):
