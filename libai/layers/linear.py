@@ -17,7 +17,7 @@
 import oneflow as flow
 from oneflow import nn
 
-from libai.layers.activations import build_activation
+from libai.layers import build_activation
 from libai.utils import distributed as dist
 
 
@@ -45,9 +45,9 @@ class Linear1D(nn.Module):
         bias_gelu_fusion: If set to ``True``, it will fuse bias adding and elementwise gelu activation. Defaults to ``False``.
         output_dropout_prob: Output dropout probability. Defaults to 0.0.
         bias_dropout_fusion: If set to ``True``, it will fuse bias adding and dropout. Defaults to ``False``.
-        layer_idx: layer_idx sign for placement setting. It will be used in pipeline parallelism. Defaults to 0.
+        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline parallelism. Defaults to 0.
     """
-    
+
     def __init__(
         self,
         in_features,
@@ -60,30 +60,32 @@ class Linear1D(nn.Module):
         output_dropout_prob=0.0,
         bias_dropout_fusion=False,
         *,
-        layer_idx=0, # Enforce layer_idx passed with keyword
+        layer_idx=0,  # Enforce layer_idx passed with keyword
     ):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
+        self.parallel = parallel
+        self.activation = activation
 
         self.need_act = activation is not None
-        self.bias_gelu_fusion = bias_gelu_fusion and (activation == "gelu")
-        if self.need_act:
+        self.bias_gelu_fusion = bias_gelu_fusion and (activation == "gelu") and bias
+        if self.need_act and (not self.bias_gelu_fusion):
             # Not using gelu fusion
-            if not bias_gelu_fusion:
-                self.activation_func = build_activation(activation)
+            self.activation_func = build_activation(activation)
 
         self.output_dropout_prob = output_dropout_prob
-        self.bias_dropout_fusion = bias_dropout_fusion
+        # bias_dropout fusion optimization can only be done without activation
+        self.bias_dropout_fusion = bias_dropout_fusion and (not self.need_act) and bias
         if not self.bias_dropout_fusion and output_dropout_prob > 0.0:
             self.dropout = nn.Dropout(p=self.output_dropout_prob)
 
         if parallel == "col":
-            # column parallel linear weight sbp: [B, S(1)] and bias sbp: [B, S(0)].
+            # Column parallel weight sbp: [B, S(1)] and bias sbp: [B, S(0)].
             weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
         elif parallel == "row":
-            # row parallel linear weight sbp: [B, S(0)] and bias sbp: [B, B]
+            # Row parallel weight sbp: [B, S(0)] and bias sbp: [B, B]
             weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         elif parallel == "data":
@@ -105,215 +107,91 @@ class Linear1D(nn.Module):
         )
         init_method(self.weight)
 
-        self.bias = flow.nn.Parameter(
-            flow.empty(
-                (out_features,),
-                dtype=flow.float32,
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=bias_sbp,
+        self.bias = (
+            flow.nn.Parameter(
+                flow.zeros(
+                    (out_features,),
+                    dtype=flow.float32,
+                    placement=dist.get_layer_placement(layer_idx),
+                    sbp=bias_sbp,
+                )
             )
+            if bias
+            else None
         )
-        nn.init.zeros_(self.bias)
 
     def forward(self, x):
         if dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
         ):
-            # 设定 x sbp: [S(0), B] 确保 w 一定是 [B, S(1)]
-            # x.grad sbp: [S(0), P] -> [S(0), B]
+            # When weight sbp sign is [B, S(1)], change x sbp sign to [S(0), B].
             x = x.to_consistent(
                 sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
             )
+
+            # Matmul sbp sign: [S(0), B] x [B, S(1)] -> [S(0), S(1)]
+            # Backward x.grad sbp sign: [S(0), S(1)] x [B, S(0)] (weight.T) -> [S(0), P]
+            # which cannot do backward pass when sbp sign is [S(0), P]
+            # so change x.grad sbp: [S(0), P] -> [S(0), B]
             x = x.to_consistent(grad_sbp=x.sbp)
+            x = flow._C.matmul(x, self.weight)
+
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
         ):
-            # 设定 x sbp: [S(0), S(1)] 确保 w 一定是 [B, S(0)]
+            # When weight sbp sign is [B, S(0)], change x sbp sign to [S(0), S(1)].
             x = x.to_consistent(
                 sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(x.ndim - 1)])
             )
-
-        # matmul sbp sign: [S(0), B] x [B, S(1)] -> [S(0), S(1)]
-        # x.grad sbp sign: [S(0), S(1)] x [B, S(0)] (weight.T) -> [S(0), P]
-        x = flow._C.matmul(x, self.weight)
-
-        if dist.same_sbp(
-            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
-        ):
-            # 设定 x sbp: [S(0), P] -> [S(0), B] 进行后面的运算
+            # Matmul sbp sign: [S(0), S(1)] x [B, S(0)] -> [S(0), P]
+            # Backward x.grad sbp sign: [S(0), B] x [B, S(1)] (weight.T) -> [S(0), S(1)]
+            x = flow._C.matmul(x, self.weight)
+            # Change x sbp: [S(0), P] -> [S(0), B] for followup forward pass.
             x = x.to_consistent(
                 sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
             )
-
-        if self.need_act:
-            if self.bias_gelu_fusion:
-                x = flow._C.fused_bias_add_gelu(x, self.bias, axis=x.ndim - 1)
-            else:
-                x = x + self.bias
-                x = self.activation_func(x)
-
-        if self.output_dropout_prob > 0.0:
-            if (not self.need_act) and self.bias_dropout_fusion:
-                x = flow._C.fused_bias_add_dropout(
-                    x, self.bias, p=self.output_dropout_prob, axis=x.ndim - 1
-                )
-            elif self.need_act:
-                x = self.dropout(x)
-            else:
-                x = x + self.bias
-                x = self.dropout(x)
-
-        return x
-
-
-class ColumnParallelLinear(nn.Module):
-    """Linear layer with column parallelism.
-    The linear layer is defined as Y = XA + b, where A is parallelized along 
-    the second dimension as A = [A_1, ..., A_p].
-    Arguments:
-        layer_idx: the layer index, which determines the placement.
-        input_size: first dimension of matrix A.
-        output_size: second dimension of matrix A.
-        init_method: method to initialize weights.
-        activation: name of the activation function
-        bias_gelu_fusion: whether fuse add bias and gelu.
-    """
-
-    def __init__(
-        self,
-        layer_idx,
-        input_size,
-        output_size,
-        init_method=nn.init.xavier_normal_,
-        activation=None,
-        bias_gelu_fusion=False,
-    ):
-        super().__init__()
-        self.need_act = activation is not None
-        self.bias_gelu_fusion = bias_gelu_fusion and (activation == "gelu")
-
-        if self.need_act:
-            # Not using gelu fusion
-            if not bias_gelu_fusion:
-                self.activation_func = build_activation(activation)
-
-        # column parallel linear weight sbp: [B, S(1)]
-        self.weight = flow.nn.Parameter(
-            flow.empty(
-                (input_size, output_size),
-                dtype=flow.float32,
-                placement=dist.get_layer_placement(
-                    layer_idx
-                ),  # 这个是为了使用 pipeline parallel
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)]),
-            )
-        )
-        init_method(self.weight)
-
-        # column parallel linear bias sbp: [B, S(0)]
-        self.bias = flow.nn.Parameter(
-            flow.empty(
-                (output_size,),
-                dtype=flow.float32,
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
-            )
-        )
-        flow.nn.init.zeros_(self.bias)
-
-    def forward(self, x):
-        # x sbp: [S(0), B]
-        # x.grad sbp: [S(0), P] -> [S(0), B]
-        x = x.to_consistent(grad_sbp=x.sbp)
-        # matmul sbp sign: [S(0), B] x [B, S(1)] -> [S(0), S(1)]
-        # x.grad sbp sign: [S(0), S(1)] x [B, S(0)] (weight.T) -> [S(0), P]
-        x = flow.matmul(x, self.weight)
-        if self.need_act:
-            if self.bias_gelu_fusion:
-                x = flow._C.fused_bias_add_gelu(x, self.bias, axis=x.ndim - 1)
-            else:
-                x = x + self.bias
-                x = self.activation_func(x)
         else:
-            # broadcast_add shape sign:
-            # (input_size, output_size) + (output_size, ) = (input_size, output_size)
-            # bias_add sbp sign: [S(0), S(1)] + [B, S(0)] = [S(0), S(1)]
-            x = x + self.bias
+            raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")
 
-        return x
+        # Flag for deciding if add bias
+        bias_add = False
+        if self.need_act:
+            if self.bias_gelu_fusion:
+                x = flow._C.fused_bias_add_gelu(x, self.bias, axis=x.ndim - 1)
+                bias_add = True
+            else:
+                if self.bias is not None:
+                    # bias_add sbp sign
+                    # column parallelism: [S(0), S(1)] + [B, S(0)] = [S(0), S(1)]
+                    # row parallelism: [S(0), B] + [B, B] = [S(0), B]
+                    x = x + self.bias
+                    bias_add = True
+                x = self.activation_func(x)
 
-
-class RowParallelLinear(flow.nn.Module):
-    """Linear layer with row parallelism.
-    The linear layer is defined as Y = XA + b, where A is parallelized along 
-    the first dimension and X along its second dimension as:
-                | A_1 |
-                |  .  |
-            A = |  .  |         X = [X_1, ..., X_p]
-                |  .  |
-                | A_p |
-    Arguments:
-        layer_idx: the layer index, which determines the placement.
-        input_size: first dimension of matrix A.
-        output_size: second dimension of matrix A.
-        init_method: method to initialize weights.
-        output_dropout_prob: dropout probability of output. (Supporting bias and dropout fusion)
-        bias_dropout_fusion: whether fuse add bias and dropout.
-    """
-
-    def __init__(
-        self,
-        layer_idx,
-        input_size,
-        output_size,
-        init_method=nn.init.xavier_normal_,
-        output_dropout_prob=0.0,
-        bias_dropout_fusion=False,
-    ):
-        super().__init__()
-        self.output_dropout_prob = output_dropout_prob
-
-        self.bias_dropout_fusion = bias_dropout_fusion
-        if not self.bias_dropout_fusion:
-            self.dropout = nn.Dropout(p=self.output_dropout_prob)
-
-        self.weight = flow.nn.Parameter(
-            flow.empty(
-                (input_size, output_size),
-                dtype=flow.float32,
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
-            )
-        )
-        init_method(self.weight)
-
-        # row parallel linear bias sbp: [B, B]
-        self.bias = flow.nn.Parameter(
-            flow.empty(
-                (output_size,),
-                dtype=flow.float32,
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            )
-        )
-        flow.nn.init.zeros_(self.bias)
-
-    def forward(self, x):
-        # x.sbp: [S(0), S(1)]
-        # matmul sbp sign: [S(0), S(1)] x [B, S(0)] -> [S(0), P]
-        # backward x.grad sbp sign: [S(0), B] x [B, S(1)] (weight.T) -> [S(0), S(1)]
-        x = flow.matmul(x, self.weight)
-        # x.sbp: [S(0), P] -> [S(0), B]
-        x = x.to_consistent(sbp=dist.get_hidden_sbp())
         if self.output_dropout_prob > 0.0:
             if self.bias_dropout_fusion:
                 x = flow._C.fused_bias_add_dropout(
                     x, self.bias, p=self.output_dropout_prob, axis=x.ndim - 1
                 )
+                bias_add = True
             else:
-                x = x + self.bias
+                if not bias_add and self.bias is not None:
+                    x = x + self.bias
+                    bias_add = True
                 x = self.dropout(x)
-        else:
+
+        # If no activation and dropout, then bias_add can been done here.
+        if not bias_add and self.bias is not None:
             x = x + self.bias
 
         return x
+
+    def extra_repr(self) -> str:
+        return "in_features={}, out_features={}, bias={}, parallel={}, activation={}, dropout={}".format(
+            self.in_features,
+            self.out_features,
+            self.bias is not None,
+            self.parallel,
+            self.activation,
+            self.output_dropout_prob,
+        )

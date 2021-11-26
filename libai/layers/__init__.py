@@ -14,3 +14,5 @@
 # limitations under the License.
 
 from .embedding import *
+from .activation import build_activation
+from linear import Linear1D
