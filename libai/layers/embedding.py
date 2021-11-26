@@ -204,7 +204,7 @@ class TokenTypeEmbedding(nn.Module):
 
 
 class SinePositionalEmbedding(nn.Module):
-    """Construct the sin cos positional embeddings.
+    """Construct the sinusoidal positional embeddings.
 
     Arguments:
         num_embeddings: size of vocabulary.
