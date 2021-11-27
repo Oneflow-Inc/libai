@@ -125,12 +125,11 @@ class MultiheadAttention(flow.nn.Module):
         else:
             attention_weights = flow.softmax(attention_scores, dim=-1)
 
+        attention_weights = attention_weights.view(bsz * self.num_heads, tgt_len, -1)   # [bsz * num_heads, tgt_len, src_len]
         attention_weights = self.dropout(attention_weights)
 
-        context = flow.matmul(attention_weights, value)     # [bsz, num_heads, tgt_len, head_size]
-
-        context = context.permute(2, 0, 1, 3)               # [tgt_len, bsz, num_heads, head_size]
-        context = context.view(bsz, tgt_len, -1)
+        context = flow.matmul(attention_weights, value)                           # [bsz * num_heads, tgt_len, head_size]
+        context = context.transpose(0, 1).view(tgt_len, bsz, self.hidden_size)    # [tgt_len, bsz, hidden_size]
         output = self.dense(context)
 
         if use_cache:
