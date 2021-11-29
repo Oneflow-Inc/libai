@@ -39,12 +39,8 @@ class Linear1D(nn.Module):
         out_features: size of each output sample.
         bias: If set to ``False``, the layer will not learn an additive bias. Defaults to ``True``.
         parallel: . Defaults to "data".
-        activation: name of activation function after linear layer. 
-        If set to ``None``, it will do nothing. Defaults to None.
-        bias_gelu_fusion: If set to ``True``, it will fuse bias adding and elementwise gelu activation. Defaults to ``False``.
-        output_dropout_prob: Output dropout probability. Defaults to 0.0.
-        bias_dropout_fusion: If set to ``True``, it will fuse bias adding and dropout. Defaults to ``False``.
         init_method: method to initialize weight. Defaults to nn.init.xavier_normal_.
+        skip_bias_add: skip adding bias but instead return it, so that adding bias can be fused with other elementwise operations. Defaults to ``False``.
         layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline parallelism. Defaults to 0.
     """
 
@@ -54,11 +50,8 @@ class Linear1D(nn.Module):
         out_features,
         bias=True,
         parallel="data",
-        activation=None,
-        bias_gelu_fusion=False,
-        output_dropout_prob=0.0,
-        bias_dropout_fusion=False,
         init_method=nn.init.xavier_normal_,
+        skip_bias_add=False
         *,
         layer_idx=0,  # Enforce layer_idx passed with keyword
     ):
@@ -66,19 +59,7 @@ class Linear1D(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.parallel = parallel
-        self.activation = activation
-
-        self.need_act = activation is not None
-        self.bias_gelu_fusion = bias_gelu_fusion and (activation == "gelu") and bias
-        if self.need_act and (not self.bias_gelu_fusion):
-            # Not using gelu fusion
-            self.activation_func = build_activation(activation)
-
-        self.output_dropout_prob = output_dropout_prob
-        # bias_dropout fusion optimization can only be done without activation
-        self.bias_dropout_fusion = bias_dropout_fusion and (not self.need_act) and bias
-        if not self.bias_dropout_fusion and output_dropout_prob > 0.0:
-            self.dropout = nn.Dropout(p=self.output_dropout_prob)
+        self.skip_bias_add = skip_bias_add
 
         if parallel == "col":
             # Column parallel weight sbp: [B, S(1)] and bias sbp: [B, S(0)].
@@ -153,45 +134,19 @@ class Linear1D(nn.Module):
         else:
             raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")
 
-        # Flag for deciding if add bias
-        bias_add = False
-        if self.need_act:
-            if self.bias_gelu_fusion:
-                x = flow._C.fused_bias_add_gelu(x, self.bias, axis=x.ndim - 1)
-                bias_add = True
+        if self.bias is not None:
+            if self.skip_bias_add:
+                return x, self.bias
             else:
-                if self.bias is not None:
-                    # bias_add sbp sign
-                    # column parallelism: [S(0), S(1)] + [B, S(0)] = [S(0), S(1)]
-                    # row parallelism: [S(0), B] + [B, B] = [S(0), B]
-                    x = x + self.bias
-                    bias_add = True
-                x = self.activation_func(x)
-
-        if self.output_dropout_prob > 0.0:
-            if self.bias_dropout_fusion:
-                x = flow._C.fused_bias_add_dropout(
-                    x, self.bias, p=self.output_dropout_prob, axis=x.ndim - 1
-                )
-                bias_add = True
-            else:
-                if not bias_add and self.bias is not None:
-                    x = x + self.bias
-                    bias_add = True
-                x = self.dropout(x)
-
-        # If no activation and dropout, then bias_add can been done here.
-        if not bias_add and self.bias is not None:
-            x = x + self.bias
-
-        return x
+                x = x + self.bias
+                return x
+        else:
+            return x
 
     def extra_repr(self) -> str:
-        return "in_features={}, out_features={}, bias={}, parallel={}, activation={}, dropout={}".format(
+        return "in_features={}, out_features={}, bias={}, parallel={}".format(
             self.in_features,
             self.out_features,
             self.bias is not None,
             self.parallel,
-            self.activation,
-            self.output_dropout_prob,
         )
