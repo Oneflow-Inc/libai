@@ -41,7 +41,7 @@ class MLP(nn.Module):
         ffn_hidden_size,
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
-        output_layer_init_method=nn.init.xavier_normal_,
+        output_layer_init_method=None,
         *,
         layer_idx=0,
     ):
@@ -57,6 +57,7 @@ class MLP(nn.Module):
             init_method=init_method,
             layer_idx=layer_idx,
         )
+
         self.dense_4h_to_h = Linear1D(
             ffn_hidden_size,
             hidden_size,
@@ -64,7 +65,9 @@ class MLP(nn.Module):
             parallel="row",
             output_dropout_prob=output_dropout_prob,
             bias_dropout_fusion=True,
-            init_method=output_layer_init_method,
+            init_method=output_layer_init_method
+            if output_layer_init_method is not None
+            else init_method,
             layer_idx=layer_idx,
         )
 
