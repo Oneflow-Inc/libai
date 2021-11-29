@@ -36,8 +36,8 @@ class MultiheadAttention(flow.nn.Module):
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax.
         layer_idx: A layer_idx sign which determines the placements. It will be used in pipeline parallelism. Defaults to 0.
     """
-    def __init__(self, hidden_size, num_attention_heads, is_cross_attention=False,
-                 attention_dropout_prob=0., output_dropout_prob=0., 
+    def __init__(self, hidden_size, num_attention_heads, attention, is_cross_attention=False,
+                 output_dropout_prob=0., 
                  init_method=init.xavier_normal_, output_layer_init_method=None, 
                  bias_dropout_fusion=False, scale_mask_softmax_fusion=False, 
                  *, layer_idx=0):
@@ -49,11 +49,9 @@ class MultiheadAttention(flow.nn.Module):
         assert hidden_size % num_attention_heads == 0, "hidden size must be the multiply of num_attention_heads"
 
         self.num_heads = num_attention_heads
+        self.attention = attention
         self.head_size = hidden_size // num_attention_heads
-        self.attention_dropout_prob = attention_dropout_prob
         
-        self.dropout = flow.nn.Dropout(p=self.attention_dropout_prob)
-
         self.norm_factor = 1.0 / math.sqrt(float(self.head_size))
         
         self.is_cross_attention = is_cross_attention
@@ -112,24 +110,12 @@ class MultiheadAttention(flow.nn.Module):
         query = query.view(*new_shape).transpose(0, 1)  # [bsz * num_heads, tgt_len, head_size]
         key = key.view(*new_shape).transpose(0, 1)      # [bsz * num_heads, src_len, head_size]
         value = value.view(*new_shape).transpose(0, 1)  # [bsz * num_heads, src_len, head_size]
+        
+        # 把 scaled dot product 和 multi-head 分开，这样方便用户实现自己的 attention
+        # 另外 cross attention 和 self attention 的逻辑放到 multi-head 里面，attention
+        # 其实不用关注 query, key 和 value 是来自于哪里
+        context = self.attention(query, key, value, attention_mask)
 
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)    # [bsz * num_heads, tgt_len, src_len]
-        attention_scores = attention_scores.view(bsz, self.num_heads, tgt_len, -1)              # [bsz, num_heads, tgt_len, src_len]
-    
-        if attention is not None:
-            if self.scale_mask_softmax_fusion:
-                attention_weights = flow._C.fused_scale_mask_softmax(attention_scores, attention_mask, fill_value=-10000.0)
-            else:
-                attention_scores = flow.mul(attention_scores, attention_mask) - 10000.0 * (1.0 - attention_mask)
-                attention_weights = flow.softmax(attention_scores, dim=-1)
-        else:
-            attention_weights = flow.softmax(attention_scores, dim=-1)
-
-        attention_weights = attention_weights.view(bsz * self.num_heads, tgt_len, -1)   # [bsz * num_heads, tgt_len, src_len]
-        attention_weights = self.dropout(attention_weights)
-
-        context = flow.matmul(attention_weights, value)                           # [bsz * num_heads, tgt_len, head_size]
-        context = context.transpose(0, 1).view(tgt_len, bsz, self.hidden_size)    # [tgt_len, bsz, hidden_size]
         output = self.dense(context)
 
         if use_cache:
