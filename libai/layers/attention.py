@@ -15,13 +15,14 @@
 
 import math
 import oneflow as flow
+from oneflow import nn
 import oneflow.nn.init as init
 
 from libai.utils import distributed as dist
 from .linear import ColumnParallelLinear, RowParallelLinear
 
 
-class MultiheadAttention(flow.nn.Module):
+class MultiheadAttention(nn.Module):
     """Multihead attention layer, support self attention and cross attention.
 
     Arguments:
@@ -80,6 +81,13 @@ class MultiheadAttention(flow.nn.Module):
             past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size].
             use_cahce: it will be set to True, when the model is in the inference phase and used for incremental decoding.
         """
+
+        if encoder_states is not None:
+            encoder_states = encoder_states.to_consistent(placement=hidden_states.placement)
+        
+        if attention_mask is not None:
+            attention_mask = attention_mask.to_consistent(placement=hidden_states.placement)
+
         tgt_len, bsz = hidden_states.size()[:-2]
 
         if self.is_cross_attention:
@@ -115,8 +123,8 @@ class MultiheadAttention(flow.nn.Module):
 
         attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)    # [bsz * num_heads, tgt_len, src_len]
         attention_scores = attention_scores.view(bsz, self.num_heads, tgt_len, -1)              # [bsz, num_heads, tgt_len, src_len]
-    
-        if attention is not None:
+        
+        if attention_mask is not None:
             if self.scale_mask_softmax_fusion:
                 attention_weights = flow._C.fused_scale_mask_softmax(attention_scores, attention_mask, fill_value=-10000.0)
             else:
@@ -136,4 +144,11 @@ class MultiheadAttention(flow.nn.Module):
             output = [output, past_key_value]
 
         return output
+
+    def extra_repr(self) -> str:
+        return "hidden_size={}, num_heads={}, is_cross_attention={}".format(
+            self.hidden_size,
+            self.num_heads,
+            self.is_cross_attention,
+        )
 
