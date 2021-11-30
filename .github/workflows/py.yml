@@ -1,7 +1,7 @@
 name: Python checks
 
 env:
-    ONEFLOW_SRC: oneflow-src
+  ONEFLOW_SRC: oneflow-src
 on:
   pull_request:
     types: [review_requested]
@@ -25,8 +25,7 @@ jobs:
       - name: Checkout Oneflow-Inc/oneflow
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          repository: Oneflow-Inc/oneflow
           path: ${{ env.ONEFLOW_SRC }}
       - name: Check Python format
         id: py_check
