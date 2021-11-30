@@ -17,9 +17,7 @@
 import oneflow as flow
 from oneflow import nn
 
-from libai.layers import build_activation
 from libai.utils import distributed as dist
-
 
 class Linear1D(nn.Module):
     """Linear layer with 1D parallelism which includes column parallelism and row parallelism.
@@ -51,9 +49,9 @@ class Linear1D(nn.Module):
         bias=True,
         parallel="data",
         init_method=nn.init.xavier_normal_,
-        skip_bias_add=False
+        skip_bias_add=False,
         *,
-        layer_idx=0,  # Enforce layer_idx passed with keyword
+        layer_idx=0,  # enforce layer_idx passed with keyword
     ):
         super().__init__()
         self.in_features = in_features
@@ -81,8 +79,9 @@ class Linear1D(nn.Module):
             flow.empty(
                 (in_features, out_features),
                 dtype=flow.float32,
-                # For pipeline parallelism placement.
-                placement=dist.get_layer_placement(layer_idx),
+                placement=dist.get_layer_placement(
+                    layer_idx
+                ),  # for pipeline parallelism placement
                 sbp=weight_sbp,
             )
         )
@@ -138,15 +137,11 @@ class Linear1D(nn.Module):
             if self.skip_bias_add:
                 return x, self.bias
             else:
-                x = x + self.bias
-                return x
+                return x + self.bias
         else:
             return x
 
     def extra_repr(self) -> str:
         return "in_features={}, out_features={}, bias={}, parallel={}".format(
-            self.in_features,
-            self.out_features,
-            self.bias is not None,
-            self.parallel,
+            self.in_features, self.out_features, self.bias is not None, self.parallel,
         )
