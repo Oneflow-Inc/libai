@@ -19,6 +19,7 @@ from oneflow import nn
 
 from libai.utils import distributed as dist
 
+
 class Linear1D(nn.Module):
     """Linear layer with 1D parallelism which includes column parallelism and row parallelism.
     The linear layer is defined as :math:`Y = XA + b`.
@@ -145,3 +146,7 @@ class Linear1D(nn.Module):
         return "in_features={}, out_features={}, bias={}, parallel={}".format(
             self.in_features, self.out_features, self.bias is not None, self.parallel,
         )
+
+
+# Give an alias for Linear1d
+Linear = Linear1D

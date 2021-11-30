@@ -15,6 +15,6 @@
 
 from .embedding import *
 from .activation import build_activation
-from .linear import Linear1D
+from .linear import Linear, Linear1D
 from .mlp import MLP
 from .layer_norm import LayerNorm

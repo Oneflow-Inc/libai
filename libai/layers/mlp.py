@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import oneflow as flow
 from oneflow import nn
 
-from libai.layers import Linear1D
+from libai.layers import Linear, build_activation
 
 
 class MLP(nn.Module):
@@ -31,8 +31,13 @@ class MLP(nn.Module):
         ffn_hidden_size: size of each intermediate sample.
         output_dropout_prob: Output dropout probability. Defaults to 0.0.
         init_method: method to initialize the first linear weight. Defaults to nn.init.xavier_normal_.
-        output_layer_init_method: method to initialize the second linear weight. Defaults to nn.init.xavier_normal_.
-        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline parallelism. Defaults to 0.
+        output_layer_init_method: method to initialize the second linear weight. If set to None, 
+        it will use ``init_method`` instead. Defaults to None.
+        bias_gelu_fusion: If set to ``True``, it will fuse bias adding and elementwise gelu activation. 
+        Defaults to ``False``.
+        bias_dropout_fusion: If set to ``True``, it will fuse bias adding and dropout. Defaults to ``False``.
+        layer_idx: A layer_idx sign which determines the placement. It will be used in 
+        pipeline parallelism. Defaults to 0.
     """
 
     def __init__(
@@ -42,36 +47,66 @@ class MLP(nn.Module):
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
+        bias_gelu_fusion=False,
+        bias_dropout_fusion=False,
         *,
         layer_idx=0,
     ):
         super().__init__()
+        self.output_dropout_prob = output_dropout_prob
+        self.bias_gelu_fusion = bias_gelu_fusion
+        self.bias_dropout_fusion = bias_dropout_fusion
 
-        self.dense_h_to_4h = Linear1D(
+        if output_layer_init_method is None:
+            output_layer_init_method = init_method
+
+        self.dense_h_to_4h = Linear(
             hidden_size,
             ffn_hidden_size,
             bias=True,
             parallel="col",
-            activation="gelu",
-            bias_gelu_fusion=True,
+            skip_bias_add=bias_gelu_fusion,
             init_method=init_method,
             layer_idx=layer_idx,
         )
 
-        self.dense_4h_to_h = Linear1D(
+        if not bias_gelu_fusion:
+            self.activation_func = build_activation("gelu")
+
+        self.dense_4h_to_h = Linear(
             ffn_hidden_size,
             hidden_size,
             bias=True,
             parallel="row",
-            output_dropout_prob=output_dropout_prob,
-            bias_dropout_fusion=True,
-            init_method=output_layer_init_method
-            if output_layer_init_method is not None
-            else init_method,
+            skip_bias_add=bias_dropout_fusion,
+            init_method=output_layer_init_method,
             layer_idx=layer_idx,
         )
 
+        if not bias_dropout_fusion:
+            self.dropout = nn.Dropout(self.output_dropout_prob)
+
     def forward(self, hidden_states):
         intermediate = self.dense_h_to_4h(hidden_states)
+        if self.bias_gelu_fusion:
+            intermediate, bias = intermediate
+            intermediate = flow._C.fused_bias_add_gelu(
+                intermediate, bias, axis=intermediate.ndim - 1
+            )
+        else:
+            intermediate = self.activation_func(intermediate)
+
         output = self.dense_4h_to_h(intermediate)
+        if self.bias_dropout_fusion:
+            output, bias = output
+            output = flow._C.fused_bias_add_dropout(
+                output, bias, p=self.output_dropout_prob, axis=output.ndim - 1
+            )
+        else:
+            output = self.dropout(output)
         return output
+
+    def extra_repr(self) -> str:
+        return "bias_gelu_fusion={}, bias_dropout_fusion={}, dropout={}".format(
+            self.bias_gelu_fusion, self.bias_dropout_fusion, self.output_dropout_prob
+        )
