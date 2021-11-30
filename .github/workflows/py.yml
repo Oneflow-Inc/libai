@@ -1,4 +1,7 @@
 name: Python checks
+
+env:
+    ONEFLOW_SRC: oneflow-src
 on:
   pull_request:
     types: [review_requested]
@@ -19,17 +22,23 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{github.event.pull_request.head.repo.full_name}}
+      - name: Checkout Oneflow-Inc/oneflow
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+          path: ${{ env.ONEFLOW_SRC }}
       - name: Check Python format
         id: py_check
         run: |
           python3 -m pip install black==19.10b0
-          python3 ci/check/run_py_format.py --source_dir $PWD
+          python3 ${{ env.ONEFLOW_SRC }}/ci/check/run_py_format.py --source_dir $PWD
       - name: Run Python Format
         id: py_fmt
         if: ${{ failure() }}
         run: |
           python3 -m pip install black==19.10b0
-          python3 ci/check/run_py_format.py --source_dir $PWD --fix
+          python3 ${{ env.ONEFLOW_SRC }}/ci/check/run_py_format.py --source_dir $PWD --fix
       - name: Git push
         id: git_push
         if: ${{ failure() }}
