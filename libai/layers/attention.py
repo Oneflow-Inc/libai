@@ -19,7 +19,7 @@ from oneflow import nn
 import oneflow.nn.init as init
 
 from libai.utils import distributed as dist
-from .linear import ColumnParallelLinear, RowParallelLinear
+from .linear import Linear
 
 
 class MultiheadAttention(nn.Module):
@@ -51,25 +51,35 @@ class MultiheadAttention(nn.Module):
 
         self.num_heads = num_attention_heads
         self.head_size = hidden_size // num_attention_heads
-        self.attention_dropout_prob = attention_dropout_prob
         
-        self.dropout = flow.nn.Dropout(p=self.attention_dropout_prob)
-
+        self.dropout = flow.nn.Dropout(p=attention_dropout_prob)
         self.norm_factor = 1.0 / math.sqrt(float(self.head_size))
         
         self.is_cross_attention = is_cross_attention
         self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
+        self.bias_dropout_fusion = bias_dropout_fusion
+
+        if self.bias_dropout_fusion:
+            self.output_dropout = output_dropout_prob
+        else:
+            self.output_dropout = flow.nn.Dropout(p=output_dropout_prob)
 
         if self.is_cross_attention:
-            self.query = ColumnParallelLinear(layer_idx, self.hidden_size, self.hidden_size, init_method)
-            self.key_value = ColumnParallelLinear(layer_idx, self.hidden_size, self.hidden_size * 2, init_method)
+            self.query = Linear(self.hidden_size, self.hidden_size, parallel='col', 
+                                init_method=init_method, 
+                                layer_idx=layer_idx)
+            self.key_value = Linear(self.hidden_size, self.hidden_size * 2, parallel='col', 
+                                    init_method=init_method, 
+                                    layer_idx=layer_idx)
         else:
-            self.query_key_value = ColumnParallelLinear(layer_idx, self.hidden_size, self.hidden_size * 3, init_method)
+            self.query_key_value = Linear(self.hidden_size, self.hidden_size * 3, parallel='col', 
+                                          init_method=init_method, 
+                                          layer_idx=layer_idx)
 
-        self.dense = RowParallelLinear(layer_idx, self.hidden_size, self.hidden_size, 
-                                       init_method=output_layer_init_method, 
-                                       output_dropout_prob=output_dropout_prob, 
-                                       bias_dropout_fusion=bias_dropout_fusion)
+        self.dense = Linear(self.hidden_size, self.hidden_size, parallel='row', 
+                            init_method=output_layer_init_method, 
+                            skip_bias_add=self.bias_dropout_fusion,
+                            layer_idx=layer_idx)
 
     def forward(self, hidden_states, encoder_states=None, attention_mask=None, past_key_value=None, use_cache=False):
         """ hidden_states: [tgt_len, bsz, hidden_size]. We adopted seq_len first setting for faster operation.
@@ -138,7 +148,13 @@ class MultiheadAttention(nn.Module):
 
         context = flow.matmul(attention_weights, value)                           # [bsz * num_heads, tgt_len, head_size]
         context = context.transpose(0, 1).view(tgt_len, bsz, self.hidden_size)    # [tgt_len, bsz, hidden_size]
-        output = self.dense(context)
+        
+        if self.bias_dropout_fusion:
+            output, bias = self.dense(context)
+            output = flow._C.fused_bias_add_dropout(output, bias, p=self.output_dropout, axis=output.ndim - 1)
+        else:
+            output = self.dense(context)
+            output = self.output_dropout(output)
 
         if use_cache:
             output = [output, past_key_value]
