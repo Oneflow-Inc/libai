@@ -47,7 +47,7 @@ class MultiheadAttention(nn.Module):
         if output_layer_init_method is None:
             output_layer_init_method = init_method
 
-        assert hidden_size % num_attention_heads == 0, "hidden size must be the multiply of num_attention_heads"
+        assert hidden_size % num_attention_heads == 0, "hidden_size must be the multiply of num_attention_heads"
 
         self.num_heads = num_attention_heads
         self.head_size = hidden_size // num_attention_heads
@@ -60,7 +60,7 @@ class MultiheadAttention(nn.Module):
         self.bias_dropout_fusion = bias_dropout_fusion
 
         if self.bias_dropout_fusion:
-            self.output_dropout = output_dropout_prob
+            self.output_dropout_prob = output_dropout_prob
         else:
             self.output_dropout = flow.nn.Dropout(p=output_dropout_prob)
 
@@ -148,12 +148,12 @@ class MultiheadAttention(nn.Module):
 
         context = flow.matmul(attention_weights, value)                           # [bsz * num_heads, tgt_len, head_size]
         context = context.transpose(0, 1).view(tgt_len, bsz, self.hidden_size)    # [tgt_len, bsz, hidden_size]
-        
+        output = self.dense(context)
+
         if self.bias_dropout_fusion:
-            output, bias = self.dense(context)
-            output = flow._C.fused_bias_add_dropout(output, bias, p=self.output_dropout, axis=output.ndim - 1)
+            output, bias = output
+            output = flow._C.fused_bias_add_dropout(output, bias, p=self.output_dropout_prob, axis=output.ndim - 1)
         else:
-            output = self.dense(context)
             output = self.output_dropout(output)
 
         if use_cache:
@@ -163,8 +163,6 @@ class MultiheadAttention(nn.Module):
 
     def extra_repr(self) -> str:
         return "hidden_size={}, num_heads={}, is_cross_attention={}".format(
-            self.hidden_size,
-            self.num_heads,
-            self.is_cross_attention,
+            self.hidden_size, self.num_heads, self.is_cross_attention,
         )
 
