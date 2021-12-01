@@ -20,12 +20,6 @@ from oneflow.nn import init
 
 from libai.utils import distributed as dist
 
-__all__ = [
-    "Embedding",
-    "VocabEmbedding",
-    "SinePositionalEmbedding",
-]
-
 
 class Embedding(nn.Module):
     """Construct the trainable embedding module, which does not support parallelization.
