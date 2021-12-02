@@ -84,12 +84,12 @@ class MultiheadAttention(nn.Module):
     def forward(self, hidden_states, encoder_states=None, attention_mask=None, past_key_value=None, use_cache=False):
         """ hidden_states: [tgt_len, bsz, hidden_size]. We adopted seq_len first setting for faster operation.
             encoder_states: [src_len, bsz, hidden_size].
-            attention_mask: [bsz, 1, tgt_len, src_len], it should be the conbination of padding mask and casual mask.
+            attention_mask: [bsz, 1, tgt_len, src_len], it should be the combination of padding mask and casual mask.
                             In case of self attention in encoder, it is the padding mask of source input.
                             In case of self attention in decoder, it is the combination of padding mask of target input and casual mask.
                             In case of cross attention in decoder, it is the padding mask of source input.
             past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size].
-            use_cahce: it will be set to True, when the model is in the inference phase and used for incremental decoding.
+            use_cache: it will be set to True, when the model is in the inference phase and used for incremental decoding.
         """
 
         if encoder_states is not None:
