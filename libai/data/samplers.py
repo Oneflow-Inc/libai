@@ -17,7 +17,20 @@ import numpy as np
 import oneflow as flow
 
 class PretrainingSampler:
-    def __init__(self, dataset, micro_batch_size, num_epochs=1, shuffle=False, data_parallel_rank=0, data_parallel_size=1, seed=1234, drop_last=True):
+    """ This sampler supports single round sampling and cyclic sampling, and 
+    it is also compatible with non data parallelism and data parallelism.
+    
+    Arguments:
+        dataset: dataset to be sampled.
+        micro_batch_size: batch size for per model instance. global_batch_size is micro_batch_size times data_parallel_size.
+        num_epochs: If set to 1, it is single round sampling. If set to other number, it is cyclic sampling.
+        shuffle: whether to shuffle the dataset.
+        data_parallel_rank: local rank for data parallelism.
+        data_parallel_size: the size of data parallelism.
+        seed: random seed, used for reproducing experiments.
+        drop_last: whether to drop the remaining data. Default to `False`.
+    """
+    def __init__(self, dataset, micro_batch_size, num_epochs=1, shuffle=False, data_parallel_rank=0, data_parallel_size=1, seed=1234, drop_last=False):
         self.dataset = dataset
         self.data_size = len(self.dataset)
         self.epoch = 0
@@ -28,27 +41,33 @@ class PretrainingSampler:
         self.data_parallel_size = data_parallel_size
         self.micro_batch_size = micro_batch_size
         self.actual_batch_size = self.micro_batch_size * self.data_parallel_size
+        self.remain_data_size = self.data_size % self.actual_batch_size
+        self.active_data_size = self.data_size - self.remain_data_size
 
         self.seed = seed
         self.drop_last = drop_last
 
     def __iter__(self):
-        consumed_samples = 0
+        """ divide the data into data_paralllel_size buckets, and shuffle it if `shuffle` is set to `True`.
+        Each processor samples from its own buckets and data_loader will load the corresponding data.
+        To support circular sampling, comsumed_samples is introduced to record the visual index.
+        This will be convert to actual index by `(consumed_samples + start_idx + x) % self.data_size`.
+
+        """
+        consumed_samples = self.epoch * self.active_data_size
         batch = []
         for epoch in range(self.epoch, self.num_epochs):
-            current_samples = consumed_samples % self.data_size
             bucket_size = self.data_size // self.actual_batch_size * self.micro_batch_size
-            bucket_offset = current_samples // self.data_parallel_size
             start_idx = self.data_parallel_rank * bucket_size
 
             if self.shuffle:
                 generator = flow.Generator()
                 generator.manual_seed(self.seed + epoch)
                 random_idx = flow.randperm(bucket_size, generator=generator).tolist()
-                indices = [start_idx + x for x in random_idx[bucket_offset:]]
+                indices = [(consumed_samples % self.data_size + start_idx + x) % self.data_size for x in random_idx]
             else:
                 seq_idx = flow.arange(bucket_size).tolist()
-                indices = [start_idx + x for x in seq_idx[bucket_offset:]]
+                indices = [(consumed_samples % self.data_size + start_idx + x) % self.data_size for x in seq_idx]
 
             for idx in idx_range:
                 batch.append(idx)
@@ -64,4 +83,5 @@ class PretrainingSampler:
         return self.data_size * self.num_epochs
 
     def set_epoch(self, epoch):
+        """used for restoring training status."""
         self.epoch = epoch

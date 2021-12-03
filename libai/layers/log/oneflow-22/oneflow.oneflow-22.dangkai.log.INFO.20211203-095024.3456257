@@ -1,0 +1,25 @@
+Log file created at: 2021/12/03 09:50:24
+Running on machine: oneflow-22
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I1203 09:50:24.709019 3456257 global.h:36] NewGlobal 14cudaDeviceProp
+I1203 09:50:24.804028 3456257 global.h:36] NewGlobal N7oneflow7EnvDescE
+I1203 09:50:24.804142 3456257 global.h:36] NewGlobal N7oneflow10ProcessCtxE
+I1203 09:50:24.804172 3456257 env_global_objects_scope.cpp:152] using rpc backend: local
+I1203 09:50:24.804200 3456257 global.h:36] NewGlobal N7oneflow12ResourceDescE
+I1203 09:50:24.804217 3456257 global.h:36] NewGlobal N7oneflow12ResourceDescE
+I1203 09:50:24.868947 3456257 global.h:36] NewGlobal N7oneflow10ThreadPoolE
+I1203 09:50:24.871100 3456257 global.h:36] NewGlobal N7oneflow16EagerNcclCommMgrE
+I1203 09:50:24.871140 3456257 global.h:36] NewGlobal N7oneflow18CudnnConvAlgoCacheE
+I1203 09:50:24.871148 3456257 global.h:36] NewGlobal N7oneflow2vm19VirtualMachineScopeE
+I1203 09:50:24.871156 3456257 global.h:36] NewGlobal N7oneflow9OneflowVME
+I1203 09:50:24.872030 3456257 oneflow_vm.cpp:76] transport stream type: N7oneflow2vm13CpuStreamTypeE
+I1203 09:50:24.872048 3456257 oneflow_vm.cpp:76] transport stream type: N7oneflow2vm14CudaStreamTypeE
+I1203 09:50:24.872054 3456257 oneflow_vm.cpp:76] transport stream type: N7oneflow2vm19AsyncCudaStreamTypeE
+I1203 09:50:24.872287 3456257 global.h:36] NewGlobal N7oneflow27EagerJobBuildAndInferCtxMgrE
+I1203 09:50:24.872301 3456257 global.h:36] NewGlobal N7oneflow12EpollCommNetE
+I1203 09:50:24.872416 3456257 epoll_comm_network.cpp:63] CommNet:Epoll listening on 0.0.0.0:35599
+I1203 09:50:24.872447 3456257 epoll_comm_network.cpp:197] machine 0 sockfd -1
+I1203 09:50:24.872594 3456257 global.h:36] NewGlobal N7oneflow9TransportE
+I1203 09:50:24.872680 3456257 global.h:43] DeleteGlobal N7oneflow17ForeignLockHelperE
+I1203 09:50:24.872777 3456257 global.h:36] NewGlobal N7oneflow25MultiClientSessionContextE
+I1203 09:50:26.333613 3456479 eager_nccl_comm_manager.cpp:69]  EagerNcclCommMgr::ncclCommInitRank device_vec.size() = 2, nccl_unique_id = 0200ffffff80ffffffa3ffffffc0ffffffa80116000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, rank = 0, key = {eager_nccl_unique_id_rpc_key,0:0,0:1}
