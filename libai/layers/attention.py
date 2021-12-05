@@ -108,7 +108,7 @@ class MultiheadAttention(nn.Module):
             elif encoder_states is not None:
                 key_value = self.key_value(encoder_states)
                 key_value = query_key_value.view(-1, bsz, self.num_heads, 2 * self.head_size)
-                key, value = flow.chunk(key_value, chunks=2, dim=-1)            # [src_len, bsz, num_heads, head_size]
+                key, value = flow.split(key_value, 2, dim=-1)            # [src_len, bsz, num_heads, head_size]
             else:
                 raise ValueError("past_key_value and encoder_states cannot be None at the same time.")
         else:
@@ -117,7 +117,7 @@ class MultiheadAttention(nn.Module):
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
             query_key_value = query_key_value.view(-1, bsz, self.num_heads, 3 * self.head_size)
-            query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)   # [tgt_len, bsz, num_heads, head_size]
+            query, key, value = flow.split(query_key_value, 3, dim=-1)   # [tgt_len, bsz, num_heads, head_size]
             if past_key_value is not None:
                 past_key, past_value = past_key_value
                 key = flow.cat((past_key.type_as(key), key), dim=0)
