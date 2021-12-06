@@ -28,14 +28,14 @@ class MultiheadAttention(nn.Module):
     Arguments:
         hidden_size: size of hidden state.
         num_attention_heads: number of attention heads.
-        is_cross_attention: used to specify whether it is self attention or cross attention.
-        attention_dropout_prob: dropout probability of attention weights.
-        output_dropout_prob: dropout probability of output.
-        init_method: method to initialize the input layer weights.
+        is_cross_attention: used to specify whether it is self attention or cross attention. Default: ``False``.
+        attention_dropout_prob: dropout probability of attention weights. Default: ``0.0``.
+        output_dropout_prob: dropout probability of output. Default: ``0.0``.
+        init_method: method to initialize the input layer weights. Default: ``init.xavier_normal_``.
         output_layer_init_method: method to initialize the output layer weights. If None, use `init_method`.
-        bias_dropout_fusion: whether to fuse add bias and dropout.
-        scale_mask_softmax_fusion: whether to fuse scale, mask and softmax.
-        layer_idx: A layer_idx sign which determines the placements. It will be used in pipeline parallelism. Defaults to 0.
+        bias_dropout_fusion: whether to fuse add bias and dropout. Default: ``False``.
+        scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
+        layer_idx: A layer_idx sign which determines the placements. It will be used in pipeline parallelism. Default: ``0``.
     """
     def __init__(self, hidden_size, num_attention_heads, is_cross_attention=False,
                  attention_dropout_prob=0., output_dropout_prob=0., 
