@@ -47,7 +47,7 @@ class MultiheadAttention(nn.Module):
         if output_layer_init_method is None:
             output_layer_init_method = init_method
 
-        assert hidden_size % num_attention_heads == 0, "hidden_size must be the multiply of num_attention_heads"
+        assert hidden_size % num_attention_heads == 0, "hidden_size must be divisible by num_attention_heads."
 
         self.num_heads = num_attention_heads
         self.head_size = hidden_size // num_attention_heads
