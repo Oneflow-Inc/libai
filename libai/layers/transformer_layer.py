@@ -44,7 +44,6 @@ class TransformerLayer(flow.nn.Module):
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index. Default: ``False``.
         layer_idx: the layer index, which determines the placement.
-
     """
     def __init__(self, hidden_size, ffn_hidden_size, num_attention_heads, 
                  is_decoder=False, attention_dropout_prob=0., output_dropout_prob=0.,
