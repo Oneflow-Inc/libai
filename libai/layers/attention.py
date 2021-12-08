@@ -35,12 +35,14 @@ class MultiheadAttention(nn.Module):
         output_layer_init_method: method to initialize the output layer weights. If None, use `init_method`.
         bias_dropout_fusion: whether to fuse add bias and dropout. Default: ``False``.
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
+        apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index. Default: ``False``.
         layer_idx: A layer_idx sign which determines the placements. It will be used in pipeline parallelism. Default: ``0``.
     """
     def __init__(self, hidden_size, num_attention_heads, is_cross_attention=False,
                  attention_dropout_prob=0., output_dropout_prob=0., 
                  init_method=init.xavier_normal_, output_layer_init_method=None, 
                  bias_dropout_fusion=False, scale_mask_softmax_fusion=False, 
+                 apply_query_key_layer_scaling=False,
                  *, layer_idx=0):
         super().__init__()
         self.hidden_size = hidden_size
@@ -54,6 +56,8 @@ class MultiheadAttention(nn.Module):
         
         self.dropout = flow.nn.Dropout(p=attention_dropout_prob)
         self.norm_factor = 1.0 / math.sqrt(float(self.head_size))
+        if apply_query_key_layer_scaling:
+            self.norm_factor /=  float(layer_idx + 1)
         
         self.is_cross_attention = is_cross_attention
         self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
@@ -166,7 +170,7 @@ class MultiheadAttention(nn.Module):
             output = self.output_dropout(output)
 
         if use_cache:
-            output = [output, past_key_value]
+            output = (output, past_key_value)
 
         return output
 
