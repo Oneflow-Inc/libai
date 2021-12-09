@@ -45,58 +45,31 @@ class TransformerLayer(flow.nn.Module):
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index. Default: ``False``.
         layer_idx: the layer index, which determines the placement.
     """
-    def __init__(self, hidden_size, ffn_hidden_size, num_attention_heads, 
-                 is_decoder=False, attention_dropout_prob=0., output_dropout_prob=0.,
-                 layernorm_epsilon=1e-5,
-                 init_method=init.xavier_normal_,
-                 output_layer_init_method=None,
-                 bias_gelu_fusion=False,
-                 bias_dropout_fusion=False, 
-                 scale_mask_softmax_fusion=False,
-                 apply_query_key_layer_scaling=False,
-                 *, layer_idx=0):
+    def __init__(self, args, is_decoder=False, *, layer_idx=0):
         super().__init__()
-        self.hidden_size = hidden_size
+        self.hidden_size = args.hidden_size
         self.layer_idx = layer_idx
         self.is_decoder = is_decoder
 
+        self.init_method = init_method
         if output_layer_init_method is None:
             output_layer_init_method = init_method
+        self.output_layer_init_method = output_layer_init_method
 
-        self.input_layernorm = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=layer_idx)
+        self.input_layernorm = LayerNorm(args.hidden_size, eps=args.layernorm_epsilon, layer_idx=self.layer_idx)
 
-        self.self_attention = MultiheadAttention(hidden_size, num_attention_heads,
-                                                 is_cross_attention=False,
-                                                 attention_dropout_prob=attention_dropout_prob, 
-                                                 output_dropout_prob=output_dropout_prob, 
-                                                 init_method=init_method, 
-                                                 output_layer_init_method=output_layer_init_method, 
-                                                 bias_dropout_fusion=bias_dropout_fusion,
-                                                 scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-                                                 apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-                                                 layer_idx=layer_idx)
-        
-        self.post_attention_layernorm = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=layer_idx)
+        self.self_attention = self.build_self_attention(args)
+        self.post_attention_layernorm = LayerNorm(args.hidden_size, eps=args.layernorm_epsilon, layer_idx=self.layer_idx)
         
         if self.is_decoder:
-            self.cross_attention = MultiheadAttention(hidden_size, num_attention_heads,
-                                                      is_cross_attention=True,
-                                                      attention_dropout_prob=attention_dropout_prob, 
-                                                      output_dropout_prob=output_dropout_prob, 
-                                                      init_method=init_method, 
-                                                      output_layer_init_method=output_layer_init_method, 
-                                                      bias_dropout_fusion=bias_dropout_fusion,
-                                                      scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-                                                      apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-                                                      layer_idx=layer_idx)
-            
-            self.post_cross_attention_layernorm = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=layer_idx)
+            self.cross_attention = self.build_cross_attention(args)
+            self.post_cross_attention_layernorm = LayerNorm(args.hidden_size, eps=args.layernorm_epsilon, layer_idx=self.layer_idx)
 
-        self.mlp = MLP(hidden_size, ffn_hidden_size, output_dropout_prob, init_method, 
-                       output_layer_init_method=output_layer_init_method,
-                       bias_gelu_fusion=bias_gelu_fusion,
-                       bias_dropout_fusion=bias_dropout_fusion, 
-                       layer_idx=layer_idx)
+        self.mlp = MLP(args.hidden_size, args.ffn_hidden_size, args.output_dropout_prob, self.init_method, 
+                       output_layer_init_method=self.output_layer_init_method,
+                       bias_gelu_fusion=args.bias_gelu_fusion,
+                       bias_dropout_fusion=args.bias_dropout_fusion, 
+                       layer_idx=self.layer_idx)
 
 
     def forward(self, hidden_states, attention_mask, 
@@ -155,4 +128,27 @@ class TransformerLayer(flow.nn.Module):
         if use_cache:
             output = (output, presents)
         return output
+    
+    def build_self_attention(self, args):
+        return MultiheadAttention(args.hidden_size, args.num_attention_heads,
+                                  is_cross_attention=False,
+                                  attention_dropout_prob=args.attention_dropout_prob, 
+                                  output_dropout_prob=args.output_dropout_prob, 
+                                  init_method=self.init_method, 
+                                  output_layer_init_method=self.output_layer_init_method, 
+                                  bias_dropout_fusion=args.bias_dropout_fusion,
+                                  scale_mask_softmax_fusion=args.scale_mask_softmax_fusion,
+                                  apply_query_key_layer_scaling=args.apply_query_key_layer_scaling,
+                                  layer_idx=self.layer_idx)
 
+    def build_cross_attention(self, args):
+        return MultiheadAttention(args.hidden_size, args.num_attention_heads,
+                                  is_cross_attention=True,
+                                  attention_dropout_prob=args.attention_dropout_prob, 
+                                  output_dropout_prob=args.output_dropout_prob, 
+                                  init_method=self.init_method, 
+                                  output_layer_init_method=self.output_layer_init_method, 
+                                  bias_dropout_fusion=args.bias_dropout_fusion,
+                                  scale_mask_softmax_fusion=args.scale_mask_softmax_fusion,
+                                  apply_query_key_layer_scaling=args.apply_query_key_layer_scaling,
+                                  layer_idx=self.layer_idx)
