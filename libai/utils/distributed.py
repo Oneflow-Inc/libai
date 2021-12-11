@@ -144,18 +144,19 @@ def get_dist_util():
 
 
 def get_layer_placement(layer_idx, device_type="cuda"):
-    dist_util = get_dist_util()
+    # dist_util = get_dist_util()
     return flow.placement(
         device_type,
-        dist_util.get_layer_devices(layer_idx),
-        dist_util.parallel_hierarchy_,
+        {0: [0,]},
+        # dist_util.get_layer_devices(layer_idx),
+        # dist_util.parallel_hierarchy_,
     )
 
 
 def get_all_placement(device_type="cuda"):
     dist_util = get_dist_util()
 
-    # FIXME(Lxy): fix this when training with multi-node
+    # FIXME(l1aoxingyu): fix this when training with multi-node
     return flow.placement(
         device_type, {0: range(get_world_size())}, dist_util.parallel_hierarchy_
     )
@@ -166,15 +167,15 @@ def get_nd_sbp(sbp_list):
     assert len(sbp_list) == 2
     assert all(isinstance(sbp, flow.sbp.sbp) for sbp in sbp_list)
 
-    dist_util = get_dist_util()
-    if dist_util.is_data_model_parallel():
-        return sbp_list
-    elif dist_util.is_data_parallel():
-        return sbp_list[:1]
-    elif dist_util.is_tensor_model_parallel():
-        return sbp_list[1:]
-    else:
-        return [flow.sbp.broadcast]
+    # dist_util = get_dist_util()
+    # if dist_util.is_data_model_parallel():
+    #     return sbp_list
+    # elif dist_util.is_data_parallel():
+    #     return sbp_list[:1]
+    # elif dist_util.is_tensor_model_parallel():
+    #     return sbp_list[1:]
+    # else:
+    return [flow.sbp.broadcast]
 
 
 def get_hidden_sbp():
