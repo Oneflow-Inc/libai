@@ -96,8 +96,8 @@ class MultiheadAttention(nn.Module):
             use_cache: it will be set to True, when the model is in the inference phase and used for incremental decoding.
         """
 
-        # hidden_states, encoder_states: [S(0), B]
-        # attention_mask: [B, B]
+        # hidden_states, encoder_states: [S(1), B]
+        # attention_mask: [S(0), B]
 
         if encoder_states is not None:
             encoder_states = encoder_states.to_consistent(placement=hidden_states.placement)
@@ -130,20 +130,19 @@ class MultiheadAttention(nn.Module):
                 key = flow.cat((past_key.type_as(key), key), dim=0)
                 value = flow.cat((past_value.type_as(value), value), dim=0)
         
+        # query, key, value: [S(1), S(2)], shape: [seq_length, bsz, num_heads, head_size]
         if use_cache:
             past_key_value = (key, value)
 
-        # query, key, value: [S(0), S(1)]
-        new_shape = (-1, bsz * self.num_heads, self.head_size)
-        query = query.view(*new_shape).transpose(0, 1)  # [bsz * num_heads, tgt_len, head_size]
-        key = key.view(*new_shape).transpose(0, 1)      # [bsz * num_heads, src_len, head_size]
-        value = value.view(*new_shape).transpose(0, 1)  # [bsz * num_heads, src_len, head_size]
+        # [S(0), S(1)]
+        query = query.permute(1, 2, 0, 3)       # [bsz, num_heads, tgt_len, head_size]
+        key = key.permute(1, 2, 0, 3)           # [bsz, num_heads, src_len, head_size]
+        value = value.permute(1, 2, 0, 3)       # [bsz, num_heads, src_len, head_size]
 
         # [S(0), S(1)] x [S(0), S(1)] = [S(0), S(1)]
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)    # [bsz * num_heads, tgt_len, src_len]
-        attention_scores = attention_scores.view(bsz, self.num_heads, tgt_len, -1)              # [bsz, num_heads, tgt_len, src_len]
+        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)    # [bsz, num_heads, tgt_len, src_len]
         
-        # [S(0), S(1)] x [B, B] = [S(0), S(1)]
+        # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
             if self.scale_mask_softmax_fusion:
                 attention_weights = flow._C.fused_scale_mask_softmax(attention_scores, attention_mask, fill_value=-10000.0)
@@ -153,14 +152,13 @@ class MultiheadAttention(nn.Module):
         else:
             attention_weights = flow.softmax(attention_scores, dim=-1)
 
-        attention_weights = attention_weights.view(bsz * self.num_heads, tgt_len, -1)   # [bsz * num_heads, tgt_len, src_len]
-        attention_weights = self.dropout(attention_weights)
+        attention_weights = self.dropout(attention_weights)      # [bsz, num_heads, tgt_len, src_len]
 
         # [S(0), S(1)] x [S(0), S(1)] = [S(0), S(1)]
-        context = flow.matmul(attention_weights, value)                           # [bsz * num_heads, tgt_len, head_size]
-        context = context.transpose(0, 1).view(tgt_len, bsz, self.hidden_size)    # [tgt_len, bsz, hidden_size]
+        context = flow.matmul(attention_weights, value)                           # [bsz, num_heads, tgt_len, head_size]
+        context = context.transpose(0, 1).view(tgt_len, bsz, self.hidden_size)    # [tgt_len, bsz, hidden_size], sbp: [S(1), S(2)]
         
-        # [S(0), S(1)] x [B, S(0)] = [S(0), P] -> [S(0), B]
+        # [S(1), S(2)] x [B, S(0)] = [S(1), P] -> [S(1), B]
         output = self.dense(context)
 
         if self.bias_dropout_fusion:
