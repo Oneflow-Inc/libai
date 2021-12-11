@@ -20,15 +20,9 @@ from oneflow.nn import init
 
 from libai.utils import distributed as dist
 
-__all__ = [
-    "Embedding",
-    "VocabEmbedding",
-    "SinePositionalEmbedding",
-]
-
-
 class Embedding(nn.Module):
-    """Construct the trainable embeddings module.
+    """Construct the trainable embedding module, which does not support parallelization.
+    This can be used for positional embedding and token type embedding.
 
     Arguments:
         num_embeddings: size of vocabulary.
@@ -38,7 +32,15 @@ class Embedding(nn.Module):
     """
 
     def __init__(
+<<<<<<< HEAD
         self, num_embeddings, embedding_dim, padding_idx=None, init_method=init.xavier_normal_,
+=======
+        self,
+        num_embeddings,
+        embedding_dim,
+        padding_idx=None,
+        init_method=init.xavier_normal_,
+>>>>>>> main
     ):
         super().__init__()
         self.num_embeddings = num_embeddings
@@ -70,6 +72,13 @@ class Embedding(nn.Module):
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
+<<<<<<< HEAD
+=======
+        # embeddings with sbp sign: [B, B]
+        #   [B, B] x [S(0), B] --> [S(0), B]
+        #     ↑         ↑              ↑
+        #   embed    pos_ids       pos_embed
+>>>>>>> main
         input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
         return input_embeds
     
@@ -100,7 +109,17 @@ class VocabEmbedding(nn.Module):
         init_method: method to initialize weights.
     """
 
+<<<<<<< HEAD
     def __init__(self, num_embeddings, embedding_dim, padding_idx=None, init_method=init.xavier_normal_):
+=======
+    def __init__(
+        self,
+        num_embeddings,
+        embedding_dim,
+        padding_idx=None,
+        init_method=init.xavier_normal_,
+    ):
+>>>>>>> main
         super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
@@ -175,30 +194,33 @@ class SinePositionalEmbedding(nn.Module):
         self.embedding_dim = embedding_dim
         self.num_embeddings = num_embeddings
 
-        position_embedding = flow.zeros(num_embeddings,
-                                        embedding_dim,
-                                        dtype=flow.float32,
-                                        placement=dist.get_layer_placement(0),
-                                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-        position = flow._C.consistent_arange(start=0,
-                                             end=num_embeddings,
-                                             placement=dist.get_layer_placement(0),
-                                             sbp=dist.get_nd_sbp(
-                                                 [flow.sbp.broadcast, flow.sbp.broadcast]),
-                                             dtype=flow.float32).unsqueeze(1)
-        position_range = flow._C.consistent_arange(start=0,
-                                                   end=embedding_dim,
-                                                   step=2,
-                                                   placement=dist.get_layer_placement(0),
-                                                   sbp=dist.get_nd_sbp(
-                                                       [flow.sbp.broadcast, flow.sbp.broadcast]),
-                                                   dtype=flow.float32)
-        div_term = flow.exp(
-            position_range * (-math.log(10000.0) / embedding_dim))
+        position_embedding = flow.zeros(
+            num_embeddings,
+            embedding_dim,
+            dtype=flow.float32,
+            placement=dist.get_layer_placement(0),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
+        position = flow._C.consistent_arange(
+            start=0,
+            end=num_embeddings,
+            placement=dist.get_layer_placement(0),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            dtype=flow.float32,
+        ).unsqueeze(1)
+        position_range = flow._C.consistent_arange(
+            start=0,
+            end=embedding_dim,
+            step=2,
+            placement=dist.get_layer_placement(0),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            dtype=flow.float32,
+        )
+        div_term = flow.exp(position_range * (-math.log(10000.0) / embedding_dim))
 
         position_embedding[:, 0::2] = flow.sin(position * div_term)
         position_embedding[:, 1::2] = flow.cos(position * div_term)
-        self.register_buffer('position_embedding', position_embedding)
+        self.register_buffer("position_embedding", position_embedding)
 
     def forward(self, position_ids):
         position_embeds = flow._C.gather(self.position_embedding, position_ids, axis=0)
