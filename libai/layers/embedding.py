@@ -32,15 +32,11 @@ class Embedding(nn.Module):
     """
 
     def __init__(
-<<<<<<< HEAD
-        self, num_embeddings, embedding_dim, padding_idx=None, init_method=init.xavier_normal_,
-=======
         self,
         num_embeddings,
         embedding_dim,
         padding_idx=None,
         init_method=init.xavier_normal_,
->>>>>>> main
     ):
         super().__init__()
         self.num_embeddings = num_embeddings
@@ -72,13 +68,10 @@ class Embedding(nn.Module):
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
-<<<<<<< HEAD
-=======
         # embeddings with sbp sign: [B, B]
         #   [B, B] x [S(0), B] --> [S(0), B]
         #     ↑         ↑              ↑
         #   embed    pos_ids       pos_embed
->>>>>>> main
         input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
         return input_embeds
     
@@ -109,9 +102,6 @@ class VocabEmbedding(nn.Module):
         init_method: method to initialize weights.
     """
 
-<<<<<<< HEAD
-    def __init__(self, num_embeddings, embedding_dim, padding_idx=None, init_method=init.xavier_normal_):
-=======
     def __init__(
         self,
         num_embeddings,
@@ -119,7 +109,6 @@ class VocabEmbedding(nn.Module):
         padding_idx=None,
         init_method=init.xavier_normal_,
     ):
->>>>>>> main
         super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
