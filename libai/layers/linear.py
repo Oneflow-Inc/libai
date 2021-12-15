@@ -105,32 +105,29 @@ class Linear1D(nn.Module):
         if dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
         ):
-            # When weight sbp sign is [B, S(1)], change x sbp sign to [S(0), B].
-            x = x.to_consistent(
-                sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
-            )
+            # if the last dim of weight sbp sign is S(1), the last dim of x sbp sign must be B.
+            if self.weight.sbp[-1] == flow.sbp.split(1):
+                x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
+                x = x.to_consistent(sbp=x_sbp)        
 
-            # Matmul sbp sign: [S(0), B] x [B, S(1)] -> [S(0), S(1)]
-            # Backward x.grad sbp sign: [S(0), S(1)] x [B, S(0)] (weight.T) -> [S(0), P]
-            # which cannot do backward pass when sbp sign is [S(0), P]
-            # so change x.grad sbp: [S(0), P] -> [S(0), B]
+            # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
             x = x.to_consistent(grad_sbp=x.sbp)
             x = flow._C.matmul(x, self.weight)
 
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
         ):
-            # When weight sbp sign is [B, S(0)], change x sbp sign to [S(0), S(1)].
-            x = x.to_consistent(
-                sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(x.ndim - 1)])
-            )
-            # Matmul sbp sign: [S(0), S(1)] x [B, S(0)] -> [S(0), P]
-            # Backward x.grad sbp sign: [S(0), B] x [B, S(1)] (weight.T) -> [S(0), S(1)]
+            # if the last dim of weight sbp sign is S(0), the last dim of x sbp sign must be S(ndim-1).
+            if self.weight.sbp[-1] == flow.sbp.split(0):
+                x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
+                x = x.to_consistent(sbp=x_sbp)
+                out_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
+            else:
+                out_sbp = x.sbp
+            
             x = flow._C.matmul(x, self.weight)
-            # Change x sbp: [S(0), P] -> [S(0), B] for followup forward pass.
-            x = x.to_consistent(
-                sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
-            )
+            # change x.sbp for followup forward pass.
+            x = x.to_consistent(sbp=out_sbp)
         else:
             raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")
 

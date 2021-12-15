@@ -20,7 +20,6 @@ from oneflow.nn import init
 
 from libai.utils import distributed as dist
 
-
 class Embedding(nn.Module):
     """Construct the trainable embedding module, which does not support parallelization.
     This can be used for positional embedding and token type embedding.
@@ -75,14 +74,15 @@ class Embedding(nn.Module):
         #   embed    pos_ids       pos_embed
         input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
         return input_embeds
-
+    
     def _fill_padding_idx_with_zero(self) -> None:
         if self.padding_idx is not None:
             with flow.no_grad():
                 self.weight[self.padding_idx] = flow.zeros(
                     self.embedding_dim,
                     placement=dist.get_layer_placement(0),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    sbp=dist.get_nd_sbp(
+                        [flow.sbp.broadcast, flow.sbp.broadcast]),
                 )
 
     def extra_repr(self) -> str:
