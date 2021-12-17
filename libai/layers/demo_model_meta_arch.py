@@ -17,6 +17,14 @@ class demo_model(nn.Module):
     def get_loss(self, x):
         return x.sum()
     
+def build_model(cfg):
+    model = demo_model()
+    if cfg.mode == "graph":
+        placement = flow.env.all_device_placement("cuda")
+        model = model.to_consistent(placement=placement,
+                                    sbp=flow.sbp.broadcast
+                                    )
+    return model
 
 def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):
     class GraphModel(nn.Graph):

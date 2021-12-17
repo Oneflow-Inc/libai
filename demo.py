@@ -13,12 +13,12 @@ def setup():
 
 
     cfg = CN()
-    cfg.output_dir = "./demo_output"
-    cfg.load = None
+    cfg.output_dir = "./demo_output2"
+    cfg.load = "./demo_output/model_0000999"
     cfg.start_iter = 0
-    cfg.train_iters = 5000
+    cfg.train_iters = 6000
     cfg.global_batch_size = 64
-    cfg.save_interval = 3000
+    cfg.save_interval = 1000
     cfg.log_interval = 20
     cfg.nccl_fusion_threshold_mb = 16
     cfg.nccl_fusion_max_ops = 24
