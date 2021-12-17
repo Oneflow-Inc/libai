@@ -16,6 +16,7 @@
 """
 Modified from the following code:
 https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/registry.py
+https://github.com/facebookresearch/hydra/blob/main/hydra/_internal/utils.py
 """
 
 from typing import Any, Dict, Iterable, Iterator, Tuple, Union, Callable
