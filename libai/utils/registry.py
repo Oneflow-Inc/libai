@@ -13,9 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, Iterable, Iterator, Tuple
+"""
+Modified from the following code:
+https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/registry.py
+"""
+
+from typing import Any, Dict, Iterable, Iterator, Tuple, Union, Callable
+import pydoc
 
 from tabulate import tabulate
+
+
+__all__ = ["Registry", "locate"]
 
 
 class Registry(Iterable[Tuple[str, Any]]):
@@ -97,3 +106,97 @@ class Registry(Iterable[Tuple[str, Any]]):
 
     def __iter__(self) -> Iterator[Tuple[str, Any]]:
         return iter(self._obj_map.items())
+
+    __str__ = __repr__
+
+
+
+def _convert_target_to_string(t: Any) -> str:
+    """
+    Inverse of ``locate()``.
+
+    Args:
+        t: any object with ``module`` and ``__qualname``
+    """
+    module, qualname = t.__module__, t.__qualname__
+
+    # Compress the path to this object, e.g. ``module.submodule._impl.class``
+    # may become ``module.submodule.class``, if the later also resolves to the same
+    # object. This simplifies the string, and also is less affected by moving the
+    # class implementation.
+    module_parts = module.split(".")
+    for k in range(1, len(module_parts)):
+        prefix = ".".join(module_parts[:k])
+        candidate = f"{prefix}.{qualname}"
+        try:
+            if locate(candidate) is t:
+                return candidate
+        except ImportError:
+            pass
+    return f"{module}.{qualname}"
+
+
+def locate(name: str) -> Any:
+    """
+    Locate and return an object ``x`` using an input string ``{x.__module__}.{x.__qualname__}``,
+    such as "module.submodule.class_name".
+    Raise Exception if it cannot be found.
+    """
+    obj = pydoc.locate(name)
+
+    # Some cases (e.g. torch.optim.sgd.SGD) not handled correctly
+    # by pydoc.locate. Try a private function from hydra.
+    if obj is None:
+        obj = _locate(name)  # it raises if fails
+
+    return obj
+
+
+def _locate(path: str) -> Union[type, Callable[..., Any]]:
+    """
+    Locate an object by name or dotted path, importing as necessary.
+    This is similar to the pydoc function `locate`, except that it checks for
+    the module from the given path from back to front.
+    """
+    if path == "":
+        raise ImportError("Empty path")
+    from importlib import import_module
+    from types import ModuleType
+
+    parts = [part for part in path.split(".") if part]
+    for n in reversed(range(1, len(parts) + 1)):
+        mod = ".".join(parts[:n])
+        try:
+            obj = import_module(mod)
+        except Exception as exc_import:
+            if n == 1:
+                raise ImportError(f"Error loading module '{path}'") from exc_import
+            continue
+        break
+    for m in range(n, len(parts)):
+        part = parts[m]
+        try:
+            obj = getattr(obj, part)
+        except AttributeError as exc_attr:
+            if isinstance(obj, ModuleType):
+                mod = ".".join(parts[: m + 1])
+                try:
+                    import_module(mod)
+                except ModuleNotFoundError:
+                    pass
+                except Exception as exc_import:
+                    raise ImportError(
+                        f"Error loading '{path}': '{repr(exc_import)}'"
+                    ) from exc_import
+            raise ImportError(
+                f"Encountered AttributeError while loading '{path}': {exc_attr}"
+            ) from exc_attr
+    if isinstance(obj, type):
+        obj_type: type = obj
+        return obj_type
+    elif callable(obj):
+        obj_callable: Callable[..., Any] = obj
+        return obj_callable
+    else:
+        # reject if not callable & not a type
+        raise ValueError(f"Invalid type ({type(obj)}) found for {path}")
