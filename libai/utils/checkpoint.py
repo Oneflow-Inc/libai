@@ -54,6 +54,7 @@ class Checkpointer(object):
 
     def __init__(
         self,
+        cfg,
         model: nn.Module,
         save_dir: str = "",
         *,
@@ -71,6 +72,7 @@ class Checkpointer(object):
                 example, it can be used like
                 `Checkpointer(model, "dir", optimizer=optimizer)`.
         """
+        self.cfg = cfg
         self.model = model
         self.checkpointables = copy.copy(checkpointables)
         self.logger = logging.getLogger(__name__)
@@ -108,10 +110,12 @@ class Checkpointer(object):
             if PathManager.exists(save_file):
                 PathManager.rmdir(save_file)
 
-            if isinstance(self.model, nn.Graph):
+            if self.cfg.mode == "graph":
                 flow.save(data[save_name], save_file, consistent_dst_rank=0)
-            else:
+            elif self.cfg.mode == "eager":
                 flow.save(data[save_name], save_file)
+            else:
+                raise NotImplementedError
 
         self.tag_last_checkpoint(basename)
 
@@ -293,7 +297,7 @@ class Checkpointer(object):
                     "Unsupported type found in checkpoint! {}: {}".format(k, type(v))
                 )
             # If it's local tensor, convert it to consistent tensor.
-            if not v.is_consistent and isinstance(self.model, nn.Graph):
+            if not v.is_consistent and self.cfg.mode == "graph":
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
                     state_dict[k] = v.to_consistent(

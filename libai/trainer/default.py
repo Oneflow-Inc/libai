@@ -108,6 +108,7 @@ class DefaultTrainer(TrainerBase):
         # We can later make it checkpoint the stateful hooks
         self.checkpointer = Checkpointer(
             # Assume you want to save checkpoints together with logs/statistics
+            cfg,
             self.model,
             cfg.output_dir,
             optimizer=self.optimizer,
