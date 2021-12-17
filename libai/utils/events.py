@@ -190,7 +190,7 @@ class CommonMetricPrinter(EventWriter):
         except KeyError:
             lr = "N/A"
 
-        # TODO(l1aoxingyu): add memory usage statistic
+        # TODO: add memory usage statistic
         # if torch.cuda.is_available():
         #     max_mem_mb = torch.cuda.max_memory_allocated() / 1024.0 / 1024.0
         # else:

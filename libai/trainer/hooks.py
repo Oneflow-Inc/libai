@@ -24,6 +24,7 @@ import oneflow as flow
 from libai.trainer.trainer import HookBase
 from libai.utils.timer import Timer
 from libai.utils.events import EventWriter, get_event_storage
+from libai.utils.checkpoint import PeriodicCheckpointer as _PeriodicCheckpointer
 from libai.utils import distributed as dist
 
 
@@ -165,6 +166,20 @@ class PeriodicWriter(HookBase):
         for writer in self._writers:
             writer.close()
 
+class PeriodicCheckpointer(_PeriodicCheckpointer, HookBase):
+    """
+    Same as :class:`libai.utils.checkpoint.PeriodicCheckpointer`, but as a hook.
+    Note that when used as a hook,
+    it is unable to save additional data other than what's defined
+    by the given `checkpointer`.
+    It is executed every ``period`` iterations and after the last iteration.
+    """
+
+    def before_train(self):
+        self.max_iter = self.trainer.max_iter
+
+    def after_step(self):
+        self.step(self.trainer.iter)
 
 
 class EvalHook(HookBase):
@@ -191,6 +206,7 @@ class EvalHook(HookBase):
         
         return
         
+        # TODO: NotImplemented
         results = self._func()
 
         if results:
@@ -255,18 +271,18 @@ class LRScheduler(HookBase):
     def get_best_param_group_id(optimizer):
         # NOTE: some heuristics on what LR to summarize
         # summarize the param group with most parameters
-        largest_group = max(len(g["params"]) for g in optimizer.param_groups)
+        largest_group = max(len(g["params"]) for g in optimizer.state_dict()["param_groups"])
 
         if largest_group == 1:
             # If all groups have one parameter,
             # then find the most common initial LR, and use it for summary
-            lr_count = Counter([g["lr"] for g in optimizer.param_groups])
+            lr_count = Counter([g["_options"]["lr"] for g in optimizer.state_dict()["param_groups"]])
             lr = lr_count.most_common()[0][0]
-            for i, g in enumerate(optimizer.param_groups):
-                if g["lr"] == lr:
+            for i, g in enumerate(optimizer.state_dict()["param_groups"]):
+                if g["_options"]["lr"] == lr:
                     return i
         else:
-            for i, g in enumerate(optimizer.param_groups):
+            for i, g in enumerate(optimizer.state_dict()["param_groups"]):
                 if len(g["params"]) == largest_group:
                     return i
 
@@ -277,7 +293,7 @@ class LRScheduler(HookBase):
 
     @property
     def scheduler(self):
-        return self._scheduler or self.trainer.scheduler
+        return self._scheduler or self.trainer.lr_scheduler
 
     def state_dict(self):
         if isinstance(self.scheduler, flow.optim.lr_scheduler._LRScheduler):
