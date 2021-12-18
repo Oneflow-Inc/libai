@@ -13,5 +13,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from libai.utils import print_rank_0
+from .tokenization_bert import BertTokenizer
+from .tokenization_gpt2 import GPT2Tokenizer
 
-from .tokenizer import build_tokenizer
+def build_tokenizer(args):
+    """Initialize tokenizer."""
+    if args.rank == 0:
+        print('> building {} tokenizer ...'.format(args.tokenizer_type),
+              flush=True)
+
+    # Select and instantiate the tokenizer.
+    assert args.vocab_file is not None
+    if args.tokenizer_type == 'BertWordPieceLowerCase':
+        tokenizer = BertTokenizer(vocab_file=args.vocab_file, do_lower_case=True)
+    elif args.tokenizer_type == 'BertWordPieceCase':
+        tokenizer = BertTokenizer(vocab_file=args.vocab_file, do_lower_case=False)
+    elif args.tokenizer_type == 'GPT2BPETokenizer':
+        assert args.merge_file is not None
+        tokenizer = GPT2Tokenizer(args.vocab_file, args.merge_file)
+    else:
+        raise NotImplementedError
+
+    # Add vocab size.
+    args.padded_vocab_size = _vocab_size_with_padding(len(tokenizer), args)
+
+    return tokenizer
+
+
+def _vocab_size_with_padding(orig_vocab_size, args):
+    """Pad vocab size so it is divisible by model parallel size and
+    still having GPU friendly size."""
+
+    padded_vocab_size = orig_vocab_size
+    multiple = args.make_vocab_size_divisible_by * args.tensor_model_parallel_size
+    while (padded_vocab_size % multiple) != 0:
+        padded_vocab_size += 1
+    print_rank_0(' > padded vocab (size: {}) with {} dummy tokens (new size: {})'.format(
+                orig_vocab_size, padded_vocab_size - orig_vocab_size, padded_vocab_size), flush=True)
+    return padded_vocab_size
+

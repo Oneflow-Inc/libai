@@ -95,7 +95,7 @@ class BertDataset(flow.utils.data.Dataset):
             'is_random': int(is_next_random),
             'loss_mask': loss_mask_np,
             'padding_mask': padding_mask_np,
-            'truncated': int(truncated)}
+            'truncated': int(truncated)
         }
         return sample
 

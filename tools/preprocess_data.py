@@ -60,6 +60,12 @@ class Encoder(object):  # 分句、分词
     def initializer(self):
         # Use Encoder class as a container for global data
         Encoder.tokenizer = build_tokenizer(self.args)
+        if self.args.append_eod:
+            if Encoder.tokenizer.eod_token is None:
+                if Encoder.tokenizer.eos_token is not None:
+                    Encoder.tokenizer.eod_token = Encoder.tokenizer.eos_token
+                else:
+                    Encoder.tokenizer.eod_token = Encoder.tokenizer.pad_token
         if self.args.split_sentences:
             if not nltk_available:
                 print("NLTK is not available to split sentences.")
@@ -138,8 +144,8 @@ def main():
     print("Opening", args.input)
     fin = open(args.input, 'r', encoding='utf-8')
 
-    if nltk_available and args.split_sentences:
-        nltk.download("punkt", quiet=True)
+    # if nltk_available and args.split_sentences:
+    #     nltk.download("punkt", quiet=True)
 
     encoder = Encoder(args) # 创建encoder和tokenizer，用于多进程处理数据
     tokenizer = build_tokenizer(args)

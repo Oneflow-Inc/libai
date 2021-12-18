@@ -130,7 +130,7 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
     num_tokens = np.sum(sizes)
     
     # Build the indexed mapping if not exist.
-    if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename)):
+    if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename):
         print_rank_0(' > WARNING: could not find index map files, building '
                         'the indices on rank 0 ...')
 
