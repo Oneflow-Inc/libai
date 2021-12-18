@@ -265,3 +265,157 @@ class PolynomialDecayParamScheduler(ParamScheduler):
 
     def __call__(self, where: float) -> float:
         return self._base_value * (1 - where) ** self._power
+
+
+class StepParamScheduler(ParamScheduler):
+    """
+    Takes a fixed schedule for a param value.  If the length of the
+    fixed schedule is less than the number of epochs, then the epochs
+    are divided evenly among the param schedule.
+    The schedule is updated after every train epoch by default.
+
+    Example:
+
+        .. code-block:: python
+
+          StepParamScheduler(values=[0.1, 0.01, 0.001, 0.0001], num_updates=120)
+
+    Then the param value will be 0.1 for epochs 0-29, 0.01 for
+    epochs 30-59, 0.001 for epoch 60-89, 0.0001 for epochs 90-119.
+    """
+
+    def __init__(
+        self,
+        num_updates: Union[int, float],
+        values: List[float],
+    ) -> None:
+        if num_updates <= 0:
+            raise ValueError("Number of updates must be larger than 0")
+        if not (isinstance(values, Sequence) and len(values > 0)):
+            raise ValueError(
+                "Step scheduler requires a list of at least one param value"
+            )
+        self._param_schedule = values
+
+    def __call__(self, where: float) -> float:
+        ind = int((where + self.WHERE_EPSILON) * len(self._param_schedule))
+        return self._param_schedule[ind]
+
+    
+class StepWithFixedGammaParamScheduler(ParamScheduler):
+    """
+    Decays the param value by gamma at equal number of steps so as to have the
+    specified total number of decays.
+
+    Example:
+
+        .. code-block:: python
+
+          StepWithFixedGammaParamScheduler(
+            base_value=0.1, gamma=0.1, num_decays=3, num_updates=120)
+            
+    Then the param value will be 0.1 for epochs 0-29, 0.01 for
+    epochs 30-59, 0.001 for epoch 60-89, 0.0001 for epochs 90-119.
+    """
+
+    def __init__(
+        self,
+        base_value: float,
+        num_decays: int,
+        gamma: float,
+        num_updates: int,
+    ) -> None:
+        for k in [base_value, gamma]:
+            if not (isinstance(k, (int, float)) and k > 0):
+                raise ValueError("base_value and gamma must be positive numbers")
+        for k in [num_decays, num_updates]:
+            if not (isinstance(k, int) and k > 0):
+                raise ValueError("num_decays and num_updates must be positive integers")
+
+        self.base_value = base_value
+        self.num_decays = num_decays
+        self.gamma = gamma
+        self.num_updates = num_updates
+        values = [base_value]
+        for _ in range(num_decays):
+            values.append(values[-1] * gamma)
+
+        self._step_param_scheduler = StepParamScheduler(
+            num_updates=num_updates, values=values
+        )
+
+    def __call__(self, where: float) -> float:
+        return self._step_param_scheduler(where)
+
+
+
+class CompositeParamScheduler(ParamScheduler):
+    """
+    Composite parameter scheduler composed of intermediate schedulers.
+    Takes a list of schedulers and a list of lengths corresponding to
+    percentage of training each scheduler should run for. Schedulers
+    are run in order. All values in lengths should sum to 1.0.
+
+    Each scheduler also has a corresponding interval scale. If interval
+    scale is 'fixed', the intermediate scheduler will be run without any rescaling
+    of the time. If interval scale is 'rescaled', intermediate scheduler is
+    run such that each scheduler will start and end at the same values as it
+    would if it were the only scheduler. Default is 'rescaled' for all schedulers.
+
+    Example:
+        .. code-block:: python
+              schedulers = [
+                ConstantParamScheduler(value=0.42),
+                CosineParamScheduler(start_value=0.42, end_value=1e-4)
+              ]
+              CompositeParamScheduler(
+                schedulers=schedulers,
+                interval_scaling=['rescaled', 'rescaled'],
+                lengths=[0.3, 0.7])
+                
+    The parameter value will be 0.42 for the first [0%, 30%) of steps,
+    and then will cosine decay from 0.42 to 0.0001 for [30%, 100%) of
+    training.
+    """
+
+    def __init__(
+        self,
+        schedulers: Sequence[ParamScheduler],
+        lengths: List[float],
+        interval_scaling: Sequence[str],
+    ) -> None:
+        if len(schedulers) != len(lengths):
+            raise ValueError("Schedulers and lengths must be same length")
+        if len(schedulers) == 0:
+            raise ValueError(
+                "There must be at least one scheduler in the composite scheduler"
+            )
+        if abs(sum(lengths) - 1.0) >= 1e-3:
+            raise ValueError("The sum of all values in lengths must be 1")
+        if sum(lengths) != 1.0:
+            lengths[-1] = 1.0 - sum(lengths[:-1])
+        for s in interval_scaling:
+            if s not in ["rescaled", "fixed"]:
+                raise ValueError(f"Unsupported interval_scaling: {s}")
+
+        self._lengths = lengths
+        self._schedulers = schedulers
+        self._interval_scaling = interval_scaling
+
+    def __call__(self, where: float) -> float:
+        # Find scheduler corresponding to where
+        i = 0
+        running_total = self._lengths[i]
+        while (where + self.WHERE_EPSILON) > running_total and i < len(
+            self._schedulers
+        ) - 1:
+            i += 1
+            running_total += self._lengths[i]
+        scheduler = self._schedulers[i]
+        scheduler_where = where
+        interval_scale = self._interval_scaling[i]
+        if interval_scale == "rescaled":
+            # Calculate corresponding where % for scheduler
+            scheduler_start = running_total - self._lengths[i]
+            scheduler_where = (where - scheduler_start) / self._lengths[i]
+        return scheduler(scheduler_where)
