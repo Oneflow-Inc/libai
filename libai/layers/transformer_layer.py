@@ -28,6 +28,7 @@ class TransformerLayer(flow.nn.Module):
 
     Transformer layer takes input with size [seq_length, bsz, hidden size] and returns an
     output of the same size.
+    The input and output has same sbp sign, (S(1), B).
 
     Arguments:
         hidden_size: size of hidden state.
@@ -45,7 +46,7 @@ class TransformerLayer(flow.nn.Module):
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index. Default: ``False``.
         layer_idx: the layer index, which determines the placement.
     """
-    def __init__(self, args, is_decoder=False, *, layer_idx=0):
+    def __init__(self, args, is_decoder=False, init_method=init.xavier_normal_, output_layer_init_method=None, *, layer_idx=0):
         super().__init__()
         self.hidden_size = args.hidden_size
         self.layer_idx = layer_idx
@@ -75,10 +76,10 @@ class TransformerLayer(flow.nn.Module):
     def forward(self, hidden_states, attention_mask, 
                 encoder_states=None, encoder_attention_mask=None, 
                 past_key_value=None, use_cache=False):
-        """ hidden_states: [seq_length, bsz, hidden_size]
-            attention_mask: [bsz, 1, seq_length, seq_length], the combination of key padding mask and casual mask of hidden states.
-            encoder_states: [seq_length, bsz, hidden_size], encoder output, this will be used in cross attention.
-            encoder_attention_mask: [bsz, 1, seq_length, seq_length], key padding mask of encoder states.
+        """ hidden_states: [seq_length, bsz, hidden_size], (S(1), B),
+            attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B), the combination of key padding mask and casual mask of hidden states.
+            encoder_states: [seq_length, bsz, hidden_size], (S(1), B), encoder output, this will be used in cross attention.
+            encoder_attention_mask: [bsz, 1, seq_length, seq_length], (S(1), B) key padding mask of encoder states.
             past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size]. For decoder layer,
                             the past_key_value contains the states both from self attention and cross attention.
             use_cache: it will be set to `True`, when the model is in the inference phase and used for incremental decoding.
