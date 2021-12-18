@@ -18,6 +18,7 @@ __all__ = [
     "StepParamScheduler",
     "StepWithFixedGammaParamScheduler",
     "PolynomialDecayParamScheduler",
+    "WarmupParamScheduler",
 ]
 
 
@@ -372,7 +373,7 @@ class CompositeParamScheduler(ParamScheduler):
                 schedulers=schedulers,
                 interval_scaling=['rescaled', 'rescaled'],
                 lengths=[0.3, 0.7])
-                
+
     The parameter value will be 0.42 for the first [0%, 30%) of steps,
     and then will cosine decay from 0.42 to 0.0001 for [30%, 100%) of
     training.
@@ -419,3 +420,38 @@ class CompositeParamScheduler(ParamScheduler):
             scheduler_start = running_total - self._lengths[i]
             scheduler_where = (where - scheduler_start) / self._lengths[i]
         return scheduler(scheduler_where)
+
+
+class WarmupParamScheduler(CompositeParamScheduler):
+    """
+    Add an initial warmup stage to another scheduler
+    """
+
+    def __init__(
+        self,
+        scheduler: ParamScheduler,
+        warmup_factor: float,
+        warmup_length: float,
+        warmup_method: str = "linear",
+    ):
+        """
+        Args:
+            scheduler: warmup will be added at the beginning of this scheduler
+            warmup_factor: the factor w.r.t the initial value of ``scheduler``, e.g. 0.001
+            warmup_length: the relative length (in [0, 1]) of warmup steps w.r.t the entire
+                training, e.g. 0.01
+            warmup_method: one of "linear" or "constant"
+        """
+        end_value = scheduler(warmup_length)  # the value to reach when warmup ends
+        start_value = warmup_factor * scheduler(0.0)
+        if warmup_method == "constant":
+            warmup = ConstantParamScheduler(start_value)
+        elif warmup_method == "linear":
+            warmup = LinearParamScheduler(start_value, end_value)
+        else:
+            raise ValueError("Unknown warmup method: {}".format(warmup_method))
+        super().__init__(
+            [warmup, scheduler],
+            interval_scaling=["rescaled", "fixed"],
+            lengths=[warmup_length, 1 - warmup_length],
+        )
