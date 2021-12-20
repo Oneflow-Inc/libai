@@ -16,10 +16,12 @@
 from .lazy import LazyCall, LazyConfig
 from .instantiate import instantiate
 from .arguments import default_argument_parser
+from .config import configurable
 
 __all__ = [
     "LazyCall",
     "LazyConfig",
     "instantiate",
     "default_argument_parser",
+    "configurable",
 ]

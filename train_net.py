@@ -1,9 +1,11 @@
 import os
 from libai.config import LazyConfig, instantiate, default_argument_parser
+from libai.models.bert import Bert
 
 
 def do_train(cfg):
-    model = instantiate(cfg.model)
+    model = Bert(cfg.model)
+    # model = instantiate(cfg.model)
     print(model)
 
     for i in range(cfg.train.max_iter):

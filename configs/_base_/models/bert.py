@@ -13,15 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.config import LazyCall as L
-from libai.models import Bert
-from libai.layers import VocabEmbedding, TransformerLayer
-
-
-model = L(Bert)(
-    embedding=L(VocabEmbedding)(num_embeddings=500, embedding_dim=756),
-    blocks=L(Bert.make_default_blocks)(
-        num_layers=12, layer_class=TransformerLayer, hidden_size=123
-    ),
-    add_pooler=False,
-)
+model = dict(num_embeddings=500, hidden_size=123, add_pooler=True)
