@@ -73,11 +73,11 @@ class TransformerLayer(flow.nn.Module):
 
         self.input_layernorm = LayerNorm(self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx)
 
-        self.self_attention = self.build_self_attention()
+        self.self_attention = self.build_attention(is_cross_attention=False)
         self.post_attention_layernorm = LayerNorm(self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx)
         
         if self.is_decoder:
-            self.cross_attention = self.build_cross_attention()
+            self.cross_attention = self.build_attention(is_cross_attention=True)
             self.post_cross_attention_layernorm = LayerNorm(self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx)
 
         self.mlp = MLP(self.hidden_size, self.ffn_hidden_size, self.output_dropout_prob, self.init_method, 
@@ -144,21 +144,9 @@ class TransformerLayer(flow.nn.Module):
             output = (output, presents)
         return output
     
-    def build_self_attention(self):
+    def build_attention(self, is_cross_attention=False):
         return MultiheadAttention(self.hidden_size, self.num_attention_heads,
-                                  is_cross_attention=False,
-                                  attention_dropout_prob=self.attention_dropout_prob, 
-                                  output_dropout_prob=self.output_dropout_prob, 
-                                  init_method=self.init_method, 
-                                  output_layer_init_method=self.output_layer_init_method, 
-                                  bias_dropout_fusion=self.bias_dropout_fusion,
-                                  scale_mask_softmax_fusion=self.scale_mask_softmax_fusion,
-                                  apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
-                                  layer_idx=self.layer_idx)
-
-    def build_cross_attention(self):
-        return MultiheadAttention(self.hidden_size, self.num_attention_heads,
-                                  is_cross_attention=True,
+                                  is_cross_attention=is_cross_attention,
                                   attention_dropout_prob=self.attention_dropout_prob, 
                                   output_dropout_prob=self.output_dropout_prob, 
                                   init_method=self.init_method, 
