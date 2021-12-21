@@ -74,7 +74,7 @@ class LayerNorm(nn.Module):
                 self.bias,
                 begin_norm_axis=begin_norm_axis,
                 begin_params_axis=begin_params_axis,
-                epsilon=self.epsilon,
+                epsilon=self.eps,
             )
         else:
             y = flow._C.layer_norm(
