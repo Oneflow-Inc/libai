@@ -4,7 +4,7 @@ from libai.models.bert import Bert
 
 
 def do_train(cfg):
-    model = Bert(cfg.model)
+    model = Bert(cfg)
     # model = instantiate(cfg.model)
     print(model)
 

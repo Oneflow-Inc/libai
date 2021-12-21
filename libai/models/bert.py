@@ -21,6 +21,7 @@ class Bert(nn.Module):
 
     @classmethod
     def from_config(cls, cfg):
+        cfg = cfg.model
         return {
             "num_vocab": cfg.num_embeddings,
             "hidden_size": cfg.hidden_size,
