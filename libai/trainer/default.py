@@ -124,9 +124,9 @@ class DefaultTrainer(TrainerBase):
 
         # Assume these objects must be constructed in this order.
         (
-            train_data_iterator,
-            valid_data_iterator,
-            test_data_iterator,
+            self.train_data_iterator,
+            self.valid_data_iterator,
+            self.test_data_iterator,
         ) = self.build_train_valid_test_loader_loader(cfg)
 
         if cfg.mode == "graph":
@@ -134,10 +134,10 @@ class DefaultTrainer(TrainerBase):
                 cfg, self.model, self.optimizer, self.lr_scheduler
             )
             # train_graph.debug(0)
-            self._trainer = GraphTrainer(train_graph, train_data_iterator)
+            self._trainer = GraphTrainer(train_graph)
         elif cfg.mode == "eager":
             self._trainer = EagerTrainer(
-                self.model, train_data_iterator, self.optimizer, self.lr_scheduler
+                self.model, self.optimizer, self.lr_scheduler
             )
         else:
             raise NotImplementedError
@@ -145,6 +145,7 @@ class DefaultTrainer(TrainerBase):
         self.start_iter = cfg.iteration
         self.global_batch_size = cfg.global_batch_size
         self.max_iter = cfg.train_iters
+        self._train_data = None
 
         self.register_hooks(self.build_hooks())
 
@@ -187,8 +188,11 @@ class DefaultTrainer(TrainerBase):
             ret.append(
                 hooks.PeriodicWriter(self.build_writers(), self.cfg.log_interval)
             )
-
+        ret.append(self.get_train_data_hooks())
         return ret
+    
+    def get_train_data_hooks(self):
+        return hooks.TrainDataIterHook()
 
     def build_writers(self):
         """
@@ -222,9 +226,9 @@ class DefaultTrainer(TrainerBase):
         """
         super().train(self.start_iter, self.max_iter)
 
-    def run_step(self, get_batch=None):
+    def run_step(self):
         self._trainer.iter = self.iter
-        self._trainer.run_step(get_batch=None)
+        self._trainer.run_step(self._train_data)
 
     @classmethod
     def build_model(cls, cfg):

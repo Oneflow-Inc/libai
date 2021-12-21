@@ -181,6 +181,15 @@ class PeriodicCheckpointer(_PeriodicCheckpointer, HookBase):
     def after_step(self):
         self.step(self.trainer.iter)
 
+class TrainDataIterHook(HookBase):
+    """
+    Get training data for model.forward().
+    This hook uses the time in the call to its :meth:`before_step` methods.
+    """
+
+    def before_step(self):
+        assert self.trainer.train_data_iterator is not None
+        self.trainer._train_data = iter(self.trainer.train_data_iterator)
 
 class EvalHook(HookBase):
     """

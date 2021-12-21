@@ -238,7 +238,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader_iter, optimizer, lr_scheduler):
+    def __init__(self, model, optimizer, lr_scheduler):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -259,11 +259,10 @@ class EagerTrainer(TrainerBase):
         model.train()
 
         self.model = model.to("cuda")
-        self._data_loader_iter = data_loader_iter
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self, train_data):
         """
         Implement the standard training logic described above.
         """
@@ -272,16 +271,12 @@ class EagerTrainer(TrainerBase):
         """
         If you want to do something with the data, you can wrap the dataloader.
         """
-        # TODO: support dataloader
-        # data = get_batch(self._data_loader_iter)
-        data = flow.randn(32, 512).to("cuda")
         data_time = time.perf_counter() - start
 
         """
         If you want to do something with the losses, you can wrap the model.
         """
-        # NOTE: It depends on model.forward() 
-        losses = self.model(data)
+        losses = self.model(*train_data)
         loss_dict = {"total_loss": losses}
 
         """
@@ -302,15 +297,14 @@ class EagerTrainer(TrainerBase):
 
 
 class GraphTrainer(TrainerBase):
-    def __init__(self, graph, data_loader_iter):
+    def __init__(self, graph):
         super().__init__()
 
         graph.model.train()
 
         self.graph = graph
-        # self._data_loader_iter = iter(data_loader_iter)
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self, train_data):
         """
         Implement the standard training logic described above.
         """
@@ -321,15 +315,12 @@ class GraphTrainer(TrainerBase):
         """
         If you want to do something with the data, you can wrap the dataloader.
         """
-        # TODO: support dataloader
-        # data = get_batch(self._data_loader_iter)
-        data = flow.randn(32 ,512).to_consistent(sbp=flow.sbp.split(0), placement = flow.env.all_device_placement("cuda"))
         data_time = time.perf_counter() - start
 
         """
         If you want to do something with the losses, you can wrap the model.
         """
-        losses = self.graph(data)
+        losses = self.graph(*train_data)
         loss_dict = {"total_loss": losses}
 
         self.write_metrics(loss_dict, data_time)
