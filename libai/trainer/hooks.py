@@ -32,7 +32,7 @@ from libai.utils import distributed as dist
 """
 Implement some common hooks.
 """
-
+logger = logging.getLogger(__name__)
 
 class CallbackHook(HookBase):
     """
@@ -96,8 +96,7 @@ class IterationTimer(HookBase):
         self._total_timer = Timer()
         self._total_timer.pause()
 
-    def after_train(self):
-        logger = logging.getLogger(__name__)
+    def after_train(self):   
         total_time = time.perf_counter() - self._start_time
         total_time_minus_hooks = self._total_timer.seconds()
         hook_time = total_time - total_time_minus_hooks
@@ -304,6 +303,5 @@ class LRScheduler(HookBase):
 
     def load_state_dict(self, state_dict):
         if isinstance(self.scheduler, flow.optim.lr_scheduler._LRScheduler):
-            logger = logging.getLogger(__name__)
             logger.info("Loading scheduler from state_dict ...")
             self.scheduler.load_state_dict(state_dict)
