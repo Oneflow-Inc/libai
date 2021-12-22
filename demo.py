@@ -1,4 +1,18 @@
 # coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import oneflow as flow
 from libai.trainer import DefaultTrainer, default_setup
 from libai.trainer.trainer import HookBase
@@ -29,24 +43,18 @@ def setup():
     default_setup(cfg)
     return cfg
 
-class DemoTrainDataIterHook(HookBase):
-    """
-    Get training data for model.forward().
-    This hook uses the time in the call to its :meth:`before_step` methods.
-    """
-
-    def before_step(self):
-        # assert self.trainer.train_data_iterator is not None
-        # self.trainer._train_data = iter(self.trainer.train_data_iterator)
-        data = flow.randn(32, 512).to("cuda")
-        if self.trainer.cfg.mode == "graph":
-            data = data.to_consistent(sbp=flow.sbp.split(0), placement = flow.env.all_device_placement("cuda"))
-        self.trainer._train_data = (data, )
-
 class DemoTrianer(DefaultTrainer):
-    def get_train_data_hooks(self):
-        return DemoTrainDataIterHook()
+    @staticmethod
+    def get_batch(data_interator, mode):
+        assert mode in ["eager", "graph"]
+        # data = next(data_interator)
+        data = flow.randn(32, 512).to("cuda")
+        if mode == "graph":
+            data = data.to_consistent(sbp=flow.sbp.split(0), placement = flow.env.all_device_placement("cuda"))
+        return (data, )
     
+    def run_step(self):
+        return super().run_step(self.get_batch)
 
 def main():
     cfg = setup()

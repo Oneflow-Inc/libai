@@ -1,16 +1,17 @@
 # coding=utf-8
-"""
-Copyright 2021 The OneFlow Authors. All rights reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import oneflow as flow
 import time
@@ -238,7 +239,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, optimizer, lr_scheduler):
+    def __init__(self, model, data_loader_iter, optimizer, lr_scheduler):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -248,63 +249,67 @@ class EagerTrainer(TrainerBase):
         """
         super().__init__()
 
-        """
-        We set the model to training mode in the trainer.
-        However it's valid to train a model that's in eval mode.
-        If you want your model (or a submodule of it) to behave
-        like evaluation during training, you can overwrite its train() method.
-        """
+        
+        # We set the model to training mode in the trainer.
+        # However it's valid to train a model that's in eval mode.
+        # If you want your model (or a submodule of it) to behave
+        # like evaluation during training, you can overwrite its train() method.
+        
         if flow.env.get_world_size() > 1:
             model = ddp(model)
         model.train()
 
         self.model = model.to("cuda")
+        self._data_loader_iter = iter(data_loader_iter)
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
+        self.mode = "eager"
+        
 
-    def run_step(self, train_data):
+    def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.
         """
         assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
-        """
-        If you want to do something with the data, you can wrap the dataloader.
-        """
+        
+        # If you want to do something with the data, you can wrap the dataloader.
+        data = get_batch(self._data_loader_iter, self.mode)
         data_time = time.perf_counter() - start
 
-        """
-        If you want to do something with the losses, you can wrap the model.
-        """
-        losses = self.model(*train_data)
+        
+        # If you want to do something with the losses, you can wrap the model.
+        
+        losses = self.model(*data)
         loss_dict = {"total_loss": losses}
 
-        """
-        If you need to accumulate gradients or do something similar, you can
-        wrap the optimizer with your custom `zero_grad()` method.
-        """
+        
+        # If you need to accumulate gradients or do something similar, you can
+        # wrap the optimizer with your custom `zero_grad()` method.
+        
         self.optimizer.zero_grad()
         losses.backward()
 
         self.write_metrics(loss_dict, data_time)
 
-        """
-        If you need gradient clipping/scaling or other processing, you can
-        wrap the optimizer with your custom `step()` method. But it is
-        suboptimal as explained in https://arxiv.org/abs/2006.15704 Sec 3.2.4
-        """
+        
+        # If you need gradient clipping/scaling or other processing, you can
+        # wrap the optimizer with your custom `step()` method. But it is
+        # suboptimal as explained in https://arxiv.org/abs/2006.15704 Sec 3.2.4
+        
         self.optimizer.step()
 
 
 class GraphTrainer(TrainerBase):
-    def __init__(self, graph):
+    def __init__(self, graph, data_loader_iter):
         super().__init__()
 
         graph.model.train()
-
+        self._data_loader_iter = iter(data_loader_iter)
         self.graph = graph
+        self.mode = "graph"
 
-    def run_step(self, train_data):
+    def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.
         """
@@ -312,15 +317,15 @@ class GraphTrainer(TrainerBase):
             self.graph.model.training
         ), "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
-        """
-        If you want to do something with the data, you can wrap the dataloader.
-        """
+        
+        # If you want to do something with the data, you can wrap the dataloader.
+        data = get_batch(self._data_loader_iter, self.mode)
         data_time = time.perf_counter() - start
 
-        """
-        If you want to do something with the losses, you can wrap the model.
-        """
-        losses = self.graph(*train_data)
+        
+        # If you want to do something with the losses, you can wrap the model.
+        
+        losses = self.graph(*data)
         loss_dict = {"total_loss": losses}
 
         self.write_metrics(loss_dict, data_time)

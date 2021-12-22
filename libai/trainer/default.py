@@ -1,16 +1,17 @@
 # coding=utf-8
-"""
-Copyright 2021 The OneFlow Authors. All rights reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import logging
 import os
@@ -36,7 +37,6 @@ def default_setup(cfg):
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """ 
-    # output_dir = cfg.OUTPUT_DIR
     output_dir = cfg.output_dir
     if dist.is_main_process() and output_dir:
         PathManager.mkdirs(output_dir)
@@ -87,7 +87,7 @@ class DefaultTrainer(TrainerBase):
         trainer.train()
     """
 
-    def __init__(self, cfg, mode="eager"):
+    def __init__(self, cfg):
         """
         Args:
             cfg (CfgNode):
@@ -134,10 +134,10 @@ class DefaultTrainer(TrainerBase):
                 cfg, self.model, self.optimizer, self.lr_scheduler
             )
             # train_graph.debug(0)
-            self._trainer = GraphTrainer(train_graph)
+            self._trainer = GraphTrainer(train_graph, self.train_data_iterator)
         elif cfg.mode == "eager":
             self._trainer = EagerTrainer(
-                self.model, self.optimizer, self.lr_scheduler
+                self.model, self.train_data_iterator, self.optimizer, self.lr_scheduler
             )
         else:
             raise NotImplementedError
@@ -188,11 +188,7 @@ class DefaultTrainer(TrainerBase):
             ret.append(
                 hooks.PeriodicWriter(self.build_writers(), self.cfg.log_interval)
             )
-        ret.append(self.get_train_data_hooks())
         return ret
-    
-    def get_train_data_hooks(self):
-        return hooks.TrainDataIterHook()
 
     def build_writers(self):
         """
@@ -226,9 +222,9 @@ class DefaultTrainer(TrainerBase):
         """
         super().train(self.start_iter, self.max_iter)
 
-    def run_step(self):
+    def run_step(self, get_batch: Callable):
         self._trainer.iter = self.iter
-        self._trainer.run_step(self._train_data)
+        self._trainer.run_step(get_batch)
 
     @classmethod
     def build_model(cls, cfg):
@@ -285,5 +281,5 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO: import build_train_valid_test_data_iterators from other utils
-        return None, None, None
+        return [None], [None], [None]
         # return build_train_valid_test_data_iterators(cfg)
