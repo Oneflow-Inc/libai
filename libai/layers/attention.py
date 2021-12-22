@@ -119,8 +119,8 @@ class MultiheadAttention(nn.Module):
         past_key_value=None,
         use_cache=False,
     ):
-        """ hidden_states: [tgt_len, bsz, hidden_size]. We adopted seq_len first setting for faster operation.
-            encoder_states: [src_len, bsz, hidden_size].
+        """ hidden_states: [bsz, tgt_len, hidden_size].
+            encoder_states: [bsz, src_len, hidden_size].
             attention_mask: [bsz, 1, tgt_len, src_len], it should be the combination of padding mask and casual mask.
                             In case of self attention in encoder, it is the padding mask of source input.
                             In case of self attention in decoder, it is the combination of padding mask of target input and casual mask.
@@ -129,7 +129,7 @@ class MultiheadAttention(nn.Module):
             use_cache: it will be set to True, when the model is in the inference phase and used for incremental decoding.
         """
 
-        # hidden_states, encoder_states: [S(1), B]
+        # hidden_states, encoder_states: [S(0), B]
         # attention_mask: [S(0), B]
 
         if encoder_states is not None:
@@ -151,10 +151,9 @@ class MultiheadAttention(nn.Module):
                 key, value = past_key_value
             elif encoder_states is not None:
                 key_value = self.key_value(encoder_states)
-                key_value = key_value.view(-1, bsz, self.num_heads, 2 * self.head_size)
-                key, value = flow.split(
-                    key_value, 2, dim=-1
-                )  # [src_len, bsz, num_heads, head_size]
+                key_value = key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
+                key_value = key_value.permute(0, 2, 1, 3)
+                key, value = flow.chunk(key_value, chunks=2, dim=-1)
             else:
                 raise ValueError(
                     "past_key_value and encoder_states cannot be None at the same time."
@@ -164,20 +163,13 @@ class MultiheadAttention(nn.Module):
             # when in the inference phase of an incremental decoder, hidden_states is the last-added state,
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
-            new_qkv_shape = query_key_value.size()[:-1] + (
-                self.num_heads,
-                3 * self.head_size,
-            )
-            query_key_value = query_key_value.view(*new_qkv_shape)
-            query_key_value = query_key_value.permute(0, 2, 1, 3)
-            # TODO(l1aoxingyu): Change dim to -1
-            query, key, value = flow.chunk(
-                query_key_value, chunks=3, dim=query_key_value.ndim - 1
-            )
+            query_key_value = query_key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
+            query_key_value = query_key_value.permute(0, 2, 1, 3) # [bsz, num_heads, src_len, 3 * head_size]
+            query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
             if past_key_value is not None:
                 past_key, past_value = past_key_value
-                key = flow.cat((past_key.type_as(key), key), dim=0)
-                value = flow.cat((past_value.type_as(value), value), dim=0)
+                key = flow.cat((past_key.type_as(key), key), dim=2)
+                value = flow.cat((past_value.type_as(value), value), dim=2)
 
         # query, key, value: [S(0), S(1)], shape: [bsz, num_heads, seq_length, head_size]
         if use_cache:

@@ -26,9 +26,9 @@ from .mlp import MLP
 class TransformerLayer(flow.nn.Module):
     """A single transformer layer.
 
-    Transformer layer takes input with size [seq_length, bsz, hidden size] and returns an
+    Transformer layer takes input with size [bsz, seq_length, hidden size] and returns an
     output of the same size.
-    The input and output has same sbp sign, (S(1), B).
+    The input and output has same sbp sign, (S(0), B).
 
     Arguments:
         hidden_size: size of hidden state.
@@ -90,15 +90,15 @@ class TransformerLayer(flow.nn.Module):
     def forward(self, hidden_states, attention_mask, 
                 encoder_states=None, encoder_attention_mask=None, 
                 past_key_value=None, use_cache=False):
-        """ hidden_states: [seq_length, bsz, hidden_size], (S(1), B),
+        """ hidden_states: [bsz, seq_length, hidden_size], (S(0), B),
             attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B), the combination of key padding mask and casual mask of hidden states.
-            encoder_states: [seq_length, bsz, hidden_size], (S(1), B), encoder output, this will be used in cross attention.
-            encoder_attention_mask: [bsz, 1, seq_length, seq_length], (S(1), B) key padding mask of encoder states.
+            encoder_states: [bsz, seq_length, hidden_size], (S(0), B), encoder output, this will be used in cross attention.
+            encoder_attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B) key padding mask of encoder states.
             past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size]. For decoder layer,
                             the past_key_value contains the states both from self attention and cross attention.
             use_cache: it will be set to `True`, when the model is in the inference phase and used for incremental decoding.
         """
-        # hidden_states shape: (seq_length, batch_size, hidden_size)
+        # hidden_states shape: (batch_size, seq_length, hidden_size)
         attention_mask = attention_mask.to_consistent(placement=dist.get_layer_placement(self.layer_idx))
         
         if past_key_value is not None:
@@ -114,9 +114,13 @@ class TransformerLayer(flow.nn.Module):
 
         layernorm_output = self.input_layernorm(hidden_states)
         attention_output = self.self_attention(layernorm_output, 
-                                               attention_mask=attention_mask, 
-                                               past_key_value=self_attn_past_key_value, 
-                                               use_cache=use_cache)
+                                               None, 
+                                               attention_mask, 
+                                               self_attn_past_key_value, 
+                                               use_cache)
+                                            #    attention_mask=attention_mask, 
+                                            #    past_key_value=self_attn_past_key_value, 
+                                            #    use_cache=use_cache)
         
         if use_cache:
             attention_output, presents = attention_output
@@ -125,10 +129,15 @@ class TransformerLayer(flow.nn.Module):
         layernorm_output = self.post_attention_layernorm(hidden_states)
 
         if self.is_decoder:
-            attention_output = self.cross_attention(layernorm_output, encoder_states, 
-                                                    attention_mask=encoder_attention_mask,
-                                                    past_key_value=cross_attn_past_key_value, 
-                                                    use_cache=use_cache)
+            # todo: use key-value to pass the arguments
+            attention_output = self.cross_attention(layernorm_output, 
+                                                    encoder_states, 
+                                                    encoder_attention_mask, 
+                                                    cross_attn_past_key_value, 
+                                                    use_cache)
+                                                    # attention_mask=encoder_attention_mask,
+                                                    # past_key_value=cross_attn_past_key_value, 
+                                                    # use_cache=use_cache)
 
             if use_cache:
                 attention_output, decoder_presents = attention_output
