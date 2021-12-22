@@ -23,7 +23,7 @@ from .layer_norm import LayerNorm
 from .mlp import MLP
 
 
-class TransformerLayer(flow.nn.Module):
+class TransformerLayer(nn.Module):
     """A single transformer layer.
 
     Transformer layer takes input with size [bsz, seq_length, hidden size] and returns an
@@ -113,6 +113,7 @@ class TransformerLayer(flow.nn.Module):
             self_attn_past_key_value, cross_attn_past_key_value = None, None
 
         layernorm_output = self.input_layernorm(hidden_states)
+        # todo: use key-value to pass the arguments
         attention_output = self.self_attention(layernorm_output, 
                                                None, 
                                                attention_mask, 
