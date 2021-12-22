@@ -22,7 +22,6 @@ import weakref
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
 from typing import Callable, List
-from oneflow.nn.parallel import DistributedDataParallel as ddp
 
 class HookBase:
     """
@@ -188,8 +187,6 @@ class TrainerBase:
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
-        # This assumes we do DDP-style training, which is currently the only
-        # supported method in detectron2.
         # all_metrics_dict = dist.gather(metrics_dict)
         all_metrics_dict = metrics_dict
 

@@ -128,7 +128,7 @@ def _find_caller():
         if os.path.join("utils", "logger.") not in code.co_filename:
             mod_name = frame.f_globals["__name__"]
             if mod_name == "__main__":
-                mod_name = "detectron2"
+                mod_name = "libai"
             return mod_name, (code.co_filename, frame.f_lineno, code.co_name)
         frame = frame.f_back
 
