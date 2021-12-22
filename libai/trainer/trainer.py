@@ -252,8 +252,6 @@ class EagerTrainer(TrainerBase):
         # If you want your model (or a submodule of it) to behave
         # like evaluation during training, you can overwrite its train() method.
         
-        if flow.env.get_world_size() > 1:
-            model = ddp(model)
         model.train()
 
         self.model = model.to("cuda")

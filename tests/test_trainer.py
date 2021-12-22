@@ -21,7 +21,7 @@ from libai.trainer.trainer import HookBase
 
 # NOTE: Temporarily use yacs as config 
 from yacs.config import CfgNode as CN
-from test_libai.test_trainer.demo_model_meta_arch import build_model, build_graph
+from tests.layers.test_trainer_model import build_model, build_graph
 
 
 def setup():
@@ -39,7 +39,7 @@ def setup():
     cfg.log_interval = 20
     cfg.nccl_fusion_threshold_mb = 16
     cfg.nccl_fusion_max_ops = 24
-    cfg.mode = "eager"
+    cfg.mode = "graph"
     cfg.data_parallel_size = 1
     cfg.micro_batch_size = 32
 
