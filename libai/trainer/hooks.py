@@ -257,7 +257,7 @@ class LRScheduler(HookBase):
         """
         Args:
             optimizer (flow.optim.Optimizer):
-            scheduler (flow.optim.LRScheduler or fvcore.common.param_scheduler.ParamScheduler):
+            scheduler (flow.optim.LRScheduler):
                 if a :class:`ParamScheduler` object, it defines the multiplier over the base LR
                 in the optimizer.
         If any argument is not given, will try to obtain it from the trainer.
