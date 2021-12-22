@@ -20,7 +20,6 @@ from oneflow import nn
 from typing import Callable
 from libai.trainer.trainer import TrainerBase, EagerTrainer, GraphTrainer
 from libai.utils import distributed as dist
-from libai.utils.file_io import PathManager
 from libai.utils.logger import setup_logger
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.trainer import hooks
@@ -39,7 +38,7 @@ def default_setup(cfg):
     """ 
     output_dir = cfg.output_dir
     if dist.is_main_process() and output_dir:
-        PathManager.mkdirs(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
     rank = dist.get_rank()
     logger = setup_logger(output_dir, distributed_rank=rank)
