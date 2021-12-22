@@ -14,11 +14,14 @@
 # limitations under the License.
 
 import oneflow as flow
+import sys
+sys.path.append(".")
 from libai.trainer import DefaultTrainer, default_setup
 from libai.trainer.trainer import HookBase
 
 # NOTE: Temporarily use yacs as config 
 from yacs.config import CfgNode as CN
+from test_libai.test_trainer.demo_model_meta_arch import build_model, build_graph
 
 
 def setup():
@@ -55,6 +58,22 @@ class DemoTrianer(DefaultTrainer):
     
     def run_step(self):
         return super().run_step(self.get_batch)
+    
+    @classmethod
+    def build_model(cls, cfg):
+        """
+        Returns:
+            flow.nn.Module:
+        It now calls :func:`libai.layers.build_model`.
+        Overwrite it if you'd like a different model.
+        """
+        model = build_model(cfg)
+        return model
+
+    @classmethod
+    def build_graph(cls, cfg, model, optimizer, lr_scheduler):
+        return build_graph(cfg, model, optimizer, lr_scheduler)
+
 
 def main():
     cfg = setup()

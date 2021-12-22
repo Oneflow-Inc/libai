@@ -25,7 +25,6 @@ from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.trainer import hooks
 from libai.utils.checkpoint import Checkpointer
 
-from libai.layers.demo_model_meta_arch import build_model, build_graph
 
 def default_setup(cfg):
     """
@@ -235,14 +234,16 @@ class DefaultTrainer(TrainerBase):
         """
         # TODO: import build_model from other utils
         # model = build_model(cfg)
-        model = build_model(cfg)
+        model = None
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         return model
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer, lr_scheduler):
-        return build_graph(cfg, model, optimizer, lr_scheduler)
+        # TODO: import build_graph from other utils
+        return None
+        # return build_graph(cfg, model, optimizer, lr_scheduler)
 
     @classmethod
     def build_optimizer(cls, cfg, model):

@@ -12,7 +12,7 @@ run_cmd="python3 -m oneflow.distributed.launch \
     --nnodes $_NUM_NODES \
     --node_rank $_NODE_RANK \
     --master_addr $_MASTER_ADDR \
-    demo.py"
+    test_libai/test_trainer/demo.py"
 
 echo ${run_cmd}
 eval ${run_cmd}
