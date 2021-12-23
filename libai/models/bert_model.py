@@ -337,7 +337,9 @@ class BertEncoder(nn.Module):
                     layer_idx=i,
                 ),
             )
-            setattr(self, f"layers_checkpoint_{i}", ActivationCheckpointing(layer_idx=i))
+            setattr(
+                self, f"layers_checkpoint_{i}", ActivationCheckpointing(layer_idx=i)
+            )
 
     def forward(self, hidden_states, extended_attention_mask):
         for i in range(self.hidden_layers):

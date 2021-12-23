@@ -30,59 +30,59 @@ def _merge_devices(devices):
 
 
 class _DistributeUtil(object):
-    def __init__(self):
-        from global_vars import get_args
+    def __init__(self, cfg):
+        self._init_parallel_size(cfg)
+        self._init_placement_group(cfg)
+        self._init_parallel_hierarchy(cfg)
 
-        args = get_args()
-        self._init_parallel_size(args)
-        self._init_placement_group(args)
-        self._init_parallel_hierarchy()
+    def _init_parallel_size(self, cfg):
+        self.world_size = cfg.num_gpus_per_node * cfg.num_nodes
 
-    def _init_parallel_size(self, args):
-        self.world_size_ = args.num_gpus_per_node * args.num_nodes
-
-        # tensor model parallel size.
-        self.tmp_size_ = min(args.tensor_model_parallel_size, self.world_size_)
-        assert self.world_size_ % self.tmp_size_ == 0, (
-            f"world size ({self.world_size_}) is not divisible by"
-            f" tensor model parallel size ({self.tmp_size_})"
+        # tensor parallel size
+        self.tensor_parallel_size = min(cfg.tensor_parallel_size, self.world_size)
+        assert self.world_size % self.tensor_parallel_size == 0, (
+            f"world size ({self.world_size}) is not divisible by"
+            f" tensor parallel size ({self.tensor_parallel_size})"
         )
 
-        ws = self.world_size_ // args.tensor_model_parallel_size
-        # pipeline model parallel size.
-        self.pmp_size_ = min(args.pipeline_model_parallel_size, ws)
+        # pipeline parallel size
+        self.pipeline_parallel_size = min(
+            cfg.pipeline_parallel_size, self.world_size // cfg.tensor_parallel_size
+        )
 
-        self.mp_size_ = self.pmp_size_ * self.tmp_size_
+        self.model_parallel_size = (
+            self.pipeline_parallel_size * self.tensor_parallel_size
+        )
 
-        assert self.world_size_ % self.mp_size_ == 0, (
-            f"world size ({self.world_size_}) is not divisible by"
-            f" tensor model parallel size ({self.tmp_size_}) times"
-            f" pipeline model parallel size ({self.pmp_size_})"
+        assert self.world_size % self.model_parallel_size == 0, (
+            f"world size ({self.world_size}) is not divisible by"
+            f" tensor model parallel size ({self.tensor_parallel_size}) times"
+            f" pipeline model parallel size ({self.pipeline_parallel_size})"
         )
 
         # data parallel world size
-        self.dp_size_ = self.world_size_ // self.mp_size_
+        self.data_parallel_size = self.world_size // self.model_parallel_size
 
-    def _init_placement_group(self, args):
-        node_ids = [i // args.num_gpus_per_node for i in range(self.world_size_)]
-        device_ids = list(range(args.num_gpus_per_node)) * args.num_nodes
+    def _init_placement_group(self, cfg):
+        node_ids = [i // cfg.num_gpus_per_node for i in range(self.world_size)]
+        device_ids = list(range(cfg.num_gpus_per_node)) * cfg.num_nodes
 
         # [(0, 0), (0, 1), (0, 2), (0, 3), (1, 0), (1, 1), (1, 2), (1, 3)]
         devices = [(n, d) for n, d in zip(node_ids, device_ids)]
-        num_devices_per_stage = self.world_size_ // self.pmp_size_
+        num_devices_per_stage = self.world_size // self.pipeline_parallel_size
         stages_devices = [
             _merge_devices(devices[i : (i + num_devices_per_stage)])
-            for i in range(0, self.world_size_, num_devices_per_stage)
+            for i in range(0, self.world_size, num_devices_per_stage)
         ]
 
-        assert args.num_layers % self.pmp_size_ == 0, (
-            f"number of layers ({args.num_layers}) is not divisible by"
-            f" pipeline model parallel size ({self.pmp_size_})"
+        assert cfg.num_layers % self.pipeline_parallel_size == 0, (
+            f"number of layers ({cfg.num_layers}) is not divisible by"
+            f" pipeline model parallel size ({self.pipeline_parallel_size})"
         )
-        num_layers_per_stage = args.num_layers // self.pmp_size_
+        num_layers_per_stage = cfg.num_layers // self.pipeline_parallel_size
 
         self.layers_stage_ids_ = [
-            i // num_layers_per_stage for i in range(args.num_layers)
+            i // num_layers_per_stage for i in range(cfg.num_layers)
         ]
         self.layers_devices_ = [
             stages_devices[stage_id] for stage_id in self.layers_stage_ids_
@@ -90,32 +90,32 @@ class _DistributeUtil(object):
 
     def _init_parallel_hierarchy(self):
         if self.is_data_model_parallel():
-            self.parallel_hierarchy_ = (
-                self.dp_size_,
-                self.tmp_size_,
+            self.parallel_hierarchy = (
+                self.data_parallel_size,
+                self.tensor_parallel_size,
             )
         else:
-            self.parallel_hierarchy_ = None
+            self.parallel_hierarchy = None
 
     @property
     def parallel_hierarchy(self):
-        return self.parallel_hierarchy_
+        return self.parallel_hierarchy
 
     @property
-    def tensor_model_parallel_size(self):
-        return self.tmp_size_
+    def tensor_parallel_size(self):
+        return self.tensor_parallel_size
 
     @property
-    def pipeline_model_parallel_size(self):
-        return self.pmp_size_
+    def pipeline_parallel_size(self):
+        return self.pipeline_parallel_size
 
     @property
     def model_parallel_size(self):
-        return self.tmp_size_ * self.pmp_size_
+        return self.tensor_parallel_size * self.pipeline_parallel_size
 
     @property
     def data_parallel_size(self):
-        return self.dp_size_
+        return self.data_parallel_size
 
     def get_layer_devices(self, layer_idx):
         return self.layers_devices_[layer_idx]
@@ -124,41 +124,40 @@ class _DistributeUtil(object):
         return self.layers_stage_ids_[layer_idx]
 
     def is_tensor_model_parallel(self):
-        return self.tmp_size_ > 1
+        return self.tensor_parallel_size > 1
 
     def is_data_parallel(self):
-        return self.dp_size_ > 1
+        return self.data_parallel_size > 1
 
     def is_pipeline_model_parallel(self):
-        return self.pmp_size_ > 1
+        return self.pipeline_parallel_size > 1
 
     def is_data_model_parallel(self):
         return self.is_tensor_model_parallel() and self.is_data_parallel()
 
 
-def get_dist_util():
+def setup_dist_util(cfg):
     global _DIST_UTIL
     if _DIST_UTIL is None:
-        _DIST_UTIL = _DistributeUtil()
+        _DIST_UTIL = _DistributeUtil(cfg)
     return _DIST_UTIL
 
 
 def get_layer_placement(layer_idx, device_type="cuda"):
-    # dist_util = get_dist_util()
+    dist_util = setup_dist_util()
     return flow.placement(
         device_type,
-        {0: [0,]},
-        # dist_util.get_layer_devices(layer_idx),
-        # dist_util.parallel_hierarchy_,
+        dist_util.get_layer_devices(layer_idx),
+        dist_util.parallel_hierarchy,
     )
 
 
 def get_all_placement(device_type="cuda"):
-    dist_util = get_dist_util()
+    dist_util = setup_dist_util()
 
     # FIXME(l1aoxingyu): fix this when training with multi-node
     return flow.placement(
-        device_type, {0: range(get_world_size())}, dist_util.parallel_hierarchy_
+        device_type, {0: range(get_world_size())}, dist_util.parallel_hierarchy
     )
 
 
@@ -167,15 +166,15 @@ def get_nd_sbp(sbp_list):
     assert len(sbp_list) == 2
     assert all(isinstance(sbp, flow.sbp.sbp) for sbp in sbp_list)
 
-    # dist_util = get_dist_util()
-    # if dist_util.is_data_model_parallel():
-    #     return sbp_list
-    # elif dist_util.is_data_parallel():
-    #     return sbp_list[:1]
-    # elif dist_util.is_tensor_model_parallel():
-    #     return sbp_list[1:]
-    # else:
-    return [flow.sbp.broadcast]
+    dist_util = setup_dist_util()
+    if dist_util.is_data_model_parallel():
+        return sbp_list
+    elif dist_util.is_data_parallel():
+        return sbp_list[:1]
+    elif dist_util.is_tensor_model_parallel():
+        return sbp_list[1:]
+    else:
+        return [flow.sbp.broadcast]
 
 
 def get_hidden_sbp():
@@ -185,12 +184,12 @@ def get_hidden_sbp():
 
 
 def get_data_parallel_rank():
-    dist_util = get_dist_util()
-    return flow.env.get_rank() // dist_util.mp_size_
+    dist_util = setup_dist_util()
+    return flow.env.get_rank() // dist_util.model_parallel_size
 
 
 def get_data_parallel_world_size():
-    dist_util = get_dist_util()
+    dist_util = setup_dist_util()
     return dist_util.data_parallel_size
 
 

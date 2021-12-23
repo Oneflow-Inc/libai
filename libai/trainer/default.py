@@ -20,10 +20,24 @@ from oneflow import nn
 from typing import Callable
 from libai.trainer.trainer import TrainerBase, EagerTrainer, GraphTrainer
 from libai.utils import distributed as dist
+from libai.config import instantiate
 from libai.utils.logger import setup_logger
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.trainer import hooks
 from libai.utils.checkpoint import Checkpointer
+from omegaconf import OmegaConf
+
+
+def _try_get_key(cfg, *keys, default=None):
+    """
+    Try select keys from cfg until the first key that exists. Otherwise return default.
+    """
+    for k in keys:
+        none = object()
+        p = OmegaConf.select(cfg, k, default=none)
+        if p is not none:
+            return p
+    return default
 
 
 def default_setup(cfg):
@@ -31,11 +45,12 @@ def default_setup(cfg):
     Perform some basic common setups at the beginning of a job, including:
     1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
-    3. Backup the config to the output directory
+    3. Setup the distributed environment
+    4. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
-    output_dir = cfg.output_dir
+    output_dir = _try_get_key(cfg, "train.output_dir")
     if dist.is_main_process() and output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -47,10 +62,12 @@ def default_setup(cfg):
             rank, dist.get_world_size()
         )
     )
+    
+    dist.setup_dist_util(_try_get_key(cfg, "dist"))
 
-    flow.boxing.nccl.set_fusion_threshold_mbytes(cfg.nccl_fusion_threshold_mb)
-    flow.boxing.nccl.set_fusion_max_ops_num(cfg.nccl_fusion_max_ops)
-    flow.boxing.nccl.enable_use_compute_stream(True)
+    flow.boxing.nccl.set_fusion_threshold_mbytes(_try_get_key(cfg, "nccl_fusion_threshold_mb", default=True))
+    flow.boxing.nccl.set_fusion_max_ops_num(_try_get_key(cfg,"nccl_fusion_max_ops", default=True))
+    flow.boxing.nccl.enable_use_compute_stream(_try_get_key(cfg, "enable_use_compute_stream", default=True))
 
 
 class DefaultTrainer(TrainerBase):
@@ -99,7 +116,7 @@ class DefaultTrainer(TrainerBase):
         ):  # setup_logger is not called for LibaiLM
             setup_logger()
 
-        self.model = self.build_model(cfg)
+        self.model = self.build_model(_try_get_key(cfg, "model"))
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
@@ -232,9 +249,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.layers.build_model`.
         Overwrite it if you'd like a different model.
         """
-        # TODO: import build_model from other utils
-        # model = build_model(cfg)
-        model = None
+        model = instantiate(_try_get_key(cfg, "model"))
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         return model
