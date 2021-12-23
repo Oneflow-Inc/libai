@@ -15,11 +15,12 @@
 
 import oneflow as flow
 import sys
+
 sys.path.append(".")
 from libai.trainer import DefaultTrainer, default_setup
 from libai.trainer.trainer import HookBase
 
-# NOTE: Temporarily use yacs as config 
+# NOTE: Temporarily use yacs as config
 from yacs.config import CfgNode
 from tests.layers.test_trainer_model import build_model, build_graph
 
@@ -28,10 +29,10 @@ def setup():
     """
     Create configs and perform basic setups.
     """
-    
+
     cfg = CfgNode()
     cfg.output_dir = "./demo_output"
-    cfg.load = None # "./demo_output2/model_0000999"
+    cfg.load = None  # "./demo_output2/model_0000999"
     cfg.start_iter = 0
     cfg.train_iters = 6000
     cfg.global_batch_size = 64
@@ -46,6 +47,7 @@ def setup():
     default_setup(cfg)
     return cfg
 
+
 class DemoTrianer(DefaultTrainer):
     @staticmethod
     def get_batch(data_interator, mode):
@@ -53,12 +55,14 @@ class DemoTrianer(DefaultTrainer):
         # data = next(data_interator)
         data = flow.randn(32, 512).to("cuda")
         if mode == "graph":
-            data = data.to_consistent(sbp=flow.sbp.split(0), placement = flow.env.all_device_placement("cuda"))
-        return (data, )
-    
+            data = data.to_consistent(
+                sbp=flow.sbp.split(0), placement=flow.env.all_device_placement("cuda")
+            )
+        return (data,)
+
     def run_step(self):
         return super().run_step(self.get_batch)
-    
+
     @classmethod
     def build_model(cls, cfg):
         """
@@ -82,6 +86,7 @@ def main():
 
     # trainer.resume_or_load(resume=args.resume)
     return trainer.train()
+
 
 if __name__ == "__main__":
     main()

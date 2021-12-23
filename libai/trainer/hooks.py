@@ -34,6 +34,7 @@ Implement some common hooks.
 """
 logger = logging.getLogger(__name__)
 
+
 class CallbackHook(HookBase):
     """
     Create a hook using callback functions provided by the user.
@@ -96,7 +97,7 @@ class IterationTimer(HookBase):
         self._total_timer = Timer()
         self._total_timer.pause()
 
-    def after_train(self):   
+    def after_train(self):
         total_time = time.perf_counter() - self._start_time
         total_time_minus_hooks = self._total_timer.seconds()
         hook_time = total_time - total_time_minus_hooks
@@ -204,9 +205,9 @@ class EvalHook(HookBase):
         self._func = eval_function
 
     def _do_eval(self):
-        
+
         return
-        
+
         # TODO: NotImplemented
         results = self._func()
 
@@ -216,7 +217,7 @@ class EvalHook(HookBase):
             ), "Eval function must return a dict. Got {} instead.".format(results)
 
             flattened_results = flatten_results_dict(results)
-            # fixme: flatten_results_dict is not defined 
+            # fixme: flatten_results_dict is not defined
             for k, v in flattened_results.items():
                 try:
                     v = float(v)
@@ -272,12 +273,16 @@ class LRScheduler(HookBase):
     def get_best_param_group_id(optimizer):
         # NOTE: some heuristics on what LR to summarize
         # summarize the param group with most parameters
-        largest_group = max(len(g["params"]) for g in optimizer.state_dict()["param_groups"])
+        largest_group = max(
+            len(g["params"]) for g in optimizer.state_dict()["param_groups"]
+        )
 
         if largest_group == 1:
             # If all groups have one parameter,
             # then find the most common initial LR, and use it for summary
-            lr_count = Counter([g["_options"]["lr"] for g in optimizer.state_dict()["param_groups"]])
+            lr_count = Counter(
+                [g["_options"]["lr"] for g in optimizer.state_dict()["param_groups"]]
+            )
             lr = lr_count.most_common()[0][0]
             for i, g in enumerate(optimizer.state_dict()["param_groups"]):
                 if g["_options"]["lr"] == lr:

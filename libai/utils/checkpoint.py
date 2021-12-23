@@ -48,6 +48,7 @@ class Checkpointer(object):
     A checkpointer that can save/load model as well as extra checkpointable
     objects.
     """
+
     # NOTE: only support data_parallel for saving model
     # TODO: save model: support model_parallel and pipeline parallel
 
@@ -354,9 +355,9 @@ class PeriodicCheckpointer:
                 self.recent_checkpoints.append(self.checkpointer.get_checkpoint_file())
                 if len(self.recent_checkpoints) > self.max_to_keep:
                     file_to_delete = self.recent_checkpoints.pop(0)
-                    if os.path.exists(
-                        file_to_delete
-                    ) and not file_to_delete.endswith("{}_{:07d}".format(self.file_prefix, iteration)):
+                    if os.path.exists(file_to_delete) and not file_to_delete.endswith(
+                        "{}_{:07d}".format(self.file_prefix, iteration)
+                    ):
                         os.remove(file_to_delete)
 
         if self.max_iter is not None:

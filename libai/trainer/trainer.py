@@ -23,6 +23,7 @@ from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
 from typing import Callable, List
 
+
 class HookBase:
     """
     Base class for hooks that can be registered with :class:`TrainerBase`.
@@ -78,7 +79,8 @@ class HookBase:
         Called after each iteration.
         """
         pass
-    
+
+
 class TrainerBase:
     """
     Base class for iterative trainer with hooks.
@@ -246,12 +248,11 @@ class EagerTrainer(TrainerBase):
         """
         super().__init__()
 
-        
         # We set the model to training mode in the trainer.
         # However it's valid to train a model that's in eval mode.
         # If you want your model (or a submodule of it) to behave
         # like evaluation during training, you can overwrite its train() method.
-        
+
         model.train()
 
         self.model = model.to("cuda")
@@ -259,7 +260,6 @@ class EagerTrainer(TrainerBase):
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.mode = "eager"
-        
 
     def run_step(self, get_batch: Callable):
         """
@@ -267,31 +267,28 @@ class EagerTrainer(TrainerBase):
         """
         assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
-        
+
         # If you want to do something with the data, you can wrap the dataloader.
         data = get_batch(self._data_loader_iter, self.mode)
         data_time = time.perf_counter() - start
 
-        
         # If you want to do something with the losses, you can wrap the model.
-        
+
         losses = self.model(*data)
         loss_dict = {"total_loss": losses}
 
-        
         # If you need to accumulate gradients or do something similar, you can
         # wrap the optimizer with your custom `zero_grad()` method.
-        
+
         self.optimizer.zero_grad()
         losses.backward()
 
         self.write_metrics(loss_dict, data_time)
 
-        
         # If you need gradient clipping/scaling or other processing, you can
         # wrap the optimizer with your custom `step()` method. But it is
         # suboptimal as explained in https://arxiv.org/abs/2006.15704 Sec 3.2.4
-        
+
         self.optimizer.step()
 
 
@@ -312,16 +309,14 @@ class GraphTrainer(TrainerBase):
             self.graph.model.training
         ), "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
-        
+
         # If you want to do something with the data, you can wrap the dataloader.
         data = get_batch(self._data_loader_iter, self.mode)
         data_time = time.perf_counter() - start
 
-        
         # If you want to do something with the losses, you can wrap the model.
-        
+
         losses = self.graph(*data)
         loss_dict = {"total_loss": losses}
 
         self.write_metrics(loss_dict, data_time)
-        

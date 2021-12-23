@@ -108,7 +108,7 @@ class Linear1D(nn.Module):
             # if the last dim of weight sbp sign is S(1), the last dim of x sbp sign must be B.
             if self.weight.sbp[-1] == flow.sbp.split(1):
                 x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
-                x = x.to_consistent(sbp=x_sbp)        
+                x = x.to_consistent(sbp=x_sbp)
 
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
             x = x.to_consistent(grad_sbp=x.sbp)
@@ -124,7 +124,7 @@ class Linear1D(nn.Module):
                 out_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
             else:
                 out_sbp = x.sbp
-            
+
             x = flow._C.matmul(x, self.weight)
             # change x.sbp for followup forward pass.
             x = x.to_consistent(sbp=out_sbp)

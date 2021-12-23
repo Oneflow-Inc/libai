@@ -34,7 +34,7 @@ def default_setup(cfg):
     3. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
-    """ 
+    """
     output_dir = cfg.output_dir
     if dist.is_main_process() and output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -51,7 +51,8 @@ def default_setup(cfg):
     flow.boxing.nccl.set_fusion_threshold_mbytes(cfg.nccl_fusion_threshold_mb)
     flow.boxing.nccl.set_fusion_max_ops_num(cfg.nccl_fusion_max_ops)
     flow.boxing.nccl.enable_use_compute_stream(True)
-    
+
+
 class DefaultTrainer(TrainerBase):
     """
     A trainer with default training logic. Compared to `TrainerBase`, it
@@ -113,7 +114,6 @@ class DefaultTrainer(TrainerBase):
             lr_scheduler=self.lr_scheduler,
         )
 
-       
         if cfg.load is not None:
             self.resume_or_load()
             cfg.iteration = cfg.start_iter
@@ -179,7 +179,7 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.save_interval)
+            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.save_interval),
         ]
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
@@ -254,8 +254,7 @@ class DefaultTrainer(TrainerBase):
         Overwrite it if you'd like a different optimizer.
         """
         # TODO: import build_optimizer from other utils
-        optimizer = flow.optim.Adam(model.parameters(),
-                                    lr=0.01)
+        optimizer = flow.optim.Adam(model.parameters(), lr=0.01)
         return optimizer
         # return build_optimizer(cfg, model)
 

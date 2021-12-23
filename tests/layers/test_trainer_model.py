@@ -22,24 +22,24 @@ class demo_model(nn.Module):
         super().__init__()
         self.linear1 = nn.Linear(input_dim, out_dim)
         self.linear2 = nn.Linear(out_dim, out_dim)
-        
+
     def forward(self, x):
         x = self.linear1(x)
         x = self.linear2(x)
         loss = self.get_loss(x)
         return loss
-        
+
     def get_loss(self, x):
         return x.sum()
-    
+
+
 def build_model(cfg):
     model = demo_model()
     if cfg.mode == "graph":
         placement = flow.env.all_device_placement("cuda")
-        model = model.to_consistent(placement=placement,
-                                    sbp=flow.sbp.broadcast
-                                    )
+        model = model.to_consistent(placement=placement, sbp=flow.sbp.broadcast)
     return model
+
 
 def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):
     class GraphModel(nn.Graph):
@@ -63,6 +63,6 @@ def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):
             loss = self.model(x)
             loss.backward()
             return loss
-        
+
     graph_model = GraphModel(cfg, model, optimizer, lr_scheduler, fp16=False)
     return graph_model, None
