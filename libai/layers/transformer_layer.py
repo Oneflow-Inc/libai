@@ -46,13 +46,6 @@ class TransformerLayer(nn.Module):
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index. Default: ``False``.
         layer_idx: the layer index, which determines the placement.
     """
-<<<<<<< HEAD
-    def __init__(self, hidden_size, ffn_hidden_size, num_attention_heads, is_decoder=False, 
-                 attention_dropout_prob=0., output_dropout_prob=0., layernorm_epsilon=1e-5,
-                 init_method=nn.init.xavier_normal_, output_layer_init_method=None, 
-                 bias_gelu_fusion=False, bias_dropout_fusion=False, scale_mask_softmax_fusion=False,
-                 apply_query_key_layer_scaling=False, *, layer_idx=0):
-=======
 
     def __init__(
         self,
@@ -72,7 +65,6 @@ class TransformerLayer(nn.Module):
         *,
         layer_idx=0
     ):
->>>>>>> 8a08e6c42ac3bdbf64b9b85c42f32298d9840f77
         super().__init__()
         self.hidden_size = hidden_size
         self.ffn_hidden_size = ffn_hidden_size
@@ -93,27 +85,6 @@ class TransformerLayer(nn.Module):
             output_layer_init_method = init_method
         self.output_layer_init_method = output_layer_init_method
 
-<<<<<<< HEAD
-        self.input_layernorm = LayerNorm(self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx)
-
-        self.self_attention = self.build_attention(is_cross_attention=False)
-        self.post_attention_layernorm = LayerNorm(self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx)
-        
-        if self.is_decoder:
-            self.cross_attention = self.build_attention(is_cross_attention=True)
-            self.post_cross_attention_layernorm = LayerNorm(self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx)
-
-        self.mlp = MLP(self.hidden_size, self.ffn_hidden_size, self.output_dropout_prob, self.init_method, 
-                       output_layer_init_method=self.output_layer_init_method,
-                       bias_gelu_fusion=self.bias_gelu_fusion,
-                       bias_dropout_fusion=self.bias_dropout_fusion, 
-                       layer_idx=self.layer_idx)
-
-
-    def forward(self, hidden_states, attention_mask, 
-                encoder_states=None, encoder_attention_mask=None, 
-                past_key_value=None, use_cache=False):
-=======
         self.input_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
         )
@@ -149,7 +120,6 @@ class TransformerLayer(nn.Module):
         past_key_value=None,
         use_cache=False,
     ):
->>>>>>> 8a08e6c42ac3bdbf64b9b85c42f32298d9840f77
         """ hidden_states: [bsz, seq_length, hidden_size], (S(0), B),
             attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B), the combination of key padding mask and casual mask of hidden states.
             encoder_states: [bsz, seq_length, hidden_size], (S(0), B), encoder output, this will be used in cross attention.
@@ -159,13 +129,6 @@ class TransformerLayer(nn.Module):
             use_cache: it will be set to `True`, when the model is in the inference phase and used for incremental decoding.
         """
         # hidden_states shape: (batch_size, seq_length, hidden_size)
-<<<<<<< HEAD
-        attention_mask = attention_mask.to_consistent(placement=dist.get_layer_placement(self.layer_idx))
-        
-        if past_key_value is not None:
-            if self.is_decoder:
-                assert len(past_key_value) == 4 
-=======
         attention_mask = attention_mask.to_consistent(
             placement=dist.get_layer_placement(self.layer_idx)
         )
@@ -173,7 +136,6 @@ class TransformerLayer(nn.Module):
         if past_key_value is not None:
             if self.is_decoder:
                 assert len(past_key_value) == 4
->>>>>>> 8a08e6c42ac3bdbf64b9b85c42f32298d9840f77
                 self_attn_past_key_value = past_key_value[:2]
                 cross_attn_past_key_value = past_key_value[2:]
             else:
@@ -184,17 +146,6 @@ class TransformerLayer(nn.Module):
 
         layernorm_output = self.input_layernorm(hidden_states)
         # todo: use key-value to pass the arguments
-<<<<<<< HEAD
-        attention_output = self.self_attention(layernorm_output, 
-                                               None, 
-                                               attention_mask, 
-                                               self_attn_past_key_value, 
-                                               use_cache)
-                                            #    attention_mask=attention_mask, 
-                                            #    past_key_value=self_attn_past_key_value, 
-                                            #    use_cache=use_cache)
-        
-=======
         attention_output = self.self_attention(
             layernorm_output, None, attention_mask, self_attn_past_key_value, use_cache
         )
@@ -202,7 +153,6 @@ class TransformerLayer(nn.Module):
         #    past_key_value=self_attn_past_key_value,
         #    use_cache=use_cache)
 
->>>>>>> 8a08e6c42ac3bdbf64b9b85c42f32298d9840f77
         if use_cache:
             attention_output, presents = attention_output
         hidden_states = hidden_states + attention_output
@@ -211,16 +161,6 @@ class TransformerLayer(nn.Module):
 
         if self.is_decoder:
             # todo: use key-value to pass the arguments
-<<<<<<< HEAD
-            attention_output = self.cross_attention(layernorm_output, 
-                                                    encoder_states, 
-                                                    encoder_attention_mask, 
-                                                    cross_attn_past_key_value, 
-                                                    use_cache)
-                                                    # attention_mask=encoder_attention_mask,
-                                                    # past_key_value=cross_attn_past_key_value, 
-                                                    # use_cache=use_cache)
-=======
             attention_output = self.cross_attention(
                 layernorm_output,
                 encoder_states,
@@ -231,39 +171,15 @@ class TransformerLayer(nn.Module):
             # attention_mask=encoder_attention_mask,
             # past_key_value=cross_attn_past_key_value,
             # use_cache=use_cache)
->>>>>>> 8a08e6c42ac3bdbf64b9b85c42f32298d9840f77
 
             if use_cache:
                 attention_output, decoder_presents = attention_output
                 presents += decoder_presents
-<<<<<<< HEAD
-            
-=======
-
->>>>>>> 8a08e6c42ac3bdbf64b9b85c42f32298d9840f77
             hidden_states = hidden_states + attention_output
             layernorm_output = self.post_cross_attention_layernorm(hidden_states)
 
         mlp_output = self.mlp(layernorm_output)
         output = hidden_states + mlp_output
-<<<<<<< HEAD
-        
-        if use_cache:
-            output = (output, presents)
-        return output
-    
-    def build_attention(self, is_cross_attention=False):
-        return MultiheadAttention(self.hidden_size, self.num_attention_heads,
-                                  is_cross_attention=is_cross_attention,
-                                  attention_dropout_prob=self.attention_dropout_prob, 
-                                  output_dropout_prob=self.output_dropout_prob, 
-                                  init_method=self.init_method, 
-                                  output_layer_init_method=self.output_layer_init_method, 
-                                  bias_dropout_fusion=self.bias_dropout_fusion,
-                                  scale_mask_softmax_fusion=self.scale_mask_softmax_fusion,
-                                  apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
-                                  layer_idx=self.layer_idx)
-=======
 
         if use_cache:
             output = (output, presents)
@@ -283,4 +199,3 @@ class TransformerLayer(nn.Module):
             apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
             layer_idx=self.layer_idx,
         )
->>>>>>> 8a08e6c42ac3bdbf64b9b85c42f32298d9840f77
