@@ -1,4 +1,5 @@
 # coding=utf-8
+<<<<<<< HEAD
 """
 Copyright 2021 The OneFlow Authors. All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,6 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+=======
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+>>>>>>> 18849eb0117fbba5acf88b05ff69a4348c0abafe
 
 
 import datetime
@@ -20,7 +36,10 @@ import os
 import time
 from collections import defaultdict
 from contextlib import contextmanager
+<<<<<<< HEAD
 from libai.utils.file_io import PathManager
+=======
+>>>>>>> 18849eb0117fbba5acf88b05ff69a4348c0abafe
 from libai.utils.history_buffer import HistoryBuffer
 
 __all__ = [
@@ -94,7 +113,11 @@ class JSONWriter(EventWriter):
             window_size (int): the window size of median smoothing for the scalars whose
                 `smoothing_hint` are True.
         """
+<<<<<<< HEAD
         self._file_handle = PathManager.open(json_file, "a")
+=======
+        self._file_handle = open(json_file, "a")
+>>>>>>> 18849eb0117fbba5acf88b05ff69a4348c0abafe
         self._window_size = window_size
         self._last_write = -1
 
@@ -294,6 +317,7 @@ class EventStorage:
         for k, v in kwargs.items():
             self.put_scalar(k, v, smoothing_hint=smoothing_hint)
 
+<<<<<<< HEAD
     # def put_histogram(self, hist_name, hist_tensor, bins=1000):
     #     """
     #     Create a histogram from a tensor.
@@ -323,6 +347,8 @@ class EventStorage:
     #     )
     #     self._histograms.append(hist_params)
 
+=======
+>>>>>>> 18849eb0117fbba5acf88b05ff69a4348c0abafe
     def history(self, name):
         """
         Returns:
@@ -433,4 +459,8 @@ class EventStorage:
         Delete all the stored histograms for visualization.
         This should be called after histograms are written to tensorboard.
         """
+<<<<<<< HEAD
         self._histograms = []
+=======
+        self._histograms = []
+>>>>>>> 18849eb0117fbba5acf88b05ff69a4348c0abafe

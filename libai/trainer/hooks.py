@@ -1,16 +1,17 @@
 # coding=utf-8
-"""
-Copyright 2021 The OneFlow Authors. All rights reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import datetime
 import itertools
@@ -31,6 +32,7 @@ from libai.utils import distributed as dist
 """
 Implement some common hooks.
 """
+logger = logging.getLogger(__name__)
 
 
 class CallbackHook(HookBase):
@@ -96,7 +98,6 @@ class IterationTimer(HookBase):
         self._total_timer.pause()
 
     def after_train(self):
-        logger = logging.getLogger(__name__)
         total_time = time.perf_counter() - self._start_time
         total_time_minus_hooks = self._total_timer.seconds()
         hook_time = total_time - total_time_minus_hooks
@@ -203,9 +204,9 @@ class EvalHook(HookBase):
         self._func = eval_function
 
     def _do_eval(self):
-        
+
         return
-        
+
         # TODO: NotImplemented
         results = self._func()
 
@@ -215,7 +216,7 @@ class EvalHook(HookBase):
             ), "Eval function must return a dict. Got {} instead.".format(results)
 
             flattened_results = flatten_results_dict(results)
-            # fixme: flatten_results_dict is not defined 
+            # fixme: flatten_results_dict is not defined
             for k, v in flattened_results.items():
                 try:
                     v = float(v)
@@ -255,7 +256,7 @@ class LRScheduler(HookBase):
         """
         Args:
             optimizer (flow.optim.Optimizer):
-            scheduler (flow.optim.LRScheduler or fvcore.common.param_scheduler.ParamScheduler):
+            scheduler (flow.optim.LRScheduler):
                 if a :class:`ParamScheduler` object, it defines the multiplier over the base LR
                 in the optimizer.
         If any argument is not given, will try to obtain it from the trainer.
@@ -271,12 +272,16 @@ class LRScheduler(HookBase):
     def get_best_param_group_id(optimizer):
         # NOTE: some heuristics on what LR to summarize
         # summarize the param group with most parameters
-        largest_group = max(len(g["params"]) for g in optimizer.state_dict()["param_groups"])
+        largest_group = max(
+            len(g["params"]) for g in optimizer.state_dict()["param_groups"]
+        )
 
         if largest_group == 1:
             # If all groups have one parameter,
             # then find the most common initial LR, and use it for summary
-            lr_count = Counter([g["_options"]["lr"] for g in optimizer.state_dict()["param_groups"]])
+            lr_count = Counter(
+                [g["_options"]["lr"] for g in optimizer.state_dict()["param_groups"]]
+            )
             lr = lr_count.most_common()[0][0]
             for i, g in enumerate(optimizer.state_dict()["param_groups"]):
                 if g["_options"]["lr"] == lr:
@@ -302,6 +307,5 @@ class LRScheduler(HookBase):
 
     def load_state_dict(self, state_dict):
         if isinstance(self.scheduler, flow.optim.lr_scheduler._LRScheduler):
-            logger = logging.getLogger(__name__)
             logger.info("Loading scheduler from state_dict ...")
             self.scheduler.load_state_dict(state_dict)

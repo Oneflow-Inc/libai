@@ -1,16 +1,17 @@
 # coding=utf-8
-"""
-Copyright 2021 The OneFlow Authors. All rights reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import logging
 import os
@@ -19,27 +20,24 @@ from oneflow import nn
 from typing import Callable
 from libai.trainer.trainer import TrainerBase, EagerTrainer, GraphTrainer
 from libai.utils import distributed as dist
-from libai.utils.file_io import PathManager
 from libai.utils.logger import setup_logger
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.trainer import hooks
 from libai.utils.checkpoint import Checkpointer
 
-from libai.layers.demo_model_meta_arch import build_model, build_graph
 
 def default_setup(cfg):
     """
     Perform some basic common setups at the beginning of a job, including:
-    1. Set up the detectron2 logger
+    1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
     3. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
-    """ 
-    # output_dir = cfg.OUTPUT_DIR
+    """
     output_dir = cfg.output_dir
     if dist.is_main_process() and output_dir:
-        PathManager.mkdirs(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
     rank = dist.get_rank()
     logger = setup_logger(output_dir, distributed_rank=rank)
@@ -53,7 +51,8 @@ def default_setup(cfg):
     flow.boxing.nccl.set_fusion_threshold_mbytes(cfg.nccl_fusion_threshold_mb)
     flow.boxing.nccl.set_fusion_max_ops_num(cfg.nccl_fusion_max_ops)
     flow.boxing.nccl.enable_use_compute_stream(True)
-    
+
+
 class DefaultTrainer(TrainerBase):
     """
     A trainer with default training logic. Compared to `TrainerBase`, it
@@ -87,7 +86,7 @@ class DefaultTrainer(TrainerBase):
         trainer.train()
     """
 
-    def __init__(self, cfg, mode="eager"):
+    def __init__(self, cfg):
         """
         Args:
             cfg (CfgNode):
@@ -115,7 +114,6 @@ class DefaultTrainer(TrainerBase):
             lr_scheduler=self.lr_scheduler,
         )
 
-       
         if cfg.load is not None:
             self.resume_or_load()
             cfg.iteration = cfg.start_iter
@@ -124,9 +122,9 @@ class DefaultTrainer(TrainerBase):
 
         # Assume these objects must be constructed in this order.
         (
-            train_data_iterator,
-            valid_data_iterator,
-            test_data_iterator,
+            self.train_data_iterator,
+            self.valid_data_iterator,
+            self.test_data_iterator,
         ) = self.build_train_valid_test_loader_loader(cfg)
 
         if cfg.mode == "graph":
@@ -134,10 +132,10 @@ class DefaultTrainer(TrainerBase):
                 cfg, self.model, self.optimizer, self.lr_scheduler
             )
             # train_graph.debug(0)
-            self._trainer = GraphTrainer(train_graph, train_data_iterator)
+            self._trainer = GraphTrainer(train_graph, self.train_data_iterator)
         elif cfg.mode == "eager":
             self._trainer = EagerTrainer(
-                self.model, train_data_iterator, self.optimizer, self.lr_scheduler
+                self.model, self.train_data_iterator, self.optimizer, self.lr_scheduler
             )
         else:
             raise NotImplementedError
@@ -145,6 +143,7 @@ class DefaultTrainer(TrainerBase):
         self.start_iter = cfg.iteration
         self.global_batch_size = cfg.global_batch_size
         self.max_iter = cfg.train_iters
+        self._train_data = None
 
         self.register_hooks(self.build_hooks())
 
@@ -180,14 +179,13 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.save_interval)
+            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.save_interval),
         ]
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
             ret.append(
                 hooks.PeriodicWriter(self.build_writers(), self.cfg.log_interval)
             )
-
         return ret
 
     def build_writers(self):
@@ -222,9 +220,9 @@ class DefaultTrainer(TrainerBase):
         """
         super().train(self.start_iter, self.max_iter)
 
-    def run_step(self, get_batch=None):
+    def run_step(self, get_batch: Callable):
         self._trainer.iter = self.iter
-        self._trainer.run_step(get_batch=None)
+        self._trainer.run_step(get_batch)
 
     @classmethod
     def build_model(cls, cfg):
@@ -236,14 +234,16 @@ class DefaultTrainer(TrainerBase):
         """
         # TODO: import build_model from other utils
         # model = build_model(cfg)
-        model = build_model(cfg)
+        model = None
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         return model
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer, lr_scheduler):
-        return build_graph(cfg, model, optimizer, lr_scheduler)
+        # TODO: import build_graph from other utils
+        return None
+        # return build_graph(cfg, model, optimizer, lr_scheduler)
 
     @classmethod
     def build_optimizer(cls, cfg, model):
@@ -254,8 +254,7 @@ class DefaultTrainer(TrainerBase):
         Overwrite it if you'd like a different optimizer.
         """
         # TODO: import build_optimizer from other utils
-        optimizer = flow.optim.Adam(model.parameters(),
-                                    lr=0.01)
+        optimizer = flow.optim.Adam(model.parameters(), lr=0.01)
         return optimizer
         # return build_optimizer(cfg, model)
 
@@ -281,5 +280,5 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO: import build_train_valid_test_data_iterators from other utils
-        return None, None, None
+        return [None], [None], [None]
         # return build_train_valid_test_data_iterators(cfg)

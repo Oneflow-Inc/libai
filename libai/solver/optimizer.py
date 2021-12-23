@@ -8,6 +8,7 @@ import logging
 from collections import defaultdict
 from enum import Enum
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Type, Union
+# TODO: switch to libai.config.CfgNode
 from yacs.config import CfgNode
 
 import oneflow as flow
