@@ -63,5 +63,6 @@ def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):
             loss = self.model(x)
             loss.backward()
             return loss
+        
     graph_model = GraphModel(cfg, model, optimizer, lr_scheduler, fp16=False)
     return graph_model, None

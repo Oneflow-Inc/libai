@@ -20,7 +20,7 @@ from libai.trainer import DefaultTrainer, default_setup
 from libai.trainer.trainer import HookBase
 
 # NOTE: Temporarily use yacs as config 
-from yacs.config import CfgNode as CN
+from yacs.config import CfgNode
 from tests.layers.test_trainer_model import build_model, build_graph
 
 
@@ -29,7 +29,7 @@ def setup():
     Create configs and perform basic setups.
     """
     
-    cfg = CN()
+    cfg = CfgNode()
     cfg.output_dir = "./demo_output"
     cfg.load = None # "./demo_output2/model_0000999"
     cfg.start_iter = 0
