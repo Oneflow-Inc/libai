@@ -163,8 +163,12 @@ class MultiheadAttention(nn.Module):
             # when in the inference phase of an incremental decoder, hidden_states is the last-added state,
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
-            query_key_value = query_key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
-            query_key_value = query_key_value.permute(0, 2, 1, 3) # [bsz, num_heads, src_len, 3 * head_size]
+            query_key_value = query_key_value.view(
+                bsz, -1, self.num_heads, 2 * self.head_size
+            )
+            query_key_value = query_key_value.permute(
+                0, 2, 1, 3
+            )  # [bsz, num_heads, src_len, 3 * head_size]
             query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
             if past_key_value is not None:
                 past_key, past_value = past_key_value
