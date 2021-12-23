@@ -16,9 +16,7 @@
 import math
 import oneflow as flow
 from oneflow import nn
-import oneflow.nn.init as init
 
-from libai.utils import distributed as dist
 from .linear import Linear
 
 
@@ -46,7 +44,7 @@ class MultiheadAttention(nn.Module):
         is_cross_attention=False,
         attention_dropout_prob=0.0,
         output_dropout_prob=0.0,
-        init_method=init.xavier_normal_,
+        init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
@@ -66,7 +64,7 @@ class MultiheadAttention(nn.Module):
         self.num_heads = num_attention_heads
         self.head_size = hidden_size // num_attention_heads
 
-        self.dropout = flow.nn.Dropout(p=attention_dropout_prob)
+        self.dropout = nn.Dropout(p=attention_dropout_prob)
         self.norm_factor = 1.0 / math.sqrt(float(self.head_size))
         if apply_query_key_layer_scaling:
             self.norm_factor /= float(layer_idx + 1)
@@ -78,7 +76,7 @@ class MultiheadAttention(nn.Module):
         if self.bias_dropout_fusion:
             self.output_dropout_prob = output_dropout_prob
         else:
-            self.output_dropout = flow.nn.Dropout(p=output_dropout_prob)
+            self.output_dropout = nn.Dropout(p=output_dropout_prob)
 
         if self.is_cross_attention:
             self.query = Linear(
@@ -121,8 +119,8 @@ class MultiheadAttention(nn.Module):
         past_key_value=None,
         use_cache=False,
     ):
-        """ hidden_states: [tgt_len, bsz, hidden_size]. We adopted seq_len first setting for faster operation.
-            encoder_states: [src_len, bsz, hidden_size].
+        """ hidden_states: [bsz, tgt_len, hidden_size].
+            encoder_states: [bsz, src_len, hidden_size].
             attention_mask: [bsz, 1, tgt_len, src_len], it should be the combination of padding mask and casual mask.
                             In case of self attention in encoder, it is the padding mask of source input.
                             In case of self attention in decoder, it is the combination of padding mask of target input and casual mask.
@@ -131,7 +129,7 @@ class MultiheadAttention(nn.Module):
             use_cache: it will be set to True, when the model is in the inference phase and used for incremental decoding.
         """
 
-        # hidden_states, encoder_states: [S(1), B]
+        # hidden_states, encoder_states: [S(0), B]
         # attention_mask: [S(0), B]
 
         if encoder_states is not None:
@@ -144,7 +142,7 @@ class MultiheadAttention(nn.Module):
                 placement=hidden_states.placement
             )
 
-        tgt_len, bsz = hidden_states.size()[:-2]
+        bsz, tgt_len = hidden_states.size()[:2]
 
         if self.is_cross_attention:
             # if it is cross attention, key and value should be calculated only once, and the result can be reused.
@@ -153,12 +151,9 @@ class MultiheadAttention(nn.Module):
                 key, value = past_key_value
             elif encoder_states is not None:
                 key_value = self.key_value(encoder_states)
-                key_value = query_key_value.view(
-                    -1, bsz, self.num_heads, 2 * self.head_size
-                )
-                key, value = flow.split(
-                    key_value, 2, dim=-1
-                )  # [src_len, bsz, num_heads, head_size]
+                key_value = key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
+                key_value = key_value.permute(0, 2, 1, 3)
+                key, value = flow.chunk(key_value, chunks=2, dim=-1)
             else:
                 raise ValueError(
                     "past_key_value and encoder_states cannot be None at the same time."
@@ -169,29 +164,25 @@ class MultiheadAttention(nn.Module):
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
             query_key_value = query_key_value.view(
-                -1, bsz, self.num_heads, 3 * self.head_size
+                bsz, -1, self.num_heads, 2 * self.head_size
             )
-            query, key, value = flow.split(
-                query_key_value, 3, dim=-1
-            )  # [tgt_len, bsz, num_heads, head_size]
+            query_key_value = query_key_value.permute(
+                0, 2, 1, 3
+            )  # [bsz, num_heads, src_len, 3 * head_size]
+            query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
             if past_key_value is not None:
                 past_key, past_value = past_key_value
-                key = flow.cat((past_key.type_as(key), key), dim=0)
-                value = flow.cat((past_value.type_as(value), value), dim=0)
+                key = flow.cat((past_key.type_as(key), key), dim=2)
+                value = flow.cat((past_value.type_as(value), value), dim=2)
 
-        # query, key, value: [S(1), S(2)], shape: [seq_length, bsz, num_heads, head_size]
+        # query, key, value: [S(0), S(1)], shape: [bsz, num_heads, seq_length, head_size]
         if use_cache:
             past_key_value = (key, value)
 
-        # [S(0), S(1)]
-        query = query.permute(1, 2, 0, 3)  # [bsz, num_heads, tgt_len, head_size]
-        key = key.permute(1, 2, 0, 3)  # [bsz, num_heads, src_len, head_size]
-        value = value.permute(1, 2, 0, 3)  # [bsz, num_heads, src_len, head_size]
-
-        # [S(0), S(1)] x [S(0), S(1)] = [S(0), S(1)]
+        # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(
             query, key, transpose_b=True, alpha=self.norm_factor
-        )  # [bsz, num_heads, tgt_len, src_len]
+        )
 
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
@@ -200,26 +191,28 @@ class MultiheadAttention(nn.Module):
                     attention_scores, attention_mask, fill_value=-10000.0
                 )
             else:
-                attention_scores = flow.mul(
-                    attention_scores, attention_mask
-                ) - 10000.0 * (1.0 - attention_mask)
+                attention_scores = flow.mul(attention_scores, attention_mask)
+                # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
+                # attention_scores = attention_scores.masked_fill(attention_mask, -10000.0)
+                attention_scores *= 1 - attention_mask
+                attention_scores += attention_mask * -10000.0
                 attention_weights = flow.softmax(attention_scores, dim=-1)
         else:
             attention_weights = flow.softmax(attention_scores, dim=-1)
 
-        attention_weights = self.dropout(
-            attention_weights
-        )  # [bsz, num_heads, tgt_len, src_len]
+        # [bsz, num_heads, tgt_len, src_len]
+        attention_weights = self.dropout(attention_weights)
 
-        # [S(0), S(1)] x [S(0), S(1)] = [S(0), S(1)]
-        context = flow.matmul(
-            attention_weights, value
-        )  # [bsz, num_heads, tgt_len, head_size]
-        context = context.transpose(0, 1).view(
-            tgt_len, bsz, self.hidden_size
-        )  # [tgt_len, bsz, hidden_size], sbp: [S(1), S(2)]
+        # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
+        context = flow.matmul(attention_weights, value)
+        # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
+        context = context.transpose(1, 2)
 
-        # [S(1), S(2)] x [B, S(0)] = [S(1), P] -> [S(1), B]
+        # Concat multi-head results from [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
+        # SBP sign: [S(0), S(2)]
+        context = context.view(bsz, tgt_len, self.hidden_size)
+
+        # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context)
 
         if self.bias_dropout_fusion:
