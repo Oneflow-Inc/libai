@@ -1,7 +1,10 @@
 train = dict(
     output_dir="./demo_output/test_config",
+
     micro_batch_size=32,
-    global_batch_size=32,
+    global_batch_size=None,
+    num_accumulation_steps=None,
+
     start_iter=0,
     train_iter=10000,
     eval_iter=100,
@@ -16,10 +19,12 @@ train = dict(
     consumed_train_samples=0,
     consumed_valid_samples=0,
     train_samples=None,
+
     # Distributed arguments
     dist=dict(
         num_gpus_per_node=1,
         num_nodes=1,
+        data_parallel_size=1,
         tensor_parallel_size=1,
         pipeline_parallel_size=1,
     ),

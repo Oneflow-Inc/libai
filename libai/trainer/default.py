@@ -19,10 +19,10 @@ from typing import Callable
 
 import oneflow as flow
 from libai.config import LazyConfig, instantiate
+from libai.data.build import build_train_valid_test_data_iterators
+from libai.tokenizer import setup_tokenizer
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
-from libai.tokenizer import setup_tokenizer
-from libai.data.build import build_train_valid_test_data_iterators
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
@@ -56,6 +56,74 @@ def _highlight(code, filename):
     return code
 
 
+def _check_batch_size(cfg):
+    if (
+        cfg.train.micro_batch_size is not None
+        and cfg.train.global_batch_size is not None
+    ):
+        if cfg.train.num_accumulation_steps is None:
+            if (
+                cfg.train.global_batch_size
+                % (cfg.train.micro_batch_size * dist.get_data_parallel_size())
+                != 0
+            ):
+                raise ValueError(
+                    f"global_batch_size {cfg.train.global_batch_size} must be divisible by "
+                    f"micro_batch_size * data_parallel_size ({cfg.train.micro_batch_size} * {dist.get_data_parallel_size()})"
+                )
+
+            cfg.train.num_accumulation_steps = cfg.train.global_batch_size // (
+                cfg.train.micro_batch_size * dist.get_data_parallel_size()
+            )
+        else:
+            if (
+                cfg.train.global_batch_size
+                != cfg.train.micro_batch_size
+                * dist.get_data_parallel_size()
+                * cfg.train.num_accumulation_steps
+            ):
+                raise ValueError(
+                    f"global_batch_size {cfg.train.global_batch_size} must equal"
+                    " micro_batch_size * data_parallel_size * num_accumulation_steps"
+                    f" ({cfg.train.micro_batch_size} * {dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
+                )
+    elif cfg.train.micro_batch_size is not None and cfg.train.global_batch_size is None:
+        if cfg.train.num_accumulation_steps is None:
+            cfg.train.num_accumulation_steps = 1
+
+        cfg.train.global_batch_size = (
+            cfg.train.micro_batch_size
+            * dist.get_data_parallel_size()
+            * cfg.train.num_accumulation_steps
+        )
+    elif cfg.train.micro_batch_size is None and cfg.train.global_batch_size is not None:
+        if cfg.train.num_accumulation_steps is None:
+            cfg.num_accumulation_steps = 1
+
+        if (
+            cfg.train.global_batch_size
+            % (dist.get_data_parallel_size() * cfg.train.num_accumulation_steps)
+            != 0
+        ):
+            raise ValueError(
+                f"global_batch_size {cfg.global_batch_size} must be divisible by "
+                "data_parallel_size * num_accumulation_steps "
+                f"({dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
+            )
+
+        cfg.train.micro_batch_size = cfg.train.global_batch_size // (
+            dist.get_data_parallel_size() * cfg.train.num_accumulation_steps
+        )
+    else:
+        raise ValueError("micro_batch_size and global_batch_size must be set either")
+
+    assert cfg.train.num_accumulation_steps is not None
+    if cfg.train.num_accumulation_steps > 1 and cfg.data.use_external_dataset:
+        raise ValueError(
+            "num_accumulation_steps couldn't be greater than 1 when use external dataset"
+        )
+
+
 def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
@@ -64,7 +132,8 @@ def default_setup(cfg, args):
     3. Log basic information about environment, cmdline arguments, and config
     4. Setup the distributed environment
     5. Setup tokenizer if it's NLP related task
-    6. Backup the config to the output directory
+    6. Check batch_size
+    7. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
@@ -80,7 +149,6 @@ def default_setup(cfg, args):
             _try_get_key(cfg, "lr_scheduler") is not None
         ), "cfg must contain `lr_scheduler` namespace when training"
 
-    
     output_dir = _try_get_key(cfg, "train.output_dir")
     if dist.is_main_process() and output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -106,11 +174,15 @@ def default_setup(cfg, args):
         )
 
     # Initialize the distributed environment.
+    cfg.train.dist.num_gpus_per_node = args.num_gpus
+    cfg.train.dist.num_nodes = args.num_machines
     dist.setup_dist_util(_try_get_key(cfg, "train.dist"))
 
     # Initialize tokenizer
     if _try_get_key(cfg, "data.tokenizer_setup", default=False):
         setup_tokenizer(cfg)
+
+    _check_batch_size(cfg)
 
     if dist.is_main_process() and output_dir:
         # Note: some of our scripts may expect the existence of
@@ -323,6 +395,7 @@ class DefaultTrainer(TrainerBase):
             # Set train graph
             assert optimizer is not None, "optimizer must be set for train graph"
             assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
+            cfg.graph.num_accumulation_steps=cfg.train.num_accumulation_steps
             cfg.graph.train.model = model
             cfg.graph.train.optimizer = optimizer
             cfg.graph.train.lr_scheduler = lr_scheduler

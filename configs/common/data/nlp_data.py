@@ -30,7 +30,7 @@ data = dict(
     reset_position_ids=False,
     reset_attention_mask=False,
     eod_mask_loss=False,
-    use_external_dataset=True,
+    use_external_dataset=False,
     # Dataloader type and number of workers
     dataloader_type="single",
     num_workers=4,
