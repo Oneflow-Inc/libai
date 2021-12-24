@@ -20,6 +20,7 @@ import oneflow as flow
 sys.path.append(".")
 from libai.config import LazyConfig, default_argument_parser
 from libai.utils import distributed as dist
+from libai.utils.checkpoint import Checkpointer
 
 from libai.trainer import DefaultTrainer, default_setup
 
@@ -59,8 +60,15 @@ def main(args):
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
 
+    if args.eval_only:
+        model = Trainer.build_model(cfg)
+        Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
+            cfg.train.load_weight, resume=args.resume
+        )
+        graph = Trainer.build_graph(cfg, model, is_train=False)
+        res = Trainer.test(cfg, graph)
+
     trainer = Trainer(cfg)
-    trainer.resume_or_load(resume=args.resume)
     return trainer.train()
 
 

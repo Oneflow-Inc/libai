@@ -12,9 +12,11 @@ model.cfg.hidden_size = 1024
 # Set pipeline layers for paralleleism
 train.dist.pipeline_num_layers = model.cfg.hidden_layers
 
+train.amp.enabled = True
+
 graph = dict(
     # options for graph or eager mode
-    enabled=False,
+    enabled=True,
     train=L(BertForPretrainingGraph)(
         fp16=train.amp.enabled, is_eval=False, num_accumulation_steps=1,
     ),

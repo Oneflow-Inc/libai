@@ -164,8 +164,8 @@ class TrainerBase:
         self.storage.iter = self.iter + 1
         self.storage.samples = (
             (self.iter - self.start_iter + 1)
-            * self.cfg.data_parallel_size
-            * self.cfg.micro_batch_size
+            * dist.get_data_parallel_size()
+            * self.cfg.train.micro_batch_size
         )
 
         for h in self._hooks:

@@ -59,14 +59,28 @@ def _highlight(code, filename):
 def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
-    1. Set up the libai logger
-    2. Log basic information about environment, cmdline arguments, and config
-    3. Setup the distributed environment
-    4. Setup tokenizer if it's nlp task
-    5. Backup the config to the output directory
+    1. Check config namespace
+    2. Set up the libai logger
+    3. Log basic information about environment, cmdline arguments, and config
+    4. Setup the distributed environment
+    5. Setup tokenizer if it's NLP related task
+    6. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
+    # Check namespace in cfg
+    assert _try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
+    assert _try_get_key(cfg, "data") is not None, "cfg must contain `data` namespace"
+    assert _try_get_key(cfg, "train") is not None, "cfg must contain `train` namespace"
+    if not args.eval_only:
+        assert (
+            _try_get_key(cfg, "optim") is not None
+        ), "cfg must contain `optim` namespace when training"
+        assert (
+            _try_get_key(cfg, "lr_scheduler") is not None
+        ), "cfg must contain `lr_scheduler` namespace when training"
+
+    
     output_dir = _try_get_key(cfg, "train.output_dir")
     if dist.is_main_process() and output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -190,11 +204,12 @@ class DefaultTrainer(TrainerBase):
         ) = self.build_train_valid_test_loader(cfg)
 
         if cfg.graph.enabled:
-            train_graph, eval_graph = self.build_graph(
-                cfg, self.model, self.optimizer, self.lr_scheduler
+            graph_train = self.build_graph(
+                cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
-            # train_graph.debug(0)
-            self._trainer = GraphTrainer(train_graph, self.train_data_iterator)
+            graph_eval = self.build_graph(cfg, self.model, is_train=False)
+            # graph_train.debug(0)
+            self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
         else:
             self._trainer = EagerTrainer(
                 self.model, self.train_data_iterator, self.optimizer, self.lr_scheduler
@@ -303,14 +318,19 @@ class DefaultTrainer(TrainerBase):
         return model
 
     @classmethod
-    def build_graph(cls, cfg, model, optimizer, lr_scheduler):
-        # Set train graph
-        cfg.graph.train.model = model
-        cfg.graph.train.optimizer = optimizer
-        cfg.graph.train.lr_scheduler = lr_scheduler
-        # Set eval graph
-        cfg.graph.eval.model = model
-        return instantiate(cfg.graph.train), instantiate(cfg.graph.eval)
+    def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
+        if is_train:
+            # Set train graph
+            assert optimizer is not None, "optimizer must be set for train graph"
+            assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
+            cfg.graph.train.model = model
+            cfg.graph.train.optimizer = optimizer
+            cfg.graph.train.lr_scheduler = lr_scheduler
+            return instantiate(cfg.graph.train)
+        else:
+            # Set eval graph
+            cfg.graph.eval.model = model
+            return instantiate(cfg.graph.eval)
 
     @classmethod
     def build_optimizer(cls, cfg, model):
