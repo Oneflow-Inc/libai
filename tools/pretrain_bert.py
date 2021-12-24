@@ -13,29 +13,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-from libai.config import LazyConfig, instantiate, default_argument_parser
+import sys
+
+import oneflow as flow
+
+sys.path.append(".")
+from libai.config import LazyConfig, default_argument_parser
+from libai.utils import distributed as dist
 
 from libai.trainer import DefaultTrainer, default_setup
 
 
-def setup():
-    """
-    Create configs and perform basic setups.
-    """
-    cfg = LazyConfig.load(args.config_file)
-    cfg = LazyConfig.apply_overrides(cfg, args.opts)
+def get_batch(data_iterator):
+    """Build the batch for Bert model."""
 
-    default_setup(cfg)
-    return cfg
+    assert data_iterator is not None, "data iterator is None!"
+    data = next(data_iterator)
+
+    input_placement = dist.get_layer_placement(0)
+    label_placement = dist.get_layer_placement(-1)
+    sbp = dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
+
+    def to_consistent(tensor, placement):
+        tensor = tensor.to_consistent(placement, sbp)
+        return tensor
+
+    # Unpack.
+    tokens = to_consistent(data["text"].long(), input_placement)
+    types = to_consistent(data["types"].long(), input_placement)
+    padding_mask = to_consistent(data["padding_mask"].long(), input_placement)
+    sentence_order = to_consistent(data["is_random"].long(), label_placement)
+    loss_mask = to_consistent(data["loss_mask"].float(), label_placement)
+    lm_labels = to_consistent(data["labels"].long(), label_placement)
+
+    return tokens, padding_mask, types, sentence_order, lm_labels, loss_mask
 
 
-def do_train(cfg):
-    model = instantiate(cfg.model)
-    print(model)
-
-    for i in range(cfg.train.max_iter):
-        print(i)
+class Trainer(DefaultTrainer):
+    def run_step(self):
+        return super().run_step(get_batch)
 
 
 def main(args):
@@ -43,7 +59,9 @@ def main(args):
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
 
-    do_train(cfg)
+    trainer = Trainer(cfg)
+    trainer.resume_or_load(resume=args.resume)
+    return trainer.train()
 
 
 if __name__ == "__main__":

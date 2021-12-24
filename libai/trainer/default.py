@@ -16,11 +16,10 @@
 import logging
 import os
 import oneflow as flow
-from oneflow import nn
 from typing import Callable
 from libai.trainer.trainer import TrainerBase, EagerTrainer, GraphTrainer
 from libai.utils import distributed as dist
-from libai.config import instantiate
+from libai.config import instantiate, LazyConfig
 from libai.utils.logger import setup_logger
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.trainer import hooks
@@ -40,7 +39,21 @@ def _try_get_key(cfg, *keys, default=None):
     return default
 
 
-def default_setup(cfg):
+def _highlight(code, filename):
+    try:
+        import pygments
+    except ImportError:
+        return code
+
+    from pygments.lexers import Python3Lexer, YamlLexer
+    from pygments.formatters import Terminal256Formatter
+
+    lexer = Python3Lexer() if filename.endswith(".py") else YamlLexer()
+    code = pygments.highlight(code, lexer, Terminal256Formatter(style="monokai"))
+    return code
+
+
+def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
     1. Set up the libai logger
@@ -62,12 +75,35 @@ def default_setup(cfg):
             rank, dist.get_world_size()
         )
     )
-    
-    dist.setup_dist_util(_try_get_key(cfg, "dist"))
+    logger.info("Command line arguments: " + str(args))
 
-    flow.boxing.nccl.set_fusion_threshold_mbytes(_try_get_key(cfg, "nccl_fusion_threshold_mb", default=True))
-    flow.boxing.nccl.set_fusion_max_ops_num(_try_get_key(cfg,"nccl_fusion_max_ops", default=True))
-    flow.boxing.nccl.enable_use_compute_stream(_try_get_key(cfg, "enable_use_compute_stream", default=True))
+    if hasattr(args, "config_file") and args.config_file != "":
+        logger.info(
+            "Contents of args.config_file={}:\n{}".format(
+                args.config_file,
+                _highlight(open(args.config_file, "r").read(), args.config_file),
+            )
+        )
+
+    # Initialize the distributed environment.
+    dist.setup_dist_util(_try_get_key(cfg, "train.dist"))
+
+    if dist.is_main_process() and output_dir:
+        # Note: some of our scripts may expect the existence of
+        # config.yaml in output directory
+        path = os.path.join(output_dir, "config.yaml")
+        LazyConfig.save(cfg, path)
+        logger.info("Full config saved to {}".format(path))
+
+    flow.boxing.nccl.set_fusion_threshold_mbytes(
+        _try_get_key(cfg, "train.nccl_fusion_threshold_mb", default=16)
+    )
+    flow.boxing.nccl.set_fusion_max_ops_num(
+        _try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
+    )
+    flow.boxing.nccl.enable_use_compute_stream(
+        _try_get_key(cfg, "train.enable_use_compute_stream", default=True)
+    )
 
 
 class DefaultTrainer(TrainerBase):
@@ -111,12 +147,12 @@ class DefaultTrainer(TrainerBase):
         super().__init__()
         self.cfg = cfg
         logger = logging.getLogger("libai")
-        if not logger.isEnabledFor(
-            logging.INFO
-        ):  # setup_logger is not called for LibaiLM
+
+        # setup_logger is not called for Libai
+        if not logger.isEnabledFor(logging.INFO):
             setup_logger()
 
-        self.model = self.build_model(_try_get_key(cfg, "model"))
+        self.model = self.build_model(cfg)
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
@@ -268,10 +304,9 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.solver.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        # TODO: import build_optimizer from other utils
-        optimizer = flow.optim.Adam(model.parameters(), lr=0.01)
-        return optimizer
-        # return build_optimizer(cfg, model)
+        optim = _try_get_key(cfg, "optim")
+        optim.parameters.model = model
+        return instantiate(optim)
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
