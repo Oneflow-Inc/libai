@@ -15,15 +15,16 @@
 
 import logging
 import os
-import oneflow as flow
 from typing import Callable
-from libai.trainer.trainer import TrainerBase, EagerTrainer, GraphTrainer
-from libai.utils import distributed as dist
-from libai.config import instantiate, LazyConfig
-from libai.utils.logger import setup_logger
-from libai.utils.events import CommonMetricPrinter, JSONWriter
+
+import oneflow as flow
+from libai.config import LazyConfig, instantiate
 from libai.trainer import hooks
+from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
+from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
+from libai.utils.events import CommonMetricPrinter, JSONWriter
+from libai.utils.logger import setup_logger
 from omegaconf import OmegaConf
 
 
@@ -45,8 +46,8 @@ def _highlight(code, filename):
     except ImportError:
         return code
 
-    from pygments.lexers import Python3Lexer, YamlLexer
     from pygments.formatters import Terminal256Formatter
+    from pygments.lexers import Python3Lexer, YamlLexer
 
     lexer = Python3Lexer() if filename.endswith(".py") else YamlLexer()
     code = pygments.highlight(code, lexer, Terminal256Formatter(style="monokai"))
@@ -66,6 +67,8 @@ def default_setup(cfg, args):
     output_dir = _try_get_key(cfg, "train.output_dir")
     if dist.is_main_process() and output_dir:
         os.makedirs(output_dir, exist_ok=True)
+
+    cfg.train.resume = args.resume
 
     rank = dist.get_rank()
     logger = setup_logger(output_dir, distributed_rank=rank)
@@ -148,10 +151,11 @@ class DefaultTrainer(TrainerBase):
         self.cfg = cfg
         logger = logging.getLogger("libai")
 
-        # setup_logger is not called for Libai
+        # setup_logger is not called for LiBai
         if not logger.isEnabledFor(logging.INFO):
             setup_logger()
 
+        # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
@@ -160,66 +164,65 @@ class DefaultTrainer(TrainerBase):
         # We can later make it checkpoint the stateful hooks
         self.checkpointer = Checkpointer(
             # Assume you want to save checkpoints together with logs/statistics
-            cfg,
             self.model,
-            cfg.output_dir,
+            cfg.train.output_dir,
             optimizer=self.optimizer,
             lr_scheduler=self.lr_scheduler,
         )
 
-        if cfg.load is not None:
-            self.resume_or_load()
-            cfg.iteration = cfg.start_iter
-        else:
-            cfg.iteration = 0
+        # Loading checkpoint before dataloader construction, because
+        # dataloader needs to know the consumed iterations from
+        # the last breakpoint.
+        self.resume_or_load(cfg.train.resume)
+        cfg.train.start_iter = self.start_iter
 
-        # Assume these objects must be constructed in this order.
         (
             self.train_data_iterator,
             self.valid_data_iterator,
             self.test_data_iterator,
         ) = self.build_train_valid_test_loader_loader(cfg)
 
-        if cfg.mode == "graph":
+        if cfg.train.graph.enabled:
             train_graph, eval_graph = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler
             )
             # train_graph.debug(0)
             self._trainer = GraphTrainer(train_graph, self.train_data_iterator)
-        elif cfg.mode == "eager":
+        else:
             self._trainer = EagerTrainer(
                 self.model, self.train_data_iterator, self.optimizer, self.lr_scheduler
             )
-        else:
-            raise NotImplementedError
 
-        self.start_iter = cfg.iteration
-        self.global_batch_size = cfg.global_batch_size
-        self.max_iter = cfg.train_iters
-        self._train_data = None
+        self.global_batch_size = cfg.train.global_batch_size
+        self.max_iter = cfg.train.max_iter
 
         self.register_hooks(self.build_hooks())
 
     def resume_or_load(self, resume=True):
         """
-        If `resume==True` and `cfg.OUTPUT_DIR` contains the last checkpoint (defined by
+        If `resume==True` and `cfg.train.output_dir` contains the last checkpoint (defined by
         a `last_checkpoint` file), resume from the file. Resuming means loading all
         available states (eg. optimizer and scheduler) and update iteration counter
-        from the checkpoint. ``cfg.MODEL.WEIGHTS`` will not be used.
+        from the checkpoint. ``cfg.train.load_weight`` will not be used.
         Otherwise, this is considered as an independent training. The method will load model
-        weights from the file `cfg.MODEL.WEIGHTS` (but will not load other states) and start
+        weights from the file `cfg.train.load_weight` (but will not load other states) and start
         from iteration 0.
         Args:
             resume (bool): whether to do resume or not
         """
-        # The checkpoint stores the training iteration that just finished, thus we start
-        # at the next iteration (or iter zero if there's no checkpoint).
-        checkpoint = self.checkpointer.resume_or_load(self.cfg.load, resume=resume)
-
-        if resume and self.checkpointer.has_checkpoint():
-            self.start_iter = checkpoint.get("iter", -1) + 1
-            # The checkpoint stores the training iteration that just finished, thus we start
-            # at the next iteration (or iter zero if there's no checkpoint).
+        if resume:
+            if self.checkpointer.has_checkpoint():
+                # The checkpoint stores the training iteration that just finished, thus we start
+                # at the next iteration (or iter zero if there's no checkpoint).
+                self.start_iter = (
+                    self.checkpointer.resume_or_load(None, resume=True).get("iter", -1)
+                    + 1
+                )
+            else:
+                # This is considered as an independent training.
+                self.checkpointer.load(self.cfg.train.load_weight, checkpointables=[])
+        else:
+            self.start_iter = 0
 
     def build_hooks(self):
         """

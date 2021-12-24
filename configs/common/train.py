@@ -3,15 +3,15 @@ train = dict(
     micro_batch_size=32,
     global_batch_size=64,
     start_iter=0,
-    train_iters=1000,
+    max_iter=10000,
     lr_decay_iters=9000,
     lr_warmup_fraction=0.01,
     save_interval=1000,
     log_interval=20,
-    init_checkpoint="",
-    max_iter=5,
+    graph=dict(enabled=False),  # options for graph or eager mode
     amp=dict(enabled=False),  # options for Automatic Mixed Precision
     checkpointer=dict(period=5000, max_to_keep=100),  # options for PeriodicCheckpointer
+    load_weight="",
     eval_period=5000,
     log_period=20,
     dist=dict(
