@@ -199,6 +199,11 @@ def get_data_parallel_size():
     return dist_util.data_parallel_size
 
 
+def get_tensor_parallel_size():
+    dist_util = get_dist_util()
+    return dist_util.tensor_parallel_size
+
+
 def same_sbp(lhs_sbp, rhs_sbp):
     assert len(lhs_sbp) == len(rhs_sbp)
 

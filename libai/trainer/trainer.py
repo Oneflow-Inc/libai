@@ -269,7 +269,7 @@ class EagerTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter, self.mode)
+        data = get_batch(self._data_loader_iter)
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
@@ -311,7 +311,7 @@ class GraphTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter, self.mode)
+        data = get_batch(self._data_loader_iter)
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.

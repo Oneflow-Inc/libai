@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertModel, BertForPreTraining
+from .bert_model import BertModel, BertForPreTraining, BertForPretrainingGraph
 
 __all__ = [
     "BertModel",
     "BertForPreTraining",
+    "BertForPretrainingGraph",
 ]

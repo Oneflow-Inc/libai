@@ -21,6 +21,8 @@ import oneflow as flow
 from libai.config import LazyConfig, instantiate
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
+from libai.tokenizer import setup_tokenizer
+from libai.data.build import build_train_valid_test_data_iterators
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
@@ -60,7 +62,8 @@ def default_setup(cfg, args):
     1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
     3. Setup the distributed environment
-    4. Backup the config to the output directory
+    4. Setup tokenizer if it's nlp task
+    5. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
@@ -90,6 +93,10 @@ def default_setup(cfg, args):
 
     # Initialize the distributed environment.
     dist.setup_dist_util(_try_get_key(cfg, "train.dist"))
+
+    # Initialize tokenizer
+    if _try_get_key(cfg, "data.tokenizer_setup", default=False):
+        setup_tokenizer(cfg)
 
     if dist.is_main_process() and output_dir:
         # Note: some of our scripts may expect the existence of
@@ -180,9 +187,9 @@ class DefaultTrainer(TrainerBase):
             self.train_data_iterator,
             self.valid_data_iterator,
             self.test_data_iterator,
-        ) = self.build_train_valid_test_loader_loader(cfg)
+        ) = self.build_train_valid_test_loader(cfg)
 
-        if cfg.train.graph.enabled:
+        if cfg.graph.enabled:
             train_graph, eval_graph = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler
             )
@@ -194,7 +201,7 @@ class DefaultTrainer(TrainerBase):
             )
 
         self.global_batch_size = cfg.train.global_batch_size
-        self.max_iter = cfg.train.max_iter
+        self.max_iter = cfg.train.train_iter
 
         self.register_hooks(self.build_hooks())
 
@@ -235,12 +242,14 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.save_interval),
+            hooks.PeriodicCheckpointer(
+                self.checkpointer, self.cfg.train.checkpoint_period
+            ),
         ]
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
             ret.append(
-                hooks.PeriodicWriter(self.build_writers(), self.cfg.log_interval)
+                hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period)
             )
         return ret
 
@@ -265,7 +274,7 @@ class DefaultTrainer(TrainerBase):
         return [
             # It may not always print what you want to see, since it prints "common" metrics only.
             CommonMetricPrinter(self.global_batch_size, self.max_iter),
-            JSONWriter(os.path.join(self.cfg.output_dir, "metrics.json")),
+            JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
         ]
 
     def train(self):
@@ -295,9 +304,13 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer, lr_scheduler):
-        # TODO: import build_graph from other utils
-        return None
-        # return build_graph(cfg, model, optimizer, lr_scheduler)
+        # Set train graph
+        cfg.graph.train.model = model
+        cfg.graph.train.optimizer = optimizer
+        cfg.graph.train.lr_scheduler = lr_scheduler
+        # Set eval graph
+        cfg.graph.eval.model = model
+        return instantiate(cfg.graph.train), instantiate(cfg.graph.eval)
 
     @classmethod
     def build_optimizer(cls, cfg, model):
@@ -340,15 +353,13 @@ class DefaultTrainer(TrainerBase):
         return instantiate(lr_scheduler)
 
     @classmethod
-    def build_train_valid_test_loader_loader(cls, cfg):
+    def build_train_valid_test_loader(cls, cfg):
         """
         Returns:
             iterable
-        It now calls :func:`libai.data.build_reid_train_loader`.
+        It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
-        # TODO: import build_train_valid_test_data_iterators from other utils
-        return [None], [None], [None]
-        # return build_train_valid_test_data_iterators(cfg)
+        return build_train_valid_test_data_iterators(cfg)
