@@ -125,7 +125,7 @@ class MultiheadAttention(nn.Module):
                             In case of self attention in encoder, it is the padding mask of source input.
                             In case of self attention in decoder, it is the combination of padding mask of target input and casual mask.
                             In case of cross attention in decoder, it is the padding mask of source input.
-            past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size].
+            past_key_value: tuple of key and value, each shape is [bsz, num_heads, src_len, head_size].
             use_cache: it will be set to True, when the model is in the inference phase and used for incremental decoding.
         """
 
@@ -147,6 +147,8 @@ class MultiheadAttention(nn.Module):
         if self.is_cross_attention:
             # if it is cross attention, key and value should be calculated only once, and the result can be reused.
             query = self.query(hidden_states)
+            query = query.view(bsz, -1, self.num_heads, self.head_size)
+            query = query.permute(0, 2, 1, 3)
             if past_key_value is not None:
                 key, value = past_key_value
             elif encoder_states is not None:
@@ -164,7 +166,7 @@ class MultiheadAttention(nn.Module):
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
             query_key_value = query_key_value.view(
-                bsz, -1, self.num_heads, 2 * self.head_size
+                bsz, -1, self.num_heads, 3 * self.head_size
             )
             query_key_value = query_key_value.permute(
                 0, 2, 1, 3
