@@ -44,11 +44,15 @@ class _DistributeUtil(object):
             f"world size ({self._world_size}) is not divisible by"
             f" tensor parallel size ({self._tensor_parallel_size})"
         )
+        # Set the actual tensor parallel size to cfg
+        cfg.tensor_parallel_size = self._tensor_parallel_size
 
         # pipeline parallel size
         self._pipeline_parallel_size = min(
             cfg.pipeline_parallel_size, self._world_size // cfg.tensor_parallel_size
         )
+        # Set the actual pipeline parallel size to cfg
+        cfg.pipeline_parallel_size = self._pipeline_parallel_size
 
         self._model_parallel_size = (
             self._pipeline_parallel_size * self._tensor_parallel_size
@@ -60,8 +64,10 @@ class _DistributeUtil(object):
             f" pipeline model parallel size ({self._pipeline_parallel_size})"
         )
 
-        # data parallel world size
+        # data parallel size
         self._data_parallel_size = self._world_size // self._model_parallel_size
+        # Set the actual data parallel size to cfg
+        cfg.data_parallel_size = self._data_parallel_size
 
     def _init_placement_group(self, cfg):
         node_ids = [i // cfg.num_gpus_per_node for i in range(self._world_size)]
