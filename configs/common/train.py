@@ -1,9 +1,11 @@
 train = dict(
     output_dir="./demo_output/test_config",
-    start_iter=0,
-    train_iters=1000,
     micro_batch_size=32,
     global_batch_size=64,
+    start_iter=0,
+    train_iters=1000,
+    lr_decay_iters=9000,
+    lr_warmup_fraction=0.01,
     save_interval=1000,
     log_interval=20,
     init_checkpoint="",

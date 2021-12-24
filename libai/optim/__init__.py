@@ -14,3 +14,4 @@
 # limitations under the License.
 
 from .build import get_default_optimizer_params
+from .lr_scheduler import PolynomialLR

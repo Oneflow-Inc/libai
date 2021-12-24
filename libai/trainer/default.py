@@ -285,7 +285,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.layers.build_model`.
         Overwrite it if you'd like a different model.
         """
-        model = instantiate(_try_get_key(cfg, "model"))
+        model = instantiate(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         return model
@@ -304,7 +304,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.solver.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        optim = _try_get_key(cfg, "optim")
+        optim = cfg.optim
         optim.parameters.model = model
         return instantiate(optim)
 
@@ -314,10 +314,27 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.solver.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        # TODO: import get_learning_rate_scheduler from other utils
-        lr_scheduler = flow.optim.lr_scheduler.StepLR(optimizer, step_size=1000)
-        return lr_scheduler
-        # return get_learning_rate_scheduler(cfg, optimizer)
+        # NOTE(l1aoxingyu): In megatron, lr scheduler update according to training samples
+        # rather than training steps, we just divide the samples of each iteration to update
+        # scheduler by iter which is the oneflow lr scheduler update way
+        increment = cfg.train.micro_batch_size * dist.get_data_parallel_size()
+
+        decay_steps = int(
+            cfg.train.lr_decay_iters * cfg.train.global_batch_size / increment
+        )
+        if cfg.train.lr_warmup_fraction is not None:
+            warmup_iters = cfg.train.lr_warmup_fraction * decay_steps
+        else:
+            warmup_iters = cfg.train.lr_warmup_iters * cfg.train.global_batch_size
+        warmup_iters = int(warmup_iters / increment)
+
+        lr_scheduler = cfg.lr_scheduler
+        # Setup warmup iters
+        lr_scheduler.warmup_iters = warmup_iters
+        # Setup optimizer and decay iters
+        lr_scheduler.lrsch_or_optimizer.optimizer = optimizer
+        lr_scheduler.lrsch_or_optimizer.steps = decay_steps
+        return instantiate(lr_scheduler)
 
     @classmethod
     def build_train_valid_test_loader_loader(cls, cfg):

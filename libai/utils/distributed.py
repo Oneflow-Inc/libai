@@ -194,7 +194,7 @@ def get_data_parallel_rank():
     return flow.env.get_rank() // dist_util.model_parallel_size
 
 
-def get_data_parallel_world_size():
+def get_data_parallel_size():
     dist_util = get_dist_util()
     return dist_util.data_parallel_size
 

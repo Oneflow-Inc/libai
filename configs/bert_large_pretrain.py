@@ -1,6 +1,6 @@
 from .common.models.bert import pretrain_model as model
 from .common.train import train
-from .common.optim import optim
+from .common.optim import optim, lr_scheduler
 
 # Bert-large model config
 model.cfg.num_attention_heads = 16
