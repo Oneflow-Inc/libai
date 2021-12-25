@@ -19,6 +19,9 @@ train.micro_batch_size = 16
 
 train.amp.enabled = True
 
+model.cfg.fp16 = train.amp.enabled
+
+# fmt: off
 graph = dict(
     # options for graph or eager mode
     enabled=True,
@@ -26,5 +29,8 @@ graph = dict(
         fp16=train.amp.enabled,
         is_eval=False,
     ),
-    eval=L(BertForPretrainingGraph)(fp16=train.amp.enabled, is_eval=True,),
+    eval=L(BertForPretrainingGraph)(
+        fp16=train.amp.enabled, 
+        is_eval=True,),
 )
+# fmt: on

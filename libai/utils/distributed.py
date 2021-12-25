@@ -239,27 +239,6 @@ def get_world_size():
     return flow.env.get_world_size()
 
 
-def gather(data, dist=0):
-    if get_world_size() == 1:
-        return [data]
-
-    if not isinstance(data, flow.Tensor):
-        tensor = flow.tensor(
-            data,
-            sbp=get_nd_sbp(flow.sbp.split(0), flow.sbp.split(1)),
-            placement=get_all_placement(),
-        )
-    else:
-        tensor = data
-
-    rank = get_rank()
-
-    if rank == dist:
-        return ttol(tensor)
-    else:
-        return []
-
-
 def ttol(tensor, pure_local=False):
     """ consistent tensor to local tensor"""
     if tensor.is_consistent:

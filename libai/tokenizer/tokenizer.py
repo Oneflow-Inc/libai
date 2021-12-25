@@ -83,8 +83,11 @@ def _vocab_size_with_padding(orig_vocab_size, cfg):
         " > padded vocab (size: {}) with {} dummy tokens "
         "(new size: {})".format(orig_vocab_size, after - orig_vocab_size, after)
     )
-    cfg.model.cfg.vocab_size = after
-
+    from omegaconf import OmegaConf
+    p = OmegaConf.select(cfg, "model.cfg.vocab_size", default=None)
+    # In case the model does not need vocab_size as argument
+    if p is not None:
+        p = after
 
 class AbstractTokenizer(ABC):
     """Abstract class for tokenizer."""

@@ -184,7 +184,6 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        # TODO: local_only should be False, distributed.py should be fully functional
         metrics_dict = {k: dist.tton(v, local_only=False) for k, v in loss_dict.items()}
         metrics_dict["data_time"] = data_time
 

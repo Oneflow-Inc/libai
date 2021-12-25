@@ -395,7 +395,7 @@ class DefaultTrainer(TrainerBase):
             # Set train graph
             assert optimizer is not None, "optimizer must be set for train graph"
             assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
-            cfg.graph.num_accumulation_steps=cfg.train.num_accumulation_steps
+            cfg.graph.num_accumulation_steps = cfg.train.num_accumulation_steps
             cfg.graph.train.model = model
             cfg.graph.train.optimizer = optimizer
             cfg.graph.train.lr_scheduler = lr_scheduler

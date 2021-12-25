@@ -1,3 +1,4 @@
+# fmt: off
 train = dict(
     output_dir="./demo_output/test_config",
 
@@ -35,3 +36,4 @@ train = dict(
     nccl_fusion_max_ops=24,
     enable_use_compute_stream=True,
 )
+# fmt: on
