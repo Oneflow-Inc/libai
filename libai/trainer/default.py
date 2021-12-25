@@ -330,7 +330,7 @@ class DefaultTrainer(TrainerBase):
             hooks.IterationTimer(),
             hooks.LRScheduler(),
             hooks.PeriodicCheckpointer(
-                self.checkpointer, self.cfg.train.checkpoint_period
+                self.checkpointer, self.cfg.train.checkpointer.period
             ),
         ]
         if dist.is_main_process():
@@ -435,7 +435,7 @@ class DefaultTrainer(TrainerBase):
         lr_scheduler.warmup_iters = warmup_iters
         # Setup optimizer and decay iters
         lr_scheduler.lrsch_or_optimizer.optimizer = optimizer
-        lr_scheduler.lrsch_or_optimizer.steps = decay_steps
+        # lr_scheduler.lrsch_or_optimizer.steps = decay_steps
         return instantiate(lr_scheduler)
 
     @classmethod

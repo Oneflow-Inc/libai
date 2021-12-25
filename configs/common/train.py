@@ -8,7 +8,7 @@ train = dict(
 
     start_iter=0,
     train_iter=10000,
-    eval_iter=100,
+    eval_iter=10000,
     lr_decay_iters=9000,
     lr_warmup_fraction=0.01,
     checkpoint_period=1000,
