@@ -43,7 +43,9 @@ def build_train_valid_test_data_iterators(cfg):
         assert (
             cfg.train.train_samples is None
         ), "only backward compatibility support for iteration-based training"
-        cfg.consumed_train_samples = cfg.iteration * cfg.global_batch_size
+        cfg.train.consumed_train_samples = (
+            cfg.train.start_iter * cfg.train.global_batch_size
+        )
     if cfg.train.start_iter > 0 and cfg.train.consumed_valid_samples == 0:
         if cfg.train.train_samples is None:
             cfg.train.consumed_valid_samples = (

@@ -162,11 +162,7 @@ class TrainerBase:
 
     def after_step(self):
         self.storage.iter = self.iter + 1
-        self.storage.samples = (
-            (self.iter - self.start_iter + 1)
-            * dist.get_data_parallel_size()
-            * self.cfg.train.micro_batch_size
-        )
+        self.storage.samples = (self.iter + 1) * self.cfg.train.global_batch_size
 
         for h in self._hooks:
             h.after_step()

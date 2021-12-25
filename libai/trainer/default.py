@@ -423,19 +423,12 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.solver.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        # NOTE(l1aoxingyu): In megatron, lr scheduler update according to training samples
-        # rather than training steps, we just divide the samples of each iteration to update
-        # scheduler by iter which is the oneflow lr scheduler update way
-        increment = cfg.train.micro_batch_size * dist.get_data_parallel_size()
-
-        decay_steps = int(
-            cfg.train.lr_decay_iters * cfg.train.global_batch_size / increment
-        )
+        decay_steps = int(cfg.train.lr_decay_iters)
         if cfg.train.lr_warmup_fraction is not None:
             warmup_iters = cfg.train.lr_warmup_fraction * decay_steps
         else:
-            warmup_iters = cfg.train.lr_warmup_iters * cfg.train.global_batch_size
-        warmup_iters = int(warmup_iters / increment)
+            warmup_iters = cfg.train.lr_warmup_iters
+        warmup_iters = int(warmup_iters)
 
         lr_scheduler = cfg.lr_scheduler
         # Setup warmup iters
