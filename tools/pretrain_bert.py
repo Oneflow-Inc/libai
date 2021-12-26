@@ -51,6 +51,17 @@ def get_batch(data_iterator):
 
 
 class Trainer(DefaultTrainer):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+
+        # load megatron weight
+        from libai.utils.load_megatron_weight import load_megatron_bert
+
+        load_megatron_bert(
+            self.model,
+            "/workspace/idea_model/idea_bert/megatron_model_save/bert-cn-wwm/compare_oneflow_loss_reproduce_ckpt/iter_0000100/mp_rank_00/model_optim_rng.pt",
+        )
+
     def run_step(self):
         return super().run_step(get_batch)
 

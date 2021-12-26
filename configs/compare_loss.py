@@ -1,4 +1,3 @@
-
 import oneflow as flow
 from libai.config import LazyCall as L
 from .common.models.bert import pretrain_model as model
@@ -8,13 +7,14 @@ from .common.data.nlp_data import data
 from libai.models import BertForPretrainingGraph
 
 # Set all dropout to 0.
-model.cfg.hidden_dropout_prob = 0.1
-model.cfg.attention_probs_dropout_prob = 0.1
-model.cfg.bias_dropout_fusion = True
+model.cfg.hidden_dropout_prob = 0.0
+model.cfg.attention_probs_dropout_prob = 0.0
+model.cfg.bias_dropout_fusion = False
 
 # Set matched model arguments
 model.cfg.hidden_layers = 5
 model.cfg.hidden_size = 384
+model.cfg.intermediate_size = 1536
 model.cfg.num_attention_heads = 16
 model.cfg.max_position_embeddings = 512
 

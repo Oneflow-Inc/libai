@@ -284,7 +284,7 @@ class DefaultTrainer(TrainerBase):
             self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
         else:
             self._trainer = EagerTrainer(
-                self.model, self.train_data_iterator, self.optimizer, self.lr_scheduler
+                self.model, self.train_data_iterator, self.optimizer
             )
 
         self.global_batch_size = cfg.train.global_batch_size
@@ -371,6 +371,10 @@ class DefaultTrainer(TrainerBase):
             OrderedDict of results, if evaluation is enabled. Otherwise None.
         """
         super().train(self.start_iter, self.max_iter)
+        all_losses = self._trainer.all_losses
+        with open("of_bert_loss.txt", "w") as f:
+            for loss in all_losses:
+                f.write(str(loss) + "\n")
 
     def run_step(self, get_batch: Callable):
         self._trainer.iter = self.iter
@@ -423,6 +427,8 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.solver.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
+        if cfg.train.lr_decay_iters is None:
+            cfg.train.lr_decay_iters = cfg.train.train_iter
         decay_steps = int(cfg.train.lr_decay_iters)
         if cfg.train.lr_warmup_fraction is not None:
             warmup_iters = cfg.train.lr_warmup_fraction * decay_steps
