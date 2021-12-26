@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 CONFIG=$1
-GPUS=$2
+GPUS=${2:-1}
 NODE=${NODE:-1}
 NODE_RANK=${NODE_RANK:-0}
 PORT=${PORT:-29500}

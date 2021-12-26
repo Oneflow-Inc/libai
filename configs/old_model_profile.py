@@ -23,8 +23,6 @@ train.dist.pipeline_num_layers = model.cfg.hidden_layers
 train.train_iter = 1000
 train.micro_batch_size = 16
 
-train.enable_use_compute_stream = False
-
 optim.lr = 0.0001
 
 data.seq_length = 512
