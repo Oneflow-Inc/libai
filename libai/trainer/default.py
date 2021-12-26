@@ -384,6 +384,8 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.layers.build_model`.
         Overwrite it if you'd like a different model.
         """
+        # Set amp in model
+        cfg.model.cfg.fp16 = cfg.train.amp.enabled
         model = instantiate(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
@@ -399,10 +401,12 @@ class DefaultTrainer(TrainerBase):
             cfg.graph.train.model = model
             cfg.graph.train.optimizer = optimizer
             cfg.graph.train.lr_scheduler = lr_scheduler
+            cfg.graph.train.fp16 = cfg.train.amp.enabled
             return instantiate(cfg.graph.train)
         else:
             # Set eval graph
             cfg.graph.eval.model = model
+            cfg.graph.eval.fp16 = cfg.train.amp.enabled
             return instantiate(cfg.graph.eval)
 
     @classmethod
