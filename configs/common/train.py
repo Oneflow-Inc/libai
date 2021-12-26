@@ -8,10 +8,9 @@ train = dict(
 
     start_iter=0,
     train_iter=10000,
-    eval_iter=100,
-    lr_decay_iters=9000,
+    lr_decay_iter=None,
+    eval_iter=10000,
     lr_warmup_fraction=0.01,
-    checkpoint_period=1000,
     amp=dict(enabled=False),  # options for Automatic Mixed Precision
     checkpointer=dict(period=5000, max_to_keep=100),  # options for PeriodicCheckpointer
     load_weight="",

@@ -233,7 +233,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader_iter, optimizer, lr_scheduler):
+    def __init__(self, model, data_loader_iter, optimizer):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -250,11 +250,9 @@ class EagerTrainer(TrainerBase):
 
         model.train()
 
-        self.model = model.to("cuda")
+        self.model = model
         self._data_loader_iter = iter(data_loader_iter)
         self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
-        self.mode = "eager"
 
     def run_step(self, get_batch: Callable):
         """
@@ -294,7 +292,6 @@ class GraphTrainer(TrainerBase):
         graph.model.train()
         self._data_loader_iter = iter(data_loader_iter)
         self.graph = graph
-        self.mode = "graph"
 
     def run_step(self, get_batch: Callable):
         """
