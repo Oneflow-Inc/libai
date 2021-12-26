@@ -284,7 +284,7 @@ class DefaultTrainer(TrainerBase):
             self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
         else:
             self._trainer = EagerTrainer(
-                self.model, self.train_data_iterator, self.optimizer, self.lr_scheduler
+                self.model, self.train_data_iterator, self.optimizer
             )
 
         self.global_batch_size = cfg.train.global_batch_size
@@ -330,7 +330,7 @@ class DefaultTrainer(TrainerBase):
             hooks.IterationTimer(),
             hooks.LRScheduler(),
             hooks.PeriodicCheckpointer(
-                self.checkpointer, self.cfg.train.checkpoint_period
+                self.checkpointer, self.cfg.train.checkpointer.period
             ),
         ]
         if dist.is_main_process():
@@ -423,7 +423,9 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.solver.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        decay_steps = int(cfg.train.lr_decay_iters)
+        if cfg.train.lr_decay_iter is None:
+            cfg.train.lr_decay_iter = cfg.train.train_iter
+        decay_steps = int(cfg.train.lr_decay_iter)
         if cfg.train.lr_warmup_fraction is not None:
             warmup_iters = cfg.train.lr_warmup_fraction * decay_steps
         else:
