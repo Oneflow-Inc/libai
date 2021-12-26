@@ -1,6 +1,6 @@
 # fmt: off
 train = dict(
-    output_dir="./demo_output/test_config",
+    output_dir="./output/profile_small_model",
 
     micro_batch_size=32,
     global_batch_size=None,
