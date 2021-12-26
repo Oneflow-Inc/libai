@@ -258,7 +258,7 @@ class EagerTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        assert self.model.training, "[EagerTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
@@ -299,7 +299,7 @@ class GraphTrainer(TrainerBase):
         """
         assert (
             self.graph.model.training
-        ), "[SimpleTrainer] model was changed to eval mode!"
+        ), "[GraphTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.

@@ -287,9 +287,7 @@ class DefaultTrainer(TrainerBase):
                 self.model, self.train_data_iterator, self.optimizer
             )
 
-        self.global_batch_size = cfg.train.global_batch_size
         self.max_iter = cfg.train.train_iter
-
         self.register_hooks(self.build_hooks())
 
     def resume_or_load(self, resume=True):
@@ -360,7 +358,7 @@ class DefaultTrainer(TrainerBase):
         # Assume the default print/log frequency.
         return [
             # It may not always print what you want to see, since it prints "common" metrics only.
-            CommonMetricPrinter(self.global_batch_size, self.max_iter),
+            CommonMetricPrinter(self.cfg.train.global_batch_size, self.max_iter),
             JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
         ]
 
