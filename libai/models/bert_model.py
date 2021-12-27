@@ -22,7 +22,7 @@ from libai.layers import (
     LayerNorm,
     Linear,
     TransformerLayer,
-    ParallelCrossEntropyLossWithMask,
+    ParallelCrossEntropyLoss,
 )
 from libai.utils import distributed as dist
 from oneflow import nn
@@ -125,32 +125,22 @@ class BertEmbeddings(nn.Module):
 
 
 class BertLMPredictionHead(nn.Module):
-    def __init__(self, hidden_size, init_method, bias_gelu_fusion=True):
+    def __init__(self, hidden_size, init_method):
         super().__init__()
-        self.bias_gelu_fusion = bias_gelu_fusion
         self.dense = Linear(
             hidden_size,
             hidden_size,
             bias=True,
             parallel="col",
             init_method=init_method,
-            skip_bias_add=bias_gelu_fusion,
             layer_idx=-1,
         )
-        if not bias_gelu_fusion:
-            self.activation_func = build_activation("gelu")
-
+        self.activation_func = build_activation("gelu")
         self.layernorm = LayerNorm((hidden_size,), layer_idx=-1)
 
     def forward(self, hidden_states):
         hidden_states = self.dense(hidden_states)
-        if self.bias_gelu_fusion:
-            hidden_states, bias = hidden_states
-            hidden_states = flow._C.fused_bias_add_gelu(
-                hidden_states, bias, axis=hidden_states.ndim - 1
-            )
-        else:
-            hidden_states = self.activation_func(hidden_states)
+        hidden_states = self.activation_func(hidden_states)
 
         # NOTE(l1aoxingyu): hidden_states shape is [B, S, H] whose sbp sign: [S(0), S(2)]
         # Change from [S(0), S(2)] -> [S(0), B] because layernorm cannot get inputs with sbp S(2)
@@ -164,8 +154,8 @@ class BertLMPredictionHead(nn.Module):
 class BertPooler(nn.Module):
     """Pooler layer.
     
-    Pool hidden states of a specific token (for example start of the
-    sequence) and add a linear transformation followed by a tanh.
+    Pool hidden states of the first token and 
+    add a linear transformation followed by a tanh.
 
     Args:
         hidden_size: hidden state feature dimension
@@ -183,22 +173,20 @@ class BertPooler(nn.Module):
         )
         self.activation_func = build_activation("tanh")
 
-    def forward(self, hidden_states, sequence_index=0):
+    def forward(self, hidden_states):
         """Just "pool" the model by simply taking the [CLS] token corresponding to the first token.
         """
         # hidden_states: [bsz, seq_len, hidden_size]
-        select_token_tensor = hidden_states[:, sequence_index]
+        select_token_tensor = hidden_states[:, 0]
         pooled_output = self.dense(select_token_tensor)
         pooled_output = self.activation_func(pooled_output)
         return pooled_output
 
 
 class BertPreTrainingHeads(nn.Module):
-    def __init__(self, hidden_size, init_method, bias_gelu_fusion=True):
+    def __init__(self, hidden_size, init_method):
         super().__init__()
-        self.predictions = BertLMPredictionHead(
-            hidden_size, init_method, bias_gelu_fusion
-        )
+        self.predictions = BertLMPredictionHead(hidden_size, init_method)
         self.seq_relationship = Linear(
             hidden_size,
             2,
@@ -215,18 +203,22 @@ class BertPreTrainingHeads(nn.Module):
 
 
 class LMLogits(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self, vocab_size, bias=False):
         super().__init__()
-
-        self.bias = flow.nn.Parameter(
-            flow.empty(
-                (vocab_size,),
-                dtype=flow.float32,
-                placement=dist.get_layer_placement(-1),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
+        self.bias = (
+            nn.Parameter(
+                flow.empty(
+                    (vocab_size,),
+                    dtype=flow.float32,
+                    placement=dist.get_layer_placement(-1),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
+                )
             )
+            if bias
+            else None
         )
-        nn.init.zeros_(self.bias)
+        if self.bias:
+            nn.init.zeros_(self.bias)
 
     def forward(self, input, word_embeddings):
         """LM logits using word embedding weights """
@@ -248,25 +240,35 @@ class LMLogits(nn.Module):
         # its sbp sign fromm [S(0), P] --> [S(0), B]
         input = input.to_consistent(grad_sbp=input.sbp)
 
-        logits = flow._C.matmul(input, w, transpose_b=True) + self.bias
+        logits = flow._C.matmul(input, w, transpose_b=True)
+        if self.bias:
+            logits = logits + self.bias
         return logits
 
 
 class BertLoss(nn.Module):
     def __init__(self):
         super().__init__()
-        self.masked_lm_loss = ParallelCrossEntropyLossWithMask()
+        self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask, binary_logits, ns_labels):
-        masked_lm_loss = self.masked_lm_loss(lm_output, lm_labels, loss_mask)
-        sop_loss = flow._C.cross_entropy(
-            binary_logits, ns_labels, ignore_index=-1, reduction="none"
-        ).mean()
+        lm_loss = self.lm_loss(lm_output, lm_labels)
+        loss_mask = loss_mask.float()
+        # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
+        # because (lm_loss * loss_mask) / loss_mask.sum() cannot accept P / P
+        denominator = loss_mask.sum().to_consistent(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
+        masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
         # NOTE(l1aoxingyu): Change lm loss sbp sign [P, P] -> [P, B] to add with sop loss
         # whose sbp sign: [P, B]
         masked_lm_loss = masked_lm_loss.to_consistent(
             sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
         )
+
+        sop_loss = flow._C.cross_entropy(
+            binary_logits, ns_labels, ignore_index=-1, reduction="none"
+        ).mean()
         losses = masked_lm_loss + sop_loss
         return losses
 
@@ -337,7 +339,9 @@ class BertEncoder(nn.Module):
                     layer_idx=i,
                 ),
             )
-            setattr(self, f"layers_checkpoint_{i}", ActivationCheckpointing(layer_idx=i))
+            setattr(
+                self, f"layers_checkpoint_{i}", ActivationCheckpointing(layer_idx=i)
+            )
 
     def forward(self, hidden_states, extended_attention_mask):
         for i in range(self.hidden_layers):
