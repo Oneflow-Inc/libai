@@ -134,7 +134,7 @@ class BertLMPredictionHead(nn.Module):
             bias=True,
             parallel="col",
             init_method=init_method,
-            skip_bias_add=True,
+            skip_bias_add=bias_gelu_fusion,
             layer_idx=-1,
         )
         if not bias_gelu_fusion:
