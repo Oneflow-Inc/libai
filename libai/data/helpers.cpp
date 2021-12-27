@@ -92,10 +92,10 @@ void build_blending_indices(py::array_t<uint8_t> &dataset_index,
   }
 }
 
-py::array build_sample_idx(const py::array_t<int32_t> &doc_idx_,
-                           const py::array_t<int32_t> &sizes_,
+py::array build_sample_idx(const py::array_t<int64_t> &doc_idx_,
+                           const py::array_t<int64_t> &sizes_,
                            const int32_t seq_length, 
-                           const int32_t num_tokens) {
+                           const int64_t num_tokens) {
   /* Sample index (sample_idx) is used for gpt2 like dataset for which
      the documents are flattened and the samples are built based on this
      1-D flatten array. It is a 2D array with sizes [number-of-samples + 1, 2]
@@ -114,7 +114,7 @@ py::array build_sample_idx(const py::array_t<int32_t> &doc_idx_,
 
   // Mapping and it's length (1D).
   int64_t num_samples = (num_tokens - 1) / seq_length;
-  int32_t *sample_idx = new int32_t[2 * (num_samples + 1)];
+  int64_t *sample_idx = new int64_t[2 * (num_samples + 1)];
 
   cout << "    using:" << endl << std::flush;
   cout << "     number of documents:       " << doc_idx_.shape(0) - 1
@@ -130,7 +130,7 @@ py::array build_sample_idx(const py::array_t<int32_t> &doc_idx_,
   // Index into doc_idx.
   int64_t doc_idx_index = 0;
   // Begining offset for each document.
-  int32_t doc_offset = 0;
+  int64_t doc_offset = 0;
   // Start with first document and no offset.
   sample_idx[2 * sample_index] = doc_idx_index;
   sample_idx[2 * sample_index + 1] = doc_offset;
@@ -138,7 +138,7 @@ py::array build_sample_idx(const py::array_t<int32_t> &doc_idx_,
 
   while (sample_index <= num_samples) {
     // Start with a fresh sequence.
-    int32_t remaining_seq_length = seq_length + 1;
+    int64_t remaining_seq_length = seq_length + 1;
     while (remaining_seq_length != 0) {
       // Get the document length.
       auto doc_id = doc_idx[doc_idx_index];
@@ -166,12 +166,12 @@ py::array build_sample_idx(const py::array_t<int32_t> &doc_idx_,
 
   // Method to deallocate memory.
   py::capsule free_when_done(sample_idx, [](void *mem_) {
-    int32_t *mem = reinterpret_cast<int32_t *>(mem_);
+    int64_t *mem = reinterpret_cast<int64_t *>(mem_);
     delete[] mem;
   });
 
   // Return the numpy array.
-  const auto byte_size = sizeof(int32_t);
+  const auto byte_size = sizeof(int64_t);
   return py::array(std::vector<int64_t>{num_samples + 1, 2}, // shape
                    {2 * byte_size, byte_size}, // C-style contiguous strides
                    sample_idx,                 // the data pointer
@@ -181,7 +181,7 @@ py::array build_sample_idx(const py::array_t<int32_t> &doc_idx_,
 template <typename DocIdx>
 py::array build_mapping_impl(
     const py::array_t<int64_t> &docs_,
-    const py::array_t<int32_t> &sizes_, 
+    const py::array_t<int64_t> &sizes_, 
     const int32_t max_seq_length,
     const bool verbose, 
     const int32_t min_num_sent) {
@@ -277,8 +277,8 @@ py::array build_mapping_impl(
       if ((num_remain_sent >= min_num_sent) && (!contains_long_sentence)) {
 
         // Set values.
-        auto seq_len = int32_t{0};
-        auto num_sent = int32_t{0};
+        auto seq_len = int64_t{0};
+        auto num_sent = int64_t{0};
 
         // Loop through sentences.
         for (auto sent_index = sent_index_first; sent_index < sent_index_last;
@@ -359,7 +359,7 @@ py::array build_mapping_impl(
 }
 
 py::array build_mapping(const py::array_t<int64_t> &docs_,
-                        const py::array_t<int> &sizes_,
+                        const py::array_t<int64_t> &sizes_,
                         const int max_seq_length,
                         const bool verbose,
                         const int32_t min_num_sent) {

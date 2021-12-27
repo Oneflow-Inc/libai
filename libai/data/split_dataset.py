@@ -76,4 +76,9 @@ class SplitDataset(flow.utils.data.Dataset):
     def __getitem__(self, index):
         return self.wrapped_data[self.split_inds[index]]
 
+    @property
+    def supports_prefetch(self):
+        return self.wrapped_data.supports_prefetch
 
+    def prefetch(self, indices):
+        self.wrapped_data.prefetch(indices)

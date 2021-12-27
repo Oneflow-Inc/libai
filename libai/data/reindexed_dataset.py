@@ -16,6 +16,7 @@
 
 import os
 import math
+import time
 import numpy as np
 import oneflow as flow
 
@@ -34,7 +35,7 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, binary_hea
 
     documents = indexed_dataset.doc_idx
     sizes = indexed_dataset.sizes
-
+    
     # Build the indexed mapping if not exist.
     if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename):
         print(
@@ -43,13 +44,13 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, binary_hea
         )
 
         # Make sure the types match the helpers input types.
-        assert documents.dtype == np.int64
-        assert sizes.dtype == np.int32
+        # assert documents.dtype == np.int64
+        # assert sizes.dtype == np.int32
 
         # Build samples mapping
         verbose = flow.env.get_rank() == 0
         start_time = time.time()
-        print_rank_0(" > building samples index mapping for {} ...".format(name))
+        print_rank_0(" > building samples index mapping for {} ...".format(data_prefix))
         samples_mapping = helpers.build_mapping(
             documents,  # 包含所有文档序号的向量，一个文档可能对应多个行
             sizes,  # 包含每个行的长度的向量
@@ -113,6 +114,13 @@ class SentenceIndexedDataset(flow.utils.data.Dataset):
         sample = [self.indexed_dataset[i] for i in range(start_idx, end_idx)]
         assert seq_length <= self.max_seq_length
         return sample
+    
+    @property
+    def supports_prefetch(self):
+        return self.indexed_dataset.supports_prefetch
+
+    def prefetch(self, indices):
+        self.indexed_dataset.prefetch(indices)
 
 
 def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
@@ -121,12 +129,11 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
     """
     # Filename of the index mappings.
     indexmap_filename = data_prefix
-    indexmap_filename += '_{}ns'.format(num_samples)
     indexmap_filename += '_{}msl'.format(max_seq_length)
-    indexmap_filename = _filename + '_sample_idx.npy'
+    indexmap_filename += '_sample_idx.npy'
 
-    documents = indexed_dataset.doc_idx
-    sizes = indexed_dataset.sizes
+    documents = indexed_dataset.doc_idx.astype(np.int64)
+    sizes = indexed_dataset.sizes.astype(np.int64)
     num_tokens = np.sum(sizes)
     
     # Build the indexed mapping if not exist.
@@ -136,10 +143,8 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
 
         # sample-idx.
         start_time = time.time()
-        assert doc_idx.dtype == np.int32
-        assert sizes.dtype == np.int32
         sample_idx = helpers.build_sample_idx(documents, sizes, max_seq_length, num_tokens)
-        np.save(sample_idx_filename, sample_idx, allow_pickle=True)
+        np.save(indexmap_filename, sample_idx, allow_pickle=True)
         print_rank_0(' > elasped time to build and save sample-idx mapping '
                         '(seconds): {:4f}'.format(time.time() - start_time))
 
@@ -166,7 +171,7 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
     return sample_idx
 
 
-class DocumentIndexedDataset(flow.utils.data.Dataset):
+class BlockIndexedDataset(flow.utils.data.Dataset):
     """ This class is propused for building sample mapping index from `indexed_dataset` to actural dataset.
     It will extract the sentence with the length of `max_seq_length` from the document. 
     If it is less than the maximum length, it will be intercepted from the next document. 
@@ -203,3 +208,9 @@ class DocumentIndexedDataset(flow.utils.data.Dataset):
 
         return sample
     
+    @property
+    def supports_prefetch(self):
+        return self.indexed_dataset.supports_prefetch
+
+    def prefetch(self, indices):
+        self.indexed_dataset.prefetch(indices)

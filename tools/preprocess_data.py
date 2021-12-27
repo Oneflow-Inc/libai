@@ -60,12 +60,6 @@ class Encoder(object):  # 分句、分词
     def initializer(self):
         # Use Encoder class as a container for global data
         Encoder.tokenizer = build_tokenizer(self.args)
-        if self.args.append_eod:
-            if Encoder.tokenizer.eod_token is None:
-                if Encoder.tokenizer.eos_token is not None:
-                    Encoder.tokenizer.eod_token = Encoder.tokenizer.eos_token
-                else:
-                    Encoder.tokenizer.eod_token = Encoder.tokenizer.pad_token
         if self.args.split_sentences:
             if not nltk_available:
                 print("NLTK is not available to split sentences.")
@@ -89,7 +83,7 @@ class Encoder(object):  # 分句、分词
             text = data[key]
             doc_ids = []
             for sentence in Encoder.splitter.tokenize(text):
-                sentence_ids = Encoder.tokenizer.tokenize(sentence)
+                sentence_ids = Encoder.tokenizer.encode(sentence)
                 if len(sentence_ids) > 0:
                     doc_ids.append(sentence_ids)
             if len(doc_ids) > 0 and self.args.append_eod:   # 文档的最后一句话加入eod标识符
@@ -132,7 +126,6 @@ def get_args():
     args.rank = 0
     args.make_vocab_size_divisible_by = 128
     args.tensor_model_parallel_size = 1
-    args.vocab_extra_ids = 0
 
     return args
 
@@ -165,7 +158,7 @@ def main():
     for key in args.json_keys:  # 对于每个文档，创建bin和idx文件，这里没有划分训练集、验证集、测试集
         output_bin_files[key] = "{}_{}_{}.bin".format(args.output_prefix, key, level)
         output_idx_files[key] = "{}_{}_{}.idx".format(args.output_prefix, key, level)
-        builders[key] = indexed_dataset.make_builder(output_bin_files[key], impl=args.dataset_impl, vocab_size=tokenizer.vocab_size)
+        builders[key] = indexed_dataset.make_builder(output_bin_files[key], impl=args.dataset_impl, vocab_size=len(tokenizer))
     
     startup_end = time.time()
     proc_start = time.time()

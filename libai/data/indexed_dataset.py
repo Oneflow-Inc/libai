@@ -72,6 +72,13 @@ def make_dataset(path, impl, skip_warmup=False):
     return None
 
 
+def dataset_exists(path, impl):
+    if impl == 'mmap':
+        return MMapIndexedDataset.exists(path)
+    else:
+        return IndexedDataset.exists(path)
+
+
 def read_longs(f, n):
     a = np.empty(n, dtype=np.int64)
     f.readinto(a)
@@ -92,13 +99,6 @@ dtypes = {
     7: np.double,
     8: np.uint16,
 }
-
-
-def dataset_exists(path, impl):
-    if impl == 'mmap':
-        return MMapIndexedDataset.exists(path)
-    else:
-        return IndexedDataset.exists(path)
 
 
 def code(dtype):
@@ -413,17 +413,11 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
             )
             print_rank_0("    reading pointers...")
             self._pointers = np.frombuffer(
-                self._bin_buffer,
-                dtype=np.int64,
-                count=self._len,
-                offset=offset + self._sizes.nbytes,
+                self._bin_buffer, dtype=np.int64, count=self._len, offset=offset + self._sizes.nbytes,
             )
             print_rank_0("    reading document index...")
             self._doc_idx = np.frombuffer(
-                self._bin_buffer,
-                dtype=np.int64,
-                count=self._doc_count,
-                offset=offset + self._sizes.nbytes + self._pointers.nbytes,
+                self._bin_buffer, dtype=np.int64, count=self._doc_count, offset=offset + self._sizes.nbytes + self._pointers.nbytes,
             )
 
         def __del__(self):

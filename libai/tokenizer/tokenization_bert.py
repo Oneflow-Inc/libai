@@ -22,7 +22,7 @@ import unicodedata
 from io import open
 import logging
 
-from .tokenization_base import PreTrainedTokenizer
+from .tokenization_base import PreTrainedTokenizer, _is_whitespace, _is_control, _is_punctuation
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +196,7 @@ class BasicTokenizer(object):
         if never_split is None:
             never_split = []
         self.do_lower_case = do_lower_case
-        self.never_split = never_split
+        self.never_split = set(never_split)
         self.tokenize_chinese_chars = tokenize_chinese_chars
 
     def tokenize(self, text, never_split=None):

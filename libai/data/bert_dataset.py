@@ -41,6 +41,7 @@ class BertDataset(flow.utils.data.Dataset):
                  max_seq_length=512, mask_lm_prob=.15, 
                  max_preds_per_seq=None, 
                  seed=1234, binary_head=True):
+        self.seed = seed
         self.mask_lm_prob = mask_lm_prob
         self.max_seq_length = max_seq_length
         self.binary_head = binary_head
@@ -53,12 +54,12 @@ class BertDataset(flow.utils.data.Dataset):
                                               binary_head=self.binary_head)
         
         self.tokenizer = tokenizer
-        self.vocab_id_list = list(tokenizer.inv_vocab.keys())
-        self.vocab_id_to_token_dict = tokenizer.inv_vocab
-        self.cls_id = tokenizer.cls
-        self.sep_id = tokenizer.sep
-        self.mask_id = tokenizer.mask
-        self.pad_id = tokenizer.pad
+        self.vocab_id_list = list(tokenizer.get_vocab().values())
+        self.vocab_id_to_token_dict = tokenizer.ids_to_tokens
+        self.cls_id = tokenizer.cls_token_id
+        self.sep_id = tokenizer.sep_token_id
+        self.mask_id = tokenizer.mask_token_id
+        self.pad_id = tokenizer.pad_token_id
     
     def __len__(self):
         return len(self.dataset)
@@ -95,7 +96,6 @@ class BertDataset(flow.utils.data.Dataset):
             'is_random': int(is_next_random),
             'loss_mask': loss_mask_np,
             'padding_mask': padding_mask_np,
-            'truncated': int(truncated)
         }
         return sample
 
@@ -144,8 +144,11 @@ class BertDataset(flow.utils.data.Dataset):
     
     def create_tokens_and_token_types(self, tokens_a, tokens_b):
         """merge segments A and B, add [CLS] and [SEP] and build token types."""
-        tokens = [self.cls_id] + tokens_a + [self.sep_id] + tokens_b + [self.sep_id]
-        token_types = [0] * (len(tokens_a) + 2) + [1] * (len(tokens_b) + 1)
+        tokens = [self.cls_id] + tokens_a + [self.sep_id]
+        token_types = [0] * (len(tokens_a) + 2)
+        if len(tokens_b) > 0:
+            tokens = tokens + tokens_b + [self.sep_id]
+            token_types = token_types + [1] * (len(tokens_b) + 1)
         return tokens, token_types
 
     def mask_token(self, idx, tokens, np_rng):
@@ -160,7 +163,7 @@ class BertDataset(flow.utils.data.Dataset):
             if np_rng.random() < 0.5:
                 new_label = label
             else:
-                new_label = self.vocab_id_list[np.rng.randint(0, len(self.vocab_id_list))]
+                new_label = self.vocab_id_list[np_rng.randint(0, len(self.vocab_id_list))]
         
         tokens[idx] = new_label
 
@@ -298,3 +301,9 @@ class BertDataset(flow.utils.data.Dataset):
 
         return tokens_np, token_types_np, labels_np, padding_mask_np, loss_mask_np
 
+    @property
+    def supports_prefetch(self):
+        return self.dataset.supports_prefetch
+
+    def prefetch(self, indices):
+        self.dataset.prefetch(indices)

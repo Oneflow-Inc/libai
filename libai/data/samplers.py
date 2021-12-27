@@ -15,8 +15,9 @@
 
 import numpy as np
 import oneflow as flow
+from oneflow.utils.data import Sampler
 
-class PretrainingSampler:
+class PretrainingSampler(Sampler):
     """ This sampler supports single round sampling and cyclic sampling, and 
     it is also compatible with non data parallelism and data parallelism.
     
@@ -68,8 +69,11 @@ class PretrainingSampler:
             else:
                 seq_idx = flow.arange(bucket_size).tolist()
                 indices = [(consumed_samples % self.data_size + start_idx + x) % self.data_size for x in seq_idx]
+            
+            if hasattr(self.dataset, "supports_prefetch") and self.dataset.supports_prefetch:
+                self.dataset.prefetch(indices)
 
-            for idx in idx_range:
+            for idx in indices:
                 batch.append(idx)
                 if len(batch) == self.micro_batch_size:
                     consumed_samples += self.actual_batch_size

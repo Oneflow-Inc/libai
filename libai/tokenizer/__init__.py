@@ -35,6 +35,12 @@ def build_tokenizer(args):
     else:
         raise NotImplementedError
 
+    if args.append_eod and tokenizer.eod_token is None:
+        if tokenizer.eos_token is not None:
+            tokenizer.eod_token = tokenizer.eos_token
+        else:
+            tokenizer.eod_token = tokenizer.pad_token
+
     # Add vocab size.
     args.padded_vocab_size = _vocab_size_with_padding(len(tokenizer), args)
 
@@ -49,7 +55,8 @@ def _vocab_size_with_padding(orig_vocab_size, args):
     multiple = args.make_vocab_size_divisible_by * args.tensor_model_parallel_size
     while (padded_vocab_size % multiple) != 0:
         padded_vocab_size += 1
-    print_rank_0(' > padded vocab (size: {}) with {} dummy tokens (new size: {})'.format(
-                orig_vocab_size, padded_vocab_size - orig_vocab_size, padded_vocab_size), flush=True)
+    if args.rank == 0:
+        print(' > padded vocab (size: {}) with {} dummy tokens (new size: {})'.format(
+            orig_vocab_size, padded_vocab_size - orig_vocab_size, padded_vocab_size), flush=True)
     return padded_vocab_size
 

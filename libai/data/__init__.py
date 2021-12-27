@@ -14,25 +14,29 @@
 # limitations under the License.
 
 from .bert_dataset import BertDataset
+from .gpt_dataset import GPT2Dataset
 from .data_utils import get_indexed_dataset, get_prefixes_and_weights
 from .split_dataset import split_ds
 from .blendable_dataset import BlendableDataset
 
-def build_single_dataset(args, tokenizer, data_prefix, data_impl, split=None, skip_warmup=False):
+def build_single_dataset(args, tokenizer, data_prefix, data_impl, split=None, skip_warmup=False, data_type='gpt'):
     indexed_dataset = get_indexed_dataset(data_prefix, data_impl, skip_warmup=skip_warmup)
-    total_dataset = BertDataset(tokenizer, data_prefix, indexed_dataset, args.max_seq_length, 
-                                args.mask_lm_prob, args.binary_head)
+    if data_type == 'bert':
+        total_dataset = BertDataset(tokenizer, data_prefix, indexed_dataset, max_seq_length=args.max_seq_length, 
+                                    mask_lm_prob=args.mask_lm_prob, binary_head=args.binary_head)
+    else:
+        total_dataset = GPT2Dataset(tokenizer, data_prefix, indexed_dataset, max_seq_length=args.max_seq_length)
     train_dataset, valid_dataset, test_dataset = split_ds(total_dataset, split)
     return train_dataset, valid_dataset, test_dataset
 
-def build_dataset(args, tokenizer, data_prefix, data_impl, split=None, skip_warmup=False):
+def build_dataset(args, tokenizer, data_prefix, data_impl, split=None, skip_warmup=False, data_type='gpt'):
     if len(data_prefix) == 1:
-        return build_single_dataset(args, tokenizer, data_prefix[0], data_impl, split, skip_warmup)
+        return build_single_dataset(args, tokenizer, data_prefix[0], data_impl, split, skip_warmup, data_type)
     
     prefixes, weights = get_prefixes_and_weights(data_prefix)
     train_datasets, valid_datasets, test_datasets = [], [], []
     for i in range(len(prefixes)):
-        train_dataset, valid_dataset, test_dataset = build_single_dataset(args, tokenizer, data_prefix[i], data_impl, split, skip_warmup)
+        train_dataset, valid_dataset, test_dataset = build_single_dataset(args, tokenizer, data_prefix[i], data_impl, split, skip_warmup, data_type)
         if train_dataset:
             train_datasets.append(train_dataset)
         if valid_dataset:

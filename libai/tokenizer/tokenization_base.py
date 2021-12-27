@@ -13,12 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""copy from HuggingFace transformer repo, to tokenize the sentence. This class """
+"""copy from HuggingFace transformer repo, to tokenize the sentence. 
+This class only focus on tokenization, converting token to id and their inverse operation. 
+It does not construct inputs using special symbols."""
+
 import logging
 import os
 import json
 import copy
 from io import open
+import unicodedata
 from typing import Dict, List, Optional, Union
 from libai.utils.file_utils import cached_path
 
@@ -598,8 +602,6 @@ class PreTrainedTokenizer(object):
                     in self.added_tokens_encoder and token not in self.all_special_tokens \
                     else [token] for token in tokenized_text), [])
 
-        text, kwargs = self.prepare_for_tokenization(text, **kwargs)
-
         added_tokens = list(self.added_tokens_encoder.keys()) + self.all_special_tokens
         tokenized_text = split_on_tokens(added_tokens, text)
         return tokenized_text
@@ -639,10 +641,14 @@ class PreTrainedTokenizer(object):
         raise NotImplementedError
 
     def encode(self, text):
-        if isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], str):
-            return self.convert_tokens_to_ids(text)
+        if isinstance(text, str):
+            tokens = self.tokenize(text)
+            return self.convert_tokens_to_ids(tokens)
+        elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], str):
+            tokens = [self.tokenize(t) for t in text]
+            return self.convert_tokens_to_ids(tokens)
         elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], int):
-                return text
+            return text
         else:
             raise ValueError("Input is not valid. Should be a string, a list/tuple of strings or a list/tuple of integers.")
 

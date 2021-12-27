@@ -16,7 +16,7 @@
 """Blendable dataset."""
 
 import time
-
+from collections import OrderedDict
 import numpy as np
 import oneflow as flow
 
@@ -62,3 +62,17 @@ class BlendableDataset(flow.utils.data.Dataset):
         dataset_idx = self.dataset_index[idx]
         sample_idx = self.dataset_sample_index[idx]
         return self.datasets[dataset_idx][sample_idx]
+
+    @property
+    def supports_prefetch(self):
+        return all(d.supports_prefetch for d in self.datasets)
+
+    def prefetch(self, indices):
+        group_by_dataset = OrderedDict(list)
+        for idx in indices:
+            dataset_idx = self.dataset_index[idx]
+            sample_idx = self.dataset_sample_index[idx]
+            group_by_dataset[dataset_idx].append(sample_idx)
+        
+        for dataset_idx, group_indice in group_by_dataset:
+            self.datasets[dataset_idx].prefetch(group_indice)
