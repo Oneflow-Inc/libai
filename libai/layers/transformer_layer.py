@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
 import oneflow.nn as nn
 
 from libai.utils import distributed as dist
@@ -79,6 +78,7 @@ class TransformerLayer(nn.Module):
         self.bias_gelu_fusion = bias_gelu_fusion
         self.bias_dropout_fusion = bias_dropout_fusion
         self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
+        self.apply_query_key_layer_scaling = apply_query_key_layer_scaling
 
         self.init_method = init_method
         if output_layer_init_method is None:
