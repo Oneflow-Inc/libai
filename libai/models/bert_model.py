@@ -412,7 +412,7 @@ class BertForPreTraining(nn.Module):
         self.cls = BertPreTrainingHeads(
             cfg.hidden_size, init_method_normal(cfg.initializer_range)
         )
-        self.lm_logits = LMLogits(cfg.vocab_size)
+        self.lm_logits = LMLogits(cfg.vocab_size, bias=True)
         self.loss_func = BertLoss()
 
     def forward(
