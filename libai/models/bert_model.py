@@ -178,7 +178,7 @@ class BertPooler(nn.Module):
         """Just "pool" the model by simply taking the [CLS] token corresponding to the first token.
         """
         # hidden_states: [bsz, seq_len, hidden_size]
-        select_token_tensor = hidden_states[:, 0]
+        select_token_tensor = hidden_states[:, 0, :]
         pooled_output = self.dense(select_token_tensor)
         pooled_output = self.activation_func(pooled_output)
         return pooled_output
@@ -393,18 +393,12 @@ class BertModel(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
         }
 
-    def forward(
-        self, input_ids, attention_mask, tokentype_ids=None, pooling_sequence_index=0,
-    ):
+    def forward(self, input_ids, attention_mask, tokentype_ids=None):
         extended_attention_mask = self.extended_attn_mask(attention_mask)
 
         embedding_output = self.embeddings(input_ids, tokentype_ids)
         encoder_output = self.encoder(embedding_output, extended_attention_mask)
-        pooled_output = (
-            self.pooler(encoder_output, pooling_sequence_index)
-            if self.pooler is not None
-            else None
-        )
+        pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output
 
     def word_embeddings_weight(self):
@@ -416,9 +410,7 @@ class BertForPreTraining(nn.Module):
         super().__init__()
         self.bert = BertModel(cfg)
         self.cls = BertPreTrainingHeads(
-            cfg.hidden_size,
-            init_method_normal(cfg.initializer_range),
-            cfg.bias_gelu_fusion,
+            cfg.hidden_size, init_method_normal(cfg.initializer_range)
         )
         self.lm_logits = LMLogits(cfg.vocab_size)
         self.loss_func = BertLoss()
@@ -431,11 +423,8 @@ class BertForPreTraining(nn.Module):
         ns_labels=None,
         lm_labels=None,
         loss_mask=None,
-        pooling_sequence_index=0,
     ):
-        outputs = self.bert(
-            input_ids, attention_mask, tokentype_ids, pooling_sequence_index
-        )
+        outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 
         sequence_output, seq_relationship_score = self.cls(
