@@ -20,7 +20,8 @@ from .checkpointing import ActivationCheckpointing
 from .mlp import MLP
 from .layer_norm import LayerNorm
 from .transformer_layer import TransformerLayer
-from .cross_entropy import ParallelCrossEntropyLossWithMask
+from .cross_entropy import ParallelCrossEntropyLoss
+from .lm_logits import LMLogits
 
 
 __all__ = [
@@ -34,5 +35,6 @@ __all__ = [
     "MLP",
     "LayerNorm",
     "TransformerLayer",
-    "ParallelCrossEntropyLossWithMask",
+    "ParallelCrossEntropyLoss",
+    "LMLogits",
 ]
