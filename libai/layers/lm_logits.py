@@ -24,7 +24,7 @@ class LMLogits(nn.Module):
         super().__init__()
         self.bias = (
             nn.Parameter(
-                flow.empty(
+                flow.zeros(
                     (vocab_size,),
                     dtype=flow.float32,
                     placement=dist.get_layer_placement(-1),
@@ -34,8 +34,6 @@ class LMLogits(nn.Module):
             if bias
             else None
         )
-        if self.bias:
-            nn.init.zeros_(self.bias)
 
     def forward(self, input, word_embeddings):
         """LM logits using word embedding weights """
@@ -58,6 +56,6 @@ class LMLogits(nn.Module):
         input = input.to_consistent(grad_sbp=input.sbp)
 
         logits = flow._C.matmul(input, w, transpose_b=True)
-        if self.bias:
+        if self.bias is not None:
             logits = logits + self.bias
         return logits
