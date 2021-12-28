@@ -18,7 +18,6 @@ import sys
 
 sys.path.append(".")
 from libai.trainer import DefaultTrainer, default_setup
-from libai.trainer.trainer import HookBase
 
 # NOTE: Temporarily use yacs as config
 from yacs.config import CfgNode
