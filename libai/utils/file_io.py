@@ -843,7 +843,7 @@ class OneDrivePathHandler(HTTPURLHandler):
         return super()._get_local_path(os.fspath(direct_url), force=force, **kwargs)
 
 
-class PathManager:
+class PathManagerBase:
     """
     A class for users to open generic paths or translate generic paths to file names.
     path_manager.method(path) will do the following:
@@ -1344,7 +1344,7 @@ class PathManagerFactory:
     pm_list = {}
 
     @staticmethod
-    def get(key = GLOBAL_PATH_MANAGER) -> PathManager:
+    def get(key = GLOBAL_PATH_MANAGER) -> PathManagerBase:
         """
         Get the path manager instance associated with a key.
         A new instance will be created if there is no existing
@@ -1354,7 +1354,7 @@ class PathManagerFactory:
             key (str):
         """
         if key not in PathManagerFactory.pm_list:
-            PathManagerFactory.pm_list[key] = PathManager()
+            PathManagerFactory.pm_list[key] = PathManagerBase()
         return PathManagerFactory.pm_list[key]
 
     @staticmethod
@@ -1375,3 +1375,8 @@ This global instance is provided for backward compatibility, but it is
 recommended that clients use PathManagerFactory
 """
 g_pathmgr = PathManagerFactory.get()
+
+
+PathManager = PathManagerBase()
+PathManager.register_handler(HTTPURLHandler())
+PathManager.register_handler(OneDrivePathHandler())
