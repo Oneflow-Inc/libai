@@ -101,8 +101,8 @@ class Checkpointer(object):
         basename = name
         save_dir = os.path.join(self.save_dir, basename)
         assert os.path.basename(save_dir) == basename, basename
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir, exist_ok=True)
+        if not self.path_manager.exists(save_dir):
+            self.path_manager.mkdirs(save_dir)
         self.logger.info("Saving checkpoint to {}".format(save_dir))
 
         for save_name in data:
@@ -110,8 +110,8 @@ class Checkpointer(object):
                 continue
             save_file = os.path.join(save_dir, save_name)
             # If directory existing, remove it for saving
-            if os.path.exists(save_file):
-                os.makedirs(save_file, exist_ok=True)
+            if self.path_manager.exists(save_file):
+                self.path_manager.mkdirs(save_file)
 
             if self.cfg.mode == "graph":
                 flow.save(data[save_name], save_file, consistent_dst_rank=0)
