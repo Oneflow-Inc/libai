@@ -25,6 +25,7 @@ import oneflow as flow
 from oneflow import nn
 from termcolor import colored
 
+from libai.utils.file_io import HTTPURLHandler, PathManagerBase
 
 class _IncompatibleKeys(
     NamedTuple(
@@ -78,6 +79,10 @@ class Checkpointer(object):
         self.logger = logging.getLogger(__name__)
         self.save_dir = save_dir
         self.save_to_disk = save_to_disk
+        # Default PathManager, support HTTP URLs
+        # A user may want to use a different project-specific PathManagerBase'
+        self.path_manager: PathManagerBase = PathManagerBase()
+        self.path_manager.register_handler(HTTPURLHandler())
 
     def save(self, name: str, **kwargs: Dict[str, str]):
         """
@@ -160,7 +165,7 @@ class Checkpointer(object):
             bool: whether a checkpoint exists in the target directory.
         """
         save_file = os.path.join(self.save_dir, "last_checkpoint")
-        return os.path.exists(save_file)
+        return self.path_manager.exists(save_file)
 
     def get_checkpoint_file(self):
         """
@@ -176,6 +181,7 @@ class Checkpointer(object):
             # deleted by a separate process
             return ""
         return os.path.join(self.save_dir, last_saved)
+
 
     def resume_or_load(self, path: str, *, resume: bool = True):
         """
@@ -201,8 +207,8 @@ class Checkpointer(object):
             last_filename_basename (str): the basename of the last filename.
         """
         save_file = os.path.join(self.save_dir, "last_checkpoint")
-        with open(save_file, "w") as f:
-            f.write(last_filename_basename)
+        with self.path_manager.open(save_file, "w") as f:
+            f.write(last_filename_basename)  # pyre-ignore
 
     def _load_file(self, f: str):
         """
@@ -333,6 +339,7 @@ class PeriodicCheckpointer:
         self.max_to_keep = max_to_keep
         self.recent_checkpoints: List[str] = []
         self.file_prefix = file_prefix
+        self.path_manager: PathManagerBase = checkpointer.path_manager
 
     def step(self, iteration: int, **kwargs: Any):
         """
@@ -355,10 +362,10 @@ class PeriodicCheckpointer:
                 self.recent_checkpoints.append(self.checkpointer.get_checkpoint_file())
                 if len(self.recent_checkpoints) > self.max_to_keep:
                     file_to_delete = self.recent_checkpoints.pop(0)
-                    if os.path.exists(file_to_delete) and not file_to_delete.endswith(
-                        "{}_{:07d}".format(self.file_prefix, iteration)
-                    ):
-                        os.remove(file_to_delete)
+                    if self.path_manager.exists(
+                        file_to_delete
+                    ) and not file_to_delete.endswith("{}_{:07d}".format(self.file_prefix, iteration)):
+                        self.path_manager.rm(file_to_delete)
 
         if self.max_iter is not None:
             if iteration >= self.max_iter - 1:
