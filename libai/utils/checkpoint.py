@@ -222,7 +222,7 @@ class Checkpointer(object):
                 to torch.Tensor or numpy arrays.
         """
         data = {}
-        keys = os.listdir(f)
+        keys = self.path_manager.ls(f)
         for key in keys:
             data[key] = flow.load(os.path.join(f, key))
         data["iter"] = int(f.split("_")[-1])
