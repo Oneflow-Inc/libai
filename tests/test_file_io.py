@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Unittests followed https://github.com/facebookresearch/iopath/blob/v0.1.8/tests/test_file_io.py
+"""
+
 import os
 import shutil
 import tempfile
@@ -24,6 +28,7 @@ from unittest.mock import MagicMock, patch
 
 from libai.utils import file_io
 from libai.utils.file_io import (
+    HTTPURLHandler,
     LazyPath,
     OneDrivePathHandler,
     PathManagerBase,
@@ -321,17 +326,6 @@ class TestLazyPath(unittest.TestCase):
         _ = os.fspath(x)
         self.assertEqual(x[0], "a")
 
-
-class TestOneDrive(unittest.TestCase):
-    _url = "https://1drv.ms/u/s!Aus8VCZ_C_33gQbJsUPTIj3rQu99"
-
-    def test_one_drive_download(self) -> None:
-        _direct_url = OneDrivePathHandler().create_one_drive_direct_download(self._url)
-        _gt_url = (
-            "https://api.onedrive.com/v1.0/shares/u!aHR0cHM6Ly8xZHJ2Lm1zL3UvcyFBd"
-            + "XM4VkNaX0NfMzNnUWJKc1VQVElqM3JRdTk5/root/content"
-        )
-        self.assertEqual(_direct_url, _gt_url)
 
 if __name__ == "__main__":
     unittest.main()
