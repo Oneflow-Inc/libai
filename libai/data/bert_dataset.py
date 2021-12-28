@@ -38,12 +38,13 @@ class BertDataset(flow.utils.data.Dataset):
     对于bert，根据max_num_samples和num_epochs共同决定训练多少步，取决于哪个少，设哪个。
     """
     def __init__(self, tokenizer, data_prefix, indexed_dataset, 
-                 max_seq_length=512, mask_lm_prob=.15, 
+                 max_seq_length=512, mask_lm_prob=.15, short_seq_prob=.0,
                  max_preds_per_seq=None, 
                  seed=1234, binary_head=True):
         self.seed = seed
         self.mask_lm_prob = mask_lm_prob
         self.max_seq_length = max_seq_length
+        self.short_seq_prob = short_seq_prob
         self.binary_head = binary_head
         if max_preds_per_seq is None:
             max_preds_per_seq = math.ceil(max_seq_length * mask_lm_prob / 10) * 10
@@ -51,6 +52,7 @@ class BertDataset(flow.utils.data.Dataset):
 
         self.dataset = SentenceIndexedDataset(data_prefix, indexed_dataset, 
                                               max_seq_length=self.max_seq_length,
+                                              short_seq_prob=self.short_seq_prob,
                                               binary_head=self.binary_head)
         
         self.tokenizer = tokenizer

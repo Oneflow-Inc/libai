@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import numpy as np
 import oneflow as flow
 
-from libai.utils import print_rank_0
-
+logger = logging.getLogger(__name__)
 
 def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
     """
@@ -43,11 +43,11 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
     if load_splits is not None:
         inds = np.load(load_splits)
         assert len(inds) == ds_len
-        print_rank_0(f"Load split indices from {load_splits}")
+        logger.info(f"Load split indices from {load_splits}")
     elif save_splits is not None:
         if flow.env.get_rank() == 0:
             np.save(save_splits, inds)
-            print(f"Save split indices to {save_splits}")
+            logger.info(f"Save split indices to {save_splits}")
     start_idx = 0
     residual_idx = 0
     rtn_ds = [None]*len(split)

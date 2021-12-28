@@ -13,15 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.utils import print_rank_0
+import logging
 from .tokenization_bert import BertTokenizer
 from .tokenization_gpt2 import GPT2Tokenizer
 
+logger = logging.getLogger(__name__)
+
 def build_tokenizer(args):
     """Initialize tokenizer."""
-    if args.rank == 0:
-        print('> building {} tokenizer ...'.format(args.tokenizer_type),
-              flush=True)
+    logger.info('building {} tokenizer ...'.format(args.tokenizer_type))
 
     # Select and instantiate the tokenizer.
     assert args.vocab_file is not None
@@ -55,8 +55,7 @@ def _vocab_size_with_padding(orig_vocab_size, args):
     multiple = args.make_vocab_size_divisible_by * args.tensor_model_parallel_size
     while (padded_vocab_size % multiple) != 0:
         padded_vocab_size += 1
-    if args.rank == 0:
-        print(' > padded vocab (size: {}) with {} dummy tokens (new size: {})'.format(
-            orig_vocab_size, padded_vocab_size - orig_vocab_size, padded_vocab_size), flush=True)
+    logger.info(' > padded vocab (size: {}) with {} dummy tokens (new size: {})'.format(
+            orig_vocab_size, padded_vocab_size - orig_vocab_size, padded_vocab_size))
     return padded_vocab_size
 

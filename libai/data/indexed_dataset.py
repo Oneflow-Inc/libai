@@ -14,12 +14,14 @@
 from functools import lru_cache
 import os
 import shutil
+import logging
 import struct
 from itertools import accumulate
 
 import numpy as np
 import oneflow as flow
-from libai.utils import print_rank_0
+
+logger = logging.getLogger(__name__)
 
 
 def __best_fitting_dtype(vocab_size=None):
@@ -43,8 +45,8 @@ def infer_dataset_impl(path):
             else:
                 return None
     else:
-        print(f"Dataset does not exist: {path}")
-        print("Path should be a basename that both .idx and .bin can be appended to get full filenames.")
+        logger.info(f"Dataset does not exist: {path}")
+        logger.info("Path should be a basename that both .idx and .bin can be appended to get full filenames.")
         return None
 
 
@@ -57,8 +59,8 @@ def make_builder(out_file, impl, vocab_size=None):
 
 def make_dataset(path, impl, skip_warmup=False):
     if not IndexedDataset.exists(path):
-        print(f"Dataset does not exist: {path}")
-        print("Path should be a basename that both .idx and .bin can be appended to get full filenames.")
+        logger.info(f"Dataset does not exist: {path}")
+        logger.info("Path should be a basename that both .idx and .bin can be appended to get full filenames.")
         return None
     if impl == "infer":
         impl = infer_dataset_impl(path)
@@ -68,7 +70,7 @@ def make_dataset(path, impl, skip_warmup=False):
         return IndexedCachedDataset(path)
     elif impl == "mmap" and MMapIndexedDataset.exists(path):
         return MMapIndexedDataset(path, skip_warmup)
-    print(f"Unknown dataset implementation: {impl}")
+    logger.info(f"Unknown dataset implementation: {impl}")
     return None
 
 
@@ -402,20 +404,20 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
                 offset = stream.tell()
 
             if not skip_warmup:
-                print_rank_0("    warming up index mmap file...")
+                logger.info("warming up index mmap file...")
                 _warmup_mmap_file(path)
 
             self._bin_buffer_mmap = np.memmap(path, mode="r", order="C")
             self._bin_buffer = memoryview(self._bin_buffer_mmap)
-            print_rank_0("    reading sizes...")
+            logger.info("reading sizes...")
             self._sizes = np.frombuffer(
                 self._bin_buffer, dtype=np.int32, count=self._len, offset=offset
             )
-            print_rank_0("    reading pointers...")
+            logger.info("reading pointers...")
             self._pointers = np.frombuffer(
                 self._bin_buffer, dtype=np.int64, count=self._len, offset=offset + self._sizes.nbytes,
             )
-            print_rank_0("    reading document index...")
+            logger.info("reading document index...")
             self._doc_idx = np.frombuffer(
                 self._bin_buffer, dtype=np.int64, count=self._doc_count, offset=offset + self._sizes.nbytes + self._pointers.nbytes,
             )
@@ -463,13 +465,13 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
         self._index = self.Index(index_file_path(self._path), skip_warmup)
 
         if not skip_warmup:
-            print_rank_0("    warming up data mmap file...")
+            logger.info("warming up data mmap file...")
             _warmup_mmap_file(data_file_path(self._path))
-        print_rank_0("    creating numpy buffer of mmap...")
+        logger.info("creating numpy buffer of mmap...")
         self._bin_buffer_mmap = np.memmap(
             data_file_path(self._path), mode="r", order="C"
         )
-        print_rank_0("    creating memory view of numpy buffer...")
+        logger.info("creating memory view of numpy buffer...")
         self._bin_buffer = memoryview(self._bin_buffer_mmap)
 
     def __del__(self):

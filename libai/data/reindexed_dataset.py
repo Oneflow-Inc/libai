@@ -17,20 +17,22 @@
 import os
 import math
 import time
+import logging
 import numpy as np
 import oneflow as flow
 
 from libai.data import helpers
-from libai.utils import print_rank_0
 from .indexed_dataset import make_dataset as make_indexed_dataset
 
+logger = logging.getLogger(__name__)
 
-def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, binary_head):
+def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_prob, binary_head):
     """Get a list that maps a sample index to a starting sentence index, end sentence index, and length"""
 
     # Filename of the index mapping
     indexmap_filename = data_prefix
     indexmap_filename += "_{}msl".format(max_seq_length)
+    indexmap_filename += "_{}ssp".format(short_seq_prob)
     indexmap_filename += "_sample_mapping.npy"
 
     documents = indexed_dataset.doc_idx
@@ -38,8 +40,8 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, binary_hea
     
     # Build the indexed mapping if not exist.
     if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename):
-        print(
-            " > WARNING: could not find index map file {}, building "
+        logger.info(
+            "WARNING: could not find index map file {}, building "
             "the indices on rank 0 ...".format(indexmap_filename)
         )
 
@@ -50,20 +52,21 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, binary_hea
         # Build samples mapping
         verbose = flow.env.get_rank() == 0
         start_time = time.time()
-        print_rank_0(" > building samples index mapping for {} ...".format(data_prefix))
+        logger.info("building samples index mapping for {} ...".format(data_prefix))
         samples_mapping = helpers.build_mapping(
             documents,  # 包含所有文档序号的向量，一个文档可能对应多个行
             sizes,  # 包含每个行的长度的向量
             max_seq_length,
+            short_seq_prob,
             verbose,
             2 if binary_head else 1,
         )
-        print_rank_0(" > done building samples index maping")
+        logger.info("done building samples index maping")
         np.save(indexmap_filename, samples_mapping, allow_pickle=True)
-        print_rank_0(" > saved the index mapping in {}".format(indexmap_filename))
+        logger.info("saved the index mapping in {}".format(indexmap_filename))
         # Make sure all the ranks have built the mapping
-        print_rank_0(
-            " > elapsed time to build and save samples mapping "
+        logger.info(
+            "elapsed time to build and save samples mapping "
             "(seconds): {:4f}".format(time.time() - start_time)
         )
     # FIXME(lxy): 这里只考虑了数据并行时的同步问题
@@ -79,13 +82,11 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, binary_hea
     #     torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group()))
 
     # Load indexed dataset.
-    print_rank_0(" > loading indexed mapping from {}".format(indexmap_filename))
+    logger.info("loading indexed mapping from {}".format(indexmap_filename))
     start_time = time.time()
     samples_mapping = np.load(indexmap_filename, allow_pickle=True, mmap_mode="r")
-    print_rank_0(
-        "    loaded indexed file in {:3.3f} seconds".format(time.time() - start_time)
-    )
-    print_rank_0("    total number of samples: {}".format(samples_mapping.shape[0]))
+    logger.info("loaded indexed file in {:3.3f} seconds".format(time.time() - start_time))
+    logger.info("total number of samples: {}".format(samples_mapping.shape[0]))
 
     return samples_mapping
 
@@ -96,14 +97,16 @@ class SentenceIndexedDataset(flow.utils.data.Dataset):
     When it does not reach maximum length, the pad will be filled later. All the sentences in it are complete. 
     `binary_head` controls whether to return one or two sentences, which will be used in Bert.
     """
-    def __init__(self, data_prefix, indexed_dataset, max_seq_length=512, binary_head=False):
+    def __init__(self, data_prefix, indexed_dataset, max_seq_length=512, short_seq_prob=0., binary_head=False):
         self.max_seq_length = max_seq_length
+        self.short_seq_prob = short_seq_prob
         self.binary_head = binary_head
         self.indexed_dataset = indexed_dataset
 
         self.samples_mapping = get_samples_mapping(data_prefix, 
                                                    self.indexed_dataset, 
                                                    self.max_seq_length, 
+                                                   self.short_seq_prob,
                                                    self.binary_head)
 
     def __len__(self):
@@ -138,15 +141,14 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
     
     # Build the indexed mapping if not exist.
     if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename):
-        print_rank_0(' > WARNING: could not find index map files, building '
-                        'the indices on rank 0 ...')
+        logger.info('could not find index map files, building the indices on rank 0 ...')
 
         # sample-idx.
         start_time = time.time()
         sample_idx = helpers.build_sample_idx(documents, sizes, max_seq_length, num_tokens)
         np.save(indexmap_filename, sample_idx, allow_pickle=True)
-        print_rank_0(' > elasped time to build and save sample-idx mapping '
-                        '(seconds): {:4f}'.format(time.time() - start_time))
+        logger.info('elasped time to build and save sample-idx mapping '
+                    '(seconds): {:4f}'.format(time.time() - start_time))
 
     flow._oneflow_internal.eager.multi_client.Sync()
     # This should be a barrier but nccl barrier assumes
@@ -161,12 +163,10 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
 
     # Load mappings.
     start_time = time.time()
-    print_rank_0(' > loading sample-idx mapping from {}'.format(
-        indexmap_filename))
+    logger.info(' > loading sample-idx mapping from {}'.format(indexmap_filename))
     sample_idx = np.load(indexmap_filename, allow_pickle=True, mmap_mode='r')
-    print_rank_0('    loaded indexed file in {:3.3f} seconds'.format(
-        time.time() - start_time))
-    print_rank_0('    total number of samples: {}'.format(sample_idx.shape[0]))
+    logger.info('loaded indexed file in {:3.3f} seconds'.format(time.time() - start_time))
+    logger.info('total number of samples: {}'.format(sample_idx.shape[0]))
 
     return sample_idx
 

@@ -35,8 +35,8 @@ def build_dataset(args, tokenizer, data_prefix, data_impl, split=None, skip_warm
     
     prefixes, weights = get_prefixes_and_weights(data_prefix)
     train_datasets, valid_datasets, test_datasets = [], [], []
-    for i in range(len(prefixes)):
-        train_dataset, valid_dataset, test_dataset = build_single_dataset(args, tokenizer, data_prefix[i], data_impl, split, skip_warmup, data_type)
+    for prefix in range(prefixes):
+        train_dataset, valid_dataset, test_dataset = build_single_dataset(args, tokenizer, prefix, data_impl, split, skip_warmup, data_type)
         if train_dataset:
             train_datasets.append(train_dataset)
         if valid_dataset:

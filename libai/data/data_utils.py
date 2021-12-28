@@ -15,30 +15,30 @@
 
 
 import time
+import logging
 import numpy as np
 import oneflow as flow
-from libai.utils import print_rank_0
-
 from .indexed_dataset import make_dataset as make_indexed_dataset
 
+logger = logging.getLogger(__name__)
 
 def get_indexed_dataset(data_prefix, data_impl, skip_warmup):
 
-    print_rank_0(" > building dataset index ...")
+    logger.info("building dataset index ...")
 
     start_time = time.time()
     indexed_dataset = make_indexed_dataset(data_prefix, data_impl, skip_warmup)
     assert indexed_dataset.sizes.shape[0] == indexed_dataset.doc_idx[-1]
-    print_rank_0(
-        " > finished creating indexed dataset in {:4f} "
+    logger.info(
+        "inished creating indexed dataset in {:4f} "
         "seconds".format(time.time() - start_time)
     )
 
-    print_rank_0(" > indexed dataset stats:")
-    print_rank_0(
-        "    number of documents: {}".format(indexed_dataset.doc_idx.shape[0] - 1)
+    logger.info("indexed dataset stats:")
+    logger.info(
+        "number of documents: {}".format(indexed_dataset.doc_idx.shape[0] - 1)
     )
-    print_rank_0("    number of sentences: {}".format(indexed_dataset.sizes.shape[0]))
+    logger.info("number of sentences: {}".format(indexed_dataset.sizes.shape[0]))
 
     return indexed_dataset
 

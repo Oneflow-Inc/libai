@@ -16,12 +16,14 @@
 """Blendable dataset."""
 
 import time
+import logging
+
 from collections import OrderedDict
 import numpy as np
 import oneflow as flow
 
-from libai.utils import print_rank_0
 
+logger = logging.getLogger(__name__)
 
 class BlendableDataset(flow.utils.data.Dataset):
 
@@ -48,12 +50,13 @@ class BlendableDataset(flow.utils.data.Dataset):
         self.dataset_sample_index = np.zeros(self.size, dtype=np.int64)
 
         from libai.data import helpers
+        logger.info("building blending indices...")
         helpers.build_blending_indices(self.dataset_index,
                                        self.dataset_sample_index,
                                        weights, num_datasets, self.size,
                                        flow.env.get_rank() == 0)
-        print_rank_0('> elapsed time for building blendable dataset indices: '
-                     '{:.2f} (sec)'.format(time.time() - start_time))
+        logger.info("> elapsed time for building blendable dataset indices: "
+                    "{:.2f} (sec)".format(time.time() - start_time))
 
     def __len__(self):
         return self.size

@@ -178,11 +178,26 @@ py::array build_sample_idx(const py::array_t<int64_t> &doc_idx_,
                    free_when_done);            // numpy array references
 }
 
+inline int32_t get_target_sample_len(
+    const int32_t short_seq_ratio, 
+    const int32_t max_seq_length, 
+    std::mt19937& rand32_gen) {
+  if (short_seq_ratio == 0) {
+    return max_seq_length;
+  }
+  const auto random_number = rand32_gen();
+  if ((random_number % short_seq_ratio) == 0) {
+    return 2 + random_number % (max_seq_length - 1);
+  }
+  return max_seq_length;
+}
+
 template <typename DocIdx>
 py::array build_mapping_impl(
     const py::array_t<int64_t> &docs_,
     const py::array_t<int64_t> &sizes_, 
     const int32_t max_seq_length,
+    const double short_seq_prob,
     const bool verbose, 
     const int32_t min_num_sent) {
   /* Build a mapping of (start-index, end-index, sequence-length) where
@@ -192,10 +207,16 @@ py::array build_mapping_impl(
 
   // Consistency checks.
   assert(max_seq_length > 1);
+  assert(short_seq_prob >= 0.0);
+  assert(short_seq_prob <= 1.0);
 
   // Remove bound checks.
   auto docs = docs_.unchecked<1>();
   auto sizes = sizes_.unchecked<1>();
+
+  if (short_seq_prob > 0) {
+    short_seq_ratio = static_cast<int32_t>(round(1.0 / short_seq_prob));
+  }
 
   if (verbose) {
     const auto sent_start_index = docs[0];
@@ -212,6 +233,10 @@ py::array build_mapping_impl(
          << std::flush;
     cout << "     maximum sequence length:        " << max_seq_length << endl
          << std::flush;
+    cout << "     short sequence probability:     " << short_seq_prob << endl
+         << std::flush;
+    cout << "     short sequence ratio (1/prob):  " << short_seq_ratio << endl
+         << std::flush;
   }
 
   // Mapping and it's length (1D).
@@ -222,6 +247,10 @@ py::array build_mapping_impl(
   // and allocate memory and in the second iteration populate the map.
   bool second = false;
   for (int32_t iteration = 0; iteration < 2; ++iteration) {
+
+    // todo(dangkai): we did not set random seed here, so regenerated sample indices may be different.
+    // maybe it works, if does not work, fix it.
+    std::mt19937 rand32_gen();
 
     // Set the flag on second iteration.
     second = (iteration == 1);
@@ -279,6 +308,7 @@ py::array build_mapping_impl(
         // Set values.
         auto seq_len = int64_t{0};
         auto num_sent = int64_t{0};
+        auto target_seq_len = get_target_sample_len(short_seq_ratio, max_seq_length, rand32_gen);
 
         // Loop through sentences.
         for (auto sent_index = sent_index_first; sent_index < sent_index_last;
@@ -293,7 +323,7 @@ py::array build_mapping_impl(
           // and if not only one sentence is left in the document.
           // and if we have at least two sentneces.
           // and if we have reached end of the document.
-          if (((seq_len >= max_seq_length) && (num_remain_sent > 1) &&
+          if (((seq_len >= target_seq_len) && (num_remain_sent > 1) &&
                 (num_sent >= min_num_sent)) ||
               (num_remain_sent == 0)) {
 
@@ -310,12 +340,13 @@ py::array build_mapping_impl(
               const auto map_index_0 = 3 * map_index;
               maps[map_index_0] = static_cast<DocIdx>(prev_start_index);
               maps[map_index_0 + 1] = static_cast<DocIdx>(sent_index + 1);
-              maps[map_index_0 + 2] = static_cast<DocIdx>(max_seq_length);
+              maps[map_index_0 + 2] = static_cast<DocIdx>(target_seq_len);
             }
 
             // Update indices / counters.
             ++map_index;
             prev_start_index = sent_index + 1;
+            target_seq_len = get_target_sample_len(short_seq_ratio, max_seq_length, rand32_gen);
             seq_len = 0;
             num_sent = 0;
           }
@@ -361,6 +392,7 @@ py::array build_mapping_impl(
 py::array build_mapping(const py::array_t<int64_t> &docs_,
                         const py::array_t<int64_t> &sizes_,
                         const int max_seq_length,
+                        const double short_seq_prob,
                         const bool verbose,
                         const int32_t min_num_sent) {
 
@@ -368,12 +400,12 @@ py::array build_mapping(const py::array_t<int64_t> &docs_,
     if (verbose) {
       cout << "    using uint64 for data mapping..." << endl << std::flush;
     }
-    return build_mapping_impl<uint64_t>(docs_, sizes_, max_seq_length, verbose, min_num_sent);
+    return build_mapping_impl<uint64_t>(docs_, sizes_, max_seq_length, short_seq_prob, verbose, min_num_sent);
   } else {
     if (verbose) {
       cout << "    using uint32 for data mapping..." << endl << std::flush;
     }
-    return build_mapping_impl<uint32_t>(docs_, sizes_, max_seq_length, verbose, min_num_sent);
+    return build_mapping_impl<uint32_t>(docs_, sizes_, max_seq_length, short_seq_prob, verbose, min_num_sent);
   }
 }
 
