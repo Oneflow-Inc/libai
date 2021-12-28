@@ -48,12 +48,12 @@ class Checkpointer(object):
     A checkpointer that can save/load model as well as extra checkpointable
     objects.
     """
-    # NOTE: only support data_parallel for saving model
+
+    # NOTE: only support data/tensor parallel for saving model
     # TODO: save model: support model_parallel and pipeline parallel
 
     def __init__(
         self,
-        cfg,
         model: nn.Module,
         save_dir: str = "",
         *,
@@ -71,7 +71,6 @@ class Checkpointer(object):
                 example, it can be used like
                 `Checkpointer(model, "dir", optimizer=optimizer)`.
         """
-        self.cfg = cfg
         self.model = model
         self.checkpointables = copy.copy(checkpointables)
         self.logger = logging.getLogger(__name__)
@@ -107,12 +106,7 @@ class Checkpointer(object):
             if os.path.exists(save_file):
                 os.makedirs(save_file, exist_ok=True)
 
-            if self.cfg.mode == "graph":
-                flow.save(data[save_name], save_file, consistent_dst_rank=0)
-            elif self.cfg.mode == "eager":
-                flow.save(data[save_name], save_file)
-            else:
-                raise NotImplementedError
+            flow.save(data[save_name], save_file, consistent_dst_rank=0)
 
         self.tag_last_checkpoint(basename)
 
@@ -291,7 +285,7 @@ class Checkpointer(object):
                     "Unsupported type found in checkpoint! {}: {}".format(k, type(v))
                 )
             # If it's local tensor, convert it to consistent tensor.
-            if not v.is_consistent and self.cfg.mode == "graph":
+            if not v.is_consistent:
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
                     state_dict[k] = v.to_consistent(

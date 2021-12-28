@@ -161,11 +161,7 @@ class TrainerBase:
 
     def after_step(self):
         self.storage.iter = self.iter + 1
-        self.storage.samples = (
-            (self.iter - self.start_iter + 1)
-            * self.cfg.data_parallel_size
-            * self.cfg.micro_batch_size
-        )
+        self.storage.samples = (self.iter + 1) * self.cfg.train.global_batch_size
 
         for h in self._hooks:
             h.after_step()
@@ -183,8 +179,7 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        # TODO: local_only should be False, distributed.py should be fully functional
-        metrics_dict = {k: dist.tton(v, local_only=True) for k, v in loss_dict.items()}
+        metrics_dict = {k: dist.tton(v, local_only=False) for k, v in loss_dict.items()}
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
@@ -237,7 +232,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader_iter, optimizer, lr_scheduler):
+    def __init__(self, model, data_loader_iter, optimizer):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -254,11 +249,9 @@ class EagerTrainer(TrainerBase):
 
         model.train()
 
-        self.model = model.to("cuda")
+        self.model = model
         self._data_loader_iter = iter(data_loader_iter)
         self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
-        self.mode = "eager"
 
     def run_step(self, get_batch: Callable):
         """
@@ -268,7 +261,7 @@ class EagerTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter, self.mode)
+        data = get_batch(self._data_loader_iter)
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
@@ -298,7 +291,6 @@ class GraphTrainer(TrainerBase):
         graph.model.train()
         self._data_loader_iter = iter(data_loader_iter)
         self.graph = graph
-        self.mode = "graph"
 
     def run_step(self, get_batch: Callable):
         """
@@ -310,7 +302,7 @@ class GraphTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter, self.mode)
+        data = get_batch(self._data_loader_iter)
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
