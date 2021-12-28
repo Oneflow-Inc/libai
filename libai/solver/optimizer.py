@@ -36,25 +36,23 @@ class GradientClipType(Enum):
     VALUE = "value"
     NORM = "norm"
 
-def _create_gradient_clipper(cfg) -> _GradientClipper:
+def _create_gradient_clipper(clip_type: str, clip_value: float, norm_type: float) -> _GradientClipper:
     """
     Creates gradient clipping closure to clip by value or by norm,
     according to the provided config.
     """
-    cfg = copy.deepcopy(cfg)
 
-    # TODO: add optim.clip_gradient cfg into libai's default config file
     def clip_grad_norm(p: _GradientClipperInput):
-        nn.utils.clip_grad_norm_(p, cfg.optim.clip_gradient.clip_value, cfg.optim.clip_gradient.norm_type)
+        nn.utils.clip_grad_norm_(p, clip_value, norm_type)
     
     def clip_grad_value(p: _GradientClipperInput):
-        nn.utils.clip_grad_value_(p, cfg.optim.clip_gradient.clip_value)
+        nn.utils.clip_grad_value_(p, clip_value)
     
     _GRADIENT_CLIP_TYPE_TO_CLIPPER = {
         GradientClipType.VALUE: clip_grad_value,
         GradientClipType.NORM: clip_grad_norm,
     }
-    return _GRADIENT_CLIP_TYPE_TO_CLIPPER[GradientClipType(cfg.optim.clip_gradient.clip_type)]
+    return _GRADIENT_CLIP_TYPE_TO_CLIPPER[GradientClipType(clip_type)]
 
 
 def _generate_optimizer_class_with_gradient_clipping(
@@ -93,7 +91,7 @@ def _generate_optimizer_class_with_gradient_clipping(
 
 
 def maybe_add_gradient_clipping(
-    cfg, optimizer: Type[flow.optim.Optimizer]
+    enable_clip: bool, clip_type: str, clip_value: float, norm_type: float, optimizer: Type[flow.optim.Optimizer]
 ) -> Type[flow.optim.Optimizer]:
     """
     If gradient clipping is enabled through config options, wraps the existing
@@ -102,14 +100,17 @@ def maybe_add_gradient_clipping(
     include gradient clipping.
 
     Args:
-        cfg: configuration options
+        enable_clip: bool. Enable gradient clipping or not.
+        clip_type: float. Type of gradient clippint, choose from ["value" and "norm"].
+        clip_value: float. Maximum absolute value used for clipping gradients.
+        norm_type: float. Floating point number p for L-p norm to be used with the "norm" gradient clippint type;
         optimizer: type. A subclass of torch.optim.Optimizer
 
     Return:
         type: either the input `optimizer` (if gradient clipping is disabled), or
             a subclass of it with gradient clipping included in the `step` method.
     """
-    if not cfg.optim.clip_gradient.enable:
+    if not enable_clip:
         return optimizer
     if isinstance(optimizer, flow.optim.Optimizer):
         optimizer_type = type(optimizer)
@@ -117,7 +118,7 @@ def maybe_add_gradient_clipping(
         assert issubclass(optimizer, flow.optim.Optimizer), optimizer
         optimizer_type = optimizer
 
-    grad_clipper = _create_gradient_clipper(cfg)
+    grad_clipper = _create_gradient_clipper(clip_type, clip_value, norm_type)
     OptimizerWithGradientClip = _generate_optimizer_class_with_gradient_clipping(
         optimizer_type, per_param_clipper=grad_clipper
     )
