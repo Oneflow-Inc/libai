@@ -44,6 +44,7 @@ class Registry(Iterable[Tuple[str, Any]]):
     .. code-block:: python
         BACKBONE_REGISTRY.register(MyBackbone)
     """
+
     def __init__(self, name: str) -> None:
         """
         Args:
@@ -51,15 +52,15 @@ class Registry(Iterable[Tuple[str, Any]]):
         """
         self._name: str = name
         self._obj_map: Dict[str, Any] = {}
-    
-    def _do_register(self, name:str, obj:Any) -> None:
-        assert(
+
+    def _do_register(self, name: str, obj: Any) -> None:
+        assert (
             name not in self._obj_map
         ), "An object named '{}' was already registered in '{}' registry!".format(
             name, self._name
         )
         self._obj_map[name] = obj
-    
+
     def register(self, obj: Any = None) -> Any:
         """
         Register the given object under the name `obj.__name__`.
@@ -77,7 +78,7 @@ class Registry(Iterable[Tuple[str, Any]]):
         # used as a function call
         name = obj.__name__
         self._do_register(name, obj)
-    
+
     def get(self, name: str) -> Any:
         ret = self._obj_map.get(name)
         if ret is None:
@@ -85,7 +86,7 @@ class Registry(Iterable[Tuple[str, Any]]):
                 "No object named '{}' found in '{}' registry!".format(name, self._name)
             )
         return ret
-    
+
     def __contains__(self, name: str) -> bool:
         return name in self._obj_map
 
@@ -100,7 +101,6 @@ class Registry(Iterable[Tuple[str, Any]]):
         return iter(self._obj_map.items())
 
     __str__ = __repr__
-
 
 
 def _convert_target_to_string(t: Any) -> str:
