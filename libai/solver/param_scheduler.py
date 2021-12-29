@@ -307,7 +307,7 @@ class StepParamScheduler(ParamScheduler):
     ) -> None:
         if num_updates <= 0:
             raise ValueError("Number of updates must be larger than 0")
-        if not (isinstance(values, Sequence) and len(values > 0)):
+        if not (isinstance(values, Sequence) and len(values) > 0):
             raise ValueError(
                 "Step scheduler requires a list of at least one param value"
             )
