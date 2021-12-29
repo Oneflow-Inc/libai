@@ -1,9 +1,9 @@
 from libai.config import LazyCall as L
-from .modeling.model import Classification
+from projects.QQP.modeling.model import Classification
 from configs.common.train import train
 from configs.common.optim import optim, lr_scheduler
 from configs.common.data.nlp_data import data
-from .modeling.model import ClassificationGraph
+from projects.QQP.modeling.model import ClassificationGraph
 from configs.common.models.bert import cfg as qqp_cfg
 
 # finetune model config

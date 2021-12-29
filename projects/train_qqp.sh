@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CONFIG=projects/QQP/config_qqp.py
+CONFIG=output/finetune_qqp/config.yaml
 GPUS=1
 NODE=1
 NODE_RANK=0
