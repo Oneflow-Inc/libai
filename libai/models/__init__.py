@@ -14,8 +14,10 @@
 # limitations under the License.
 
 from .bert_model import BertModel, BertForPreTraining
+from .vit import VisionTransformer
 
 __all__ = [
     "BertModel",
     "BertForPreTraining",
+    "VisionTransformer"
 ]
