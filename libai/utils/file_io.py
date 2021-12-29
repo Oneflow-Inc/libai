@@ -50,6 +50,7 @@ from libai.utils.non_blocking_io import NonBlockingIOManager
 
 __all__ = ["LazyPath", "PathManager", "get_cache_dir", "file_lock"]
 
+
 def get_cache_dir(cache_dir: Optional[str] = None) -> str:
     """
     Returns a default directory to cache static files
@@ -125,12 +126,12 @@ class LazyPath(os.PathLike):
         """
         self._func = func
         self._value: Optional[str] = None
-    
+
     def _get_value(self) -> str:
         if self._value is None:
             self._value = self._func()
         return self._value  # pyre-ignore
-    
+
     def __fspath__(self) -> str:
         return self._get_value()
 
@@ -139,7 +140,7 @@ class LazyPath(os.PathLike):
         if self._value is None:
             raise AttributeError(f"Uninitialized LazyPath has no attribute: {name}.")
         return getattr(self._value, name)
-    
+
     def __getitem__(self, key):  # type: ignore
         if self._value is None:
             raise TypeError("Uninitialized LazyPath is not subscriptable.")
@@ -162,8 +163,7 @@ class PathHandler:
     _strict_kwargs_check = True
 
     def __init__(
-        self,
-        async_executor: Optional[concurrent.futures.Executor] = None,
+        self, async_executor: Optional[concurrent.futures.Executor] = None,
     ) -> None:
         """
         When registering a `PathHandler`, the user can optionally pass in a
@@ -181,7 +181,7 @@ class PathHandler:
         """
         self._non_blocking_io_manager = None
         self._non_blocking_io_executor = async_executor
-    
+
     def _check_kwargs(self, kwargs: Dict[str, Any]) -> None:
         """
         Checks if the given arguments are empty. Throws a ValueError if strict
@@ -198,7 +198,6 @@ class PathHandler:
             logger = logging.getLogger(__name__)
             for k, v in kwargs.items():
                 logger.warning("[PathManager] {}={} argument ignored".format(k, v))
-
 
     def _get_supported_prefixes(self) -> List[str]:
         """
@@ -241,7 +240,7 @@ class PathHandler:
 
     def _opent(
         self, path: str, mode: str = "r", buffering: int = 32, **kwargs: Any
-        ) ->Iterable[Any]:
+    ) -> Iterable[Any]:
         raise NotImplementedError()
 
     def _open(
@@ -271,7 +270,7 @@ class PathHandler:
         mode: str = "r",
         callback_after_file_close: Optional[Callable[[None], None]] = None,
         buffering: int = -1,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Union[IO[str], IO[bytes]]:
         """
         Open a stream to a URI with asynchronous permissions.
@@ -311,17 +310,16 @@ class PathHandler:
             file: a file-like object with asynchronous methods.
         """
         # Restrict mode until `NonBlockingIO` has async read feature.
-        valid_modes = {'w', 'a', 'b'}
+        valid_modes = {"w", "a", "b"}
         if not all(m in valid_modes for m in mode):
             raise ValueError("`opena` mode must be write or append")
-        
+
         # TODO: Each `PathHandler` should set its own `self._buffered`
         # parameter and pass that in here. Until then, we assume no
         # buffering for any storage backend.
         if not self._non_blocking_io_manager:
             self._non_blocking_io_manager = NonBlockingIOManager(
-                buffered=False,
-                executor=self._non_blocking_io_executor,
+                buffered=False, executor=self._non_blocking_io_executor,
             )
 
         try:
@@ -343,7 +341,7 @@ class PathHandler:
                 "they match the `open` args for the `PathHandler`."
             )
             self._async_close()
-        
+
     def _async_join(self, path: Optional[str] = None, **kwargs: Any) -> bool:
         """
         Ensures that desired async write threads are properly joined.
@@ -366,7 +364,7 @@ class PathHandler:
         return self._non_blocking_io_manager._join(
             self._get_path_with_cwd(path) if path else None
         )
-    
+
     def _async_close(self, **kwargs: Any) -> bool:
         """
         Closes the thread pool used for the asynchronous operations.
@@ -399,9 +397,7 @@ class PathHandler:
         """
         raise NotImplementedError()
 
-    def _mv(
-        self, src_path: str, dst_path: str, **kwargs: Any
-    ) -> bool:
+    def _mv(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
         """
         Moves (renames) a source path to a destination path.
 
@@ -531,7 +527,7 @@ class NativePathHandler(PathHandler):
     def _get_local_path(self, path: str, force: bool = False, **kwargs: Any) -> str:
         self._check_kwargs(kwargs)
         return os.fspath(path)
-    
+
     def _copy_from_local(
         self, local_path: str, dst_path: str, overwrite: bool = False, **kwargs: Any
     ) -> None:
@@ -541,7 +537,7 @@ class NativePathHandler(PathHandler):
         assert self._copy(
             src_path=local_path, dst_path=dst_path, overwrite=overwrite, **kwargs
         )
-    
+
     def _open(
         self,
         path: str,
@@ -634,9 +630,7 @@ class NativePathHandler(PathHandler):
             logger.error("Error in file copy - {}".format(str(e)))
             return False
 
-    def _mv(
-        self, src_path: str, dst_path: str, **kwargs: Any
-    ) -> bool:
+    def _mv(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
         """
         Moves (renames) a source path to a destination path.
 
@@ -661,7 +655,7 @@ class NativePathHandler(PathHandler):
         except Exception as e:
             logger = logging.getLogger(__name__)
             logger.error("Error in move operation - {}".format(str(e)))
-            return False  
+            return False
 
     def _symlink(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
         """
@@ -690,7 +684,7 @@ class NativePathHandler(PathHandler):
         except Exception as e:
             logger.error("Error in symlink - {}".format(str(e)))
             return False
-    
+
     def _exists(self, path: str, **kwargs: Any) -> bool:
         self._check_kwargs(kwargs)
         return os.path.exists(self._get_path_with_cwd(path))
@@ -741,6 +735,7 @@ class NativePathHandler(PathHandler):
             path if not self._cwd else os.path.join(self._cwd, path)
         )
 
+
 class HTTPURLHandler(PathHandler):
     """
     Download URLs and cache them to disk.
@@ -758,7 +753,11 @@ class HTTPURLHandler(PathHandler):
         The resource will only be downloaded if not previously requested.
         """
         self._check_kwargs(kwargs)
-        if force or path not in self.cache_map or not os.path.exists(self.cache_map[path]):
+        if (
+            force
+            or path not in self.cache_map
+            or not os.path.exists(self.cache_map[path])
+        ):
             logger = logging.getLogger(__name__)
             parsed_url = urlparse(path)
             dirname = os.path.join(
@@ -797,7 +796,7 @@ class HTTPURLHandler(PathHandler):
         assert (
             buffering == -1
         ), f"{self.__class__.__name__} does not support the `buffering` argument"
-        local_path = self._get_local_path(path,force=False)
+        local_path = self._get_local_path(path, force=False)
         return open(local_path, mode)
 
 
@@ -851,6 +850,7 @@ class PathManagerBase:
     1. Find a handler by checking the prefixes in `self._path_handlers`.
     2. Call handler.method(path) on the handler that's found
     """
+
     def __init__(self) -> None:
         self._path_handlers: MutableMapping[str, PathHandler] = OrderedDict()
         """
@@ -874,7 +874,7 @@ class PathManagerBase:
         all of the threads can be properly joined when calling
         `PathManager.join`.
         """
-    
+
     def __get_path_handler(self, path: Union[str, os.PathLike]) -> PathHandler:
         """
         Finds a PathHandler that supports the given path. Falls back to the native
@@ -894,7 +894,7 @@ class PathManagerBase:
 
     def opent(
         self, path: str, mode: str = "r", buffering: int = 32, **kwargs: Any
-        ) -> Iterable[Any]:
+    ) -> Iterable[Any]:
         """
         Open a tabular data source. Only reading is supported.
         The opent() returns a Python iterable collection object, compared to bytes/text data with open()
@@ -908,10 +908,8 @@ class PathManagerBase:
         Returns:
             An iterable collection object.
         """
-        return self.__get_path_handler(path)._opent(
-            path, mode, buffering, **kwargs
-        )
-    
+        return self.__get_path_handler(path)._opent(path, mode, buffering, **kwargs)
+
     def open(
         self, path: str, mode: str = "r", buffering: int = -1, **kwargs: Any
     ) -> Union[IO[str], IO[bytes]]:
@@ -1017,12 +1015,15 @@ class PathManagerBase:
             status (bool): True on success
         """
         success = True
-        if not paths:        # Join all.
+        if not paths:  # Join all.
             for handler in self._async_handlers:
                 success = handler._async_join(**kwargs) and success
-        else:               # Join specific paths.
+        else:  # Join specific paths.
             for path in paths:
-                success = self.__get_path_handler(path)._async_join(path, **kwargs) and success
+                success = (
+                    self.__get_path_handler(path)._async_join(path, **kwargs)
+                    and success
+                )
         return success
 
     def async_close(self, **kwargs: Any) -> bool:
@@ -1063,9 +1064,7 @@ class PathManagerBase:
             src_path, dst_path, overwrite, **kwargs
         )
 
-    def mv(
-        self, src_path: str, dst_path: str, **kwargs: Any
-    ) -> bool:
+    def mv(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
         """
         Moves (renames) a source path supported by NativePathHandler to
         a destination path.
@@ -1088,9 +1087,7 @@ class PathManagerBase:
         ) == self.__get_path_handler(
             dst_path
         ), "Src and dest paths must be supported by the same path handler."
-        return self.__get_path_handler(src_path)._mv(
-            src_path, dst_path, **kwargs
-        )
+        return self.__get_path_handler(src_path)._mv(src_path, dst_path, **kwargs)
 
     def get_local_path(self, path: str, force: bool = False, **kwargs: Any) -> str:
         """
@@ -1133,7 +1130,7 @@ class PathManagerBase:
         return self.__get_path_handler(dst_path)._copy_from_local(
             local_path=local_path, dst_path=dst_path, overwrite=overwrite, **kwargs
         )
-    
+
     def exists(self, path: str, **kwargs: Any) -> bool:
         """
         Checks if there is a resource at the given URI.
@@ -1161,7 +1158,7 @@ class PathManagerBase:
         return self.__get_path_handler(path)._isfile(  # type: ignore
             path, **kwargs
         )
-    
+
     def isdir(self, path: str, **kwargs: Any) -> bool:
         """
         Checks if the resource at the given URI is a directory.
@@ -1330,7 +1327,7 @@ class PathManagerBase:
         for handler in self._path_handlers.values():
             handler._strict_kwargs_check = enable
 
-    
+
 class PathManagerFactory:
     """
     PathManagerFactory is the class responsible for creating new PathManager
@@ -1339,12 +1336,11 @@ class PathManagerFactory:
     you use PathManagerFactory to create them.
     """
 
-
     GLOBAL_PATH_MANAGER = "global_path_manager"
     pm_list = {}
 
     @staticmethod
-    def get(key = GLOBAL_PATH_MANAGER) -> PathManagerBase:
+    def get(key=GLOBAL_PATH_MANAGER) -> PathManagerBase:
         """
         Get the path manager instance associated with a key.
         A new instance will be created if there is no existing
@@ -1368,6 +1364,7 @@ class PathManagerFactory:
         if key in PathManagerFactory.pm_list:
             _pm = PathManagerFactory.pm_list.pop(key)
             del _pm
+
 
 """
 A global instance of PathManager.

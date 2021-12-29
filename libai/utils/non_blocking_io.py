@@ -37,6 +37,7 @@ instance to the caller, and the manager maintains all of the
 thread management and data management.
 """
 
+
 @dataclass
 class PathData:
     """
@@ -49,6 +50,7 @@ class PathData:
     Queue. The polling Thread picks up on the job, executes it,
     waits for it to finish, and then continues to poll.
     """
+
     queue: Queue
     thread: Thread
 
@@ -61,6 +63,7 @@ class NonBlockingIOManager:
     assigned a single queue and polling thread that is kept
     open until it is cleaned up by `PathManager.async_join()`.
     """
+
     def __init__(
         self,
         buffered: Optional[bool] = False,
@@ -74,7 +77,7 @@ class NonBlockingIOManager:
             executor: User can optionally attach a custom executor to
                 perform async operations through `PathHandler.__init__`.
         """
-        self._path_to_data = {}         # Map from path to `PathData` object
+        self._path_to_data = {}  # Map from path to `PathData` object
         self._buffered = buffered
         self._IO = NonBlockingBufferedIO if self._buffered else NonBlockingIO
         self._pool = executor or concurrent.futures.ThreadPoolExecutor()
@@ -119,7 +122,7 @@ class NonBlockingIOManager:
 
         kwargs = {} if not self._buffered else {"buffering": buffering}
         return self._IO(
-            notify_manager=lambda io_callable: (    # Pass async jobs to manager
+            notify_manager=lambda io_callable: (  # Pass async jobs to manager
                 self._path_to_data[path].queue.put(io_callable)
             ),
             io_obj=io_obj,
@@ -140,10 +143,10 @@ class NonBlockingIOManager:
             #   - func = file.write(b)
             #   - func = file.close()
             #   - func = None
-            func = queue.get()                      # Blocks until item read.
-            if func is None:                        # Thread join signal.
+            func = queue.get()  # Blocks until item read.
+            if func is None:  # Thread join signal.
                 break
-            self._pool.submit(func).result()        # Wait for job to finish.
+            self._pool.submit(func).result()  # Wait for job to finish.
 
     def _join(self, path: Optional[str] = None) -> bool:
         """
@@ -171,9 +174,7 @@ class NonBlockingIOManager:
                 path_data.thread.join()
             except Exception:
                 logger = logging.getLogger(__name__)
-                logger.exception(
-                    f"`NonBlockingIO` thread for {_path} failed to join."
-                )
+                logger.exception(f"`NonBlockingIO` thread for {_path} failed to join.")
                 success = False
         return success
 
@@ -185,9 +186,7 @@ class NonBlockingIOManager:
             self._pool.shutdown()
         except Exception:
             logger = logging.getLogger(__name__)
-            logger.exception(
-                "`NonBlockingIO` thread pool failed to close."
-            )
+            logger.exception("`NonBlockingIO` thread pool failed to close.")
             return False
         return True
 
@@ -290,7 +289,7 @@ class NonBlockingIO(io.IOBase):
 # NOTE: To use this class, use `buffered=True` in `NonBlockingIOManager`.
 # NOTE: This class expects the IO mode to be buffered.
 class NonBlockingBufferedIO(io.IOBase):
-    MAX_BUFFER_BYTES = 10 * 1024 * 1024     # 10 MiB
+    MAX_BUFFER_BYTES = 10 * 1024 * 1024  # 10 MiB
 
     def __init__(
         self,
@@ -332,7 +331,8 @@ class NonBlockingBufferedIO(io.IOBase):
         buffer = self._buffers[-1]
         with memoryview(b) as view:
             buffer.write(view)
-        if buffer.tell() < self._buffer_size: return
+        if buffer.tell() < self._buffer_size:
+            return
         self.flush()
 
     def close(self) -> None:

@@ -27,6 +27,7 @@ from termcolor import colored
 
 from libai.utils.file_io import HTTPURLHandler, PathManagerBase
 
+
 class _IncompatibleKeys(
     NamedTuple(
         # pyre-fixme[10]: Name `IncompatibleKeys` is used but not defined.
@@ -181,7 +182,6 @@ class Checkpointer(object):
             # deleted by a separate process
             return ""
         return os.path.join(self.save_dir, last_saved)
-
 
     def resume_or_load(self, path: str, *, resume: bool = True):
         """
@@ -364,7 +364,9 @@ class PeriodicCheckpointer:
                     file_to_delete = self.recent_checkpoints.pop(0)
                     if self.path_manager.exists(
                         file_to_delete
-                    ) and not file_to_delete.endswith("{}_{:07d}".format(self.file_prefix, iteration)):
+                    ) and not file_to_delete.endswith(
+                        "{}_{:07d}".format(self.file_prefix, iteration)
+                    ):
                         self.path_manager.rm(file_to_delete)
 
         if self.max_iter is not None:
