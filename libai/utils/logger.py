@@ -13,14 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
 import functools
 import logging
 import os
 import sys
 import time
 from collections import Counter
-
 from termcolor import colored
+
+from libai.utils.file_io import PathManager
 
 
 class _ColorfulFormatter(logging.Formatter):
@@ -92,7 +94,7 @@ def setup_logger(
             filename = os.path.join(output, "log.txt")
         if distributed_rank > 0:
             filename = filename + ".rank{}".format(distributed_rank)
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        PathManager.mkdirs(os.path.dirname(filename))
 
         fh = logging.StreamHandler(_cached_log_stream(filename))
         fh.setLevel(logging.DEBUG)
@@ -106,7 +108,10 @@ def setup_logger(
 # with the same file name can safely write to the same file.
 @functools.lru_cache(maxsize=None)
 def _cached_log_stream(filename):
-    return open(filename, "a")
+    # use 1K buffer if writing to cloud storage
+    io = PathManager.open(filename, "a", buffering=1024 if "://" in filename else -1)
+    atexit.register(io.close)
+    return io
 
 
 """
