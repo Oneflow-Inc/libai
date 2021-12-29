@@ -15,6 +15,8 @@ from abc import ABC
 from abc import abstractmethod
 
 import logging
+import jieba
+import re
 
 from libai.utils import distributed as dist
 
@@ -456,3 +458,31 @@ class _GPT2BPETokenizer(AbstractTokenizer):
     @property
     def eod(self):
         return self.eod_id
+
+
+def get_new_segment(segment):
+    seq_cws = jieba.cut("".join(segment) if isinstance(segment, list) else segment)
+    seq_cws_dict = {x: 1 for x in seq_cws}
+    new_segment = []
+    i = 0
+    while i < len(segment):
+        if len(re.findall('[\u4E00-\u9FA5]', segment[i])) == 0:
+            new_segment.append(segment[i])
+            i += 1
+            continue
+
+        has_add = False
+        for length in range(3, 0, -1):
+            if i + length > len(segment):
+                continue
+            if ''.join(segment[i:i + length]) in seq_cws_dict:
+                new_segment.append(segment[i])
+                for l in range(1, length):
+                    new_segment.append('##' + segment[i + l])
+                i += length
+                has_add = True
+                break
+        if not has_add:
+            new_segment.append(segment[i])
+            i += 1
+    return new_segment
