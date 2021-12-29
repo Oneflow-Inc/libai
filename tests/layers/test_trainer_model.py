@@ -15,6 +15,8 @@
 
 import oneflow as flow
 from oneflow import nn
+from libai.solver.lr_scheduler import LRMultiplier
+from libai.solver.param_scheduler import CosineParamScheduler, WarmupParamScheduler
 
 
 class demo_model(nn.Module):
@@ -39,6 +41,7 @@ def build_model(cfg):
         placement = flow.env.all_device_placement("cuda")
         model = model.to_consistent(placement=placement, sbp=flow.sbp.broadcast)
     return model
+
 
 
 def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):
