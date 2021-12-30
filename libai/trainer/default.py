@@ -165,7 +165,7 @@ def default_setup(cfg, args):
     num_gpus_per_node = flow.env.get_world_size() // num_nodes
 
     if (
-        _try_get_key(cfg, "train.dist.num_gpus_per_node", num_gpus_per_node)
+        _try_get_key(cfg, "train.dist.num_gpus_per_node", default=num_gpus_per_node)
         != num_gpus_per_node
     ):
         # This means key(num_gpus_per_node) saved in config is not equal to environment variable.
@@ -174,13 +174,13 @@ def default_setup(cfg, args):
             f"Warning! num_gpus_per_node are not equal in cfg and environment variable. {cfg.train.dist.num_gpus_per_node} != {num_gpus_per_node}"
         )
 
-    if _try_get_key(cfg, "train.dist.num_nodes", num_nodes) != num_nodes:
+    if _try_get_key(cfg, "train.dist.num_nodes", default=num_nodes) != num_nodes:
         logger.info(
             f"Warning! num_nodes are not equal in cfg and environment variable. {cfg.train.dist.num_nodes} != {num_nodes}"
         )
 
-    cfg.train.dist_num_gpus_per_node = num_gpus_per_node
-    cfg.train.dist.num_nodes = args.num_machines
+    cfg.train.dist.num_nodes = num_nodes
+    cfg.train.dist.num_gpus_per_node = num_gpus_per_node
 
     dist.setup_dist_util(cfg.train.dist)
 
