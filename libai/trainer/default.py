@@ -126,27 +126,15 @@ def _check_batch_size(cfg):
 def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
-    1. Check config namespace
-    2. Set up the libai logger
-    3. Log basic information about environment, cmdline arguments, and config
-    4. Setup the distributed environment
-    5. Setup tokenizer if it's NLP related task
-    6. Check batch_size
-    7. Backup the config to the output directory
+    1. Set up the libai logger
+    2. Log basic information about environment, cmdline arguments, and config
+    3. Setup the distributed environment
+    4. Setup tokenizer if it's NLP related task
+    5. Check batch_size
+    6. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
-    # Check namespace in cfg
-    assert _try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
-    assert _try_get_key(cfg, "data") is not None, "cfg must contain `data` namespace"
-    assert _try_get_key(cfg, "train") is not None, "cfg must contain `train` namespace"
-    if not args.eval_only:
-        assert (
-            _try_get_key(cfg, "optim") is not None
-        ), "cfg must contain `optim` namespace when training"
-        assert (
-            _try_get_key(cfg, "lr_scheduler") is not None
-        ), "cfg must contain `lr_scheduler` namespace when training"
 
     output_dir = _try_get_key(cfg, "train.output_dir")
     if dist.is_main_process() and output_dir:
@@ -173,9 +161,28 @@ def default_setup(cfg, args):
         )
 
     # Initialize the distributed environment.
-    cfg.train.dist.num_gpus_per_node = args.num_gpus
+    num_nodes = flow.env.get_node_size()
+    num_gpus_per_node = flow.env.get_world_size() // num_nodes
+
+    if (
+        _try_get_key(cfg, "train.dist.num_gpus_per_node", num_gpus_per_node)
+        != num_gpus_per_node
+    ):
+        # This means key(num_gpus_per_node) saved in config is not equal to environment variable.
+        # Give user a warning about inconsistent reproduce environment.
+        logger.info(
+            f"Warning! num_gpus_per_node are not equal in cfg and environment variable. {cfg.train.dist.num_gpus_per_node} != {num_gpus_per_node}"
+        )
+
+    if _try_get_key(cfg, "train.dist.num_nodes", num_nodes) != num_nodes:
+        logger.info(
+            f"Warning! num_nodes are not equal in cfg and environment variable. {cfg.train.dist.num_nodes} != {num_nodes}"
+        )
+
+    cfg.train.dist_num_gpus_per_node = num_gpus_per_node
     cfg.train.dist.num_nodes = args.num_machines
-    dist.setup_dist_util(_try_get_key(cfg, "train.dist"))
+
+    dist.setup_dist_util(cfg.train.dist)
 
     # Initialize tokenizer
     if _try_get_key(cfg, "data.tokenizer_setup", default=False):
@@ -385,6 +392,9 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.layers.build_model`.
         Overwrite it if you'd like a different model.
         """
+        assert (
+            _try_get_key(cfg, "model") is not None
+        ), "cfg must contain `model` namespace"
         model = build_model(cfg)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
@@ -414,6 +424,10 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.solver.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
+        assert (
+            _try_get_key(cfg, "optim") is not None
+        ), "cfg must contain `optim` namespace"
+
         optim = cfg.optim
         optim.parameters.model = model
         return instantiate(optim)
@@ -424,6 +438,10 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.solver.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
+        assert (
+            _try_get_key(cfg, "lr_scheduler") is not None
+        ), "cfg must contain `lr_scheduler` namespace"
+
         if cfg.train.lr_decay_iter is None:
             cfg.train.lr_decay_iter = cfg.train.train_iter
         decay_steps = int(cfg.train.lr_decay_iter)
@@ -449,6 +467,9 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
+        assert (
+            _try_get_key(cfg, "data") is not None
+        ), "cfg must contain `data` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO(l1aoxingyu): add dataloader
