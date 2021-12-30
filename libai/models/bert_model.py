@@ -15,7 +15,6 @@
 
 import oneflow as flow
 from libai.layers import (
-    ActivationCheckpointing,
     build_activation,
     VocabEmbedding,
     Embedding,
@@ -272,30 +271,26 @@ class BertModel(nn.Module):
         self.extended_attn_mask = BertExtendedAttnMask()
 
         # Encoders
-        encoders = []
-        for i in range(self.hidden_layers):
-            encoders.extend(
-                [
-                    # add activation checkpointing at the begining of each transformerlayer
-                    ActivationCheckpointing(layer_idx=i),
-                    TransformerLayer(
-                        hidden_size,
-                        intermediate_size,
-                        num_attention_heads,
-                        attention_dropout_prob=attention_probs_dropout_prob,
-                        output_dropout_prob=hidden_dropout_prob,
-                        layernorm_epsilon=layernorm_eps,
-                        bias_gelu_fusion=bias_gelu_fusion,
-                        bias_dropout_fusion=bias_dropout_fusion,
-                        scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-                        apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-                        init_method=init_method,
-                        output_layer_init_method=scaled_init_method,
-                        layer_idx=i,
-                    ),
-                ]
-            )
-        self.encoders = nn.ModuleList(encoders)
+        self.encoders = nn.ModuleList(
+            [
+                TransformerLayer(
+                    hidden_size,
+                    intermediate_size,
+                    num_attention_heads,
+                    attention_dropout_prob=attention_probs_dropout_prob,
+                    output_dropout_prob=hidden_dropout_prob,
+                    layernorm_epsilon=layernorm_eps,
+                    bias_gelu_fusion=bias_gelu_fusion,
+                    bias_dropout_fusion=bias_dropout_fusion,
+                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
+                    apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+                    init_method=init_method,
+                    output_layer_init_method=scaled_init_method,
+                    layer_idx=i,
+                )
+                for i in range(self.hidden_layers)
+            ]
+        )
         self.final_layernorm = LayerNorm(
             (hidden_size,), eps=layernorm_eps, layer_idx=-1
         )
@@ -330,10 +325,8 @@ class BertModel(nn.Module):
         embedding_output = self.embeddings(input_ids, tokentype_ids)
 
         hidden_states = embedding_output
-        for i in range(0, 2 * self.hidden_layers, 2):
-            hidden_states = self.encoders[i + 1](
-                self.encoders[i](hidden_states), extended_attention_mask,
-            )
+        for i in range(self.hidden_layers):
+            hidden_states = self.encoders[i](hidden_states, extended_attention_mask)
         encoder_output = self.final_layernorm(hidden_states)
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output
