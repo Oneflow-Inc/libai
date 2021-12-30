@@ -13,4 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import oneflow as flow
 
+from .build import SCHEDULER_REGISTRY
+
+
+@SCHEDULER_REGISTRY.register()
+def WarmupCosineLR(cfg, optimizer):
+    ...
+
+
+@SCHEDULER_REGISTRY.register()
+def WarmupMultiStepLR(cfg, optimizer):
+    ...
