@@ -12,14 +12,11 @@ model.cfg.hidden_layers = 8
 
 # Set pipeline layers for paralleleism
 train.dist.pipeline_num_layers = model.cfg.hidden_layers
-train.dist.tensor_parallel_size = 1
-train.dist.pipeline_parallel_size = 1
 
 train.micro_batch_size = 16
 
+# Set fp16 ON
 train.amp.enabled = True
-
-model.cfg.fp16 = train.amp.enabled
 
 # fmt: off
 graph = dict(

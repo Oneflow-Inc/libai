@@ -56,71 +56,68 @@ def _highlight(code, filename):
 
 
 def _check_batch_size(cfg):
-    if (
-        cfg.train.micro_batch_size is not None
-        and cfg.train.global_batch_size is not None
-    ):
-        if cfg.train.num_accumulation_steps is None:
+    micro_batch_size = _try_get_key(cfg, "train.micro_batch_size", default=None)
+    global_batch_size = _try_get_key(cfg, "train.global_batch_size", default=None)
+    num_accumulation_steps = _try_get_key(
+        cfg, "train.num_accumulation_steps", default=None
+    )
+
+    if micro_batch_size is not None and global_batch_size is not None:
+        if num_accumulation_steps is None:
             if (
-                cfg.train.global_batch_size
-                % (cfg.train.micro_batch_size * dist.get_data_parallel_size())
+                global_batch_size % (micro_batch_size * dist.get_data_parallel_size())
                 != 0
             ):
                 raise ValueError(
-                    f"global_batch_size {cfg.train.global_batch_size} must be divisible by "
-                    f"micro_batch_size * data_parallel_size ({cfg.train.micro_batch_size} * {dist.get_data_parallel_size()})"
+                    f"global_batch_size {global_batch_size} must be divisible by "
+                    f"micro_batch_size * data_parallel_size ({micro_batch_size} * {dist.get_data_parallel_size()})"
                 )
 
-            cfg.train.num_accumulation_steps = cfg.train.global_batch_size // (
-                cfg.train.micro_batch_size * dist.get_data_parallel_size()
+            cfg.train.num_accumulation_steps = global_batch_size // (
+                micro_batch_size * dist.get_data_parallel_size()
             )
+
         else:
             if (
-                cfg.train.global_batch_size
-                != cfg.train.micro_batch_size
+                global_batch_size
+                != micro_batch_size
                 * dist.get_data_parallel_size()
-                * cfg.train.num_accumulation_steps
+                * num_accumulation_steps
             ):
                 raise ValueError(
-                    f"global_batch_size {cfg.train.global_batch_size} must equal"
+                    f"global_batch_size {global_batch_size} must equal"
                     " micro_batch_size * data_parallel_size * num_accumulation_steps"
-                    f" ({cfg.train.micro_batch_size} * {dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
+                    f" ({micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"
                 )
-    elif cfg.train.micro_batch_size is not None and cfg.train.global_batch_size is None:
-        if cfg.train.num_accumulation_steps is None:
+    elif micro_batch_size is not None and global_batch_size is None:
+        if num_accumulation_steps is None:
             cfg.train.num_accumulation_steps = 1
 
         cfg.train.global_batch_size = (
-            cfg.train.micro_batch_size
+            micro_batch_size
             * dist.get_data_parallel_size()
             * cfg.train.num_accumulation_steps
         )
-    elif cfg.train.micro_batch_size is None and cfg.train.global_batch_size is not None:
-        if cfg.train.num_accumulation_steps is None:
-            cfg.num_accumulation_steps = 1
+    elif micro_batch_size is None and global_batch_size is not None:
+        if num_accumulation_steps is None:
+            cfg.train.num_accumulation_steps = 1
 
         if (
-            cfg.train.global_batch_size
+            global_batch_size
             % (dist.get_data_parallel_size() * cfg.train.num_accumulation_steps)
             != 0
         ):
             raise ValueError(
-                f"global_batch_size {cfg.global_batch_size} must be divisible by "
+                f"global_batch_size {global_batch_size} must be divisible by "
                 "data_parallel_size * num_accumulation_steps "
                 f"({dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
             )
 
-        cfg.train.micro_batch_size = cfg.train.global_batch_size // (
+        cfg.train.micro_batch_size = global_batch_size // (
             dist.get_data_parallel_size() * cfg.train.num_accumulation_steps
         )
     else:
         raise ValueError("micro_batch_size and global_batch_size must be set either")
-
-    assert cfg.train.num_accumulation_steps is not None
-    if cfg.train.num_accumulation_steps > 1 and cfg.data.use_external_dataset:
-        raise ValueError(
-            "num_accumulation_steps couldn't be greater than 1 when use external dataset"
-        )
 
 
 def default_setup(cfg, args):
