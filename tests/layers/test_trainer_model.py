@@ -43,6 +43,11 @@ def build_model(cfg):
     return model
 
 
+def build_scheduler(cfg, optimizer):
+    if cfg.scheduler == "CosineDecayLR":
+        sched = CosineParamScheduler(cfg.train_iters, cfg.cosine_decay_alpha)
+        return LRMultiplier(optimizer, sched, cfg.train_iters)
+
 
 def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):
     class GraphModel(nn.Graph):

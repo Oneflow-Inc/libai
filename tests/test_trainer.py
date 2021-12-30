@@ -22,7 +22,7 @@ from libai.trainer.trainer import HookBase
 
 # NOTE: Temporarily use yacs as config
 from yacs.config import CfgNode
-from tests.layers.test_trainer_model import build_model, build_graph
+from tests.layers.test_trainer_model import build_model, build_graph, build_scheduler
 
 
 def setup():
@@ -35,6 +35,8 @@ def setup():
     cfg.load = None  # "./demo_output2/model_0000999"
     cfg.start_iter = 0
     cfg.train_iters = 6000
+    cfg.scheduler = "CosineDecayLR"
+    cfg.cosine_decay_alpha = 0.0
     cfg.global_batch_size = 64
     cfg.save_interval = 1000
     cfg.log_interval = 20
@@ -73,6 +75,10 @@ class DemoTrianer(DefaultTrainer):
         """
         model = build_model(cfg)
         return model
+
+    @classmethod
+    def build_lr_scheduler(cls, cfg, optimizer):
+        return build_scheduler(cfg, optimizer)
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer, lr_scheduler):
