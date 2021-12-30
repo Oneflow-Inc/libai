@@ -20,9 +20,21 @@ from .build import SCHEDULER_REGISTRY
 
 @SCHEDULER_REGISTRY.register()
 def WarmupCosineLR(cfg, optimizer):
-    ...
+    cosine_decay_lr = flow.optim.lr_scheduler.CosineDecayLR(
+        optimizer, cfg.decay_steps, cfg.alpha
+    )
+    warmup_cosine_lr = flow.optim.lr_scheduler.WarmUpLR(
+        cosine_decay_lr, cfg.warmup_factor, cfg.warmup_iters, cfg.warmup_method
+    )
+    return warmup_cosine_lr
 
 
 @SCHEDULER_REGISTRY.register()
 def WarmupMultiStepLR(cfg, optimizer):
-    ...
+    multistep_lr = flow.optim.lr_scheduler.MultiStepLR(
+        optimizer, cfg.milestones, cfg.gamma
+    )
+    warmup_multistep_lr = flow.optim.lr_scheduler.WarmUpLR(
+        multistep_lr, cfg.warmup_factor, cfg.warmup_iters, cfg.warmup_method
+    )
+    return warmup_multistep_lr
