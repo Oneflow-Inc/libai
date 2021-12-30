@@ -128,6 +128,9 @@ class TransformerLayer(nn.Module):
                             the past_key_value contains the states both from self attention and cross attention.
             use_cache: it will be set to `True`, when the model is in the inference phase and used for incremental decoding.
         """
+        # Change placement for pipeline parallelsim
+        hidden_states = hidden_states.to_consistent(placement=dist.get_layer_placement(self.layer_idx))
+
         # hidden_states shape: (batch_size, seq_length, hidden_size)
         attention_mask = attention_mask.to_consistent(
             placement=dist.get_layer_placement(self.layer_idx)
