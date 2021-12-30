@@ -69,8 +69,8 @@ class Linear1D(nn.Module):
             weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         elif parallel == "data":
-            weight_sbp = flow.sbp.broadcast
-            bias_sbp = flow.sbp.broadcast
+            weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+            bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         else:
             raise KeyError(
                 f"{parallel} is not supported! Only support ('data', 'row' and 'col')"
@@ -112,7 +112,7 @@ class Linear1D(nn.Module):
 
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
             x = x.to_consistent(grad_sbp=x.sbp)
-            x = flow._C.matmul(x, self.weight)
+            x = flow.matmul(x, self.weight)
 
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
@@ -125,9 +125,20 @@ class Linear1D(nn.Module):
             else:
                 out_sbp = x.sbp
 
-            x = flow._C.matmul(x, self.weight)
-            # change x.sbp for followup forward pass.
+            x = flow.matmul(x, self.weight)
+            # Change x.sbp for followup forward pass.
+            # This line can be removed when sbp can be auto inferred.
             x = x.to_consistent(sbp=out_sbp)
+        elif dist.same_sbp(
+            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        ):
+            # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
+            x = x.to_consistent(grad_sbp=x.sbp)
+            # Change x.sbp to [S(0), S(0)] if weight is [B, B]
+            x = x.to_consistent(
+                sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)])
+            )
+            x = flow.matmul(x, self.weight)
         else:
             raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")
 

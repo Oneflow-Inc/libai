@@ -21,7 +21,9 @@ import os
 import time
 from collections import defaultdict
 from contextlib import contextmanager
+
 from libai.utils.history_buffer import HistoryBuffer
+from libai.utils.file_io import PathManager
 
 __all__ = [
     "get_event_storage",
@@ -94,7 +96,7 @@ class JSONWriter(EventWriter):
             window_size (int): the window size of median smoothing for the scalars whose
                 `smoothing_hint` are True.
         """
-        self._file_handle = open(json_file, "a")
+        self._file_handle = PathManager.open(json_file, "a")
         self._window_size = window_size
         self._last_write = -1
 
