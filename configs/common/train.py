@@ -22,8 +22,6 @@ train = dict(
 
     # Distributed arguments
     dist=dict(
-        num_gpus_per_node=1,
-        num_nodes=1,
         data_parallel_size=1,
         tensor_parallel_size=1,
         pipeline_parallel_size=1,

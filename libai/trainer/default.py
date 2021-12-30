@@ -427,7 +427,7 @@ class DefaultTrainer(TrainerBase):
         assert (
             _try_get_key(cfg, "optim") is not None
         ), "cfg must contain `optim` namespace"
-
+        # TODO(l1aoxingyu): Replace after build_optimizer finishing.
         optim = cfg.optim
         optim.parameters.model = model
         return instantiate(optim)
@@ -441,6 +441,7 @@ class DefaultTrainer(TrainerBase):
         assert (
             _try_get_key(cfg, "lr_scheduler") is not None
         ), "cfg must contain `lr_scheduler` namespace"
+        # TODO(l1aoxingyu): Replace after build_lr_scheduler finishing.
 
         if cfg.train.lr_decay_iter is None:
             cfg.train.lr_decay_iter = cfg.train.train_iter
