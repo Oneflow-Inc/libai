@@ -21,6 +21,7 @@ import oneflow as flow
 from libai.config import LazyConfig, instantiate
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
+from libai.models.build import build_model
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
@@ -384,7 +385,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.layers.build_model`.
         Overwrite it if you'd like a different model.
         """
-        model = instantiate(cfg.model)
+        model = build_model(cfg)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         return model
@@ -451,4 +452,4 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO(l1aoxingyu): add dataloader
-        return None # build_train_valid_test_data_iterators(cfg)
+        return None  # build_train_valid_test_data_iterators(cfg)
