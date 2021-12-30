@@ -18,6 +18,8 @@ import math
 import oneflow as flow
 from oneflow.nn.optimizer.lr_scheduler import LrScheduler
 
+from libai.config.config import configurable
+
 from .build import SCHEDULER_REGISTRY
 
 
@@ -98,33 +100,53 @@ class PolynomialLR(LrScheduler):
 
 
 @SCHEDULER_REGISTRY.register()
-def WarmupCosineLR(cfg, optimizer):
+def WarmupCosineLR(optimizer: flow.optim.Optimizer,
+                   max_iters: int,
+                   warmup_factor: float,
+                   warmup_iters: int,
+                   alpha: float = 0.0,
+                   warmup_method: str = "linear",
+                   **kwargs):
     cosine_decay_lr = flow.optim.lr_scheduler.CosineDecayLR(
-        optimizer, cfg.decay_steps, cfg.alpha
+        optimizer, decay_steps=max_iters, alpha=alpha
     )
     warmup_cosine_lr = flow.optim.lr_scheduler.WarmUpLR(
-        cosine_decay_lr, cfg.warmup_factor, cfg.warmup_iters, cfg.warmup_method
+        cosine_decay_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
     )
     return warmup_cosine_lr
 
 
 @SCHEDULER_REGISTRY.register()
-def WarmupMultiStepLR(cfg, optimizer):
+def WarmupMultiStepLR(optimizer: flow.optim.Optimizer,
+                      warmup_factor: float,
+                      warmup_iters: int,
+                      milestones: list,
+                      gamma: float = 0.1,
+                      warmup_method: str = "linear",
+                      **kwargs):
     multistep_lr = flow.optim.lr_scheduler.MultiStepLR(
-        optimizer, cfg.milestones, cfg.gamma
+        optimizer, milestones=milestones, gamma=gamma
     )
     warmup_multistep_lr = flow.optim.lr_scheduler.WarmUpLR(
-        multistep_lr, cfg.warmup_factor, cfg.warmup_iters, cfg.warmup_method
+        multistep_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
     )
     return warmup_multistep_lr
 
 
 @SCHEDULER_REGISTRY.register()
-def WarmupPolynomialLR(cfg, optimizer):
+def WarmupPolynomialLR(optimizer: flow.optim.Optimizer,
+                       max_iters: int,
+                       warmup_factor: float,
+                       warmup_iters: int,
+                       warmup_method: str = "linear", 
+                       end_learning_rate: float = 0.0001, 
+                       power: float = 1.0, 
+                       cycle: bool = False, 
+                       **kwargs):
     polynomial_lr = PolynomialLR(
-        optimizer, cfg.steps, cfg.end_learning_rate, cfg.power, cfg.cycle
+        optimizer, steps=max_iters, end_learning_rate=end_learning_rate, power=power, cycle=cycle
     )
     warmup_polynomial_lr = flow.optim.lr_scheduler.WarmUpLR(
-        polynomial_lr, cfg.warmup_factor, cfg.warmup_iters, cfg.warmup_method
+        polynomial_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
     )
     return warmup_polynomial_lr
