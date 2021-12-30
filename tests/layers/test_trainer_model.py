@@ -15,8 +15,8 @@
 
 import oneflow as flow
 from oneflow import nn
-from libai.solver.lr_scheduler import LRMultiplier
-from libai.solver.param_scheduler import CosineParamScheduler, WarmupParamScheduler
+from libai.scheduler.lr_scheduler import LRMultiplier
+from libai.scheduler.param_scheduler import CosineParamScheduler, WarmupParamScheduler
 
 
 class demo_model(nn.Module):

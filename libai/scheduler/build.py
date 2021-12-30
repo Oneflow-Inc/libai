@@ -24,13 +24,13 @@ The registered object will be called with `obj(cfg)`
 and expected to return a `flow.optim.lr_scheduler._LRScheduler` object.
 """
 
-def build_lr_scheduler(cfg):
+def build_lr_scheduler(cfg, optimizer):
     """ Build learning rate scheduler, defined by ``cfg.optim.lr_scheduler``.
     """
     if "_target_" in cfg.optim.lr_scheduler:
         scheduler = instantiate(cfg.optim.lr_scheduler)
     else:
-        scheduler_name = cfg.optim.lr_scheduler
-        scheduler = SCHEDULER_REGISTRY.get(scheduler_name)(cfg.optim.lr_scheduler)
+        scheduler_name = cfg.optim.lr_scheduler.name
+        scheduler = SCHEDULER_REGISTRY.get(scheduler_name)(cfg.optim.lr_scheduler, optimizer)
     return scheduler
     
