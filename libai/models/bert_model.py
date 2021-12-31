@@ -253,7 +253,6 @@ class BertModel(nn.Module):
         apply_query_key_layer_scaling=True,
     ):
         super().__init__()
-        self.hidden_layers = hidden_layers
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
 
@@ -288,7 +287,7 @@ class BertModel(nn.Module):
                     output_layer_init_method=scaled_init_method,
                     layer_idx=i,
                 )
-                for i in range(self.hidden_layers)
+                for i in range(hidden_layers)
             ]
         )
         self.final_layernorm = LayerNorm(
