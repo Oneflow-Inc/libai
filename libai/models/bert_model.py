@@ -330,8 +330,8 @@ class BertModel(nn.Module):
         embedding_output = self.embeddings(input_ids, tokentype_ids)
 
         hidden_states = embedding_output
-        for i in range(0, self.hidden_layers):
-            hidden_states = self.encoders[i](hidden_states, extended_attention_mask)
+        for layer in self.encoders:
+            hidden_states = layer(hidden_states, extended_attention_mask)
         encoder_output = self.final_layernorm(hidden_states)
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output
