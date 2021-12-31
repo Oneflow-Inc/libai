@@ -58,6 +58,7 @@ class T5Model(nn.Module):
 
         self.encoder = T5Encoder(
             num_encoder_layers, 
+            vocab_size, 
             hidden_size, 
             ffn_hidden_size,
             num_attention_heads, 
@@ -74,6 +75,7 @@ class T5Model(nn.Module):
         )
         self.decoder = T5Decoder(
             num_decoder_layers, 
+            vocab_size, 
             hidden_size, 
             ffn_hidden_size,
             num_attention_heads, 
@@ -99,6 +101,7 @@ class T5Model(nn.Module):
             past_key_values=past_key_values, 
             use_cache=use_cache
         )
+        hidden_states = output[0]
         return output
     
     def forward_encoder(self, input_ids, attention_mask):
@@ -288,6 +291,8 @@ class T5Decoder(nn.Module):
         )
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
 
+        self.lm_head = LMLogits(vocab_size, bias=True)
+
     def forward(
         self, 
         input_ids, 
@@ -331,7 +336,8 @@ class T5Decoder(nn.Module):
                     presents.append(present)
         
         output = self.layernorm_f(hidden_states)
+        logits = self.lm_head(output, self.embeddings.token_embeddings.weight)
+
         if use_cache:
             output = (output, presents)
-        
         return output

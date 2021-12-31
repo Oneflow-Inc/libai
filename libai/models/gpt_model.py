@@ -104,7 +104,7 @@ class GPTModel(nn.Module):
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
         )
 
-        self.logits = ParallelLogits()
+        self.lm_head = LMLogits(vocab_size, bias=True)
 
     def forward(self, input_ids, past_key_values, use_cache):
         input_ids_shape = input_ids.size()
@@ -119,7 +119,7 @@ class GPTModel(nn.Module):
         if use_cache:
             transformer_output, presents = transformer_output
         
-        output = self.logits(transformer_output, self.embeddings.token_embeddings.weight)
+        output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
 
         if use_cache:
             output = (output, presents)
