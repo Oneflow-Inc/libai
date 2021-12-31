@@ -31,7 +31,7 @@ from libai.config import configurable
 from .utils import init_method_normal, scaled_init_method_normal
 
 
-class GPTModel(flow.nn.Module):
+class GPTModel(nn.Module):
     """GPT-2 language model. The output of the forward method is logits.
     
     Arguments:
@@ -52,7 +52,6 @@ class GPTModel(flow.nn.Module):
         bias_dropout_fusion: whether fuse add bias and dropout.
     """
 
-
     def __init__(
         self, 
         num_layers, 
@@ -68,7 +67,9 @@ class GPTModel(flow.nn.Module):
         initializer_range=0.02,
         use_scaled_init_for_output_weights=True,
         bias_gelu_fusion=False, 
-        bias_dropout_fusion=False
+        bias_dropout_fusion=False,
+        scale_mask_softmax_fusion=False,
+        apply_query_key_layer_scaling=False,
     ):
         super().__init__()
         init_method = init_method_normal(std=initializer_range)
@@ -97,10 +98,10 @@ class GPTModel(flow.nn.Module):
             layernorm_epsilon=layernorm_epsilon,
             init_method=init_method,
             output_layer_init_method=output_layer_init_method,
-            apply_query_key_layer_scaling=apply_query_key_layer_scaling,
             bias_gelu_fusion=bias_gelu_fusion,
             bias_dropout_fusion=bias_dropout_fusion,
-            scale_mask_softmax_fusion=scale_mask_softmax_fusion
+            scale_mask_softmax_fusion=scale_mask_softmax_fusion,
+            apply_query_key_layer_scaling=apply_query_key_layer_scaling,
         )
 
         self.logits = ParallelLogits()
@@ -125,7 +126,7 @@ class GPTModel(flow.nn.Module):
         return output
 
 
-class GPTEmbedding(flow.nn.Module):
+class GPTEmbedding(nn.Module):
     def __init__(
         self, 
         vocab_size, 
@@ -158,7 +159,7 @@ class GPTEmbedding(flow.nn.Module):
         return input_embeds
 
 
-class Transformer(flow.nn.Module):
+class Transformer(nn.Module):
     def __init__(
         self, 
         num_layers, 
@@ -198,7 +199,6 @@ class Transformer(flow.nn.Module):
         self.layers = nn.ModuleList(
             [build_layer(i) for i in range(self.num_layers)]
         )
-
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
 
 

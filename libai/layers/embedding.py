@@ -30,6 +30,8 @@ class Embedding(nn.Module):
         embedding_dim: dimension of embeddings.
         padding_idx: pad index.
         init_method: method to initialize weights.
+        layer_idx: A layer_idx sign which determines the placement. 
+            It will be used in pipeline parallelism. Defaults to 0.
     """
 
     def __init__(
@@ -38,8 +40,11 @@ class Embedding(nn.Module):
         embedding_dim,
         padding_idx=None,
         init_method=init.xavier_normal_,
+        *,
+        layer_idx=0,
     ):
         super().__init__()
+        self.layer_idx = layer_idx
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
         if padding_idx is not None:
@@ -60,7 +65,7 @@ class Embedding(nn.Module):
             flow.empty(
                 (num_embeddings, embedding_dim),
                 dtype=flow.float32,
-                placement=dist.get_layer_placement(0),
+                placement=dist.get_layer_placement(self.layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )
@@ -81,7 +86,7 @@ class Embedding(nn.Module):
             with flow.no_grad():
                 self.weight[self.padding_idx] = flow.zeros(
                     self.embedding_dim,
-                    placement=dist.get_layer_placement(0),
+                    placement=dist.get_layer_placement(self.layer_idx),
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 )
 
@@ -100,6 +105,8 @@ class VocabEmbedding(nn.Module):
         embedding_dim: dimension of embeddings.
         padding_idx: pad index.
         init_method: method to initialize weights.
+        layer_idx: A layer_idx sign which determines the placement. 
+            It will be used in pipeline parallelism. Defaults to 0.
     """
 
     def __init__(
@@ -108,8 +115,11 @@ class VocabEmbedding(nn.Module):
         embedding_dim,
         padding_idx=None,
         init_method=init.xavier_normal_,
+        *,
+        layer_idx=0,
     ):
         super().__init__()
+        self.layer_idx = layer_idx
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
         if padding_idx is not None:
@@ -131,7 +141,7 @@ class VocabEmbedding(nn.Module):
             flow.empty(
                 (num_embeddings, embedding_dim),
                 dtype=flow.float32,
-                placement=dist.get_layer_placement(0),
+                placement=dist.get_layer_placement(self.layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
             )
         )
@@ -158,7 +168,7 @@ class VocabEmbedding(nn.Module):
             with flow.no_grad():
                 self.weight[self.padding_idx] = flow.zeros(
                     self.embedding_dim,
-                    placement=dist.get_layer_placement(0),
+                    placement=dist.get_layer_placement(self.layer_idx),
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 )
 
@@ -175,11 +185,13 @@ class SinePositionalEmbedding(nn.Module):
     Arguments:
         num_embeddings: size of vocabulary.
         embedding_dim: dimension of embeddings.
+        layer_idx: A layer_idx sign which determines the placement. 
+            It will be used in pipeline parallelism. Defaults to 0.
     """
 
-    def __init__(self, num_embeddings, embedding_dim):
+    def __init__(self, num_embeddings, embedding_dim, *, layer_idx=0,):
         super().__init__()
-
+        self.layer_idx = layer_idx
         self.embedding_dim = embedding_dim
         self.num_embeddings = num_embeddings
 
@@ -187,13 +199,13 @@ class SinePositionalEmbedding(nn.Module):
             num_embeddings,
             embedding_dim,
             dtype=flow.float32,
-            placement=dist.get_layer_placement(0),
+            placement=dist.get_layer_placement(self.layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
         position = flow._C.consistent_arange(
             start=0,
             end=num_embeddings,
-            placement=dist.get_layer_placement(0),
+            placement=dist.get_layer_placement(self.layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             dtype=flow.float32,
         ).unsqueeze(1)
@@ -201,7 +213,7 @@ class SinePositionalEmbedding(nn.Module):
             start=0,
             end=embedding_dim,
             step=2,
-            placement=dist.get_layer_placement(0),
+            placement=dist.get_layer_placement(self.layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             dtype=flow.float32,
         )
