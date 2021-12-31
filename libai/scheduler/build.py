@@ -25,14 +25,12 @@ and expected to return a `flow.optim.lr_scheduler._LRScheduler` object.
 """
 
 def build_lr_scheduler(cfg, optimizer):
-    """ Build learning rate scheduler, defined by ``cfg.optim.lr_scheduler``.
+    """ Build learning rate scheduler, defined by ``cfg``.
     """
     if "_target_" in cfg:
         cfg.optimizer = optimizer
         scheduler = instantiate(cfg)
     else:
-        scheduler_name = cfg.name
-        del cfg.name
-        scheduler = SCHEDULER_REGISTRY.get(scheduler_name)(optimizer, **cfg)
+        scheduler_name = cfg.scheduler_name
+        scheduler = SCHEDULER_REGISTRY.get(scheduler_name)(optimizer, **cfg.scheduler_cfg)
     return scheduler
-    
