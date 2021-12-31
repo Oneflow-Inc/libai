@@ -122,6 +122,8 @@ class MultiheadAttention(nn.Module):
         """ hidden_states: [bsz, tgt_len, hidden_size].
             encoder_states: [bsz, src_len, hidden_size].
             attention_mask: [bsz, 1, tgt_len, src_len], it should be the combination of padding mask and casual mask.
+                            When attention_mask = 1, it indicates the corresponding element will be attended.
+                            When attention_mask = 0, it indicates the corresponding element will be masked.
                             In case of self attention in encoder, it is the padding mask of source input.
                             In case of self attention in decoder, it is the combination of padding mask of target input and casual mask.
                             In case of cross attention in decoder, it is the padding mask of source input.
@@ -187,17 +189,15 @@ class MultiheadAttention(nn.Module):
         )
 
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
+        # attention_mask = 1, it indicates the corresponding element will be attended.
+        # attention_mask = 0, it indicates the corresponding element will be masked.
         if attention_mask is not None:
             if self.scale_mask_softmax_fusion:
                 attention_weights = flow._C.fused_scale_mask_softmax(
                     attention_scores, attention_mask, fill_value=-10000.0
                 )
             else:
-                attention_scores = flow.mul(attention_scores, attention_mask)
-                # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
-                # attention_scores = attention_scores.masked_fill(attention_mask, -10000.0)
-                attention_scores *= 1 - attention_mask
-                attention_scores += attention_mask * -10000.0
+                attention_scores = flow.mul(attention_scores, attention_mask) - 10000.0 * (1.0 - attention_mask)
                 attention_weights = flow.softmax(attention_scores, dim=-1)
         else:
             attention_weights = flow.softmax(attention_scores, dim=-1)

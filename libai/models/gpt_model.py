@@ -23,6 +23,7 @@ from libai.layers import (
     TransformerLayer,
     ParallelCrossEntropyLoss,
     LMLogits,
+    CasualMask,
 )
 from libai.utils import distributed as dist
 from libai.config import configurable
@@ -84,8 +85,7 @@ class GPTModel(flow.nn.Module):
             embedding_dropout_prob=embedding_dropout_prob
         )
         
-        self.mask_helper = MaskHelper()
-        self.mask_helper.build_mask_matrix(max_seq_length)
+        self.casual_mask = CasualMask()
 
         self.transformer = Transformer(
             num_layers, 
@@ -110,6 +110,8 @@ class GPTModel(flow.nn.Module):
         past_length = past_key_values[0].size(2) if past_key_values is not None else 0
 
         input_embeds = self.embeddings(input_ids, past_length)
+
+        attention_mask = self.casual_mask(input_ids, past_length=past_length)
 
         transformer_output = self.transformer(input_embeds, attention_mask, past_key_values, use_cache)
 
@@ -154,9 +156,6 @@ class GPTEmbedding(flow.nn.Module):
         input_embeds = token_embeds + position_embeds
         input_embeds = self.dropout(input_embeds)
         return input_embeds
-    
-    def word_embeddings(self):
-        return self.token_embeddings.weight
 
 
 class Transformer(flow.nn.Module):
