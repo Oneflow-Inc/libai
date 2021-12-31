@@ -15,53 +15,83 @@
 
 import oneflow as flow
 import sys
+from omegaconf import OmegaConf
 
 sys.path.append(".")
 from libai.trainer import DefaultTrainer, default_setup
-from libai.trainer.trainer import HookBase
+from libai.config import default_argument_parser, LazyCall
+from libai.optim import get_default_optimizer_params
 
-# NOTE: Temporarily use yacs as config
-from yacs.config import CfgNode
 from tests.layers.test_trainer_model import build_model, build_graph
 
 
-def setup():
+def setup(args):
     """
     Create configs and perform basic setups.
     """
 
-    cfg = CfgNode()
-    cfg.output_dir = "./demo_output"
-    cfg.load = None  # "./demo_output2/model_0000999"
-    cfg.start_iter = 0
-    cfg.train_iters = 6000
-    cfg.global_batch_size = 64
-    cfg.save_interval = 1000
-    cfg.log_interval = 20
-    cfg.nccl_fusion_threshold_mb = 16
-    cfg.nccl_fusion_max_ops = 24
-    cfg.mode = "graph"
-    cfg.data_parallel_size = 1
-    cfg.micro_batch_size = 32
+    cfg = OmegaConf.create()
 
-    default_setup(cfg)
+    cfg.train = dict(
+        output_dir="./demo_output",
+        micro_batch_size=32,
+        dist=dict(
+            data_parallel_size=1,
+            tensor_parallel_size=1,
+            pipeline_parallel_size=1,
+            pipeline_num_layers=4,
+        ),
+        start_iter=0,
+        train_iter=6000,
+        lr_warmup_fraction=0.01,
+        lr_decay_iter=6000,
+        log_period=20,
+        checkpointer=dict(period=100),
+        nccl_fusion_threshold_mb=16,
+        nccl_fusion_max_ops=24,
+    )
+
+    cfg.optim = LazyCall(flow.optim.AdamW)(
+        parameters=LazyCall(get_default_optimizer_params)(
+            # parameters.model is meant to be set to the model object, before instantiating the optimizer.
+            clip_grad_max_norm=1.0,
+            clip_grad_norm_type=2.0,
+            weight_decay_norm=0.0,
+            weight_decay_bias=0.0,
+        ),
+        lr=1e-4,
+        weight_decay=0.01,
+        betas=(0.9, 0.999),
+        do_bias_correction=True,
+    )
+
+    cfg.lr_scheduler = LazyCall(flow.optim.lr_scheduler.WarmUpLR)(
+        lrsch_or_optimizer=LazyCall(flow.optim.lr_scheduler.CosineDecayLR)(
+            decay_steps=1000, alpha=0.1,
+        ),
+        warmup_factor=0,
+        warmup_iters=100,
+        warmup_method="linear",
+    )
+
+    cfg.graph = dict(enabled=True,)
+
+    default_setup(cfg, args)
     return cfg
 
 
-class DemoTrianer(DefaultTrainer):
-    @staticmethod
-    def get_batch(data_interator, mode):
-        assert mode in ["eager", "graph"]
-        # data = next(data_interator)
-        data = flow.randn(32, 512).to("cuda")
-        if mode == "graph":
-            data = data.to_consistent(
-                sbp=flow.sbp.split(0), placement=flow.env.all_device_placement("cuda")
-            )
-        return (data,)
+def get_batch(data_interator):
+    # data = next(data_interator)
+    data = flow.randn(32, 512).to("cuda")
+    data = data.to_consistent(
+        sbp=flow.sbp.split(0), placement=flow.env.all_device_placement("cuda")
+    )
+    return (data,)
 
+
+class DemoTrainer(DefaultTrainer):
     def run_step(self):
-        return super().run_step(self.get_batch)
+        return super().run_step(get_batch)
 
     @classmethod
     def build_model(cls, cfg):
@@ -75,18 +105,23 @@ class DemoTrianer(DefaultTrainer):
         return model
 
     @classmethod
-    def build_graph(cls, cfg, model, optimizer, lr_scheduler):
+    def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
         return build_graph(cfg, model, optimizer, lr_scheduler)
 
+    @classmethod
+    def build_train_valid_test_loader(cls, cfg):
+        return range(10), range(10), range(10)
 
-def main():
-    cfg = setup()
 
-    trainer = DemoTrianer(cfg)
+def main(args):
+    cfg = setup(args)
+
+    trainer = DemoTrainer(cfg)
 
     # trainer.resume_or_load(resume=args.resume)
     return trainer.train()
 
 
 if __name__ == "__main__":
-    main()
+    args = default_argument_parser().parse_args()
+    main(args)

@@ -35,15 +35,14 @@ class demo_model(nn.Module):
 
 def build_model(cfg):
     model = demo_model()
-    if cfg.mode == "graph":
-        placement = flow.env.all_device_placement("cuda")
-        model = model.to_consistent(placement=placement, sbp=flow.sbp.broadcast)
+    placement = flow.env.all_device_placement("cuda")
+    model = model.to_consistent(placement=placement, sbp=flow.sbp.broadcast)
     return model
 
 
 def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):
     class GraphModel(nn.Graph):
-        def __init__(self, cfg, model, optimizer, lr_scheduler, fp16=False):
+        def __init__(self, model, optimizer, lr_scheduler, fp16=False):
             super().__init__()
             self.model = model
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
@@ -64,5 +63,7 @@ def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):
             loss.backward()
             return loss
 
-    graph_model = GraphModel(cfg, model, optimizer, lr_scheduler, fp16=False)
-    return graph_model, None
+    if optimizer:
+        return GraphModel(model, optimizer, lr_scheduler, fp16=fp16)
+    else:
+        return None
