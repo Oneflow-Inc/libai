@@ -14,4 +14,4 @@
 # limitations under the License.
 
 from .build import build_lr_scheduler
-from .lr_scheduler import WarmupCosineLR, WarmupMultiStepLR, WarmupPolynomialLR
+from .lr_scheduler import WarmupCosineLR, WarmupMultiStepLR

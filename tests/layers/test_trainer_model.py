@@ -15,8 +15,7 @@
 
 import oneflow as flow
 from oneflow import nn
-from libai.scheduler.lr_scheduler import LRMultiplier
-from libai.scheduler.param_scheduler import CosineParamScheduler, WarmupParamScheduler
+from libai.scheduler import build_lr_scheduler
 
 
 class demo_model(nn.Module):
@@ -44,9 +43,7 @@ def build_model(cfg):
 
 
 def build_scheduler(cfg, optimizer):
-    if cfg.scheduler == "CosineDecayLR":
-        sched = CosineParamScheduler(cfg.train_iters, cfg.cosine_decay_alpha)
-        return LRMultiplier(optimizer, sched, cfg.train_iters)
+    return build_lr_scheduler(cfg, optimizer)
 
 
 def build_graph(cfg, model, optimizer, lr_scheduler, fp16=False):

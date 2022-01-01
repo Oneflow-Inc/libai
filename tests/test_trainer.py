@@ -25,7 +25,7 @@ from yacs.config import CfgNode
 from tests.layers.test_trainer_model import build_model, build_graph, build_scheduler
 
 
-def setup():
+def setup(args):
     """
     Create configs and perform basic setups.
     """
@@ -35,7 +35,17 @@ def setup():
     cfg.load = None  # "./demo_output2/model_0000999"
     cfg.start_iter = 0
     cfg.train_iters = 6000
-    cfg.scheduler = "CosineDecayLR"
+
+    # lr scheduler cfg
+    cfg.lr_scheduler = CfgNode()
+    cfg.lr_scheduler.scheduler_name = "WarmupCosineLR"
+    cfg.lr_scheduler.scheduler_cfg = CfgNode()
+    cfg.lr_scheduler.scheduler_cfg.max_iters = 6000
+    cfg.lr_scheduler.scheduler_cfg.alpha = 0.001
+    cfg.lr_scheduler.scheduler_cfg.warmup_factor = 0.001
+    cfg.lr_scheduler.scheduler_cfg.warmup_iters = 1000
+    cfg.lr_scheduler.scheduler_cfg.warmup_method = "linear"
+
     cfg.cosine_decay_alpha = 0.0
     cfg.global_batch_size = 64
     cfg.save_interval = 1000
