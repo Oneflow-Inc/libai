@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
+import logging
 
 import oneflow as flow
-from oneflow.nn.optimizer.lr_scheduler import LrScheduler
 
 from .build import SCHEDULER_REGISTRY
 
+logger = logging.getLogger(__name__)
 
 @SCHEDULER_REGISTRY.register()
 def WarmupCosineLR(optimizer: flow.optim.Optimizer,
@@ -32,10 +32,33 @@ def WarmupCosineLR(optimizer: flow.optim.Optimizer,
     cosine_decay_lr = flow.optim.lr_scheduler.CosineDecayLR(
         optimizer, decay_steps=max_iters, alpha=alpha
     )
+    if warmup_iters == 0:
+        logger.warning("warmup iters equals to zero, directly return the passed scheduler")
+        return cosine_decay_lr
+    elif warmup_iters > max_iters:
+        logger.warning("warmup iters is larger than the total training iters")
     warmup_cosine_lr = flow.optim.lr_scheduler.WarmUpLR(
         cosine_decay_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
     )
     return warmup_cosine_lr
+
+
+@SCHEDULER_REGISTRY.register()
+def WarmupCosineAnnealingLR(optimizer: flow.optim.Optimizer,
+                            t_max: int,
+                            warmup_factor: float,
+                            warmup_iters: int,
+                            eta_min: float = 0.0,
+                            warmup_method: str = "linear",
+                            **kwargs):
+    cosine_annealing_lr = flow.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=t_max, eta_min=eta_min)
+    if warmup_iters == 0:
+        logger.warning("warmup iters equals to zero, directly return the passed scheduler")
+        return cosine_annealing_lr
+    warmup_cosine_annealing_lr = flow.optim.lr_scheduler.WarmUpLR(
+        cosine_annealing_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
+    )
+    return warmup_cosine_annealing_lr
 
 
 @SCHEDULER_REGISTRY.register()
@@ -49,8 +72,46 @@ def WarmupMultiStepLR(optimizer: flow.optim.Optimizer,
     multistep_lr = flow.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=milestones, gamma=gamma
     )
+    if warmup_iters == 0:
+        logger.warning("warmup iters equals to zero, not using any warmup operation here")
+        return multistep_lr
     warmup_multistep_lr = flow.optim.lr_scheduler.WarmUpLR(
         multistep_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
     )
     return warmup_multistep_lr
+
+
+@SCHEDULER_REGISTRY.register()
+def WarmupFixedStepLR(optimizer: flow.optim.Optimizer,
+                      warmup_factor: float,
+                      warmup_iters: int,
+                      step_size: int,
+                      gamma: float = 0.1,
+                      warmup_method: str = "linear",
+                      **kwargs):
+    fixedstep_lr = flow.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+    if warmup_iters == 0:
+        logger.warning("warmup iters equals to zero, not using any warmup operation here")
+        return fixedstep_lr
+    warmup_fixedstep_lr = flow.optim.lr_scheduler.WarmUpLR(
+        fixedstep_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
+    )
+    return warmup_fixedstep_lr
+
+
+@SCHEDULER_REGISTRY.register()
+def WarmupExponentialLR(optimizer: flow.optim.Optimizer,
+                        gamma: float,
+                        warmup_factor: float,
+                        warmup_iters: int,
+                        warmup_method: str = "linear",
+                        **kwargs):
+    exponential_lr = flow.optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
+    if warmup_iters == 0:
+        logger.warning("warmup iters equals to zero, not using any warmup operation here")
+        return exponential_lr
+    warmup_exponential_lr = flow.optim.lr_scheduler.WarmUpLR(
+        exponential_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
+    )
+    return warmup_exponential_lr
 
