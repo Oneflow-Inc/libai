@@ -412,7 +412,7 @@ class PreTrainedTokenizer(object):
         Returns:
             :obj:`Dict[str, int]`: The added tokens.
         """
-        return self.added_tokens_encoders
+        return self.added_tokens_encoder
 
     def add_tokens(
         self, new_tokens: Union[str, List[str]], special_tokens: bool = False

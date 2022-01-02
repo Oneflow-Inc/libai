@@ -159,13 +159,15 @@ class BertTokenizer(PreTrainedTokenizer):
         out_string = " ".join(tokens).replace(" ##", "").strip()
         return out_string
 
-    def save_vocabulary(self, vocab_path):
+    def save_vocabulary(self, save_directory, filename_prefix):
         """Save the tokenizer vocabulary to a directory or file."""
         index = 0
-        if os.path.isdir(vocab_path):
-            vocab_file = os.path.join(vocab_path, VOCAB_FILES_NAMES['vocab_file'])
+        if os.path.isdir(save_directory):
+            vocab_file = os.path.join(
+                save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["vocab_file"]
+            )
         else:
-            vocab_file = vocab_path
+            vocab_file = (filename_prefix + "-" if filename_prefix else "") + save_directory
         with open(vocab_file, "w", encoding="utf-8") as writer:
             for token, token_index in sorted(self.vocab.items(), key=lambda kv: kv[1]):
                 if index != token_index:
