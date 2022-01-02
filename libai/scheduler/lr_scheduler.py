@@ -44,6 +44,24 @@ def WarmupCosineLR(optimizer: flow.optim.Optimizer,
 
 
 @SCHEDULER_REGISTRY.register()
+def WarmupCosineAnnealingLR(optimizer: flow.optim.Optimizer,
+                            t_max: int,
+                            warmup_factor: float,
+                            warmup_iters: int,
+                            eta_min: float = 0.0,
+                            warmup_method: str = "linear",
+                            **kwargs):
+    cosine_annealing_lr = flow.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=t_max, eta_min=eta_min)
+    if warmup_iters == 0:
+        logger.warning("warmup iters equals to zero, directly return the passed scheduler")
+        return cosine_annealing_lr
+    warmup_cosine_annealing_lr = flow.optim.lr_scheduler.WarmUpLR(
+        cosine_annealing_lr, warmup_factor=warmup_factor, warmup_iters=warmup_iters, warmup_method=warmup_method, **kwargs
+    )
+    return warmup_cosine_annealing_lr
+
+
+@SCHEDULER_REGISTRY.register()
 def WarmupMultiStepLR(optimizer: flow.optim.Optimizer,
                       warmup_factor: float,
                       warmup_iters: int,
