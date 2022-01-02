@@ -190,7 +190,7 @@ class GPT2Tokenizer(PreTrainedTokenizer):
         text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
         return text
     
-    def save_vocabulary(self, save_directory, filename_prefix):
+    def save_vocabulary(self, save_directory, filename_prefix=None):
         if not os.path.isdir(save_directory):
             logger.error(f"Vocabulary path ({save_directory}) should be a directory")
             return

@@ -126,7 +126,7 @@ class T5Tokenizer(PreTrainedTokenizer):
         out_string += self.sp_mode.decode_pieces(current_sub_tokens)
         return out_string.string()
     
-    def save_vocabulary(self, save_directory, filename_prefix):
+    def save_vocabulary(self, save_directory, filename_prefix=None):
         """Save the tokenizer vocabulary to a directory or file."""
         if not os.path.isdir(save_directory):
             logger.error(f"Vocabulary path ({save_directory}) should be a directory")
