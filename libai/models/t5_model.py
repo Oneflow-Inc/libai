@@ -60,7 +60,7 @@ class T5Model(nn.Module):
             vocab_size, 
             hidden_size, 
             max_seq_length, 
-            init_method=init_method, 
+            init_method=init_method_normal(std=initializer_range), 
             embedding_dropout_prob=embedding_dropout_prob,
         )
 
@@ -70,7 +70,6 @@ class T5Model(nn.Module):
             hidden_size, 
             ffn_hidden_size,
             num_attention_heads, 
-            embedding_dropout_prob=embedding_dropout_prob,
             attention_dropout_prob=attention_dropout_prob,
             output_dropout_prob=output_dropout_prob,
             layernorm_epsilon=layernorm_epsilon,
@@ -81,6 +80,7 @@ class T5Model(nn.Module):
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
         )
+
         self.decoder = T5Decoder(
             self.embeddings,
             num_decoder_layers, 
@@ -99,13 +99,14 @@ class T5Model(nn.Module):
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
         )
     
-    def forward(self, input_ids, attention_mask, decoder_input_ids, decoder_attention_mask, past_key_values, use_cache):
+    def forward(self, input_ids, attention_mask, decoder_input_ids, decoder_attention_mask, label_ids, past_key_values, use_cache):
         encoder_states = self.encoder(input_ids, attention_mask)
         output = self.decoder(
             input_ids, 
             encoder_states, 
             attention_mask, 
             encoder_attention_mask, 
+            label_ids=label_ids,
             past_key_values=past_key_values, 
             use_cache=use_cache
         )
@@ -116,12 +117,13 @@ class T5Model(nn.Module):
         encoder_states = self.encoder(input_ids, attention_mask)
         return encoder_states
     
-    def forward_decoder(self, input_ids, encoder_states, attention_mask, encoder_attention_mask, past_key_values, use_cache):
+    def forward_decoder(self, input_ids, encoder_states, attention_mask, encoder_attention_mask, label_ids, past_key_values, use_cache):
         output = self.decoder(
             input_ids, 
             encoder_states, 
             attention_mask, 
             encoder_attention_mask, 
+            label_ids=label_ids,
             past_key_values=past_key_values, 
             use_cache=use_cache
         )
@@ -170,7 +172,6 @@ class T5Encoder(nn.Module):
         hidden_size, 
         ffn_hidden_size, 
         num_attention_heads, 
-        embedding_dropout_prob=0.,
         attention_dropout_prob=0., 
         output_dropout_prob=0., 
         layernorm_epsilon=1e-5, 
@@ -235,7 +236,6 @@ class T5Decoder(nn.Module):
         ffn_hidden_size, 
         num_attention_heads, 
         num_encoder_layers,
-        embedding_dropout_prob=0.,
         attention_dropout_prob=0., 
         output_dropout_prob=0., 
         layernorm_epsilon=1e-5, 
@@ -290,6 +290,7 @@ class T5Decoder(nn.Module):
         encoder_states, 
         attention_mask, 
         encoder_attention_mask=None, 
+        label_ids=None,
         past_key_values=None, 
         use_cache=False
     ):
@@ -328,6 +329,11 @@ class T5Decoder(nn.Module):
         output = self.layernorm_f(hidden_states)
         logits = self.lm_head(output, self.embeddings.token_embeddings.weight)
 
+        if label_ids is not None:
+            loss_fct = ParallelCrossEntropyLoss(ignore_index=-100)  # todo: fix cross entropy loss
+            loss = loss_fct(logits.view(-1, logits.size(-1)), label_ids.view(-1))
+            return loss
+
         if use_cache:
-            output = (output, presents)
+            output = (logits, presents)     # todo: unify return format
         return output
