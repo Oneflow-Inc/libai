@@ -56,9 +56,17 @@ class T5Model(nn.Module):
         super().__init__()
         self.is_encoder_decoder = True
 
-        self.encoder = T5Encoder(
-            num_encoder_layers, 
+        self.embeddings = T5Embedding(
             vocab_size, 
+            hidden_size, 
+            max_seq_length, 
+            init_method=init_method, 
+            embedding_dropout_prob=embedding_dropout_prob,
+        )
+
+        self.encoder = T5Encoder(
+            self.embeddings,
+            num_encoder_layers, 
             hidden_size, 
             ffn_hidden_size,
             num_attention_heads, 
@@ -74,8 +82,8 @@ class T5Model(nn.Module):
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
         )
         self.decoder = T5Decoder(
+            self.embeddings,
             num_decoder_layers, 
-            vocab_size, 
             hidden_size, 
             ffn_hidden_size,
             num_attention_heads, 
@@ -157,12 +165,11 @@ class T5Embedding(nn.Module):
 class T5Encoder(nn.Module):
     def __init__(
         self,
+        embeddings,
         num_layers, 
-        vocab_size,
         hidden_size, 
         ffn_hidden_size, 
         num_attention_heads, 
-        max_seq_length=1024,
         embedding_dropout_prob=0.,
         attention_dropout_prob=0., 
         output_dropout_prob=0., 
@@ -200,14 +207,7 @@ class T5Encoder(nn.Module):
                 layer_idx=layer_number,
             )
 
-        self.embeddings = T5Embedding(
-            vocab_size, 
-            hidden_size, 
-            max_seq_length, 
-            init_method=init_method, 
-            embedding_dropout_prob=embedding_dropout_prob
-        )
-        
+        self.embeddings = embeddings
         self.extend_mask = ExtendedMask()
 
         self.layers = nn.ModuleList(
@@ -229,13 +229,12 @@ class T5Encoder(nn.Module):
 class T5Decoder(nn.Module):
     def __init__(
         self,
+        embeddings,
         num_layers,
-        vocab_size,
         hidden_size, 
         ffn_hidden_size, 
         num_attention_heads, 
         num_encoder_layers,
-        max_seq_length=1024,
         embedding_dropout_prob=0.,
         attention_dropout_prob=0., 
         output_dropout_prob=0., 
@@ -274,17 +273,9 @@ class T5Decoder(nn.Module):
                 layer_idx=layer_number,
             )
 
-        self.embeddings = T5Embedding(
-            vocab_size, 
-            hidden_size, 
-            max_seq_length, 
-            init_method=init_method, 
-            embedding_dropout_prob=embedding_dropout_prob,
-            layer_idx=num_encoder_layers,
-        )
-        
+        self.embeddings = embeddings
         self.extend_mask = ExtendedMask()
-        self.casual_mask = CasualMask(layer_idx=num_encoder_layers)
+        self.casual_mask = CasualMask()
 
         self.layers = nn.ModuleList(
             [build_layer(i + num_encoder_layers) for i in range(self.num_layers)]
@@ -302,7 +293,6 @@ class T5Decoder(nn.Module):
         past_key_values=None, 
         use_cache=False
     ):
-        encoder_attention_mask = encoder_attention_mask.to_consistent(placement=input_ids.placement)
         hidden_states = self.embeddings(input_ids)
 
         extended_attention_mask = self.extend_mask(attention_mask)
