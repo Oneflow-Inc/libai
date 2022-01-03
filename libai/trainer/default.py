@@ -25,6 +25,8 @@ from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.trainer import hooks
 from libai.utils.checkpoint import Checkpointer
 
+from libai.scheduler import build_lr_scheduler
+
 
 def default_setup(cfg):
     """
@@ -261,13 +263,10 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
         """
-        It now calls :func:`libai.solver.build_lr_scheduler`.
+        It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        # TODO: import get_learning_rate_scheduler from other utils
-        lr_scheduler = flow.optim.lr_scheduler.StepLR(optimizer, step_size=1000)
-        return lr_scheduler
-        # return get_learning_rate_scheduler(cfg, optimizer)
+        return build_lr_scheduler(cfg, optimizer)
 
     @classmethod
     def build_train_valid_test_loader_loader(cls, cfg):
