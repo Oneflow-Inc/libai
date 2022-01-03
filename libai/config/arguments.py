@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-import os
 import sys
 import argparse
 
@@ -35,14 +34,20 @@ def default_argument_parser(epilog=None):
 Examples:
 
 Run on single machine:
-    $ {sys.argv[0]} --num-gpus 8 --config-file cfg.yaml
+    $ python3 -m oneflow.distributed.launch \
+    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} --config-file cfg.yaml
 
 Change some config options:
-    $ {sys.argv[0]} --config-file cfg.yaml train.load.weight=/path/to/weight.pth optim.lr=0.001
+    $ python3 -m oneflow.distributed.launch \
+    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} --config-file cfg.yaml train.load_weight=/path/to/weight.pth optim.lr=0.001
 
 Run on multiple machines:
-    (machine0)$ {sys.argv[0]} --num-gpus 8 --num-machines 2 [--other-flags]
-    (machine1)$ {sys.argv[0]} --num-gpus 8 --num-machines 2 [--other-flags]
+    (machine0)$ python3 -m oneflow.distributed.launch \
+    --nproc_per_node 8 --nnodes 2 --node_rank 0 --master_addr <URL> {sys.argv[0]} --config-file cfg.yaml
+    
+    $ python3 -m oneflow.distributed.launch \
+    --nproc_per_node 8 --nnodes 2 --node_rank 1 --master_addr <URL> {sys.argv[0]} --config-file cfg.yaml 
+
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -58,13 +63,6 @@ Run on multiple machines:
     parser.add_argument(
         "--eval-only", action="store_true", help="perform evaluation only"
     )
-    parser.add_argument(
-        "--num-gpus", type=int, default=1, help="number of gpus *per machine*"
-    )
-    parser.add_argument(
-        "--num-machines", type=int, default=1, help="total number of machines"
-    )
-
     parser.add_argument(
         "opts",
         help="""

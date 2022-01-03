@@ -1,4 +1,4 @@
-from libai.config import LazyCall as L
+from libai.config import LazyCall
 from .common.models.bert import pretrain_model as model
 from .common.train import train
 from .common.optim import optim, lr_scheduler
@@ -25,11 +25,11 @@ model.cfg.fp16 = train.amp.enabled
 graph = dict(
     # options for graph or eager mode
     enabled=True,
-    train=L(BertForPretrainingGraph)(
+    train=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled,
         is_eval=False,
     ),
-    eval=L(BertForPretrainingGraph)(
+    eval=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled, 
         is_eval=True,),
 )
