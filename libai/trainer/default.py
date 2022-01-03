@@ -26,6 +26,8 @@ from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
+from libai.data.build import build_train_valid_test_data_iterators
+from libai.tokenizer.tokenizer import setup_tokenizer
 from omegaconf import OmegaConf
 
 
@@ -167,12 +169,12 @@ def default_setup(cfg, args):
     ):
         # This means key(num_gpus_per_node) saved in config is not equal to environment variable.
         # Give user a warning about inconsistent reproduce environment.
-        logger.info(
+        logger.warning(
             f"Warning! num_gpus_per_node are not equal in cfg and environment variable. {cfg.train.dist.num_gpus_per_node} != {num_gpus_per_node}"
         )
 
     if _try_get_key(cfg, "train.dist.num_nodes", default=num_nodes) != num_nodes:
-        logger.info(
+        logger.warning(
             f"Warning! num_nodes are not equal in cfg and environment variable. {cfg.train.dist.num_nodes} != {num_nodes}"
         )
 
@@ -184,8 +186,8 @@ def default_setup(cfg, args):
     # Initialize tokenizer
     if _try_get_key(cfg, "data.tokenizer_setup", default=False):
         # TODO(l1aoxingyu): add tokenizer
-        # setup_tokenizer(cfg)
-        pass
+        setup_tokenizer(cfg)
+        # pass
 
     _check_batch_size(cfg)
 
@@ -469,4 +471,4 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO(l1aoxingyu): add dataloader
-        return None  # build_train_valid_test_data_iterators(cfg)
+        return build_train_valid_test_data_iterators(cfg)
