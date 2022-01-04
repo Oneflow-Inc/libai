@@ -22,6 +22,7 @@ from libai.config import LazyConfig, instantiate
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.models.build import build_model
+from libai.optim import build_optimizer
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
@@ -420,16 +421,10 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             torch.optim.Optimizer:
-        It now calls :func:`libai.solver.build_optimizer`.
+        It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        assert (
-            _try_get_key(cfg, "optim") is not None
-        ), "cfg must contain `optim` namespace"
-        # TODO(l1aoxingyu): Replace this after build_optimizer finishing.
-        optim = cfg.optim
-        optim.parameters.model = model
-        return instantiate(optim)
+        return build_optimizer(cfg.optim, model)
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
