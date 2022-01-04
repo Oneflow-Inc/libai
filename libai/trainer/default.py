@@ -21,7 +21,8 @@ import oneflow as flow
 from libai.config import LazyConfig, instantiate
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
-from libai.models.build import build_model
+from libai.models import build_model
+from libai.scheduler import build_lr_scheduler
 from libai.optim import build_optimizer
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
@@ -119,8 +120,6 @@ def _check_batch_size(cfg):
         )
     else:
         raise ValueError("micro_batch_size and global_batch_size must be set either")
-
-from libai.scheduler import build_lr_scheduler
 
 
 def default_setup(cfg, args):
@@ -389,13 +388,13 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             flow.nn.Module:
-        It now calls :func:`libai.layers.build_model`.
+        It now calls :func:`libai.models.build_model`.
         Overwrite it if you'd like a different model.
         """
         assert (
             _try_get_key(cfg, "model") is not None
         ), "cfg must contain `model` namespace"
-        model = build_model(cfg)
+        model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         return model
@@ -424,6 +423,9 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
+        assert (
+            _try_get_key(cfg, "optim") is not None
+        ), "cfg must contain `optim` namespace"
         return build_optimizer(cfg.optim, model)
 
     @classmethod
@@ -432,6 +434,9 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
+        assert (
+            _try_get_key(cfg, "scheduler") is not None
+        ), "cfg must contain `scheduler` namespace"
         return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod

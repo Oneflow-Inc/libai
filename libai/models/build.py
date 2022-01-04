@@ -29,9 +29,9 @@ def build_model(cfg):
     """ Build the whole model architecture, defined by ``cfg.model.model_arch``.
     Note that is does not load any weights from ``cfg``.
     """
-    if "_target_" in cfg.model:  # LazyCall
-        model = instantiate(cfg.model)
+    if "_target_" in cfg:  # LazyCall
+        model = instantiate(cfg)
     else:
-        model_arch = cfg.model.model_arch
-        model = MODEL_ARCH_REGISTRY.get(model_arch)(cfg.model.model_cfg)
+        model_name = cfg.model_name
+        model = MODEL_ARCH_REGISTRY.get(model_name)(cfg.model_cfg)
     return model
