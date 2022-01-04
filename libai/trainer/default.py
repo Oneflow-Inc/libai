@@ -266,7 +266,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        return build_lr_scheduler(cfg, optimizer)
+        return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
     def build_train_valid_test_loader_loader(cls, cfg):
