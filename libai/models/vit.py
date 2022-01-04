@@ -17,6 +17,8 @@ import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
 
+from .build import MODEL_ARCH_REGISTRY
+
 # helpers
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
@@ -164,6 +166,7 @@ class Encoder(nn.Module):
         return out
 
 
+@MODEL_ARCH_REGISTRY.register()
 class VisionTransformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, hidden_dim=768, mlp_dim=3072, num_heads=12, num_layers=12, num_classes=1000, attn_dropout=0.0, dropout=0.1):
         super().__init__()
