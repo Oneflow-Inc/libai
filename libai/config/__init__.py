@@ -13,11 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertModel, BertForPreTraining
-from .build import build_model
+from .lazy import LazyCall, LazyConfig
+from .instantiate import instantiate
+from .arguments import default_argument_parser
+from .config import configurable
 
 __all__ = [
-    "build_model",
-    "BertModel",
-    "BertForPreTraining",
+    "LazyCall",
+    "LazyConfig",
+    "instantiate",
+    "default_argument_parser",
+    "configurable",
 ]
