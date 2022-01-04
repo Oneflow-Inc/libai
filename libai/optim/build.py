@@ -36,7 +36,7 @@ and expected to return a `flow.optim.Optimizer` object.
 def register_optimizer():
     flow_optimizers = []
     for module_name in dir(flow.optim):
-        if module_name.startswith('__'):
+        if module_name.startswith("__"):
             continue
         _optim = getattr(flow.optim, module_name)
         if inspect.isclass(_optim) and issubclass(_optim, flow.optim.Optimizer):
@@ -44,7 +44,9 @@ def register_optimizer():
             flow_optimizers.append(module_name)
     return flow_optimizers
 
+
 FLOW_OPTIMIZERS = register_optimizer()
+
 
 def build_optimizer(cfg, model):
     if "_target_" in cfg:
@@ -52,7 +54,9 @@ def build_optimizer(cfg, model):
         optim = instantiate(cfg)
     else:
         optim_name = cfg.optim_name
-        optim = OPTIMIZER_REGISTRY.get(optim_name)(get_default_optimizer_params(model, **cfg.param_cfg), **cfg.optim_cfg)
+        optim = OPTIMIZER_REGISTRY.get(optim_name)(
+            get_default_optimizer_params(model, **cfg.param_cfg), **cfg.optim_cfg
+        )
     return optim
 
 

@@ -21,23 +21,13 @@ import unittest
 
 from libai.optim.build import _expand_param_groups, reduce_param_groups
 
+
 class TestOptimizer(unittest.TestCase):
     def testExpandParamGroups(self):
         params = [
-            {
-                "params": ["p1", "p2", "p3", "p4"],
-                "lr": 1.0,
-                "weight_decay": 3.0,
-            },
-            {
-                "params": ["p2", "p3", "p5"],
-                "lr": 2.0,
-                "momentum": 2.0,
-            },
-            {
-                "params": ["p1"],
-                "weight_decay": 4.0,
-            },
+            {"params": ["p1", "p2", "p3", "p4"], "lr": 1.0, "weight_decay": 3.0,},
+            {"params": ["p2", "p3", "p5"], "lr": 2.0, "momentum": 2.0,},
+            {"params": ["p1"], "weight_decay": 4.0,},
         ]
         out = _expand_param_groups(params)
         gt = [
@@ -48,7 +38,7 @@ class TestOptimizer(unittest.TestCase):
             dict(params=["p5"], lr=2.0, momentum=2.0),  # noqa
         ]
         self.assertEqual(out, gt)
-    
+
     def testReduceParamGroups(self):
         params = [
             dict(params=["p1"], lr=1.0, weight_decay=4.0),  # noqa
@@ -58,30 +48,19 @@ class TestOptimizer(unittest.TestCase):
             dict(params=["p5"], lr=2.0, momentum=2.0),  # noqa
         ]
         gt_groups = [
-            {
-                "lr": 1.0,
-                "weight_decay": 4.0,
-                "params": ["p1"],
-            },
+            {"lr": 1.0, "weight_decay": 4.0, "params": ["p1"],},
             {
                 "lr": 2.0,
                 "weight_decay": 3.0,
                 "momentum": 2.0,
                 "params": ["p2", "p6", "p3"],
             },
-            {
-                "lr": 1.0,
-                "weight_decay": 3.0,
-                "params": ["p4"],
-            },
-            {
-                "lr": 2.0,
-                "momentum": 2.0,
-                "params": ["p5"],
-            },
+            {"lr": 1.0, "weight_decay": 3.0, "params": ["p4"],},
+            {"lr": 2.0, "momentum": 2.0, "params": ["p5"],},
         ]
         out = reduce_param_groups(params)
         self.assertTrue(out, gt_groups)
+
 
 if __name__ == "__main__":
     unittest.main()

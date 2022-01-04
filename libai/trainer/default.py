@@ -256,7 +256,6 @@ class DefaultTrainer(TrainerBase):
         Overwrite it if you'd like a different optimizer.
         """
         return build_optimizer(cfg.optim, model)
-        
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
