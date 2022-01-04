@@ -1,8 +1,9 @@
 from libai.config import LazyCall
 from .common.models.bert import pretrain_model as model
 from .common.train import train
-from .common.optim import optim, lr_scheduler
+from .common.optim import optim, scheduler
 from .common.data.nlp_data import data
+
 from libai.models import BertForPretrainingGraph
 
 # Bert-large model config
@@ -21,7 +22,7 @@ train.amp.enabled = True
 # fmt: off
 graph = dict(
     # options for graph or eager mode
-    enabled=True,
+    enabled=False,
     train=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled,
         is_eval=False,
