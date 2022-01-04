@@ -119,6 +119,8 @@ def _check_batch_size(cfg):
     else:
         raise ValueError("micro_batch_size and global_batch_size must be set either")
 
+from libai.scheduler import build_lr_scheduler
+
 
 def default_setup(cfg, args):
     """
@@ -432,27 +434,10 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
         """
-        It now calls :func:`libai.solver.build_lr_scheduler`.
+        It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        assert (
-            _try_get_key(cfg, "lr_scheduler") is not None
-        ), "cfg must contain `lr_scheduler` namespace"
-        # TODO(l1aoxingyu): Replace this after build_lr_scheduler finishing.
-
-        if cfg.train.lr_decay_iter is None:
-            cfg.train.lr_decay_iter = cfg.train.train_iter
-        decay_steps = int(cfg.train.lr_decay_iter)
-        if cfg.train.lr_warmup_fraction is not None:
-            warmup_iters = cfg.train.lr_warmup_fraction * decay_steps
-        else:
-            warmup_iters = cfg.train.lr_warmup_iters
-        warmup_iters = int(warmup_iters)
-
-        lr_scheduler = cfg.lr_scheduler
-        # Setup optimizer and decay iters
-        lr_scheduler.lrsch_or_optimizer.optimizer = optimizer
-        return instantiate(lr_scheduler)
+        return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
     def build_train_valid_test_loader(cls, cfg):
