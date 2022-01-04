@@ -25,7 +25,6 @@ from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.trainer import hooks
 from libai.utils.checkpoint import Checkpointer
 from libai.optim import build_optimizer
-
 from libai.scheduler import build_lr_scheduler
 
 

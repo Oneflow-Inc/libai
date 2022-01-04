@@ -47,9 +47,9 @@ def register_optimizer():
 FLOW_OPTIMIZERS = register_optimizer()
 
 def build_optimizer(cfg, model):
-    if "_target_" in cfg.optim:
+    if "_target_" in cfg:
         cfg.parameters.model = model
-        optim = instantiate(cfg.optim)
+        optim = instantiate(cfg)
     else:
         optim_name = cfg.optim_name
         optim = OPTIMIZER_REGISTRY.get(optim_name)(get_default_optimizer_params(model, **cfg.param_cfg), **cfg.optim_cfg)
