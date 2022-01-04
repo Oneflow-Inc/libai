@@ -17,17 +17,17 @@ import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
 
+# helpers
 def pair(t):
     return t if isinstance(t, tuple) else (t, t)
+
 
 class PositionEmbs(nn.Module):
     """Position Embedding
     """
     def __init__(self, num_patches, hidden_dim, dropout_rate=0.1):
         super().__init__()
-        self.pos_embedding = nn.Parameter(
-            flow.randn(1, num_patches + 1, hidden_dim), dtype=flow.float32
-        )
+        self.pos_embedding = nn.Parameter(flow.randn(1, num_patches+1, hidden_dim, dtype=flow.float32, requires_grad=True))
         self.dropout = nn.Dropout(dropout_rate) if dropout_rate > 0 else None
     
     def forward(self, x):
@@ -74,12 +74,12 @@ class SelfAttention(nn.Module):
         super().__init__()
         self.num_heads = num_heads
         self.head_dim = hidden_dim // num_heads
-        self.scale = self.head_size ** 0.5
+        self.scale = self.head_dim ** 0.5
 
         self.query = nn.Linear(hidden_dim, self.num_heads * self.head_dim)
         self.key = nn.Linear(hidden_dim, self.num_heads * self.head_dim)
         self.value = nn.Linear(hidden_dim, self.num_heads * self.head_dim)
-        self.merge = nn.Linear(hidden_dim, self.num_heads * self.head_dim)
+        self.out = nn.Linear(hidden_dim, self.num_heads * self.head_dim)
 
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
 
@@ -107,9 +107,9 @@ class SelfAttention(nn.Module):
         # linear projection for merging heads information
         output = flow.matmul(attn_map, v)
         output = output.permute(0, 2, 1, 3)
-        output_shape = tuple(output.size()[: -2]) + (self.num_heads * self.head_size,)
+        output_shape = tuple(output.size()[: -2]) + (self.num_heads * self.head_dim,)
         output = output.view(*output_shape)
-        output = self.merge(output)
+        output = self.out(output)
 
         return self.dropout(output)
 
@@ -119,9 +119,9 @@ class EncoderBlock(nn.Module):
         super().__init__()
         
         self.norm1 = nn.LayerNorm(hidden_dim)
-        self.attn = SelfAttention(hidden_dim, num_heads, attn_dropout)
+        self.attn = SelfAttention(hidden_dim, num_heads, dropout=attn_dropout)
         self.norm2 = nn.LayerNorm(hidden_dim)
-        self.mlp = MlpBlock(hidden_dim, mlp_dim, hidden_dim, dropout)
+        self.mlp = MlpBlock(hidden_dim, mlp_dim, hidden_dim, dropout=dropout)
     
     def forward(self, x):
         # self-attention
