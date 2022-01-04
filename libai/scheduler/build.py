@@ -24,6 +24,7 @@ The registered object will be called with `obj(cfg)`
 and expected to return a `flow.optim.lr_scheduler._LRScheduler` object.
 """
 
+
 def build_lr_scheduler(cfg, optimizer):
     """ Build learning rate scheduler, defined by ``cfg``.
     """
@@ -32,5 +33,7 @@ def build_lr_scheduler(cfg, optimizer):
         scheduler = instantiate(cfg)
     else:
         scheduler_name = cfg.scheduler_name
-        scheduler = SCHEDULER_REGISTRY.get(scheduler_name)(optimizer, **cfg.scheduler_cfg)
+        scheduler = SCHEDULER_REGISTRY.get(scheduler_name)(
+            optimizer, **cfg.scheduler_cfg
+        )
     return scheduler

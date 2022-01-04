@@ -21,12 +21,12 @@ import numpy as np
 import oneflow as flow
 import oneflow.nn as nn
 from libai.scheduler import (
-                            WarmupCosineLR, 
-                            WarmupMultiStepLR, 
-                            WarmupFixedStepLR,
-                            WarmupExponentialLR,
-                            WarmupCosineAnnealingLR,
-                            )
+    WarmupCosineLR,
+    WarmupMultiStepLR,
+    WarmupFixedStepLR,
+    WarmupExponentialLR,
+    WarmupCosineAnnealingLR,
+)
 
 
 class TestScheduler(TestCase):
@@ -34,13 +34,15 @@ class TestScheduler(TestCase):
         p = nn.Parameter(flow.zeros(0))
         opt = flow.optim.SGD([p], lr=5.0)
 
-        sched = WarmupMultiStepLR(optimizer = opt,
-                                  milestones = [10, 15, 20],
-                                  gamma = 0.1,
-                                  warmup_factor = 0.001,
-                                  warmup_iters = 5,
-                                  warmup_method = "linear",)
-        
+        sched = WarmupMultiStepLR(
+            optimizer=opt,
+            milestones=[10, 15, 20],
+            gamma=0.1,
+            warmup_factor=0.001,
+            warmup_iters=5,
+            warmup_method="linear",
+        )
+
         p.sum().backward()
         opt.step()
 
@@ -53,17 +55,19 @@ class TestScheduler(TestCase):
         self.assertTrue(np.allclose(lrs[10:15], 0.5))
         self.assertTrue(np.allclose(lrs[15:20], 0.05))
         self.assertTrue(np.allclose(lrs[20:], 0.005))
-    
+
     def test_warmup_cosine(self):
         p = nn.Parameter(flow.zeros(0))
         opt = flow.optim.SGD([p], lr=5.0)
 
-        sched = WarmupCosineLR(optimizer = opt,
-                               max_iters = 30,
-                               warmup_factor = 0.001,
-                               warmup_iters = 5,
-                               warmup_method = "linear")
-        
+        sched = WarmupCosineLR(
+            optimizer=opt,
+            max_iters=30,
+            warmup_factor=0.001,
+            warmup_iters=5,
+            warmup_method="linear",
+        )
+
         p.sum().backward()
         opt.step()
         self.assertEqual(opt.param_groups[0]["lr"], 0.005)
@@ -83,13 +87,15 @@ class TestScheduler(TestCase):
         p = nn.Parameter(flow.zeros(0))
         opt = flow.optim.SGD([p], lr=5.0)
 
-        sched = WarmupFixedStepLR(optimizer = opt,
-                                  step_size = 10,
-                                  gamma = 0.1,
-                                  warmup_factor = 0.001,
-                                  warmup_iters = 5,
-                                  warmup_method = "linear")
-        
+        sched = WarmupFixedStepLR(
+            optimizer=opt,
+            step_size=10,
+            gamma=0.1,
+            warmup_factor=0.001,
+            warmup_iters=5,
+            warmup_method="linear",
+        )
+
         p.sum().backward()
         opt.step()
         self.assertEqual(opt.param_groups[0]["lr"], 0.005)
@@ -102,16 +108,18 @@ class TestScheduler(TestCase):
         self.assertTrue(np.allclose(lrs[5:10], 5.0))
         self.assertTrue(np.allclose(lrs[10:20], 0.5))
         self.assertTrue(np.allclose(lrs[20:30], 0.05))
-    
+
     def test_warmup_exponential(self):
         p = nn.Parameter(flow.zeros(0))
         opt = flow.optim.SGD([p], lr=5.0)
 
-        sched = WarmupExponentialLR(optimizer = opt,
-                                    gamma = 0.1,
-                                    warmup_factor = 0.001,
-                                    warmup_iters = 5,
-                                    warmup_method = "linear")
+        sched = WarmupExponentialLR(
+            optimizer=opt,
+            gamma=0.1,
+            warmup_factor=0.001,
+            warmup_iters=5,
+            warmup_method="linear",
+        )
 
         p.sum().backward()
         opt.step()
@@ -122,14 +130,11 @@ class TestScheduler(TestCase):
             sched.step()
             lrs.append(opt.param_groups[0]["lr"])
         self.assertTrue(np.allclose(lrs[:5], [0.005, 1.004, 2.003, 3.002, 4.001]))
-        valid_intermediate_values = self._get_valid_intermediate_values(base_lr = 5.0, 
-                                                                        gamma = 0.1, 
-                                                                        max_iters = 30, 
-                                                                        warmup_iters = 5)
-        self.assertEqual(lrs[5:30], valid_intermediate_values)          
-                                                            
-        
-    
+        valid_intermediate_values = self._get_valid_intermediate_values(
+            base_lr=5.0, gamma=0.1, max_iters=30, warmup_iters=5
+        )
+        self.assertEqual(lrs[5:30], valid_intermediate_values)
+
     def _get_valid_intermediate_values(self, base_lr, gamma, max_iters, warmup_iters):
         valid_values = []
         for idx in range(max_iters - warmup_iters):
