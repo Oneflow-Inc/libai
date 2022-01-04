@@ -29,20 +29,25 @@ def configurable(init_func=None, *, from_config=None):
             @configurable
             def __init__(self, a, b=2, c=3):
                 pass
+
             @classmethod
             def from_config(cls, cfg):   # 'cfg' must be the first argument
                 # Returns kwargs to be passed to __init__
                 return {"a": cfg.A, "b": cfg.B}
+
         a1 = A(a=1, b=2)  # regular construction
         a2 = A(cfg)       # construct with a cfg
         a3 = A(cfg, b=3, c=4)  # construct with extra overwrite
+
         # Usage 2: Decorator on any function. Needs an extra from_config argument:
         @configurable(from_config=lambda cfg: {"a: cfg.A, "b": cfg.B})
         def a_func(a, b=2, c=3):
             pass
+
         a1 = a_func(a=1, b=2)  # regular call
         a2 = a_func(cfg)       # call with a cfg
         a3 = a_func(cfg, b=3, c=4)  # call with extra overwrite
+
     Args:
         init_func (callable): a class's ``__init__`` method in usage 1. The
             class must have a ``from_config`` classmethod which takes `cfg` as
