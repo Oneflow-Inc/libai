@@ -17,6 +17,8 @@ import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
 
+from libai.config import configurable
+
 from .build import MODEL_ARCH_REGISTRY
 
 # helpers
@@ -168,6 +170,9 @@ class Encoder(nn.Module):
 
 @MODEL_ARCH_REGISTRY.register()
 class VisionTransformer(nn.Module):
+    """Vision Transformer Model"""
+
+    @configurable
     def __init__(self, img_size=224, patch_size=16, hidden_dim=768, mlp_dim=3072, num_heads=12, num_layers=12, num_classes=1000, attn_dropout=0.0, dropout=0.1):
         super().__init__()
         image_h, image_w = pair(img_size)
@@ -193,7 +198,22 @@ class VisionTransformer(nn.Module):
 
         # classifier
         self.classifier = nn.Linear(hidden_dim, num_classes)
-    
+
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "img_size": cfg.img_size,
+            "patch_size": cfg.patch_size,
+            "hidden_dim": cfg.hidden_dim,
+            "mlp_dim": cfg.mlp_dim,
+            "num_heads": cfg.num_heads,
+            "num_layers": cfg.num_layers,
+            "num_classes": cfg.num_classes,
+            "attn_dropout": cfg.attn_dropout,
+            "dropout": cfg.dropout,
+        }
+
+
     def forward(self, x):
         emb = self.embedding(x)
         emb = emb.permute(0, 2, 3, 1)

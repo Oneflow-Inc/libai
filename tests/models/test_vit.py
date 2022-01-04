@@ -13,14 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertModel, BertForPreTraining
-from .vit import VisionTransformer
-from .build import build_model, MODEL_ARCH_REGISTRY
+from omegaconf import OmegaConf
 
-__all__ = [
-    "build_model",
-    "BertModel",
-    "BertForPreTraining",
-    "VisionTransformer",
-    "MODEL_ARCH_REGISTRY"
-]
+from libai.models import build_model
+
+cfg = OmegaConf.create()
+
+cfg.model_name = "VisionTransformer"
+cfg.model_cfg = dict(
+        img_size=224,
+        patch_size=16,
+        hidden_dim=768,
+        mlp_dim=3072,
+        num_heads=12,
+        num_layers=12,
+        num_classes=1000,
+        attn_dropout=0.0,
+        dropout=0.1,
+    )
+
+# test build_model
+vit_b_16_224 = build_model(cfg)
