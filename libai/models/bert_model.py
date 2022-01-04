@@ -30,6 +30,8 @@ from libai.config import configurable
 
 from .utils import init_method_normal, scaled_init_method_normal
 
+from .build import MODEL_ARCH_REGISTRY
+
 
 class BertExtendedAttnMask(nn.Module):
     def forward(self, attention_mask):
@@ -334,6 +336,7 @@ class BertModel(nn.Module):
         return self.embeddings.word_embeddings()
 
 
+@MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
     def __init__(self, cfg):
         super().__init__()

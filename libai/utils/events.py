@@ -166,7 +166,6 @@ class CommonMetricPrinter(EventWriter):
             data_time = None
 
         eta_string = None
-        throughput = None
         try:
             iter_time = storage.history("time").global_avg()
             eta_seconds = storage.history("time").median(1000) * (
@@ -174,8 +173,6 @@ class CommonMetricPrinter(EventWriter):
             )
             storage.put_scalar("eta_seconds", eta_seconds, smoothing_hint=False)
             eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
-            throughput = self._batch_size / iter_time
-            storage.put_scalar("throughputs", throughput, smoothing_hint=False)
         except KeyError:
             iter_time = None
             # estimate eta on our own - more noisy
@@ -200,7 +197,7 @@ class CommonMetricPrinter(EventWriter):
 
         # NOTE: max_mem is parsed by grep in "dev/parse_results.sh"
         self.logger.info(
-            " {eta}{iter}  {sample}  {losses}  {time}{data_time} {throughput} lr: {lr}  {memory}".format(
+            " {eta}{iter}  {sample}  {losses}  {time}{data_time}  lr: {lr}  {memory}".format(
                 eta=f"eta: {eta_string}  " if eta_string else "",
                 iter=f"iteration: {iteration}/{self._max_iter}",
                 sample=f"consumed samples: {consumed_samples}",
@@ -211,14 +208,13 @@ class CommonMetricPrinter(EventWriter):
                         if "loss" in k
                     ]
                 ),
-                time="time: {:.4f}  ".format(iter_time)
+                time="time: {:.4f}({:.2f})  ".format(
+                    iter_time, self._batch_size / iter_time
+                )
                 if iter_time is not None
                 else "",
-                data_time="data_time: {:.4f}  ".format(data_time)
+                data_time="data_time: {:.4f}".format(data_time)
                 if data_time is not None
-                else "",
-                throughput="tpt: {:.1f} samples/s ".format(throughput)
-                if throughput is not None
                 else "",
                 lr=lr,
                 memory="max_mem: {:.0f}M".format(max_mem_mb)
