@@ -24,6 +24,8 @@ from libai.utils.logger import setup_logger
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.trainer import hooks
 from libai.utils.checkpoint import Checkpointer
+from libai.optim import build_optimizer
+from libai.scheduler import build_lr_scheduler
 
 
 def default_setup(cfg):
@@ -250,24 +252,18 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             torch.optim.Optimizer:
-        It now calls :func:`libai.solver.build_optimizer`.
+        It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        # TODO: import build_optimizer from other utils
-        optimizer = flow.optim.Adam(model.parameters(), lr=0.01)
-        return optimizer
-        # return build_optimizer(cfg, model)
+        return build_optimizer(cfg.optim, model)
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
         """
-        It now calls :func:`libai.solver.build_lr_scheduler`.
+        It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        # TODO: import get_learning_rate_scheduler from other utils
-        lr_scheduler = flow.optim.lr_scheduler.StepLR(optimizer, step_size=1000)
-        return lr_scheduler
-        # return get_learning_rate_scheduler(cfg, optimizer)
+        return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
     def build_train_valid_test_loader_loader(cls, cfg):
