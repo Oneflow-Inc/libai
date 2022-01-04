@@ -48,7 +48,7 @@ FLOW_OPTIMIZERS = register_optimizer()
 
 def build_optimizer(cfg, model):
     if "_target_" in cfg.optim:
-        cfg.optim.parameters.model = model
+        cfg.parameters.model = model
         optim = instantiate(cfg.optim)
     else:
         optim_name = cfg.optim_name

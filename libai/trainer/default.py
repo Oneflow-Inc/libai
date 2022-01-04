@@ -254,7 +254,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        return build_optimizer(cfg, model)
+        return build_optimizer(cfg.optim, model)
         
 
     @classmethod
