@@ -193,15 +193,22 @@ def build_training_sample(
         tokens, tokentypes, masked_positions, masked_labels, pad_id, max_seq_length
     )
 
-    train_sample = {
-        "text": tokens_np,
-        "types": tokentypes_np,
-        "labels": labels_np,
-        "is_random": int(is_next_random),
-        "loss_mask": loss_mask_np,
-        "padding_mask": padding_mask_np,
-        "truncated": int(truncated),
-    }
+    # train_sample = {
+    #     "tokens": (flow.tensor(tokens_np), 0),
+    #     "tokentype_ids": (flow.tensor(tokentypes_np), 0),
+    #     "lm_labels": (flow.tensor(labels_np), -1),
+    #     "ns_labels": (flow.tensor(int(is_next_random)), -1),
+    #     "loss_mask": (flow.tensor(loss_mask_np.astype(float)), -1),
+    #     "padding_mask": (flow.tensor(padding_mask_np), 0),
+    # }
+    train_sample = [
+        (flow.tensor(tokens_np), 0),
+        (flow.tensor(padding_mask_np), 0),
+        (flow.tensor(tokentypes_np), 0),
+        (flow.tensor(int(is_next_random)), -1),
+        (flow.tensor(labels_np), -1),
+        (flow.tensor(loss_mask_np.astype(float)), -1),
+    ]
     return train_sample
 
 
