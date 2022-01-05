@@ -37,7 +37,7 @@ def WarmupCosineLR(
     )
     if warmup_iters == 0:
         logger.warning(
-            "warmup iters equals to zero, directly return the passed scheduler"
+            "warmup iters equals to zero, return CosineLR"
         )
         return cosine_decay_lr
     elif warmup_iters > max_iters:
@@ -55,7 +55,7 @@ def WarmupCosineLR(
 @SCHEDULER_REGISTRY.register()
 def WarmupCosineAnnealingLR(
     optimizer: flow.optim.Optimizer,
-    t_max: int,
+    max_iters: int,
     warmup_factor: float,
     warmup_iters: int,
     eta_min: float = 0.0,
@@ -63,11 +63,11 @@ def WarmupCosineAnnealingLR(
     **kwargs
 ):
     cosine_annealing_lr = flow.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=t_max, eta_min=eta_min
+        optimizer, T_max=max_iters, eta_min=eta_min
     )
     if warmup_iters == 0:
         logger.warning(
-            "warmup iters equals to zero, directly return the passed scheduler"
+            "warmup iters equals to zero, return CosineAnnealingLR"
         )
         return cosine_annealing_lr
     warmup_cosine_annealing_lr = flow.optim.lr_scheduler.WarmUpLR(
@@ -95,7 +95,7 @@ def WarmupMultiStepLR(
     )
     if warmup_iters == 0:
         logger.warning(
-            "warmup iters equals to zero, not using any warmup operation here"
+            "warmup iters equals to zero, return MultiStepLR"
         )
         return multistep_lr
     warmup_multistep_lr = flow.optim.lr_scheduler.WarmUpLR(
@@ -123,7 +123,7 @@ def WarmupFixedStepLR(
     )
     if warmup_iters == 0:
         logger.warning(
-            "warmup iters equals to zero, not using any warmup operation here"
+            "warmup iters equals to zero, return FixedStepLR"
         )
         return fixedstep_lr
     warmup_fixedstep_lr = flow.optim.lr_scheduler.WarmUpLR(
@@ -148,7 +148,7 @@ def WarmupExponentialLR(
     exponential_lr = flow.optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
     if warmup_iters == 0:
         logger.warning(
-            "warmup iters equals to zero, not using any warmup operation here"
+            "warmup iters equals to zero, return ExponentialLR"
         )
         return exponential_lr
     warmup_exponential_lr = flow.optim.lr_scheduler.WarmUpLR(
