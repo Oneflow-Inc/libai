@@ -276,11 +276,11 @@ class DefaultTrainer(TrainerBase):
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
 
-        (
-            self.train_data_iterator,
-            self.valid_data_iterator,
-            self.test_data_iterator,
-        ) = self.build_train_valid_test_loader(cfg)
+        # (
+        #     self.train_data_iterator,
+        #     self.valid_data_iterator,
+        #     self.test_data_iterator,
+        # ) = self.build_train_valid_test_loader(cfg)
 
         if cfg.graph.enabled:
             graph_train = self.build_graph(
@@ -396,10 +396,14 @@ class DefaultTrainer(TrainerBase):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
+        model.apply(dist.convert_consistent)
         return model
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
+        assert (
+            _try_get_key(cfg, "graph") is not None
+        ), "cfg must contain `graph` namespace"
         graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
         graph.debug(cfg.graph.debug)
         return graph

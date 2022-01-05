@@ -35,22 +35,22 @@ graph = dict(
 )
 
 # Register
-graph = dict(
-    enabled=True,
-    debug=0,
-    train_graph = dict(
-        graph_name="BertForPretrainingGraph",
-        graph_cfg = dict(
-            fp16=train.amp.enabled,
-            is_train=True,
-        )
-    ),
-    eval_graph = dict(
-        graph_name="BertForPretrainingGraph",
-        graph_cfg = dict(
-            fp16=train.amp.enabled,
-            is_train=False
-        )
-    )
-)
+# graph = dict(
+#     enabled=True,
+#     debug=0,
+#     train_graph = dict(
+#         graph_name="BertForPretrainingGraph",
+#         graph_cfg = dict(
+#             fp16=train.amp.enabled,
+#             is_train=True,
+#         )
+#     ),
+#     eval_graph = dict(
+#         graph_name="BertForPretrainingGraph",
+#         graph_cfg = dict(
+#             fp16=train.amp.enabled,
+#             is_train=False
+#         )
+#     )
+# )
 # fmt: on

@@ -239,6 +239,16 @@ def get_world_size():
     return flow.env.get_world_size()
 
 
+def convert_consistent(module):
+    for param in module.parameters():
+        if not param.is_consistent:
+            module.to_consistent(
+                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=get_layer_placement(0),
+            )
+            return
+
+
 def ttol(tensor, pure_local=False):
     """ consistent tensor to local tensor"""
     if tensor.is_consistent:

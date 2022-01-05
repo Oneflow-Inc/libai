@@ -31,7 +31,7 @@ from libai.config import configurable
 from .utils import init_method_normal, scaled_init_method_normal
 
 from .build import MODEL_ARCH_REGISTRY
-from .graph_base import GraphBase, GRAPH_REGISTRY
+from .utils import GraphBase, GRAPH_REGISTRY
 
 
 class BertExtendedAttnMask(nn.Module):
@@ -293,9 +293,10 @@ class BertModel(nn.Module):
                 for i in range(hidden_layers)
             ]
         )
-        self.final_layernorm = LayerNorm(
-            (hidden_size,), eps=layernorm_eps, layer_idx=-1
-        )
+        # self.final_layernorm = LayerNorm(
+        #     (hidden_size,), eps=layernorm_eps, layer_idx=-1
+        # )
+        self.final_layernorm = nn.LayerNorm((hidden_size))
 
         self.pooler = (
             BertPooler(hidden_size, init_method) if add_pooling_layer else None
