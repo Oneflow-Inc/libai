@@ -379,9 +379,29 @@ class DefaultTrainer(TrainerBase):
         """
         super().train(self.start_iter, self.max_iter)
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self):
         self._trainer.iter = self.iter
-        self._trainer.run_step(get_batch)
+        self._trainer.run_step(self.get_batch)
+
+    @classmethod
+    def get_batch(cls, data_iterator):
+        """Build the batch for model step running."""
+
+        assert data_iterator is not None, "data iterator is None!"
+        data = next(data_iterator)
+
+        sbp = dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
+
+        def to_consistent(tensor, placement_idx):
+            tensor = tensor.to_consistent(
+                sbp=sbp, placement=dist.get_layer_placement(placement_idx)
+            )
+            return tensor
+
+        for i in range(len(data)):
+            data[i] = to_consistent(data[i][0], data[i][1][0].item())
+
+        return data
 
     @classmethod
     def build_model(cls, cfg):
