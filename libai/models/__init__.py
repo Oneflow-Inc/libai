@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from .bert_model import BertModel, BertForPreTraining
-from .vit import VisionTransformer
+from .vit import VisionTransformer, VisionTransformerGraph
 from .build import build_model, MODEL_ARCH_REGISTRY
 from .bert_model import BertModel, BertForPreTraining, BertForPretrainingGraph
 from .utils import build_graph
@@ -26,5 +26,6 @@ __all__ = [
     "BertForPreTraining",
     "BertForPretrainingGraph",
     "VisionTransformer",
+    "VisionTransformerGraph",
     "MODEL_ARCH_REGISTRY",
 ]

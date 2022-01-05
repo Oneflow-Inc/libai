@@ -20,6 +20,7 @@ import oneflow.nn.functional as F
 from libai.config import configurable
 
 from .build import MODEL_ARCH_REGISTRY
+from .utils import GraphBase, GRAPH_REGISTRY
 
 # helpers
 def pair(t):
@@ -230,3 +231,20 @@ class VisionTransformer(nn.Module):
         # classifier
         logits = self.classifier(feat[:, 0])
         return logits
+
+
+@GRAPH_REGISTRY.register()
+class VisionTransformerGraph(GraphBase):
+    def build(
+        self,
+        images,
+        targets,
+    ):
+
+        # Forward pass through the model
+        if self.is_train:
+            losses = self.model(images, targets)
+            losses.backward()
+            return losses
+        else:
+            return self.model(images)
