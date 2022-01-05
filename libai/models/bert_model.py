@@ -293,10 +293,9 @@ class BertModel(nn.Module):
                 for i in range(hidden_layers)
             ]
         )
-        # self.final_layernorm = LayerNorm(
-        #     (hidden_size,), eps=layernorm_eps, layer_idx=-1
-        # )
-        self.final_layernorm = nn.LayerNorm((hidden_size))
+        self.final_layernorm = LayerNorm(
+            (hidden_size,), eps=layernorm_eps, layer_idx=-1
+        )
 
         self.pooler = (
             BertPooler(hidden_size, init_method) if add_pooling_layer else None
