@@ -1,4 +1,4 @@
-from libai.config import LazyCall as L
+from libai.config import LazyCall
 from .common.models.bert import pretrain_model as model
 from .common.train import train
 from .common.optim import optim, lr_scheduler
@@ -17,6 +17,7 @@ model.cfg.hidden_size = 384
 model.cfg.intermediate_size = 1536
 model.cfg.num_attention_heads = 16
 model.cfg.max_position_embeddings = 512
+model.cfg.fp16 = train.amp.enabled
 
 train.dist.pipeline_num_layers = model.cfg.hidden_layers
 
@@ -33,10 +34,10 @@ data.tokenizer_type = "BertCNWWMTokenizer"
 graph = dict(
     # options for graph or eager mode
     enabled=True,
-    train=L(BertForPretrainingGraph)(
+    train=LazyCall(BertForPretrainingGraph)(
         is_eval=False,
     ),
-    eval=L(BertForPretrainingGraph)(
+    eval=LazyCall(BertForPretrainingGraph)(
         is_eval=True,
     )
 )
