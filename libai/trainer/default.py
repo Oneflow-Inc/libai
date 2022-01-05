@@ -276,11 +276,11 @@ class DefaultTrainer(TrainerBase):
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
 
-        # (
-        #     self.train_data_iterator,
-        #     self.valid_data_iterator,
-        #     self.test_data_iterator,
-        # ) = self.build_train_valid_test_loader(cfg)
+        (
+            self.train_data_iterator,
+            self.valid_data_iterator,
+            self.test_data_iterator,
+        ) = self.build_train_valid_test_loader(cfg)
 
         if cfg.graph.enabled:
             graph_train = self.build_graph(
