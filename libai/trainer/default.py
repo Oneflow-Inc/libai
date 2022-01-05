@@ -18,10 +18,10 @@ import os
 from typing import Callable
 
 import oneflow as flow
-from libai.config import LazyConfig, instantiate
+from libai.config import LazyConfig
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
-from libai.models import build_model
+from libai.models import build_model, build_graph
 from libai.scheduler import build_lr_scheduler
 from libai.optim import build_optimizer
 from libai.utils import distributed as dist
@@ -276,18 +276,17 @@ class DefaultTrainer(TrainerBase):
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
 
-        (
-            self.train_data_iterator,
-            self.valid_data_iterator,
-            self.test_data_iterator,
-        ) = self.build_train_valid_test_loader(cfg)
+        # (
+        #     self.train_data_iterator,
+        #     self.valid_data_iterator,
+        #     self.test_data_iterator,
+        # ) = self.build_train_valid_test_loader(cfg)
 
         if cfg.graph.enabled:
             graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
             graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            # graph_train.debug(0)
             self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
         else:
             self._trainer = EagerTrainer(
@@ -397,23 +396,17 @@ class DefaultTrainer(TrainerBase):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
+        model.apply(dist.convert_consistent)
         return model
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
-        if is_train:
-            # Set train graph
-            assert optimizer is not None, "optimizer must be set for train graph"
-            assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
-            cfg.graph.num_accumulation_steps = cfg.train.num_accumulation_steps
-            cfg.graph.train.model = model
-            cfg.graph.train.optimizer = optimizer
-            cfg.graph.train.lr_scheduler = lr_scheduler
-            return instantiate(cfg.graph.train)
-        else:
-            # Set eval graph
-            cfg.graph.eval.model = model
-            return instantiate(cfg.graph.eval)
+        assert (
+            _try_get_key(cfg, "graph") is not None
+        ), "cfg must contain `graph` namespace"
+        graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
+        graph.debug(cfg.graph.debug)
+        return graph
 
     @classmethod
     def build_optimizer(cls, cfg, model):

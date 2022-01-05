@@ -20,15 +20,37 @@ train.micro_batch_size = 16
 train.amp.enabled = True
 
 # fmt: off
+# LazyCall
 graph = dict(
     # options for graph or eager mode
-    enabled=False,
-    train=LazyCall(BertForPretrainingGraph)(
+    enabled=True,
+    debug=0, # debug mode for graph
+    train_graph=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled,
-        is_eval=False,
+        is_train=True,
     ),
-    eval=LazyCall(BertForPretrainingGraph)(
+    eval_graph=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled, 
-        is_eval=True,),
+        is_train=False,),
 )
+
+# Register
+# graph = dict(
+#     enabled=True,
+#     debug=0,
+#     train_graph = dict(
+#         graph_name="BertForPretrainingGraph",
+#         graph_cfg = dict(
+#             fp16=train.amp.enabled,
+#             is_train=True,
+#         )
+#     ),
+#     eval_graph = dict(
+#         graph_name="BertForPretrainingGraph",
+#         graph_cfg = dict(
+#             fp16=train.amp.enabled,
+#             is_train=False
+#         )
+#     )
+# )
 # fmt: on

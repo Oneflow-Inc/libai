@@ -13,18 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertModel, BertForPreTraining
-from .vit import VisionTransformer
-from .build import build_model, MODEL_ARCH_REGISTRY
-from .bert_model import BertModel, BertForPreTraining, BertForPretrainingGraph
-from .utils import build_graph
-
-__all__ = [
-    "build_model",
-    "build_graph",
-    "BertModel",
-    "BertForPreTraining",
-    "BertForPretrainingGraph",
-    "VisionTransformer",
-    "MODEL_ARCH_REGISTRY",
-]
+from .graph_base import GraphBase, build_graph, GRAPH_REGISTRY
+from .weight_init import init_method_normal, scaled_init_method_normal

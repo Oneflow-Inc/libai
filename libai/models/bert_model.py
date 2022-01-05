@@ -31,6 +31,7 @@ from libai.config import configurable
 from .utils import init_method_normal, scaled_init_method_normal
 
 from .build import MODEL_ARCH_REGISTRY
+from .utils import GraphBase, GRAPH_REGISTRY
 
 
 class BertExtendedAttnMask(nn.Module):
@@ -292,9 +293,10 @@ class BertModel(nn.Module):
                 for i in range(hidden_layers)
             ]
         )
-        self.final_layernorm = LayerNorm(
-            (hidden_size,), eps=layernorm_eps, layer_idx=-1
-        )
+        # self.final_layernorm = LayerNorm(
+        #     (hidden_size,), eps=layernorm_eps, layer_idx=-1
+        # )
+        self.final_layernorm = nn.LayerNorm((hidden_size))
 
         self.pooler = (
             BertPooler(hidden_size, init_method) if add_pooling_layer else None
@@ -378,3 +380,55 @@ class BertForPreTraining(nn.Module):
             return total_loss
         else:
             return prediction_scores, seq_relationship_score
+
+
+@GRAPH_REGISTRY.register()
+class BertForPretrainingGraph(GraphBase):
+    def build(
+        self,
+        tokens,
+        padding_mask,
+        tokentype_ids,
+        ns_labels=None,
+        lm_labels=None,
+        loss_mask=None,
+    ):
+
+        # Forward pass through the model
+        if self.is_train:
+            losses = self.model(
+                tokens, padding_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
+            )
+            losses.backward()
+            return losses
+        else:
+            return self.model(tokens, padding_mask, tokentype_ids)
+
+    def set_pipeline_stage_id(self):
+        dist_utils = dist.get_dist_util()
+
+        # 设置模型的 stage_id
+        for module_block in self.model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, BertEmbeddings):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, BertExtendedAttnMask):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(
+                    module_block.layer_idx
+                )
+            elif isinstance(module_block.origin, BertPreTrainingHeads):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            elif isinstance(module_block.origin, LMLogits):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            elif isinstance(module_block.origin, BertLoss):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            else:
+                pass
+
+        # Set the last layernorm stage id
+        self.model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
+            -1
+        )
+        self.model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
