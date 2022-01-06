@@ -1,4 +1,5 @@
 data = dict(
+    dataset = "imagenet",
     # Path to dataset
     data_path = "./dataset/imagenet",
     # Input image size
