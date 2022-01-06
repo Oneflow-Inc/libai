@@ -29,8 +29,6 @@ from libai.layers import (
 from libai.utils import distributed as dist
 from libai.config import configurable
 
-from .utils import init_method_normal, scaled_init_method_normal
-
 from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
 from .utils import GraphBase, init_method_normal, scaled_init_method_normal
 
