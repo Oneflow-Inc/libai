@@ -161,7 +161,7 @@ class VocabEmbedding(nn.Module):
         #   embed  input_ids    input_embeds
         input_embeds = flow._C.gather(weight, input_ids, axis=0)
         # Set the embeds sbp from [S(0), P] --> [S(0), B] to get complete embedding results.
-        input_embeds = input_embeds.to_consistent(sbp=dist.get_hidden_sbp())
+        #  input_embeds = input_embeds.to_consistent(sbp=dist.get_hidden_sbp())
 
         return input_embeds
 

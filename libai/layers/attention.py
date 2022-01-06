@@ -132,15 +132,15 @@ class MultiheadAttention(nn.Module):
         # hidden_states, encoder_states: [S(0), B]
         # attention_mask: [S(0), B]
 
-        if encoder_states is not None:
-            encoder_states = encoder_states.to_consistent(
-                placement=hidden_states.placement
-            )
+        #  if encoder_states is not None:
+        #      encoder_states = encoder_states.to_consistent(
+        #          placement=hidden_states.placement
+        #      )
 
-        if attention_mask is not None:
-            attention_mask = attention_mask.to_consistent(
-                placement=hidden_states.placement
-            )
+        #  if attention_mask is not None:
+        #      attention_mask = attention_mask.to_consistent(
+        #          placement=hidden_states.placement
+        #      )
 
         bsz, tgt_len = hidden_states.size()[:2]
 
