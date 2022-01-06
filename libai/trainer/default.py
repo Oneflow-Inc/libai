@@ -396,7 +396,7 @@ class DefaultTrainer(TrainerBase):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
-        model.apply(dist.convert_consistent)
+        model.apply(dist.convert_to_distributed_default_setting)
         return model
 
     @classmethod
