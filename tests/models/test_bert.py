@@ -17,8 +17,8 @@ from omegaconf import DictConfig
 from libai.models import build_model
 
 cfg = dict(
-    model_name = "BertForPreTraining",
-    model_cfg = dict(
+    model_name="BertForPreTraining",
+    model_cfg=dict(
         vocab_size=1000,
         hidden_size=768,
         hidden_layers=12,
@@ -35,7 +35,7 @@ cfg = dict(
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
         apply_query_key_layer_scaling=True,
-    )
+    ),
 )
 
 cfg = DictConfig(cfg)
