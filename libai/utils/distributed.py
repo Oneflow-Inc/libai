@@ -306,6 +306,20 @@ def get_world_size():
     return flow.env.get_world_size()
 
 
+def convert_to_distributed_default_setting(module):
+    """
+    Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
+        consistent tensor with data parallelism as default.
+    """
+    for param in module.parameters():
+        if not param.is_consistent:
+            module.to_consistent(
+                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=get_layer_placement(0),
+            )
+            return
+
+
 def get_num_nodes():
     return flow.env.get_node_size()
 
