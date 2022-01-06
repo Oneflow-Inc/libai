@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from omegaconf import OmegaConf
 import functools
 import inspect
 
@@ -155,3 +156,15 @@ def _called_with_cfg(*args, **kwargs):
     # `from_config`'s first argument is forced to be "cfg".
     # So the above check covers all cases.
     return False
+
+
+def try_get_key(cfg, *keys, default=None):
+    """
+    Try select keys from cfg until the first key that exists. Otherwise return default.
+    """
+    for k in keys:
+        none = object()
+        p = OmegaConf.select(cfg, k, default=none)
+        if p is not none:
+            return p
+    return default
