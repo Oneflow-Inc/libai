@@ -3,7 +3,7 @@ from libai.scheduler import WarmupCosineLR
 from .common.models.vit import vit_model as model
 from .common.train import train
 from .common.optim import optim
-from .common.data.imagenet_data import data
+
 
 from libai.models import VisionTransformerGraph
 
