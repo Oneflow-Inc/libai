@@ -215,7 +215,7 @@ class VisionTransformer(nn.Module):
         }
 
 
-    def forward(self, x):
+    def forward(self, x, targets):
         emb = self.embedding(x)
         emb = emb.permute(0, 2, 3, 1)
         b, h, w, c = emb.shape
@@ -230,7 +230,14 @@ class VisionTransformer(nn.Module):
 
         # classifier
         logits = self.classifier(feat[:, 0])
-        return logits
+
+        criterion = nn.CrossEntropyLoss()
+
+        if targets is not None:
+            losses = logits.sum()
+            return losses
+        else:
+            return logits
 
 
 @GRAPH_REGISTRY.register()

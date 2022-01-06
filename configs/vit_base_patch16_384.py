@@ -16,6 +16,8 @@ optim.weight_decay = 1e-8
 
 # Set scheduler cfg for vit model
 scheduler = LazyCall(WarmupCosineLR)(
+    max_iters=10000,
+    warmup_iters=1000,
     warmup_factor = 0.001,
     alpha = 0.01
 )
@@ -34,13 +36,14 @@ train.amp.enabled = True
 # fmt: off
 graph = dict(
     # options for graph or eager mode
-    enabled=False,
-    train=LazyCall(VisionTransformerGraph)(
+    enabled=True,
+    train_graph=LazyCall(VisionTransformerGraph)(
         fp16=train.amp.enabled,
-        is_eval=False,
+        is_train=True,
     ),
-    eval=LazyCall(VisionTransformerGraph)(
+    eval_graph=LazyCall(VisionTransformerGraph)(
         fp16=train.amp.enabled, 
-        is_eval=True,),
+        is_train=False,),
+    debug = False,
 )
 # fmt: on
