@@ -14,6 +14,8 @@
 # limitations under the License.
 
 import oneflow as flow
+from oneflow import nn
+
 from libai.layers import (
     build_activation,
     VocabEmbedding,
@@ -25,13 +27,12 @@ from libai.layers import (
     LMLogits,
 )
 from libai.utils import distributed as dist
-from oneflow import nn
 from libai.config import configurable
 
 from .utils import init_method_normal, scaled_init_method_normal
 
 from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
-from .utils import GraphBase
+from .utils import GraphBase, init_method_normal, scaled_init_method_normal
 
 
 class BertExtendedAttnMask(nn.Module):

@@ -22,12 +22,9 @@ from libai.config import LazyCall
 from libai.models import build_model, build_graph
 from libai.models.bert_model import BertForPretrainingGraph
 from libai.optim import build_optimizer
-from libai.utils.logger import setup_logger
 
 from configs.common.models.bert import pretrain_model as model_cfg
 from configs.common.optim import optim as optim_cfg
-
-setup_logger()
 
 model = build_model(model_cfg)
 
