@@ -15,9 +15,9 @@
 
 from .bert_dataset import BertDataset
 from .gpt_dataset import GPT2Dataset
-from .data_utils import get_indexed_dataset, get_prefixes_and_weights
-from .split_dataset import split_ds
-from .blendable_dataset import BlendableDataset
+from .legacy.data_utils import get_indexed_dataset, get_prefixes_and_weights
+from .legacy.split_dataset import split_ds
+from .legacy.blendable_dataset import BlendableDataset
 
 def build_single_dataset(args, tokenizer, data_prefix, data_impl, split=None, skip_warmup=False, data_type='gpt'):
     indexed_dataset = get_indexed_dataset(data_prefix, data_impl, skip_warmup=skip_warmup)

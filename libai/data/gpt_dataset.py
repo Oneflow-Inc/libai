@@ -18,7 +18,7 @@
 import numpy as np
 import oneflow as flow
 
-from .reindexed_dataset import BlockIndexedDataset
+from .legacy.reindexed_dataset import BlockIndexedDataset
 
 
 class GPT2Dataset(flow.utils.data.Dataset):

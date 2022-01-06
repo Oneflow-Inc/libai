@@ -22,7 +22,7 @@ from .indexed_dataset import make_dataset as make_indexed_dataset
 
 logger = logging.getLogger(__name__)
 
-def get_indexed_dataset(data_prefix, data_impl, skip_warmup):
+def get_indexed_dataset(data_prefix, data_impl, skip_warmup, align_postfix=None):
 
     logger.info("building dataset index ...")
 
@@ -39,6 +39,17 @@ def get_indexed_dataset(data_prefix, data_impl, skip_warmup):
         "number of documents: {}".format(indexed_dataset.doc_idx.shape[0] - 1)
     )
     logger.info("number of sentences: {}".format(indexed_dataset.sizes.shape[0]))
+
+    if align_postfix is not None:
+        align_data_prefix = data_prefix + '-' + align_postfix
+        start_time = time.time()
+        align_indexed_dataset = make_indexed_dataset(align_data_prefix, data_impl, skip_warmup)
+        assert indexed_dataset.sizes.shape[0] == indexed_dataset.doc_idx[-1]
+        logger.info(
+            "inished creating indexed dataset in {:4f} "
+            "seconds".format(time.time() - start_time)
+        )
+        indexed_dataset = (indexed_dataset, align_indexed_dataset)
 
     return indexed_dataset
 

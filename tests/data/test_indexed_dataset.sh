@@ -1,20 +1,20 @@
 #!/bin/bash
 
-python libai/data/test/test_indexed_dataset.py \
+python tests/data/test_indexed_dataset.py \
         --data test_samples_cached_text_sentence \
         --vocab bert-vocab.txt \
         --dataset-impl cached \
         --tokenizer-type BertWordPieceLowerCase
 
 
-python libai/data/test/test_indexed_dataset.py \
+python tests/data/test_indexed_dataset.py \
         --data test_samples_lazy_text_sentence \
         --vocab bert-vocab.txt \
         --dataset-impl lazy \
         --tokenizer-type BertWordPieceLowerCase
 
 
-python libai/data/test/test_indexed_dataset.py \
+python tests/data/test_indexed_dataset.py \
         --data test_samples_mmap_text_sentence \
         --vocab bert-vocab.txt \
         --dataset-impl mmap \

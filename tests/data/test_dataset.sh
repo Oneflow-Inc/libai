@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python libai/data/test/test_dataset.py \
+python tests/data/test_dataset.py \
         --data_prefix test_samples_mmap_text_sentence \
         --dataset-impl mmap \
         --vocab-file bert-vocab.txt \

@@ -23,7 +23,6 @@ class CyclicSampler(Sampler):
     Arguments:
         dataset: dataset to be sampled.
         micro_batch_size: batch size for per model instance. global_batch_size is micro_batch_size times data_parallel_size.
-        num_epochs: If set to 1, it is single round sampling. If set to other number, it is cyclic sampling.
         shuffle: whether to shuffle the dataset.
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.

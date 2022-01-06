@@ -20,17 +20,10 @@ import collections
 import numpy as np
 import oneflow as flow
 
-from .reindexed_dataset import SentenceIndexedDataset
+from .legacy.reindexed_dataset import SentenceIndexedDataset
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
-def is_start_piece(piece):
-    """Check if the current word piece is the starting piece (BERT)."""
-    # When a word has been split into
-    # WordPieces, the first token does not have any marker and any subsequence
-    # tokens are prefixed with ##. So whenever we see the ## token, we
-    # append it to the previous set of word indexes.
-    return not piece.startswith("##")
 
 class BertDataset(flow.utils.data.Dataset):
     """
@@ -39,8 +32,7 @@ class BertDataset(flow.utils.data.Dataset):
     """
     def __init__(self, tokenizer, data_prefix, indexed_dataset, 
                  max_seq_length=512, mask_lm_prob=.15, short_seq_prob=.0,
-                 max_preds_per_seq=None, 
-                 seed=1234, binary_head=True):
+                 max_preds_per_seq=None, seed=1234, binary_head=True):
         self.seed = seed
         self.mask_lm_prob = mask_lm_prob
         self.max_seq_length = max_seq_length
@@ -50,14 +42,15 @@ class BertDataset(flow.utils.data.Dataset):
             max_preds_per_seq = math.ceil(max_seq_length * mask_lm_prob / 10) * 10
         self.max_preds_per_seq = max_preds_per_seq
 
+        self.has_align_dataset = isinstance(indexed_dataset, (list, tuple)) and len(indexed_dataset) > 1
+
         self.dataset = SentenceIndexedDataset(data_prefix, indexed_dataset, 
-                                              max_seq_length=self.max_seq_length,
+                                              max_seq_length=self.max_seq_length - 3,
                                               short_seq_prob=self.short_seq_prob,
                                               binary_head=self.binary_head)
         
         self.tokenizer = tokenizer
         self.vocab_id_list = list(tokenizer.get_vocab().values())
-        self.vocab_id_to_token_dict = tokenizer.ids_to_tokens
         self.cls_id = tokenizer.cls_token_id
         self.sep_id = tokenizer.sep_token_id
         self.mask_id = tokenizer.mask_token_id
@@ -73,35 +66,43 @@ class BertDataset(flow.utils.data.Dataset):
         np_rng = np.random.RandomState(seed=((self.seed + idx) % 2 ** 32))
 
         sents = self.dataset[idx]
+        align_labels = None
+        if self.has_align_dataset:
+            sents, align_labels = sents
 
         if self.binary_head:
-            tokens_a, tokens_b, is_next_random = self.create_random_sentence_pair(sents, np_rng)
+            tokens_a, tokens_b, is_next_random = self.create_random_sentence_pair(sents, np_rng, align_labels=align_labels)
         else:
             tokens_a = []
             for j in range(len(sents)):
                 tokens_a.extend(sents[j])
             tokens_b = []
             is_next_random = False
+            if align_labels is not None:
+                align_labels_a = [label for labels in align_labels for label in labels]
+                align_labels_b = []
+                tokens_a = (tokens_a, align_labels_a)
+                tokens_b = (tokens_b, align_labels_b)
         
-        tokens_a, tokens_b = self.truncate_seq_pair(tokens_a, tokens_b, self.max_seq_length-3, np_rng)
+        tokens_a, tokens_b = self.truncate_seq_pair(tokens_a, tokens_b, self.max_seq_length - 3, np_rng)
         
-        tokens, token_types = self.create_tokens_and_token_types(tokens_a, tokens_b)
+        tokens, token_types, align_labels = self.create_tokens_and_token_types(tokens_a, tokens_b)
 
-        tokens, masked_positions, masked_labels = self.create_masked_lm_predictions(tokens, np_rng)
+        tokens, masked_positions, masked_labels = self.create_masked_lm_predictions(tokens, np_rng, token_boundary=align_labels)
 
-        tokens_np, token_types_np, labels_np, padding_mask_np, loss_mask_np = self.pad_and_convert_to_numpy(tokens, token_types, masked_positions, masked_labels)
+        tokens, token_types, labels, padding_mask, loss_mask = self.pad_and_convert_to_numpy(tokens, token_types, masked_positions, masked_labels)
 
         sample = {
-            'text': tokens_np,
-            'types': token_types_np,
-            'labels': labels_np,
+            'text': tokens,
+            'types': token_types,
+            'labels': labels,
             'is_random': int(is_next_random),
-            'loss_mask': loss_mask_np,
-            'padding_mask': padding_mask_np,
+            'loss_mask': loss_mask,
+            'padding_mask': padding_mask,
         }
         return sample
 
-    def create_random_sentence_pair(self, sample, np_rng):
+    def create_random_sentence_pair(self, sample, np_rng, align_labels=None):
         num_sentences = len(sample)
         assert num_sentences > 1, 'make sure each sample has at least two sentences.'
 
@@ -113,9 +114,21 @@ class BertDataset(flow.utils.data.Dataset):
             tokens_a.extend(sample[j])
             
         tokens_b = []
+        
         for j in range(a_end, num_sentences):
             tokens_b.extend(sample[j])
-        
+
+        if align_labels is not None:
+            align_labels_a = []
+            align_labels_b = []
+            for j in range(a_end):
+                align_labels_a.extend(align_labels[j])
+            for j in range(a_end, num_sentences):
+                align_labels_b.extend(align_labels[j])
+
+            tokens_a = (tokens_a, align_labels_a)
+            tokens_b = (tokens_b, align_labels_b)
+
         is_next_random = False
         if np_rng.random() < 0.5:
             is_next_random = True
@@ -125,6 +138,12 @@ class BertDataset(flow.utils.data.Dataset):
     
     def truncate_seq_pair(self, tokens_a, tokens_b, max_num_tokens, np_rng):
         """truncate sequence pair to a maximum sequence length"""
+        if self.has_align_dataset:
+            tokens_a, align_labels_a = tokens_a
+            tokens_b, align_labels_b = tokens_b
+        else:
+            align_labels_a, align_labels_b = [], []
+
         len_a, len_b = len(tokens_a), len(tokens_b)
         while True:
             total_length = len_a + len_b
@@ -132,26 +151,48 @@ class BertDataset(flow.utils.data.Dataset):
                 break
             if len_a > len_b:
                 trunc_tokens = tokens_a
+                trunc_labels = align_labels_a
                 len_a -= 1
             else:
                 trunc_tokens = tokens_b
+                trunc_labels = align_labels_b
                 len_b -= 1
             
             if np_rng.random() < 0.5:
                 trunc_tokens.pop(0) # remove the first element
+                if len(trunc_labels) > 0:
+                    trunc_labels.pop(0)
             else:
                 trunc_tokens.pop() # remove the last element
-            
+                if len(trunc_labels) > 0:
+                    trunc_labels.pop()
+        
+        if self.has_align_dataset:
+            tokens_a = (tokens_a, align_labels_a)
+            tokens_b = (tokens_b, align_labels_b)
+    
         return tokens_a, tokens_b
     
     def create_tokens_and_token_types(self, tokens_a, tokens_b):
         """merge segments A and B, add [CLS] and [SEP] and build token types."""
+        if self.has_align_dataset:
+            tokens_a, align_labels_a = tokens_a
+            tokens_b, align_labels_b = tokens_b
+
         tokens = [self.cls_id] + tokens_a + [self.sep_id]
         token_types = [0] * (len(tokens_a) + 2)
         if len(tokens_b) > 0:
             tokens = tokens + tokens_b + [self.sep_id]
             token_types = token_types + [1] * (len(tokens_b) + 1)
-        return tokens, token_types
+        
+        if self.has_align_dataset:
+            align_labels = [1] + align_labels_a + [1]
+            if len(align_labels_b) > 0:
+                align_labels = align_labels + align_labels_b + [1]
+        else:
+            align_labels = None
+
+        return tokens, token_types, align_labels
 
     def mask_token(self, idx, tokens, np_rng):
         """
@@ -165,19 +206,24 @@ class BertDataset(flow.utils.data.Dataset):
             if np_rng.random() < 0.5:
                 new_label = label
             else:
-                new_label = self.vocab_id_list[np_rng.randint(0, len(self.vocab_id_list))]
+                new_label = np_rng.choice(self.vocab_id_list)
         
         tokens[idx] = new_label
 
         return label
    
-    def create_masked_lm_predictions(self, tokens, np_rng, max_ngrams=3, do_whole_word_mask=True,
+    def create_masked_lm_predictions(self, tokens, np_rng, max_ngrams=3, do_whole_word_mask=True, token_boundary=None,
                                      favor_longer_ngram=False, geometric_dist=False):
         """Creates the predictions for the masked LM objective.
         Note: Tokens here are vocab ids and not text tokens."""
 
+        if do_whole_word_mask:
+            assert token_boundary is not None, "token_boundary must be privided when do_whole_word_mask is True."
+
         masked_positions = []
         masked_labels = []
+
+        output_tokens = list(tokens)
 
         if self.mask_lm_prob == 0:
             return output_tokens, masked_positions, masked_labels
@@ -192,12 +238,10 @@ class BertDataset(flow.utils.data.Dataset):
             # Note that Whole Word Masking does *not* change the training code
             # at all -- we still predict each WordPiece independently, softmaxed
             # over the entire vocabulary.
-            if do_whole_word_mask and len(cand_indexes) >= 1 and not is_start_piece(self.vocab_id_to_token_dict[token]):
+            if do_whole_word_mask and len(cand_indexes) >= 1 and token_boundary[i] == 0:
                 cand_indexes[-1].append(i)
             else:
                 cand_indexes.append([i])
-
-        output_tokens = list(tokens)
 
         num_to_predict = min(self.max_preds_per_seq, max(1, int(round(len(tokens) * self.mask_lm_prob))))
 
@@ -285,11 +329,11 @@ class BertDataset(flow.utils.data.Dataset):
 
         # tokens and token types
         filler = [self.pad_id] * num_pad
-        tokens_np = np.array(tokens + filler, dtype=np.int64)
-        token_types_np = np.array(token_types + filler, dtype=np.int64)
+        tokens = np.array(tokens + filler, dtype=np.int64)
+        token_types = np.array(token_types + filler, dtype=np.int64)
 
         # padding mask
-        padding_mask_np = np.array([1] * num_tokens + [0] * num_pad, dtype=np.int64)
+        padding_mask = np.array([1] * num_tokens + [0] * num_pad, dtype=np.int64)
 
         # labels and loss mask
         labels = [-1] * self.max_seq_length
@@ -298,10 +342,10 @@ class BertDataset(flow.utils.data.Dataset):
             assert idx < num_tokens
             labels[idx] = label
             loss_mask[idx] = 1
-        labels_np = np.array(labels, dtype=np.int64)
-        loss_mask_np = np.array(loss_mask, dtype=np.int64)
+        labels = np.array(labels, dtype=np.int64)
+        loss_mask = np.array(loss_mask, dtype=np.int64)
 
-        return tokens_np, token_types_np, labels_np, padding_mask_np, loss_mask_np
+        return tokens, token_types, labels, padding_mask, loss_mask
 
     @property
     def supports_prefetch(self):

@@ -21,7 +21,7 @@ import logging
 import numpy as np
 import oneflow as flow
 
-from libai.data import helpers
+from libai.data.legacy import helpers
 from .indexed_dataset import make_dataset as make_indexed_dataset
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,12 @@ class SentenceIndexedDataset(flow.utils.data.Dataset):
         self.max_seq_length = max_seq_length
         self.short_seq_prob = short_seq_prob
         self.binary_head = binary_head
-        self.indexed_dataset = indexed_dataset
+        if isinstance(indexed_dataset, (list, tuple)):
+            self.indexed_dataset = indexed_dataset[0]
+            self.align_indexed_dataset = indexed_dataset[1] if len(indexed_dataset) > 1 else None
+        else:
+            self.indexed_dataset = indexed_dataset
+            self.align_indexed_dataset = None
 
         self.samples_mapping = get_samples_mapping(data_prefix, 
                                                    self.indexed_dataset, 
@@ -115,6 +120,9 @@ class SentenceIndexedDataset(flow.utils.data.Dataset):
     def __getitem__(self, idx):
         start_idx, end_idx, seq_length = self.samples_mapping[idx]
         sample = [self.indexed_dataset[i] for i in range(start_idx, end_idx)]
+        if self.align_indexed_dataset is not None:
+            align_sample = [self.align_indexed_dataset[i] for i in range(start_idx, end_idx)]
+            sample = (sample, align_sample)
         assert seq_length <= self.max_seq_length
         return sample
     
@@ -123,7 +131,13 @@ class SentenceIndexedDataset(flow.utils.data.Dataset):
         return self.indexed_dataset.supports_prefetch
 
     def prefetch(self, indices):
-        self.indexed_dataset.prefetch(indices)
+        new_indices = []
+        for idx in indices:
+            start_idx, end_idx, _ = self.samples_mapping[idx]
+            new_indices.extend([i for i in range(start_idx, end_idx)])
+        self.indexed_dataset.prefetch(new_indices)
+        if self.align_indexed_dataset is not None:
+            self.align_indexed_dataset(new_indices)
 
 
 def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
@@ -180,7 +194,12 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
     """
     def __init__(self, data_prefix, indexed_dataset, max_seq_length=512):
         self.max_seq_length = max_seq_length
-        self.indexed_dataset = indexed_dataset
+        if isinstance(indexed_dataset, (list, tuple)):
+            self.indexed_dataset = indexed_dataset[0]
+            self.align_indexed_dataset = indexed_dataset[1] if len(indexed_dataset) > 1 else None
+        else:
+            self.indexed_dataset = indexed_dataset
+            self.align_indexed_dataset = None
 
         self.sample_idx = build_index_mappings(data_prefix, 
                                                self.indexed_dataset,
@@ -196,6 +215,9 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
         offset_l = self.sample_idx[idx + 1][1]
         if doc_index_f == doc_index_l:
             sample = self.indexed_dataset.get(doc_index_f, offset=offset_f, length=offset_l - offset_f + 1)
+            if self.align_indexed_dataset is not None:
+                align_sample = self.align_indexed_dataset.get(doc_index_f, offset=offset_f, length=offset_l - offset_f + 1)
+                sample = (sample, align_sample)
         else:
             # Otherwise, get the rest of the initial document.
             sample_list = [self.indexed_dataset.get(doc_index_f, offset=offset_f)]
@@ -205,12 +227,18 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
             # And finally add the relevant portion of last document.
             sample_list.append(self.indexed_dataset.get(doc_index_l, length=offset_l + 1))
             sample = np.concatenate(sample_list)
+            if self.align_indexed_dataset is not None:
+                align_sample_list = [self.align_indexed_dataset.get(doc_index_f, offset=offset_f)]
+                for i in range(doc_index_f + 1, doc_index_l):
+                    align_sample_list.append(self.align_indexed_dataset.get(i))
+                align_sample_list.append(self.align_indexed_dataset.get(doc_index_l, length=offset_l + 1))
+                align_sample = np.concatenate(align_sample_list)
+                sample = (sample, align_sample)
 
         return sample
     
     @property
     def supports_prefetch(self):
-        return self.indexed_dataset.supports_prefetch
+         # this dataset must be `cached`, and IndexedCachedDataset are not support prefetch.
+        return False
 
-    def prefetch(self, indices):
-        self.indexed_dataset.prefetch(indices)
