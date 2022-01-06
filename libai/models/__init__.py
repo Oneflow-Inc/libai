@@ -14,8 +14,10 @@
 # limitations under the License.
 
 from .bert_model import BertModel, BertForPreTraining
+from .build import build_model
 
 __all__ = [
+    "build_model",
     "BertModel",
     "BertForPreTraining",
 ]

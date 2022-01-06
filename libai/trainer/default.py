@@ -15,29 +15,118 @@
 
 import logging
 import os
-import oneflow as flow
-from oneflow import nn
 from typing import Callable
-from libai.trainer.trainer import TrainerBase, EagerTrainer, GraphTrainer
-from libai.utils import distributed as dist
-from libai.utils.logger import setup_logger
-from libai.utils.events import CommonMetricPrinter, JSONWriter
+
+import oneflow as flow
+from libai.config import LazyConfig, instantiate, try_get_key
+from libai.models import build_model
+from libai.optim import build_optimizer
+from libai.scheduler import build_lr_scheduler
 from libai.trainer import hooks
+from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
+from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
+from libai.utils.events import CommonMetricPrinter, JSONWriter
+from libai.utils.logger import setup_logger
 
 
-def default_setup(cfg):
+def _highlight(code, filename):
+    try:
+        import pygments
+    except ImportError:
+        return code
+
+    from pygments.formatters import Terminal256Formatter
+    from pygments.lexers import Python3Lexer, YamlLexer
+
+    lexer = Python3Lexer() if filename.endswith(".py") else YamlLexer()
+    code = pygments.highlight(code, lexer, Terminal256Formatter(style="monokai"))
+    return code
+
+
+def _check_batch_size(cfg):
+    micro_batch_size = try_get_key(cfg, "train.micro_batch_size", default=None)
+    global_batch_size = try_get_key(cfg, "train.global_batch_size", default=None)
+    num_accumulation_steps = try_get_key(
+        cfg, "train.num_accumulation_steps", default=None
+    )
+
+    if micro_batch_size is not None and global_batch_size is not None:
+        if num_accumulation_steps is None:
+            if (
+                global_batch_size % (micro_batch_size * dist.get_data_parallel_size())
+                != 0
+            ):
+                raise ValueError(
+                    f"global_batch_size {global_batch_size} must be divisible by "
+                    f"micro_batch_size * data_parallel_size ({micro_batch_size} * {dist.get_data_parallel_size()})"
+                )
+
+            cfg.train.num_accumulation_steps = global_batch_size // (
+                micro_batch_size * dist.get_data_parallel_size()
+            )
+
+        else:
+            if (
+                global_batch_size
+                != micro_batch_size
+                * dist.get_data_parallel_size()
+                * num_accumulation_steps
+            ):
+                raise ValueError(
+                    f"global_batch_size {global_batch_size} must equal"
+                    " micro_batch_size * data_parallel_size * num_accumulation_steps"
+                    f" ({micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"
+                )
+    elif micro_batch_size is not None and global_batch_size is None:
+        if num_accumulation_steps is None:
+            cfg.train.num_accumulation_steps = 1
+
+        cfg.train.global_batch_size = (
+            micro_batch_size
+            * dist.get_data_parallel_size()
+            * cfg.train.num_accumulation_steps
+        )
+    elif micro_batch_size is None and global_batch_size is not None:
+        if num_accumulation_steps is None:
+            cfg.train.num_accumulation_steps = 1
+
+        if (
+            global_batch_size
+            % (dist.get_data_parallel_size() * cfg.train.num_accumulation_steps)
+            != 0
+        ):
+            raise ValueError(
+                f"global_batch_size {global_batch_size} must be divisible by "
+                "data_parallel_size * num_accumulation_steps "
+                f"({dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
+            )
+
+        cfg.train.micro_batch_size = global_batch_size // (
+            dist.get_data_parallel_size() * cfg.train.num_accumulation_steps
+        )
+    else:
+        raise ValueError("micro_batch_size and global_batch_size must be set either")
+
+
+def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
     1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
-    3. Backup the config to the output directory
+    3. Setup the distributed environment
+    4. Setup tokenizer if it's NLP related task
+    5. Check batch_size
+    6. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
-    output_dir = cfg.output_dir
+
+    output_dir = try_get_key(cfg, "train.output_dir")
     if dist.is_main_process() and output_dir:
         os.makedirs(output_dir, exist_ok=True)
+
+    cfg.train.resume = args.resume
 
     rank = dist.get_rank()
     logger = setup_logger(output_dir, distributed_rank=rank)
@@ -47,10 +136,42 @@ def default_setup(cfg):
             rank, dist.get_world_size()
         )
     )
+    logger.info("Command line arguments: " + str(args))
 
-    flow.boxing.nccl.set_fusion_threshold_mbytes(cfg.nccl_fusion_threshold_mb)
-    flow.boxing.nccl.set_fusion_max_ops_num(cfg.nccl_fusion_max_ops)
-    flow.boxing.nccl.enable_use_compute_stream(True)
+    if hasattr(args, "config_file") and args.config_file != "":
+        logger.info(
+            "Contents of args.config_file={}:\n{}".format(
+                args.config_file,
+                _highlight(open(args.config_file, "r").read(), args.config_file),
+            )
+        )
+
+    dist.setup_dist_util(cfg.train.dist)
+
+    # Initialize tokenizer
+    if try_get_key(cfg, "data.tokenizer_setup", default=False):
+        # TODO(l1aoxingyu): add tokenizer
+        # setup_tokenizer(cfg)
+        pass
+
+    _check_batch_size(cfg)
+
+    if dist.is_main_process() and output_dir:
+        # Note: some of our scripts may expect the existence of
+        # config.yaml in output directory
+        path = os.path.join(output_dir, "config.yaml")
+        LazyConfig.save(cfg, path)
+        logger.info("Full config saved to {}".format(path))
+
+    flow.boxing.nccl.set_fusion_threshold_mbytes(
+        try_get_key(cfg, "train.nccl_fusion_threshold_mb", default=16)
+    )
+    flow.boxing.nccl.set_fusion_max_ops_num(
+        try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
+    )
+    flow.boxing.nccl.enable_use_compute_stream(
+        try_get_key(cfg, "train.enable_use_compute_stream", default=True)
+    )
 
 
 class DefaultTrainer(TrainerBase):
@@ -94,11 +215,12 @@ class DefaultTrainer(TrainerBase):
         super().__init__()
         self.cfg = cfg
         logger = logging.getLogger("libai")
-        if not logger.isEnabledFor(
-            logging.INFO
-        ):  # setup_logger is not called for LibaiLM
+
+        # setup_logger is not called for LiBai
+        if not logger.isEnabledFor(logging.INFO):
             setup_logger()
 
+        # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
@@ -107,66 +229,66 @@ class DefaultTrainer(TrainerBase):
         # We can later make it checkpoint the stateful hooks
         self.checkpointer = Checkpointer(
             # Assume you want to save checkpoints together with logs/statistics
-            cfg,
             self.model,
-            cfg.output_dir,
+            cfg.train.output_dir,
             optimizer=self.optimizer,
             lr_scheduler=self.lr_scheduler,
         )
 
-        if cfg.load is not None:
-            self.resume_or_load()
-            cfg.iteration = cfg.start_iter
-        else:
-            cfg.iteration = 0
+        # Loading checkpoint before dataloader construction, because
+        # dataloader needs to know the consumed iterations from
+        # the last breakpoint.
+        self.resume_or_load(cfg.train.resume)
+        cfg.train.start_iter = self.start_iter
 
-        # Assume these objects must be constructed in this order.
         (
             self.train_data_iterator,
             self.valid_data_iterator,
             self.test_data_iterator,
-        ) = self.build_train_valid_test_loader_loader(cfg)
+        ) = self.build_train_valid_test_loader(cfg)
 
-        if cfg.mode == "graph":
-            train_graph, eval_graph = self.build_graph(
-                cfg, self.model, self.optimizer, self.lr_scheduler
+        if cfg.graph.enabled:
+            graph_train = self.build_graph(
+                cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
-            # train_graph.debug(0)
-            self._trainer = GraphTrainer(train_graph, self.train_data_iterator)
-        elif cfg.mode == "eager":
-            self._trainer = EagerTrainer(
-                self.model, self.train_data_iterator, self.optimizer, self.lr_scheduler
-            )
+            graph_eval = self.build_graph(cfg, self.model, is_train=False)
+            # graph_train.debug(0)
+            self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
         else:
-            raise NotImplementedError
+            self._trainer = EagerTrainer(
+                self.model, self.train_data_iterator, self.optimizer
+            )
 
-        self.start_iter = cfg.iteration
-        self.global_batch_size = cfg.global_batch_size
-        self.max_iter = cfg.train_iters
-        self._train_data = None
+        self.global_batch_size = cfg.train.global_batch_size
+        self.max_iter = cfg.train.train_iter
 
         self.register_hooks(self.build_hooks())
 
     def resume_or_load(self, resume=True):
         """
-        If `resume==True` and `cfg.OUTPUT_DIR` contains the last checkpoint (defined by
+        If `resume==True` and `cfg.train.output_dir` contains the last checkpoint (defined by
         a `last_checkpoint` file), resume from the file. Resuming means loading all
         available states (eg. optimizer and scheduler) and update iteration counter
-        from the checkpoint. ``cfg.MODEL.WEIGHTS`` will not be used.
+        from the checkpoint. ``cfg.train.load_weight`` will not be used.
         Otherwise, this is considered as an independent training. The method will load model
-        weights from the file `cfg.MODEL.WEIGHTS` (but will not load other states) and start
+        weights from the file `cfg.train.load_weight` (but will not load other states) and start
         from iteration 0.
         Args:
             resume (bool): whether to do resume or not
         """
-        # The checkpoint stores the training iteration that just finished, thus we start
-        # at the next iteration (or iter zero if there's no checkpoint).
-        checkpoint = self.checkpointer.resume_or_load(self.cfg.load, resume=resume)
-
-        if resume and self.checkpointer.has_checkpoint():
-            self.start_iter = checkpoint.get("iter", -1) + 1
-            # The checkpoint stores the training iteration that just finished, thus we start
-            # at the next iteration (or iter zero if there's no checkpoint).
+        if resume:
+            if self.checkpointer.has_checkpoint():
+                # The checkpoint stores the training iteration that just finished, thus we start
+                # at the next iteration (or iter zero if there's no checkpoint).
+                self.start_iter = (
+                    self.checkpointer.resume_or_load(None, resume=True).get("iter", -1)
+                    + 1
+                )
+            else:
+                # This is considered as an independent training.
+                self.checkpointer.load(self.cfg.train.load_weight, checkpointables=[])
+        else:
+            self.start_iter = 0
 
     def build_hooks(self):
         """
@@ -179,12 +301,14 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.save_interval),
+            hooks.PeriodicCheckpointer(
+                self.checkpointer, self.cfg.train.checkpointer.period
+            ),
         ]
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
             ret.append(
-                hooks.PeriodicWriter(self.build_writers(), self.cfg.log_interval)
+                hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period)
             )
         return ret
 
@@ -209,7 +333,7 @@ class DefaultTrainer(TrainerBase):
         return [
             # It may not always print what you want to see, since it prints "common" metrics only.
             CommonMetricPrinter(self.global_batch_size, self.max_iter),
-            JSONWriter(os.path.join(self.cfg.output_dir, "metrics.json")),
+            JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
         ]
 
     def train(self):
@@ -229,56 +353,67 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             flow.nn.Module:
-        It now calls :func:`libai.layers.build_model`.
+        It now calls :func:`libai.models.build_model`.
         Overwrite it if you'd like a different model.
         """
-        # TODO: import build_model from other utils
-        # model = build_model(cfg)
-        model = None
+        assert (
+            try_get_key(cfg, "model") is not None
+        ), "cfg must contain `model` namespace"
+        model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         return model
 
     @classmethod
-    def build_graph(cls, cfg, model, optimizer, lr_scheduler):
-        # TODO: import build_graph from other utils
-        return None
-        # return build_graph(cfg, model, optimizer, lr_scheduler)
+    def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
+        if is_train:
+            # Set train graph
+            assert optimizer is not None, "optimizer must be set for train graph"
+            assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
+            cfg.graph.num_accumulation_steps = cfg.train.num_accumulation_steps
+            cfg.graph.train.model = model
+            cfg.graph.train.optimizer = optimizer
+            cfg.graph.train.lr_scheduler = lr_scheduler
+            return instantiate(cfg.graph.train)
+        else:
+            # Set eval graph
+            cfg.graph.eval.model = model
+            return instantiate(cfg.graph.eval)
 
     @classmethod
     def build_optimizer(cls, cfg, model):
         """
         Returns:
             torch.optim.Optimizer:
-        It now calls :func:`libai.solver.build_optimizer`.
+        It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        # TODO: import build_optimizer from other utils
-        optimizer = flow.optim.Adam(model.parameters(), lr=0.01)
-        return optimizer
-        # return build_optimizer(cfg, model)
+        assert (
+            try_get_key(cfg, "optim") is not None
+        ), "cfg must contain `optim` namespace"
+        return build_optimizer(cfg.optim, model)
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
         """
-        It now calls :func:`libai.solver.build_lr_scheduler`.
+        It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        # TODO: import get_learning_rate_scheduler from other utils
-        lr_scheduler = flow.optim.lr_scheduler.StepLR(optimizer, step_size=1000)
-        return lr_scheduler
-        # return get_learning_rate_scheduler(cfg, optimizer)
+        assert (
+            try_get_key(cfg, "scheduler") is not None
+        ), "cfg must contain `scheduler` namespace"
+        return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
-    def build_train_valid_test_loader_loader(cls, cfg):
+    def build_train_valid_test_loader(cls, cfg):
         """
         Returns:
             iterable
-        It now calls :func:`libai.data.build_reid_train_loader`.
+        It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
+        assert try_get_key(cfg, "data") is not None, "cfg must contain `data` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
-        # TODO: import build_train_valid_test_data_iterators from other utils
-        return [None], [None], [None]
-        # return build_train_valid_test_data_iterators(cfg)
+        # TODO(l1aoxingyu): add dataloader
+        return None  # build_train_valid_test_data_iterators(cfg)

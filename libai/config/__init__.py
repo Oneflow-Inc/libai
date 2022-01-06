@@ -13,26 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .embedding import Embedding, VocabEmbedding, SinePositionalEmbedding
-from .activation import build_activation
-from .linear import Linear, Linear1D
-from .mlp import MLP
-from .layer_norm import LayerNorm
-from .transformer_layer import TransformerLayer
-from .cross_entropy import ParallelCrossEntropyLoss
-from .lm_logits import LMLogits
-
+from .lazy import LazyCall, LazyConfig
+from .instantiate import instantiate
+from .arguments import default_argument_parser
+from .config import configurable, try_get_key
 
 __all__ = [
-    "Embedding",
-    "VocabEmbedding",
-    "SinePositionalEmbedding",
-    "build_activation",
-    "Linear",
-    "Linear1D",
-    "MLP",
-    "LayerNorm",
-    "TransformerLayer",
-    "ParallelCrossEntropyLoss",
-    "LMLogits",
+    "LazyCall",
+    "LazyConfig",
+    "instantiate",
+    "default_argument_parser",
+    "configurable",
+    "try_get_key",
 ]

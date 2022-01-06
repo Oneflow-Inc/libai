@@ -13,26 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .embedding import Embedding, VocabEmbedding, SinePositionalEmbedding
-from .activation import build_activation
-from .linear import Linear, Linear1D
-from .mlp import MLP
-from .layer_norm import LayerNorm
-from .transformer_layer import TransformerLayer
-from .cross_entropy import ParallelCrossEntropyLoss
-from .lm_logits import LMLogits
+import math
+import oneflow.nn as nn
 
 
-__all__ = [
-    "Embedding",
-    "VocabEmbedding",
-    "SinePositionalEmbedding",
-    "build_activation",
-    "Linear",
-    "Linear1D",
-    "MLP",
-    "LayerNorm",
-    "TransformerLayer",
-    "ParallelCrossEntropyLoss",
-    "LMLogits",
-]
+def init_method_normal(sigma):
+    """Init method based on N(0, sigma)."""
+
+    def init_(tensor):
+        return nn.init.normal_(tensor, mean=0.0, std=sigma)
+
+    return init_
+
+
+def scaled_init_method_normal(sigma, num_layers):
+    """Init method based on N(0, sigma/sqrt(2*num_layers)."""
+    std = sigma / math.sqrt(2.0 * num_layers)
+
+    def init_(tensor):
+        return nn.init.normal_(tensor, mean=0.0, std=std)
+
+    return init_

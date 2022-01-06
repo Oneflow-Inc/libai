@@ -25,6 +25,8 @@ import oneflow as flow
 from oneflow import nn
 from termcolor import colored
 
+from libai.utils.file_io import HTTPURLHandler, PathManagerBase
+
 
 class _IncompatibleKeys(
     NamedTuple(
@@ -54,7 +56,6 @@ class Checkpointer(object):
 
     def __init__(
         self,
-        cfg,
         model: nn.Module,
         save_dir: str = "",
         *,
@@ -72,12 +73,15 @@ class Checkpointer(object):
                 example, it can be used like
                 `Checkpointer(model, "dir", optimizer=optimizer)`.
         """
-        self.cfg = cfg
         self.model = model
         self.checkpointables = copy.copy(checkpointables)
         self.logger = logging.getLogger(__name__)
         self.save_dir = save_dir
         self.save_to_disk = save_to_disk
+        # Default PathManager, support HTTP URLs
+        # A user may want to use a different project-specific PathManagerBase'
+        self.path_manager: PathManagerBase = PathManagerBase()
+        self.path_manager.register_handler(HTTPURLHandler())
 
     def save(self, name: str, **kwargs: Dict[str, str]):
         """
@@ -96,8 +100,8 @@ class Checkpointer(object):
         basename = name
         save_dir = os.path.join(self.save_dir, basename)
         assert os.path.basename(save_dir) == basename, basename
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir, exist_ok=True)
+        if not self.path_manager.exists(save_dir):
+            self.path_manager.mkdirs(save_dir)
         self.logger.info("Saving checkpoint to {}".format(save_dir))
 
         for save_name in data:
@@ -105,15 +109,10 @@ class Checkpointer(object):
                 continue
             save_file = os.path.join(save_dir, save_name)
             # If directory existing, remove it for saving
-            if os.path.exists(save_file):
-                os.makedirs(save_file, exist_ok=True)
+            if self.path_manager.exists(save_file):
+                self.path_manager.mkdirs(save_file)
 
-            if self.cfg.mode == "graph":
-                flow.save(data[save_name], save_file, consistent_dst_rank=0)
-            elif self.cfg.mode == "eager":
-                flow.save(data[save_name], save_file)
-            else:
-                raise NotImplementedError
+            flow.save(data[save_name], save_file, consistent_dst_rank=0)
 
         self.tag_last_checkpoint(basename)
 
@@ -160,7 +159,7 @@ class Checkpointer(object):
             bool: whether a checkpoint exists in the target directory.
         """
         save_file = os.path.join(self.save_dir, "last_checkpoint")
-        return os.path.exists(save_file)
+        return self.path_manager.exists(save_file)
 
     def get_checkpoint_file(self):
         """
@@ -201,8 +200,8 @@ class Checkpointer(object):
             last_filename_basename (str): the basename of the last filename.
         """
         save_file = os.path.join(self.save_dir, "last_checkpoint")
-        with open(save_file, "w") as f:
-            f.write(last_filename_basename)
+        with self.path_manager.open(save_file, "w") as f:
+            f.write(last_filename_basename)  # pyre-ignore
 
     def _load_file(self, f: str):
         """
@@ -216,7 +215,7 @@ class Checkpointer(object):
                 to torch.Tensor or numpy arrays.
         """
         data = {}
-        keys = os.listdir(f)
+        keys = self.path_manager.ls(f)
         for key in keys:
             data[key] = flow.load(os.path.join(f, key))
         data["iter"] = int(f.split("_")[-1])
@@ -292,7 +291,7 @@ class Checkpointer(object):
                     "Unsupported type found in checkpoint! {}: {}".format(k, type(v))
                 )
             # If it's local tensor, convert it to consistent tensor.
-            if not v.is_consistent and self.cfg.mode == "graph":
+            if not v.is_consistent:
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
                     state_dict[k] = v.to_consistent(
@@ -333,6 +332,7 @@ class PeriodicCheckpointer:
         self.max_to_keep = max_to_keep
         self.recent_checkpoints: List[str] = []
         self.file_prefix = file_prefix
+        self.path_manager: PathManagerBase = checkpointer.path_manager
 
     def step(self, iteration: int, **kwargs: Any):
         """
@@ -355,10 +355,12 @@ class PeriodicCheckpointer:
                 self.recent_checkpoints.append(self.checkpointer.get_checkpoint_file())
                 if len(self.recent_checkpoints) > self.max_to_keep:
                     file_to_delete = self.recent_checkpoints.pop(0)
-                    if os.path.exists(file_to_delete) and not file_to_delete.endswith(
+                    if self.path_manager.exists(
+                        file_to_delete
+                    ) and not file_to_delete.endswith(
                         "{}_{:07d}".format(self.file_prefix, iteration)
                     ):
-                        os.remove(file_to_delete)
+                        self.path_manager.rm(file_to_delete)
 
         if self.max_iter is not None:
             if iteration >= self.max_iter - 1:

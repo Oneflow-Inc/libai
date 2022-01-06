@@ -14,8 +14,9 @@
 # limitations under the License.
 
 import oneflow as flow
+from oneflow import nn
+
 from libai.layers import (
-    ActivationCheckpointing,
     build_activation,
     VocabEmbedding,
     Embedding,
@@ -26,10 +27,10 @@ from libai.layers import (
     LMLogits,
 )
 from libai.utils import distributed as dist
-from oneflow import nn
 from libai.config import configurable
 
-from .utils import init_method_normal, scaled_init_method_normal
+from .utils.weight_init import init_method_normal, scaled_init_method_normal
+from .build import MODEL_ARCH_REGISTRY
 
 
 class BertExtendedAttnMask(nn.Module):
@@ -230,87 +231,6 @@ class BertLoss(nn.Module):
         return losses
 
 
-class BertEncoder(nn.Module):
-    def __init__(
-        self,
-        hidden_size,
-        hidden_layers,
-        num_attention_heads,
-        intermediate_size,
-        hidden_dropout_prob,
-        attention_probs_dropout_prob,
-        layernorm_eps,
-        init_method,
-        scaled_init_method,
-        bias_gelu_fusion=True,
-        bias_dropout_fusion=True,
-        scale_mask_softmax_fusion=True,
-        apply_query_key_layer_scaling=True,
-    ):
-        super().__init__()
-        self.hidden_size = hidden_size
-        self.hidden_layers = hidden_layers
-        self.num_attention_heads = num_attention_heads
-        self.attention_head_size = int(hidden_size / num_attention_heads)
-        self.intermediate_size = intermediate_size
-        self.hidden_dropout_prob = hidden_dropout_prob
-        self.attention_probs_dropout_prob = attention_probs_dropout_prob
-        self.layernorm_eps = layernorm_eps
-        self.init_method = init_method
-        self.scaled_init_method = scaled_init_method
-        self.bias_gelu_fusion = bias_gelu_fusion
-        self.bias_dropout_fusion = bias_dropout_fusion
-        self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
-        self.apply_query_key_layer_scaling = apply_query_key_layer_scaling
-
-        self._build_layer()
-
-        # Final layer norm before output.
-        self.final_layernorm = LayerNorm(
-            (hidden_size,), eps=layernorm_eps, layer_idx=-1
-        )
-
-    def _get_layer(self, layer_idx):
-        layer = getattr(self, f"layers_{layer_idx}")
-        checkpoint = getattr(self, f"layers_checkpoint_{layer_idx}")
-        return layer, checkpoint
-
-    def _build_layer(self):
-        for i in range(self.hidden_layers):
-            setattr(
-                self,
-                f"layers_{i}",
-                TransformerLayer(
-                    self.hidden_size,
-                    self.intermediate_size,
-                    self.num_attention_heads,
-                    attention_dropout_prob=self.hidden_dropout_prob,
-                    output_dropout_prob=self.hidden_dropout_prob,
-                    layernorm_epsilon=self.layernorm_eps,
-                    bias_gelu_fusion=self.bias_gelu_fusion,
-                    bias_dropout_fusion=self.bias_dropout_fusion,
-                    scale_mask_softmax_fusion=self.scale_mask_softmax_fusion,
-                    apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
-                    init_method=self.init_method,
-                    output_layer_init_method=self.scaled_init_method,
-                    layer_idx=i,
-                ),
-            )
-            setattr(
-                self, f"layers_checkpoint_{i}", ActivationCheckpointing(layer_idx=i)
-            )
-
-    def forward(self, hidden_states, extended_attention_mask):
-        for i in range(self.hidden_layers):
-            layer_module, checkpoint = self._get_layer(i)
-            hidden_states = layer_module(
-                checkpoint(hidden_states), extended_attention_mask
-            )
-
-        output = self.final_layernorm(hidden_states)
-        return output
-
-
 class BertModel(nn.Module):
     """Bert language model"""
 
@@ -352,20 +272,28 @@ class BertModel(nn.Module):
         self.extended_attn_mask = BertExtendedAttnMask()
 
         # Encoders
-        self.encoder = BertEncoder(
-            hidden_size,
-            hidden_layers,
-            num_attention_heads,
-            intermediate_size,
-            hidden_dropout_prob,
-            attention_probs_dropout_prob,
-            layernorm_eps,
-            init_method,
-            scaled_init_method,
-            bias_gelu_fusion,
-            bias_dropout_fusion,
-            scale_mask_softmax_fusion,
-            apply_query_key_layer_scaling,
+        self.encoders = nn.ModuleList(
+            [
+                TransformerLayer(
+                    hidden_size,
+                    intermediate_size,
+                    num_attention_heads,
+                    attention_dropout_prob=attention_probs_dropout_prob,
+                    output_dropout_prob=hidden_dropout_prob,
+                    layernorm_epsilon=layernorm_eps,
+                    bias_gelu_fusion=bias_gelu_fusion,
+                    bias_dropout_fusion=bias_dropout_fusion,
+                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
+                    apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+                    init_method=init_method,
+                    output_layer_init_method=scaled_init_method,
+                    layer_idx=i,
+                )
+                for i in range(hidden_layers)
+            ]
+        )
+        self.final_layernorm = LayerNorm(
+            (hidden_size,), eps=layernorm_eps, layer_idx=-1
         )
 
         self.pooler = (
@@ -395,9 +323,12 @@ class BertModel(nn.Module):
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
         extended_attention_mask = self.extended_attn_mask(attention_mask)
-
         embedding_output = self.embeddings(input_ids, tokentype_ids)
-        encoder_output = self.encoder(embedding_output, extended_attention_mask)
+
+        hidden_states = embedding_output
+        for layer in self.encoders:
+            hidden_states = layer(hidden_states, extended_attention_mask)
+        encoder_output = self.final_layernorm(hidden_states)
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output
 
@@ -405,6 +336,7 @@ class BertModel(nn.Module):
         return self.embeddings.word_embeddings()
 
 
+@MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
     def __init__(self, cfg):
         super().__init__()

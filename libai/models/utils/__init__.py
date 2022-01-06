@@ -13,17 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import oneflow as flow
-from oneflow import nn
-from libai.utils import distributed as dist
-
-
-class ActivationCheckpointing(nn.Module):
-    def __init__(self, *, layer_idx):
-        super().__init__()
-        self.layer_idx = layer_idx
-
-    def forward(self, x):
-        x = x.to_consistent(dist.get_layer_placement(self.layer_idx))
-        return flow._C.identity(x)
+from .weight_init import init_method_normal, scaled_init_method_normal
