@@ -13,17 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .lazy import LazyCall, LazyConfig
+from .instantiate import instantiate
+from .arguments import default_argument_parser
+from .config import configurable
 
-import oneflow as flow
-from oneflow import nn
-from libai.utils import distributed as dist
-
-
-class ActivationCheckpointing(nn.Module):
-    def __init__(self, *, layer_idx):
-        super().__init__()
-        self.layer_idx = layer_idx
-
-    def forward(self, x):
-        x = x.to_consistent(dist.get_layer_placement(self.layer_idx))
-        return flow._C.identity(x)
+__all__ = [
+    "LazyCall",
+    "LazyConfig",
+    "instantiate",
+    "default_argument_parser",
+    "configurable",
+]
