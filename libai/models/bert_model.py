@@ -28,8 +28,8 @@ from libai.layers import (
 )
 from libai.utils import distributed as dist
 from libai.config import configurable
-from libai.models.utils.weight_init import init_method_normal, scaled_init_method_normal
 
+from .utils.weight_init import init_method_normal, scaled_init_method_normal
 from .build import MODEL_ARCH_REGISTRY
 
 
