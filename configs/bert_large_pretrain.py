@@ -28,7 +28,8 @@ graph = dict(
     ),
     eval_graph=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled, 
-        is_train=False,),
+        is_train=False
+    ),
 )
 
 # Register

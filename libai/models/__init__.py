@@ -13,11 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertModel, BertForPreTraining
 from .vit import VisionTransformer, VisionTransformerGraph
-from .build import build_model, MODEL_ARCH_REGISTRY
 from .bert_model import BertModel, BertForPreTraining, BertForPretrainingGraph
-from .utils import build_graph
+from .build import build_model, build_graph, MODEL_ARCH_REGISTRY
 
 __all__ = [
     "build_model",

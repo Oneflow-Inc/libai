@@ -18,7 +18,7 @@ import os
 from typing import Callable
 
 import oneflow as flow
-from libai.config import LazyConfig, instantiate, try_get_key
+from libai.config import LazyConfig, try_get_key
 from libai.models import build_model, build_graph
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
@@ -361,7 +361,7 @@ class DefaultTrainer(TrainerBase):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
-        model.apply(dist.convert_consistent)
+        model.apply(dist.convert_to_distributed_default_setting)
         return model
 
     @classmethod
