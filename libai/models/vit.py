@@ -19,8 +19,8 @@ import oneflow.nn.functional as F
 
 from libai.config import configurable
 
-from .build import MODEL_ARCH_REGISTRY
-from .utils import GraphBase, GRAPH_REGISTRY
+from .utils import GraphBase
+from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
 
 # helpers
 def pair(t):
@@ -199,6 +199,7 @@ class VisionTransformer(nn.Module):
 
         # classifier
         self.classifier = nn.Linear(hidden_dim, num_classes)
+        self.loss_func = nn.CrossEntropyLoss()
 
     @classmethod
     def from_config(cls, cfg):
@@ -215,8 +216,8 @@ class VisionTransformer(nn.Module):
         }
 
 
-    def forward(self, x, targets):
-        emb = self.embedding(x)
+    def forward(self, images, targets):
+        emb = self.embedding(images)
         emb = emb.permute(0, 2, 3, 1)
         b, h, w, c = emb.shape
         emb = emb.view(b, h*w, c)
@@ -231,10 +232,8 @@ class VisionTransformer(nn.Module):
         # classifier
         logits = self.classifier(feat[:, 0])
 
-        criterion = nn.CrossEntropyLoss()
-
         if targets is not None:
-            losses = logits.sum()
+            losses = self.loss_func(logits, targets)
             return losses
         else:
             return logits
