@@ -11,6 +11,9 @@ model.cfg.num_attention_heads = 16
 model.cfg.hidden_size = 768
 model.cfg.hidden_layers = 8
 
+# Set pipeline layers for paralleleism
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
+
 train.micro_batch_size = 16
 
 # Set fp16 ON

@@ -16,7 +16,7 @@
 from .lazy import LazyCall, LazyConfig
 from .instantiate import instantiate
 from .arguments import default_argument_parser
-from .config import configurable, try_get_key
+from .config import configurable
 
 __all__ = [
     "LazyCall",
@@ -24,5 +24,4 @@ __all__ = [
     "instantiate",
     "default_argument_parser",
     "configurable",
-    "try_get_key",
 ]
