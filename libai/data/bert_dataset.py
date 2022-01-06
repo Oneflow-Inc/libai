@@ -21,10 +21,12 @@ import numpy as np
 import oneflow as flow
 
 from .legacy.reindexed_dataset import SentenceIndexedDataset
+from .build import DATASET_REGISTRY
+
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
-
+@DATASET_REGISTRY.register()
 class BertDataset(flow.utils.data.Dataset):
     """
     Dataset containing sentence pairs for BERT training, Each index corresponds to a randomly generated sentence pair.

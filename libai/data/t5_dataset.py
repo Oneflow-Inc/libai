@@ -21,10 +21,12 @@ import numpy as np
 import oneflow as flow
 
 from .legacy.reindexed_dataset import SentenceIndexedDataset
+from .build import DATASET_REGISTRY
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
 
+@DATASET_REGISTRY.register()
 class T5Dataset(flow.utils.data.Dataset):
     """
     Dataset containing sentences for T5 training.

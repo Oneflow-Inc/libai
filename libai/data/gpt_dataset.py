@@ -19,8 +19,10 @@ import numpy as np
 import oneflow as flow
 
 from .legacy.reindexed_dataset import BlockIndexedDataset
+from .build import DATASET_REGISTRY
 
 
+@DATASET_REGISTRY.register()
 class GPT2Dataset(flow.utils.data.Dataset):
     """"""
     # 这里仍然选择传入num_epochs和max_num_samples参数，是考虑到，如果每个epoch重新循环一遍dataset，可能会出现drop last情形。
