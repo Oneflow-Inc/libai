@@ -13,23 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<< HEAD
 from .lazy import LazyCall, LazyConfig
 from .instantiate import instantiate
 from .arguments import default_argument_parser
 from .config import configurable
-=======
-<<<<<<< HEAD:libai/models/t5_model.py
-import oneflow as flow
-from libai.layers import (
-    TransformerLayer
-)
-=======
 from .lazy import LazyCall, LazyConfig
 from .instantiate import instantiate
 from .arguments import default_argument_parser
 from .config import configurable, try_get_key
->>>>>>> main
 
 __all__ = [
     "LazyCall",
@@ -37,10 +28,5 @@ __all__ = [
     "instantiate",
     "default_argument_parser",
     "configurable",
-<<<<<<< HEAD
-]
-=======
     "try_get_key",
 ]
->>>>>>> main:libai/config/__init__.py
->>>>>>> main

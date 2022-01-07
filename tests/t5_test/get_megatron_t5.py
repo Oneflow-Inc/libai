@@ -52,7 +52,7 @@ sys.argv.extend([
     '--save-interval', '10000', 
     '--eval-interval', '1000', 
     '--eval-iters', '10', 
-    '--fp16', 
+    # '--fp16', 
     '--vocab-extra-ids', '100'
 ])
 
@@ -210,7 +210,7 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
     return train_ds, valid_ds, test_ds
 
 def get_t5_model():
-    return get_model(model_provider_func=model_provider)[0].module
+    return get_model(model_provider_func=model_provider)[0].module.eval()
 
 if __name__ == '__main__':
     print(get_t5_model())
