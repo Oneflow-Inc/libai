@@ -14,6 +14,8 @@
 # limitations under the License.
 
 import oneflow as flow
+from oneflow import nn
+
 from libai.layers import (
     build_activation,
     VocabEmbedding,
@@ -25,12 +27,10 @@ from libai.layers import (
     LMLogits,
 )
 from libai.utils import distributed as dist
-from oneflow import nn
 from libai.config import configurable
 
-from .utils import init_method_normal, scaled_init_method_normal
-
-from .build import MODEL_ARCH_REGISTRY
+from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
+from .utils import GraphBase, init_method_normal, scaled_init_method_normal
 
 
 class BertExtendedAttnMask(nn.Module):
@@ -378,3 +378,55 @@ class BertForPreTraining(nn.Module):
             return total_loss
         else:
             return prediction_scores, seq_relationship_score
+
+
+@GRAPH_REGISTRY.register()
+class BertForPretrainingGraph(GraphBase):
+    def build(
+        self,
+        tokens,
+        padding_mask,
+        tokentype_ids,
+        ns_labels=None,
+        lm_labels=None,
+        loss_mask=None,
+    ):
+
+        # Forward pass through the model
+        if self.is_train:
+            losses = self.model(
+                tokens, padding_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
+            )
+            losses.backward()
+            return losses
+        else:
+            return self.model(tokens, padding_mask, tokentype_ids)
+
+    def set_pipeline_stage_id(self):
+        dist_utils = dist.get_dist_util()
+
+        # 设置模型的 stage_id
+        for module_block in self.model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, BertEmbeddings):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, BertExtendedAttnMask):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(
+                    module_block.layer_idx
+                )
+            elif isinstance(module_block.origin, BertPreTrainingHeads):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            elif isinstance(module_block.origin, LMLogits):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            elif isinstance(module_block.origin, BertLoss):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            else:
+                pass
+
+        # Set the last layernorm stage id
+        self.model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
+            -1
+        )
+        self.model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
