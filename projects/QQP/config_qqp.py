@@ -15,7 +15,7 @@ qqp_cfg.update(
         num_attention_heads=16,
         # new key
         num_classes=2,
-        pretrain_megatron_weight="/home/chengpeng/model_optim_rng.pt"
+        pretrain_megatron_weight=None #"/home/chengpeng/model_optim_rng.pt"
     )
 )
 model = L(Classification)(cfg=qqp_cfg)
@@ -27,6 +27,8 @@ train.update(
         micro_batch_size=16,
         global_batch_size=16,
         train_iter=10000,
+        eval_period=10,
+        log_period=1,
         dist=dict(
             num_gpus_per_node=1,
             num_nodes=1,
@@ -37,7 +39,7 @@ train.update(
         ),
         # new key
         train_data=["/home/chengpeng/train.tsv",],
-        valid_data=["/home/chengpeng/dev.tsv",],
+        valid_data=["/home/chengpeng/demo.tsv",],
     )
 )
 
@@ -45,7 +47,7 @@ train.update(
 # update data cfg
 data.update(
     dict(
-        vocab_file="/home/chengpeng/PrimeLM/data/bert-base-chinese-vocab.txt",
+        vocab_file="/home/chengpeng/data/PrimeLM/data/bert-base-chinese-vocab.txt",
         tokenizer_type="BertCNWWMTokenizer"
     )
 )

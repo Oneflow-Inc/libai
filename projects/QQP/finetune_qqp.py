@@ -58,7 +58,7 @@ def main(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
-
+    
     if args.eval_only:
         model = Trainer.build_model(cfg)
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(

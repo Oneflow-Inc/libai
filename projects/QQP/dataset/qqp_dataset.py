@@ -1,12 +1,49 @@
 import oneflow as flow
-from libai.data.data_samplers import build_pretraining_data_loader
+from libai.data.data_samplers import MegatronPretrainingSampler, MegatronPretrainingRandomSampler
 from libai.data.build import cyclic_iter
+from libai.utils import distributed as dist
 from .data_utils import clean_text
 from .data import GLUEAbstractDataset
 from libai.tokenizer import get_tokenizer
 import logging
 
 logger = logging.getLogger("libai."+__name__)
+
+def build_pretraining_data_loader(cfg, dataset, consumed_samples, dataloader_type="single", drop_last=True):
+    """Build dataloader given an input dataset."""
+
+    if dataset is None:
+        return None
+
+    # print(f"rank: {flow.env.get_rank()} and data parallel rank: {dist.get_data_parallel_rank()}")
+    # Megatron sampler
+    if dataloader_type == "single":
+        batch_sampler = MegatronPretrainingSampler(
+            total_samples=len(dataset),
+            consumed_samples=consumed_samples,
+            micro_batch_size=cfg.train.micro_batch_size,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            drop_last=drop_last
+        )
+    elif dataloader_type == "cyclic":
+        batch_sampler = MegatronPretrainingRandomSampler(
+            total_samples=len(dataset),
+            consumed_samples=consumed_samples,
+            micro_batch_size=cfg.train.micro_batch_size,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+        )
+    else:
+        raise Exception(
+            "{} dataloader type is not supported.".format(dataloader_type)
+        )
+
+    # Torch dataloader.
+    return flow.utils.data.DataLoader(
+        dataset, batch_sampler=batch_sampler, num_workers=cfg.data.num_workers,
+    )
+
 
 def train_valid_test_datasets_provider(cfg):
     tokenizer = get_tokenizer()
@@ -76,12 +113,12 @@ def build_train_valid_test_data_iterators(cfg):
 
     # Build dataloders.
     train_dataloader = build_pretraining_data_loader(
-        cfg, train_ds, cfg.train.consumed_train_samples
+        cfg, train_ds, cfg.train.consumed_train_samples, dataloader_type = "cyclic"
     )
     valid_dataloader = build_pretraining_data_loader(
-        cfg, valid_ds, cfg.train.consumed_valid_samples
+        cfg, valid_ds, cfg.train.consumed_valid_samples, dataloader_type = "single", drop_last=False
     )
-    test_dataloader = build_pretraining_data_loader(cfg, test_ds, 0)
+    test_dataloader = build_pretraining_data_loader(cfg, test_ds, 0, dataloader_type = "single", drop_last=False)
 
     # Flags to know if we need to do training/validation/testing.
     do_train = train_dataloader is not None and cfg.train.train_iter > 0
@@ -108,34 +145,34 @@ def build_train_valid_test_data_iterators(cfg):
     dl_type = cfg.data.dataloader_type
     assert dl_type in ["single", "cyclic"]
 
-    if train_dataloader is not None:
-        train_data_iterator = (
-            iter(train_dataloader)
-            if dl_type == "single"
-            else iter(cyclic_iter(train_dataloader))
-        )
-    else:
-        train_data_iterator = None
+    # if train_dataloader is not None:
+    #     train_data_iterator = (
+    #         iter(train_dataloader)
+    #         if dl_type == "single"
+    #         else iter(cyclic_iter(train_dataloader))
+    #     )
+    # else:
+    #     train_data_iterator = None
 
-    if valid_dataloader is not None:
-        valid_data_iterator = (
-            iter(valid_dataloader)
-            if dl_type == "single"
-            else iter(cyclic_iter(valid_dataloader))
-        )
-    else:
-        valid_data_iterator = None
+    # if valid_dataloader is not None:
+    #     valid_data_iterator = (
+    #         iter(valid_dataloader)
+    #         if dl_type == "single"
+    #         else iter(cyclic_iter(valid_dataloader))
+    #     )
+    # else:
+    #     valid_data_iterator = None
 
-    if test_dataloader is not None:
-        test_data_iterator = (
-            iter(test_dataloader)
-            if dl_type == "single"
-            else iter(cyclic_iter(test_dataloader))
-        )
-    else:
-        test_data_iterator = None
+    # if test_dataloader is not None:
+    #     test_data_iterator = (
+    #         iter(test_dataloader)
+    #         if dl_type == "single"
+    #         else iter(cyclic_iter(test_dataloader))
+    #     )
+    # else:
+    #     test_data_iterator = None
 
-    return train_data_iterator, valid_data_iterator, test_data_iterator
+    return train_dataloader, valid_dataloader, test_dataloader
 
 
 LABELS = [0, 1]
