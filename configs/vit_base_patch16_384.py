@@ -44,6 +44,6 @@ graph = dict(
     eval_graph=LazyCall(VisionTransformerGraph)(
         fp16=train.amp.enabled, 
         is_train=False,),
-    debug = False,
+    debug=1,
 )
 # fmt: on

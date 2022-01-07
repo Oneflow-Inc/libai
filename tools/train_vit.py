@@ -38,7 +38,7 @@ def get_batch(data_iterator):
     return (data, label)
 
 
-class ViTTrainer(DefaultTrainer):
+class Trainer(DefaultTrainer):
     @classmethod
     def build_train_valid_test_loader(cls, cfg):
         # TODO: switch to real data
@@ -54,14 +54,14 @@ def main(args):
     default_setup(cfg, args)
 
     if args.eval_only:
-        model = ViTTrainer.build_model(cfg)
+        model = Trainer.build_model(cfg)
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=args.resume
         )
-        graph = ViTTrainer.build_graph(cfg, model, is_train=False)
-        res = ViTTrainer.test(cfg, graph)
+        graph = Trainer.build_graph(cfg, model, is_train=False)
+        res = Trainer.test(cfg, graph)
 
-    trainer = ViTTrainer(cfg)
+    trainer = Trainer(cfg)
     return trainer.train()
 
 
