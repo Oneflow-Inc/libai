@@ -371,7 +371,7 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `graph` namespace"
         graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
         logger = logging.getLogger(__name__)
-        debug_graph = try_get_key(cfg, "debug", default=-1)
+        debug_graph = try_get_key(cfg, "graph.debug", default=-1)
         if debug_graph >= 0:
             logger.info("Graph debug mode on, automatically output debug info.")
             graph.debug(cfg.graph.debug)
