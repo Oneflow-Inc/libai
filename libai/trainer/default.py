@@ -370,6 +370,10 @@ class DefaultTrainer(TrainerBase):
             try_get_key(cfg, "graph") is not None
         ), "cfg must contain `graph` namespace"
         graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
+        # logger = logging.getLogger(__name__)
+        # graph_debug = try_get_key(cfg, "graph", default=0)
+        # if graph_debug:
+        #     logger.info("")
         graph.debug(cfg.graph.debug)
         return graph
 
