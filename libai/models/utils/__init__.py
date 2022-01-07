@@ -13,23 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<< HEAD:libai/models/t5_model.py
-import oneflow as flow
-from libai.layers import (
-    TransformerLayer
-)
-=======
-from .lazy import LazyCall, LazyConfig
-from .instantiate import instantiate
-from .arguments import default_argument_parser
-from .config import configurable, try_get_key
-
-__all__ = [
-    "LazyCall",
-    "LazyConfig",
-    "instantiate",
-    "default_argument_parser",
-    "configurable",
-    "try_get_key",
-]
->>>>>>> main:libai/config/__init__.py
+from .graph_base import GraphBase
+from .weight_init import init_method_normal, scaled_init_method_normal

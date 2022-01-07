@@ -13,23 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<< HEAD:libai/models/t5_model.py
-import oneflow as flow
-from libai.layers import (
-    TransformerLayer
-)
-=======
-from .lazy import LazyCall, LazyConfig
-from .instantiate import instantiate
-from .arguments import default_argument_parser
-from .config import configurable, try_get_key
+import math
+import oneflow.nn as nn
 
-__all__ = [
-    "LazyCall",
-    "LazyConfig",
-    "instantiate",
-    "default_argument_parser",
-    "configurable",
-    "try_get_key",
-]
->>>>>>> main:libai/config/__init__.py
+
+def init_method_normal(sigma):
+    """Init method based on N(0, sigma)."""
+
+    def init_(tensor):
+        return nn.init.normal_(tensor, mean=0.0, std=sigma)
+
+    return init_
+
+
+def scaled_init_method_normal(sigma, num_layers):
+    """Init method based on N(0, sigma/sqrt(2*num_layers)."""
+    std = sigma / math.sqrt(2.0 * num_layers)
+
+    def init_(tensor):
+        return nn.init.normal_(tensor, mean=0.0, std=std)
+
+    return init_

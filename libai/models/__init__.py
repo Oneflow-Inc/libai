@@ -14,8 +14,11 @@
 # limitations under the License.
 
 from .bert_model import BertModel, BertForPreTraining, BertForPretrainingGraph
+from .build import build_model, build_graph
 
 __all__ = [
+    "build_model",
+    "build_graph",
     "BertModel",
     "BertForPreTraining",
     "BertForPretrainingGraph",
