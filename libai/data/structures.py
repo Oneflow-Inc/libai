@@ -24,17 +24,31 @@ from libai.utils import distributed as dist
 @dataclass
 class Metadata:
     tensor: flow.Tensor
-    sbp: list = field(
-        default_factory=lambda: dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
-    )
-    placement: flow._oneflow_internal.placement = dist.get_layer_placement(0)
+    sbp_list: list = field(default_factory=lambda: ["split 0", "broadcast"])
+    placement_idx: int = 0
 
     # Tensor-like methods
     def to_consistent(self, sbp=None, placement=None):
         if sbp is not None:
             self.sbp = sbp
+        else:
+            sbp_list = []
+            for sbp in self.sbp_list:
+                sbp = sbp.split(" ")
+                if len(sbp) > 1:
+                    # split dim
+                    assert sbp[0] == "split"
+                    split_dim = int(sbp[1])
+                    sbp_list.append(flow.sbp.split(split_dim))
+                else:
+                    sbp_sign = sbp[0]
+                    sbp_list.append(getattr(flow.sbp, sbp_sign))
+            self.sbp = dist.get_nd_sbp(sbp_list)
+
         if placement is not None:
             self.placement = placement
+        else:
+            self.placement = dist.get_layer_placement(self.placement_idx)
 
         self.tensor = self.tensor.to_consistent(sbp=self.sbp, placement=self.placement)
 
@@ -51,15 +65,17 @@ class Metadata:
             assert (
                 data.tensor.size() == data0.tensor.size()
             ), f"tensor shape is not equal, {data.tensor.size()} != {data0.tensor.size()}"
-            assert dist.same_sbp(
-                data.sbp, data0.sbp
-            ), f"sbp is not equal, {data.sbp} != {data0.sbp}!"
             assert (
-                data.placement == data0.placement
-            ), f"placement is not equal, {data.placement} != {data0.placement}"
+                data.sbp_list == data0.sbp_list
+            ), f"sbp_list is not equal, {data.sbp_list} != {data0.sbp_list}!"
+            assert (
+                data.placement_idx == data0.placement_idx
+            ), f"placement_idx is not equal, {data.placement_idx} != {data0.placement_idx}"
             tensors.append(data.tensor)
         tensors = flow.stack(tensors, dim=0)
-        ret = Metadata(tensors, sbp=data0.sbp, placement=data0.placement)
+        ret = Metadata(
+            tensors, sbp_list=data0.sbp_list, placement_idx=data0.placement_idx
+        )
         return ret
 
 
