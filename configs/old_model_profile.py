@@ -1,7 +1,7 @@
 from libai.config import LazyCall
 from .common.models.bert import pretrain_model as model
 from .common.train import train
-from .common.optim import optim, lr_scheduler
+from .common.optim import optim, scheduler
 from .common.data.nlp_data import data
 from libai.models import BertForPretrainingGraph
 
@@ -34,11 +34,14 @@ data.tokenizer_type = "BertCNWWMTokenizer"
 graph = dict(
     # options for graph or eager mode
     enabled=True,
-    train=LazyCall(BertForPretrainingGraph)(
-        is_eval=False,
+    debug=-1, # debug mode for graph
+    train_graph=LazyCall(BertForPretrainingGraph)(
+        fp16=train.amp.enabled,
+        is_train=True,
     ),
-    eval=LazyCall(BertForPretrainingGraph)(
-        is_eval=True,
-    )
+    eval_graph=LazyCall(BertForPretrainingGraph)(
+        fp16=train.amp.enabled, 
+        is_train=False
+    ),
 )
 # fmt: on

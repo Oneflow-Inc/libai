@@ -14,4 +14,4 @@
 # limitations under the License.
 
 from .structures import Metadata, Instance
-from .data_samplers import build_pretraining_data_loader
+from .build import build_train_valid_test_data_iterators

@@ -19,6 +19,8 @@
 import oneflow as flow
 from libai.utils import distributed as dist
 
+from .structures import Instance
+
 
 def build_pretraining_data_loader(cfg, dataset, consumed_samples):
     """Build dataloader given an input dataset."""
@@ -51,8 +53,20 @@ def build_pretraining_data_loader(cfg, dataset, consumed_samples):
 
     # Torch dataloader.
     return flow.utils.data.DataLoader(
-        dataset, batch_sampler=batch_sampler, num_workers=cfg.data.num_workers,
+        dataset,
+        batch_sampler=batch_sampler,
+        num_workers=cfg.data.num_workers,
+        collate_fn=trivial_batch_collator,
     )
+
+
+def trivial_batch_collator(batch):
+    assert isinstance(
+        batch[0], Instance
+    ), "batch[0] must be `instance` for trivial batch collator"
+    batch = Instance.stack(batch)
+
+    return batch
 
 
 class MegatronPretrainingSampler:

@@ -20,6 +20,7 @@ limitations under the License.
 import numpy as np
 import oneflow as flow
 
+from libai.data.structures import Metadata, Instance
 from libai.tokenizer import get_tokenizer
 
 from libai.data.dataset_utils import (
@@ -193,22 +194,16 @@ def build_training_sample(
         tokens, tokentypes, masked_positions, masked_labels, pad_id, max_seq_length
     )
 
-    # train_sample = {
-    #     "tokens": (flow.tensor(tokens_np), 0),
-    #     "tokentype_ids": (flow.tensor(tokentypes_np), 0),
-    #     "lm_labels": (flow.tensor(labels_np), -1),
-    #     "ns_labels": (flow.tensor(int(is_next_random)), -1),
-    #     "loss_mask": (flow.tensor(loss_mask_np.astype(float)), -1),
-    #     "padding_mask": (flow.tensor(padding_mask_np), 0),
-    # }
-    train_sample = [
-        (flow.tensor(tokens_np), 0),
-        (flow.tensor(padding_mask_np), 0),
-        (flow.tensor(tokentypes_np), 0),
-        (flow.tensor(int(is_next_random)), -1),
-        (flow.tensor(labels_np), -1),
-        (flow.tensor(loss_mask_np.astype(float)), -1),
-    ]
+    train_sample = Instance(
+        **{
+            "tokens": Metadata(tensor=flow.tensor(tokens_np)),
+            "padding_mask": Metadata(tensor=flow.tensor(padding_mask_np)),
+            "tokentype_ids": Metadata(tensor=flow.tensor(tokentypes_np)),
+            "ns_labels": Metadata(tensor=flow.tensor(int(is_next_random))),
+            "lm_labels": Metadata(tensor=flow.tensor(labels_np)),
+            "loss_mask": Metadata(tensor=flow.tensor(loss_mask_np.astype(float))),
+        }
+    )
     return train_sample
 
 
