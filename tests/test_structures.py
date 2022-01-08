@@ -26,4 +26,13 @@ data2 = Metadata(flow.Tensor(4, 4))
 item1 = Instance(tokens=data1, mask=data2)
 item2 = Instance(tokens=data1, mask=data2)
 
-batch_item = Instance.cat(item1, item2)
+print(len(item1))
+
+batch_item = Instance.stack([item1, item2])
+
+for value in batch_item.get_fields().values():
+    value.to_consistent()
+
+print([value.tensor for value in batch_item.get_fields().values()])
+# print(batch_item.tokens.tensor)
+# print(batch_item.mask.tensor)
