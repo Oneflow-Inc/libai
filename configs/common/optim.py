@@ -1,8 +1,8 @@
 import oneflow as flow
 from libai.optim import get_default_optimizer_params
+from libai.scheduler import WarmupCosineAnnealingLR
 
 from libai.config import LazyCall
-from libai.optim import PolynomialLR
 
 optim = LazyCall(flow.optim.AdamW)(
     parameters=LazyCall(get_default_optimizer_params)(
@@ -18,9 +18,6 @@ optim = LazyCall(flow.optim.AdamW)(
     do_bias_correction=True,
 )
 
-lr_scheduler = LazyCall(flow.optim.lr_scheduler.WarmUpLR)(
-    lrsch_or_optimizer=LazyCall(PolynomialLR)(steps=1000, end_learning_rate=1.0e-5,),
-    warmup_factor=0,
-    warmup_iters=100,
-    warmup_method="linear",
+scheduler = LazyCall(WarmupCosineAnnealingLR)(
+    t_max=1000, warmup_factor=0, warmup_iters=100, warmup_method="linear"
 )

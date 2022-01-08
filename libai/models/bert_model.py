@@ -14,6 +14,8 @@
 # limitations under the License.
 
 import oneflow as flow
+from oneflow import nn
+
 from libai.layers import (
     build_activation,
     VocabEmbedding,
@@ -25,11 +27,10 @@ from libai.layers import (
     LMLogits,
 )
 from libai.utils import distributed as dist
-from oneflow import nn
 from libai.config import configurable
 
-from .graph_base import GraphBase
-from .utils import init_method_normal, scaled_init_method_normal
+from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
+from .utils import GraphBase, init_method_normal, scaled_init_method_normal
 
 from .build import MODEL_ARCH_REGISTRY
 
@@ -294,7 +295,7 @@ class BertModel(nn.Module):
                     output_layer_init_method=scaled_init_method,
                     layer_idx=i,
                 )
-                for i in range(self.hidden_layers)
+                for i in range(hidden_layers)
             ]
         )
         self.final_layernorm = LayerNorm(
@@ -386,6 +387,7 @@ class BertForPreTraining(nn.Module):
             return prediction_scores, seq_relationship_score
 
 
+@GRAPH_REGISTRY.register()
 class BertForPretrainingGraph(GraphBase):
     def build(
         self,
@@ -398,20 +400,14 @@ class BertForPretrainingGraph(GraphBase):
     ):
 
         # Forward pass through the model
-        if self.is_eval:
-            return self.model(tokens, padding_mask, tokentype_ids)
-        else:
+        if self.is_train:
             losses = self.model(
                 tokens, padding_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
             )
-
             losses.backward()
             return losses
-
-    def set_activation_checkpoint(self):
-        for module_block in self.model.modules():
-            if isinstance(module_block.origin, TransformerLayer):
-                module_block.config.activation_checkpointing = True
+        else:
+            return self.model(tokens, padding_mask, tokentype_ids)
 
     def set_pipeline_stage_id(self):
         dist_utils = dist.get_dist_util()
@@ -439,5 +435,4 @@ class BertForPretrainingGraph(GraphBase):
         self.model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
             -1
         )
-
         self.model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)

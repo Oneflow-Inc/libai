@@ -13,5 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .build import get_default_optimizer_params
-from .lr_scheduler import PolynomialLR
+from .build import OPTIMIZER_REGISTRY, get_default_optimizer_params, build_optimizer

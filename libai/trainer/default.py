@@ -18,29 +18,16 @@ import os
 from typing import Callable
 
 import oneflow as flow
-from libai.config import LazyConfig, instantiate
+from libai.config import LazyConfig, try_get_key
+from libai.models import build_model, build_graph
+from libai.optim import build_optimizer
+from libai.scheduler import build_lr_scheduler
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
-from libai.models.build import build_model
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
-from libai.data.build import build_train_valid_test_data_iterators
-from libai.tokenizer.tokenizer import setup_tokenizer
-from omegaconf import OmegaConf
-
-
-def _try_get_key(cfg, *keys, default=None):
-    """
-    Try select keys from cfg until the first key that exists. Otherwise return default.
-    """
-    for k in keys:
-        none = object()
-        p = OmegaConf.select(cfg, k, default=none)
-        if p is not none:
-            return p
-    return default
 
 
 def _highlight(code, filename):
@@ -58,9 +45,9 @@ def _highlight(code, filename):
 
 
 def _check_batch_size(cfg):
-    micro_batch_size = _try_get_key(cfg, "train.micro_batch_size", default=None)
-    global_batch_size = _try_get_key(cfg, "train.global_batch_size", default=None)
-    num_accumulation_steps = _try_get_key(
+    micro_batch_size = try_get_key(cfg, "train.micro_batch_size", default=None)
+    global_batch_size = try_get_key(cfg, "train.global_batch_size", default=None)
+    num_accumulation_steps = try_get_key(
         cfg, "train.num_accumulation_steps", default=None
     )
 
@@ -135,7 +122,7 @@ def default_setup(cfg, args):
         args (argparse.NameSpace): the command line arguments to be logged
     """
 
-    output_dir = _try_get_key(cfg, "train.output_dir")
+    output_dir = try_get_key(cfg, "train.output_dir")
     if dist.is_main_process() and output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -159,35 +146,13 @@ def default_setup(cfg, args):
             )
         )
 
-    # Initialize the distributed environment.
-    num_nodes = flow.env.get_node_size()
-    num_gpus_per_node = flow.env.get_world_size() // num_nodes
-
-    if (
-        _try_get_key(cfg, "train.dist.num_gpus_per_node", default=num_gpus_per_node)
-        != num_gpus_per_node
-    ):
-        # This means key(num_gpus_per_node) saved in config is not equal to environment variable.
-        # Give user a warning about inconsistent reproduce environment.
-        logger.warning(
-            f"Warning! num_gpus_per_node are not equal in cfg and environment variable. {cfg.train.dist.num_gpus_per_node} != {num_gpus_per_node}"
-        )
-
-    if _try_get_key(cfg, "train.dist.num_nodes", default=num_nodes) != num_nodes:
-        logger.warning(
-            f"Warning! num_nodes are not equal in cfg and environment variable. {cfg.train.dist.num_nodes} != {num_nodes}"
-        )
-
-    cfg.train.dist.num_nodes = num_nodes
-    cfg.train.dist.num_gpus_per_node = num_gpus_per_node
-
     dist.setup_dist_util(cfg.train.dist)
 
     # Initialize tokenizer
-    if _try_get_key(cfg, "data.tokenizer_setup", default=False):
+    if try_get_key(cfg, "data.tokenizer_setup", default=False):
         # TODO(l1aoxingyu): add tokenizer
-        setup_tokenizer(cfg)
-        # pass
+        # setup_tokenizer(cfg)
+        pass
 
     _check_batch_size(cfg)
 
@@ -199,13 +164,13 @@ def default_setup(cfg, args):
         logger.info("Full config saved to {}".format(path))
 
     flow.boxing.nccl.set_fusion_threshold_mbytes(
-        _try_get_key(cfg, "train.nccl_fusion_threshold_mb", default=16)
+        try_get_key(cfg, "train.nccl_fusion_threshold_mb", default=16)
     )
     flow.boxing.nccl.set_fusion_max_ops_num(
-        _try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
+        try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
     flow.boxing.nccl.enable_use_compute_stream(
-        _try_get_key(cfg, "train.enable_use_compute_stream", default=True)
+        try_get_key(cfg, "train.enable_use_compute_stream", default=True)
     )
 
 
@@ -287,7 +252,6 @@ class DefaultTrainer(TrainerBase):
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
             graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            # graph_train.debug(0)
             self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
         else:
             self._trainer = EagerTrainer(
@@ -409,73 +373,50 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             flow.nn.Module:
-        It now calls :func:`libai.layers.build_model`.
+        It now calls :func:`libai.models.build_model`.
         Overwrite it if you'd like a different model.
         """
         assert (
-            _try_get_key(cfg, "model") is not None
+            try_get_key(cfg, "model") is not None
         ), "cfg must contain `model` namespace"
-        model = build_model(cfg)
+        model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
+        model.apply(dist.convert_to_distributed_default_setting)
         return model
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
-        if is_train:
-            # Set train graph
-            assert optimizer is not None, "optimizer must be set for train graph"
-            assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
-            cfg.graph.num_accumulation_steps = cfg.train.num_accumulation_steps
-            cfg.graph.train.model = model
-            cfg.graph.train.optimizer = optimizer
-            cfg.graph.train.lr_scheduler = lr_scheduler
-            return instantiate(cfg.graph.train)
-        else:
-            # Set eval graph
-            cfg.graph.eval.model = model
-            return instantiate(cfg.graph.eval)
+        assert (
+            try_get_key(cfg, "graph") is not None
+        ), "cfg must contain `graph` namespace"
+        graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
+        graph.debug(cfg.graph.debug)
+        return graph
 
     @classmethod
     def build_optimizer(cls, cfg, model):
         """
         Returns:
             torch.optim.Optimizer:
-        It now calls :func:`libai.solver.build_optimizer`.
+        It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
         assert (
-            _try_get_key(cfg, "optim") is not None
+            try_get_key(cfg, "optim") is not None
         ), "cfg must contain `optim` namespace"
-        # TODO(l1aoxingyu): Replace this after build_optimizer finishing.
-        optim = cfg.optim
-        optim.parameters.model = model
-        return instantiate(optim)
+        return build_optimizer(cfg.optim, model)
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
         """
-        It now calls :func:`libai.solver.build_lr_scheduler`.
+        It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
         assert (
-            _try_get_key(cfg, "lr_scheduler") is not None
-        ), "cfg must contain `lr_scheduler` namespace"
-        # TODO(l1aoxingyu): Replace this after build_lr_scheduler finishing.
-
-        if cfg.train.lr_decay_iter is None:
-            cfg.train.lr_decay_iter = cfg.train.train_iter
-        decay_steps = int(cfg.train.lr_decay_iter)
-        if cfg.train.lr_warmup_fraction is not None:
-            warmup_iters = cfg.train.lr_warmup_fraction * decay_steps
-        else:
-            warmup_iters = cfg.train.lr_warmup_iters
-        warmup_iters = int(warmup_iters)
-
-        lr_scheduler = cfg.lr_scheduler
-        # Setup optimizer and decay iters
-        lr_scheduler.lrsch_or_optimizer.optimizer = optimizer
-        return instantiate(lr_scheduler)
+            try_get_key(cfg, "scheduler") is not None
+        ), "cfg must contain `scheduler` namespace"
+        return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
     def build_train_valid_test_loader(cls, cfg):
@@ -485,10 +426,8 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
-        assert (
-            _try_get_key(cfg, "data") is not None
-        ), "cfg must contain `data` namespace"
+        assert try_get_key(cfg, "data") is not None, "cfg must contain `data` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO(l1aoxingyu): add dataloader
-        return build_train_valid_test_data_iterators(cfg)
+        return None  # build_train_valid_test_data_iterators(cfg)

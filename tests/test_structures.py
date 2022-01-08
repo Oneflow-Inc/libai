@@ -13,5 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .structures import Metadata, Instance
-from .data_samplers import build_pretraining_data_loader
+import oneflow as flow
+import sys
+
+sys.path.append(".")
+
+from libai.data import Metadata, Instance
+
+data1 = Metadata(flow.Tensor(3, 3))
+data2 = Metadata(flow.Tensor(4, 4))
+
+item1 = Instance(tokens=data1, mask=data2)
+item2 = Instance(tokens=data1, mask=data2)
+
+print(len(item1))
+
+batch_item = Instance.stack([item1, item2])
+
+for value in batch_item.get_fields().values():
+    value.to_consistent()
+
+print([value.tensor for value in batch_item.get_fields().values()])
+# print(batch_item.tokens.tensor)
+# print(batch_item.mask.tensor)
