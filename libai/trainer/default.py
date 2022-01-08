@@ -361,6 +361,8 @@ class DefaultTrainer(TrainerBase):
             value.to_consistent()
             ret_dict[key] = value.tensor
             ret_list.append(value.tensor)
+        # FIXME(l1aoxingyu): `nn.Graph` cannot accpet key-value arguments right now,
+        # just pass list instead.
         return ret_list
 
     @classmethod
