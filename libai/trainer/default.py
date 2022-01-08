@@ -15,10 +15,10 @@
 
 import logging
 import os
-from typing import Callable
 
 import oneflow as flow
 from libai.config import LazyConfig, try_get_key
+from libai.data import Instance
 from libai.models import build_model, build_graph
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
@@ -348,24 +348,20 @@ class DefaultTrainer(TrainerBase):
         self._trainer.run_step(self.get_batch)
 
     @classmethod
-    def get_batch(cls, data_iterator):
-        """Build the batch for model step running."""
+    def get_batch(cls, data: Instance):
+        """
+        Convert batched local tensor to distributed tensor for model step running.
 
-        assert data_iterator is not None, "data iterator is None!"
-        data = next(data_iterator)
-
-        sbp = dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
-
-        def to_consistent(tensor, placement_idx):
-            tensor = tensor.to_consistent(
-                sbp=sbp, placement=dist.get_layer_placement(placement_idx)
-            )
-            return tensor
-
-        for i in range(len(data)):
-            data[i] = to_consistent(data[i][0], data[i][1][0].item())
-
-        return data
+        If you want to do something with batched data before model, (e.g. mixup),
+        you can rewrite this function.
+        """
+        ret_dict = {}
+        ret_list = []
+        for key, value in data.get_fields().items():
+            value.to_consistent()
+            ret_dict[key] = value.tensor
+            ret_list.append(value.tensor)
+        return ret_list
 
     @classmethod
     def build_model(cls, cfg):
@@ -429,4 +425,4 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO(l1aoxingyu): add dataloader
-        return None  # build_train_valid_test_data_iterators(cfg)
+        return None # build_train_valid_test_data_iterators(cfg)
