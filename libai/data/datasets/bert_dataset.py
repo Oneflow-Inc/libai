@@ -195,14 +195,12 @@ def build_training_sample(
     )
 
     train_sample = Instance(
-        **{
-            "tokens": Metadata(tensor=flow.tensor(tokens_np)),
-            "padding_mask": Metadata(tensor=flow.tensor(padding_mask_np)),
-            "tokentype_ids": Metadata(tensor=flow.tensor(tokentypes_np)),
-            "ns_labels": Metadata(tensor=flow.tensor(int(is_next_random))),
-            "lm_labels": Metadata(tensor=flow.tensor(labels_np)),
-            "loss_mask": Metadata(tensor=flow.tensor(loss_mask_np.astype(float))),
-        }
+        tokens=Metadata(tensor=flow.tensor(tokens_np), placement_idx=0),
+        padding_mask=Metadata(tensor=flow.tensor(padding_mask_np), placement_idx=0),
+        tokentype_ids=Metadata(tensor=flow.tensor(tokentypes_np), placement_idx=0),
+        ns_labels=Metadata(tensor=flow.tensor(int(is_next_random)), placement_idx=-1),
+        lm_labels=Metadata(tensor=flow.tensor(labels_np), placement_idx=-1),
+        loss_mask=Metadata(tensor=flow.tensor(loss_mask_np.astype(float)), placement_idx=-1),
     )
     return train_sample
 

@@ -24,7 +24,7 @@ from libai.utils import distributed as dist
 @dataclass
 class Metadata:
     tensor: flow.Tensor
-    sbp_list: list = field(default_factory=lambda: ["split 0", "broadcast"])
+    sbp_list: list = field(default_factory=lambda: ["split_0", "broadcast"])
     placement_idx: int = 0
 
     # Tensor-like methods
@@ -34,7 +34,7 @@ class Metadata:
         else:
             sbp_list = []
             for sbp in self.sbp_list:
-                sbp = sbp.split(" ")
+                sbp = sbp.split("_")
                 if len(sbp) > 1:
                     # split dim
                     assert sbp[0] == "split"
