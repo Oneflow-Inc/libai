@@ -24,19 +24,39 @@ from flowvision.data import Mixup
 from flowvision.data import create_transform
 from flowvision.transforms.functional import str_to_interp_mode
 
+from libai.data.structures import Metadata, Instance
 
-def build_imagenet_dataset(is_train, cfg):
-    transform = build_transform(is_train, cfg)
-    prefix = "train" if is_train else "val"
-    root = os.path.join(cfg.data.data_path, prefix)
-    dataset = datasets.ImageFolder(root, transform=transform)
-    if is_train:
-        assert len(dataset) == 1281167, "The whole train set of ImageNet contains 1281167 images but got {} instead.".format(len(dataset))
-    else:
-        assert len(dataset) == 50000, "The whole val set of ImageNet contains 50000 images but got {} instead.".format(len(dataset))
-    nb_classes = 1000    
-    return dataset, nb_classes
 
+# def build_imagenet_dataset(is_train, cfg):
+#     transform = build_transform(is_train, cfg)
+#     prefix = "train" if is_train else "val"
+#     root = os.path.join(cfg.data.data_path, prefix)
+#     dataset = datasets.ImageFolder(root, transform=transform)
+#     if is_train:
+#         assert len(dataset) == 1281167, "The whole train set of ImageNet contains 1281167 images but got {} instead.".format(len(dataset))
+#     else:
+#         assert len(dataset) == 50000, "The whole val set of ImageNet contains 50000 images but got {} instead.".format(len(dataset))
+#     nb_classes = 1000    
+#     return dataset, nb_classes
+
+class ImageNetDataset(datasets.ImageFolder):
+    def __init__(self, is_train, cfg):
+        # set train mode and cfg
+        self.is_train = is_train
+        self.cfg = cfg
+        # set data-path
+        prefix = "train" if is_train else "val"
+        self.root = os.path.join(cfg.data.data_path, prefix)
+        # set transform
+        self.transform = build_transform(is_train, cfg)
+    
+    def __getitem__(self, index: int):
+        sample, target = super().__getitem__(index)
+        data_sample = Instance(
+            images = Metadata(sample, placement_idx=0),
+            targets = Metadata(target, placement_idx=-1)
+        )
+        return data_sample
 
 
 def build_transform(is_train, cfg):
