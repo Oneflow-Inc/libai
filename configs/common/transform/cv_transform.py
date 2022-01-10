@@ -1,4 +1,7 @@
 from flowvision import transforms
+from flowvision.transforms import InterpolationMode
+from flowvision.transforms.functional import str_to_interp_mode, str_to_pil_interp
+
 from flowvision.data.constants import (
     IMAGENET_DEFAULT_MEAN,
     IMAGENET_DEFAULT_STD,
@@ -8,7 +11,6 @@ from flowvision.data.auto_augment import (
     augment_and_mix_transform,
     auto_augment_transform,
 )
-from flowvision.transforms.functional import str_to_interp_mode, str_to_pil_interp
 from flowvision.data.random_erasing import RandomErasing
 
 from libai.config import LazyCall
@@ -44,6 +46,24 @@ default_train_transform = LazyCall(transforms.Compose)(
             max_count=1,
             num_splits=0,
             device="cpu",
+        )
+    ]
+)
+
+
+default_test_transform = LazyCall(transforms.Compose)(
+    transforms = [
+        LazyCall(transforms.Resize)(
+            size=256,
+            interpolation=InterpolationMode.BICUBIC,
+        ),
+        LazyCall(transforms.CenterCrop)(
+            size=224,
+        ),
+        LazyCall(transforms.ToTensor)(),
+        LazyCall(transforms.Normalize)(
+            mean=IMAGENET_DEFAULT_MEAN,
+            std=IMAGENET_DEFAULT_STD,
         )
     ]
 )
