@@ -27,28 +27,23 @@ from flowvision.transforms.functional import str_to_interp_mode
 from libai.data.structures import DistTensorData, Instance
 
 
-# def build_imagenet_dataset(is_train, cfg):
-#     transform = build_transform(is_train, cfg)
-#     prefix = "train" if is_train else "val"
-#     root = os.path.join(cfg.data.data_path, prefix)
-#     dataset = datasets.ImageFolder(root, transform=transform)
-#     if is_train:
-#         assert len(dataset) == 1281167, "The whole train set of ImageNet contains 1281167 images but got {} instead.".format(len(dataset))
-#     else:
-#         assert len(dataset) == 50000, "The whole val set of ImageNet contains 50000 images but got {} instead.".format(len(dataset))
-#     nb_classes = 1000    
-#     return dataset, nb_classes
-
 class ImageNetDataset(datasets.ImageFolder):
+    """ImageNet Dataset
+    """
+
     def __init__(self, is_train, cfg):
         # set train mode and cfg
         self.is_train = is_train
         self.cfg = cfg
+
         # set data-path
         prefix = "train" if is_train else "val"
         self.root = os.path.join(cfg.data.data_path, prefix)
-        # set transform
+
+        # set data transforms
         self.transform = build_transform(is_train, cfg)
+
+        super(ImageNetDataset, self).__init__(root=self.root, transform=self.transform)
     
     def __getitem__(self, index: int):
         sample, target = super().__getitem__(index)

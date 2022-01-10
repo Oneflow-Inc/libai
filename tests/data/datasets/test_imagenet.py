@@ -14,18 +14,16 @@
 # limitations under the License.
 
 from libai.config import LazyConfig
-from libai.data.datasets.imagenet import build_imagenet_dataset
+from libai.data.datasets.imagenet import ImageNetDataset
 
 cfg = LazyConfig.load("./configs/common/data/imagenet_data.py")
 # set path to imagenet
 cfg.data.data_path = "/DATA/disk1/ImageNet/extract/"
 
 # test train dataset
-train_dataset, nb_classes = build_imagenet_dataset(is_train=True, cfg=cfg)
-assert len(train_dataset) == 1281167
-assert nb_classes == 1000
+train_set = ImageNetDataset(is_train=True, cfg=cfg)
+assert len(train_set) == 1281167
 
 # test valid/test dataset
-valid_dataset, nb_classes = build_imagenet_dataset(is_train=False, cfg=cfg)
-assert len(valid_dataset) == 50000
-assert nb_classes == 1000
+valid_set = ImageNetDataset(is_train=False, cfg=cfg)
+assert len(valid_set) == 50000
