@@ -17,14 +17,14 @@ import unittest
 
 import oneflow as flow
 
-from libai.data import Metadata
+from libai.data import DistTensorData
 from libai.utils import distributed as dist
 
 
 class TestMetadata(unittest.TestCase):
     def test_to_consistent(self):
         x = flow.rand(10, 10)
-        x_meta = Metadata(x)
+        x_meta = DistTensorData(x)
         x_meta.to_consistent()
         x_consistent = x.to_consistent(
             sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: [0]})
@@ -48,26 +48,28 @@ class TestMetadata(unittest.TestCase):
         self.assertTrue((flow.equal(x_meta.tensor, x_consistent)).sum().item() == 100)
 
     def test_stack(self):
-        x_list = [Metadata(flow.rand(10, 8)) for _ in range(5)]
+        x_list = [DistTensorData(flow.rand(10, 8)) for _ in range(5)]
 
-        x_list.append(Metadata(flow.rand(10, 9)))  # shape mismatch
+        x_list.append(DistTensorData(flow.rand(10, 9)))  # shape mismatch
         with self.assertRaises(Exception):
-            Metadata.stack(x_list)
+            DistTensorData.stack(x_list)
         x_list.pop(-1)
 
         x_list.append(
-            Metadata(flow.rand(10, 8), sbp_list=["broadcast"])
+            DistTensorData(flow.rand(10, 8), sbp_list=["broadcast"])
         )  # sbp mismatch
         with self.assertRaises(Exception):
-            Metadata.stack(x_list)
+            DistTensorData.stack(x_list)
         x_list.pop(-1)
 
-        x_list.append(Metadata(flow.rand(10, 8), placement_idx=2))  # placement mismatch
+        x_list.append(
+            DistTensorData(flow.rand(10, 8), placement_idx=2)
+        )  # placement mismatch
         with self.assertRaises(Exception):
-            Metadata.stack(x_list)
+            DistTensorData.stack(x_list)
         x_list.pop(-1)
 
-        x_stack = Metadata.stack(x_list)
+        x_stack = DistTensorData.stack(x_list)
         self.assertTrue(x_stack.tensor.shape == (5, 10, 8))
 
 
