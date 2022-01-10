@@ -3,9 +3,10 @@ import torch
 import numpy as np
 
 from t5_model_layers.t5_model_embedding import T5Embedding
+from t5_model_layers.t5_model_encoder import T5EncoderLayer
 from get_megatron_t5 import get_t5_model
 from megatron.model.t5_model import T5Model, t5_position_ids 
-from utils import convert_and_copy_tensor, numpy_to_flow, load_megatron_embedding_weight
+from utils import convert_and_copy_tensor, numpy_to_flow, load_megatron_embedding_weight, get_sample
 
 HIDDEN_SIZE=768
 VOCAB_SIZE=21248
@@ -47,13 +48,21 @@ DECODER_SEQ_LENGTH=128
     '--vocab-extra-ids', '100'
 """
 
-def get_flow_t5_model():
+def get_flow_t5_embedding():
     return T5Embedding(HIDDEN_SIZE, VOCAB_SIZE, ENCODER_SEQ_LENGTH, 0.1).eval()
 
+def get_flow_t5_encoderlayer():
+    return T5EncoderLayer(HIDDEN_SIZE, FFN_HIDDEN_SIZE, NUM_ATTENTION_HEADS, 0.1, 0, )
 
-def get_megatron_t5_model():
+
+def get_megatron_t5_embedding():
     model = get_t5_model()
     model = model.language_model.embedding
+    return model
+
+def get_megatron_t5_encoder_layer():
+    model = get_t5_model()
+    model = model.language_model.encoder.layers[0]
     return model
 
 
@@ -63,7 +72,8 @@ def get_random_token_input():
     torch_token = torch.from_numpy(token).cuda()
     return flow_token, torch_token
 
-if __name__ == '__main__':
+
+def align_embedding():
     flow_model = get_flow_t5_model()
     megatron_model = get_megatron_t5_model()
     load_megatron_embedding_weight(flow_model, megatron_model)
@@ -75,3 +85,25 @@ if __name__ == '__main__':
         megatron_output = megatron_model(torch_token, t5_position_ids(torch_token)).cpu().numpy()
     
     print("max diff: ", np.max(np.abs(flow_output - megatron_output)))
+
+
+def align_encoder():
+    megatron_encoder = get_megatron_t5_encoder_layer()
+    
+
+
+
+
+if __name__ == '__main__':
+    from utils import get_sample
+    tokens_enc, _, enc_mask, _, _ = get_sample(mode='flow')
+    enc_mask = enc_mask.unsqueeze(1)
+
+    from t5_model_layers.t5_model_embedding import T5Embedding
+    from t5_model_layers.t5_model_encoder import T5EncoderLayer
+
+    flow_embedding = T5Embedding(HIDDEN_SIZE, VOCAB_SIZE, ENCODER_SEQ_LENGTH, 0.1)
+    flow_encoder_layer = T5EncoderLayer(HIDDEN_SIZE, FFN_HIDDEN_SIZE, NUM_ATTENTION_HEADS, flow.nn.init.xavier_normal_, 0)
+    hidden_state = flow_embedding(tokens_enc)
+    flow_encoder_layer(hidden_state, enc_mask)
+    import ipdb; ipdb.set_trace()

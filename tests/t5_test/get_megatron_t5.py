@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Pretrain T5"""
+import oneflow
 import os
 os.environ['MASTER_ADDR']='localhost'
 os.environ['MASTER_PORT']='12345'
@@ -214,3 +215,5 @@ def get_t5_model():
 
 if __name__ == '__main__':
     print(get_t5_model())
+    from utils import get_sample
+    get_t5_model()(*get_sample(mode='torch'))
