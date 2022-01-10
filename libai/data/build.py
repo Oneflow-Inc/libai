@@ -13,5 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .structures import DistTensorData, Instance
-from .build import build_dataset, build_transform
+from libai.config import instantiate
+
+
+def build_transform(cfg):
+    """ Build data augmentation, defined by ``cfg``.
+    """
+    transform = instantiate(cfg)
+    return transform
+
+def build_dataset(cfg, transform=None):
+    """ Build dataset, defined by ``cfg``.
+    """
+    if transform:
+        cfg.transform = transform
+    dataset = instantiate(cfg)
+    return dataset

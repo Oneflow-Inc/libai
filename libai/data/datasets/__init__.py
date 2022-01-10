@@ -13,4 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .imagenet import ImageNetDataset, build_transform, build_imagenet_dataset
+from .imagenet import ImageNetDataset
+from .cifar import CIFAR10Dataset, CIFAR100Dataset
