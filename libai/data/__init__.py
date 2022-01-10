@@ -13,4 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .structures import Metadata, Instance
+from .structures import DistTensorData, Instance

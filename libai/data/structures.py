@@ -22,7 +22,7 @@ from libai.utils import distributed as dist
 
 
 @dataclass
-class Metadata:
+class DistTensorData:
     tensor: flow.Tensor
     sbp_list: list = field(default_factory=lambda: ["split_0", "broadcast"])
     placement_idx: int = 0
@@ -53,7 +53,7 @@ class Metadata:
         self.tensor = self.tensor.to_consistent(sbp=self.sbp, placement=self.placement)
 
     @staticmethod
-    def stack(metadata_lists: List["Metadata"]) -> "Metadata":
+    def stack(metadata_lists: List["DistTensorData"]) -> "DistTensorData":
         assert len(metadata_lists) > 0
         if len(metadata_lists) == 1:
             metadata_lists[0].tensor.unsqueeze_(0)  # add batch dim
@@ -75,7 +75,7 @@ class Metadata:
             ), f"placement_idx is not equal, {data.placement_idx} != {placement_idx}"
             tensors.append(data.tensor)
         tensors = flow.stack(tensors, dim=0)
-        ret = Metadata(tensors, sbp_list=sbp_list, placement_idx=placement_idx)
+        ret = DistTensorData(tensors, sbp_list=sbp_list, placement_idx=placement_idx)
         return ret
 
 

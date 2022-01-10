@@ -17,7 +17,7 @@ import unittest
 
 import oneflow as flow
 
-from libai.data import Metadata, Instance
+from libai.data import DistTensorData, Instance
 
 
 class TestInstance(unittest.TestCase):
@@ -31,9 +31,9 @@ class TestInstance(unittest.TestCase):
         inst.remove("images")
         self.assertFalse(inst.has("images"))
 
-        inst.meta_tensor = Metadata(flow.rand(5, 6))
+        inst.meta_tensor = DistTensorData(flow.rand(5, 6))
         self.assertTrue(inst.has("meta_tensor"))
-        self.assertTrue(isinstance(inst.get("meta_tensor"), Metadata))
+        self.assertTrue(isinstance(inst.get("meta_tensor"), DistTensorData))
 
     def test_order_args(self):
         inst = Instance(a=1, b=2, c=3)
