@@ -427,4 +427,4 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO(l1aoxingyu): add dataloader
-        return None # build_train_valid_test_data_iterators(cfg)
+        return None  # build_train_valid_test_data_iterators(cfg)

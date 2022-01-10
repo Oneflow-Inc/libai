@@ -96,7 +96,7 @@ class Instance:
             instance.tokens = Metadata(...)
             instance.mask = Metadata(...)
             print(instance.tokens)
-            print("mask" in instance)
+            print(instance.has("mask")) # True
 
     2. ``len(instance)`` returns the number of instance
     """
