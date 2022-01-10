@@ -31,19 +31,8 @@ class ImageNetDataset(datasets.ImageFolder):
     """ImageNet Dataset
     """
 
-    def __init__(self, is_train, cfg):
-        # set train mode and cfg
-        self.is_train = is_train
-        self.cfg = cfg
-
-        # set data-path
-        prefix = "train" if is_train else "val"
-        self.root = os.path.join(cfg.data.data_path, prefix)
-
-        # set data transforms
-        self.transform = build_transform(is_train, cfg)
-
-        super(ImageNetDataset, self).__init__(root=self.root, transform=self.transform)
+    def __init__(self, root, transform):
+        super(ImageNetDataset, self).__init__(root, transform)
     
     def __getitem__(self, index: int):
         sample, target = super().__getitem__(index)
@@ -52,7 +41,7 @@ class ImageNetDataset(datasets.ImageFolder):
             targets = DistTensorData(target, placement_idx=-1)
         )
         return data_sample
-
+        
 
 def build_transform(is_train, cfg):
     resize_im = cfg.data.img_size > 32
@@ -87,3 +76,16 @@ def build_transform(is_train, cfg):
     t.append(transforms.ToTensor())
     t.append(transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD))
     return transforms.Compose(t)
+
+
+def build_imagenet_dataset(is_train, cfg):
+    transform = build_transform(is_train, cfg)
+    prefix = "train" if is_train else "val"
+    root = os.path.join(cfg.data.data_path, prefix)
+    dataset = ImageNetDataset(root, transform=transform)
+    if is_train:
+        assert len(dataset) == 1281167, "The whole train set of ImageNet contains 1281167 images but got {} instead.".format(len(dataset))
+    else:
+        assert len(dataset) == 50000, "The whole val set of ImageNet contains 50000 images but got {} instead.".format(len(dataset))
+    nb_classes = 1000    
+    return dataset, nb_classes
