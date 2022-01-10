@@ -15,10 +15,10 @@
 
 import logging
 import os
-from typing import Callable
 
 import oneflow as flow
 from libai.config import LazyConfig, try_get_key
+from libai.data import Instance
 from libai.models import build_model, build_graph
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
@@ -343,9 +343,27 @@ class DefaultTrainer(TrainerBase):
         """
         super().train(self.start_iter, self.max_iter)
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self):
         self._trainer.iter = self.iter
-        self._trainer.run_step(get_batch)
+        self._trainer.run_step(self.get_batch)
+
+    @classmethod
+    def get_batch(cls, data: Instance):
+        """
+        Convert batched local tensor to distributed tensor for model step running.
+
+        If you want to do something with batched data before model, (e.g. mixup),
+        you can rewrite this function.
+        """
+        ret_dict = {}
+        ret_list = []
+        for key, value in data.get_fields().items():
+            value.to_consistent()
+            ret_dict[key] = value.tensor
+            ret_list.append(value.tensor)
+        # FIXME(l1aoxingyu): `nn.Graph` cannot accpet key-value arguments right now,
+        # just pass list instead.
+        return ret_list
 
     @classmethod
     def build_model(cls, cfg):
