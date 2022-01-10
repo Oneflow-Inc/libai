@@ -3,7 +3,7 @@ from libai.data.datasets import ImageNetDataset, CIFAR10Dataset, CIFAR100Dataset
 from libai.config import LazyCall
 
 imagenet = LazyCall(ImageNetDataset)(
-    root="./dataset/imagenet"
+    root="./dataset/imagenet",
     train=True,
 )
 
