@@ -43,49 +43,14 @@ class ImageNetDataset(datasets.ImageFolder):
         return data_sample
         
 
-def build_transform(is_train, cfg):
-    resize_im = cfg.data.img_size > 32
-    if is_train:
-        transform = create_transform(
-            input_size=cfg.data.img_size,
-            is_training=True,
-            color_jitter=cfg.data.augmentation.color_jitter if cfg.data.augmentation.color_jitter > 0 else None,
-            auto_augment=cfg.data.augmentation.auto_augment if cfg.data.augmentation.auto_augment != 'none' else None,
-            re_prob=cfg.data.augmentation.reprob,
-            re_mode=cfg.data.augmentation.remode,
-            re_count=cfg.data.augmentation.recount,
-            interpolation=cfg.data.interpolation,
-        )
-        if not resize_im:
-            transform.transforms[0] = transforms.RandomCrop(cfg.data.img_size, padding=4)
-    
-    t = []
-    if resize_im:
-        if cfg.data.test.crop:
-            size = int((256 / 224) * cfg.data.img_size)
-            t.append(
-                transforms.Resize(size, interpolation=str_to_interp_mode(cfg.data.interpolation))
-                # to maintain same ratio w.r.t. 224 images
-            )
-            t.append(transforms.CenterCrop(cfg.data.img_size))
-        else:
-            t.append(
-                transforms.Resize((cfg.data.img_size, cfg.data.img_size),
-                                   interpolation=str_to_interp_mode(cfg.data.interpolation))
-            )
-    t.append(transforms.ToTensor())
-    t.append(transforms.Normalize(IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD))
-    return transforms.Compose(t)
-
-
-def build_imagenet_dataset(is_train, cfg):
-    transform = build_transform(is_train, cfg)
-    prefix = "train" if is_train else "val"
-    root = os.path.join(cfg.data.data_path, prefix)
-    dataset = ImageNetDataset(root, transform=transform)
-    if is_train:
-        assert len(dataset) == 1281167, "The whole train set of ImageNet contains 1281167 images but got {} instead.".format(len(dataset))
-    else:
-        assert len(dataset) == 50000, "The whole val set of ImageNet contains 50000 images but got {} instead.".format(len(dataset))
-    nb_classes = 1000    
-    return dataset, nb_classes
+# def build_imagenet_dataset(is_train, cfg):
+#     transform = build_transform(is_train, cfg)
+#     prefix = "train" if is_train else "val"
+#     root = os.path.join(cfg.data.data_path, prefix)
+#     dataset = ImageNetDataset(root, transform=transform)
+#     if is_train:
+#         assert len(dataset) == 1281167, "The whole train set of ImageNet contains 1281167 images but got {} instead.".format(len(dataset))
+#     else:
+#         assert len(dataset) == 50000, "The whole val set of ImageNet contains 50000 images but got {} instead.".format(len(dataset))
+#     nb_classes = 1000    
+#     return dataset, nb_classes
