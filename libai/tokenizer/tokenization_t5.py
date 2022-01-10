@@ -23,6 +23,7 @@ from functools import lru_cache
 
 import sentencepiece as spm
 from .tokenization_base import PreTrainedTokenizer
+from .build import TOKENIZER_REGISTRY
 
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,8 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
     "t5-base": 512,
 }
 
+
+@TOKENIZER_REGISTRY.register()
 class T5Tokenizer(PreTrainedTokenizer):
     """
     Construct a T5 tokenizer. Based on `SentencePiece <https://github.com/google/sentencepiece>`.

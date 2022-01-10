@@ -22,6 +22,7 @@ from io import open
 from functools import lru_cache
 
 from .tokenization_base import PreTrainedTokenizer
+from .build import TOKENIZER_REGISTRY
 
 
 logger = logging.getLogger(__name__)
@@ -83,6 +84,7 @@ def get_pairs(word):
     return pairs
 
 
+@TOKENIZER_REGISTRY.register()
 class GPT2Tokenizer(PreTrainedTokenizer):
     """
     Construct a GPT-2 tokenizer. Based on byte-level Byte-Pair-Encoding.

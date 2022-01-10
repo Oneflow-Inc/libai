@@ -14,45 +14,45 @@
 # limitations under the License.
 
 import logging
-from .tokenization_bert import BertTokenizer
-from .tokenization_gpt2 import GPT2Tokenizer
+from libai.config import instantiate
+from libai.utils.registry import Registry
 
 logger = logging.getLogger(__name__)
 
-def build_tokenizer(args):
+TOKENIZER_REGISTRY = Registry("tokenizer")
+TOKENIZER_REGISTRY.__doc__ = """
+Registry for tokenizer, i.r. BertTokenizer.
+
+The registered object will be called with `obj(cfg)` 
+and expected to return a `PreTrainedTokenizer` object.
+"""
+
+def build_tokenizer(cfg):
     """Initialize tokenizer."""
-    logger.info('building {} tokenizer ...'.format(args.tokenizer_type))
-
-    # Select and instantiate the tokenizer.
-    assert args.vocab_file is not None
-    if args.tokenizer_type == 'BertWordPieceLowerCase':
-        tokenizer = BertTokenizer(vocab_file=args.vocab_file, do_lower_case=True)
-    elif args.tokenizer_type == 'BertWordPieceCase':
-        tokenizer = BertTokenizer(vocab_file=args.vocab_file, do_lower_case=False)
-    elif args.tokenizer_type == 'GPT2BPETokenizer':
-        assert args.merge_file is not None
-        tokenizer = GPT2Tokenizer(args.vocab_file, args.merge_file)
+    if "_target_" in cfg:
+        tokenizer = instantiate(cfg)
     else:
-        raise NotImplementedError
-
-    if args.append_eod and tokenizer.eod_token is None:
+        tokenizer_name = cfg.tokenizer_name
+        tokenizer = TOKENIZER_REGISTRY.get(tokenizer_name)(cfg.tokenizer_cfg)
+    
+    if cfg.append_eod and tokenizer.eod_token is None:
         if tokenizer.eos_token is not None:
             tokenizer.eod_token = tokenizer.eos_token
         else:
             tokenizer.eod_token = tokenizer.pad_token
 
     # Add vocab size.
-    args.padded_vocab_size = _vocab_size_with_padding(len(tokenizer), args)
+    cfg.padded_vocab_size = _vocab_size_with_padding(len(tokenizer), cfg)
 
     return tokenizer
 
 
-def _vocab_size_with_padding(orig_vocab_size, args):
+def _vocab_size_with_padding(orig_vocab_size, cfg):
     """Pad vocab size so it is divisible by model parallel size and
     still having GPU friendly size."""
 
     padded_vocab_size = orig_vocab_size
-    multiple = args.make_vocab_size_divisible_by * args.tensor_model_parallel_size
+    multiple = cfg.make_vocab_size_divisible_by * cfg.tensor_model_parallel_size
     while (padded_vocab_size % multiple) != 0:
         padded_vocab_size += 1
     logger.info(' > padded vocab (size: {}) with {} dummy tokens (new size: {})'.format(

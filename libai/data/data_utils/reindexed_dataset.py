@@ -21,7 +21,7 @@ import logging
 import numpy as np
 import oneflow as flow
 
-from libai.data.legacy import helpers
+from libai.data.data_utils import helpers
 from .indexed_dataset import make_dataset as make_indexed_dataset
 
 logger = logging.getLogger(__name__)

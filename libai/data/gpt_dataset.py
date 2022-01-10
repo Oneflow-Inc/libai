@@ -18,7 +18,7 @@
 import numpy as np
 import oneflow as flow
 
-from .legacy.reindexed_dataset import BlockIndexedDataset
+from .data_utils.reindexed_dataset import BlockIndexedDataset
 from .build import DATASET_REGISTRY
 
 
