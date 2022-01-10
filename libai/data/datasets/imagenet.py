@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import os
+from typing import Optional, Callable
 
 import oneflow as flow
 from oneflow.utils.data import DataLoader
@@ -31,8 +32,16 @@ class ImageNetDataset(datasets.ImageFolder):
     """ImageNet Dataset
     """
 
-    def __init__(self, root, transform):
-        super(ImageNetDataset, self).__init__(root, transform)
+    def __init__(self, 
+                 root: str,
+                 train: bool = True, 
+                 transform: Optional[Callable] = None,
+                 **kwargs):
+        prefix = "train" if train else "val"
+        root = os.path.join(root, prefix)
+        super(ImageNetDataset, self).__init__(root=root, 
+                                              transform=transform,
+                                              **kwargs)
     
     def __getitem__(self, index: int):
         sample, target = super().__getitem__(index)
