@@ -21,7 +21,7 @@ train.amp.enabled = True
 graph = dict(
     # options for graph or eager mode
     enabled=True,
-    debug=0, # debug mode for graph
+    debug=-1, # debug mode for graph
     train_graph=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled,
         is_train=True,
