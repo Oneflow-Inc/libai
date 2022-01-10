@@ -15,14 +15,14 @@
 
 from dataclasses import dataclass, field
 from collections import OrderedDict
-from typing import List
+from typing import List, Any
 import oneflow as flow
 
 from libai.utils import distributed as dist
 
 
 @dataclass
-class Metadata:
+class DistTensorData:
     tensor: flow.Tensor
     sbp_list: list = field(default_factory=lambda: ["split_0", "broadcast"])
     placement_idx: int = 0
@@ -53,29 +53,29 @@ class Metadata:
         self.tensor = self.tensor.to_consistent(sbp=self.sbp, placement=self.placement)
 
     @staticmethod
-    def stack(metadata_lists):
+    def stack(metadata_lists: List["DistTensorData"]) -> "DistTensorData":
         assert len(metadata_lists) > 0
         if len(metadata_lists) == 1:
             metadata_lists[0].tensor.unsqueeze_(0)  # add batch dim
             return metadata_lists[0]
 
-        data0 = metadata_lists[0]
+        tensor_size = metadata_lists[0].tensor.size()
+        sbp_list = metadata_lists[0].sbp_list
+        placement_idx = metadata_lists[0].placement_idx
         tensors = []
         for data in metadata_lists:
             assert (
-                data.tensor.size() == data0.tensor.size()
-            ), f"tensor shape is not equal, {data.tensor.size()} != {data0.tensor.size()}"
+                data.tensor.size() == tensor_size
+            ), f"tensor shape is not equal, {data.tensor.size()} != {tensor_size}"
             assert (
-                data.sbp_list == data0.sbp_list
-            ), f"sbp_list is not equal, {data.sbp_list} != {data0.sbp_list}!"
+                data.sbp_list == sbp_list
+            ), f"sbp_list is not equal, {data.sbp_list} != {sbp_list}!"
             assert (
-                data.placement_idx == data0.placement_idx
-            ), f"placement_idx is not equal, {data.placement_idx} != {data0.placement_idx}"
+                data.placement_idx == placement_idx
+            ), f"placement_idx is not equal, {data.placement_idx} != {placement_idx}"
             tensors.append(data.tensor)
         tensors = flow.stack(tensors, dim=0)
-        ret = Metadata(
-            tensors, sbp_list=data0.sbp_list, placement_idx=data0.placement_idx
-        )
+        ret = DistTensorData(tensors, sbp_list=sbp_list, placement_idx=placement_idx)
         return ret
 
 
@@ -96,7 +96,7 @@ class Instance:
             instance.tokens = Metadata(...)
             instance.mask = Metadata(...)
             print(instance.tokens)
-            print("mask" in instance)
+            print(instance.has("mask")) # True
 
     2. ``len(instance)`` returns the number of instance
     """
@@ -107,30 +107,30 @@ class Instance:
         for k, v in kwargs.items():
             self.set(k, v)
 
-    def __setattr__(self, name, val):
+    def __setattr__(self, name: str, val: Any) -> None:
         if name.startswith("_"):
             super().__setattr__(name, val)
         else:
             self.set(name, val)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         if name == "_fields" or name not in self._fields:
             raise AttributeError(f"Cannot find field '{name}' in the given Instance!")
         return self._fields[name]
 
-    def set(self, name, value):
+    def set(self, name: str, value: Any):
         """ 
         Set the field named `name` to `value`.
         """
         self._fields[name] = value
 
-    def has(self, name):
+    def has(self, name: str):
         return name in self._fields
 
-    def remove(self, name):
+    def remove(self, name: str):
         del self._fields[name]
 
-    def get(self, name):
+    def get(self, name: str):
         return self._fields[name]
 
     def get_fields(self):
