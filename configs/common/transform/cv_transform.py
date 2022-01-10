@@ -1,11 +1,7 @@
-import math
-
-import oneflow as flow
 from flowvision import transforms
 from flowvision.data.constants import (
     IMAGENET_DEFAULT_MEAN,
     IMAGENET_DEFAULT_STD,
-    DEFAULT_CROP_PCT,
 )
 from flowvision.data.auto_augment import (
     rand_augment_transform,
