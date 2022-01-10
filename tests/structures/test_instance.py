@@ -62,22 +62,5 @@ class TestInstance(unittest.TestCase):
         self.assertEqual(len(inst.get("bbox")), 10)
 
 
-# data1 = Metadata(flow.Tensor(3, 3))
-# data2 = Metadata(flow.Tensor(4, 4))
-
-# item1 = Instance(tokens=data1, mask=data2)
-# item2 = Instance(tokens=data1, mask=data2)
-
-# print(len(item1))
-
-# batch_item = Instance.stack([item1, item2])
-
-# for value in batch_item.get_fields().values():
-#     value.to_consistent()
-
-# print([value.tensor for value in batch_item.get_fields().values()])
-# print(batch_item.tokens.tensor)
-# print(batch_item.mask.tensor)
-
 if __name__ == "__main__":
     unittest.main()
