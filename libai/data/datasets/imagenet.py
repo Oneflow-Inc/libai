@@ -24,7 +24,7 @@ from flowvision.data import Mixup
 from flowvision.data import create_transform
 from flowvision.transforms.functional import str_to_interp_mode
 
-from libai.data.structures import Metadata, Instance
+from libai.data.structures import DistTensorData, Instance
 
 
 # def build_imagenet_dataset(is_train, cfg):
@@ -53,8 +53,8 @@ class ImageNetDataset(datasets.ImageFolder):
     def __getitem__(self, index: int):
         sample, target = super().__getitem__(index)
         data_sample = Instance(
-            images = Metadata(sample, placement_idx=0),
-            targets = Metadata(target, placement_idx=-1)
+            images = DistTensorData(sample, placement_idx=0),
+            targets = DistTensorData(target, placement_idx=-1)
         )
         return data_sample
 
