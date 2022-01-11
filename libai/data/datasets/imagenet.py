@@ -17,13 +17,7 @@ import os
 from typing import Optional, Callable
 
 import oneflow as flow
-from oneflow.utils.data import DataLoader
-
-from flowvision import datasets, transforms
-from flowvision.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from flowvision.data import Mixup
-from flowvision.data import create_transform
-from flowvision.transforms.functional import str_to_interp_mode
+from flowvision import datasets
 
 from libai.data.structures import DistTensorData, Instance
 
@@ -47,19 +41,6 @@ class ImageNetDataset(datasets.ImageFolder):
         sample, target = super().__getitem__(index)
         data_sample = Instance(
             images = DistTensorData(sample, placement_idx=0),
-            targets = DistTensorData(target, placement_idx=-1)
+            targets = DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1)
         )
         return data_sample
-        
-
-# def build_imagenet_dataset(is_train, cfg):
-#     transform = build_transform(is_train, cfg)
-#     prefix = "train" if is_train else "val"
-#     root = os.path.join(cfg.data.data_path, prefix)
-#     dataset = ImageNetDataset(root, transform=transform)
-#     if is_train:
-#         assert len(dataset) == 1281167, "The whole train set of ImageNet contains 1281167 images but got {} instead.".format(len(dataset))
-#     else:
-#         assert len(dataset) == 50000, "The whole val set of ImageNet contains 50000 images but got {} instead.".format(len(dataset))
-#     nb_classes = 1000    
-#     return dataset, nb_classes
