@@ -1,14 +1,9 @@
 
+from libai.libai import data
 from .structures import Instance
 from .samplers.distributed_sampler import TrainingSampler, InferenceSampler
 import oneflow.utils.data as flowdata
 from libai.config import instantiate
-
-
-def build_nlp_dataset(dataset, split):
-    train_dataset, valid_dataset, test_dataset = split_ds(total_dataset, split)
-    return train_dataset, valid_dataset, test_dataset
-
 
 def build_image_train_loader(dataset, weight, batch_size, sampler=None, num_workers=4, collate_fn=None, blendable_dataset=None):
     """ 
@@ -44,13 +39,13 @@ def build_image_test_loader(dataset, batch_size, sampler=None,  num_workers=4, c
     return Dataloader
 
 
-def build_nlp_train_val_test_loader(cfg.dataloader.train.datasets, weight, batch_size, sampler=None, num_workers=4, collate_fn=None, blendable_dataset=Blendable_dataset):
-    if not isinstance(cfg.dataloader.train.dataset, list):
-        dataset = [dataset]
+def build_nlp_train_val_test_loader(cfg.dataloader.train.datasets, splits, weight, batch_size, sampler=None, num_workers=4, collate_fn=None, blendable_dataset=Blendable_dataset):
+    if not isinstance(cfg.dataloader.train.datasets, list):
+        datasets = [datasets]
         
     train_datasets, val_datasets, test_datasets = [], [], []
-    for dst in cfg.dataloader.train.datasets:
-        train_dataset, val_dataset, test_dataset =  instantiate(dst)
+    for dst, split in zip(datasets, splits):
+        train_dataset, val_dataset, test_dataset = split_ds(dst, split)
         train_datasets.append(train_dataset)
         val_datasets.append(val_dataset)
         test_datasets.append(test_dataset)

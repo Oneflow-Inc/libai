@@ -15,6 +15,7 @@
 
 import logging
 import os
+from libai.libai.config.instantiate import instantiate
 
 import oneflow as flow
 from libai.config import LazyConfig, try_get_key
@@ -241,11 +242,15 @@ class DefaultTrainer(TrainerBase):
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
 
-        (
-            self.train_data_iterator,
-            self.valid_data_iterator,
-            self.test_data_iterator,
-        ) = self.build_train_valid_test_loader(cfg)
+
+        self.train_loader = None
+        self.test_loader = []
+
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg)
+        self.train_loader = train_loader
+        self.test_loader.extend([val_loader, test_loader])        
+        self.test_loader.extend([instantiate(dataset_test) for dataset_test in cfg.dataloader.test])
+
 
         if cfg.graph.enabled:
             graph_train = self.build_graph(
@@ -420,7 +425,7 @@ class DefaultTrainer(TrainerBase):
         return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
-    def build_train_valid_test_loader(cls, cfg):
+    def build_train_loader(cls, cfg):
         """
         Returns:
             iterable
@@ -431,4 +436,7 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
         logger.info("Prepare training set")
         # TODO(l1aoxingyu): add dataloader
-        return None  # build_train_valid_test_data_iterators(cfg)
+        return train_loader, None, None
+
+    def build_test_loader(cls, cfg):
+        return test_loader

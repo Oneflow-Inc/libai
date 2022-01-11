@@ -1,37 +1,34 @@
 from re import L
 from libai.config import LazyCall
+from libai.libai import tokenizer
 from libai.libai.config import arguments
 from libai.libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
 from libai.libai.data.datasets.bert_dataset import BertDataset
+
 
 dataloader = dict(
     # Pad the vocab size to be divisible by this value
     # This is added for computational efficiency reasons.
     train = LazyCall(build_nlp_train_val_test_loader)(
         datasets = [
-            LazyCall(build_nlp_dataset)(
-                dataset = LazyCall(BertDataset)(
-                    data_path="/workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence",
-                    vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
-                    tokenizer_type="BertCNWWMTokenizer",
-                    dataset_type="bert",
-                    data_impl="mmap",
-                    extra=...,
-                ),
-                split="949,50,1",
+            LazyCall(BertDataset)(
+                data_path="/workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence",
+                vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
+                tokenizer_type="BertCNWWMTokenizer",
+                dataset_type="bert",
+                data_impl="mmap",
+                extra=...,
             ),
-            LazyCall(build_nlp_dataset)(
-                dataset = LazyCall(BertDataset)(
-                    data_path="/workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence",
-                    vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
-                    tokenizer_type="BertCNWWMTokenizer",
-                    dataset_type="bert",
-                    data_impl="mmap",
-                    extra=...,
-                ),
-                split="949,50,1",
+            LazyCall(BertDataset)(
+                data_path="/workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence",
+                vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
+                tokenizer_type="BertCNWWMTokenizer",
+                dataset_type="bert",
+                data_impl="mmap",
+                extra=...,
             ),
         ],
+        splits=["949,50,1", "900,99,1"],
         weight=[0.5, 0.5],
         batch_size=128,
         num_workers=4,
