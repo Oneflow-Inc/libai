@@ -13,19 +13,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.config import instantiate
+
+from typing import Optional
+
+import oneflow as flow
+import oneflow.utils.data as data
+from oneflow.utils.data.dataset import ConcatDataset
+
+from .structures import Instance
 
 
-def build_transform(cfg):
-    """ Build data augmentation, defined by ``cfg``.
+def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, mix_dataset=ConcatDataset, **kwargs):
     """
-    transform = instantiate(cfg)
-    return transform
-
-def build_dataset(cfg, transform=None):
-    """ Build dataset, defined by ``cfg``.
+    Args:
+        dataset: Dataset list or single dataset.
+        batch_size: Batch-size for each GPU.
     """
-    if transform:
-        cfg.transform = transform
-    dataset = instantiate(cfg)
-    return dataset
+    # if not isinstance(dataset, list):
+    #     dataset = [dataset]
+    # if mix_dataset:
+    #     dataset = mix_dataset(dataset)
+    return data.DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=trivial_batch_collator, **kwargs)
+
+
+def build_image_test_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs):
+    return data.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
+
+
+def trivial_batch_collator(batch):
+    assert isinstance(
+        batch[0], Instance
+    ), "batch[0] must be `instance` for trivial batch collator"
+    batch = Instance.stack(batch)
+
+    return batch 

@@ -15,3 +15,4 @@
 
 from .imagenet import ImageNetDataset
 from .cifar import CIFAR10Dataset, CIFAR100Dataset
+from .mnist import MNISTDataset
