@@ -2,7 +2,12 @@
 from .structures import Instance
 from .samplers.distributed_sampler import TrainingSampler, InferenceSampler
 import oneflow.utils.data as flowdata
+from libai.config import instantiate
 
+
+def build_nlp_dataset(dataset, split):
+    train_dataset, valid_dataset, test_dataset = split_ds(total_dataset, split)
+    return train_dataset, valid_dataset, test_dataset
 
 
 def build_image_train_loader(dataset, weight, batch_size, sampler=None, num_workers=4, collate_fn=None, blendable_dataset=None):
@@ -39,12 +44,41 @@ def build_image_test_loader(dataset, batch_size, sampler=None,  num_workers=4, c
     return Dataloader
 
 
-def build_text_train_loader(tokenizer, data_prefix=None, split=None):
-    return A, B, C # train_loader, evalution_loader, test_loader
+def build_nlp_train_val_test_loader(cfg.dataloader.train.datasets, weight, batch_size, sampler=None, num_workers=4, collate_fn=None, blendable_dataset=Blendable_dataset):
+    if not isinstance(cfg.dataloader.train.dataset, list):
+        dataset = [dataset]
+        
+    train_datasets, val_datasets, test_datasets = [], [], []
+    for dst in cfg.dataloader.train.datasets:
+        train_dataset, val_dataset, test_dataset =  instantiate(dst)
+        train_datasets.append(train_dataset)
+        val_datasets.append(val_dataset)
+        test_datasets.append(test_dataset)
+
+    # [dataset, dataset] -> dataset -> dataloader
+    train_dataset = Blendable_dataset(train_datasets, weight=weight) # same classes
+    val_dataset = Blendable_dataset(val_datasets, weight=weight) 
+    test_dataset = Blendable_dataset(test_datasets, weight=weight) 
+    
+    train_loader = flowdata.DataLoader(train_dataset, sampler=sampler, collate_fn=trivial_batch_collator
+                    if collate_fn is None else collate_fn)
+
+    evalution_loader =  flowdata.DataLoader(val_dataset, sampler=sampler, collate_fn=trivial_batch_collator
+                    if collate_fn is None else collate_fn)
+
+    test_loader = flowdata.DataLoader(test_dataset, sampler=sampler, collate_fn=trivial_batch_collator
+                    if collate_fn is None else collate_fn)
+
+    # 最后在trainer里面 把test_loader和evaluation_loader加入到 trainer中的self.test_loaders里面
+    return train_loader, evalution_loader, test_loader
 
 
-def build_text_test_loader():
-    pass
+def build_nlp_test_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None,):
+    dataset = instantiate(dataset)
+
+    if sampler is None:
+        sampler = InferenceSampler()
+    return Dataloader
 
 
 def trivial_batch_collator(batch):
@@ -52,5 +86,4 @@ def trivial_batch_collator(batch):
         batch[0], Instance
     ), "batch[0] must be `instance` for trivial batch collator"
     batch = Instance.stack(batch)
-
     return batch 
