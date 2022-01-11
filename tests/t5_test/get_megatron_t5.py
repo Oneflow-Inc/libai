@@ -17,7 +17,7 @@
 import oneflow
 import os
 os.environ['MASTER_ADDR']='localhost'
-os.environ['MASTER_PORT']='12345'
+os.environ['MASTER_PORT']='12346'
 os.environ['RANK']='0'
 os.environ['WORLD_SIZE']='1'
 os.environ['DATA_PATH']='/home/wang/workspace/Megatron-LM/examples'

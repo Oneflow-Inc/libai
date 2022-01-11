@@ -99,11 +99,75 @@ if __name__ == '__main__':
     tokens_enc, _, enc_mask, _, _ = get_sample(mode='flow')
     enc_mask = enc_mask.unsqueeze(1)
 
+    # init flow
     from t5_model_layers.t5_model_embedding import T5Embedding
     from t5_model_layers.t5_model_encoder import T5EncoderLayer
+    flow_embedding = T5Embedding(HIDDEN_SIZE, VOCAB_SIZE, ENCODER_SEQ_LENGTH, 0.1).eval()
+    flow_encoder_layers = [
+        T5EncoderLayer(HIDDEN_SIZE, FFN_HIDDEN_SIZE, NUM_ATTENTION_HEADS, flow.nn.init.xavier_normal_, 0).eval()
+    for i in range(12)]
 
-    flow_embedding = T5Embedding(HIDDEN_SIZE, VOCAB_SIZE, ENCODER_SEQ_LENGTH, 0.1)
-    flow_encoder_layer = T5EncoderLayer(HIDDEN_SIZE, FFN_HIDDEN_SIZE, NUM_ATTENTION_HEADS, flow.nn.init.xavier_normal_, 0)
-    hidden_state = flow_embedding(tokens_enc)
-    flow_encoder_layer(hidden_state, enc_mask)
-    import ipdb; ipdb.set_trace()
+    # init megatron
+    from get_megatron_t5 import get_t5_model
+    model = get_t5_model()
+    megatron_embedding = model.language_model.embedding
+    megatron_encoder_layers = model.language_model.encoder.layers
+
+    # load weight
+    from utils import load_megatron_embedding_weight, load_megatron_encoder_layer_weight
+    load_megatron_embedding_weight(flow_embedding, megatron_embedding)
+    for i in range(12):
+        load_megatron_encoder_layer_weight(flow_encoder_layers[i], megatron_encoder_layers[i])
+
+    # hook
+    flow_results = []
+    def flow_forward_hook(module, inp, out):
+        flow_results.append([module, out])
+    
+    def flow_forward_hook_getinput(module, inp, out):
+        flow_results.append(['inp', module, inp])
+    
+    megatron_results = []
+    def megatron_forward_hook(module, inp, out):
+        megatron_results.append([module, out])
+        
+    def megatron_forward_hook_getinput(module, inp, out):
+        megatron_results.append(['inp', module, out])
+
+
+    # register hook
+    flow_encoder_layers[0].layer.self_attention.query_key_value.register_forward_hook(flow_forward_hook)
+    # flow_encoder_layers[0].layer.self_attention.dropout.register_forward_hook(flow_forward_hook)
+    # flow_encoder_layers[0].layer.self_attention.query_key_value.register_forward_hook(flow_forward_hook_getinput)
+    # flow_encoder_layers[0].layer.self_attention.query_key_value.register_forward_hook(flow_forward_hook)
+
+
+    megatron_encoder_layers[0].self_attention.query_key_value.register_forward_hook(megatron_forward_hook)
+    # megatron_encoder_layers[0].self_attention.query_key_value.register_forward_hook(megatron_forward_hook_getinput)
+        
+    # forward
+    flow_tokens_enc, _, flow_enc_mask, _, _ = get_sample(mode='flow')
+    flow_enc_mask = flow_enc_mask.unsqueeze(1)
+    flow_embedding_output = flow_embedding(flow_tokens_enc)
+    flow_hidden_state = flow_embedding_output
+    flow_hidden_states = []
+    for i in range(12):
+        flow_hidden_state = flow_encoder_layers[i](flow_hidden_state, flow_enc_mask)
+        flow_hidden_states.append(flow_hidden_state)
+
+    tokens_enc, _, enc_mask, _, _ = get_sample(mode='torch')
+    position_ids = t5_position_ids(tokens_enc)
+    with torch.no_grad():
+        megatron_embedding_output = megatron_embedding(tokens_enc, position_ids)
+        megatron_hidden_state = megatron_embedding_output.transpose(0, 1)
+        enc_mask = enc_mask.unsqueeze(1)
+        megatron_hidden_states = []
+        for i in range(12):
+            megatron_hidden_state = megatron_encoder_layers[i](megatron_hidden_state, enc_mask)
+            megatron_hidden_states.append(megatron_hidden_state.transpose(0, 1))
+    
+    
+
+    print('max embedding diff: ', np.max(np.abs(flow_embedding_output.numpy() - megatron_embedding_output.cpu().numpy())))
+    for i in range(12):
+        print(f'max encoder layers{i} diff: ', np.max(np.abs(flow_hidden_states[i].numpy() - megatron_hidden_states[i].detach().cpu().numpy())))

@@ -183,7 +183,6 @@ class TransformerLayer(nn.Module):
 
             hidden_states = hidden_states + attention_output
             layernorm_output = self.post_cross_attention_layernorm(hidden_states)
-
         mlp_output = self.mlp(layernorm_output)
         output = hidden_states + mlp_output
 

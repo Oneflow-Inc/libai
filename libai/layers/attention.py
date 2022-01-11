@@ -131,7 +131,6 @@ class MultiheadAttention(nn.Module):
 
         # hidden_states, encoder_states: [S(0), B]
         # attention_mask: [S(0), B]
-
         if encoder_states is not None:
             encoder_states = encoder_states.to_consistent(
                 placement=hidden_states.placement
@@ -193,7 +192,7 @@ class MultiheadAttention(nn.Module):
                     attention_scores, attention_mask, fill_value=-10000.0
                 )
             else:
-                attention_scores = flow.mul(attention_scores, attention_mask)
+                # attention_scores = flow.mul(attention_scores, attention_mask)
                 # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
                 # attention_scores = attention_scores.masked_fill(attention_mask, -10000.0)
                 attention_scores *= 1 - attention_mask

@@ -3,6 +3,7 @@ import numpy as np
 import torch
 
 from libai.utils import distributed as dist
+from torch.nn.modules import conv
 
 
 def convert_and_copy_tensor(tensor_lhs: flow.Tensor, tensor_rhs: torch.Tensor):
@@ -57,4 +58,26 @@ def load_megatron_embedding_weight(flow_model: flow.nn.Module, torch_model: torc
         tokentype_embeddings_weight = torch_state['tokentype_embeddings.weight']
         convert_and_copy_tensor(flow_state['tokentype_embeddings.weight'], tokentype_embeddings_weight)
 
-    
+
+def load_megatron_encoder_layer_weight(flow_model: flow.nn.Module, torch_model: torch.nn.Module):
+    '''
+    megatron named parameters:
+    input_layernorm.weight
+    input_layernorm.bias
+    self_attention.query_key_value.weight
+    self_attention.query_key_value.bias
+    self_attention.dense.weight
+    self_attention.dense.bias
+    post_attention_layernorm.weight
+    post_attention_layernorm.bias
+    mlp.dense_h_to_4h.weight
+    mlp.dense_h_to_4h.bias
+    mlp.dense_4h_to_h.weight
+    mlp.dense_4h_to_h.bias
+    '''
+    flow_state = flow_model.state_dict()
+    torch_state = torch_model.state_dict()
+    for k, v in torch_state.items():
+        if 'weight' in k and len(v.shape) == 2:
+            v = v.transpose(0, 1)
+        convert_and_copy_tensor(flow_state['layer.' + k], v)
