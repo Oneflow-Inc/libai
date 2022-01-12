@@ -15,6 +15,7 @@
 
 
 from typing import Optional
+import omegaconf
 
 import oneflow as flow
 import oneflow.utils.data as data
@@ -29,11 +30,18 @@ def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, c
         dataset: Dataset list or single dataset.
         batch_size: Batch-size for each GPU.
     """
-    # if not isinstance(dataset, list):
-    #     dataset = [dataset]
-    # if mix_dataset:
-    #     dataset = mix_dataset(dataset)
-    return data.DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=trivial_batch_collator, **kwargs)
+    if isinstance(dataset, omegaconf.listconfig.ListConfig):
+        dataset = list(dataset)
+    else:
+        dataset = [dataset]
+
+    if mix_dataset:
+        dataset = mix_dataset(dataset)
+    if sampler:
+        dataloader = data.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=trivial_batch_collator, **kwargs)
+    else:
+        dataloader = data.DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=trivial_batch_collator, **kwargs)
+    return dataloader
 
 
 def build_image_test_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs):

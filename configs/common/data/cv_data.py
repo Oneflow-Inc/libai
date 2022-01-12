@@ -12,27 +12,23 @@ from .transform import default_test_transform as test_aug_cfg
 dataloader = OmegaConf.create()
 
 dataloader.train = LazyCall(build_image_train_loader)(
-    # dataset = [
-    #     LazyCall(MNISTDataset)(root="./test_dataset",
-    #                            train=True, 
-    #                            download=True,
-    #                            transform=train_aug_cfg),
-    #     LazyCall(MNISTDataset)(root="./test_dataset",
-    #                            train=True, 
-    #                            download=True,
-    #                            transform=train_aug_cfg),
-    # ],
-    dataset =  LazyCall(MNISTDataset)(root="./test_dataset",
+    dataset = [
+        LazyCall(ImageNetDataset)(root="./",
                                train=True, 
                                download=True,
                                transform=train_aug_cfg),
-    batch_size=16,
+        LazyCall(ImageNetDataset)(root="./",
+                               train=True, 
+                               download=True,
+                               transform=train_aug_cfg),
+    ],
+    batch_size=16
 )
 
 
 dataloader.test = [
     LazyCall(build_image_test_loader)(
-        dataset=LazyCall(MNISTDataset)(root="./test_dataset",
+        dataset=LazyCall(ImageNetDataset)(root="./",
                                train=True, 
                                download=True,
                                transform=instantiate(test_aug_cfg)),
