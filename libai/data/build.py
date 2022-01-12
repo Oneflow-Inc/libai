@@ -39,10 +39,7 @@ def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, c
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
-    if sampler:
-        dataloader = data.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
-    else:
-        dataloader = data.DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
+    dataloader = data.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
     return dataloader, None, None
 
 
