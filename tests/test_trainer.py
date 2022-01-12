@@ -47,10 +47,10 @@ def setup(args):
             pipeline_num_layers=4,
         ),
         start_iter=0,
-        train_iter=6000,
+        train_iter=20,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
-        log_period=20,
+        log_period=1,
         checkpointer=dict(period=100),
         nccl_fusion_threshold_mb=16,
         nccl_fusion_max_ops=24,
@@ -78,34 +78,14 @@ def setup(args):
         warmup_method = "linear"
     )
 
-    cfg.dataloader = OmegaConf.create()
-    cfg.dataloader.test = [
-        LazyCall(build_image_test_loader)(
-            dataset=LazyCall(ImageNetDataset)(root="/DATA/disk1/ImageNet/extract/",
-                            train=False, 
-                            transform=default_test_transform),
-            batch_size=16
-        )
-    ]
-
     cfg.graph = dict(enabled=True,)
 
     default_setup(cfg, args)
     return cfg
 
 
-def get_batch(data_interator):
-    # data = next(data_interator)
-    data = flow.randn(32, 512).to("cuda")
-    data = data.to_consistent(
-        sbp=flow.sbp.split(0), placement=flow.env.all_device_placement("cuda")
-    )
-    return (data,)
-
 
 class DemoTrainer(DefaultTrainer):
-    def run_step(self):
-        return super().run_step(get_batch)
 
     @classmethod
     def build_model(cls, cfg):
@@ -123,8 +103,16 @@ class DemoTrainer(DefaultTrainer):
         return build_graph(cfg, model, optimizer, lr_scheduler)
 
     @classmethod
+    def get_batch(cls, data):
+        return [flow.randn(32, 512, sbp=flow.sbp.split(0), placement=flow.placement("cuda", {0: [0]}))]
+
+    @classmethod
     def build_train_loader(cls, cfg):
-        return range(10), range(10), range(10)
+        return range(1000), range(10), range(10)
+
+    @classmethod
+    def build_test_loader(cls, cfg):
+        return [range(10)]
 
 
 def main(args):
