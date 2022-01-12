@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+# Copyright 2021 The OneFlow Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 """Processing data for pretraining."""
 
 import argparse
+from omegaconf import DictConfig
 import json
 import multiprocessing
 import os
@@ -54,12 +55,13 @@ class IdentitySplitter(object):
 
 
 class Encoder(object):  # 分句、分词
-    def __init__(self, args):
+    def __init__(self, args, cfg):
         self.args = args
+        self.cfg = cfg
 
     def initializer(self):
         # Use Encoder class as a container for global data
-        Encoder.tokenizer = build_tokenizer(self.args)
+        Encoder.tokenizer = build_tokenizer(self.cfg)
         if self.args.split_sentences:
             if not nltk_available:
                 print("NLTK is not available to split sentences.")
@@ -101,11 +103,13 @@ def get_args():
     group.add_argument('--keep-newlines', action='store_true', help='Keep newlines between sentences when splitting.')
 
     group = parser.add_argument_group(title='tokenizer')
-    group.add_argument('--tokenizer-type', type=str, required=True,
-                       choices=['BertWordPieceLowerCase','BertWordPieceCase','GPT2BPETokenizer'],
+    group.add_argument('--tokenizer-name', type=str, required=True,
+                       choices=['BertTokenizer','GPT2Tokenizer','T5Tokenizer'], 
                        help='What type of tokenizer to use.')
     group.add_argument('--vocab-file', type=str, default=None, help='Path to the vocab file')
     group.add_argument('--merge-file', type=str, default=None, help='Path to the BPE merge file (if necessary).')
+    group.add_argument('--do-lower-case', action='store_true', help='Whether to do lower case.')
+    group.add_argument('--extra-ids', type=int, default=0, help='Number of extra ids.')
     group.add_argument('--append-eod', action='store_true', help='Append an <eod> token to the end of a document.')
 
     group = parser.add_argument_group(title='output data')
@@ -116,22 +120,44 @@ def get_args():
     group.add_argument('--workers', type=int, default=1, help='Number of worker processes to launch')
     group.add_argument('--log-interval', type=int, default=100, help='Interval between progress updates')
     args = parser.parse_args()
-    args.keep_empty = False
 
-    if args.tokenizer_type.lower().startswith('bert'):
+    if args.tokenizer_name.startswith('Bert'):
         if not args.split_sentences:
             print("Bert tokenizer detected, are you sure you don't want to split sentences?")
-
-    # some default/dummy values for the tokenizer
-    args.rank = 0
-    args.make_vocab_size_divisible_by = 128
-    args.tensor_model_parallel_size = 1
 
     return args
 
 
+def parse_args_to_config(args):
+    default_cfg = dict(
+        tokenizer=dict(
+            tokenizer_name='', 
+            tokenizer_cfg=dict(
+                vocab_file=None,
+                merge_file=None,
+                do_lower_case=False,
+                extra_ids=0,
+            ),
+            append_eod=False,
+        ),
+        data=dict(make_vocab_size_divisible_by=128,),
+        dist=dict(tensor_parallel_size=1,)
+    )
+
+    cfg = DictConfig(default_cfg)
+    cfg.tokenizer.tokenizer_name = args.tokenizer_name
+    cfg.tokenizer.tokenizer_cfg.vocab_file = args.vocab_file
+    cfg.tokenizer.tokenizer_cfg.merge_file = args.merge_file
+    cfg.tokenizer.tokenizer_cfg.do_lower_case = args.do_lower_case
+    cfg.tokenizer.tokenizer_cfg.extra_id = args.extra_ids
+    cfg.tokenizer.append_eod = args.append_eod
+
+    return cfg
+
+
 def main():
     args = get_args()
+    cfg = parse_args_to_config(args)
     startup_start = time.time()
 
     print("Opening", args.input)
@@ -140,8 +166,7 @@ def main():
     # if nltk_available and args.split_sentences:
     #     nltk.download("punkt", quiet=True)
 
-    encoder = Encoder(args) # 创建encoder和tokenizer，用于多进程处理数据
-    tokenizer = build_tokenizer(args)
+    encoder = Encoder(args, cfg) # 创建encoder和tokenizer，用于多进程处理数据
     pool = multiprocessing.Pool(args.workers, initializer=encoder.initializer)
     encoded_docs = pool.imap(encoder.encode, fin, 25)
     #encoded_docs = map(encoder.encode, fin)
@@ -150,7 +175,7 @@ def main():
     if args.split_sentences:
         level = "sentence"
 
-    print(f"Vocab size: {tokenizer.vocab_size}")
+    print(f"Vocab size: {encoder.tokenizer.vocab_size}")
     print(f"Output prefix: {args.output_prefix}")
     output_bin_files = {}
     output_idx_files = {}
