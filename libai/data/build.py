@@ -18,7 +18,7 @@ from typing import Optional
 import omegaconf
 
 import oneflow as flow
-import oneflow.utils.data as data
+import oneflow.utils.data as flowdata
 from oneflow.utils.data.dataset import ConcatDataset
 
 from .structures import Instance
@@ -39,7 +39,7 @@ def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, c
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
-    dataloader = data.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
+    dataloader = flowdata.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
     return dataloader, None, None
 
 
@@ -47,7 +47,7 @@ def build_image_test_loader(dataset, batch_size, sampler=None, num_workers=4, co
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
-    return data.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
+    return flowdata.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
 
 
 def trivial_batch_collator(batch):
