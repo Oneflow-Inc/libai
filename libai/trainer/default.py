@@ -15,11 +15,11 @@
 
 import logging
 import os
-from typing import Callable
 
 import oneflow as flow
-from libai.config import LazyConfig, instantiate, try_get_key
-from libai.models import build_model
+from libai.config import LazyConfig, try_get_key
+from libai.data import Instance
+from libai.models import build_model, build_graph
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
 from libai.trainer import hooks
@@ -252,7 +252,6 @@ class DefaultTrainer(TrainerBase):
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
             graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            # graph_train.debug(0)
             self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
         else:
             self._trainer = EagerTrainer(
@@ -344,9 +343,27 @@ class DefaultTrainer(TrainerBase):
         """
         super().train(self.start_iter, self.max_iter)
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self):
         self._trainer.iter = self.iter
-        self._trainer.run_step(get_batch)
+        self._trainer.run_step(self.get_batch)
+
+    @classmethod
+    def get_batch(cls, data: Instance):
+        """
+        Convert batched local tensor to distributed tensor for model step running.
+
+        If you want to do something with batched data before model, (e.g. mixup),
+        you can rewrite this function.
+        """
+        ret_dict = {}
+        ret_list = []
+        for key, value in data.get_fields().items():
+            value.to_consistent()
+            ret_dict[key] = value.tensor
+            ret_list.append(value.tensor)
+        # FIXME(l1aoxingyu): `nn.Graph` cannot accpet key-value arguments right now,
+        # just pass list instead.
+        return ret_list
 
     @classmethod
     def build_model(cls, cfg):
@@ -362,23 +379,21 @@ class DefaultTrainer(TrainerBase):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
+        model.apply(dist.convert_to_distributed_default_setting)
         return model
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
-        if is_train:
-            # Set train graph
-            assert optimizer is not None, "optimizer must be set for train graph"
-            assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
-            cfg.graph.num_accumulation_steps = cfg.train.num_accumulation_steps
-            cfg.graph.train.model = model
-            cfg.graph.train.optimizer = optimizer
-            cfg.graph.train.lr_scheduler = lr_scheduler
-            return instantiate(cfg.graph.train)
-        else:
-            # Set eval graph
-            cfg.graph.eval.model = model
-            return instantiate(cfg.graph.eval)
+        assert (
+            try_get_key(cfg, "graph") is not None
+        ), "cfg must contain `graph` namespace"
+        graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
+        logger = logging.getLogger(__name__)
+        debug_graph = try_get_key(cfg, "graph.debug", default=-1)
+        if debug_graph >= 0:
+            logger.info("Graph debug mode on, automatically output debug info.")
+            graph.debug(cfg.graph.debug)
+        return graph
 
     @classmethod
     def build_optimizer(cls, cfg, model):
