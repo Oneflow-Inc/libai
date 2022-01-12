@@ -24,10 +24,10 @@ class CyclicSampler(Sampler):
         dataset: dataset to be sampled.
         micro_batch_size: batch size for per model instance. global_batch_size is micro_batch_size times data_parallel_size.
         shuffle: whether to shuffle the dataset.
+        consumed_samples: the number of samples that have been trained at the current time, used for resuming training. 
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
         seed: random seed, used for reproducing experiments.
-        drop_last: whether to drop the remaining data. Default to `False`.
     """
     def __init__(
         self, 

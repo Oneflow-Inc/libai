@@ -21,6 +21,7 @@ import logging
 import numpy as np
 import oneflow as flow
 
+from libai.utils import distributed as dist
 from libai.data.data_utils import helpers
 from .indexed_dataset import make_dataset as make_indexed_dataset
 
@@ -44,11 +45,7 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_
             "WARNING: could not find index map file {}, building "
             "the indices on rank 0 ...".format(indexmap_filename)
         )
-
-        # Make sure the types match the helpers input types.
-        # assert documents.dtype == np.int64
-        # assert sizes.dtype == np.int32
-
+        
         # Build samples mapping
         verbose = flow.env.get_rank() == 0
         start_time = time.time()
@@ -69,8 +66,8 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_
             "elapsed time to build and save samples mapping "
             "(seconds): {:4f}".format(time.time() - start_time)
         )
-    # FIXME(lxy): 这里只考虑了数据并行时的同步问题
-    flow._oneflow_internal.eager.multi_client.Sync()
+
+    dist.synchronize()
     # This should be a barrier but nccl barrier assumes
     # device_index=rank which is not the case for model parallel case
     # counts = flow.tensor([1], dtype=flow.long, device="cuda")
@@ -164,7 +161,7 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
         logger.info('elasped time to build and save sample-idx mapping '
                     '(seconds): {:4f}'.format(time.time() - start_time))
 
-    flow._oneflow_internal.eager.multi_client.Sync()
+    dist.synchronize()
     # This should be a barrier but nccl barrier assumes
     # device_index=rank which is not the case for model
     # parallel case
