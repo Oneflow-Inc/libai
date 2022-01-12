@@ -44,6 +44,9 @@ def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, c
 
 
 def build_image_test_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs):
+
+    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+
     return data.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
 
 
