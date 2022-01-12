@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .data_utils.data_utils import get_indexed_dataset, get_prefixes_and_weights
-from .data_utils.split_dataset import split_ds
-from .data_utils.blendable_dataset import BlendableDataset
+from .data_utils import get_indexed_dataset, get_prefixes_and_weights
+from .data_utils import split_ds
+from .data_utils import BlendableDataset
 
 from libai.config import instantiate
 from libai.utils.registry import Registry

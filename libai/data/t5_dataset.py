@@ -20,8 +20,9 @@ import collections
 import numpy as np
 import oneflow as flow
 
-from .data_utils.reindexed_dataset import SentenceIndexedDataset
+from .data_utils import SentenceIndexedDataset
 from .build import DATASET_REGISTRY
+from .structures import Instance, DistTensorData
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
@@ -75,14 +76,14 @@ class T5Dataset(flow.utils.data.Dataset):
 
         encoder_input, decoder_input, labels, encoder_padding_mask, decoder_padding_mask, loss_mask = self.pad_and_convert_to_numpy(tokens, masked_spans)
 
-        sample = {
-            'encoder_input': encoder_input,
-            'decoder_input': decoder_input,
-            'labels': labels,
-            'encoder_padding_mask': encoder_padding_mask,
-            'decoder_padding_mask': decoder_padding_mask,
-            'loss_mask': loss_mask,
-        }
+        sample = Instance(
+            encoder_input=DistTensorData(encoder_input),
+            decoder_input=DistTensorData(decoder_input),
+            labels=DistTensorData(labels, placement_idx=-1),
+            encoder_padding_mask=DistTensorData(encoder_padding_mask),
+            decoder_padding_mask=DistTensorData(decoder_padding_mask),
+            loss_mask=DistTensorData(loss_mask, placement_idx=-1),
+        )
         return sample
 
     def create_masked_lm_predictions(self, tokens, np_rng, max_ngrams=3, do_whole_word_mask=True, token_boundary=None,
@@ -222,7 +223,7 @@ class T5Dataset(flow.utils.data.Dataset):
         assert num_pad >= 0
 
         filler = [self.pad_id] * num_pad
-        encoder_input = np.array(encoder_input + filler, dtype=np.int64)
+        encoder_input = flow.tensor(encoder_input + filler, dtype=flow.long)
 
         num_tokens_dec = len(decoder_input)
         num_pad_dec = self.max_seq_length - num_tokens_dec
@@ -230,16 +231,16 @@ class T5Dataset(flow.utils.data.Dataset):
 
         # tokens and token types
         filler_dec = [self.pad_id] * num_pad_dec
-        decoder_input = np.array(decoder_input + filler_dec, dtype=np.int64)
+        decoder_input = flow.tensor(decoder_input + filler_dec, dtype=flow.long)
 
         # padding mask
-        encoder_padding_mask = np.array([1] * num_tokens + [0] * num_pad, dtype=np.int64)
-        decoder_padding_mask = np.array([1] * num_tokens_dec + [0] * num_pad_dec, dtype=np.int64)
+        encoder_padding_mask = flow.tensor([1] * num_tokens + [0] * num_pad, dtype=flow.long)
+        decoder_padding_mask = flow.tensor([1] * num_tokens_dec + [0] * num_pad_dec, dtype=flow.long)
 
         # labels and loss mask
-        labels = np.array(decoder_output + [-1] * num_pad_dec, dtype=np.int64)
+        labels = flow.tensor(decoder_output + [-1] * num_pad_dec, dtype=flow.long)
         loss_mask = [1] * num_tokens_dec + [0] * num_pad_dec
-        loss_mask = np.array(loss_mask, dtype=np.int64)
+        loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
         return encoder_input, decoder_input, labels, encoder_padding_mask, decoder_padding_mask, loss_mask
 

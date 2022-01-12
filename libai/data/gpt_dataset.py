@@ -18,15 +18,13 @@
 import numpy as np
 import oneflow as flow
 
-from .data_utils.reindexed_dataset import BlockIndexedDataset
+from .data_utils import BlockIndexedDataset
 from .build import DATASET_REGISTRY
+from .structures import Instance, DistTensorData
 
 
 @DATASET_REGISTRY.register()
 class GPT2Dataset(flow.utils.data.Dataset):
-    """"""
-    # 这里仍然选择传入num_epochs和max_num_samples参数，是考虑到，如果每个epoch重新循环一遍dataset，可能会出现drop last情形。
-    # 传入num_epochs和max_num_samples参数，避免drop last，可以充分使用数据。
     def __init__(self, tokenizer, data_prefix, indexed_dataset, max_seq_length=512):
         self.dataset = BlockIndexedDataset(data_prefix, indexed_dataset, max_seq_length=max_seq_length)
         self.tokenizer = tokenizer
@@ -35,8 +33,14 @@ class GPT2Dataset(flow.utils.data.Dataset):
         return len(self.dataset)
     
     def __getitem__(self, idx):
-        sample = self.dataset[idx]
-        return {'text': np.array(sample, dtype=np.int64)}
+        text = self.dataset[idx]
+        input_ids = flow.tensor(sample[:-1], dtype=flow.long)
+        labels = flow.tensor(sample[1:], dtype=flow.long)
+        sample = Instance(
+            input_ids=DistTensorData(input_ids),
+            labels=DistTensorData(labels, placement_idx=-1),
+        )
+        return sample
     
     @property
     def supports_prefetch(self):

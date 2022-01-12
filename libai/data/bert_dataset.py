@@ -20,8 +20,9 @@ import collections
 import numpy as np
 import oneflow as flow
 
-from .data_utils.reindexed_dataset import SentenceIndexedDataset
+from .data_utils import SentenceIndexedDataset
 from .build import DATASET_REGISTRY
+from .structures import Instance, DistTensorData
 
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
@@ -92,16 +93,16 @@ class BertDataset(flow.utils.data.Dataset):
 
         tokens, masked_positions, masked_labels = self.create_masked_lm_predictions(tokens, np_rng, token_boundary=align_labels)
 
-        tokens, token_types, labels, padding_mask, loss_mask = self.pad_and_convert_to_numpy(tokens, token_types, masked_positions, masked_labels)
+        tokens, token_types, labels, padding_mask, loss_mask = self.pad_and_convert_to_tensor(tokens, token_types, masked_positions, masked_labels)
 
-        sample = {
-            'text': tokens,
-            'types': token_types,
-            'labels': labels,
-            'is_random': int(is_next_random),
-            'loss_mask': loss_mask,
-            'padding_mask': padding_mask,
-        }
+        sample = Instance(
+            tokens=DistTensorData(tokens),
+            padding_mask=DistTensorData(padding_mask),
+            tokentype_ids=DistTensorData(types),
+            ns_labels=DistTensorData(flow.tensor(int(is_random), dtype=flow.long), placement_idx=-1),
+            lm_labels=DistTensorData(labels, placement_idx=-1),
+            loss_mask=DistTensorData(loss_mask, placement_idx=-1),
+        )
         return sample
 
     def create_random_sentence_pair(self, sample, np_rng, align_labels=None):
@@ -319,8 +320,8 @@ class BertDataset(flow.utils.data.Dataset):
 
         return output_tokens, masked_positions, masked_labels
   
-    def pad_and_convert_to_numpy(self, tokens, token_types, masked_positions, masked_labels):
-        """pad sequences and convert them to numpy array"""
+    def pad_and_convert_to_tensor(self, tokens, token_types, masked_positions, masked_labels):
+        """pad sequences and convert them to tensor"""
 
         # check
         num_tokens = len(tokens)
@@ -331,11 +332,11 @@ class BertDataset(flow.utils.data.Dataset):
 
         # tokens and token types
         filler = [self.pad_id] * num_pad
-        tokens = np.array(tokens + filler, dtype=np.int64)
-        token_types = np.array(token_types + filler, dtype=np.int64)
+        tokens = flow.tensor(tokens + filler, dtype=flow.long)
+        token_types = flow.tensor(token_types + filler, dtype=flow.long)
 
         # padding mask
-        padding_mask = np.array([1] * num_tokens + [0] * num_pad, dtype=np.int64)
+        padding_mask = flow.tensor([1] * num_tokens + [0] * num_pad, dtype=flow.long)
 
         # labels and loss mask
         labels = [-1] * self.max_seq_length
@@ -344,8 +345,8 @@ class BertDataset(flow.utils.data.Dataset):
             assert idx < num_tokens
             labels[idx] = label
             loss_mask[idx] = 1
-        labels = np.array(labels, dtype=np.int64)
-        loss_mask = np.array(loss_mask, dtype=np.int64)
+        labels = flow.tensor(labels, dtype=flow.long)
+        loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
         return tokens, token_types, labels, padding_mask, loss_mask
 
