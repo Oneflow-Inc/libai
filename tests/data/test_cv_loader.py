@@ -13,11 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from libai.config.instantiate import instantiate
 from libai.config import LazyConfig
-from libai.data.datasets.imagenet import ImageNetDataset
 
-train_set = ImageNetDataset("/DATA/disk1/ImageNet/extract", train=True)
-assert len(train_set) == 1281167
+cfg = LazyConfig.load("./configs/common/data/cv_data.py")
 
-test_set = ImageNetDataset("/DATA/disk1/ImageNet/extract", train=False)
-assert len(test_set) == 50000
+train_loader = instantiate(cfg.dataloader.train)
+assert len(train_loader) == 80073
+
+test_loader = instantiate(cfg.dataloader.test)
+assert len(test_loader[0]) == 3125
