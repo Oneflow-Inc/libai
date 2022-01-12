@@ -32,7 +32,7 @@ def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, c
     """
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
-    else:
+    elif not isinstance(dataset, list):
         dataset = [dataset]
 
     dataset = mix_dataset(dataset)
