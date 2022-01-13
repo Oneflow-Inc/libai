@@ -15,6 +15,6 @@
 
 import indexed_dataset
 from .blendable_dataset import BlendableDataset
-from .data_utils import get_indexed_dataset, get_prefixes_and_weights
+from .data_utils import get_prefixes_and_weights
 from .reindexed_dataset import SentenceIndexedDataset, BlockIndexedDataset
 from .split_dataset import split_ds, SplitDataset

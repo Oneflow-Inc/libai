@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import oneflow as flow
 from oneflow.utils.data import Sampler
 
@@ -133,7 +132,6 @@ class SingleRoundSampler(Sampler):
         self.drop_last = drop_last
 
     def __iter__(self):
-        batch = []
         bucket_size = self.data_size // self.data_parallel_size
         remain = self.data_size % self.data_parallel_size
         start_idx = self.data_parallel_rank * bucket_size
@@ -154,10 +152,10 @@ class SingleRoundSampler(Sampler):
         if hasattr(self.dataset, "supports_prefetch") and self.dataset.supports_prefetch:
             self.dataset.prefetch(indices)
 
+        batch = []
         for idx in indices:
             batch.append(idx)
             if len(batch) == self.micro_batch_size:
-                consumed_samples += self.actual_batch_size
                 yield batch
                 batch = []
         
