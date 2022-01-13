@@ -33,6 +33,7 @@ except ImportError:
     nltk_available = False
 
 from libai.tokenizer import build_tokenizer
+# from libai.tokenizer.build import build_tokenizer
 from libai.data.data_utils import indexed_dataset
 
 # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
@@ -167,6 +168,7 @@ def main():
     #     nltk.download("punkt", quiet=True)
 
     encoder = Encoder(args, cfg) # 创建encoder和tokenizer，用于多进程处理数据
+    tokenizer = build_tokenizer(cfg)
     pool = multiprocessing.Pool(args.workers, initializer=encoder.initializer)
     encoded_docs = pool.imap(encoder.encode, fin, 25)
     #encoded_docs = map(encoder.encode, fin)
@@ -175,7 +177,7 @@ def main():
     if args.split_sentences:
         level = "sentence"
 
-    print(f"Vocab size: {encoder.tokenizer.vocab_size}")
+    print(f"Vocab size: {tokenizer.vocab_size}")
     print(f"Output prefix: {args.output_prefix}")
     output_bin_files = {}
     output_idx_files = {}
