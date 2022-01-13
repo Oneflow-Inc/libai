@@ -14,17 +14,23 @@
 # limitations under the License.
 
 
-from typing import Optional
 import omegaconf
 
-import oneflow as flow
 import oneflow.utils.data as flowdata
 from oneflow.utils.data.dataset import ConcatDataset
 
+from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
 
-def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, drop_last=True, dataset_mixer=ConcatDataset, **kwargs):
+def build_image_train_loader(
+    dataset, 
+    batch_size, 
+    sampler=None, 
+    num_workers=4, 
+    collate_fn=None, 
+    dataset_mixer=ConcatDataset,
+    **kwargs):
     """
     Args:
         dataset: Dataset list or single dataset.
@@ -35,19 +41,46 @@ def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, c
     elif not isinstance(dataset, list):
         dataset = [dataset]
 
-    dataset = dataset_mixer(dataset)
+    if len(dataset) > 1:
+        dataset = dataset_mixer(dataset)
+    else:
+        dataset = dataset[0]
 
-    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+    # collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
-    dataloader = flowdata.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, drop_last=drop_last, **kwargs)
+    if sampler is None:
+        # TODO: initilize train sampler
+        sampler = CyclicSampler()
+
+    dataloader = flowdata.DataLoader(
+        dataset, 
+        batch_sampler=sampler,
+        num_workers=num_workers, 
+        collate_fn = trivial_batch_collator if collate_fn is None else collate_fn, 
+        **kwargs
+        )
+
     return dataloader, None, None
 
 
-def build_image_test_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, drop_last=False, **kwargs):
+def build_image_test_loader(
+    dataset, 
+    batch_size, 
+    sampler=None, 
+    num_workers=4, 
+    collate_fn=None, 
+    **kwargs):
 
-    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+    if sampler is None:
+        # TODO: initilize test_sampler
+        sampler = SingleRoundSampler()
 
-    return flowdata.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, drop_last=drop_last, **kwargs)
+    return flowdata.DataLoader(dataset, 
+                               batch_size=batch_size, 
+                               batch_sampler=sampler, 
+                               num_workers=num_workers, 
+                               collate_fn = trivial_batch_collator if collate_fn is None else collate_fn 
+                               **kwargs)
 
 
 def trivial_batch_collator(batch):
