@@ -58,7 +58,7 @@ class DistTensorData:
             raise TypeError(
                 "DistTensorData.tensor must be a flow.Tensor, but got {}. "
                 "Please check the return values of `__getitem__` in dataset.".format(
-                    distTensor_lists[0].tensor
+                    type(distTensor_lists[0].tensor)
                 )
             )
 
