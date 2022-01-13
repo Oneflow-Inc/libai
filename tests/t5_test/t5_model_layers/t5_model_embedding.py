@@ -28,7 +28,7 @@ class T5Embedding(flow.nn.Module):
         self.vocab_size = vocab_size
         self.num_tokentypes = num_tokentypes
 
-        self.vocab_embeddings = VocabEmbedding(
+        self.word_embeddings = VocabEmbedding(
             num_embeddings=vocab_size,
             embedding_dim=hidden_size,
             init_method=init_method,
@@ -69,7 +69,7 @@ class T5Embedding(flow.nn.Module):
     def forward(self, input_ids, tokentype_ids=None, position_ids=None):
         # input_ids shape: [batch_size, seq_len, hidden_size]
         seq_length = input_ids.size()[1]
-        word_embeddings = self.vocab_embeddings(input_ids)
+        word_embeddings = self.word_embeddings(input_ids)
 
         if position_ids is None:
             # Change position_ids sbp sign: [B, B] -> [S(0), B]

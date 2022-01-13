@@ -1,4 +1,5 @@
 from platform import java_ver
+from socket import IP_HDRINCL
 import oneflow as flow
 import torch
 import numpy as np
@@ -102,11 +103,11 @@ if __name__ == '__main__':
     
 
     # encoder final layernorm
-    encoder_final_layermorm_module = model.language_model.encoder.final_layernorm
+    encoder_final_layernorm_module = model.language_model.encoder.final_layernorm
     FEATURE_MAP = None
 
     with torch.no_grad():
-        hidden_state = encoder_final_layermorm_module(hidden_state)
+        hidden_state = encoder_final_layernorm_module(hidden_state)
         hook = model.language_model.encoder.final_layernorm.register_forward_hook(register_forward_hook)
         tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = get_sample('torch')
         with torch.no_grad():
@@ -116,6 +117,47 @@ if __name__ == '__main__':
 
     print(f'final_layernorm diff: ', np.max(np.abs((FEATURE_MAP - hidden_state).cpu().numpy())))
 
+    # decoder preprocessing
+    with torch.no_grad():
+        position_ids = t5_position_ids(tokens_dec)
+        decoder_hidden_state = embedding_module(tokens_dec, position_ids).transpose(0, 1)
+
+    # decoder forward
+    encoder_state = hidden_state
+    for i in range(12):
+        FEATURE_MAP = None
+        decoder_layer_module = model.language_model.decoder.layers[i]
+
+        # decoder hook
+        hook = model.language_model.decoder.layers[i].register_forward_hook(register_forward_hook)
+        tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = get_sample('torch')
+        with torch.no_grad():
+            model(tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask)
+        hook.remove()
+
+        with torch.no_grad():
+            decoder_hidden_state = decoder_layer_module(decoder_hidden_state, dec_mask, encoder_state.transpose(0, 1), enc_dec_mask)
+            # print(f'layer{i} hidden state: ', decoder_hidden_state.shape)
+            # print(f'layer{i} hook: ', FEATURE_MAP.shape)
+            print(f'layer{i} diff: ', np.max(np.abs((FEATURE_MAP - decoder_hidden_state).cpu().numpy())))
     
 
+    # decoder final_layernorm
+    decoder_final_layernorm = model.language_model.decoder.final_layernorm
+    FEATURE_MAP = None
 
+    with torch.no_grad():
+        decoder_hidden_state = decoder_final_layernorm(decoder_hidden_state)
+        hook = model.language_model.decoder.final_layernorm.register_forward_hook(register_forward_hook)
+        tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = get_sample('torch')
+        with torch.no_grad():
+            model_putput = model(tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask)
+        hook.remove()
+
+    print(f'decoder final_layernorm diff: ', np.max(np.abs((FEATURE_MAP - decoder_hidden_state.transpose(0, 1)).cpu().numpy())))
+
+    lm_head = model.lm_head
+    FEATURE_MAP = None
+
+    with torch.no_grad():
+        lm_head_output = lm_head(decoder_hidden_state, embedding_module.word_embeddings.weight)

@@ -54,7 +54,8 @@ sys.argv.extend([
     '--eval-interval', '1000', 
     '--eval-iters', '10', 
     # '--fp16', 
-    '--vocab-extra-ids', '100'
+    '--vocab-extra-ids', '100',
+    '--layernorm-epsilon', '1e-12',
 ])
 
 
