@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import indexed_dataset
+from .indexed_dataset import get_indexed_dataset
 from .blendable_dataset import BlendableDataset
 from .data_utils import get_prefixes_and_weights
 from .reindexed_dataset import SentenceIndexedDataset, BlockIndexedDataset
