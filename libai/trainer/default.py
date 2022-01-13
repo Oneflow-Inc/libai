@@ -19,6 +19,7 @@ import os
 import oneflow as flow
 from libai.config import LazyConfig, try_get_key
 from libai.data import Instance
+from libai.tokenizer import build_tokenizer
 from libai.models import build_model, build_graph
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
@@ -148,12 +149,6 @@ def default_setup(cfg, args):
 
     dist.setup_dist_util(cfg.train.dist)
 
-    # Initialize tokenizer
-    if try_get_key(cfg, "data.tokenizer_setup", default=False):
-        # TODO(l1aoxingyu): add tokenizer
-        # setup_tokenizer(cfg)
-        pass
-
     _check_batch_size(cfg)
 
     if dist.is_main_process() and output_dir:
@@ -219,6 +214,10 @@ class DefaultTrainer(TrainerBase):
         # setup_logger is not called for LiBai
         if not logger.isEnabledFor(logging.INFO):
             setup_logger()
+
+        # Initialize tokenizer
+        if try_get_key(cfg, "data.tokenizer_setup", default=False):
+            self.tokenizer = self.build_tokenizer(cfg)
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
@@ -364,6 +363,13 @@ class DefaultTrainer(TrainerBase):
         # FIXME(l1aoxingyu): `nn.Graph` cannot accpet key-value arguments right now,
         # just pass list instead.
         return ret_list
+
+    @classmethod
+    def build_tokenizer(cls, cfg):
+        assert (
+            try_get_key(cfg, "tokenizer") is not None
+        ), "cfg must contain `tokenizer` namespace"        
+        return build_tokenizer(cfg)
 
     @classmethod
     def build_model(cls, cfg):
