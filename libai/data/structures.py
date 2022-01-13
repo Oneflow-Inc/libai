@@ -66,7 +66,9 @@ class DistTensorData:
         if len(distTensor_lists) == 1:
             # TODO(l1aoxingyu): add inplace unsqueeze
             # distTensor_lists[0].tensor.unsqueeze_(0)  # add batch dim
-            distTensor_lists[0].tensor = distTensor_lists[0].tensor.unsqueeze(0)  # add batch dim
+            distTensor_lists[0].tensor = distTensor_lists[0].tensor.unsqueeze(
+                0
+            )  # add batch dim
             return distTensor_lists[0]
 
         tensor_size = distTensor_lists[0].tensor.size()
