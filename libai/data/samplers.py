@@ -26,7 +26,6 @@ class CyclicSampler(Sampler):
         consumed_samples: the number of samples that have been trained at the current time, used for resuming training. 
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
-        num_accumulation_steps: the size of accumulating gradient.
         seed: random seed, used for reproducing experiments.
     """
     def __init__(
@@ -37,7 +36,6 @@ class CyclicSampler(Sampler):
         consumed_samples=0,
         data_parallel_rank=0, 
         data_parallel_size=1, 
-        num_accumulation_steps=1,
         seed=0, 
     ):
         self.dataset = dataset
@@ -46,8 +44,8 @@ class CyclicSampler(Sampler):
 
         self.data_parallel_rank = data_parallel_rank
         self.data_parallel_size = data_parallel_size
-        self.mini_batch_size = micro_batch_size * num_accumulation_steps
-        self.actual_batch_size = self.mini_batch_size * self.data_parallel_size
+        self.micro_batch_size = micro_batch_size
+        self.actual_batch_size = self.micro_batch_size * self.data_parallel_size
         self.remain_data_size = self.data_size % self.actual_batch_size
         self.active_data_size = self.data_size - self.remain_data_size
         self.consumed_samples = consumed_samples
@@ -63,7 +61,7 @@ class CyclicSampler(Sampler):
         while True:
             current_epoch_samples = self.consumed_samples % self.data_size
 
-            bucket_size = self.data_size // self.actual_batch_size * self.mini_batch_size
+            bucket_size = self.data_size // self.actual_batch_size * self.micro_batch_size
             bucket_offset = current_epoch_samples // self.data_parallel_size
             start_idx = self.data_parallel_rank * bucket_size
 
@@ -83,7 +81,7 @@ class CyclicSampler(Sampler):
 
             for idx in indices:
                 batch.append(idx)
-                if len(batch) == self.mini_batch_size:
+                if len(batch) == self.micro_batch_size:
                     self.consumed_samples += self.actual_batch_size
                     yield batch
                     batch = []
@@ -109,7 +107,6 @@ class SingleRoundSampler(Sampler):
         shuffle: whether to shuffle the dataset.
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
-        num_accumulation_steps: the size of accumulating gradient.
         seed: random seed, used for reproducing experiments.
         drop_last: whether to drop the remaining data. Default to `False`.
     """
@@ -120,7 +117,6 @@ class SingleRoundSampler(Sampler):
         shuffle=False, 
         data_parallel_rank=0, 
         data_parallel_size=1, 
-        num_accumulation_steps=1,
         seed=0, 
         drop_last=False
     ):
@@ -130,7 +126,7 @@ class SingleRoundSampler(Sampler):
 
         self.data_parallel_rank = data_parallel_rank
         self.data_parallel_size = data_parallel_size
-        self.mini_batch_size = micro_batch_size * num_accumulation_steps
+        self.micro_batch_size = micro_batch_size
 
         self.seed = seed
         self.drop_last = drop_last
@@ -159,7 +155,7 @@ class SingleRoundSampler(Sampler):
         batch = []
         for idx in indices:
             batch.append(idx)
-            if len(batch) == self.mini_batch_size:
+            if len(batch) == self.micro_batch_size:
                 yield batch
                 batch = []
         
