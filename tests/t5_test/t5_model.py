@@ -57,7 +57,7 @@ class T5Model(flow.nn.Module):
                     bias_dropout_fusion=bias_dropout_fusion,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-                    layer_idx=0,
+                    layer_idx=i,
                 )
                 for i in range(hidden_layers)
             ]
@@ -89,7 +89,7 @@ class T5Model(flow.nn.Module):
                     bias_dropout_fusion=bias_dropout_fusion,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-                    layer_idx=0,
+                    layer_idx=i,
                 )
                 for i in range(hidden_layers)
             ]
@@ -153,6 +153,7 @@ if __name__ == '__main__':
         hidden_dropout_prob=0.1,
         attention_probs_dropout_prob=0.1,
         max_position_embeddings=ENCODER_SEQ_LENGTH,
+        apply_query_key_layer_scaling=False,
     )
     flow_t5.eval()
 
