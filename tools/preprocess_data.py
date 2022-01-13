@@ -33,7 +33,6 @@ except ImportError:
     nltk_available = False
 
 from libai.tokenizer import build_tokenizer
-# from libai.tokenizer.build import build_tokenizer
 from libai.data.data_utils import indexed_dataset
 
 # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
