@@ -51,8 +51,8 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_
         start_time = time.time()
         logger.info("building samples index mapping for {} ...".format(data_prefix))
         samples_mapping = helpers.build_mapping(
-            documents,  # 包含所有文档序号的向量，一个文档可能对应多个行
-            sizes,  # 包含每个行的长度的向量
+            documents, 
+            sizes,
             max_seq_length,
             short_seq_prob,
             verbose,
@@ -68,15 +68,6 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_
         )
 
     dist.synchronize()
-    # This should be a barrier but nccl barrier assumes
-    # device_index=rank which is not the case for model parallel case
-    # counts = flow.tensor([1], dtype=flow.long, device="cuda")
-    # counts = torch.cuda.LongTensor([1])
-    # torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group())
-    # torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group())
-    # assert counts[0].item() == (
-    #     torch.distributed.get_world_size() //
-    #     torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group()))
 
     # Load indexed dataset.
     logger.info("loading indexed mapping from {}".format(indexmap_filename))
@@ -162,15 +153,6 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
                     '(seconds): {:4f}'.format(time.time() - start_time))
 
     dist.synchronize()
-    # This should be a barrier but nccl barrier assumes
-    # device_index=rank which is not the case for model
-    # parallel case
-    # counts = torch.cuda.LongTensor([1])
-    # torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group())
-    # torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group())
-    # assert counts[0].item() == (
-    #     torch.distributed.get_world_size() //
-    #     torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group()))
 
     # Load mappings.
     start_time = time.time()
