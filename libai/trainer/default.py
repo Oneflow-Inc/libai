@@ -355,6 +355,9 @@ class DefaultTrainer(TrainerBase):
         If you want to do something with batched data before model, (e.g. mixup),
         you can rewrite this function.
         """
+        if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
+            data.reraise()
+
         ret_dict = {}
         ret_list = []
         for key, value in data.get_fields().items():
