@@ -24,7 +24,7 @@ from oneflow.utils.data.dataset import ConcatDataset
 from .structures import Instance
 
 
-def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, mix_dataset=ConcatDataset, **kwargs):
+def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, drop_last=True, dataset_mixer=ConcatDataset, **kwargs):
     """
     Args:
         dataset: Dataset list or single dataset.
@@ -35,19 +35,19 @@ def build_image_train_loader(dataset, batch_size, sampler=None, num_workers=4, c
     elif not isinstance(dataset, list):
         dataset = [dataset]
 
-    dataset = mix_dataset(dataset)
+    dataset = dataset_mixer(dataset)
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
-    dataloader = flowdata.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
+    dataloader = flowdata.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, drop_last=drop_last, **kwargs)
     return dataloader, None, None
 
 
-def build_image_test_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs):
+def build_image_test_loader(dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, drop_last=False, **kwargs):
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
-    return flowdata.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, **kwargs)
+    return flowdata.DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, collate_fn=collate_fn, drop_last=drop_last, **kwargs)
 
 
 def trivial_batch_collator(batch):
