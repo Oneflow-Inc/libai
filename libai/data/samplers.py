@@ -46,8 +46,8 @@ class CyclicSampler(Sampler):
 
         self.data_parallel_rank = data_parallel_rank
         self.data_parallel_size = data_parallel_size
-        self.micro_batch_size = micro_batch_size * num_accumulation_steps
-        self.actual_batch_size = self.micro_batch_size * self.data_parallel_size
+        self.mini_batch_size = micro_batch_size * num_accumulation_steps
+        self.actual_batch_size = self.mini_batch_size * self.data_parallel_size
         self.remain_data_size = self.data_size % self.actual_batch_size
         self.active_data_size = self.data_size - self.remain_data_size
         self.consumed_samples = consumed_samples
@@ -63,7 +63,7 @@ class CyclicSampler(Sampler):
         while True:
             current_epoch_samples = self.consumed_samples % self.data_size
 
-            bucket_size = self.data_size // self.actual_batch_size * self.micro_batch_size
+            bucket_size = self.data_size // self.actual_batch_size * self.mini_batch_size
             bucket_offset = current_epoch_samples // self.data_parallel_size
             start_idx = self.data_parallel_rank * bucket_size
 
@@ -83,7 +83,7 @@ class CyclicSampler(Sampler):
 
             for idx in indices:
                 batch.append(idx)
-                if len(batch) == self.micro_batch_size:
+                if len(batch) == self.mini_batch_size:
                     self.consumed_samples += self.actual_batch_size
                     yield batch
                     batch = []
@@ -130,7 +130,7 @@ class SingleRoundSampler(Sampler):
 
         self.data_parallel_rank = data_parallel_rank
         self.data_parallel_size = data_parallel_size
-        self.micro_batch_size = micro_batch_size * num_accumulation_steps
+        self.mini_batch_size = micro_batch_size * num_accumulation_steps
 
         self.seed = seed
         self.drop_last = drop_last
@@ -159,7 +159,7 @@ class SingleRoundSampler(Sampler):
         batch = []
         for idx in indices:
             batch.append(idx)
-            if len(batch) == self.micro_batch_size:
+            if len(batch) == self.mini_batch_size:
                 yield batch
                 batch = []
         
