@@ -13,5 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .structures import DistTensorData, Instance
-from .build import build_image_train_loader, build_image_test_loader
+# TODO: add sampler
+from .cyclic_sampler import CyclicSampler
+from .single_round_sampler import SingleRoundSampler
