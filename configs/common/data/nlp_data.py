@@ -11,7 +11,7 @@ tokenizer = dict(
 
 dataloader = OmegaConf.create()
 
-dataloader.train=LazyCall(build_nlp_train_val_test_loader)(
+dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
     dataset=[
         LazyCall(DemoNlpDataset)(data_root="train1",),
         LazyCall(DemoNlpDataset)(data_root="train2",),
@@ -22,7 +22,7 @@ dataloader.train=LazyCall(build_nlp_train_val_test_loader)(
     num_workers=4,
 )
 
-dataloader.test=[
+dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(DemoNlpDataset)(data_root="test1",), batch_size=32,
     ),
@@ -30,4 +30,3 @@ dataloader.test=[
         dataset=LazyCall(DemoNlpDataset)(data_root="test2",), batch_size=32,
     ),
 ]
-
