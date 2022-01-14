@@ -377,7 +377,7 @@ class DefaultTrainer(TrainerBase):
     def build_tokenizer(cls, cfg):
         assert (
             try_get_key(cfg, "tokenizer") is not None
-        ), "cfg must contain `tokenizer` namespace"        
+        ), "cfg must contain `tokenizer` namespace"
         return build_tokenizer(cfg)
 
     @classmethod

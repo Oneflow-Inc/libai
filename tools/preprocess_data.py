@@ -21,13 +21,17 @@ import json
 import multiprocessing
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                             os.path.pardir)))
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
+)
 import time
 
 import oneflow as flow
+
 try:
     import nltk
+
     nltk_available = True
 except ImportError:
     nltk_available = False
@@ -70,8 +74,8 @@ class Encoder(object):  # split sentence, tokenize
             if self.args.keep_newlines:
                 # this prevents punkt from eating newlines after sentences
                 Encoder.splitter = nltk.tokenize.punkt.PunktSentenceTokenizer(
-                    train_text = splitter._params,
-                    lang_vars = CustomLanguageVars())
+                    train_text=splitter._params, lang_vars=CustomLanguageVars()
+                )
             else:
                 Encoder.splitter = splitter
 
@@ -96,34 +100,78 @@ class Encoder(object):  # split sentence, tokenize
 
 def get_args():
     parser = argparse.ArgumentParser()
-    group = parser.add_argument_group(title='input data')
-    group.add_argument('--input', type=str, required=True, help='Path to input JSON')
-    group.add_argument('--json-keys', nargs='+', default=['text'], help='space separate listed of keys to extract from json')
-    group.add_argument('--split-sentences', action='store_true', help='Split documents into sentences.')
-    group.add_argument('--keep-newlines', action='store_true', help='Keep newlines between sentences when splitting.')
+    group = parser.add_argument_group(title="input data")
+    group.add_argument("--input", type=str, required=True, help="Path to input JSON")
+    group.add_argument(
+        "--json-keys",
+        nargs="+",
+        default=["text"],
+        help="space separate listed of keys to extract from json",
+    )
+    group.add_argument(
+        "--split-sentences", action="store_true", help="Split documents into sentences."
+    )
+    group.add_argument(
+        "--keep-newlines",
+        action="store_true",
+        help="Keep newlines between sentences when splitting.",
+    )
 
-    group = parser.add_argument_group(title='tokenizer')
-    group.add_argument('--tokenizer-name', type=str, required=True,
-                       choices=['BertTokenizer','GPT2Tokenizer','T5Tokenizer'], 
-                       help='What type of tokenizer to use.')
-    group.add_argument('--vocab-file', type=str, default=None, help='Path to the vocab file')
-    group.add_argument('--merge-file', type=str, default=None, help='Path to the BPE merge file (if necessary).')
-    group.add_argument('--do-lower-case', action='store_true', help='Whether to do lower case.')
-    group.add_argument('--extra-ids', type=int, default=0, help='Number of extra ids.')
-    group.add_argument('--append-eod', action='store_true', help='Append an <eod> token to the end of a document.')
+    group = parser.add_argument_group(title="tokenizer")
+    group.add_argument(
+        "--tokenizer-name",
+        type=str,
+        required=True,
+        choices=["BertTokenizer", "GPT2Tokenizer", "T5Tokenizer"],
+        help="What type of tokenizer to use.",
+    )
+    group.add_argument(
+        "--vocab-file", type=str, default=None, help="Path to the vocab file"
+    )
+    group.add_argument(
+        "--merge-file",
+        type=str,
+        default=None,
+        help="Path to the BPE merge file (if necessary).",
+    )
+    group.add_argument(
+        "--do-lower-case", action="store_true", help="Whether to do lower case."
+    )
+    group.add_argument("--extra-ids", type=int, default=0, help="Number of extra ids.")
+    group.add_argument(
+        "--append-eod",
+        action="store_true",
+        help="Append an <eod> token to the end of a document.",
+    )
 
-    group = parser.add_argument_group(title='output data')
-    group.add_argument('--output-prefix', type=str, required=True, help='Path to binary output file without suffix')
-    group.add_argument('--dataset-impl', type=str, default='mmap', choices=['lazy', 'cached', 'mmap'])
+    group = parser.add_argument_group(title="output data")
+    group.add_argument(
+        "--output-prefix",
+        type=str,
+        required=True,
+        help="Path to binary output file without suffix",
+    )
+    group.add_argument(
+        "--dataset-impl", type=str, default="mmap", choices=["lazy", "cached", "mmap"]
+    )
 
-    group = parser.add_argument_group(title='runtime')
-    group.add_argument('--workers', type=int, default=1, help='Number of worker processes to launch')
-    group.add_argument('--log-interval', type=int, default=100, help='Interval between progress updates')
+    group = parser.add_argument_group(title="runtime")
+    group.add_argument(
+        "--workers", type=int, default=1, help="Number of worker processes to launch"
+    )
+    group.add_argument(
+        "--log-interval",
+        type=int,
+        default=100,
+        help="Interval between progress updates",
+    )
     args = parser.parse_args()
 
-    if args.tokenizer_name.startswith('Bert'):
+    if args.tokenizer_name.startswith("Bert"):
         if not args.split_sentences:
-            print("Bert tokenizer detected, are you sure you don't want to split sentences?")
+            print(
+                "Bert tokenizer detected, are you sure you don't want to split sentences?"
+            )
 
     return args
 
@@ -131,17 +179,14 @@ def get_args():
 def parse_args_to_config(args):
     default_cfg = dict(
         tokenizer=dict(
-            tokenizer_name='', 
+            tokenizer_name="",
             tokenizer_cfg=dict(
-                vocab_file=None,
-                merge_file=None,
-                do_lower_case=False,
-                extra_ids=0,
+                vocab_file=None, merge_file=None, do_lower_case=False, extra_ids=0,
             ),
             append_eod=False,
         ),
         data=dict(make_vocab_size_divisible_by=128,),
-        dist=dict(tensor_parallel_size=1,)
+        dist=dict(tensor_parallel_size=1,),
     )
 
     cfg = DictConfig(default_cfg)
@@ -161,7 +206,7 @@ def main():
     startup_start = time.time()
 
     print("Opening", args.input)
-    fin = open(args.input, 'r', encoding='utf-8')
+    fin = open(args.input, "r", encoding="utf-8")
 
     if nltk_available and args.split_sentences:
         nltk.download("punkt", quiet=True)
@@ -183,8 +228,10 @@ def main():
     for key in args.json_keys:
         output_bin_files[key] = "{}_{}_{}.bin".format(args.output_prefix, key, level)
         output_idx_files[key] = "{}_{}_{}.idx".format(args.output_prefix, key, level)
-        builders[key] = indexed_dataset.make_builder(output_bin_files[key], impl=args.dataset_impl, vocab_size=len(tokenizer))
-    
+        builders[key] = indexed_dataset.make_builder(
+            output_bin_files[key], impl=args.dataset_impl, vocab_size=len(tokenizer)
+        )
+
     startup_end = time.time()
     proc_start = time.time()
     total_bytes_processed = 0
@@ -196,18 +243,22 @@ def main():
             if len(sentences) == 0:
                 continue
             for sentence in sentences:
-                builders[key].add_item(flow.tensor(sentence, dtype=flow.int32)) # write data into .bin file
+                builders[key].add_item(
+                    flow.tensor(sentence, dtype=flow.int32)
+                )  # write data into .bin file
             builders[key].end_document()
         if i % args.log_interval == 0:
             current = time.time()
             elapsed = current - proc_start
-            mbs = total_bytes_processed/elapsed/1024/1024
-            print(f"Processed {i} documents",
-                  f"({i/elapsed} docs/s, {mbs} MB/s).",
-                  file=sys.stderr)
+            mbs = total_bytes_processed / elapsed / 1024 / 1024
+            print(
+                f"Processed {i} documents",
+                f"({i/elapsed} docs/s, {mbs} MB/s).",
+                file=sys.stderr,
+            )
 
     for key in args.json_keys:
         builders[key].finalize(output_idx_files[key])   # write data into .idx file
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
