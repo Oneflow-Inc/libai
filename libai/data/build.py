@@ -22,16 +22,17 @@ from libai.utils import distributed as dist
 from .structures import Instance
 from .temp_file import CyclicSampler, SingleRoundSampler, BlendableDataset, split_ds
 
+
 def build_nlp_train_val_test_loader(
-        dataset, 
-        splits, 
-        weights, 
-        batch_size, 
-        sampler=None,
-        num_workers=4,
-        collate_fn=None, 
-        blendable_dataset=ConcatDataset,
-    ):
+    dataset,
+    splits,
+    weights,
+    batch_size,
+    sampler=None,
+    num_workers=4,
+    collate_fn=None,
+    blendable_dataset=ConcatDataset,
+):
     """ 
         Build nlp train_val_test dataloder
     """
@@ -51,11 +52,11 @@ def build_nlp_train_val_test_loader(
         test_datasets.append(test_dataset)
 
     # [dataset, dataset] -> dataset -> dataloader
-    train_dataset = blendable_dataset(train_datasets) #, weights=weights)
-    val_dataset = blendable_dataset(val_datasets) #, weights=weights)
-    test_dataset = blendable_dataset(test_datasets) #, weights=weights)
+    train_dataset = blendable_dataset(train_datasets)  # , weights=weights)
+    val_dataset = blendable_dataset(val_datasets)  # , weights=weights)
+    test_dataset = blendable_dataset(test_datasets)  # , weights=weights)
 
-    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn    
+    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
     if sampler is None:
         train_sampler = CyclicSampler(
             dataset=train_dataset,
@@ -65,7 +66,7 @@ def build_nlp_train_val_test_loader(
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
             seed=0,
-        )   
+        )
     valid_sampler = SingleRoundSampler(
         dataset=val_dataset,
         micro_batch_size=batch_size,
@@ -73,7 +74,7 @@ def build_nlp_train_val_test_loader(
         data_parallel_rank=dist.get_data_parallel_rank(),
         data_parallel_size=dist.get_data_parallel_size(),
         seed=0,
-        drop_last=False
+        drop_last=False,
     )
     test_sampler = SingleRoundSampler(
         dataset=test_dataset,
@@ -82,28 +83,36 @@ def build_nlp_train_val_test_loader(
         data_parallel_rank=dist.get_data_parallel_rank(),
         data_parallel_size=dist.get_data_parallel_size(),
         seed=0,
-        drop_last=False
+        drop_last=False,
     )
 
     train_loader = flowdata.DataLoader(
-        train_dataset, batch_sampler=train_sampler, num_workers=num_workers, collate_fn=collate_fn)
+        train_dataset,
+        batch_sampler=train_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+    )
 
     evalution_loader = flowdata.DataLoader(
-        val_dataset, batch_sampler=valid_sampler, num_workers=num_workers, collate_fn=collate_fn)
+        val_dataset,
+        batch_sampler=valid_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+    )
 
     test_loader = flowdata.DataLoader(
-        test_dataset, batch_sampler=test_sampler, num_workers=num_workers, collate_fn=collate_fn)
+        test_dataset,
+        batch_sampler=test_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+    )
 
     return train_loader, evalution_loader, test_loader
 
 
 def build_nlp_test_loader(
-        dataset, 
-        batch_size, 
-        sampler=None, 
-        num_workers=4, 
-        collate_fn=None,
-    ):
+    dataset, batch_size, sampler=None, num_workers=4, collate_fn=None,
+):
     """ 
         Build nlp test dataloder
     """
@@ -116,13 +125,12 @@ def build_nlp_test_loader(
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
             seed=0,
-            drop_last=False
-    )
+            drop_last=False,
+        )
     test_loader = flowdata.DataLoader(
-        dataset, batch_sampler=sampler, num_workers=num_workers, collate_fn=collate_fn)
+        dataset, batch_sampler=sampler, num_workers=num_workers, collate_fn=collate_fn
+    )
     return test_loader
-
-
 
 
 def build_image_train_loader(
@@ -158,7 +166,7 @@ def build_image_train_loader(
         batch_sampler=sampler,
         num_workers=num_workers,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
-        **kwargs
+        **kwargs,
     )
 
     return dataloader, None, None
@@ -178,7 +186,7 @@ def build_image_test_loader(
         batch_sampler=sampler,
         num_workers=num_workers,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
-        ** kwargs,
+        **kwargs,
     )
 
 

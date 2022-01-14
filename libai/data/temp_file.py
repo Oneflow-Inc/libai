@@ -26,8 +26,8 @@ from oneflow.utils.data import Sampler
 
 logger = logging.getLogger(__name__)
 
-class BlendableDataset(flow.utils.data.Dataset):
 
+class BlendableDataset(flow.utils.data.Dataset):
     def __init__(self, datasets, weights):
 
         self.datasets = datasets
@@ -51,13 +51,20 @@ class BlendableDataset(flow.utils.data.Dataset):
         self.dataset_sample_index = np.zeros(self.size, dtype=np.int64)
 
         from libai.data import helpers
+
         logger.info("building blending indices...")
-        helpers.build_blending_indices(self.dataset_index,
-                                       self.dataset_sample_index,
-                                       weights, num_datasets, self.size,
-                                       flow.env.get_rank() == 0)
-        logger.info("> elapsed time for building blendable dataset indices: "
-                    "{:.2f} (sec)".format(time.time() - start_time))
+        helpers.build_blending_indices(
+            self.dataset_index,
+            self.dataset_sample_index,
+            weights,
+            num_datasets,
+            self.size,
+            flow.env.get_rank() == 0,
+        )
+        logger.info(
+            "> elapsed time for building blendable dataset indices: "
+            "{:.2f} (sec)".format(time.time() - start_time)
+        )
 
     def __len__(self):
         return self.size
@@ -77,7 +84,7 @@ class BlendableDataset(flow.utils.data.Dataset):
             dataset_idx = self.dataset_index[idx]
             sample_idx = self.dataset_sample_index[idx]
             group_by_dataset[dataset_idx].append(sample_idx)
-        
+
         for dataset_idx, group_indice in group_by_dataset:
             self.datasets[dataset_idx].prefetch(group_indice)
 
@@ -92,10 +99,10 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
         split (1D array-like): proportions to split `ds`. `sum(splits) != 0`
     """
     if split is None:
-        split = [.8, .2, .0]
+        split = [0.8, 0.2, 0.0]
     split_sum = sum(split)
     if split_sum == 0:
-        raise Exception('Split cannot sum to 0.')
+        raise Exception("Split cannot sum to 0.")
     split = np.array(split)
     split /= split_sum
     ds_len = len(ds)
@@ -113,13 +120,13 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
             logger.info(f"Save split indices to {save_splits}")
     start_idx = 0
     residual_idx = 0
-    rtn_ds = [None]*len(split)
+    rtn_ds = [None] * len(split)
     for i, f in enumerate(split):
         if f != 0:
-            proportion = ds_len*split[i]
+            proportion = ds_len * split[i]
             residual_idx += proportion % 1
             split_ = int(int(proportion) + residual_idx)
-            split_inds = inds[start_idx:start_idx+max(split_, 1)]
+            split_inds = inds[start_idx : start_idx + max(split_, 1)]
             rtn_ds[i] = SplitDataset(ds, split_inds)
             start_idx += split_
             residual_idx %= 1
@@ -129,10 +136,11 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
 class SplitDataset(flow.utils.data.Dataset):
     """
     """
+
     def __init__(self, dataset, split_inds):
         self.split_inds = list(split_inds)
         self.wrapped_data = dataset
-        
+
     def __len__(self):
         return len(self.split_inds)
 
@@ -147,7 +155,6 @@ class SplitDataset(flow.utils.data.Dataset):
         self.wrapped_data.prefetch(indices)
 
 
-
 class CyclicSampler(Sampler):
     """ This sampler supports cyclic sampling, and it is also compatible with non data parallelism and data parallelism.
     
@@ -160,15 +167,16 @@ class CyclicSampler(Sampler):
         data_parallel_size: the size of data parallelism.
         seed: random seed, used for reproducing experiments.
     """
+
     def __init__(
-        self, 
-        dataset, 
-        micro_batch_size, 
-        shuffle=False, 
+        self,
+        dataset,
+        micro_batch_size,
+        shuffle=False,
         consumed_samples=0,
-        data_parallel_rank=0, 
-        data_parallel_size=1, 
-        seed=0, 
+        data_parallel_rank=0,
+        data_parallel_size=1,
+        seed=0,
     ):
         self.dataset = dataset
         self.data_size = len(self.dataset)
@@ -181,7 +189,7 @@ class CyclicSampler(Sampler):
         self.remain_data_size = self.data_size % self.actual_batch_size
         self.active_data_size = self.data_size - self.remain_data_size
         self.consumed_samples = consumed_samples
-        
+
         self.seed = seed
 
     def __iter__(self):
@@ -193,7 +201,9 @@ class CyclicSampler(Sampler):
         while True:
             current_epoch_samples = self.consumed_samples % self.data_size
 
-            bucket_size = self.data_size // self.actual_batch_size * self.micro_batch_size
+            bucket_size = (
+                self.data_size // self.actual_batch_size * self.micro_batch_size
+            )
             bucket_offset = current_epoch_samples // self.data_parallel_size
             start_idx = self.data_parallel_rank * bucket_size
 
@@ -205,10 +215,13 @@ class CyclicSampler(Sampler):
             else:
                 seq_idx = flow.arange(bucket_size).tolist()
                 indices = [start_idx + x for x in seq_idx[bucket_offset:]]
-            
+
             epoch += 1
 
-            if hasattr(self.dataset, "supports_prefetch") and self.dataset.supports_prefetch:
+            if (
+                hasattr(self.dataset, "supports_prefetch")
+                and self.dataset.supports_prefetch
+            ):
                 self.dataset.prefetch(indices)
 
             for idx in indices:
@@ -242,15 +255,16 @@ class SingleRoundSampler(Sampler):
         seed: random seed, used for reproducing experiments.
         drop_last: whether to drop the remaining data. Default to `False`.
     """
+
     def __init__(
-        self, 
-        dataset, 
-        micro_batch_size, 
-        shuffle=False, 
-        data_parallel_rank=0, 
-        data_parallel_size=1, 
-        seed=0, 
-        drop_last=False
+        self,
+        dataset,
+        micro_batch_size,
+        shuffle=False,
+        data_parallel_rank=0,
+        data_parallel_size=1,
+        seed=0,
+        drop_last=False,
     ):
         self.dataset = dataset
         self.data_size = len(self.dataset)
@@ -267,7 +281,7 @@ class SingleRoundSampler(Sampler):
         bucket_size = self.data_size // self.data_parallel_size
         remain = self.data_size % self.data_parallel_size
         start_idx = self.data_parallel_rank * bucket_size
-        
+
         if self.data_parallel_rank < remain:
             bucket_size += 1
         start_idx += min(self.data_parallel_rank, remain)
@@ -280,8 +294,11 @@ class SingleRoundSampler(Sampler):
         else:
             seq_idx = flow.arange(bucket_size).tolist()
             indices = [start_idx + x for x in seq_idx]
-        
-        if hasattr(self.dataset, "supports_prefetch") and self.dataset.supports_prefetch:
+
+        if (
+            hasattr(self.dataset, "supports_prefetch")
+            and self.dataset.supports_prefetch
+        ):
             self.dataset.prefetch(indices)
 
         batch = []
@@ -290,7 +307,7 @@ class SingleRoundSampler(Sampler):
             if len(batch) == self.micro_batch_size:
                 yield batch
                 batch = []
-        
+
         if len(batch) > 0 and not self.drop_last:
             yield batch
 
