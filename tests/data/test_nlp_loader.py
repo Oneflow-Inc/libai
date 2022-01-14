@@ -14,21 +14,22 @@
 # limitations under the License.
 import sys
 sys.path.append(".")
+
 from libai.config.instantiate import instantiate
 from libai.config import LazyConfig
 from libai.data.structures import Instance
 
-cfg = LazyConfig.load("./configs/common/data/cv_data.py")
+cfg = LazyConfig.load("./configs/common/data/nlp_data.py")
 
 train_loader, val_loader, test_loader = instantiate(cfg.dataloader.train)
-assert len(train_loader) == 80073
-for sample in train_loader:
+print(len(train_loader), len(val_loader), len(test_loader))
+for sample in test_loader:
     assert isinstance(sample, Instance)
     break
 
 test_loader = instantiate(cfg.dataloader.test)
-assert len(test_loader[0]) == 3125
 for loader in test_loader:
+    print(f"test loader: {len(loader)}")
     for sample in loader:
         assert isinstance(sample, Instance)
         break
