@@ -81,7 +81,7 @@ class Encoder(object):  # split sentence, tokenize
 
         else:
             Encoder.splitter = IdentitySplitter()
-    
+
     def encode(self, json_line):
         data = json.loads(json_line)
         ids = {}
@@ -92,7 +92,9 @@ class Encoder(object):  # split sentence, tokenize
                 sentence_ids = Encoder.tokenizer.encode(sentence)
                 if len(sentence_ids) > 0:
                     doc_ids.append(sentence_ids)
-            if len(doc_ids) > 0 and self.args.append_eod:   # append eod token when at the enc of document
+            if (
+                len(doc_ids) > 0 and self.args.append_eod
+            ):  # append eod token when at the enc of document
                 doc_ids[-1].append(Encoder.tokenizer.eod)
             ids[key] = doc_ids
         return ids, len(json_line)
@@ -258,7 +260,8 @@ def main():
             )
 
     for key in args.json_keys:
-        builders[key].finalize(output_idx_files[key])   # write data into .idx file
+        builders[key].finalize(output_idx_files[key])  # write data into .idx file
+
 
 if __name__ == "__main__":
     main()
