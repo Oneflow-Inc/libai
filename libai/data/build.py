@@ -13,11 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import omegaconf
-
 import oneflow.utils.data as flowdata
 from oneflow.utils.data.dataset import ConcatDataset
+
 from libai.utils import distributed as dist
 from .structures import Instance
 from .temp_file import CyclicSampler, SingleRoundSampler, BlendableDataset, split_ds
@@ -38,8 +37,9 @@ def build_nlp_train_val_test_loader(
     """ 
     Build nlp train_val_test dataloder
     """
-    assert len(dataset) == len(splits)
-    assert len(dataset) == len(weights)
+    # TODO: add input type 
+    assert len(dataset) == len(splits), "datasets length must equal splits length"
+    assert len(dataset) == len(weights), "datasets length must equal weights length"
 
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
@@ -95,7 +95,7 @@ def build_nlp_train_val_test_loader(
         collate_fn=collate_fn,
     )
 
-    evalution_loader = flowdata.DataLoader(
+    valid_loader = flowdata.DataLoader(
         val_dataset,
         batch_sampler=valid_sampler,
         num_workers=num_workers,
@@ -109,7 +109,7 @@ def build_nlp_train_val_test_loader(
         collate_fn=collate_fn,
     )
 
-    return train_loader, evalution_loader, test_loader
+    return train_loader, valid_loader, test_loader
 
 
 def build_nlp_test_loader(
@@ -118,6 +118,7 @@ def build_nlp_test_loader(
     """ 
     Build nlp test dataloder
     """
+    # TODO: add input type 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
     if sampler is None:
         sampler = SingleRoundSampler(
@@ -149,6 +150,7 @@ def build_image_train_loader(
         dataset: Dataset list or single dataset.
         batch_size: Batch-size for each GPU.
     """
+    # TODO: add input type 
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
@@ -177,7 +179,7 @@ def build_image_train_loader(
 def build_image_test_loader(
     dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
 ):
-
+    # TODO: add input type 
     if sampler is None:
         # TODO: initilize test_sampler
         sampler = SingleRoundSampler()
