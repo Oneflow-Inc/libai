@@ -1,6 +1,4 @@
-from re import L
 from libai.config import LazyCall
-from libai.config import arguments
 from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
 from tests.data.datasets.demo_dataset import DemoNlpDataset
 
