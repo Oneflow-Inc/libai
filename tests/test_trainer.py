@@ -21,6 +21,14 @@ sys.path.append(".")
 from libai.trainer import DefaultTrainer, default_setup
 from libai.config import default_argument_parser, LazyCall
 from libai.optim import get_default_optimizer_params
+from libai.scheduler import WarmupCosineLR
+from libai.data.build import build_image_train_loader, build_image_test_loader
+from libai.data.datasets import ImageNetDataset
+
+from configs.common.data.transform import (
+    default_train_transform,
+    default_test_transform,
+)
 
 from tests.layers.test_trainer_model import build_model, build_graph
 
@@ -42,10 +50,10 @@ def setup(args):
             pipeline_num_layers=4,
         ),
         start_iter=0,
-        train_iter=6000,
+        train_iter=20,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
-        log_period=20,
+        log_period=1,
         checkpointer=dict(period=100),
         nccl_fusion_threshold_mb=16,
         nccl_fusion_max_ops=24,
@@ -65,12 +73,11 @@ def setup(args):
         do_bias_correction=True,
     )
 
-    cfg.lr_scheduler = LazyCall(flow.optim.lr_scheduler.WarmUpLR)(
-        lrsch_or_optimizer=LazyCall(flow.optim.lr_scheduler.CosineDecayLR)(
-            decay_steps=1000, alpha=0.1,
-        ),
-        warmup_factor=0,
-        warmup_iters=100,
+    cfg.scheduler = LazyCall(WarmupCosineLR)(
+        max_iters=2000,
+        alpha=0.001,
+        warmup_factor=0.001,
+        warmup_iters=1000,
         warmup_method="linear",
     )
 
@@ -80,19 +87,7 @@ def setup(args):
     return cfg
 
 
-def get_batch(data_interator):
-    # data = next(data_interator)
-    data = flow.randn(32, 512).to("cuda")
-    data = data.to_consistent(
-        sbp=flow.sbp.split(0), placement=flow.env.all_device_placement("cuda")
-    )
-    return (data,)
-
-
 class DemoTrainer(DefaultTrainer):
-    def run_step(self):
-        return super().run_step(get_batch)
-
     @classmethod
     def build_model(cls, cfg):
         """
@@ -109,8 +104,23 @@ class DemoTrainer(DefaultTrainer):
         return build_graph(cfg, model, optimizer, lr_scheduler)
 
     @classmethod
-    def build_train_valid_test_loader(cls, cfg):
-        return range(10), range(10), range(10)
+    def get_batch(cls, data):
+        return [
+            flow.randn(
+                32,
+                512,
+                sbp=flow.sbp.split(0),
+                placement=flow.placement("cuda", {0: [0]}),
+            )
+        ]
+
+    @classmethod
+    def build_train_loader(cls, cfg):
+        return range(1000), range(10), range(10)
+
+    @classmethod
+    def build_test_loader(cls, cfg):
+        return [range(10)]
 
 
 def main(args):
