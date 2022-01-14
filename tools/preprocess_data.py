@@ -54,7 +54,7 @@ class IdentitySplitter(object):
         return text
 
 
-class Encoder(object):  # 分句、分词
+class Encoder(object):  # split sentence, tokenize
     def __init__(self, args, cfg):
         self.args = args
         self.cfg = cfg
@@ -78,7 +78,7 @@ class Encoder(object):  # 分句、分词
         else:
             Encoder.splitter = IdentitySplitter()
     
-    def encode(self, json_line):    # 读取json文件，包含文档编号和文档内容
+    def encode(self, json_line):
         data = json.loads(json_line)
         ids = {}
         for key in self.args.json_keys:
@@ -88,7 +88,7 @@ class Encoder(object):  # 分句、分词
                 sentence_ids = Encoder.tokenizer.encode(sentence)
                 if len(sentence_ids) > 0:
                     doc_ids.append(sentence_ids)
-            if len(doc_ids) > 0 and self.args.append_eod:   # 文档的最后一句话加入eod标识符
+            if len(doc_ids) > 0 and self.args.append_eod:   # append eod token when at the enc of document
                 doc_ids[-1].append(Encoder.tokenizer.eod)
             ids[key] = doc_ids
         return ids, len(json_line)
@@ -163,14 +163,13 @@ def main():
     print("Opening", args.input)
     fin = open(args.input, 'r', encoding='utf-8')
 
-    # if nltk_available and args.split_sentences:
-    #     nltk.download("punkt", quiet=True)
+    if nltk_available and args.split_sentences:
+        nltk.download("punkt", quiet=True)
 
-    encoder = Encoder(args, cfg) # 创建encoder和tokenizer，用于多进程处理数据
+    encoder = Encoder(args, cfg)
     tokenizer = build_tokenizer(cfg)
     pool = multiprocessing.Pool(args.workers, initializer=encoder.initializer)
     encoded_docs = pool.imap(encoder.encode, fin, 25)
-    #encoded_docs = map(encoder.encode, fin)
 
     level = "document"
     if args.split_sentences:
@@ -181,7 +180,7 @@ def main():
     output_bin_files = {}
     output_idx_files = {}
     builders = {}
-    for key in args.json_keys:  # 对于每个文档，创建bin和idx文件，这里没有划分训练集、验证集、测试集
+    for key in args.json_keys:
         output_bin_files[key] = "{}_{}_{}.bin".format(args.output_prefix, key, level)
         output_idx_files[key] = "{}_{}_{}.idx".format(args.output_prefix, key, level)
         builders[key] = indexed_dataset.make_builder(output_bin_files[key], impl=args.dataset_impl, vocab_size=len(tokenizer))
@@ -197,7 +196,7 @@ def main():
             if len(sentences) == 0:
                 continue
             for sentence in sentences:
-                builders[key].add_item(flow.tensor(sentence, dtype=flow.int32)) # 往bin文件中写数据
+                builders[key].add_item(flow.tensor(sentence, dtype=flow.int32)) # write data into .bin file
             builders[key].end_document()
         if i % args.log_interval == 0:
             current = time.time()
@@ -208,7 +207,7 @@ def main():
                   file=sys.stderr)
 
     for key in args.json_keys:
-        builders[key].finalize(output_idx_files[key])   # 往idx文件中写数据
+        builders[key].finalize(output_idx_files[key])   # write data into .idx file
 
 if __name__ == '__main__':
     main()

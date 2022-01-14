@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tokenization class for T5."""
+
+"""Tokenization class for T5 (sentence piece)."""
 
 import json
 import logging
@@ -22,6 +23,7 @@ from io import open
 from functools import lru_cache
 
 import sentencepiece as spm
+
 from .tokenization_base import PreTrainedTokenizer
 from .build import TOKENIZER_REGISTRY
 
