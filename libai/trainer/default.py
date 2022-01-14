@@ -18,6 +18,7 @@ import os
 
 import oneflow as flow
 from libai.config import LazyConfig, try_get_key
+from libai.config.instantiate import instantiate
 from libai.data import Instance
 from libai.tokenizer import build_tokenizer
 from libai.models import build_model, build_graph
@@ -240,22 +241,27 @@ class DefaultTrainer(TrainerBase):
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
 
-        (
-            self.train_data_iterator,
-            self.valid_data_iterator,
-            self.test_data_iterator,
-        ) = self.build_train_valid_test_loader(cfg)
+        self.train_loader = None
+        self.test_loader = []
+
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg)
+        self.train_loader = train_loader
+
+        if val_loader is not None:
+            self.test_loader.append(val_loader)
+        if test_loader is not None:
+            self.test_loader.append(test_loader)
+
+        self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
             graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
             graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
+            self._trainer = GraphTrainer(graph_train, self.train_loader)
         else:
-            self._trainer = EagerTrainer(
-                self.model, self.train_data_iterator, self.optimizer
-            )
+            self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)
 
         self.global_batch_size = cfg.train.global_batch_size
         self.max_iter = cfg.train.train_iter
@@ -354,6 +360,9 @@ class DefaultTrainer(TrainerBase):
         If you want to do something with batched data before model, (e.g. mixup),
         you can rewrite this function.
         """
+        if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
+            data.reraise()
+
         ret_dict = {}
         ret_list = []
         for key, value in data.get_fields().items():
@@ -426,15 +435,28 @@ class DefaultTrainer(TrainerBase):
         return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
-    def build_train_valid_test_loader(cls, cfg):
+    def build_train_loader(cls, cfg):
         """
         Returns:
             iterable
         It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
-        assert try_get_key(cfg, "data") is not None, "cfg must contain `data` namespace"
+        assert (
+            try_get_key(cfg, "dataloader.train") is not None
+        ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
-        logger.info("Prepare training set")
-        # TODO(l1aoxingyu): add dataloader
-        return None  # build_train_valid_test_data_iterators(cfg)
+        logger.info("Prepare training, validating, testing set")
+        train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
+        return train_loader, valid_loader, test_loader
+
+    @classmethod
+    def build_test_loader(cls, cfg):
+        # TODO: add doc string
+        assert (
+            try_get_key(cfg, "dataloader.test") is not None
+        ), "cfg must contain `dataloader.test` namespace"
+        logger = logging.getLogger(__name__)
+        logger.info("Prepare testing set")
+        test_loader = instantiate(cfg.dataloader.test)  # list[dataloader1, dataloader2]
+        return test_loader
