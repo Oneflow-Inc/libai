@@ -30,11 +30,13 @@ def build_nlp_train_val_test_loader(
     batch_size,
     sampler=None,
     num_workers=4,
+    consumed_samples=0,
+    seed=0,
     collate_fn=None,
     blendable_dataset=ConcatDataset,
 ):
     """ 
-        Build nlp train_val_test dataloder
+    Build nlp train_val_test dataloder
     """
     assert len(dataset) == len(splits)
     assert len(dataset) == len(weights)
@@ -62,10 +64,10 @@ def build_nlp_train_val_test_loader(
             dataset=train_dataset,
             micro_batch_size=batch_size,
             shuffle=True,
-            consumed_samples=0,
+            consumed_samples=consumed_samples,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
-            seed=0,
+            seed=seed,
         )
     valid_sampler = SingleRoundSampler(
         dataset=val_dataset,
@@ -73,7 +75,7 @@ def build_nlp_train_val_test_loader(
         shuffle=False,
         data_parallel_rank=dist.get_data_parallel_rank(),
         data_parallel_size=dist.get_data_parallel_size(),
-        seed=0,
+        seed=seed,
         drop_last=False,
     )
     test_sampler = SingleRoundSampler(
@@ -82,7 +84,7 @@ def build_nlp_train_val_test_loader(
         shuffle=False,
         data_parallel_rank=dist.get_data_parallel_rank(),
         data_parallel_size=dist.get_data_parallel_size(),
-        seed=0,
+        seed=seed,
         drop_last=False,
     )
 
@@ -111,7 +113,7 @@ def build_nlp_train_val_test_loader(
 
 
 def build_nlp_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, collate_fn=None,
+    dataset, batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
 ):
     """ 
         Build nlp test dataloder
@@ -124,7 +126,7 @@ def build_nlp_test_loader(
             shuffle=False,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
-            seed=0,
+            seed=seed,
             drop_last=False,
         )
     test_loader = flowdata.DataLoader(
