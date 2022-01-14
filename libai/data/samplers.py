@@ -159,7 +159,7 @@ class SingleRoundSampler(Sampler):
                 yield batch
                 batch = []
         
-        if len(batch) > 0 and self.drop_last:
+        if len(batch) > 0 and not self.drop_last:
             yield batch
 
     def __len__(self):

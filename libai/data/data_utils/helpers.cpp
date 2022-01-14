@@ -214,6 +214,8 @@ py::array build_mapping_impl(
   auto docs = docs_.unchecked<1>();
   auto sizes = sizes_.unchecked<1>();
 
+  // For efficiency, convert probability to ratio. Note: rand() generates int.
+  int32_t short_seq_ratio = 0;
   if (short_seq_prob > 0) {
     short_seq_ratio = static_cast<int32_t>(round(1.0 / short_seq_prob));
   }
@@ -248,9 +250,8 @@ py::array build_mapping_impl(
   bool second = false;
   for (int32_t iteration = 0; iteration < 2; ++iteration) {
 
-    // todo(dangkai): we did not set random seed here, so regenerated sample indices may be different.
-    // maybe it works, if does not work, fix it.
-    std::mt19937 rand32_gen();
+    // todo(dangkai): we set seed as a constant value.
+    std::mt19937 rand32_gen(42);
 
     // Set the flag on second iteration.
     second = (iteration == 1);
