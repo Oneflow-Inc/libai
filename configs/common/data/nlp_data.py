@@ -3,6 +3,12 @@ from omegaconf import OmegaConf
 from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
 from tests.data.datasets.demo_dataset import DemoNlpDataset
 
+tokenizer = dict(
+    tokenizer_name="BertTokenizer",
+    tokenizer_cfg=dict(vocab_file="bert-vocab.txt", do_lower_case=True,),
+    append_eod=False,
+)
+
 dataloader = OmegaConf.create()
 
 dataloader.train=LazyCall(build_nlp_train_val_test_loader)(
