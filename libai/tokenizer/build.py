@@ -26,14 +26,17 @@ The registered object will be called with `obj(cfg)`
 and expected to return a `PreTrainedTokenizer` object.
 """
 
+
 def build_tokenizer(cfg):
     """Initialize tokenizer."""
     if "_target_" in cfg.tokenizer:
         tokenizer = instantiate(cfg.tokenizer)
     else:
         tokenizer_name = cfg.tokenizer.tokenizer_name
-        tokenizer = TOKENIZER_REGISTRY.get(tokenizer_name)(**cfg.tokenizer.tokenizer_cfg)
-    
+        tokenizer = TOKENIZER_REGISTRY.get(tokenizer_name)(
+            **cfg.tokenizer.tokenizer_cfg
+        )
+
     if cfg.tokenizer.append_eod and tokenizer.eod_token is None:
         if tokenizer.eos_token is not None:
             tokenizer.eod_token = tokenizer.eos_token
@@ -54,6 +57,9 @@ def _vocab_size_with_padding(orig_vocab_size, cfg):
     multiple = cfg.data.make_vocab_size_divisible_by * cfg.dist.tensor_parallel_size
     while (padded_vocab_size % multiple) != 0:
         padded_vocab_size += 1
-    logger.info(' > padded vocab (size: {}) with {} dummy tokens (new size: {})'.format(
-            orig_vocab_size, padded_vocab_size - orig_vocab_size, padded_vocab_size))
+    logger.info(
+        " > padded vocab (size: {}) with {} dummy tokens (new size: {})".format(
+            orig_vocab_size, padded_vocab_size - orig_vocab_size, padded_vocab_size
+        )
+    )
     return padded_vocab_size

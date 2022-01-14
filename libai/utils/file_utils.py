@@ -3,7 +3,7 @@ Utilities for working with the local dataset cache.
 This file is adapted from the AllenNLP library at https://github.com/allenai/allennlp
 Copyright by the AllenNLP authors.
 """
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
 import json
@@ -45,17 +45,17 @@ def url_to_filename(url, etag=None):
     so that TF 2.0 can identify it as a HDF5 file
     (see https://github.com/tensorflow/tensorflow/blob/00fad90125b18b80fe054de1055770cfb8fe4ba3/tensorflow/python/keras/engine/network.py#L1380)
     """
-    url_bytes = url.encode('utf-8')
+    url_bytes = url.encode("utf-8")
     url_hash = sha256(url_bytes)
     filename = url_hash.hexdigest()
 
     if etag:
-        etag_bytes = etag.encode('utf-8')
+        etag_bytes = etag.encode("utf-8")
         etag_hash = sha256(etag_bytes)
-        filename += '.' + etag_hash.hexdigest()
+        filename += "." + etag_hash.hexdigest()
 
-    if url.endswith('.h5'):
-        filename += '.h5'
+    if url.endswith(".h5"):
+        filename += ".h5"
 
     return filename
 
@@ -74,14 +74,14 @@ def filename_to_url(filename, cache_dir=None):
     if not os.path.exists(cache_path):
         raise EnvironmentError("file {} not found".format(cache_path))
 
-    meta_path = cache_path + '.json'
+    meta_path = cache_path + ".json"
     if not os.path.exists(meta_path):
         raise EnvironmentError("file {} not found".format(meta_path))
 
     with open(meta_path, encoding="utf-8") as meta_file:
         metadata = json.load(meta_file)
-    url = metadata['url']
-    etag = metadata['etag']
+    url = metadata["url"]
+    etag = metadata["etag"]
 
     return url, etag
 
@@ -105,18 +105,25 @@ def cached_path(url_or_filename, cache_dir=None, force_download=False, proxies=N
 
     parsed = urlparse(url_or_filename)
 
-    if parsed.scheme in ('http', 'https', 's3'):
+    if parsed.scheme in ("http", "https", "s3"):
         # URL, so get it from the cache (downloading if necessary)
-        return get_from_cache(url_or_filename, cache_dir=cache_dir, force_download=force_download, proxies=proxies)
+        return get_from_cache(
+            url_or_filename,
+            cache_dir=cache_dir,
+            force_download=force_download,
+            proxies=proxies,
+        )
     elif os.path.exists(url_or_filename):
         # File, and it exists.
         return url_or_filename
-    elif parsed.scheme == '':
+    elif parsed.scheme == "":
         # File, but it doesn't exist.
         raise EnvironmentError("file {} not found".format(url_or_filename))
     else:
         # Something unknown
-        raise ValueError("unable to parse {} as a URL or as a local path".format(url_or_filename))
+        raise ValueError(
+            "unable to parse {} as a URL or as a local path".format(url_or_filename)
+        )
 
 
 def split_s3_path(url):
@@ -170,17 +177,19 @@ def s3_get(url, temp_file, proxies=None):
 
 def http_get(url, temp_file, proxies=None):
     req = requests.get(url, stream=True, proxies=proxies)
-    content_length = req.headers.get('Content-Length')
+    content_length = req.headers.get("Content-Length")
     total = int(content_length) if content_length is not None else None
     progress = tqdm(unit="B", total=total)
     for chunk in req.iter_content(chunk_size=1024):
-        if chunk: # filter out keep-alive new chunks
+        if chunk:  # filter out keep-alive new chunks
             progress.update(len(chunk))
             temp_file.write(chunk)
     progress.close()
 
 
-def get_from_cache(url, cache_dir=None, force_download=False, proxies=None, etag_timeout=10):
+def get_from_cache(
+    url, cache_dir=None, force_download=False, proxies=None, etag_timeout=10
+):
     """
     Given a URL, look for the corresponding dataset in the local cache.
     If it's not there, download it. Then return the path to the cached file.
@@ -200,7 +209,9 @@ def get_from_cache(url, cache_dir=None, force_download=False, proxies=None, etag
         etag = s3_etag(url, proxies=proxies)
     else:
         try:
-            response = requests.head(url, allow_redirects=True, proxies=proxies, timeout=etag_timeout)
+            response = requests.head(
+                url, allow_redirects=True, proxies=proxies, timeout=etag_timeout
+            )
             if response.status_code != 200:
                 etag = None
             else:
@@ -209,7 +220,7 @@ def get_from_cache(url, cache_dir=None, force_download=False, proxies=None, etag
             etag = None
 
     if sys.version_info[0] == 2 and etag is not None:
-        etag = etag.decode('utf-8')
+        etag = etag.decode("utf-8")
     filename = url_to_filename(url, etag)
 
     # get cache path to put the file
@@ -218,8 +229,8 @@ def get_from_cache(url, cache_dir=None, force_download=False, proxies=None, etag
     # If we don't have a connection (etag is None) and can't identify the file
     # try to get the last downloaded one
     if not os.path.exists(cache_path) and etag is None:
-        matching_files = fnmatch.filter(os.listdir(cache_dir), filename + '.*')
-        matching_files = list(filter(lambda s: not s.endswith('.json'), matching_files))
+        matching_files = fnmatch.filter(os.listdir(cache_dir), filename + ".*")
+        matching_files = list(filter(lambda s: not s.endswith(".json"), matching_files))
         if matching_files:
             cache_path = os.path.join(cache_dir, matching_files[-1])
 
@@ -227,7 +238,11 @@ def get_from_cache(url, cache_dir=None, force_download=False, proxies=None, etag
         # Download to temporary file, then copy to cache dir once finished.
         # Otherwise you get corrupt cache entries if the download gets interrupted.
         with tempfile.NamedTemporaryFile() as temp_file:
-            logger.info("%s not found in cache or force_download set to True, downloading to %s", url, temp_file.name)
+            logger.info(
+                "%s not found in cache or force_download set to True, downloading to %s",
+                url,
+                temp_file.name,
+            )
 
             # GET file object
             if url.startswith("s3://"):
@@ -241,16 +256,18 @@ def get_from_cache(url, cache_dir=None, force_download=False, proxies=None, etag
             temp_file.seek(0)
 
             logger.info("copying %s to cache at %s", temp_file.name, cache_path)
-            with open(cache_path, 'wb') as cache_file:
+            with open(cache_path, "wb") as cache_file:
                 shutil.copyfileobj(temp_file, cache_file)
 
             logger.info("creating metadata file for %s", cache_path)
-            meta = {'url': url, 'etag': etag}
-            meta_path = cache_path + '.json'
-            with open(meta_path, 'w') as meta_file:
+            meta = {"url": url, "etag": etag}
+            meta_path = cache_path + ".json"
+            with open(meta_path, "w") as meta_file:
                 output_string = json.dumps(meta)
                 if sys.version_info[0] == 2 and isinstance(output_string, str):
-                    output_string = unicode(output_string, 'utf-8')  # The beauty of python 2
+                    output_string = unicode(
+                        output_string, "utf-8"
+                    )  # The beauty of python 2
                 meta_file.write(output_string)
 
             logger.info("removing temp file %s", temp_file.name)
