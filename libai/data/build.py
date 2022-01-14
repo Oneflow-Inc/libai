@@ -24,13 +24,14 @@ from .structures import Instance
 
 
 def build_image_train_loader(
-    dataset, 
-    batch_size, 
-    sampler=None, 
-    num_workers=4, 
-    collate_fn=None, 
+    dataset,
+    batch_size,
+    sampler=None,
+    num_workers=4,
+    collate_fn=None,
     dataset_mixer=ConcatDataset,
-    **kwargs):
+    **kwargs
+):
     """
     Args:
         dataset: Dataset list or single dataset.
@@ -51,34 +52,33 @@ def build_image_train_loader(
         sampler = CyclicSampler()
 
     dataloader = flowdata.DataLoader(
-        dataset, 
+        dataset,
         batch_sampler=sampler,
-        num_workers=num_workers, 
-        collate_fn = trivial_batch_collator if collate_fn is None else collate_fn, 
+        num_workers=num_workers,
+        collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs
-        )
+    )
 
     return dataloader, None, None
 
 
 def build_image_test_loader(
-    dataset, 
-    batch_size, 
-    sampler=None, 
-    num_workers=4, 
-    collate_fn=None, 
-    **kwargs):
+    dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
+):
 
     if sampler is None:
         # TODO: initilize test_sampler
         sampler = SingleRoundSampler()
 
-    return flowdata.DataLoader(dataset, 
-                               batch_size=batch_size, 
-                               batch_sampler=sampler, 
-                               num_workers=num_workers, 
-                               collate_fn = trivial_batch_collator if collate_fn is None else collate_fn 
-                               **kwargs)
+    return flowdata.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        batch_sampler=sampler,
+        num_workers=num_workers,
+        collate_fn=trivial_batch_collator
+        if collate_fn is None
+        else collate_fn ** kwargs,
+    )
 
 
 def trivial_batch_collator(batch):
@@ -87,4 +87,4 @@ def trivial_batch_collator(batch):
     ), "batch[0] must be `instance` for trivial batch collator"
     batch = Instance.stack(batch)
 
-    return batch 
+    return batch

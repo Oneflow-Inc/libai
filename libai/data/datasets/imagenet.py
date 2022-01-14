@@ -26,21 +26,23 @@ class ImageNetDataset(datasets.ImageFolder):
     """ImageNet Dataset
     """
 
-    def __init__(self, 
-                 root: str,
-                 train: bool = True, 
-                 transform: Optional[Callable] = None,
-                 **kwargs):
+    def __init__(
+        self,
+        root: str,
+        train: bool = True,
+        transform: Optional[Callable] = None,
+        **kwargs
+    ):
         prefix = "train" if train else "val"
         root = os.path.join(root, prefix)
-        super(ImageNetDataset, self).__init__(root=root, 
-                                              transform=transform,
-                                              **kwargs)
-    
+        super(ImageNetDataset, self).__init__(root=root, transform=transform, **kwargs)
+
     def __getitem__(self, index: int):
         sample, target = super().__getitem__(index)
         data_sample = Instance(
-            images = DistTensorData(sample, placement_idx=0),
-            targets = DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1)
+            images=DistTensorData(sample, placement_idx=0),
+            targets=DistTensorData(
+                flow.tensor(target, dtype=flow.long), placement_idx=-1
+            ),
         )
         return data_sample

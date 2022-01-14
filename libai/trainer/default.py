@@ -262,9 +262,7 @@ class DefaultTrainer(TrainerBase):
             graph_eval = self.build_graph(cfg, self.model, is_train=False)
             self._trainer = GraphTrainer(graph_train, self.train_loader)
         else:
-            self._trainer = EagerTrainer(
-                self.model, self.train_loader, self.optimizer
-            )
+            self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)
 
         self.global_batch_size = cfg.train.global_batch_size
         self.max_iter = cfg.train.train_iter
@@ -438,17 +436,21 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
-        assert try_get_key(cfg, "dataloader.train") is not None, "cfg must contain `dataloader.train` namespace"
+        assert (
+            try_get_key(cfg, "dataloader.train") is not None
+        ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training, validating, testing set")
         train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
         return train_loader, valid_loader, test_loader
-    
+
     @classmethod
     def build_test_loader(cls, cfg):
         # TODO: add doc string
-        assert try_get_key(cfg, "dataloader.test") is not None, "cfg must contain `dataloader.test` namespace"
+        assert (
+            try_get_key(cfg, "dataloader.test") is not None
+        ), "cfg must contain `dataloader.test` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
-        test_loader = instantiate(cfg.dataloader.test) # list[dataloader1, dataloader2]
+        test_loader = instantiate(cfg.dataloader.test)  # list[dataloader1, dataloader2]
         return test_loader

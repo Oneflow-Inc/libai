@@ -25,7 +25,10 @@ from libai.scheduler import WarmupCosineLR
 from libai.data.build import build_image_train_loader, build_image_test_loader
 from libai.data.datasets import ImageNetDataset
 
-from configs.common.data.transform import default_train_transform, default_test_transform
+from configs.common.data.transform import (
+    default_train_transform,
+    default_test_transform,
+)
 
 from tests.layers.test_trainer_model import build_model, build_graph
 
@@ -71,11 +74,11 @@ def setup(args):
     )
 
     cfg.scheduler = LazyCall(WarmupCosineLR)(
-        max_iters = 2000,
-        alpha = 0.001,
-        warmup_factor = 0.001,
-        warmup_iters = 1000,
-        warmup_method = "linear"
+        max_iters=2000,
+        alpha=0.001,
+        warmup_factor=0.001,
+        warmup_iters=1000,
+        warmup_method="linear",
     )
 
     cfg.graph = dict(enabled=True,)
@@ -84,9 +87,7 @@ def setup(args):
     return cfg
 
 
-
 class DemoTrainer(DefaultTrainer):
-
     @classmethod
     def build_model(cls, cfg):
         """
@@ -104,7 +105,14 @@ class DemoTrainer(DefaultTrainer):
 
     @classmethod
     def get_batch(cls, data):
-        return [flow.randn(32, 512, sbp=flow.sbp.split(0), placement=flow.placement("cuda", {0: [0]}))]
+        return [
+            flow.randn(
+                32,
+                512,
+                sbp=flow.sbp.split(0),
+                placement=flow.placement("cuda", {0: [0]}),
+            )
+        ]
 
     @classmethod
     def build_train_loader(cls, cfg):

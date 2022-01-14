@@ -26,22 +26,24 @@ class MNISTDataset(datasets.MNIST):
     """CIFAR10 Dataset
     """
 
-    def __init__(self, 
-                 root: str, 
-                 train: bool = True, 
-                 transform: Optional[Callable] = None, 
-                 download: bool = False,
-                 **kwargs):
-        super(MNISTDataset, self).__init__(root=root, 
-                                           train=train,
-                                           transform=transform,
-                                           download=download,
-                                           **kwargs)
-    
+    def __init__(
+        self,
+        root: str,
+        train: bool = True,
+        transform: Optional[Callable] = None,
+        download: bool = False,
+        **kwargs
+    ):
+        super(MNISTDataset, self).__init__(
+            root=root, train=train, transform=transform, download=download, **kwargs
+        )
+
     def __getitem__(self, index: int):
         img, target = super().__getitem__(index)
         data_sample = Instance(
-            images = DistTensorData(img, placement_idx=0),
-            targets = DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1)
+            images=DistTensorData(img, placement_idx=0),
+            targets=DistTensorData(
+                flow.tensor(target, dtype=flow.long), placement_idx=-1
+            ),
         )
         return data_sample
