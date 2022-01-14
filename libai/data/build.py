@@ -46,8 +46,6 @@ def build_image_train_loader(
     else:
         dataset = dataset[0]
 
-    # collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
-
     if sampler is None:
         # TODO: initilize train sampler
         sampler = CyclicSampler()
