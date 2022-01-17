@@ -15,21 +15,21 @@
 
 from omegaconf import DictConfig
 
-import sys
-
-sys.path.append(".")
 from libai.config import LazyCall
 from libai.models import build_model, build_graph
 from libai.models.bert_model import BertForPretrainingGraph
 from libai.optim import build_optimizer
+from libai.scheduler import build_lr_scheduler
 
 from configs.common.models.bert import pretrain_model as model_cfg
 from configs.common.optim import optim as optim_cfg
+from configs.common.optim import scheduler
 
 model = build_model(model_cfg)
 
 optimizer = build_optimizer(optim_cfg, model)
 
+lr_scheduler = build_lr_scheduler(scheduler, optimizer)
 
 # Lazy config
 lazy_graph_cfg = DictConfig(
@@ -59,11 +59,11 @@ reg_graph_cfg = DictConfig(
 )
 
 lazy_train_graph = build_graph(
-    lazy_graph_cfg.train_graph, model, optimizer, is_train=True
+    lazy_graph_cfg, model, optimizer, lr_scheduler, is_train=True
 )
-lazy_eval_graph = build_graph(lazy_graph_cfg.eval_graph, model, is_train=False)
+lazy_eval_graph = build_graph(lazy_graph_cfg, model, is_train=False)
 
 reg_train_graph = build_graph(
-    reg_graph_cfg.train_graph, model, optimizer, is_train=True
+    reg_graph_cfg, model, optimizer, lr_scheduler, is_train=True
 )
-reg_eval_graph = build_graph(reg_graph_cfg.eval_graph, model, is_train=False)
+reg_eval_graph = build_graph(reg_graph_cfg, model, is_train=False)
