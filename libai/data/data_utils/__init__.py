@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The OneFlow Authors. All rights reserved.
+# Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,16 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lazy import LazyCall, LazyConfig
-from .instantiate import instantiate
-from .arguments import default_argument_parser
-from .config import configurable, try_get_key
-
-__all__ = [
-    "LazyCall",
-    "LazyConfig",
-    "instantiate",
-    "default_argument_parser",
-    "configurable",
-    "try_get_key",
-]
+from .indexed_dataset import (
+    get_indexed_dataset,
+    IndexedDataset,
+    IndexedCachedDataset,
+    MMapIndexedDataset,
+)
+from .blendable_dataset import BlendableDataset
+from .data_utils import get_prefixes_and_weights
+from .reindexed_dataset import SentenceIndexedDataset, BlockIndexedDataset
+from .split_dataset import split_ds, SplitDataset

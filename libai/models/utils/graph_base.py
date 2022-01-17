@@ -18,48 +18,6 @@ from oneflow import nn
 
 from libai.layers import TransformerLayer
 
-from libai.config import instantiate
-from libai.utils.registry import Registry
-
-GRAPH_REGISTRY = Registry("graph")
-GRAPH_REGISTRY.__doc__ = """
-Registry for Graph training mode.
-
-The registered object will be called with `obj(cfg)` 
-and expected to return a `nn.Graph` object.
-"""
-
-
-def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
-    """ Build the `nn.Graph`, defined by ``cfg.graph``.
-    """
-    if is_train:
-        # Set train graph
-        assert optimizer is not None, "optimizer must be set for train graph"
-        assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
-        if "_target_" in cfg.train_graph:  # LazyCall
-            cfg.train_graph.model = model
-            cfg.train_graph.optimizer = optimizer
-            cfg.train_graph.lr_scheduler = lr_scheduler
-            return instantiate(cfg.train_graph)
-        else:
-            graph_name = cfg.train_graph.graph_name
-            graph_cfg = cfg.train_graph.graph_cfg
-            train_graph = GRAPH_REGISTRY.get(graph_name)(
-                model, optimizer, lr_scheduler, **graph_cfg
-            )
-            return train_graph
-    else:
-        # Set eval graph
-        if "_target_" in cfg.eval_graph:
-            cfg.eval_graph.model = model
-            return instantiate(cfg.eval_graph)
-        else:
-            graph_name = cfg.eval_graph.graph_name
-            graph_cfg = cfg.eval_graph.graph_cfg
-            eval_graph = GRAPH_REGISTRY.get(graph_name)(model, **graph_cfg)
-            return eval_graph
-
 
 class GraphBase(nn.Graph):
     def __init__(

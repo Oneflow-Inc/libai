@@ -13,16 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lazy import LazyCall, LazyConfig
-from .instantiate import instantiate
-from .arguments import default_argument_parser
-from .config import configurable, try_get_key
+from libai.config import LazyConfig
+from libai.data.datasets.imagenet import ImageNetDataset
 
-__all__ = [
-    "LazyCall",
-    "LazyConfig",
-    "instantiate",
-    "default_argument_parser",
-    "configurable",
-    "try_get_key",
-]
+train_set = ImageNetDataset("/DATA/disk1/ImageNet/extract", train=True)
+assert len(train_set) == 1281167
+
+test_set = ImageNetDataset("/DATA/disk1/ImageNet/extract", train=False)
+assert len(test_set) == 50000

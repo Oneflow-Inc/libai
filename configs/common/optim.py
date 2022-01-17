@@ -19,5 +19,5 @@ optim = LazyCall(flow.optim.AdamW)(
 )
 
 scheduler = LazyCall(WarmupCosineAnnealingLR)(
-    t_max=1000, warmup_factor=0, warmup_iters=100, warmup_method="linear"
+    max_iters=1000, warmup_factor=0, warmup_iters=100, warmup_method="linear"
 )
