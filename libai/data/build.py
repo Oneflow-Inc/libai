@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import omegaconf
 import oneflow.utils.data as flowdata
 from oneflow.utils.data.dataset import ConcatDataset
 
@@ -26,7 +25,8 @@ def build_nlp_train_val_test_loader(
     dataset,
     splits,
     weights,
-    batch_size,
+    train_batch_size,
+    test_batch_size,
     sampler=None,
     num_workers=4,
     consumed_samples=0,
@@ -38,13 +38,11 @@ def build_nlp_train_val_test_loader(
     Build nlp train_val_test dataloder
     """
     # TODO: add input type
+
+    dataset = list(dataset)
+        
     assert len(dataset) == len(splits), "datasets length must equal splits length"
     assert len(dataset) == len(weights), "datasets length must equal weights length"
-
-    if isinstance(dataset, omegaconf.listconfig.ListConfig):
-        dataset = list(dataset)
-    elif not isinstance(dataset, list):
-        dataset = [dataset]
 
     train_datasets, val_datasets, test_datasets = [], [], []
     for dst, split in zip(dataset, splits):
@@ -62,7 +60,7 @@ def build_nlp_train_val_test_loader(
     if sampler is None:
         train_sampler = CyclicSampler(
             dataset=train_dataset,
-            micro_batch_size=batch_size,
+            micro_batch_size=train_batch_size,
             shuffle=True,
             consumed_samples=consumed_samples,
             data_parallel_rank=dist.get_data_parallel_rank(),
@@ -71,7 +69,7 @@ def build_nlp_train_val_test_loader(
         )
     valid_sampler = SingleRoundSampler(
         dataset=val_dataset,
-        micro_batch_size=batch_size,
+        micro_batch_size=test_batch_size,
         shuffle=False,
         data_parallel_rank=dist.get_data_parallel_rank(),
         data_parallel_size=dist.get_data_parallel_size(),
@@ -80,7 +78,7 @@ def build_nlp_train_val_test_loader(
     )
     test_sampler = SingleRoundSampler(
         dataset=test_dataset,
-        micro_batch_size=batch_size,
+        micro_batch_size=test_batch_size,
         shuffle=False,
         data_parallel_rank=dist.get_data_parallel_rank(),
         data_parallel_size=dist.get_data_parallel_size(),
@@ -113,7 +111,7 @@ def build_nlp_train_val_test_loader(
 
 
 def build_nlp_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
+    dataset, test_batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
 ):
     """ 
     Build nlp test dataloder
@@ -123,7 +121,7 @@ def build_nlp_test_loader(
     if sampler is None:
         sampler = SingleRoundSampler(
             dataset=dataset,
-            micro_batch_size=batch_size,
+            micro_batch_size=test_batch_size,
             shuffle=False,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
@@ -151,10 +149,8 @@ def build_image_train_loader(
         batch_size: Batch-size for each GPU.
     """
     # TODO: add input type
-    if isinstance(dataset, omegaconf.listconfig.ListConfig):
-        dataset = list(dataset)
-    elif not isinstance(dataset, list):
-        dataset = [dataset]
+   
+    dataset = [dataset]
 
     if len(dataset) > 1:
         dataset = dataset_mixer(dataset)
