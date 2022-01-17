@@ -241,11 +241,18 @@ class DefaultTrainer(TrainerBase):
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
 
-        (
-            self.train_data_iterator,
-            self.valid_data_iterator,
-            self.test_data_iterator,
-        ) = self.build_train_valid_test_loader(cfg)
+        self.train_loader = None
+        self.test_loader = []
+
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg)
+        self.train_loader = train_loader
+
+        if val_loader is not None:
+            self.test_loader.append(val_loader)
+        if test_loader is not None:
+            self.test_loader.append(test_loader)
+
+        self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
             graph_train = self.build_graph(
@@ -349,7 +356,6 @@ class DefaultTrainer(TrainerBase):
     def get_batch(cls, data: Instance):
         """
         Convert batched local tensor to distributed tensor for model step running.
-
         If you want to do something with batched data before model, (e.g. mixup),
         you can rewrite this function.
         """
