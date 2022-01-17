@@ -20,7 +20,7 @@ import oneflow as flow
 import collections
 import numpy as np
 
-from libai.tokenizer import get_tokenizer
+from libai.tokenizer.tokenizer import get_tokenizer
 from libai.data.dataset_utils import get_samples_mapping, pad_and_convert_to_numpy
 
 

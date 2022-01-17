@@ -2,7 +2,7 @@ from libai.config import LazyCall
 from .common.models.bert import pretrain_model as model
 from .common.train import train
 from .common.optim import optim, scheduler
-from .common.data.nlp_data import data
+from .common.data.nlp_data import data, tokenizer
 from libai.models import BertForPretrainingGraph
 
 model.cfg.hidden_dropout_prob = 0.1

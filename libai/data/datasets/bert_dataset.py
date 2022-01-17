@@ -20,8 +20,9 @@ limitations under the License.
 import numpy as np
 import oneflow as flow
 
-from libai.data.structures import Metadata, Instance
-from libai.tokenizer import get_tokenizer
+from libai.data.structures import DistTensorData, Instance
+from libai.tokenizer.tokenizer import get_tokenizer
+
 
 from libai.data.dataset_utils import (
     get_samples_mapping,
@@ -195,12 +196,12 @@ def build_training_sample(
     )
 
     train_sample = Instance(
-        tokens=Metadata(tensor=flow.tensor(tokens_np), placement_idx=0),
-        padding_mask=Metadata(tensor=flow.tensor(padding_mask_np), placement_idx=0),
-        tokentype_ids=Metadata(tensor=flow.tensor(tokentypes_np), placement_idx=0),
-        ns_labels=Metadata(tensor=flow.tensor(int(is_next_random)), placement_idx=-1),
-        lm_labels=Metadata(tensor=flow.tensor(labels_np), placement_idx=-1),
-        loss_mask=Metadata(tensor=flow.tensor(loss_mask_np.astype(float)), placement_idx=-1),
+        tokens=DistTensorData(tensor=flow.tensor(tokens_np), placement_idx=0),
+        padding_mask=DistTensorData(tensor=flow.tensor(padding_mask_np), placement_idx=0),
+        tokentype_ids=DistTensorData(tensor=flow.tensor(tokentypes_np), placement_idx=0),
+        ns_labels=DistTensorData(tensor=flow.tensor(int(is_next_random)), placement_idx=-1),
+        lm_labels=DistTensorData(tensor=flow.tensor(labels_np), placement_idx=-1),
+        loss_mask=DistTensorData(tensor=flow.tensor(loss_mask_np.astype(float)), placement_idx=-1),
     )
     return train_sample
 
