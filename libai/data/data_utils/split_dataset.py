@@ -19,6 +19,7 @@ import oneflow as flow
 
 logger = logging.getLogger(__name__)
 
+
 def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
     """
     Split a dataset into subsets given proportions of how
@@ -29,10 +30,10 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
         split (1D array-like): proportions to split `ds`. `sum(splits) != 0`
     """
     if split is None:
-        split = [.8, .2, .0]
+        split = [0.8, 0.2, 0.0]
     split_sum = sum(split)
     if split_sum == 0:
-        raise Exception('Split cannot sum to 0.')
+        raise Exception("Split cannot sum to 0.")
     split = np.array(split)
     split /= split_sum
     ds_len = len(ds)
@@ -50,13 +51,13 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
             logger.info(f"Save split indices to {save_splits}")
     start_idx = 0
     residual_idx = 0
-    rtn_ds = [None]*len(split)
+    rtn_ds = [None] * len(split)
     for i, f in enumerate(split):
         if f != 0:
-            proportion = ds_len*split[i]
+            proportion = ds_len * split[i]
             residual_idx += proportion % 1
             split_ = int(int(proportion) + residual_idx)
-            split_inds = inds[start_idx:start_idx+max(split_, 1)]
+            split_inds = inds[start_idx : start_idx + max(split_, 1)]
             rtn_ds[i] = SplitDataset(ds, split_inds)
             start_idx += split_
             residual_idx %= 1
@@ -66,10 +67,11 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
 class SplitDataset(flow.utils.data.Dataset):
     """
     """
+
     def __init__(self, dataset, split_inds):
         self.split_inds = list(split_inds)
         self.wrapped_data = dataset
-        
+
     def __len__(self):
         return len(self.split_inds)
 

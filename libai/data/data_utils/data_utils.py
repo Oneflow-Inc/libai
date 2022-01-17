@@ -21,6 +21,7 @@ import oneflow as flow
 
 logger = logging.getLogger(__name__)
 
+
 def get_prefixes_and_weights(data_prefix):
     # The data prefix should be in the format of:
     #   weight-1, data-prefix-1, weight-2, data-prefix-2, ..
@@ -33,7 +34,7 @@ def get_prefixes_and_weights(data_prefix):
         weights[i] = float(data_prefix[2 * i])
         weight_sum += weights[i]
         prefixes[i] = (data_prefix[2 * i + 1]).strip()
-    
+
     # Normalize weights
     assert weight_sum > 0.0
     weights = [weight / weight_sum for weight in weights]

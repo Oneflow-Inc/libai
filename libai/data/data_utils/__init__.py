@@ -13,7 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .indexed_dataset import get_indexed_dataset, IndexedDataset, IndexedCachedDataset, MMapIndexedDataset
+from .indexed_dataset import (
+    get_indexed_dataset,
+    IndexedDataset,
+    IndexedCachedDataset,
+    MMapIndexedDataset,
+)
 from .blendable_dataset import BlendableDataset
 from .data_utils import get_prefixes_and_weights
 from .reindexed_dataset import SentenceIndexedDataset, BlockIndexedDataset

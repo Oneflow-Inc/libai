@@ -25,8 +25,8 @@ import oneflow as flow
 
 logger = logging.getLogger(__name__)
 
-class BlendableDataset(flow.utils.data.Dataset):
 
+class BlendableDataset(flow.utils.data.Dataset):
     def __init__(self, datasets, weights):
 
         self.datasets = datasets
@@ -50,13 +50,20 @@ class BlendableDataset(flow.utils.data.Dataset):
         self.dataset_sample_index = np.zeros(self.size, dtype=np.int64)
 
         from libai.data import helpers
+
         logger.info("building blending indices...")
-        helpers.build_blending_indices(self.dataset_index,
-                                       self.dataset_sample_index,
-                                       weights, num_datasets, self.size,
-                                       flow.env.get_rank() == 0)
-        logger.info("> elapsed time for building blendable dataset indices: "
-                    "{:.2f} (sec)".format(time.time() - start_time))
+        helpers.build_blending_indices(
+            self.dataset_index,
+            self.dataset_sample_index,
+            weights,
+            num_datasets,
+            self.size,
+            flow.env.get_rank() == 0,
+        )
+        logger.info(
+            "> elapsed time for building blendable dataset indices: "
+            "{:.2f} (sec)".format(time.time() - start_time)
+        )
 
     def __len__(self):
         return self.size
@@ -76,6 +83,6 @@ class BlendableDataset(flow.utils.data.Dataset):
             dataset_idx = self.dataset_index[idx]
             sample_idx = self.dataset_sample_index[idx]
             group_by_dataset[dataset_idx].append(sample_idx)
-        
+
         for dataset_idx, group_indice in group_by_dataset:
             self.datasets[dataset_idx].prefetch(group_indice)

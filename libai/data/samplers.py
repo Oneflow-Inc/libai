@@ -16,6 +16,7 @@
 import oneflow as flow
 from oneflow.utils.data import Sampler
 
+
 class CyclicSampler(Sampler):
     """ This sampler supports cyclic sampling, and it is also compatible with non data parallelism and data parallelism.
     
@@ -28,15 +29,16 @@ class CyclicSampler(Sampler):
         data_parallel_size: the size of data parallelism.
         seed: random seed, used for reproducing experiments.
     """
+
     def __init__(
-        self, 
-        dataset, 
-        micro_batch_size, 
-        shuffle=False, 
+        self,
+        dataset,
+        micro_batch_size,
+        shuffle=False,
         consumed_samples=0,
-        data_parallel_rank=0, 
-        data_parallel_size=1, 
-        seed=0, 
+        data_parallel_rank=0,
+        data_parallel_size=1,
+        seed=0,
     ):
         self.dataset = dataset
         self.data_size = len(self.dataset)
@@ -49,7 +51,7 @@ class CyclicSampler(Sampler):
         self.remain_data_size = self.data_size % self.actual_batch_size
         self.active_data_size = self.data_size - self.remain_data_size
         self.consumed_samples = consumed_samples
-        
+
         self.seed = seed
 
     def __iter__(self):
@@ -61,7 +63,9 @@ class CyclicSampler(Sampler):
         while True:
             current_epoch_samples = self.consumed_samples % self.data_size
 
-            bucket_size = self.data_size // self.actual_batch_size * self.micro_batch_size
+            bucket_size = (
+                self.data_size // self.actual_batch_size * self.micro_batch_size
+            )
             bucket_offset = current_epoch_samples // self.data_parallel_size
             start_idx = self.data_parallel_rank * bucket_size
 
@@ -73,10 +77,13 @@ class CyclicSampler(Sampler):
             else:
                 seq_idx = flow.arange(bucket_size).tolist()
                 indices = [start_idx + x for x in seq_idx[bucket_offset:]]
-            
+
             epoch += 1
 
-            if hasattr(self.dataset, "supports_prefetch") and self.dataset.supports_prefetch:
+            if (
+                hasattr(self.dataset, "supports_prefetch")
+                and self.dataset.supports_prefetch
+            ):
                 self.dataset.prefetch(indices)
 
             for idx in indices:
@@ -110,15 +117,16 @@ class SingleRoundSampler(Sampler):
         seed: random seed, used for reproducing experiments.
         drop_last: whether to drop the remaining data. Default to `False`.
     """
+
     def __init__(
-        self, 
-        dataset, 
-        micro_batch_size, 
-        shuffle=False, 
-        data_parallel_rank=0, 
-        data_parallel_size=1, 
-        seed=0, 
-        drop_last=False
+        self,
+        dataset,
+        micro_batch_size,
+        shuffle=False,
+        data_parallel_rank=0,
+        data_parallel_size=1,
+        seed=0,
+        drop_last=False,
     ):
         self.dataset = dataset
         self.data_size = len(self.dataset)
@@ -135,7 +143,7 @@ class SingleRoundSampler(Sampler):
         bucket_size = self.data_size // self.data_parallel_size
         remain = self.data_size % self.data_parallel_size
         start_idx = self.data_parallel_rank * bucket_size
-        
+
         if self.data_parallel_rank < remain:
             bucket_size += 1
         start_idx += min(self.data_parallel_rank, remain)
@@ -148,8 +156,11 @@ class SingleRoundSampler(Sampler):
         else:
             seq_idx = flow.arange(bucket_size).tolist()
             indices = [start_idx + x for x in seq_idx]
-        
-        if hasattr(self.dataset, "supports_prefetch") and self.dataset.supports_prefetch:
+
+        if (
+            hasattr(self.dataset, "supports_prefetch")
+            and self.dataset.supports_prefetch
+        ):
             self.dataset.prefetch(indices)
 
         batch = []
@@ -158,7 +169,7 @@ class SingleRoundSampler(Sampler):
             if len(batch) == self.micro_batch_size:
                 yield batch
                 batch = []
-        
+
         if len(batch) > 0 and not self.drop_last:
             yield batch
 

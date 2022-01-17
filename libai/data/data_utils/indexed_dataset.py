@@ -30,8 +30,9 @@ def __best_fitting_dtype(vocab_size=None):
     else:
         return np.int32
 
+
 def get_available_dataset_impl():
-    return ['lazy', 'cached', 'mmap']
+    return ["lazy", "cached", "mmap"]
 
 
 def infer_dataset_impl(path):
@@ -46,13 +47,17 @@ def infer_dataset_impl(path):
                 return None
     else:
         logger.info(f"Dataset does not exist: {path}")
-        logger.info("Path should be a basename that both .idx and .bin can be appended to get full filenames.")
+        logger.info(
+            "Path should be a basename that both .idx and .bin can be appended to get full filenames."
+        )
         return None
 
 
 def make_builder(out_file, impl, vocab_size=None):
-    if impl == 'mmap':
-        return MMapIndexedDatasetBuilder(out_file, dtype=__best_fitting_dtype(vocab_size))
+    if impl == "mmap":
+        return MMapIndexedDatasetBuilder(
+            out_file, dtype=__best_fitting_dtype(vocab_size)
+        )
     else:
         return IndexedDatasetBuilder(out_file)
 
@@ -60,7 +65,9 @@ def make_builder(out_file, impl, vocab_size=None):
 def make_dataset(path, impl, skip_warmup=False):
     if not IndexedDataset.exists(path):
         logger.info(f"Dataset does not exist: {path}")
-        logger.info("Path should be a basename that both .idx and .bin can be appended to get full filenames.")
+        logger.info(
+            "Path should be a basename that both .idx and .bin can be appended to get full filenames."
+        )
         return None
     if impl == "infer":
         impl = infer_dataset_impl(path)
@@ -75,7 +82,7 @@ def make_dataset(path, impl, skip_warmup=False):
 
 
 def dataset_exists(path, impl):
-    if impl == 'mmap':
+    if impl == "mmap":
         return MMapIndexedDataset.exists(path)
     else:
         return IndexedDataset.exists(path)
@@ -236,7 +243,7 @@ class IndexedCachedDataset(IndexedDataset):
         for i in indices:
             self.cache_index[i] = ptx
             size = self.data_offsets[i + 1] - self.data_offsets[i]
-            a = self.cache[ptx: ptx + size]
+            a = self.cache[ptx : ptx + size]
             self.data_file.seek(self.data_offsets[i] * self.element_size)
             self.data_file.readinto(a)
             ptx += size
@@ -263,7 +270,6 @@ class IndexedCachedDataset(IndexedDataset):
             return sents
 
 
-
 class IndexedDatasetBuilder(object):
     element_sizes = {
         np.uint8: 1,
@@ -272,11 +278,11 @@ class IndexedDatasetBuilder(object):
         np.int32: 4,
         np.int64: 8,
         np.float: 4,
-        np.double: 8
+        np.double: 8,
     }
 
     def __init__(self, out_file, dtype=np.int32):
-        self.out_file = open(out_file, 'wb')
+        self.out_file = open(out_file, "wb")
         self.dtype = dtype
         self.data_offsets = [0]
         self.dim_offsets = [0]
@@ -306,7 +312,7 @@ class IndexedDatasetBuilder(object):
         for dim_offset in index.dim_offsets[1:]:
             self.dim_offsets.append(begin + dim_offset)
 
-        with open(data_file_path(another_file), 'rb') as f:
+        with open(data_file_path(another_file), "rb") as f:
             while True:
                 data = f.read(1024)
                 if data:
@@ -316,12 +322,12 @@ class IndexedDatasetBuilder(object):
 
     def finalize(self, index_file):
         self.out_file.close()
-        index = open(index_file, 'wb')
-        index.write(b'TNTIDX\x00\x00')
-        index.write(struct.pack('<Q', 1))
-        index.write(struct.pack('<QQ', code(self.dtype), self.element_size))
-        index.write(struct.pack('<QQ', len(self.data_offsets) - 1, len(self.sizes)))
-        index.write(struct.pack('<Q', len(self.doc_idx)))
+        index = open(index_file, "wb")
+        index.write(b"TNTIDX\x00\x00")
+        index.write(struct.pack("<Q", 1))
+        index.write(struct.pack("<QQ", code(self.dtype), self.element_size))
+        index.write(struct.pack("<QQ", len(self.data_offsets) - 1, len(self.sizes)))
+        index.write(struct.pack("<Q", len(self.doc_idx)))
         write_longs(index, self.dim_offsets)
         write_longs(index, self.data_offsets)
         write_longs(index, self.sizes)
@@ -415,11 +421,17 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
             )
             logger.info("reading pointers...")
             self._pointers = np.frombuffer(
-                self._bin_buffer, dtype=np.int64, count=self._len, offset=offset + self._sizes.nbytes,
+                self._bin_buffer,
+                dtype=np.int64,
+                count=self._len,
+                offset=offset + self._sizes.nbytes,
             )
             logger.info("reading document index...")
             self._doc_idx = np.frombuffer(
-                self._bin_buffer, dtype=np.int64, count=self._doc_count, offset=offset + self._sizes.nbytes + self._pointers.nbytes,
+                self._bin_buffer,
+                dtype=np.int64,
+                count=self._doc_count,
+                offset=offset + self._sizes.nbytes + self._pointers.nbytes,
             )
 
         def __del__(self):
@@ -546,14 +558,14 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
 
 class MMapIndexedDatasetBuilder(object):
     def __init__(self, out_file, dtype=np.int64):
-        self._data_file = open(out_file, 'wb')
+        self._data_file = open(out_file, "wb")
         self._dtype = dtype
         self._sizes = []
         self._doc_idx = [0]
 
     def add_item(self, tensor):
         np_array = np.array(tensor.numpy(), dtype=self._dtype)
-        self._data_file.write(np_array.tobytes(order='C'))
+        self._data_file.write(np_array.tobytes(order="C"))
         self._sizes.append(np_array.size)
 
     def end_document(self):
@@ -568,7 +580,7 @@ class MMapIndexedDatasetBuilder(object):
             self._sizes.append(size)
 
         # Concatenate data
-        with open(data_file_path(another_file), 'rb') as f:
+        with open(data_file_path(another_file), "rb") as f:
             shutil.copyfileobj(f, self._data_file)
 
     def finalize(self, index_file):
@@ -591,13 +603,11 @@ def get_indexed_dataset(data_prefix, data_impl, skip_warmup, align_postfix=None)
     )
 
     logger.info("indexed dataset stats:")
-    logger.info(
-        "number of documents: {}".format(indexed_dataset.doc_idx.shape[0] - 1)
-    )
+    logger.info("number of documents: {}".format(indexed_dataset.doc_idx.shape[0] - 1))
     logger.info("number of sentences: {}".format(indexed_dataset.sizes.shape[0]))
 
     if align_postfix is not None:
-        align_data_prefix = data_prefix + '-' + align_postfix
+        align_data_prefix = data_prefix + "-" + align_postfix
         start_time = time.time()
         align_indexed_dataset = make_dataset(align_data_prefix, data_impl, skip_warmup)
         assert indexed_dataset.sizes.shape[0] == indexed_dataset.doc_idx[-1]
