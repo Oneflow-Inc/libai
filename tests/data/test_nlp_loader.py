@@ -77,9 +77,9 @@ def setup(args):
         warmup_iters=1000,
         warmup_method="linear",
     )
-    
+
     cfg.dataloader = OmegaConf.create()
-    
+
     cfg.dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
         dataset=[
             LazyCall(DemoNlpDataset)(data_root="train1",),
@@ -89,14 +89,14 @@ def setup(args):
         weights=[0.5, 0.5],
         num_workers=4,
     )
-    
+
     cfg.dataloader.test = [
         LazyCall(build_nlp_test_loader)(
             dataset=LazyCall(DemoNlpDataset)(data_root="test1",)
         ),
         LazyCall(build_nlp_test_loader)(
             dataset=LazyCall(DemoNlpDataset)(data_root="test2",)
-        )
+        ),
     ]
 
     cfg.graph = dict(enabled=True,)
@@ -149,14 +149,18 @@ def main(args):
     print(len(trainer.train_loader), len(trainer.test_loader))
     for sample in trainer.train_loader:
         assert isinstance(sample, Instance)
-        print(f"train sample shape f{sample.input.tensor.shape} f{sample.label.tensor.shape}")
+        print(
+            f"train sample shape f{sample.input.tensor.shape} f{sample.label.tensor.shape}"
+        )
         break
 
     for loader in trainer.test_loader:
         print(f"test loader: {len(loader)}")
         for sample in loader:
             assert isinstance(sample, Instance)
-            print(f"train sample shape f{sample.input.tensor.shape} f{sample.label.tensor.shape}")
+            print(
+                f"train sample shape f{sample.input.tensor.shape} f{sample.label.tensor.shape}"
+            )
             break
 
 

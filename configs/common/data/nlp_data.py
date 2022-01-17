@@ -27,5 +27,5 @@ dataloader.test = [
     ),
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(DemoNlpDataset)(data_root="test2",)
-    )
+    ),
 ]

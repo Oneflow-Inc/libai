@@ -48,7 +48,9 @@ def _highlight(code, filename):
 
 
 def _check_batch_size(cfg):
-    train_micro_batch_size = try_get_key(cfg, "train.train_micro_batch_size", default=None)
+    train_micro_batch_size = try_get_key(
+        cfg, "train.train_micro_batch_size", default=None
+    )
     global_batch_size = try_get_key(cfg, "train.global_batch_size", default=None)
     num_accumulation_steps = try_get_key(
         cfg, "train.num_accumulation_steps", default=None
@@ -57,7 +59,8 @@ def _check_batch_size(cfg):
     if train_micro_batch_size is not None and global_batch_size is not None:
         if num_accumulation_steps is None:
             if (
-                global_batch_size % (train_micro_batch_size * dist.get_data_parallel_size())
+                global_batch_size
+                % (train_micro_batch_size * dist.get_data_parallel_size())
                 != 0
             ):
                 raise ValueError(
@@ -109,7 +112,9 @@ def _check_batch_size(cfg):
             dist.get_data_parallel_size() * cfg.train.num_accumulation_steps
         )
     else:
-        raise ValueError("train_micro_batch_size and global_batch_size must be set either")
+        raise ValueError(
+            "train_micro_batch_size and global_batch_size must be set either"
+        )
 
 
 def default_setup(cfg, args):
@@ -461,7 +466,9 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.test` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
-        assert isinstance(cfg.dataloader.test, omegaconf.listconfig.ListConfig), "dataloader.test must be list"
+        assert isinstance(
+            cfg.dataloader.test, omegaconf.listconfig.ListConfig
+        ), "dataloader.test must be list"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
         test_loader = instantiate(cfg.dataloader.test)  # list[dataloader1, dataloader2]
