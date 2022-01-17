@@ -14,7 +14,8 @@
 # limitations under the License.
 
 import logging
-from libai.config import instantiate
+
+from libai.config import instantiate, try_get_key
 from libai.utils.registry import Registry
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ def build_tokenizer(cfg):
             tokenizer.eod_token = tokenizer.pad_token
 
     # Add vocab size.
-    cfg.data.padded_vocab_size = _vocab_size_with_padding(len(tokenizer), cfg)
+    _vocab_size_with_padding(len(tokenizer), cfg)
 
     return tokenizer
 
@@ -54,7 +55,9 @@ def _vocab_size_with_padding(orig_vocab_size, cfg):
     still having GPU friendly size."""
 
     padded_vocab_size = orig_vocab_size
-    multiple = cfg.data.make_vocab_size_divisible_by * cfg.dist.tensor_parallel_size
+    multiple = (
+        cfg.data.make_vocab_size_divisible_by * cfg.train.dist.tensor_parallel_size
+    )
     while (padded_vocab_size % multiple) != 0:
         padded_vocab_size += 1
     logger.info(
@@ -62,4 +65,7 @@ def _vocab_size_with_padding(orig_vocab_size, cfg):
             orig_vocab_size, padded_vocab_size - orig_vocab_size, padded_vocab_size
         )
     )
-    return padded_vocab_size
+
+    if try_get_key(cfg, "model.cfg.vocab_size") is not None:
+        # In case the model does not need vocab_size as argument
+        cfg.model.cfg.vocab_size = padded_vocab_size

@@ -1,202 +1,151 @@
 # coding=utf-8
-# Copyright 2021 The OneFlow Authors. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""
+Copyright 2021 The OneFlow Authors. All rights reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-import omegaconf
-import oneflow.utils.data as flowdata
-from oneflow.utils.data.dataset import ConcatDataset
+    http://www.apache.org/licenses/LICENSE-2.0
 
-from libai.utils import distributed as dist
-from .structures import Instance
-from .temp_file import CyclicSampler, SingleRoundSampler, BlendableDataset, split_ds
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+import logging
+
+import oneflow as flow
+from libai.data.data_samplers import build_pretraining_data_loader
+from libai.data.dataset_utils import train_valid_test_dataset_provider
+
+logger = logging.getLogger(__name__)
 
 
-def build_nlp_train_val_test_loader(
-    dataset,
-    splits,
-    weights,
-    batch_size,
-    sampler=None,
-    num_workers=4,
-    consumed_samples=0,
-    seed=0,
-    collate_fn=None,
-    blendable_dataset=ConcatDataset,
-):
-    """ 
-    Build nlp train_val_test dataloder
-    """
-    # TODO: add input type
-    assert len(dataset) == len(splits), "datasets length must equal splits length"
-    assert len(dataset) == len(weights), "datasets length must equal weights length"
+def cyclic_iter(iter):
+    while True:
+        for x in iter:
+            yield x
 
-    if isinstance(dataset, omegaconf.listconfig.ListConfig):
-        dataset = list(dataset)
-    elif not isinstance(dataset, list):
-        dataset = [dataset]
 
-    train_datasets, val_datasets, test_datasets = [], [], []
-    for dst, split in zip(dataset, splits):
-        train_dataset, val_dataset, test_dataset = split_ds(dst, split)
-        train_datasets.append(train_dataset)
-        val_datasets.append(val_dataset)
-        test_datasets.append(test_dataset)
+def build_train_valid_test_data_iterators(cfg):
+    """通过外部定义的build_train_valid_test_datasets_provider函数，
+        1. 先计算train_val_test_num_samples；
+        2. 然后传入该函数中生成数据集；
+        3. 由数据集生成iterator"""
 
-    # [dataset, dataset] -> dataset -> dataloader
-    train_dataset = blendable_dataset(train_datasets)  # , weights=weights)
-    val_dataset = blendable_dataset(val_datasets)  # , weights=weights)
-    test_dataset = blendable_dataset(test_datasets)  # , weights=weights)
+    (train_dataloader, valid_dataloader, test_dataloader) = (None, None, None)
 
-    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
-    if sampler is None:
-        train_sampler = CyclicSampler(
-            dataset=train_dataset,
-            micro_batch_size=batch_size,
-            shuffle=True,
-            consumed_samples=consumed_samples,
-            data_parallel_rank=dist.get_data_parallel_rank(),
-            data_parallel_size=dist.get_data_parallel_size(),
-            seed=seed,
+    logger.info("> building train, validation, and test datasets ...")
+
+    # Backward compatibility, assume fixed batch size.
+    if cfg.train.start_iter > 0 and cfg.train.consumed_train_samples == 0:
+        assert (
+            cfg.train.train_samples is None
+        ), "only backward compatibility support for iteration-based training"
+        cfg.train.consumed_train_samples = (
+            cfg.train.start_iter * cfg.train.global_batch_size
         )
-    valid_sampler = SingleRoundSampler(
-        dataset=val_dataset,
-        micro_batch_size=batch_size,
-        shuffle=False,
-        data_parallel_rank=dist.get_data_parallel_rank(),
-        data_parallel_size=dist.get_data_parallel_size(),
-        seed=seed,
-        drop_last=False,
-    )
-    test_sampler = SingleRoundSampler(
-        dataset=test_dataset,
-        micro_batch_size=batch_size,
-        shuffle=False,
-        data_parallel_rank=dist.get_data_parallel_rank(),
-        data_parallel_size=dist.get_data_parallel_size(),
-        seed=seed,
-        drop_last=False,
-    )
+    if cfg.train.start_iter > 0 and cfg.train.consumed_valid_samples == 0:
+        if cfg.train.train_samples is None:
+            cfg.train.consumed_valid_samples = (
+                (cfg.train.start_iter // cfg.train.eval_period)
+                * cfg.train.eval_iter
+                * cfg.train.global_batch_size
+            )
 
-    train_loader = flowdata.DataLoader(
-        train_dataset,
-        batch_sampler=train_sampler,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-    )
+    # args中参数：
+    #   global_batch_size：如果没设置，则为args.micro_batch_size * args.data_parallel_size，代表全局的 batch_size，
+    #   主要作用是为了计算总的样本数或者是已经训练的样本数，每张卡上的 batch_size 是通过 micro_batch_size
+    #   args.iteration是在初始化模型时setup_model_and_optimizer设置为当前已经训练的step，若为新的则为0
+    #   args.train_samples为args的初始设置，如果没有则采用iter based训练，需要用args.train_iters
 
-    valid_loader = flowdata.DataLoader(
-        val_dataset,
-        batch_sampler=valid_sampler,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-    )
+    # Data loader only on rank 0 of each model parallel group.
+    # if mpu.get_tensor_model_parallel_rank() == 0:
 
-    test_loader = flowdata.DataLoader(
-        test_dataset,
-        batch_sampler=test_sampler,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-    )
-
-    return train_loader, valid_loader, test_loader
-
-
-def build_nlp_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
-):
-    """ 
-    Build nlp test dataloder
-    """
-    # TODO: add input type
-    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
-    if sampler is None:
-        sampler = SingleRoundSampler(
-            dataset=dataset,
-            micro_batch_size=batch_size,
-            shuffle=False,
-            data_parallel_rank=dist.get_data_parallel_rank(),
-            data_parallel_size=dist.get_data_parallel_size(),
-            seed=seed,
-            drop_last=False,
-        )
-    test_loader = flowdata.DataLoader(
-        dataset, batch_sampler=sampler, num_workers=num_workers, collate_fn=collate_fn
-    )
-    return test_loader
-
-
-def build_image_train_loader(
-    dataset,
-    batch_size,
-    sampler=None,
-    num_workers=4,
-    collate_fn=None,
-    dataset_mixer=ConcatDataset,
-    **kwargs
-):
-    """
-    Args:
-        dataset: Dataset list or single dataset.
-        batch_size: Batch-size for each GPU.
-    """
-    # TODO: add input type
-    if isinstance(dataset, omegaconf.listconfig.ListConfig):
-        dataset = list(dataset)
-    elif not isinstance(dataset, list):
-        dataset = [dataset]
-
-    if len(dataset) > 1:
-        dataset = dataset_mixer(dataset)
+    # Number of train/valid/test samples.
+    if cfg.train.train_samples:
+        train_samples = cfg.train.train_samples
     else:
-        dataset = dataset[0]
+        train_samples = cfg.train.train_iter * cfg.train.global_batch_size
+    eval_iter = (
+        cfg.train.train_iter // cfg.train.eval_period + 1
+    ) * cfg.train.eval_iter
+    test_iter = cfg.train.eval_iter
+    train_val_test_num_samples = [
+        train_samples,
+        eval_iter * cfg.train.global_batch_size,
+        test_iter * cfg.train.global_batch_size,
+    ]
+    logger.info(" > datasets target sizes (minimum size):")
+    logger.info("    train:      {}".format(train_val_test_num_samples[0]))
+    logger.info("    validation: {}".format(train_val_test_num_samples[1]))
+    logger.info("    test:       {}".format(train_val_test_num_samples[2]))
 
-    if sampler is None:
-        # TODO: initilize train sampler
-        sampler = CyclicSampler()
-
-    dataloader = flowdata.DataLoader(
-        dataset,
-        batch_sampler=sampler,
-        num_workers=num_workers,
-        collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
-        **kwargs,
+    # Build the datasets.
+    train_ds, valid_ds, test_ds = train_valid_test_dataset_provider(
+        cfg, train_val_test_num_samples
     )
 
-    return dataloader, None, None
-
-
-def build_image_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
-):
-    # TODO: add input type
-    if sampler is None:
-        # TODO: initilize test_sampler
-        sampler = SingleRoundSampler()
-
-    return flowdata.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        batch_sampler=sampler,
-        num_workers=num_workers,
-        collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
-        **kwargs,
+    # Build dataloders.
+    train_dataloader = build_pretraining_data_loader(
+        cfg, train_ds, cfg.train.consumed_train_samples
     )
+    valid_dataloader = build_pretraining_data_loader(
+        cfg, valid_ds, cfg.train.consumed_valid_samples
+    )
+    test_dataloader = build_pretraining_data_loader(cfg, test_ds, 0)
 
+    # Flags to know if we need to do training/validation/testing.
+    do_train = train_dataloader is not None and cfg.train.train_iter > 0
+    do_valid = valid_dataloader is not None and cfg.train.eval_iter > 0
+    do_test = test_dataloader is not None and cfg.train.eval_iter > 0
+    # Need to broadcast num_tokens and num_type_tokens.
+    flags = flow.tensor(
+        [int(do_train), int(do_valid), int(do_test)], dtype=flow.long, device="cuda"
+    )
+    # flags = torch.cuda.LongTensor(
+    #     [int(do_train), int(do_valid), int(do_test)])
+    # else:
+    #     flags = torch.cuda.LongTensor([0, 0, 0])
 
-def trivial_batch_collator(batch):
-    assert isinstance(
-        batch[0], Instance
-    ), "batch[0] must be `instance` for trivial batch collator"
-    batch = Instance.stack(batch)
-    return batch
+    # Broadcast num tokens.
+    # torch.distributed.broadcast(flags,
+    #                             mpu.get_tensor_model_parallel_src_rank(),  # 获取当前全局rank对应的tp组的第一个local rank
+    #                             group=mpu.get_tensor_model_parallel_group())
+    cfg.train.do_train = flags[0].item()
+    cfg.train.do_valid = flags[1].item()
+    cfg.train.do_test = flags[2].item()
+
+    # Build iterators.
+    dl_type = cfg.data.dataloader_type
+    assert dl_type in ["single", "cyclic"]
+
+    if train_dataloader is not None:
+        train_data_iterator = (
+            iter(train_dataloader)
+            if dl_type == "single"
+            else iter(cyclic_iter(train_dataloader))
+        )
+    else:
+        train_data_iterator = None
+
+    if valid_dataloader is not None:
+        valid_data_iterator = (
+            iter(valid_dataloader)
+            if dl_type == "single"
+            else iter(cyclic_iter(valid_dataloader))
+        )
+    else:
+        valid_data_iterator = None
+
+    if test_dataloader is not None:
+        test_data_iterator = (
+            iter(test_dataloader)
+            if dl_type == "single"
+            else iter(cyclic_iter(test_dataloader))
+        )
+    else:
+        test_data_iterator = None
+
+    return train_data_iterator, valid_data_iterator, test_data_iterator

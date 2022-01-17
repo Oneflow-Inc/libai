@@ -259,7 +259,7 @@ class EagerTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        assert self.model.training, "[EagerTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
@@ -294,6 +294,7 @@ class GraphTrainer(TrainerBase):
         graph.model.train()
         self._data_loader_iter = iter(data_loader_iter)
         self.graph = graph
+        self.all_losses = []
 
     def run_step(self, get_batch: Callable):
         """
@@ -301,7 +302,7 @@ class GraphTrainer(TrainerBase):
         """
         assert (
             self.graph.model.training
-        ), "[SimpleTrainer] model was changed to eval mode!"
+        ), "[GraphTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
@@ -315,3 +316,4 @@ class GraphTrainer(TrainerBase):
         loss_dict = {"total_loss": losses}
 
         self.write_metrics(loss_dict, data_time)
+        self.all_losses.append(dist.tton(losses).item())

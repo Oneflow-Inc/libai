@@ -14,16 +14,16 @@
 # limitations under the License.
 
 import logging
+import oneflow as flow
 import os
 
-import oneflow as flow
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
-from libai.tokenizer import build_tokenizer
-from libai.models import build_model, build_graph
+from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
+from libai.tokenizer import build_tokenizer
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.utils import distributed as dist
@@ -150,6 +150,12 @@ def default_setup(cfg, args):
 
     dist.setup_dist_util(cfg.train.dist)
 
+    # Initialize tokenizer
+    if try_get_key(cfg, "data.tokenizer_setup", default=False):
+        from libai.tokenizer.tokenizer import setup_tokenizer
+
+        setup_tokenizer(cfg)
+
     _check_batch_size(cfg)
 
     if dist.is_main_process() and output_dir:
@@ -216,10 +222,6 @@ class DefaultTrainer(TrainerBase):
         if not logger.isEnabledFor(logging.INFO):
             setup_logger()
 
-        # Initialize tokenizer
-        if try_get_key(cfg, "data.tokenizer_setup", default=False):
-            self.tokenizer = self.build_tokenizer(cfg)
-
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
         self.optimizer = self.build_optimizer(cfg, self.model)
@@ -252,7 +254,7 @@ class DefaultTrainer(TrainerBase):
         if test_loader is not None:
             self.test_loader.append(test_loader)
 
-        self.test_loader.extend(self.build_test_loader(cfg))
+        # self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
             graph_train = self.build_graph(
@@ -347,6 +349,10 @@ class DefaultTrainer(TrainerBase):
             OrderedDict of results, if evaluation is enabled. Otherwise None.
         """
         super().train(self.start_iter, self.max_iter)
+        all_losses = self._trainer.all_losses
+        with open("of_bert_loss.txt", "w") as f:
+            for loss in all_losses:
+                f.write(str(loss) + "\n")
 
     def run_step(self):
         self._trainer.iter = self.iter
@@ -442,13 +448,16 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
-        assert (
-            try_get_key(cfg, "dataloader.train") is not None
-        ), "cfg must contain `dataloader.train` namespace"
-        logger = logging.getLogger(__name__)
-        logger.info("Prepare training, validating, testing set")
-        train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
-        return train_loader, valid_loader, test_loader
+        # assert (
+        #     try_get_key(cfg, "dataloader.train") is not None
+        # ), "cfg must contain `dataloader.train` namespace"
+        # logger = logging.getLogger(__name__)
+        # logger.info("Prepare training, validating, testing set")
+        # train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
+        # return train_loader, valid_loader, test_loader
+        from libai.data.build import build_train_valid_test_data_iterators
+
+        return build_train_valid_test_data_iterators(cfg)
 
     @classmethod
     def build_test_loader(cls, cfg):
