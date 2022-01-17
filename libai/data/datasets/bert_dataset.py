@@ -20,7 +20,9 @@ limitations under the License.
 import numpy as np
 import oneflow as flow
 
-from libai.tokenizer import get_tokenizer
+from libai.data.structures import DistTensorData, Instance
+from libai.tokenizer.tokenizer import get_tokenizer
+
 
 from libai.data.dataset_utils import (
     get_samples_mapping,
@@ -193,15 +195,14 @@ def build_training_sample(
         tokens, tokentypes, masked_positions, masked_labels, pad_id, max_seq_length
     )
 
-    train_sample = {
-        "text": tokens_np,
-        "types": tokentypes_np,
-        "labels": labels_np,
-        "is_random": int(is_next_random),
-        "loss_mask": loss_mask_np,
-        "padding_mask": padding_mask_np,
-        "truncated": int(truncated),
-    }
+    train_sample = Instance(
+        tokens=DistTensorData(tensor=flow.tensor(tokens_np), placement_idx=0),
+        padding_mask=DistTensorData(tensor=flow.tensor(padding_mask_np), placement_idx=0),
+        tokentype_ids=DistTensorData(tensor=flow.tensor(tokentypes_np), placement_idx=0),
+        ns_labels=DistTensorData(tensor=flow.tensor(int(is_next_random)), placement_idx=-1),
+        lm_labels=DistTensorData(tensor=flow.tensor(labels_np), placement_idx=-1),
+        loss_mask=DistTensorData(tensor=flow.tensor(loss_mask_np.astype(float)), placement_idx=-1),
+    )
     return train_sample
 
 

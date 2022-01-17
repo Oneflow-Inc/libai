@@ -14,8 +14,9 @@
 # limitations under the License.
 
 import oneflow as flow
+from oneflow import nn
+
 from libai.layers import (
-    ActivationCheckpointing,
     build_activation,
     VocabEmbedding,
     Embedding,
@@ -26,11 +27,12 @@ from libai.layers import (
     LMLogits,
 )
 from libai.utils import distributed as dist
-from oneflow import nn
 from libai.config import configurable
 
-from .graph_base import GraphBase
-from .utils import init_method_normal, scaled_init_method_normal
+from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
+from .utils import GraphBase, init_method_normal, scaled_init_method_normal
+
+from .build import MODEL_ARCH_REGISTRY
 
 
 class BertExtendedAttnMask(nn.Module):
@@ -62,13 +64,14 @@ class BertEmbeddings(nn.Module):
         embedding_dropout_prob,
         num_tokentypes=0,
         init_method=nn.init.xavier_normal_,
+        fp16=False,
     ):
         super().__init__()
         self.vocab_embeddings = VocabEmbedding(
-            vocab_size, hidden_size, init_method=init_method
+            vocab_size, hidden_size, init_method=init_method, fp16=fp16
         )
         self.position_embeddings = Embedding(
-            max_sequence_length, hidden_size, init_method=init_method
+            max_sequence_length, hidden_size, init_method=init_method, fp16=fp16
         )
 
         # NOTE(l1aoxingyu): Set position_ids sbp sign to [B, B] initially, because position_ids is a
@@ -83,7 +86,7 @@ class BertEmbeddings(nn.Module):
 
         if num_tokentypes > 0:
             self.tokentype_embeddings = Embedding(
-                num_tokentypes, hidden_size, init_method=init_method
+                num_tokentypes, hidden_size, init_method=init_method, fp16=fp16
             )
             self.tokentype_ids = flow.zeros(
                 self.position_ids.size(),
@@ -231,87 +234,6 @@ class BertLoss(nn.Module):
         return losses
 
 
-class BertEncoder(nn.Module):
-    def __init__(
-        self,
-        hidden_size,
-        hidden_layers,
-        num_attention_heads,
-        intermediate_size,
-        hidden_dropout_prob,
-        attention_probs_dropout_prob,
-        layernorm_eps,
-        init_method,
-        scaled_init_method,
-        bias_gelu_fusion=True,
-        bias_dropout_fusion=True,
-        scale_mask_softmax_fusion=True,
-        apply_query_key_layer_scaling=True,
-    ):
-        super().__init__()
-        self.hidden_size = hidden_size
-        self.hidden_layers = hidden_layers
-        self.num_attention_heads = num_attention_heads
-        self.attention_head_size = int(hidden_size / num_attention_heads)
-        self.intermediate_size = intermediate_size
-        self.hidden_dropout_prob = hidden_dropout_prob
-        self.attention_probs_dropout_prob = attention_probs_dropout_prob
-        self.layernorm_eps = layernorm_eps
-        self.init_method = init_method
-        self.scaled_init_method = scaled_init_method
-        self.bias_gelu_fusion = bias_gelu_fusion
-        self.bias_dropout_fusion = bias_dropout_fusion
-        self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
-        self.apply_query_key_layer_scaling = apply_query_key_layer_scaling
-
-        self._build_layer()
-
-        # Final layer norm before output.
-        self.final_layernorm = LayerNorm(
-            (hidden_size,), eps=layernorm_eps, layer_idx=-1
-        )
-
-    def _get_layer(self, layer_idx):
-        layer = getattr(self, f"layers_{layer_idx}")
-        checkpoint = getattr(self, f"layers_checkpoint_{layer_idx}")
-        return layer, checkpoint
-
-    def _build_layer(self):
-        for i in range(self.hidden_layers):
-            setattr(
-                self,
-                f"layers_{i}",
-                TransformerLayer(
-                    self.hidden_size,
-                    self.intermediate_size,
-                    self.num_attention_heads,
-                    attention_dropout_prob=self.hidden_dropout_prob,
-                    output_dropout_prob=self.hidden_dropout_prob,
-                    layernorm_epsilon=self.layernorm_eps,
-                    bias_gelu_fusion=self.bias_gelu_fusion,
-                    bias_dropout_fusion=self.bias_dropout_fusion,
-                    scale_mask_softmax_fusion=self.scale_mask_softmax_fusion,
-                    apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
-                    init_method=self.init_method,
-                    output_layer_init_method=self.scaled_init_method,
-                    layer_idx=i,
-                ),
-            )
-            setattr(
-                self, f"layers_checkpoint_{i}", ActivationCheckpointing(layer_idx=i)
-            )
-
-    def forward(self, hidden_states, extended_attention_mask):
-        for i in range(self.hidden_layers):
-            layer_module, checkpoint = self._get_layer(i)
-            hidden_states = layer_module(
-                checkpoint(hidden_states), extended_attention_mask
-            )
-
-        output = self.final_layernorm(hidden_states)
-        return output
-
-
 class BertModel(nn.Module):
     """Bert language model"""
 
@@ -334,8 +256,10 @@ class BertModel(nn.Module):
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
         apply_query_key_layer_scaling=True,
+        fp16=False,
     ):
         super().__init__()
+        self.hidden_layers = hidden_layers
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
 
@@ -347,26 +271,35 @@ class BertModel(nn.Module):
             hidden_dropout_prob,
             num_tokentypes,
             init_method,
+            fp16,
         )
 
         # Mask generation
         self.extended_attn_mask = BertExtendedAttnMask()
 
         # Encoders
-        self.encoder = BertEncoder(
-            hidden_size,
-            hidden_layers,
-            num_attention_heads,
-            intermediate_size,
-            hidden_dropout_prob,
-            attention_probs_dropout_prob,
-            layernorm_eps,
-            init_method,
-            scaled_init_method,
-            bias_gelu_fusion,
-            bias_dropout_fusion,
-            scale_mask_softmax_fusion,
-            apply_query_key_layer_scaling,
+        self.encoders = nn.ModuleList(
+            [
+                TransformerLayer(
+                    hidden_size,
+                    intermediate_size,
+                    num_attention_heads,
+                    attention_dropout_prob=attention_probs_dropout_prob,
+                    output_dropout_prob=hidden_dropout_prob,
+                    layernorm_epsilon=layernorm_eps,
+                    bias_gelu_fusion=bias_gelu_fusion,
+                    bias_dropout_fusion=bias_dropout_fusion,
+                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
+                    apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+                    init_method=init_method,
+                    output_layer_init_method=scaled_init_method,
+                    layer_idx=i,
+                )
+                for i in range(hidden_layers)
+            ]
+        )
+        self.final_layernorm = LayerNorm(
+            (hidden_size,), eps=layernorm_eps, layer_idx=-1
         )
 
         self.pooler = (
@@ -392,15 +325,17 @@ class BertModel(nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "fp16": cfg.fp16,
         }
 
-    def forward(
-        self, input_ids, attention_mask, tokentype_ids=None,
-    ):
+    def forward(self, input_ids, attention_mask, tokentype_ids=None):
         extended_attention_mask = self.extended_attn_mask(attention_mask)
-
         embedding_output = self.embeddings(input_ids, tokentype_ids)
-        encoder_output = self.encoder(embedding_output, extended_attention_mask)
+
+        hidden_states = embedding_output
+        for layer in self.encoders:
+            hidden_states = layer(hidden_states, extended_attention_mask)
+        encoder_output = self.final_layernorm(hidden_states)
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output
 
@@ -408,12 +343,13 @@ class BertModel(nn.Module):
         return self.embeddings.word_embeddings()
 
 
+@MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.bert = BertModel(cfg)
         self.cls = BertPreTrainingHeads(
-            cfg.hidden_size, init_method_normal(cfg.initializer_range),
+            cfg.hidden_size, init_method_normal(cfg.initializer_range)
         )
         self.lm_logits = LMLogits(cfg.vocab_size, bias=True)
         self.loss_func = BertLoss()
@@ -451,6 +387,7 @@ class BertForPreTraining(nn.Module):
             return prediction_scores, seq_relationship_score
 
 
+@GRAPH_REGISTRY.register()
 class BertForPretrainingGraph(GraphBase):
     def build(
         self,
@@ -463,20 +400,14 @@ class BertForPretrainingGraph(GraphBase):
     ):
 
         # Forward pass through the model
-        if self.is_eval:
-            return self.model(tokens, padding_mask, tokentype_ids)
-        else:
+        if self.is_train:
             losses = self.model(
                 tokens, padding_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
             )
-
             losses.backward()
             return losses
-
-    def set_activation_checkpoint(self):
-        for module_block in self.model.modules():
-            if isinstance(module_block.origin, TransformerLayer):
-                module_block.config.activation_checkpointing = True
+        else:
+            return self.model(tokens, padding_mask, tokentype_ids)
 
     def set_pipeline_stage_id(self):
         dist_utils = dist.get_dist_util()
@@ -492,9 +423,6 @@ class BertForPretrainingGraph(GraphBase):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(
                     module_block.layer_idx
                 )
-            elif isinstance(module_block.origin, BertEncoder):
-                # Set the last layernorm stage id
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
             elif isinstance(module_block.origin, BertPreTrainingHeads):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
             elif isinstance(module_block.origin, LMLogits):
@@ -503,5 +431,8 @@ class BertForPretrainingGraph(GraphBase):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
             else:
                 pass
-
+        # Set the last layernorm stage id
+        self.model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
+            -1
+        )
         self.model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)

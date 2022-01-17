@@ -21,7 +21,7 @@ import time
 import logging
 import numpy as np
 import oneflow as flow
-from libai.tokenizer import get_tokenizer
+from libai.tokenizer.tokenizer import get_tokenizer
 from libai.data.indexed_dataset import make_dataset as make_indexed_dataset
 from libai.utils import distributed as dist
 

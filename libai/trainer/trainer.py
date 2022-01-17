@@ -13,15 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
-import time
-from typing import Mapping
-import numpy as np
 import logging
+import time
 import weakref
+from typing import List, Mapping, Callable
+
+import numpy as np
+import oneflow as flow
+
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
-from typing import Callable, List
 
 
 class HookBase:
@@ -258,11 +259,12 @@ class EagerTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        assert self.model.training, "[EagerTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter)
+        data = next(self._data_loader_iter)
+        data = get_batch(data)
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
@@ -300,11 +302,12 @@ class GraphTrainer(TrainerBase):
         """
         assert (
             self.graph.model.training
-        ), "[SimpleTrainer] model was changed to eval mode!"
+        ), "[GraphTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter)
+        data = next(self._data_loader_iter)
+        data = get_batch(data)
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
