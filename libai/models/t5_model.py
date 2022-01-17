@@ -1,13 +1,17 @@
 # from libai.layers.layer_norm import LayerNorm
 # from libai.layers.transformer_layer import TransformerLayer
 # from libai.layers.lm_logits import LMLogits
+from libai.config.config import configurable
 from libai.layers import (
     LayerNorm,
     LMLogits,
     Embedding,
     VocabEmbedding,
     TransformerLayer,
+    ParallelCrossEntropyLoss,
+    lm_logits,
 )
+from libai.models.build import MODEL_ARCH_REGISTRY
 import oneflow as flow
 
 from libai.utils import distributed as dist
@@ -114,6 +118,8 @@ class T5Embedding(flow.nn.Module):
 
 
 class T5Model(flow.nn.Module):
+
+    @configurable
     def __init__(
         self,
         vocab_size,
@@ -211,6 +217,26 @@ class T5Model(flow.nn.Module):
 
         self.lm_head = LMLogits(vocab_size, bias=True)
 
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "vocab_size": cfg.vocab_size,
+            "hidden_size": cfg.hidden_size,
+            "hidden_layers": cfg.hidden_layers,
+            "num_attention_heads": cfg.num_attention_heads,
+            "intermediate_size": cfg.intermediate_size,
+            "hidden_dropout_prob": cfg.hidden_dropout_prob,
+            "attention_probs_dropout_prob": cfg.attention_probs_dropout_prob,
+            "max_position_embeddings": cfg.max_position_embeddings,
+            "num_tokentypes": cfg.num_tokentypes,
+            "initializer_range": cfg.initializer_range,
+            "layernorm_eps": cfg.layernorm_eps,
+            "bias_gelu_fusion": cfg.bias_gelu_fusion,
+            "bias_dropout_fusion": cfg.bias_dropout_fusion,
+            "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
+            "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "fp16": cfg.fp16,
+        }
 
     def forward(
         self, 
@@ -246,3 +272,33 @@ class T5Model(flow.nn.Module):
         logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
         return logits
 
+
+@MODEL_ARCH_REGISTRY.register()
+class T5ForPreTraining(flow.nn.Module):
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.t5_model = T5Model(cfg)
+        self.loss_func = ParallelCrossEntropyLoss()
+    
+    def forward(
+        self,
+        encoder_input_ids,
+        decoder_input_ids,
+        encoder_attn_mask,
+        decoder_attn_mask,
+        encoder_decoder_attn_mask,
+        tokentype_ids=None,
+        lm_labels=None,
+        loss_mask=None,
+    ):
+        logits = self.t5_model(
+            encoder_input_ids,
+            decoder_input_ids,
+            encoder_attn_mask,
+            decoder_attn_mask,
+            encoder_decoder_attn_mask,
+            tokentype_ids=tokentype_ids,
+        )
+
+        lm_loss = self.loss_func(logits, lm_labels)
+        return lm_loss
