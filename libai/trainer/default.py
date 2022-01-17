@@ -356,7 +356,6 @@ class DefaultTrainer(TrainerBase):
     def get_batch(cls, data: Instance):
         """
         Convert batched local tensor to distributed tensor for model step running.
-
         If you want to do something with batched data before model, (e.g. mixup),
         you can rewrite this function.
         """

@@ -3,6 +3,7 @@ from libai.scheduler import WarmupCosineLR
 from .common.models.vit import vit_model as model
 from .common.train import train
 from .common.optim import optim
+from .common.data.transform import default_train_transform
 
 
 from libai.models import VisionTransformerGraph
@@ -44,6 +45,6 @@ graph = dict(
     eval_graph=LazyCall(VisionTransformerGraph)(
         fp16=train.amp.enabled, 
         is_train=False,),
-    debug = False,
+    debug=1,
 )
 # fmt: on
