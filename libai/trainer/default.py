@@ -15,6 +15,7 @@
 
 import logging
 import os
+from collections import OrderedDict
 
 import oneflow as flow
 from libai.config import LazyConfig, try_get_key
@@ -30,6 +31,7 @@ from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
+from libai.evaluation import DatasetEvaluator, inference_on_dataset, print_csv_format
 
 
 def _highlight(code, filename):
@@ -255,11 +257,11 @@ class DefaultTrainer(TrainerBase):
         self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
-            graph_train = self.build_graph(
+            self.graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
-            graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            self._trainer = GraphTrainer(graph_train, self.train_loader)
+            self.graph_eval = self.build_graph(cfg, self.model, is_train=False)
+            self._trainer = GraphTrainer(self.graph_train, self.train_loader)
         else:
             self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)
 
@@ -309,6 +311,13 @@ class DefaultTrainer(TrainerBase):
                 self.checkpointer, self.cfg.train.checkpointer.period
             ),
         ]
+        
+        def test_and_save_results():
+            self._last_eval_results = self.test(self.cfg, self.graph_eval)
+            return self._last_eval_results
+        
+        ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
+        
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
             ret.append(
@@ -460,3 +469,56 @@ class DefaultTrainer(TrainerBase):
         logger.info("Prepare testing set")
         test_loader = instantiate(cfg.dataloader.test)  # list[dataloader1, dataloader2]
         return test_loader
+
+    @classmethod
+    def test(cls, cfg, model, evaluators=None):
+        """
+        Evaluate the given model. The given model is expected to already contain
+        weights to evaluate.
+        Args:
+            cfg (CfgNode):
+            model (nn.Graph):
+            evaluators (list[DatasetEvaluator] or None): if None, will call
+                :meth:`build_evaluator`. Otherwise, must have the same length as
+                ``cfg.DATASETS.TEST``.
+        Returns:
+            dict: a dict of result metrics
+        """
+        logger = logging.getLogger(__name__)
+        if isinstance(evaluators, DatasetEvaluator):
+            evaluators = [evaluators]
+        if evaluators is not None:
+            assert len(cfg.DATASETS.TEST) == len(evaluators), "{} != {}".format(
+                len(cfg.DATASETS.TEST), len(evaluators)
+            )
+
+        results = OrderedDict()
+        for idx, data_loader in enumerate(cls.test_loader):
+            # When evaluators are passed in as arguments,
+            # implicitly assume that evaluators can be created before data_loader.
+            if evaluators is not None:
+                evaluator = evaluators[idx]
+            else:
+                try:
+                    evaluator = cls.build_evaluator(cfg, dataset_name)
+                except NotImplementedError:
+                    logger.warn(
+                        "No evaluator found. Use `DefaultTrainer.test(evaluators=)`, "
+                        "or implement its `build_evaluator` method."
+                    )
+                    results[dataset_name] = {}
+                    continue
+            results_i = inference_on_dataset(model, data_loader, cls.get_batch, evaluator)
+            results[dataset_name] = results_i
+            if dist.is_main_process():
+                assert isinstance(
+                    results_i, dict
+                ), "Evaluator must return a dict on the main process. Got {} instead.".format(
+                    results_i
+                )
+                logger.info("Evaluation results for {} in csv format:".format(dataset_name))
+                print_csv_format(results_i)
+
+        if len(results) == 1:
+            results = list(results.values())[0]
+        return results

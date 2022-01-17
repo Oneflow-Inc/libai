@@ -24,9 +24,11 @@ import oneflow as flow
 
 from libai.trainer.trainer import HookBase
 from libai.utils.timer import Timer
+from collections.abc import Mapping
 from libai.utils.events import EventWriter, get_event_storage
 from libai.utils.checkpoint import PeriodicCheckpointer as _PeriodicCheckpointer
 from libai.utils import distributed as dist
+from libai.evaluation import flatten_results_dict
 
 
 """
@@ -206,11 +208,8 @@ class EvalHook(HookBase):
 
     def _do_eval(self):
 
-        return
-
-        # TODO: NotImplemented
         results = self._func()
-
+        
         if results:
             assert isinstance(
                 results, dict
@@ -232,15 +231,16 @@ class EvalHook(HookBase):
         # A barrier make them start the next iteration together.
         dist.synchronize()
 
-    def after_epoch(self):
-        next_epoch = self.trainer.epoch + 1
-        if self._period > 0 and next_epoch % self._period == 0:
-            self._do_eval()
+    def after_step(self):
+        next_iter = self.trainer.iter + 1
+        if self._period > 0 and next_iter % self._period == 0:
+            # do the last eval in after_train
+            if next_iter != self.trainer.max_iter:
+                self._do_eval()
 
     def after_train(self):
-        next_epoch = self.trainer.epoch + 1
         # This condition is to prevent the eval from running after a failed training
-        if next_epoch % self._period != 0 and next_epoch >= self.trainer.max_epoch:
+        if self.trainer.iter + 1 >= self.trainer.max_iter:
             self._do_eval()
         # func is likely a closure that holds reference to the trainer
         # therefore we clean it to avoid circular reference in the end
