@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .vit import VisionTransformer, VisionTransformerGraph
 from .bert_model import BertModel, BertForPreTraining, BertForPretrainingGraph
-from .build import build_model, build_graph
+from .build import build_model, build_graph, MODEL_ARCH_REGISTRY
 
 __all__ = [
     "build_model",
@@ -22,4 +23,7 @@ __all__ = [
     "BertModel",
     "BertForPreTraining",
     "BertForPretrainingGraph",
+    "VisionTransformer",
+    "VisionTransformerGraph",
+    "MODEL_ARCH_REGISTRY",
 ]
