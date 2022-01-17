@@ -40,7 +40,7 @@ def get_batch(data_iterator):
 
 class Trainer(DefaultTrainer):
     @classmethod
-    def build_train_valid_test_loader(cls, cfg):
+    def build_train_loader(cls, cfg):
         # TODO: switch to real data
         return [], [], []
 
