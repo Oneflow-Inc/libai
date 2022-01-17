@@ -448,7 +448,6 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training, validating, testing set")
-        assert isinstance(cfg.dataloader.train, omegaconf.listconfig.ListConfig), "dataloader.train must be list"
         cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)

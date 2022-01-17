@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import omegaconf
 import oneflow.utils.data as flowdata
 from oneflow.utils.data.dataset import ConcatDataset
 
@@ -39,7 +40,10 @@ def build_nlp_train_val_test_loader(
     """
     # TODO: add input type
 
-    dataset = list(dataset)
+    if isinstance(dataset, omegaconf.listconfig.ListConfig):
+        dataset = list(dataset)
+    elif not isinstance(dataset, list):
+        dataset = [dataset]
         
     assert len(dataset) == len(splits), "datasets length must equal splits length"
     assert len(dataset) == len(weights), "datasets length must equal weights length"
@@ -149,8 +153,10 @@ def build_image_train_loader(
         batch_size: Batch-size for each GPU.
     """
     # TODO: add input type
-   
-    dataset = [dataset]
+    if isinstance(dataset, omegaconf.listconfig.ListConfig):
+        dataset = list(dataset)
+    elif not isinstance(dataset, list):
+        dataset = [dataset]
 
     if len(dataset) > 1:
         dataset = dataset_mixer(dataset)
