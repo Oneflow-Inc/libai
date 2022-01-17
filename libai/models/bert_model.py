@@ -325,7 +325,6 @@ class BertModel(nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
-            "fp16": cfg.fp16,
         }
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):

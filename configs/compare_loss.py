@@ -1,15 +1,16 @@
-import oneflow as flow
-from libai.config import LazyCall as L
 from .common.models.bert import pretrain_model as model
 from .common.train import train
-from .common.optim import optim, lr_scheduler
+from .common.optim import optim, scheduler
 from .common.data.nlp_data import data
+
+from libai.config import LazyCall
 from libai.models import BertForPretrainingGraph
+from libai.scheduler import WarmupMultiStepLR
 
 # Set all dropout to 0.
 model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
-model.cfg.bias_dropout_fusion = False
+model.cfg.bias_dropout_fusion = True
 
 # Set matched model arguments
 model.cfg.hidden_layers = 5
@@ -27,10 +28,9 @@ train.log_period = 1
 optim.lr = 0.0001
 
 # Set a constant lr scheduler after warmup
-lr_scheduler.lrsch_or_optimizer._target_ = flow.optim.lr_scheduler.StepLR
-lr_scheduler.lrsch_or_optimizer.step_size = 10000
-del lr_scheduler.lrsch_or_optimizer.steps
-del lr_scheduler.lrsch_or_optimizer.end_learning_rate
+scheduler._target_ = WarmupMultiStepLR
+scheduler.milestones = [1000000]
+del scheduler.max_iters
 
 data.seq_length = 512
 data.dataset_type = "standard_bert"
@@ -40,12 +40,14 @@ data.tokenizer_type = "BertCNWWMTokenizer"
 graph = dict(
     # options for graph or eager mode
     enabled=True,
-    train=L(BertForPretrainingGraph)(
+    debug=-1, # debug mode for graph
+    train_graph=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled,
-        is_eval=False,
+        is_train=True,
     ),
-    eval=L(BertForPretrainingGraph)(
+    eval_graph=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled, 
-        is_eval=True,),
+        is_train=False
+    ),
 )
 # fmt: on
