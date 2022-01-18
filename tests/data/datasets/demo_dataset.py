@@ -21,7 +21,8 @@ from libai.data.structures import DistTensorData, Instance
 
 class DemoNlpDataset(flow.utils.data.Dataset):
     def __init__(
-        self, data_root="",
+        self,
+        data_root="",
     ):
         self.data_root = data_root
         self.dataset = list(range(10000))

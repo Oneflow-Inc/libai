@@ -18,7 +18,7 @@ from oneflow.utils.data import Sampler
 
 
 class CyclicSampler(Sampler):
-    """ This sampler supports cyclic sampling, and it is also compatible with
+    """This sampler supports cyclic sampling, and it is also compatible with
     non data parallelism and data parallelism.
 
     Arguments:
@@ -111,7 +111,7 @@ class CyclicSampler(Sampler):
 
 
 class SingleRoundSampler(Sampler):
-    """ This sampler supports single round sampling, and it is also compatible with
+    """This sampler supports single round sampling, and it is also compatible with
     non data parallelism and data parallelism.
 
     Arguments:

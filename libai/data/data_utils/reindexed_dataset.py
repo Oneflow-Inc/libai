@@ -85,7 +85,7 @@ def get_samples_mapping(
 
 
 class SentenceIndexedDataset(flow.utils.data.Dataset):
-    """ This class is propused for building sample mapping index from `indexed_dataset` to
+    """This class is propused for building sample mapping index from `indexed_dataset` to
     actural dataset.
     It will combine as many consecutive sentences as possible in the same document without
     exceeding `max_seq_length`.

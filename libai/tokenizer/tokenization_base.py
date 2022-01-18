@@ -409,16 +409,16 @@ class PreTrainedTokenizer(object):
         return tokenizer
 
     def save_pretrained(self, save_directory):
-        """ Save the tokenizer vocabulary files together with:
-                - added tokens,
-                - special-tokens-to-class-attributes-mapping,
-                - tokenizer instantiation positional and keywords inputs
-                (e.g. do_lower_case for Bert).
-            This won't save modifications other than (added tokens and special token mapping)
-            you may have applied to the tokenizer after the instantiation (e.g. modifying
-            tokenizer.do_lower_case after creation).
-            This method make sure the full tokenizer can then be re-loaded using the
-            :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
+        """Save the tokenizer vocabulary files together with:
+            - added tokens,
+            - special-tokens-to-class-attributes-mapping,
+            - tokenizer instantiation positional and keywords inputs
+            (e.g. do_lower_case for Bert).
+        This won't save modifications other than (added tokens and special token mapping)
+        you may have applied to the tokenizer after the instantiation (e.g. modifying
+        tokenizer.do_lower_case after creation).
+        This method make sure the full tokenizer can then be re-loaded using the
+        :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
         """
         if not os.path.isdir(save_directory):
             logger.error(
@@ -453,11 +453,11 @@ class PreTrainedTokenizer(object):
         return vocab_files + (special_tokens_map_file, added_tokens_file)
 
     def save_vocabulary(self, save_directory):
-        """ Save the tokenizer vocabulary to a directory. This method does *NOT* save added tokens
-            and special token mappings.
-            Please use :func:`~transformers.PreTrainedTokenizer.save_pretrained` `()` to save the
-            full Tokenizer state if you want to reload it using the
-            :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
+        """Save the tokenizer vocabulary to a directory. This method does *NOT* save added tokens
+        and special token mappings.
+        Please use :func:`~transformers.PreTrainedTokenizer.save_pretrained` `()` to save the
+        full Tokenizer state if you want to reload it using the
+        :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
         """
         raise NotImplementedError
 
@@ -701,7 +701,7 @@ class PreTrainedTokenizer(object):
     def convert_tokens_to_ids(
         self, tokens: Union[str, List[str]]
     ) -> Union[int, List[int]]:
-        """ Converts a token string (or a sequence of tokens) in a single integer id
+        """Converts a token string (or a sequence of tokens) in a single integer id
         (or a sequence of ids), using the vocabulary.
         """
         if tokens is None:
@@ -1108,7 +1108,7 @@ class PreTrainedTokenizer(object):
 
     @staticmethod
     def clean_up_tokenization(out_string):
-        """ Clean up a list of simple English tokenization artifacts like spaces before
+        """Clean up a list of simple English tokenization artifacts like spaces before
         punctuations and abbreviated forms.
         """
         out_string = (

@@ -224,9 +224,7 @@ class TestNativeIO(unittest.TestCase):
     def test_bad_args(self) -> None:
         # TODO (T58240718): Replace with dynamic checks
         with self.assertRaises(ValueError):
-            self._pathmgr.copy(
-                self._tmpfile, self._tmpfile, foo="foo"  # type: ignore
-            )
+            self._pathmgr.copy(self._tmpfile, self._tmpfile, foo="foo")  # type: ignore
         with self.assertRaises(ValueError):
             self._pathmgr.exists(self._tmpfile, foo="foo")  # type: ignore
         with self.assertRaises(ValueError):

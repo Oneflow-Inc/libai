@@ -22,8 +22,7 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class MNISTDataset(datasets.MNIST):
-    """CIFAR10 Dataset
-    """
+    """CIFAR10 Dataset"""
 
     def __init__(
         self,

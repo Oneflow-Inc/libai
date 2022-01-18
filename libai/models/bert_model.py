@@ -176,8 +176,8 @@ class BertPooler(nn.Module):
         self.activation_func = build_activation("tanh")
 
     def forward(self, hidden_states):
-        """Just "pool" the model by simply taking the [CLS] token corresponding to the first token.
-        """
+        """Just "pool" the model by simply taking the [CLS] token corresponding
+        to the first token."""
         # hidden_states: [bsz, seq_len, hidden_size]
         select_token_tensor = hidden_states[:, 0, :]
         pooled_output = self.dense(select_token_tensor)

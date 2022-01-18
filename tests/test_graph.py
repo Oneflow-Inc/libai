@@ -36,7 +36,10 @@ lazy_graph_cfg = DictConfig(
         # options for graph or eager mode
         enabled=True,
         debug=0,  # debug mode for graph
-        train_graph=LazyCall(BertForPretrainingGraph)(fp16=False, is_train=True,),
+        train_graph=LazyCall(BertForPretrainingGraph)(
+            fp16=False,
+            is_train=True,
+        ),
         eval_graph=LazyCall(BertForPretrainingGraph)(fp16=False, is_train=False),
     )
 )
@@ -48,7 +51,10 @@ reg_graph_cfg = DictConfig(
         debug=0,
         train_graph=dict(
             graph_name="BertForPretrainingGraph",
-            graph_cfg=dict(fp16=False, is_train=True,),
+            graph_cfg=dict(
+                fp16=False,
+                is_train=True,
+            ),
         ),
         eval_graph=dict(
             graph_name="BertForPretrainingGraph",

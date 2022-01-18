@@ -152,7 +152,8 @@ class PathHandler:
     _strict_kwargs_check = True
 
     def __init__(
-        self, async_executor: Optional[concurrent.futures.Executor] = None,
+        self,
+        async_executor: Optional[concurrent.futures.Executor] = None,
     ) -> None:
         """
         When registering a `PathHandler`, the user can optionally pass in a
@@ -308,7 +309,8 @@ class PathHandler:
         # buffering for any storage backend.
         if not self._non_blocking_io_manager:
             self._non_blocking_io_manager = NonBlockingIOManager(
-                buffered=False, executor=self._non_blocking_io_executor,
+                buffered=False,
+                executor=self._non_blocking_io_executor,
             )
 
         try:
@@ -1094,9 +1096,7 @@ class PathManagerBase:
             local_path (str): a file path which exists on the local file system
         """
         path = os.fspath(path)
-        return self.__get_path_handler(  # type: ignore
-            path
-        )._get_local_path(
+        return self.__get_path_handler(path)._get_local_path(  # type: ignore
             path, force=force, **kwargs
         )
 
@@ -1131,9 +1131,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path exists
         """
-        return self.__get_path_handler(path)._exists(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._exists(path, **kwargs)  # type: ignore
 
     def isfile(self, path: str, **kwargs: Any) -> bool:
         """
@@ -1145,9 +1143,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path is a file
         """
-        return self.__get_path_handler(path)._isfile(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._isfile(path, **kwargs)  # type: ignore
 
     def isdir(self, path: str, **kwargs: Any) -> bool:
         """
@@ -1159,9 +1155,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path is a directory
         """
-        return self.__get_path_handler(path)._isdir(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._isdir(path, **kwargs)  # type: ignore
 
     def ls(self, path: str, **kwargs: Any) -> List[str]:
         """
@@ -1184,9 +1178,7 @@ class PathManagerBase:
         Args:
             path (str): A URI supported by this PathHandler
         """
-        return self.__get_path_handler(path)._mkdirs(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._mkdirs(path, **kwargs)  # type: ignore
 
     def rm(self, path: str, **kwargs: Any) -> None:
         """
@@ -1195,9 +1187,7 @@ class PathManagerBase:
         Args:
             path (str): A URI supported by this PathHandler
         """
-        return self.__get_path_handler(path)._rm(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._rm(path, **kwargs)  # type: ignore
 
     def symlink(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
         """Symlink the src_path to the dst_path

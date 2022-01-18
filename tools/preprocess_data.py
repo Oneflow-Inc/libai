@@ -184,12 +184,19 @@ def parse_args_to_config(args):
         tokenizer=dict(
             tokenizer_name="",
             tokenizer_cfg=dict(
-                vocab_file=None, merge_file=None, do_lower_case=False, extra_ids=0,
+                vocab_file=None,
+                merge_file=None,
+                do_lower_case=False,
+                extra_ids=0,
             ),
             append_eod=False,
         ),
-        data=dict(make_vocab_size_divisible_by=128,),
-        dist=dict(tensor_parallel_size=1,),
+        data=dict(
+            make_vocab_size_divisible_by=128,
+        ),
+        dist=dict(
+            tensor_parallel_size=1,
+        ),
     )
 
     cfg = DictConfig(default_cfg)

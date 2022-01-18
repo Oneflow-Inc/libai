@@ -169,7 +169,9 @@ class TrainerBase:
 
     @staticmethod
     def write_metrics(
-        loss_dict: Mapping[str, flow.Tensor], data_time: float, prefix: str = "",
+        loss_dict: Mapping[str, flow.Tensor],
+        data_time: float,
+        prefix: str = "",
     ) -> None:
         """
         Args:

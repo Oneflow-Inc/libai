@@ -66,8 +66,7 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
 
 
 class SplitDataset(flow.utils.data.Dataset):
-    """
-    """
+    """ """
 
     def __init__(self, dataset, split_inds):
         self.split_inds = list(split_inds)

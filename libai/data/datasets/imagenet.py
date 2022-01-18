@@ -23,8 +23,7 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class ImageNetDataset(datasets.ImageFolder):
-    """ImageNet Dataset
-    """
+    """ImageNet Dataset"""
 
     def __init__(
         self,

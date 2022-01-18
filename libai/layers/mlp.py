@@ -20,7 +20,7 @@ from libai.layers import Linear, build_activation
 
 
 class MLP(nn.Module):
-    """ MLP
+    """MLP
 
     MLP will take the input with h hidden state, project it to intermediate
     hidden dimension, perform gelu transformation, and project the

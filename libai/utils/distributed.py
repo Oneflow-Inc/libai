@@ -261,8 +261,7 @@ def get_nd_sbp(sbp_list):
 
 
 def get_hidden_sbp():
-    """ hidden states sbp.
-    """
+    """hidden states sbp."""
     return get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
 
 
@@ -329,7 +328,7 @@ def get_num_nodes():
 
 
 def ttol(tensor, pure_local=False):
-    """ consistent tensor to local tensor"""
+    """consistent tensor to local tensor"""
     if tensor.is_consistent:
         if pure_local:
             tensor = tensor.to_local()
@@ -342,7 +341,7 @@ def ttol(tensor, pure_local=False):
 
 
 def tton(tensor, local_only=False):
-    """ consistent tensor to numpy """
+    """consistent tensor to numpy"""
     if tensor.is_consistent:
         tensor = ttol(tensor, local_only)
 

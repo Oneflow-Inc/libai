@@ -75,7 +75,9 @@ def setup(args):
         warmup_method="linear",
     )
 
-    cfg.graph = dict(enabled=True,)
+    cfg.graph = dict(
+        enabled=True,
+    )
 
     default_setup(cfg, args)
     return cfg

@@ -132,8 +132,7 @@ def split_ds(ds, split=None, shuffle=False, save_splits=None, load_splits=None):
 
 
 class SplitDataset(flow.utils.data.Dataset):
-    """
-    """
+    """ """
 
     def __init__(self, dataset, split_inds):
         self.split_inds = list(split_inds)
@@ -154,7 +153,7 @@ class SplitDataset(flow.utils.data.Dataset):
 
 
 class CyclicSampler(Sampler):
-    """ This sampler supports cyclic sampling, and it is also compatible with non data
+    """This sampler supports cyclic sampling, and it is also compatible with non data
     parallelism and data parallelism.
 
     Arguments:
@@ -194,7 +193,7 @@ class CyclicSampler(Sampler):
         self.seed = seed
 
     def __iter__(self):
-        """ divide the data into data_parallel_size buckets, and shuffle
+        """divide the data into data_parallel_size buckets, and shuffle
         it if `shuffle` is set to `True`.
         Each processor samples from its own buckets and data_loader
         will load the corresponding data.
@@ -247,7 +246,7 @@ class CyclicSampler(Sampler):
 
 
 class SingleRoundSampler(Sampler):
-    """ This sampler supports single round sampling, and it is also compatible with non
+    """This sampler supports single round sampling, and it is also compatible with non
     data parallelism and data parallelism.
 
     Arguments:

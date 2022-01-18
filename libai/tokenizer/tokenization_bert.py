@@ -98,7 +98,7 @@ class BertTokenizer(PreTrainedTokenizer):
         cls_token="[CLS]",
         mask_token="[MASK]",
         tokenize_chinese_chars=True,
-        **kwargs
+        **kwargs,
     ):
         """Constructs a BertTokenizer.
         Args:
@@ -122,7 +122,7 @@ class BertTokenizer(PreTrainedTokenizer):
             pad_token=pad_token,
             cls_token=cls_token,
             mask_token=mask_token,
-            **kwargs
+            **kwargs,
         )
         if not os.path.isfile(vocab_file):
             raise ValueError(
@@ -202,7 +202,7 @@ class BertTokenizer(PreTrainedTokenizer):
                         )
                     )
                     index = token_index
-                writer.write(token + u"\n")
+                writer.write(token + "\n")
                 index += 1
         return (vocab_file,)
 
@@ -216,7 +216,7 @@ class BasicTokenizer(object):
     def __init__(
         self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True
     ):
-        """ Constructs a BasicTokenizer.
+        """Constructs a BasicTokenizer.
         Args:
             **do_lower_case**: Whether to lower case the input.
             **never_split**: (`optional`) list of str

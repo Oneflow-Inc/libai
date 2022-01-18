@@ -116,7 +116,12 @@ def build_nlp_train_val_test_loader(
 
 
 def build_nlp_test_loader(
-    dataset, test_batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
+    dataset,
+    test_batch_size,
+    sampler=None,
+    num_workers=4,
+    seed=0,
+    collate_fn=None,
 ):
     """
     Build nlp test dataloder
