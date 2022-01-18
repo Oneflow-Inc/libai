@@ -19,5 +19,8 @@ optim = LazyCall(flow.optim.AdamW)(
 )
 
 scheduler = LazyCall(WarmupCosineAnnealingLR)(
-    max_iters=1000, warmup_factor=0, warmup_iters=100, warmup_method="linear"
+    # max_iters is meant to be set before instantiating the scheduler, in DefaultTrainer we will automatically set this by the given train cfg. 
+    warmup_factor=0, 
+    # warmup_iter is meant to be set before instantiating the scheduler, in DefaultTrainer we will automatically set this by the given train cfg. 
+    warmup_method="linear"
 )

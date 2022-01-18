@@ -7,6 +7,7 @@ train = dict(
     num_accumulation_steps=None,
 
     start_iter=0,
+    warmup_iter=2000,
     train_iter=10000,
     warmup_epoch=None,
     train_epoch=None,

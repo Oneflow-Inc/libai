@@ -220,11 +220,6 @@ class DefaultTrainer(TrainerBase):
         if try_get_key(cfg, "data.tokenizer_setup", default=False):
             self.tokenizer = self.build_tokenizer(cfg)
 
-        # Assume these objects must be constructed in this order.
-        self.model = self.build_model(cfg)
-        self.optimizer = self.build_optimizer(cfg, self.model)
-        self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
-
         # Create dataloader defined by the given config
         self.train_loader = None
         self.test_loader = []
@@ -239,14 +234,32 @@ class DefaultTrainer(TrainerBase):
 
         self.test_loader.extend(self.build_test_loader(cfg))
 
+
         # Consistent the training settings
         if not cfg.train.train_iter:
             logger.info("`cfg.train.train_iter` should not be None")
+        if not cfg.train.warmup_iter:
+            logger.info("`cfg.train.wamup_iter` should not be None")
+        cfg.optim.scheduler.max_iters = cfg.train.train_iter
+        cfg.optim.scheduler.warmup_iters = cfg.train.warmup_iter
+
         if cfg.train.train_epoch:
-            logger.info("`cfg.train.train_epoch` is setted, automatically scale the total train iter.")
+            logger.info("`cfg.train.train_epoch` is setted, automatically scale the total train iters.")
             cfg.train.train_iter = max(len(train_loader) * cfg.train.train_epoch, cfg.train.train_iter)
             logger.info("`cfg.train.train_iter` is scaled to {}".format(cfg.train.train_iter))
-        
+            cfg.optim.scheduler.max_iters = cfg.train.train_iter
+        if cfg.train.warmup_epoch:
+            logger.info("`cfg.train.warmup_epoch` is setted, automatically scale the total warmup iters.")
+            cfg.train.warmup_iter = max(len(train_loader) * cfg.train.warmup_epoch, cfg.train.warmup_iter)
+            logger.info("`cfg.train.warmup_iter` is scaled to {}".format(cfg.train.warmup_iter))
+            cfg.optim.scheduler.warmup_iters = cfg.train.warmup_iter
+
+        # Assume these objects must be constructed in this order.
+        self.model = self.build_model(cfg)
+        self.optimizer = self.build_optimizer(cfg, self.model)
+        self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
+
+
         # Assume no other objects need to be checkpointed.
         # We can later make it checkpoint the stateful hooks
         self.checkpointer = Checkpointer(
