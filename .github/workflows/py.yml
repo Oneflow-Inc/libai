@@ -13,15 +13,31 @@ on:
         description: "placeholder, no effect"
         required: false
 jobs:
-  check_license_and_format:
-    name: License and format
+  linter:
+    name: Run linter
     runs-on: ubuntu-18.04
     steps:
-      - name: Check Python format
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - name: Install dependencies
+        # flake8-bugbear flake8-comprehensions are useful but not available internally
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install flake8==3.8.1 isort==4.3.21 autoflake==1.4
+          python -m pip install black==21.4b2
+          flake8 --version
+      - name: Lint
         id: py_check
         run: |
-          python3 -m pip install black==19.10b0 autoflake==1.4 isort==5.9.3 flake8==3.9.2
-          make lint
+          echo "Running autoflake"
+         	autoflake --ignore-init-module-imports --remove-all-unused-imports -r libai tests
+          echo "Running isort"
+	        isort --diff --check libai tests
+          echo "Running flake8"
+        	flake8 libai tests
       - name: Please request CI again
         if: ${{ failure() }}
         run: |
