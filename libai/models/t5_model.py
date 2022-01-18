@@ -1,10 +1,7 @@
 # from libai.layers.layer_norm import LayerNorm
 # from libai.layers.transformer_layer import TransformerLayer
 # from libai.layers.lm_logits import LMLogits
-<<<<<<< Updated upstream
 import oneflow as flow
-=======
->>>>>>> Stashed changes
 from libai.config import configurable
 from libai.layers import (
     LayerNorm,
@@ -15,18 +12,10 @@ from libai.layers import (
     ParallelCrossEntropyLoss,
     lm_logits,
 )
-<<<<<<< Updated upstream
 from libai.models.build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
 from libai.models.utils import init_method_normal, scaled_init_method_normal, GraphBase
 
 from libai.utils import distributed as dist
-=======
-from libai.models.build import MODEL_ARCH_REGISTRY
-import oneflow as flow
-
-from libai.utils import distributed as dist
-from libai.models.utils import init_method_normal, scaled_init_method_normal
->>>>>>> Stashed changes
 
 class T5ExtendedAttnMask(flow.nn.Module):
     def forward(self, attention_mask):
@@ -283,7 +272,6 @@ class T5Model(flow.nn.Module):
         return logits
 
 
-<<<<<<< Updated upstream
 class T5Loss(flow.nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -300,18 +288,12 @@ class T5Loss(flow.nn.Module):
 
 
 
-=======
->>>>>>> Stashed changes
 @MODEL_ARCH_REGISTRY.register()
 class T5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
-<<<<<<< Updated upstream
         self.loss_func = T5Loss()
-=======
-        self.loss_func = ParallelCrossEntropyLoss()
->>>>>>> Stashed changes
     
     def forward(
         self,
@@ -320,10 +302,6 @@ class T5ForPreTraining(flow.nn.Module):
         encoder_attn_mask,
         decoder_attn_mask,
         encoder_decoder_attn_mask,
-<<<<<<< Updated upstream
-=======
-        tokentype_ids=None,
->>>>>>> Stashed changes
         lm_labels=None,
         loss_mask=None,
     ):
@@ -333,7 +311,6 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_attn_mask,
             decoder_attn_mask,
             encoder_decoder_attn_mask,
-<<<<<<< Updated upstream
             # tokentype_ids=None,
             None,
         )
@@ -367,10 +344,3 @@ class T5ForPretrainingGraph(GraphBase):
             )
             losses.backward()
             return losses
-=======
-            tokentype_ids=tokentype_ids,
-        )
-
-        lm_loss = self.loss_func(logits, lm_labels)
-        return lm_loss
->>>>>>> Stashed changes
