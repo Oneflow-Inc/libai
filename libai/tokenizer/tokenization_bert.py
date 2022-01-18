@@ -22,12 +22,7 @@ import unicodedata
 from io import open
 
 from .build import TOKENIZER_REGISTRY
-from .tokenization_base import (
-    PreTrainedTokenizer,
-    _is_control,
-    _is_punctuation,
-    _is_whitespace,
-)
+from .tokenization_base import PreTrainedTokenizer, _is_control, _is_punctuation, _is_whitespace
 
 logger = logging.getLogger(__name__)
 

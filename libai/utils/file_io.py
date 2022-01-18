@@ -29,18 +29,7 @@ import shutil
 import tempfile
 import traceback
 from collections import OrderedDict
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    MutableMapping,
-    Optional,
-    Set,
-    Union,
-)
+from typing import IO, Any, Callable, Dict, Iterable, List, MutableMapping, Optional, Set, Union
 from urllib.parse import urlparse
 
 import portalocker
