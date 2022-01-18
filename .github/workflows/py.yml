@@ -18,10 +18,12 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@v2
+
       - name: Set up Python 3.6
         uses: actions/setup-python@v2
         with:
           python-version: 3.6
+
       - name: Install dependencies
         # flake8-bugbear flake8-comprehensions are useful but not available internally
         run: |
@@ -29,15 +31,11 @@ jobs:
           python -m pip install flake8==3.8.1 isort==4.3.21 autoflake==1.4
           python -m pip install black==21.4b2
           flake8 --version
+
       - name: Lint
         id: py_check
-        run: |
-          echo "Running autoflake"
-         	autoflake --ignore-init-module-imports --remove-all-unused-imports -r libai tests
-          echo "Running isort"
-	        isort --diff --check libai tests
-          echo "Running flake8"
-        	flake8 libai tests
+        run: make lint
+
       - name: Please request CI again
         if: ${{ failure() }}
         run: |
