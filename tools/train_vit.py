@@ -25,43 +25,20 @@ from libai.utils.checkpoint import Checkpointer
 from libai.trainer import DefaultTrainer, default_setup
 
 
-def get_batch(data_iterator):
-    # use fake data for testing
-    data = flow.randn(16, 3, 384, 384).to("cuda")
-    label = flow.randn(16, 1000)
-    data = data.to_consistent(
-        sbp=flow.sbp.split(0), placement=flow.env.all_device_placement("cuda")
-    )
-    label = label.to_consistent(
-        sbp=flow.sbp.split(0), placement=flow.env.all_device_placement("cuda")
-    )
-    return (data, label)
-
-
-class Trainer(DefaultTrainer):
-    @classmethod
-    def build_train_loader(cls, cfg):
-        # TODO: switch to real data
-        return [], [], []
-
-    def run_step(self):
-        return super().run_step(get_batch)
-
-
 def main(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
 
     if args.eval_only:
-        model = Trainer.build_model(cfg)
+        model = DefaultTrainer.build_model(cfg)
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=args.resume
         )
-        graph = Trainer.build_graph(cfg, model, is_train=False)
-        res = Trainer.test(cfg, graph)
+        graph = DefaultTrainer.build_graph(cfg, model, is_train=False)
+        res = DefaultTrainer.test(cfg, graph)
 
-    trainer = Trainer(cfg)
+    trainer = DefaultTrainer(cfg)
     return trainer.train()
 
 

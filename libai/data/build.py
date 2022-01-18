@@ -141,6 +141,8 @@ def build_image_train_loader(
     batch_size,
     sampler=None,
     num_workers=4,
+    consumed_samples=0,
+    seed=42,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
     **kwargs
@@ -162,8 +164,15 @@ def build_image_train_loader(
         dataset = dataset[0]
 
     if sampler is None:
-        # TODO: initilize train sampler
-        sampler = CyclicSampler()
+        sampler = CyclicSampler(
+            dataset=dataset,
+            micro_batch_size=batch_size,
+            shuffle=True,
+            consumed_samples=consumed_samples,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+        )
 
     dataloader = flowdata.DataLoader(
         dataset,
@@ -177,12 +186,19 @@ def build_image_train_loader(
 
 
 def build_image_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
+    dataset, batch_size, sampler=None, num_workers=4, seed=42, collate_fn=None, **kwargs
 ):
-    # TODO: add input type
+
     if sampler is None:
-        # TODO: initilize test_sampler
-        sampler = SingleRoundSampler()
+        sampler = SingleRoundSampler(
+            dataset=dataset,
+            micro_batch_size=batch_size,
+            shuffle=False,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+            drop_last=False,
+        )
 
     return flowdata.DataLoader(
         dataset,
