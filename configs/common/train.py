@@ -8,6 +8,8 @@ train = dict(
 
     start_iter=0,
     train_iter=10000,
+    warmup_epoch=None,
+    train_epoch=None,
     lr_decay_iter=None,
     eval_iter=10000,
     lr_warmup_fraction=0.01,

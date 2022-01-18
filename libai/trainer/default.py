@@ -225,6 +225,28 @@ class DefaultTrainer(TrainerBase):
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
+        # Create dataloader defined by the given config
+        self.train_loader = None
+        self.test_loader = []
+
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg)
+        self.train_loader = train_loader
+
+        if val_loader is not None:
+            self.test_loader.append(val_loader)
+        if test_loader is not None:
+            self.test_loader.append(test_loader)
+
+        self.test_loader.extend(self.build_test_loader(cfg))
+
+        # Consistent the training settings
+        if not cfg.train.train_iter:
+            logger.info("`cfg.train.train_iter` should not be None")
+        if cfg.train.train_epoch:
+            logger.info("`cfg.train.train_epoch` is setted, automatically scale the total train iter.")
+            cfg.train.train_iter = max(len(train_loader) * cfg.train.train_epoch, cfg.train.train_iter)
+            logger.info("`cfg.train.train_iter` is scaled to {}".format(cfg.train.train_iter))
+        
         # Assume no other objects need to be checkpointed.
         # We can later make it checkpoint the stateful hooks
         self.checkpointer = Checkpointer(
@@ -240,19 +262,6 @@ class DefaultTrainer(TrainerBase):
         # the last breakpoint.
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
-
-        self.train_loader = None
-        self.test_loader = []
-
-        train_loader, val_loader, test_loader = self.build_train_loader(cfg)
-        self.train_loader = train_loader
-
-        if val_loader is not None:
-            self.test_loader.append(val_loader)
-        if test_loader is not None:
-            self.test_loader.append(test_loader)
-
-        self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
             graph_train = self.build_graph(

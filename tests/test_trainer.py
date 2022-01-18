@@ -51,6 +51,7 @@ def setup(args):
         ),
         start_iter=0,
         train_iter=20,
+        train_epoch=10,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
         log_period=1,
