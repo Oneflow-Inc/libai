@@ -37,16 +37,7 @@ jobs:
         if: ${{ failure() }}
         run: |
           python3 -m pip install black==19.10b0
-          python3 ${{ env.ONEFLOW_SRC }}/ci/check/run_py_format.py --source_dir $PWD --fix
-      - name: Git push
-        id: git_push
-        if: ${{ failure() }}
-        run: |
-          git config --global user.email "ci-bot@oneflow.org"
-          git config --global user.name "oneflow-ci-bot"
-          git add -u
-          git commit -m "auto format by CI"
-          git push
+          make lint
       - name: Please request CI again
         if: ${{ failure() }}
         run: |
