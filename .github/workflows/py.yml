@@ -16,6 +16,7 @@ jobs:
   linter:
     name: Run linter
     runs-on: ubuntu-18.04
+    if: github.event.pull_request.draft == false && contains(github.event.pull_request.requested_reviewers.*.login, 'oneflow-ci-bot')
     steps:
       - uses: actions/checkout@v2
 
