@@ -233,8 +233,7 @@ class VisionTransformer(nn.Module):
         logits = self.classifier(feat[:, 0])
 
         if targets is not None:
-            # losses = self.loss_func(logits, targets)
-            losses = logits.sum()
+            losses = self.loss_func(logits, targets)
             return losses
         else:
             return logits
