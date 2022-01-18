@@ -213,7 +213,7 @@ class BertDataset(flow.utils.data.Dataset):
 
         return label
    
-    def create_masked_lm_predictions(self, tokens, np_rng, max_ngrams=3, do_whole_word_mask=True, token_boundary=None,
+    def create_masked_lm_predictions(self, tokens, np_rng, max_ngrams=3, do_whole_word_mask=False, token_boundary=None,
                                      favor_longer_ngram=False, geometric_dist=False):
         """Creates the predictions for the masked LM objective.
         Note: Tokens here are vocab ids and not text tokens."""
