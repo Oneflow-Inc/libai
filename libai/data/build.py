@@ -202,7 +202,6 @@ def build_image_test_loader(
 
     return flowdata.DataLoader(
         dataset,
-        batch_size=batch_size,
         batch_sampler=sampler,
         num_workers=num_workers,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,

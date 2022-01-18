@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CONFIG=configs/vit_base_patch16_384.py #output/your_task/config.yaml
+CONFIG=configs/vit_base_patch16_224.py #output/your_task/config.yaml
 GPUS=1
 NODE=1
 NODE_RANK=0
