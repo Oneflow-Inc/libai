@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The OneFlow Authors. All rights reserved.
+# Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .structures import DistTensorData, Instance
-from .bert_dataset import BertDataset
-from .gpt_dataset import GPT2Dataset
-from .t5_dataset import T5Dataset
-from .build import build_image_train_loader, build_image_test_loader
+from .indexed_dataset import (
+    get_indexed_dataset,
+    IndexedDataset,
+    IndexedCachedDataset,
+    MMapIndexedDataset,
+)
+from .blendable_dataset import BlendableDataset
+from .data_utils import get_prefixes_and_weights
+from .reindexed_dataset import SentenceIndexedDataset, BlockIndexedDataset
+from .split_dataset import split_ds, SplitDataset

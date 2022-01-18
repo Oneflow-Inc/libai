@@ -21,13 +21,11 @@ import numpy as np
 import oneflow as flow
 
 from .data_utils import SentenceIndexedDataset
-from .build import DATASET_REGISTRY
 from .structures import Instance, DistTensorData
 
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
-@DATASET_REGISTRY.register()
 class BertDataset(flow.utils.data.Dataset):
     """
     Dataset containing sentence pairs for BERT training, Each index corresponds to a randomly generated sentence pair.

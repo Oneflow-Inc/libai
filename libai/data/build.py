@@ -13,56 +13,206 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .data_utils import get_indexed_dataset, get_prefixes_and_weights
+
+import omegaconf
+from oneflow.utils.data import DataLoader
+from oneflow.utils.data.dataset import ConcatDataset
+
+from libai.utils import distributed as dist
+from .structures import Instance
 from .data_utils import split_ds, BlendableDataset
 
-from libai.config import instantiate
-from libai.utils.registry import Registry
 
-DATASET_REGISTRY = Registry("dataset")
-DATASET_REGISTRY.__doc__ = """
-Registry for dataset, i.e. BertDataset.
-
-The registered object will be called with `obj(cfg)` 
-and expected to return a `Dataset` object.
-"""
-
-def build_dataset(cfg, tokenizer, data_prefix=None, split=None):
-    """ Build dataset, defined by ``cfg``.
+def build_nlp_train_val_test_loader(
+    dataset,
+    splits,
+    weights,
+    batch_size,
+    sampler=None,
+    num_workers=4,
+    consumed_samples=0,
+    seed=0,
+    collate_fn=None,
+    blendable_dataset=ConcatDataset,
+):
+    """ 
+    Build nlp train_val_test dataloder
     """
-    if data_prefix is None:
-        data_prefix = cfg.data_prefix
-    
-    if isinstance(data_prefix, str):
-        dataset_cls = DATASET_REGISTRY.get(cfg.dataset_name)
-        indexed_dataset = get_indexed_dataset(data_prefix, cfg.data_impl, skip_warmup=cfg.skip_warmup)
-        dataset = dataset_cls(tokenizer, data_prefix, indexed_dataset, **cfg.dataset_cls)
-        train_dataset, valid_dataset, test_dataset = split_ds(total_dataset, split)
-        return train_dataset, valid_dataset, test_dataset
-    elif len(data_prefix) == 1:
-        dataset_cls = DATASET_REGISTRY.get(cfg.dataset_name)
-        indexed_dataset = get_indexed_dataset(data_prefix[0], cfg.data_impl, skip_warmup=cfg.skip_warmup)
-        dataset = dataset_cls(tokenizer, data_prefix[0], indexed_dataset, **cfg.dataset_cls)
-        train_dataset, valid_dataset, test_dataset = split_ds(total_dataset, split)
-        return train_dataset, valid_dataset, test_dataset
+    # TODO: add input type
+    assert len(dataset) == len(splits), "datasets length must equal splits length"
+    assert len(dataset) == len(weights), "datasets length must equal weights length"
+
+    if isinstance(dataset, omegaconf.listconfig.ListConfig):
+        dataset = list(dataset)
+    elif not isinstance(dataset, list):
+        dataset = [dataset]
+
+    train_datasets, val_datasets, test_datasets = [], [], []
+    for dst, split in zip(dataset, splits):
+        train_dataset, val_dataset, test_dataset = split_ds(dst, split)
+        train_datasets.append(train_dataset)
+        val_datasets.append(val_dataset)
+        test_datasets.append(test_dataset)
+
+    # [dataset, dataset] -> dataset -> dataloader
+    train_dataset = blendable_dataset(train_datasets)  # , weights=weights)
+    val_dataset = blendable_dataset(val_datasets)  # , weights=weights)
+    test_dataset = blendable_dataset(test_datasets)  # , weights=weights)
+
+    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+    if sampler is None:
+        train_sampler = CyclicSampler(
+            dataset=train_dataset,
+            micro_batch_size=batch_size,
+            shuffle=True,
+            consumed_samples=consumed_samples,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+        )
+    valid_sampler = SingleRoundSampler(
+        dataset=val_dataset,
+        micro_batch_size=batch_size,
+        shuffle=False,
+        data_parallel_rank=dist.get_data_parallel_rank(),
+        data_parallel_size=dist.get_data_parallel_size(),
+        seed=seed,
+        drop_last=False,
+    )
+    test_sampler = SingleRoundSampler(
+        dataset=test_dataset,
+        micro_batch_size=batch_size,
+        shuffle=False,
+        data_parallel_rank=dist.get_data_parallel_rank(),
+        data_parallel_size=dist.get_data_parallel_size(),
+        seed=seed,
+        drop_last=False,
+    )
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_sampler=train_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+    )
+
+    valid_loader = DataLoader(
+        val_dataset,
+        batch_sampler=valid_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_sampler=test_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
+    )
+
+    return train_loader, valid_loader, test_loader
+
+
+def build_nlp_test_loader(
+    dataset, batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
+):
+    """ 
+    Build nlp test dataloder
+    """
+    # TODO: add input type
+    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+    if sampler is None:
+        sampler = SingleRoundSampler(
+            dataset=dataset,
+            micro_batch_size=batch_size,
+            shuffle=False,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+            drop_last=False,
+        )
+    test_loader = DataLoader(
+        dataset, batch_sampler=sampler, num_workers=num_workers, collate_fn=collate_fn
+    )
+    return test_loader
+
+
+def build_image_train_loader(
+    dataset,
+    batch_size,
+    sampler=None,
+    num_workers=4,
+    collate_fn=None,
+    dataset_mixer=ConcatDataset,
+    **kwargs
+):
+    """
+    Args:
+        dataset: Dataset list or single dataset.
+        batch_size: Batch-size for each GPU.
+    """
+    # TODO: add input type
+    if isinstance(dataset, omegaconf.listconfig.ListConfig):
+        dataset = list(dataset)
+    elif not isinstance(dataset, list):
+        dataset = [dataset]
+
+    if len(dataset) > 1:
+        dataset = dataset_mixer(dataset)
     else:
-        prefixes, weights = get_prefixes_and_weights(data_prefix)
-        train_datasets, valid_datasets, test_datasets = [], [], []
-        for prefix in range(prefixes):
-            train_dataset, valid_dataset, test_dataset = build_dataset(cfg, tokenizer, data_prefix=prefix, split=split)
-            if train_dataset:
-                train_datasets.append(train_dataset)
-            if valid_dataset:
-                valid_datasets.append(valid_dataset)
-            if test_dataset:
-                test_datasets.append(test_dataset)
-        
-        blending_train_dataset, blending_valid_dataset, blending_test_dataset = None, None, None
-        if len(train_datasets) > 0:
-            blending_train_dataset = BlendableDataset(train_datasets, weights)
-        if len(valid_datasets) > 0:
-            blending_valid_dataset = BlendableDataset(valid_datasets, weights)
-        if len(test_datasets) > 0:
-            blending_test_dataset = BlendableDataset(test_datasets, weights)
-        
-        return blending_train_dataset, blending_valid_dataset, blending_test_dataset 
+        dataset = dataset[0]
+
+    if sampler is None:
+        # TODO: initilize train sampler
+        sampler = CyclicSampler(
+            dataset=dataset,
+            micro_batch_size=batch_size,
+            shuffle=True,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+        )
+
+    dataloader = DataLoader(
+        dataset,
+        batch_sampler=sampler,
+        num_workers=num_workers,
+        collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
+        **kwargs,
+    )
+
+    return dataloader, None, None
+
+
+def build_image_test_loader(
+    dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
+):
+    # TODO: add input type
+    if sampler is None:
+        # TODO: initilize test_sampler
+        sampler = SingleRoundSampler(
+            dataset=dataset,
+            micro_batch_size=batch_size,
+            shuffle=False,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+            drop_last=False,
+        )
+
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        batch_sampler=sampler,
+        num_workers=num_workers,
+        collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
+        **kwargs,
+    )
+
+
+def trivial_batch_collator(batch):
+    assert isinstance(
+        batch[0], Instance
+    ), "batch[0] must be `instance` for trivial batch collator"
+    batch = Instance.stack(batch)
+    return batch

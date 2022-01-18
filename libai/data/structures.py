@@ -53,17 +53,29 @@ class DistTensorData:
         self.tensor = self.tensor.to_consistent(sbp=self.sbp, placement=self.placement)
 
     @staticmethod
-    def stack(metadata_lists: List["DistTensorData"]) -> "DistTensorData":
-        assert len(metadata_lists) > 0
-        if len(metadata_lists) == 1:
-            metadata_lists[0].tensor.unsqueeze_(0)  # add batch dim
-            return metadata_lists[0]
+    def stack(distTensor_lists: List["DistTensorData"]) -> "DistTensorData":
+        if not isinstance(distTensor_lists[0].tensor, flow.Tensor):
+            raise TypeError(
+                "DistTensorData.tensor must be a flow.Tensor, but got {}. "
+                "Please check the return values of `__getitem__` in dataset.".format(
+                    type(distTensor_lists[0].tensor)
+                )
+            )
 
-        tensor_size = metadata_lists[0].tensor.size()
-        sbp_list = metadata_lists[0].sbp_list
-        placement_idx = metadata_lists[0].placement_idx
+        assert len(distTensor_lists) > 0
+        if len(distTensor_lists) == 1:
+            # TODO(l1aoxingyu): add inplace unsqueeze
+            # distTensor_lists[0].tensor.unsqueeze_(0)  # add batch dim
+            distTensor_lists[0].tensor = distTensor_lists[0].tensor.unsqueeze(
+                0
+            )  # add batch dim
+            return distTensor_lists[0]
+
+        tensor_size = distTensor_lists[0].tensor.size()
+        sbp_list = distTensor_lists[0].sbp_list
+        placement_idx = distTensor_lists[0].placement_idx
         tensors = []
-        for data in metadata_lists:
+        for data in distTensor_lists:
             assert (
                 data.tensor.size() == tensor_size
             ), f"tensor shape is not equal, {data.tensor.size()} != {tensor_size}"

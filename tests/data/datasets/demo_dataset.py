@@ -12,38 +12,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""dataset for bert."""
 
-"""dataset for gpt."""
-
+import math
+import random
+import collections
 import numpy as np
 import oneflow as flow
 
-from .data_utils import BlockIndexedDataset
-from .structures import Instance, DistTensorData
+from libai.data.structures import Instance, DistTensorData
 
 
-class GPT2Dataset(flow.utils.data.Dataset):
-    def __init__(self, tokenizer, data_prefix, indexed_dataset, max_seq_length=512):
-        self.dataset = BlockIndexedDataset(data_prefix, indexed_dataset, max_seq_length=max_seq_length)
-        self.tokenizer = tokenizer
-    
+class DemoNlpDataset(flow.utils.data.Dataset):
+    def __init__(
+        self, data_root="",
+    ):
+        self.data_root = data_root
+        self.dataset = list(range(10000))
+
     def __len__(self):
         return len(self.dataset)
-    
+
     def __getitem__(self, idx):
-        text = self.dataset[idx]
-        input_ids = flow.tensor(sample[:-1], dtype=flow.long)
-        labels = flow.tensor(sample[1:], dtype=flow.long)
         sample = Instance(
-            input_ids=DistTensorData(input_ids),
-            labels=DistTensorData(labels, placement_idx=-1),
+            input=DistTensorData(
+                flow.ones((32, 128), dtype=flow.long), placement_idx=0
+            ),
+            label=DistTensorData(flow.ones((32,), dtype=flow.long), placement_idx=-1),
         )
         return sample
-    
+
     @property
     def supports_prefetch(self):
-        return self.dataset.supports_prefetch
+        return False
 
     def prefetch(self, indices):
         self.dataset.prefetch(indices)
-    
