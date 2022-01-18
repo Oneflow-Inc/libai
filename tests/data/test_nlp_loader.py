@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import sys
-from omegaconf import OmegaConf
 
 import oneflow as flow
 from omegaconf import OmegaConf
