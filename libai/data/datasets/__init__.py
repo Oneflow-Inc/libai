@@ -18,3 +18,4 @@ from .cifar import CIFAR10Dataset, CIFAR100Dataset
 from .imagenet import ImageNetDataset
 from .mnist import MNISTDataset
 from .roformer_dataset import RoformerDataset
+from .t5_dataset import T5Dataset

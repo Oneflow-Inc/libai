@@ -218,7 +218,6 @@ def _build_train_valid_test_datasets(
     dataset_type="standard_bert",
     titles_data_path=None,
 ):
-
     if dataset_type not in DSET_TYPES:
         raise ValueError("Invalid dataset_type: ", dataset_type)
 
@@ -258,7 +257,7 @@ def _build_train_valid_test_datasets(
     print_split_stats("test", 2)
 
     def build_dataset(index, name):
-        from .datasets import BertDataset, RoformerDataset
+        from .datasets import BertDataset, RoformerDataset, T5Dataset
 
         dataset = None
         if splits[index + 1] > splits[index]:
@@ -314,6 +313,14 @@ def _build_train_valid_test_datasets(
                     masked_lm_prob=masked_lm_prob,
                     short_seq_prob=short_seq_prob,
                     **kwargs,
+                )
+            elif dataset_type == DSET_TYPE_T5:
+                dataset = T5Dataset(
+                    indexed_dataset=indexed_dataset,
+                    masked_lm_prob=masked_lm_prob,
+                    max_seq_length_dec=max_seq_length_dec,
+                    short_seq_prob=short_seq_prob,
+                    **kwargs
                 )
             else:
                 raise NotImplementedError("Dataset type not fully implemented.")
@@ -390,6 +397,7 @@ def train_valid_test_dataset_provider(cfg, train_val_test_num_samples):
         splits_string=cfg.data.split,
         train_valid_test_num_samples=train_val_test_num_samples,
         max_seq_length=cfg.data.seq_length,
+        max_seq_length_dec=cfg.data.max_seq_length_dec,
         masked_lm_prob=cfg.data.mask_prob,
         short_seq_prob=cfg.data.short_seq_prob,
         seed=cfg.train.seed,
