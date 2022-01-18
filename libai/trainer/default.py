@@ -15,6 +15,7 @@
 
 import logging
 import os
+import omegaconf
 
 import omegaconf
 import oneflow as flow
