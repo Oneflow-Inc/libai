@@ -50,7 +50,9 @@ def setup(args):
             pipeline_num_layers=4,
         ),
         start_iter=0,
+        warmup_iter=5,
         train_iter=20,
+        warmup_epoch=5,
         train_epoch=10,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
@@ -75,10 +77,10 @@ def setup(args):
     )
 
     cfg.scheduler = LazyCall(WarmupCosineLR)(
-        max_iters=2000,
+        # max_iters=2000,
         alpha=0.001,
         warmup_factor=0.001,
-        warmup_iters=1000,
+        # warmup_iters=1000,
         warmup_method="linear",
     )
 

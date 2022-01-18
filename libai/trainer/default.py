@@ -240,19 +240,17 @@ class DefaultTrainer(TrainerBase):
             logger.info("`cfg.train.train_iter` should not be None")
         if not cfg.train.warmup_iter:
             logger.info("`cfg.train.wamup_iter` should not be None")
-        cfg.optim.scheduler.max_iters = cfg.train.train_iter
-        cfg.optim.scheduler.warmup_iters = cfg.train.warmup_iter
+        cfg.scheduler.max_iters = cfg.train.train_iter
+        cfg.scheduler.warmup_iters = cfg.train.warmup_iter
 
         if cfg.train.train_epoch:
-            logger.info("`cfg.train.train_epoch` is setted, automatically scale the total train iters.")
             cfg.train.train_iter = max(len(train_loader) * cfg.train.train_epoch, cfg.train.train_iter)
-            logger.info("`cfg.train.train_iter` is scaled to {}".format(cfg.train.train_iter))
-            cfg.optim.scheduler.max_iters = cfg.train.train_iter
+            logger.info("`cfg.train.train_epoch` is setted, automatically scale the train iters to {}.".format(cfg.train.train_iter))
+            cfg.scheduler.max_iters = cfg.train.train_iter
         if cfg.train.warmup_epoch:
-            logger.info("`cfg.train.warmup_epoch` is setted, automatically scale the total warmup iters.")
             cfg.train.warmup_iter = max(len(train_loader) * cfg.train.warmup_epoch, cfg.train.warmup_iter)
-            logger.info("`cfg.train.warmup_iter` is scaled to {}".format(cfg.train.warmup_iter))
-            cfg.optim.scheduler.warmup_iters = cfg.train.warmup_iter
+            logger.info("`cfg.train.warmup_epoch` is setted, automatically scale the warmup iters to {}.".format(cfg.train.warmup_iter))
+            cfg.scheduler.warmup_iters = cfg.train.warmup_iter
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
