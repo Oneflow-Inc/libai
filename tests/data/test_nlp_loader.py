@@ -121,25 +121,6 @@ class DemoTrainer(DefaultTrainer):
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
         return build_graph(cfg, model, optimizer, lr_scheduler)
 
-    # @classmethod
-    # def get_batch(cls, data):
-    #     return [
-    #         flow.randn(
-    #             32,
-    #             512,
-    #             sbp=flow.sbp.split(0),
-    #             placement=flow.placement("cuda", {0: [0]}),
-    #         )
-    #     ]
-
-    # @classmethod
-    # def build_train_loader(cls, cfg):
-    #     return range(1000), range(10), range(10)
-
-    # @classmethod
-    # def build_test_loader(cls, cfg):
-    #     return [range(10)]
-
 
 def main(args):
     cfg = setup(args)
@@ -150,7 +131,7 @@ def main(args):
     for sample in trainer.train_loader:
         assert isinstance(sample, Instance)
         print(
-            f"train sample shape f{sample.input.tensor.shape} f{sample.label.tensor.shape}"
+            f"train sample shape {sample.input.tensor.shape} {sample.label.tensor.shape}"
         )
         break
 
@@ -159,7 +140,7 @@ def main(args):
         for sample in loader:
             assert isinstance(sample, Instance)
             print(
-                f"train sample shape f{sample.input.tensor.shape} f{sample.label.tensor.shape}"
+                f"train sample shape {sample.input.tensor.shape} {sample.label.tensor.shape}"
             )
             break
 
