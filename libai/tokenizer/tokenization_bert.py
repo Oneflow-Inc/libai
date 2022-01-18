@@ -16,19 +16,18 @@
 """Tokenization classes for bert (wordpieces)."""
 
 import collections
-import re
+import logging
 import os
 import unicodedata
 from io import open
-import logging
 
+from .build import TOKENIZER_REGISTRY
 from .tokenization_base import (
     PreTrainedTokenizer,
-    _is_whitespace,
     _is_control,
     _is_punctuation,
+    _is_whitespace,
 )
-from .build import TOKENIZER_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +131,9 @@ class BertTokenizer(PreTrainedTokenizer):
         )
         if not os.path.isfile(vocab_file):
             raise ValueError(
-                "Can't find a vocabulary file at path '{}'. To load the vocabulary from a Google pretrained "
-                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
+                "Can't find a vocabulary file at path '{}'. To load the "
+                "vocabulary from a Google pretrained model use "
+                "`tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
                     vocab_file
                 )
             )
@@ -213,7 +213,10 @@ class BertTokenizer(PreTrainedTokenizer):
 
 
 class BasicTokenizer(object):
-    """Constructs a BasicTokenizer that will run basic tokenization (punctuation splitting, lower casing, etc.)."""
+    """
+    Constructs a BasicTokenizer that will run basic
+    tokenization (punctuation splitting, lower casing, etc.).
+    """
 
     def __init__(
         self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True
@@ -223,7 +226,8 @@ class BasicTokenizer(object):
             **do_lower_case**: Whether to lower case the input.
             **never_split**: (`optional`) list of str
                 Kept for backward compatibility purposes.
-                Now implemented directly at the base class level (see :func:`PreTrainedTokenizer.tokenize`)
+                Now implemented directly at the base class level
+                (see :func:`PreTrainedTokenizer.tokenize`)
                 List of token not to split.
             **tokenize_chinese_chars**: (`optional`) boolean (default True)
                 Whether to tokenize Chinese characters.
@@ -237,14 +241,15 @@ class BasicTokenizer(object):
         self.tokenize_chinese_chars = tokenize_chinese_chars
 
     def tokenize(self, text, never_split=None):
-        """ 
+        """
         Basic Tokenization of a piece of text.
         Split on "white spaces" only, for sub-word tokenization, see WordPieceTokenizer.
-        
+
         Args:
             **never_split**: (`optional`) list of str
                 Kept for backward compatibility purposes.
-                Now implemented directly at the base class level (see :func:`PreTrainedTokenizer.tokenize`)
+                Now implemented directly at the base class level
+                (see :func:`PreTrainedTokenizer.tokenize`)
                 List of token not to split.
         """
         # union() returns a new set by concatenating the two sets.

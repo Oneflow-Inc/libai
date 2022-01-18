@@ -28,7 +28,6 @@ import os
 import shutil
 import tempfile
 import traceback
-import uuid
 from collections import OrderedDict
 from typing import (
     IO,
@@ -44,9 +43,10 @@ from typing import (
 )
 from urllib.parse import urlparse
 
+import portalocker
+
 from libai.utils.download import download
 from libai.utils.non_blocking_io import NonBlockingIOManager
-
 
 __all__ = ["LazyPath", "PathManager", "get_cache_dir", "file_lock"]
 
@@ -897,7 +897,8 @@ class PathManagerBase:
     ) -> Iterable[Any]:
         """
         Open a tabular data source. Only reading is supported.
-        The opent() returns a Python iterable collection object, compared to bytes/text data with open()
+        The opent() returns a Python iterable collection object, compared to
+        bytes/text data with open()
 
         Args:
             path (str): A URI supported by this PathHandler
@@ -1046,7 +1047,7 @@ class PathManagerBase:
     ) -> bool:
         """
         Copies a source path to a destination path.
-        
+
         Args:
             src_path (str): A URI supported by this PathHandler
             dst_path (str): A URI supported by this PathHandler
@@ -1345,7 +1346,7 @@ class PathManagerFactory:
         Get the path manager instance associated with a key.
         A new instance will be created if there is no existing
         instance associated with the key passed in.
-        
+
         Args:
             key (str):
         """
@@ -1362,7 +1363,7 @@ class PathManagerFactory:
             key (str):
         """
         if key in PathManagerFactory.pm_list:
-            _pm = PathManagerFactory.pm_list.pop(key)
+            _pm = PathManagerFactory.pm_list.pop(key)  # noqa
             del _pm
 
 

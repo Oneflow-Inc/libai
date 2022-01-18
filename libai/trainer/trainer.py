@@ -16,7 +16,7 @@
 import logging
 import time
 import weakref
-from typing import List, Mapping, Callable
+from typing import Callable, List, Mapping
 
 import numpy as np
 import oneflow as flow
@@ -61,25 +61,21 @@ class HookBase:
         """
         Called before the first iteration.
         """
-        pass
 
     def after_train(self):
         """
         Called after the last iteration.
         """
-        pass
 
     def before_step(self):
         """
         Called before each iteration.
         """
-        pass
 
     def after_step(self):
         """
         Called after each iteration.
         """
-        pass
 
 
 class TrainerBase:
@@ -92,7 +88,7 @@ class TrainerBase:
         iter(int): the current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
-        
+
         max_iter(int): The iteration to end training.
         storage(EventStorage): An EventStorage that's opened during the course of training.
     """

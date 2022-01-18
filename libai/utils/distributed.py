@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+
 import oneflow as flow
 
 from libai.config import try_get_key
@@ -52,15 +53,18 @@ class _DistributeUtil(object):
             try_get_key(cfg, "num_gpus_per_node", default=num_gpus_per_node)
             != num_gpus_per_node
         ):
-            # This means key(num_gpus_per_node) saved in config is not equal to environment variable.
+            # This means key(num_gpus_per_node) saved in config is not equal
+            # to environment variable.
             # Give user a warning about inconsistent reproduce environment.
             logger.warning(
-                f"'train.dist.num_gpus_per_node' are not equal to environment variable. {cfg.num_gpus_per_node} != {num_gpus_per_node}"
+                "'train.dist.num_gpus_per_node' are not equal to environment variable. "
+                f"{cfg.num_gpus_per_node} != {num_gpus_per_node}"
             )
 
         if try_get_key(cfg, "num_nodes", default=num_nodes) != num_nodes:
             logger.warning(
-                f"'train.dist.num_nodes' are not equal to environment variable. {cfg.num_nodes} != {num_nodes}"
+                "'train.dist.num_nodes' are not equal to"
+                f"environment variable. {cfg.num_nodes} != {num_nodes}"
             )
 
         if try_get_key(cfg, "pipeline_num_layers") is None:

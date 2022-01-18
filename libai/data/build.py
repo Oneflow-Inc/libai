@@ -18,8 +18,9 @@ import oneflow.utils.data as flowdata
 from oneflow.utils.data.dataset import ConcatDataset
 
 from libai.utils import distributed as dist
+
 from .structures import Instance
-from .temp_file import CyclicSampler, SingleRoundSampler, BlendableDataset, split_ds
+from .temp_file import CyclicSampler, SingleRoundSampler, split_ds
 
 
 def build_nlp_train_val_test_loader(
@@ -34,8 +35,8 @@ def build_nlp_train_val_test_loader(
     collate_fn=None,
     blendable_dataset=ConcatDataset,
 ):
-    """ 
-    Build nlp train_val_test dataloder
+    """
+    Build nlp train_val_test dataloader
     """
     # TODO: add input type
     assert len(dataset) == len(splits), "datasets length must equal splits length"
@@ -115,7 +116,7 @@ def build_nlp_train_val_test_loader(
 def build_nlp_test_loader(
     dataset, batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
 ):
-    """ 
+    """
     Build nlp test dataloder
     """
     # TODO: add input type

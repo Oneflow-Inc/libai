@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+
 import oneflow as flow
 from oneflow import nn
 
@@ -26,15 +27,20 @@ class MultiheadAttention(nn.Module):
     Arguments:
         hidden_size: size of hidden state.
         num_attention_heads: number of attention heads.
-        is_cross_attention: used to specify whether it is self attention or cross attention. Default: ``False``.
-        attention_dropout_prob: dropout probability of attention weights. Default: ``0.0``.
+        is_cross_attention: used to specify whether it is self attention or cross attention.
+        Default: ``False``.
+        attention_dropout_prob: dropout probability of attention weights.
+        Default: ``0.0``.
         output_dropout_prob: dropout probability of output. Default: ``0.0``.
         init_method: method to initialize the input layer weights. Default: ``init.xavier_normal_``.
-        output_layer_init_method: method to initialize the output layer weights. If None, use `init_method`.
+        output_layer_init_method: method to initialize the output layer weights.
+        If None, use `init_method`.
         bias_dropout_fusion: whether to fuse add bias and dropout. Default: ``False``.
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
-        apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index. Default: ``False``.
-        layer_idx: A layer_idx sign which determines the placements. It will be used in pipeline parallelism. Default: ``0``.
+        apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
+        Default: ``False``.
+        layer_idx: A layer_idx sign which determines the placements.
+        It will be used in pipeline parallelism. Default: ``0``.
     """
 
     def __init__(
@@ -119,14 +125,18 @@ class MultiheadAttention(nn.Module):
         past_key_value=None,
         use_cache=False,
     ):
-        """ hidden_states: [bsz, tgt_len, hidden_size].
-            encoder_states: [bsz, src_len, hidden_size].
-            attention_mask: [bsz, 1, tgt_len, src_len], it should be the combination of padding mask and casual mask.
-                            In case of self attention in encoder, it is the padding mask of source input.
-                            In case of self attention in decoder, it is the combination of padding mask of target input and casual mask.
-                            In case of cross attention in decoder, it is the padding mask of source input.
-            past_key_value: tuple of key and value, each shape is [bsz, num_heads, src_len, head_size].
-            use_cache: it will be set to True, when the model is in the inference phase and used for incremental decoding.
+        """
+        hidden_states: [bsz, tgt_len, hidden_size].
+        encoder_states: [bsz, src_len, hidden_size].
+        attention_mask: [bsz, 1, tgt_len, src_len], it should be the combination of
+        padding mask and casual mask.
+        In case of self attention in encoder, it is the padding mask of source input.
+        In case of self attention in decoder, it is the combination of padding mask of target
+        input and casual mask.
+        In case of cross attention in decoder, it is the padding mask of source input.
+        past_key_value: tuple of key and value, each shape is [bsz, num_heads, src_len, head_size].
+        use_cache: it will be set to True, when the model is in the inference phase and
+        used for incremental decoding.
         """
 
         # hidden_states, encoder_states: [S(0), B]
@@ -145,7 +155,8 @@ class MultiheadAttention(nn.Module):
         bsz, tgt_len = hidden_states.size()[:2]
 
         if self.is_cross_attention:
-            # if it is cross attention, key and value should be calculated only once, and the result can be reused.
+            # if it is cross attention, key and value should be calculated only once, and the
+            # result can be reused.
             query = self.query(hidden_states)
             query = query.view(bsz, -1, self.num_heads, self.head_size)
             query = query.permute(0, 2, 1, 3)
@@ -162,7 +173,8 @@ class MultiheadAttention(nn.Module):
                 )
         else:
             # if it is self attention, query, key, and value are all obtained from hidden_states.
-            # when in the inference phase of an incremental decoder, hidden_states is the last-added state,
+            # when in the inference phase of an incremental decoder,
+            # hidden_states is the last-added state,
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
             query_key_value = query_key_value.view(
@@ -210,7 +222,8 @@ class MultiheadAttention(nn.Module):
         # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
         context = context.transpose(1, 2)
 
-        # Concat multi-head results from [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
+        # Concat multi-head results from
+        # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
         # SBP sign: [S(0), S(2)]
         context = context.view(bsz, tgt_len, self.hidden_size)
 

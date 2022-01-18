@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.config import LazyConfig
 from libai.data.datasets.imagenet import ImageNetDataset
 
 train_set = ImageNetDataset("/DATA/disk1/ImageNet/extract", train=True)

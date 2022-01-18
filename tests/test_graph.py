@@ -15,15 +15,14 @@
 
 from omegaconf import DictConfig
 
-from libai.config import LazyCall
-from libai.models import build_model, build_graph
-from libai.models.bert_model import BertForPretrainingGraph
-from libai.optim import build_optimizer
-from libai.scheduler import build_lr_scheduler
-
 from configs.common.models.bert import pretrain_model as model_cfg
 from configs.common.optim import optim as optim_cfg
 from configs.common.optim import scheduler
+from libai.config import LazyCall
+from libai.models import build_graph, build_model
+from libai.models.bert_model import BertForPretrainingGraph
+from libai.optim import build_optimizer
+from libai.scheduler import build_lr_scheduler
 
 model = build_model(model_cfg)
 

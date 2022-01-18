@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import oneflow as flow
 from flowvision import datasets

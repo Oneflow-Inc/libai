@@ -20,7 +20,7 @@ MODEL_ARCH_REGISTRY = Registry("model_arch")
 MODEL_ARCH_REGISTRY.__doc__ = """
 Registry for modeling, i.e. Bert or GPT model.
 
-The registered object will be called with `obj(cfg)` 
+The registered object will be called with `obj(cfg)`
 and expected to return a `nn.Module` object.
 """
 
@@ -28,7 +28,7 @@ GRAPH_REGISTRY = Registry("graph")
 GRAPH_REGISTRY.__doc__ = """
 Registry for Graph training mode.
 
-The registered object will be called with `obj(cfg)` 
+The registered object will be called with `obj(cfg)`
 and expected to return a `nn.Graph` object.
 """
 

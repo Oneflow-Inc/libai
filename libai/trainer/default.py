@@ -17,13 +17,14 @@ import logging
 import os
 
 import oneflow as flow
+
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
-from libai.tokenizer import build_tokenizer
-from libai.models import build_model, build_graph
+from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
+from libai.tokenizer import build_tokenizer
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.utils import distributed as dist
@@ -61,7 +62,8 @@ def _check_batch_size(cfg):
             ):
                 raise ValueError(
                     f"global_batch_size {global_batch_size} must be divisible by "
-                    f"micro_batch_size * data_parallel_size ({micro_batch_size} * {dist.get_data_parallel_size()})"
+                    "micro_batch_size * data_parallel_size "
+                    f"({micro_batch_size} * {dist.get_data_parallel_size()})"
                 )
 
             cfg.train.num_accumulation_steps = global_batch_size // (
@@ -78,7 +80,7 @@ def _check_batch_size(cfg):
                 raise ValueError(
                     f"global_batch_size {global_batch_size} must equal"
                     " micro_batch_size * data_parallel_size * num_accumulation_steps"
-                    f" ({micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"
+                    f" ({micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"  # noqa
                 )
     elif micro_batch_size is not None and global_batch_size is None:
         if num_accumulation_steps is None:
@@ -258,7 +260,7 @@ class DefaultTrainer(TrainerBase):
             graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
-            graph_eval = self.build_graph(cfg, self.model, is_train=False)
+            graph_eval = self.build_graph(cfg, self.model, is_train=False)  # noqa
             self._trainer = GraphTrainer(graph_train, self.train_loader)
         else:
             self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)

@@ -13,24 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
 import sys
+
+import oneflow as flow
 from omegaconf import OmegaConf
 
 sys.path.append(".")
-from libai.trainer import DefaultTrainer, default_setup
-from libai.config import default_argument_parser, LazyCall
+from libai.config import LazyCall, default_argument_parser
 from libai.optim import get_default_optimizer_params
 from libai.scheduler import WarmupCosineLR
-from libai.data.build import build_image_train_loader, build_image_test_loader
-from libai.data.datasets import ImageNetDataset
-
-from configs.common.data.transform import (
-    default_train_transform,
-    default_test_transform,
-)
-
-from tests.layers.test_trainer_model import build_model, build_graph
+from libai.trainer import DefaultTrainer, default_setup
+from tests.layers.test_trainer_model import build_graph, build_model
 
 
 def setup(args):
@@ -61,7 +54,8 @@ def setup(args):
 
     cfg.optim = LazyCall(flow.optim.AdamW)(
         parameters=LazyCall(get_default_optimizer_params)(
-            # parameters.model is meant to be set to the model object, before instantiating the optimizer.
+            # parameters.model is meant to be set to the model object, before
+            # instantiating the optimizer.
             clip_grad_max_norm=1.0,
             clip_grad_norm_type=2.0,
             weight_decay_norm=0.0,

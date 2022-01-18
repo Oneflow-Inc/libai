@@ -21,8 +21,9 @@ from oneflow import nn
 class ParallelCrossEntropyLoss(nn.Module):
     def forward(self, logits, target):
         """Function for the distributed cross entropy
-        vocab_parallel_logits with shape (batch_size, seq_length, vocab_size) and sbp sign [S(0), S(2)]
-        target with shape (batch_size, seq_length) and sbp sign [S(0), B]
+        vocab_parallel_logits with shape (batch_size, seq_length, vocab_size)
+        and sbp sign [S(0), S(2)].
+        target with shape (batch_size, seq_length) and sbp sign [S(0), B].
         """
         assert logits.ndim == 3
         assert target.ndim == 2

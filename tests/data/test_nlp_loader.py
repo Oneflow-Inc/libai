@@ -16,8 +16,8 @@ import sys
 
 sys.path.append(".")
 
-from libai.config.instantiate import instantiate
 from libai.config import LazyConfig
+from libai.config.instantiate import instantiate
 from libai.data.structures import Instance
 
 cfg = LazyConfig.load("./configs/common/data/nlp_data.py")

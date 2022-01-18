@@ -22,20 +22,10 @@ import shutil
 import tempfile
 import unittest
 import uuid
-from contextlib import contextmanager
 from typing import Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from libai.utils import file_io
-from libai.utils.file_io import (
-    HTTPURLHandler,
-    LazyPath,
-    OneDrivePathHandler,
-    PathManagerBase,
-    PathManagerFactory,
-    get_cache_dir,
-    g_pathmgr,
-)
+from libai.utils.file_io import LazyPath, PathManagerBase, PathManagerFactory, g_pathmgr
 
 
 class TestNativeIO(unittest.TestCase):

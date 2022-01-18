@@ -18,13 +18,13 @@
 import json
 import logging
 import os
-import regex as re
-from io import open
 from functools import lru_cache
+from io import open
 
-from .tokenization_base import PreTrainedTokenizer
+import regex as re
+
 from .build import TOKENIZER_REGISTRY
-
+from .tokenization_base import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +34,8 @@ VOCAB_FILES_NAMES = {
 }
 
 PRETRAINED_VOCAB_FILES_MAP = {
-    "vocab_file": {"gpt2": "https://huggingface.co/gpt2/resolve/main/vocab.json",},
-    "merges_file": {"gpt2": "https://huggingface.co/gpt2/resolve/main/merges.txt",},
+    "vocab_file": {"gpt2": "https://huggingface.co/gpt2/resolve/main/vocab.json"},
+    "merges_file": {"gpt2": "https://huggingface.co/gpt2/resolve/main/merges.txt"},
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
@@ -46,13 +46,14 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 @lru_cache()
 def bytes_to_unicode():
     """
-    Returns list of utf-8 byte and a mapping to unicode strings. We specifically avoids mapping to whitespace/control
-    characters the bpe code barfs on.
+    Returns list of utf-8 byte and a mapping to unicode strings. We specifically avoids mapping
+    to whitespace/control characters the bpe code barfs on.
 
-    The reversible bpe codes work on unicode strings. This means you need a large # of unicode characters in your vocab
-    if you want to avoid UNKs. When you're at something like a 10B token dataset you end up needing around 5K for
-    decent coverage. This is a significant percentage of your normal, say, 32K bpe vocab. To avoid that, we want lookup
-    tables between utf-8 bytes and unicode strings.
+    The reversible bpe codes work on unicode strings. This means you need a large # of unicode
+    characters in your vocab if you want to avoid UNKs. When you're at something like a 10B token
+    dataset you end up needing around 5K for decent coverage. This is a significant percentage
+    of your normal, say, 32K bpe vocab. To avoid that, we want lookup tables between utf-8
+    bytes and unicode strings.
     """
     bs = (
         list(range(ord("!"), ord("~") + 1))
@@ -152,7 +153,7 @@ class GPT2Tokenizer(PreTrainedTokenizer):
                     j = word.index(first, i)
                     new_word.extend(word[i:j])
                     i = j
-                except:
+                except:  # noqa
                     new_word.extend(word[i:])
                     break
 
@@ -176,9 +177,9 @@ class GPT2Tokenizer(PreTrainedTokenizer):
         """Tokenize a string."""
         bpe_tokens = []
         for token in re.findall(self.pat, text):
-            token = "".join(
-                self.byte_encoder[b] for b in token.encode("utf-8")
-            )  # Maps all our bytes to unicode strings, avoiding control tokens of the BPE (spaces in our case)
+            # Maps all our bytes to unicode strings, avoiding control tokens
+            # of the BPE (spaces in our case)
+            token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
             bpe_tokens.extend(bpe_token for bpe_token in self.bpe(token).split(" "))
         return bpe_tokens
 

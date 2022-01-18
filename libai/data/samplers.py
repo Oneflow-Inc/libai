@@ -18,13 +18,16 @@ from oneflow.utils.data import Sampler
 
 
 class CyclicSampler(Sampler):
-    """ This sampler supports cyclic sampling, and it is also compatible with non data parallelism and data parallelism.
-    
+    """ This sampler supports cyclic sampling, and it is also compatible with
+    non data parallelism and data parallelism.
+
     Arguments:
         dataset: dataset to be sampled.
-        micro_batch_size: batch size for per model instance. global_batch_size is micro_batch_size times data_parallel_size.
+        micro_batch_size: batch size for per model instance.
+        global_batch_size is micro_batch_size times data_parallel_size.
         shuffle: whether to shuffle the dataset.
-        consumed_samples: the number of samples that have been trained at the current time, used for resuming training. 
+        consumed_samples: the number of samples that have been trained at the current time,
+        used for resuming training.
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
         seed: random seed, used for reproducing experiments.
@@ -55,8 +58,10 @@ class CyclicSampler(Sampler):
         self.seed = seed
 
     def __iter__(self):
-        """ divide the data into data_paralllel_size buckets, and shuffle it if `shuffle` is set to `True`.
-        Each processor samples from its own buckets and data_loader will load the corresponding data.
+        """divide the data into data_parallel_size buckets,
+        and shuffle it if `shuffle` is set to `True`.
+        Each processor samples from its own buckets and data_loader
+        will load the corresponding data.
         """
         epoch = self.consumed_samples // self.data_size
         batch = []
@@ -106,11 +111,13 @@ class CyclicSampler(Sampler):
 
 
 class SingleRoundSampler(Sampler):
-    """ This sampler supports single round sampling, and it is also compatible with non data parallelism and data parallelism.
-    
+    """ This sampler supports single round sampling, and it is also compatible with
+    non data parallelism and data parallelism.
+
     Arguments:
         dataset: dataset to be sampled.
-        micro_batch_size: batch size for per model instance. global_batch_size is micro_batch_size times data_parallel_size.
+        micro_batch_size: batch size for per model instance.
+        global_batch_size is micro_batch_size times data_parallel_size.
         shuffle: whether to shuffle the dataset.
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.

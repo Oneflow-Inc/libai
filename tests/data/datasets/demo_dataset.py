@@ -14,13 +14,9 @@
 # limitations under the License.
 """dataset for bert."""
 
-import math
-import random
-import collections
-import numpy as np
 import oneflow as flow
 
-from libai.data.structures import Instance, DistTensorData
+from libai.data.structures import DistTensorData, Instance
 
 
 class DemoNlpDataset(flow.utils.data.Dataset):
