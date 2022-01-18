@@ -1,16 +1,12 @@
 from flowvision import transforms
 from flowvision.transforms import InterpolationMode
-from flowvision.transforms.functional import str_to_interp_mode, str_to_pil_interp
+from flowvision.transforms.functional import str_to_interp_mode
 
 from flowvision.data.constants import (
     IMAGENET_DEFAULT_MEAN,
     IMAGENET_DEFAULT_STD,
 )
-from flowvision.data.auto_augment import (
-    rand_augment_transform,
-    augment_and_mix_transform,
-    auto_augment_transform,
-)
+from flowvision.data.auto_augment import rand_augment_transform
 from flowvision.data.random_erasing import RandomErasing
 
 from libai.config import LazyCall

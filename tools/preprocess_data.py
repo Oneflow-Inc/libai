@@ -16,18 +16,14 @@
 """Processing data for pretraining."""
 
 import argparse
-from omegaconf import DictConfig
 import json
 import multiprocessing
 import os
 import sys
-
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
-)
 import time
 
 import oneflow as flow
+from omegaconf import DictConfig
 
 try:
     import nltk
@@ -36,8 +32,13 @@ try:
 except ImportError:
     nltk_available = False
 
-from libai.tokenizer import build_tokenizer
 from libai.data.data_utils import indexed_dataset
+from libai.tokenizer import build_tokenizer
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
+)
+
 
 # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
 class CustomLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):

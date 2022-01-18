@@ -34,7 +34,13 @@ jobs:
 
       - name: Lint
         id: py_check
-        run: make lint
+        run: |
+          echo "Running autoflake"
+          autoflake --ignore-init-module-imports --remove-all-unused-imports -r .
+          echo "Running isort"
+        	isort --diff --check .
+          echo "Running flake8"
+          flake8 .
 
       - name: Please request CI again
         if: ${{ failure() }}
