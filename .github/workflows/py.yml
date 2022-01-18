@@ -17,28 +17,11 @@ jobs:
     name: License and format
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
-      - name: Checkout Oneflow-Inc/oneflow
-        uses: actions/checkout@v2
-        with:
-          repository: Oneflow-Inc/oneflow
-          path: ${{ env.ONEFLOW_SRC }}
       - name: Check Python format
         id: py_check
         run: |
-          python3 -m pip install black==19.10b0
-          python3 ${{ env.ONEFLOW_SRC }}/ci/check/run_py_format.py --source_dir $PWD
-      - name: Run Python Format
-        id: py_fmt
-        if: ${{ failure() }}
-        run: |
-          python3 -m pip install black==19.10b0
+          python3 -m pip install black==19.10b0 autoflake==1.4 isort==5.9.3 flake8==3.9.2
           make lint
-      - name: Run Lint
-        run: make lint
       - name: Please request CI again
         if: ${{ failure() }}
         run: |
