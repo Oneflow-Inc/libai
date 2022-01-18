@@ -38,7 +38,7 @@ jobs:
           echo "Running autoflake"
           autoflake --ignore-init-module-imports --remove-all-unused-imports -r .
           echo "Running isort"
-        	isort --diff --check .
+          isort --diff --check .
           echo "Running flake8"
           flake8 .
 
