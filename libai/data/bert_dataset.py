@@ -29,7 +29,6 @@ MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"]
 class BertDataset(flow.utils.data.Dataset):
     """
     Dataset containing sentence pairs for BERT training, Each index corresponds to a randomly generated sentence pair.
-    对于bert，根据max_num_samples和num_epochs共同决定训练多少步，取决于哪个少，设哪个。
     """
     def __init__(self, tokenizer, data_prefix, indexed_dataset, 
                  max_seq_length=512, mask_lm_prob=.15, short_seq_prob=.0,
