@@ -15,8 +15,8 @@
 
 import logging
 import os
-import omegaconf
 
+import omegaconf
 import oneflow as flow
 
 from libai.config import LazyConfig, try_get_key
@@ -84,7 +84,7 @@ def _check_batch_size(cfg):
                 raise ValueError(
                     f"global_batch_size {global_batch_size} must equal to "
                     "train_micro_batch_size * data_parallel_size * num_accumulation_steps "
-                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})" # noqa
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"  # noqa
                 )
     elif train_micro_batch_size is not None and global_batch_size is None:
         if num_accumulation_steps is None:
