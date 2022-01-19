@@ -48,7 +48,7 @@ class BlendableDataset(flow.utils.data.Dataset):
         self.dataset_index = np.zeros(self.size, dtype=np.uint8)
         self.dataset_sample_index = np.zeros(self.size, dtype=np.int64)
 
-        from libai.data import helpers
+        from libai.data.data_utils import helpers
 
         logger.info("building blending indices...")
         helpers.build_blending_indices(
