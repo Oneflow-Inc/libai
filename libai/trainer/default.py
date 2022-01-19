@@ -229,6 +229,11 @@ class DefaultTrainer(TrainerBase):
             self.tokenizer = self.build_tokenizer(cfg)
 
         # Create dataloader defined by the given config
+        # Resume dataloader or not
+        # TODO: add dataloader resume
+        # if cfg.train.resume:
+        #     cfg.dataloader.cousumed_samples = ...
+
         self.train_loader = None
         self.test_loader = []
 
