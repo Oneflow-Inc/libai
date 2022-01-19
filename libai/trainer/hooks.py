@@ -14,20 +14,16 @@
 # limitations under the License.
 
 import datetime
-import itertools
 import logging
-import os
-import tempfile
 import time
 from collections import Counter
+
 import oneflow as flow
 
 from libai.trainer.trainer import HookBase
-from libai.utils.timer import Timer
-from libai.utils.events import EventWriter, get_event_storage
 from libai.utils.checkpoint import PeriodicCheckpointer as _PeriodicCheckpointer
-from libai.utils import distributed as dist
-
+from libai.utils.events import EventWriter
+from libai.utils.timer import Timer
 
 """
 Implement some common hooks.
@@ -209,6 +205,7 @@ class EvalHook(HookBase):
         return
 
         # TODO: NotImplemented
+        """
         results = self._func()
 
         if results:
@@ -231,6 +228,7 @@ class EvalHook(HookBase):
         # Evaluation may take different time among workers.
         # A barrier make them start the next iteration together.
         dist.synchronize()
+        """
 
     def after_epoch(self):
         next_epoch = self.trainer.epoch + 1

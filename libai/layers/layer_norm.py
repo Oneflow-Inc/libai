@@ -21,14 +21,16 @@ from libai.utils import distributed as dist
 
 class LayerNorm(nn.Module):
     """Applies Layer Normalization over a mini-batch of inputs in 1D parallelism.
-    
+
     Arguments:
         normalized_shape: input shape from an expected input of size.
         eps: a value added to the denominator for numerical stability. Defaults to 1e-5.
         elementwise_affine: a boolean value that when set to ``True``, this module
-        has learnable per-element affine parameters initialized to ones (for weights) and zeros (for biases). Default: ``True``.
+        has learnable per-element affine parameters initialized to ones (for weights) and zeros
+        (for biases). Default: ``True``.
 
-        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline parallelism. Defaults to 0.
+        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
+        parallelism. Defaults to 0.
     """
 
     def __init__(

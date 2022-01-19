@@ -20,6 +20,7 @@ import os
 import sys
 import time
 from collections import Counter
+
 from termcolor import colored
 
 from libai.utils.file_io import PathManager
