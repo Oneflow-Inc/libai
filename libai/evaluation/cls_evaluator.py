@@ -47,7 +47,7 @@ def accuracy(output, target, topk=1):
         return res
 
 
-class ClassEvaluator(DatasetEvaluator):
+class ClsEvaluator(DatasetEvaluator):
     def __init__(self, cfg):
         self.cfg = cfg
         self._predictions = []
