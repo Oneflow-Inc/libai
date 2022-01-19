@@ -243,7 +243,7 @@ class DefaultTrainer(TrainerBase):
         self.test_loader.extend(self.build_test_loader(cfg))
 
         # Automatically scale the hyperparams
-        cfg = self.auto_scale_hyperparams(cfg, self.train_loader)
+        self.auto_scale_hyperparams(cfg, self.train_loader)
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
@@ -485,32 +485,20 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def auto_scale_hyperparams(cls, cfg, data_loader):
         logger = logging.getLogger(__name__)
-        if not cfg.train.train_iter:
-            logger.info("`cfg.train.train_iter` should not be None")
-        if not cfg.train.warmup_iter:
-            logger.info("`cfg.train.wamup_iter` should not be None")
-        cfg.scheduler.max_iters = cfg.train.train_iter
+
+        # Get or set default iteration cfg
+        cfg.train.warmup_iter = try_get_key(cfg, "train.warmup_iter", default=0)
+        cfg.train.train_iter = try_get_key(cfg, "train.train_iter", default=0)
+        cfg.train.warmup_epoch = try_get_key(cfg, "train.warmup_epoch", default=0)
+        cfg.train.train_epoch = try_get_key(cfg, "train.train_epoch", default=0)
+
+        # Automatically scale iteration num depend on the settings
+        cfg.train.warmup_iter = max(len(data_loader) * cfg.train.warmup_epoch, cfg.train.warmup_iter)
+        cfg.train.train_iter = max(len(data_loader) * cfg.train.train_epoch, cfg.train.train_iter)
+        logger.info("Automatically scale the total warmup iters to {} which is the larger num between len(dataloader) * warmup_epoch and warmup_iter".format(cfg.train.warmup_iter))
+        logger.info("Automatically scale the total train iters to {} which is the larger num between len(dataloader) * train_epoch and train_iter".format(cfg.train.train_iter))
+
+        # Consistent scheduler cfg
         cfg.scheduler.warmup_iters = cfg.train.warmup_iter
+        cfg.scheduler.max_iters = cfg.train.train_iter
 
-        if cfg.train.train_epoch:
-            cfg.train.train_iter = max(
-                len(data_loader) * cfg.train.train_epoch, cfg.train.train_iter
-            )
-            logger.info(
-                "`cfg.train.train_epoch` is setted, scale the train iters to {}.".format(
-                    cfg.train.train_iter
-                )
-            )
-            cfg.scheduler.max_iters = cfg.train.train_iter
-        if cfg.train.warmup_epoch:
-            cfg.train.warmup_iter = max(
-                len(data_loader) * cfg.train.warmup_epoch, cfg.train.warmup_iter
-            )
-            logger.info(
-                "`cfg.train.warmup_epoch` is setted, scale the warmup iters to {}.".format(
-                    cfg.train.warmup_iter
-                )
-            )
-            cfg.scheduler.warmup_iters = cfg.train.warmup_iter
-
-        return cfg

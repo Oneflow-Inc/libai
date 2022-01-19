@@ -35,7 +35,7 @@ def setup(args):
 
     cfg.train = dict(
         output_dir="./demo_output",
-        micro_batch_size=32,
+        train_micro_batch_size=32,
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
@@ -45,7 +45,7 @@ def setup(args):
         start_iter=0,
         warmup_iter=5,
         train_iter=20,
-        warmup_epoch=5,
+        warmup_epoch=1,
         train_epoch=10,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
