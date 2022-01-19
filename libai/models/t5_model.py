@@ -1,7 +1,8 @@
 # from libai.layers.layer_norm import LayerNorm
 # from libai.layers.transformer_layer import TransformerLayer
 # from libai.layers.lm_logits import LMLogits
-from libai.config.config import configurable
+import oneflow as flow
+from libai.config import configurable
 from libai.layers import (
     LayerNorm,
     LMLogits,
@@ -11,11 +12,10 @@ from libai.layers import (
     ParallelCrossEntropyLoss,
     lm_logits,
 )
-from libai.models.build import MODEL_ARCH_REGISTRY
-import oneflow as flow
+from libai.models.build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
+from libai.models.utils import init_method_normal, scaled_init_method_normal, GraphBase
 
 from libai.utils import distributed as dist
-from libai.models.utils import init_method_normal, scaled_init_method_normal
 
 class T5ExtendedAttnMask(flow.nn.Module):
     def forward(self, attention_mask):
@@ -249,7 +249,6 @@ class T5Model(flow.nn.Module):
         # enc_hidden_states=None,
     ):
         # encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
-        # import ipdb; ipdb.set_trace()
         # decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
         # encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
@@ -273,12 +272,28 @@ class T5Model(flow.nn.Module):
         return logits
 
 
+class T5Loss(flow.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.lm_loss = ParallelCrossEntropyLoss()
+
+    def forward(self, logits, lm_labels, loss_mask):
+        lm_loss = self.lm_loss(logits, lm_labels)
+        loss_mask = loss_mask.float()
+        denominator = loss_mask.sum().to_consistent(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
+        masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
+        return masked_lm_loss
+
+
+
 @MODEL_ARCH_REGISTRY.register()
 class T5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
-        self.loss_func = ParallelCrossEntropyLoss()
+        self.loss_func = T5Loss()
     
     def forward(
         self,
@@ -287,7 +302,6 @@ class T5ForPreTraining(flow.nn.Module):
         encoder_attn_mask,
         decoder_attn_mask,
         encoder_decoder_attn_mask,
-        tokentype_ids=None,
         lm_labels=None,
         loss_mask=None,
     ):
@@ -297,8 +311,36 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_attn_mask,
             decoder_attn_mask,
             encoder_decoder_attn_mask,
-            tokentype_ids=tokentype_ids,
+            # tokentype_ids=None,
+            None,
         )
 
-        lm_loss = self.loss_func(logits, lm_labels)
+        lm_loss = self.loss_func(logits, lm_labels, loss_mask)
         return lm_loss
+
+@GRAPH_REGISTRY.register()
+class T5ForPretrainingGraph(GraphBase):
+    def build(
+        self,
+        encoder_input_ids,
+        decoder_input_ids,
+        encoder_attn_mask,
+        decoder_attn_mask,
+        encoder_decoder_attn_mask,
+        lm_labels=None,
+        loss_mask=None,
+    ):
+
+        # Forward pass through the model
+        if self.is_train:
+            losses = self.model(
+                encoder_input_ids,
+                decoder_input_ids,
+                encoder_attn_mask,
+                decoder_attn_mask,
+                encoder_decoder_attn_mask,
+                lm_labels,
+                loss_mask,
+            )
+            losses.backward()
+            return losses
