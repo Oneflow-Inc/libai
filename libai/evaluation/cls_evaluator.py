@@ -20,6 +20,7 @@ from collections import OrderedDict
 import oneflow as flow
 
 from libai.utils import distributed as dist
+
 from .evaluator import DatasetEvaluator
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,9 @@ class ClassEvaluator(DatasetEvaluator):
         acc1 = accuracy(pred_logits, labels, topk=1)
         num_correct_acc1 = acc1 * labels.size(0) / 100
 
-        self._predictions.append({"num_correct": num_correct_acc1, "num_samples": labels.size(0)})
+        self._predictions.append(
+            {"num_correct": num_correct_acc1, "num_samples": labels.size(0)}
+        )
 
     def evaluate(self):
         if not dist.is_main_process():

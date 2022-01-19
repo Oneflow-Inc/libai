@@ -15,6 +15,7 @@
 
 import logging
 from collections.abc import Mapping
+
 import oneflow as flow
 
 
@@ -32,9 +33,13 @@ def pad_batch(x_list, batch_size):
     padded_list = []
     for xi in x_list:
         pad_shape = (batch_size, *xi.shape[1:])
-        padded_xi = flow.zeros(pad_shape, sbp=xi.sbp, placement=xi.placement, dtype=xi.dtype)
+        padded_xi = flow.zeros(
+            pad_shape, sbp=xi.sbp, placement=xi.placement, dtype=xi.dtype
+        )
         padded_xi[:valid_sample, ...] = padded_xi[:valid_sample, ...] + xi
-        padded_xi[valid_sample:, ...] = padded_xi[valid_sample:, ...] + xi[0].unsqueeze(0)
+        padded_xi[valid_sample:, ...] = padded_xi[valid_sample:, ...] + xi[0].unsqueeze(
+            0
+        )
         padded_list.append(padded_xi)
     return padded_list, valid_sample
 
@@ -56,7 +61,10 @@ def print_csv_format(results):
             important_res = [(k, v) for k, v in res.items() if "-" not in k]
             logger.info("copypaste: Task: {}".format(task))
             logger.info("copypaste: " + ",".join([k[0] for k in important_res]))
-            logger.info("copypaste: " + ",".join(["{0:.4f}".format(k[1]) for k in important_res]))
+            logger.info(
+                "copypaste: "
+                + ",".join(["{0:.4f}".format(k[1]) for k in important_res])
+            )
         else:
             logger.info(f"copypaste: {task}={res}")
 

@@ -20,9 +20,7 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class DemoNlpDataset(flow.utils.data.Dataset):
-    def __init__(
-        self, data_root="", datasetname="Demodataset"
-    ):
+    def __init__(self, data_root="", datasetname="Demodataset"):
         self.data_root = data_root
         self.datasetname = datasetname
         self.dataset = list(range(50000))
@@ -32,9 +30,7 @@ class DemoNlpDataset(flow.utils.data.Dataset):
 
     def __getitem__(self, idx):
         sample = Instance(
-            input=DistTensorData(
-                flow.ones((512), dtype=flow.long), placement_idx=0
-            ),
+            input=DistTensorData(flow.ones((512), dtype=flow.long), placement_idx=0),
             label=DistTensorData(flow.ones((1,), dtype=flow.long), placement_idx=-1),
         )
         return sample

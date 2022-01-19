@@ -17,11 +17,13 @@ import datetime
 import logging
 import time
 from collections import OrderedDict, abc
-from typing import List, Union, Callable
+from typing import Callable, List, Union
+
 import oneflow as flow
 
 from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
+
 from .utils import pad_batch
 
 
@@ -39,7 +41,6 @@ class DatasetEvaluator:
         Preparation for a new round of evaluation.
         Should be called before starting a round of evaluation.
         """
-        pass
 
     def process(self, inputs, outputs):
         """
@@ -53,7 +54,6 @@ class DatasetEvaluator:
             inputs (list): the inputs that's used to call the model.
             outputs (list): the return value of `model(inputs)`
         """
-        pass
 
     def evaluate(self):
         """
@@ -66,7 +66,6 @@ class DatasetEvaluator:
                 * key: the name of the task (e.g., bbox)
                 * value: a dict of {metric name: score}, e.g.: {"AP50": 80}
         """
-        pass
 
 
 class DatasetEvaluators(DatasetEvaluator):
@@ -100,13 +99,19 @@ class DatasetEvaluators(DatasetEvaluator):
                 for k, v in result.items():
                     assert (
                         k not in results
-                    ), "Different evaluators produce results with the same key {}".format(k)
+                    ), "Different evaluators produce results with the same key {}".format(
+                        k
+                    )
                     results[k] = v
         return results
 
 
 def inference_on_dataset(
-    model, data_loader, batch_size, get_batch: Callable, evaluator: Union[DatasetEvaluator, List[DatasetEvaluator], None]
+    model,
+    data_loader,
+    batch_size,
+    get_batch: Callable,
+    evaluator: Union[DatasetEvaluator, List[DatasetEvaluator], None],
 ):
     """
     Run model on the data_loader and evaluate the metrics with evaluator.
@@ -166,7 +171,9 @@ def inference_on_dataset(
             elif isinstance(outputs, flow.Tensor):
                 valid_outputs = [outputs[:valid_sample]]
             else:
-                raise NotImplementedError(f"model output type {type(outputs)} is not supported")
+                raise NotImplementedError(
+                    f"model output type {type(outputs)} is not supported"
+                )
 
             if flow.cuda.is_available():
                 dist.synchronize()
@@ -180,9 +187,13 @@ def inference_on_dataset(
             data_seconds_per_iter = total_data_time / iters_after_start
             compute_seconds_per_iter = total_compute_time / iters_after_start
             eval_seconds_per_iter = total_eval_time / iters_after_start
-            total_seconds_per_iter = (time.perf_counter() - start_time) / iters_after_start
+            total_seconds_per_iter = (
+                time.perf_counter() - start_time
+            ) / iters_after_start
             if idx >= num_warmup * 2 or compute_seconds_per_iter > 5:
-                eta = datetime.timedelta(seconds=int(total_seconds_per_iter * (total - idx - 1)))
+                eta = datetime.timedelta(
+                    seconds=int(total_seconds_per_iter * (total - idx - 1))
+                )
                 log_every_n_seconds(
                     logging.INFO,
                     (
@@ -209,7 +220,9 @@ def inference_on_dataset(
     total_compute_time_str = str(datetime.timedelta(seconds=int(total_compute_time)))
     logger.info(
         "Total inference pure compute time: {} ({:.6f} s / iter per device, on {} devices)".format(
-            total_compute_time_str, total_compute_time / (total - num_warmup), num_devices
+            total_compute_time_str,
+            total_compute_time / (total - num_warmup),
+            num_devices,
         )
     )
 

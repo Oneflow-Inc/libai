@@ -16,14 +16,15 @@
 import logging
 import os
 from collections import OrderedDict
-import omegaconf
 
 import omegaconf
 import oneflow as flow
+from termcolor import colored
 
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
+from libai.evaluation import ClassEvaluator, inference_on_dataset, print_csv_format
 from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
@@ -34,8 +35,6 @@ from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
-from termcolor import colored
-from libai.evaluation import DatasetEvaluator, inference_on_dataset, print_csv_format, ClassEvaluator
 
 
 def _highlight(code, filename):
@@ -323,7 +322,9 @@ class DefaultTrainer(TrainerBase):
         ]
 
         def test_and_save_results():
-            self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
+            self._last_eval_results = self.test(
+                self.cfg, self.test_loader, self.graph_eval
+            )
             return self._last_eval_results
 
         ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
@@ -485,9 +486,7 @@ class DefaultTrainer(TrainerBase):
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
         # list[dataloader1, dataloader2, ...]
-        test_loader = instantiate(
-            cfg.dataloader.test
-        )
+        test_loader = instantiate(cfg.dataloader.test)
         return test_loader
 
     @classmethod
@@ -513,14 +512,18 @@ class DefaultTrainer(TrainerBase):
         # TODO: support multi evaluator
         # if isinstance(evaluators, DatasetEvaluator):
         #     evaluators = [evaluators]
-        test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
+        test_batch_size = (
+            cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
+        )
         evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
 
         results = OrderedDict()
         for idx, data_loader in enumerate(test_loaders):
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
-            dataset_name = getattr(data_loader.dataset, 'datasetname', "UndefinedDataset")
+            dataset_name = getattr(
+                data_loader.dataset, "datasetname", "UndefinedDataset"
+            )
             # TODO: support multi evaluator
             # if evaluators is not None:
             #     evaluator = evaluators[idx]
@@ -536,7 +539,8 @@ class DefaultTrainer(TrainerBase):
             #         continue
 
             results_i = inference_on_dataset(
-                model, data_loader, test_batch_size, cls.get_batch, evaluator)
+                model, data_loader, test_batch_size, cls.get_batch, evaluator
+            )
             results[dataset_name] = results_i
             if dist.is_main_process():
                 assert isinstance(
@@ -544,8 +548,11 @@ class DefaultTrainer(TrainerBase):
                 ), "Evaluator must return a dict on the main process. Got {} instead.".format(
                     results_i
                 )
-                logger.info("Evaluation results for {} in csv format:".format(
-                    colored(dataset_name, "green")))
+                logger.info(
+                    "Evaluation results for {} in csv format:".format(
+                        colored(dataset_name, "green")
+                    )
+                )
                 print_csv_format(results_i)
 
         if len(results) == 1:
