@@ -24,7 +24,7 @@ train.dist.pipeline_num_layers = model.cfg.hidden_layers
 train.train_iter = 1000
 train.micro_batch_size = 16
 train.log_period = 1
-train.load_weight = ./test/test_t5/flow_t5.f
+train.load_weight = "./test/test_t5/flow_t5.f"
 
 optim.lr = 0.0001
 
