@@ -63,3 +63,21 @@ default_test_transform = LazyCall(transforms.Compose)(
         ),
     ]
 )
+
+
+no_augmentation_transform = LazyCall(transforms.Compose)(
+    transforms=[
+        LazyCall(transforms.Resize)(
+            size=224,
+            interpolation=InterpolationMode.BILINEAR,
+        ),
+        LazyCall(transforms.CenterCrop)(
+            size=224,
+        ),
+        LazyCall(transforms.ToTensor)(),
+        LazyCall(transforms.Normalize)(
+            mean=IMAGENET_DEFAULT_MEAN,
+            std=IMAGENET_DEFAULT_STD,
+        ),
+    ]
+)
