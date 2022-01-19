@@ -28,25 +28,14 @@ import os
 import shutil
 import tempfile
 import traceback
-import uuid
 from collections import OrderedDict
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    MutableMapping,
-    Optional,
-    Set,
-    Union,
-)
+from typing import IO, Any, Callable, Dict, Iterable, List, MutableMapping, Optional, Set, Union
 from urllib.parse import urlparse
+
+import portalocker
 
 from libai.utils.download import download
 from libai.utils.non_blocking_io import NonBlockingIOManager
-
 
 __all__ = ["LazyPath", "PathManager", "get_cache_dir", "file_lock"]
 
@@ -163,7 +152,8 @@ class PathHandler:
     _strict_kwargs_check = True
 
     def __init__(
-        self, async_executor: Optional[concurrent.futures.Executor] = None,
+        self,
+        async_executor: Optional[concurrent.futures.Executor] = None,
     ) -> None:
         """
         When registering a `PathHandler`, the user can optionally pass in a
@@ -319,7 +309,8 @@ class PathHandler:
         # buffering for any storage backend.
         if not self._non_blocking_io_manager:
             self._non_blocking_io_manager = NonBlockingIOManager(
-                buffered=False, executor=self._non_blocking_io_executor,
+                buffered=False,
+                executor=self._non_blocking_io_executor,
             )
 
         try:
@@ -897,7 +888,8 @@ class PathManagerBase:
     ) -> Iterable[Any]:
         """
         Open a tabular data source. Only reading is supported.
-        The opent() returns a Python iterable collection object, compared to bytes/text data with open()
+        The opent() returns a Python iterable collection object, compared to
+        bytes/text data with open()
 
         Args:
             path (str): A URI supported by this PathHandler
@@ -1046,7 +1038,7 @@ class PathManagerBase:
     ) -> bool:
         """
         Copies a source path to a destination path.
-        
+
         Args:
             src_path (str): A URI supported by this PathHandler
             dst_path (str): A URI supported by this PathHandler
@@ -1104,9 +1096,7 @@ class PathManagerBase:
             local_path (str): a file path which exists on the local file system
         """
         path = os.fspath(path)
-        return self.__get_path_handler(  # type: ignore
-            path
-        )._get_local_path(
+        return self.__get_path_handler(path)._get_local_path(  # type: ignore
             path, force=force, **kwargs
         )
 
@@ -1141,9 +1131,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path exists
         """
-        return self.__get_path_handler(path)._exists(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._exists(path, **kwargs)  # type: ignore
 
     def isfile(self, path: str, **kwargs: Any) -> bool:
         """
@@ -1155,9 +1143,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path is a file
         """
-        return self.__get_path_handler(path)._isfile(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._isfile(path, **kwargs)  # type: ignore
 
     def isdir(self, path: str, **kwargs: Any) -> bool:
         """
@@ -1169,9 +1155,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path is a directory
         """
-        return self.__get_path_handler(path)._isdir(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._isdir(path, **kwargs)  # type: ignore
 
     def ls(self, path: str, **kwargs: Any) -> List[str]:
         """
@@ -1194,9 +1178,7 @@ class PathManagerBase:
         Args:
             path (str): A URI supported by this PathHandler
         """
-        return self.__get_path_handler(path)._mkdirs(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._mkdirs(path, **kwargs)  # type: ignore
 
     def rm(self, path: str, **kwargs: Any) -> None:
         """
@@ -1205,9 +1187,7 @@ class PathManagerBase:
         Args:
             path (str): A URI supported by this PathHandler
         """
-        return self.__get_path_handler(path)._rm(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._rm(path, **kwargs)  # type: ignore
 
     def symlink(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
         """Symlink the src_path to the dst_path
@@ -1345,7 +1325,7 @@ class PathManagerFactory:
         Get the path manager instance associated with a key.
         A new instance will be created if there is no existing
         instance associated with the key passed in.
-        
+
         Args:
             key (str):
         """
@@ -1362,7 +1342,7 @@ class PathManagerFactory:
             key (str):
         """
         if key in PathManagerFactory.pm_list:
-            _pm = PathManagerFactory.pm_list.pop(key)
+            _pm = PathManagerFactory.pm_list.pop(key)  # noqa
             del _pm
 
 

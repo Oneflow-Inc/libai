@@ -13,11 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import subprocess
 import sys
-import pybind11
 
+import pybind11
 from setuptools import Extension, find_packages, setup
 
 if sys.version_info < (3,):

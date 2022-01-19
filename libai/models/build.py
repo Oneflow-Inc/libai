@@ -20,7 +20,7 @@ MODEL_ARCH_REGISTRY = Registry("model_arch")
 MODEL_ARCH_REGISTRY.__doc__ = """
 Registry for modeling, i.e. Bert or GPT model.
 
-The registered object will be called with `obj(cfg)` 
+The registered object will be called with `obj(cfg)`
 and expected to return a `nn.Module` object.
 """
 
@@ -28,13 +28,13 @@ GRAPH_REGISTRY = Registry("graph")
 GRAPH_REGISTRY.__doc__ = """
 Registry for Graph training mode.
 
-The registered object will be called with `obj(cfg)` 
+The registered object will be called with `obj(cfg)`
 and expected to return a `nn.Graph` object.
 """
 
 
 def build_model(cfg):
-    """ Build the whole model architecture, defined by ``cfg.model.model_name``.
+    """Build the whole model architecture, defined by ``cfg.model.model_name``.
     Note that is does not load any weights from ``cfg``.
     """
     if "_target_" in cfg:  # LazyCall
@@ -46,8 +46,7 @@ def build_model(cfg):
 
 
 def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
-    """ Build the `nn.Graph`, defined by ``cfg.graph``.
-    """
+    """Build the `nn.Graph`, defined by ``cfg.graph``."""
     if is_train:
         # Set train graph
         assert optimizer is not None, "optimizer must be set for train graph"

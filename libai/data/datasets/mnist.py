@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from typing import Callable, Optional
 
 import oneflow as flow
@@ -23,8 +22,7 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class MNISTDataset(datasets.MNIST):
-    """CIFAR10 Dataset
-    """
+    """CIFAR10 Dataset"""
 
     def __init__(
         self,

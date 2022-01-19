@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from omegaconf import DictConfig
-
 import sys
+
+from omegaconf import DictConfig
 
 sys.path.append(".")
 

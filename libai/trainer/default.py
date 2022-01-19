@@ -16,14 +16,16 @@
 import logging
 import os
 
+import omegaconf
 import oneflow as flow
+
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
-from libai.tokenizer import build_tokenizer
-from libai.models import build_model, build_graph
+from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
+from libai.tokenizer import build_tokenizer
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.utils import distributed as dist
@@ -47,49 +49,53 @@ def _highlight(code, filename):
 
 
 def _check_batch_size(cfg):
-    micro_batch_size = try_get_key(cfg, "train.micro_batch_size", default=None)
+    train_micro_batch_size = try_get_key(
+        cfg, "train.train_micro_batch_size", default=None
+    )
     global_batch_size = try_get_key(cfg, "train.global_batch_size", default=None)
     num_accumulation_steps = try_get_key(
         cfg, "train.num_accumulation_steps", default=None
     )
 
-    if micro_batch_size is not None and global_batch_size is not None:
+    if train_micro_batch_size is not None and global_batch_size is not None:
         if num_accumulation_steps is None:
             if (
-                global_batch_size % (micro_batch_size * dist.get_data_parallel_size())
+                global_batch_size
+                % (train_micro_batch_size * dist.get_data_parallel_size())
                 != 0
             ):
                 raise ValueError(
                     f"global_batch_size {global_batch_size} must be divisible by "
-                    f"micro_batch_size * data_parallel_size ({micro_batch_size} * {dist.get_data_parallel_size()})"
+                    "train_micro_batch_size * data_parallel_size "
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()})"
                 )
 
             cfg.train.num_accumulation_steps = global_batch_size // (
-                micro_batch_size * dist.get_data_parallel_size()
+                train_micro_batch_size * dist.get_data_parallel_size()
             )
 
         else:
             if (
                 global_batch_size
-                != micro_batch_size
+                != train_micro_batch_size
                 * dist.get_data_parallel_size()
                 * num_accumulation_steps
             ):
                 raise ValueError(
-                    f"global_batch_size {global_batch_size} must equal"
-                    " micro_batch_size * data_parallel_size * num_accumulation_steps"
-                    f" ({micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"
+                    f"global_batch_size {global_batch_size} must equal to "
+                    "train_micro_batch_size * data_parallel_size * num_accumulation_steps "
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"  # noqa
                 )
-    elif micro_batch_size is not None and global_batch_size is None:
+    elif train_micro_batch_size is not None and global_batch_size is None:
         if num_accumulation_steps is None:
             cfg.train.num_accumulation_steps = 1
 
         cfg.train.global_batch_size = (
-            micro_batch_size
+            train_micro_batch_size
             * dist.get_data_parallel_size()
             * cfg.train.num_accumulation_steps
         )
-    elif micro_batch_size is None and global_batch_size is not None:
+    elif train_micro_batch_size is None and global_batch_size is not None:
         if num_accumulation_steps is None:
             cfg.train.num_accumulation_steps = 1
 
@@ -104,11 +110,13 @@ def _check_batch_size(cfg):
                 f"({dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
             )
 
-        cfg.train.micro_batch_size = global_batch_size // (
+        cfg.train.train_micro_batch_size = global_batch_size // (
             dist.get_data_parallel_size() * cfg.train.num_accumulation_steps
         )
     else:
-        raise ValueError("micro_batch_size and global_batch_size must be set either")
+        raise ValueError(
+            "train_micro_batch_size and global_batch_size must be set either"
+        )
 
 
 def default_setup(cfg, args):
@@ -263,7 +271,7 @@ class DefaultTrainer(TrainerBase):
             graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
-            graph_eval = self.build_graph(cfg, self.model, is_train=False)
+            graph_eval = self.build_graph(cfg, self.model, is_train=False)  # noqa
             self._trainer = GraphTrainer(graph_train, self.train_loader)
         else:
             self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)
@@ -452,6 +460,8 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training, validating, testing set")
+        cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
+        cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
         return train_loader, valid_loader, test_loader
 
@@ -463,7 +473,14 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.test` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
-        test_loader = instantiate(cfg.dataloader.test)  # list[dataloader1, dataloader2]
+        assert isinstance(
+            cfg.dataloader.test, omegaconf.listconfig.ListConfig
+        ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
+        for i in range(len(cfg.dataloader.test)):
+            cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+        test_loader = instantiate(
+            cfg.dataloader.test
+        )  # list[dataloader1, dataloader2, ...]
         return test_loader
 
     @classmethod
