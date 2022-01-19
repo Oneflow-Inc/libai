@@ -51,7 +51,7 @@ class T5Dataset(flow.utils.data.Dataset):
         self.bos_id = tokenizer.bos_token_id
         self.eos_id = tokenizer.eos_token_id
         self.pad_id = tokenizer.pad_token_id
-        self.special_tokens = tokenizer.additional_special_tokens
+        self.special_tokens = tokenizer.additional_special_tokens_ids
 
     def __len__(self):
         return len(self.dataset)
@@ -84,7 +84,7 @@ class T5Dataset(flow.utils.data.Dataset):
         )
         return sample
 
-    def create_masked_lm_predictions(self, tokens, np_rng, max_ngrams=3, do_whole_word_mask=True, token_boundary=None,
+    def create_masked_lm_predictions(self, tokens, np_rng, max_ngrams=3, do_whole_word_mask=False, token_boundary=None,
                                      favor_longer_ngram=False, geometric_dist=False):
         """Creates the predictions for the masked LM objective.
         Note: Tokens here are vocab ids and not text tokens."""
@@ -172,7 +172,6 @@ class T5Dataset(flow.utils.data.Dataset):
                 continue
             for index in index_set:
                 covered_indexes.add(index)
-                output_tokens[index] = masked_token
                 masked_lms.append(MaskedLmInstance(index=index, label=tokens[index]))
             
             masked_spans.append(MaskedLmInstance(
@@ -195,7 +194,7 @@ class T5Dataset(flow.utils.data.Dataset):
         special_tokens = collections.deque(self.special_tokens)
         encoder_input, decoder_input, decoder_output = [], [], []
 
-        decoder_input.append(self.bos_token_id)
+        decoder_input.append(self.bos_id)
         start_index, end_index = 0, None
 
         for span in masked_spans:
@@ -221,7 +220,8 @@ class T5Dataset(flow.utils.data.Dataset):
         assert num_pad >= 0
 
         filler = [self.pad_id] * num_pad
-        encoder_input = flow.tensor(encoder_input + filler, dtype=flow.long)
+        encoder_input = np.array(encoder_input + filler, dtype=np.long)
+        encoder_input = flow.tensor(encoder_input, dtype=flow.long)
 
         num_tokens_dec = len(decoder_input)
         num_pad_dec = self.max_seq_length - num_tokens_dec
@@ -229,7 +229,8 @@ class T5Dataset(flow.utils.data.Dataset):
 
         # tokens and token types
         filler_dec = [self.pad_id] * num_pad_dec
-        decoder_input = flow.tensor(decoder_input + filler_dec, dtype=flow.long)
+        decoder_input = np.array(decoder_input + filler_dec, dtype=np.long)
+        decoder_input = flow.tensor(decoder_input, dtype=flow.long)
 
         # padding mask
         encoder_padding_mask = flow.tensor([1] * num_tokens + [0] * num_pad, dtype=flow.long)

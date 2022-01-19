@@ -131,7 +131,7 @@ def get_args():
         "--vocab-file", type=str, default=None, help="Path to the vocab file"
     )
     group.add_argument(
-        "--merge-file",
+        "--merges-file",
         type=str,
         default=None,
         help="Path to the BPE merge file (if necessary).",
@@ -183,7 +183,7 @@ def parse_args_to_config(args):
         tokenizer=dict(
             tokenizer_name="",
             tokenizer_cfg=dict(
-                vocab_file=None, merge_file=None, do_lower_case=False, extra_ids=0,
+                vocab_file=None, merges_file=None, do_lower_case=False, extra_ids=0,
             ),
             append_eod=False,
         ),
@@ -194,7 +194,7 @@ def parse_args_to_config(args):
     cfg = DictConfig(default_cfg)
     cfg.tokenizer.tokenizer_name = args.tokenizer_name
     cfg.tokenizer.tokenizer_cfg.vocab_file = args.vocab_file
-    cfg.tokenizer.tokenizer_cfg.merge_file = args.merge_file
+    cfg.tokenizer.tokenizer_cfg.merges_file = args.merges_file
     cfg.tokenizer.tokenizer_cfg.do_lower_case = args.do_lower_case
     cfg.tokenizer.tokenizer_cfg.extra_id = args.extra_ids
     cfg.tokenizer.append_eod = args.append_eod

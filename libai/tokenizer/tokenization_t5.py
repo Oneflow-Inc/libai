@@ -66,7 +66,7 @@ class T5Tokenizer(PreTrainedTokenizer):
         # Add extra_ids to the special token list
         if extra_ids > 0 and additional_special_tokens is None:
             additional_special_tokens = [f"<extra_id_{i}>" for i in range(extra_ids)]
-        elif extra_id > 0 and additional_special_tokens is not None:
+        elif extra_ids > 0 and additional_special_tokens is not None:
             extra_tokens = len(
                 set(
                     filter(
@@ -105,7 +105,7 @@ class T5Tokenizer(PreTrainedTokenizer):
 
     def _tokenize(self, text):
         """Tokenize a string."""
-        pieces = self.sp_model.EncodeAsPieces(text, out_type=str)
+        pieces = self.sp_model.encode(text, out_type=str)
         return pieces
 
     def _convert_token_to_id(self, token):

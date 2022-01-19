@@ -31,9 +31,9 @@ class GPT2Dataset(flow.utils.data.Dataset):
         return len(self.dataset)
     
     def __getitem__(self, idx):
-        text = self.dataset[idx]
-        input_ids = flow.tensor(sample[:-1], dtype=flow.long)
-        labels = flow.tensor(sample[1:], dtype=flow.long)
+        text = np.array(self.dataset[idx], dtype=np.long)
+        input_ids = flow.tensor(text[:-1], dtype=flow.long)
+        labels = flow.tensor(text[1:], dtype=flow.long)
         sample = Instance(
             input_ids=DistTensorData(input_ids),
             labels=DistTensorData(labels, placement_idx=-1),

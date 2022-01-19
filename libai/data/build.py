@@ -38,7 +38,6 @@ def build_nlp_train_val_test_loader(
     """ 
     Build nlp train_val_test dataloder
     """
-    # TODO: add input type
     assert len(dataset) == len(splits), "datasets length must equal splits length"
     assert len(dataset) == len(weights), "datasets length must equal weights length"
 
@@ -119,7 +118,6 @@ def build_nlp_test_loader(
     """ 
     Build nlp test dataloder
     """
-    # TODO: add input type
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
     if sampler is None:
         sampler = SingleRoundSampler(
@@ -151,7 +149,6 @@ def build_image_train_loader(
         dataset: Dataset list or single dataset.
         batch_size: Batch-size for each GPU.
     """
-    # TODO: add input type
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
@@ -163,7 +160,6 @@ def build_image_train_loader(
         dataset = dataset[0]
 
     if sampler is None:
-        # TODO: initilize train sampler
         sampler = CyclicSampler(
             dataset=dataset,
             micro_batch_size=batch_size,
@@ -187,9 +183,7 @@ def build_image_train_loader(
 def build_image_test_loader(
     dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
 ):
-    # TODO: add input type
     if sampler is None:
-        # TODO: initilize test_sampler
         sampler = SingleRoundSampler(
             dataset=dataset,
             micro_batch_size=batch_size,
