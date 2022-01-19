@@ -209,9 +209,8 @@ class MultiheadAttention(nn.Module):
             else:
                 if self.coeff is not None:
                     attention_scores *= self.coeff
-                attention_scores = flow.mul(
-                    attention_scores, attention_mask
-                ) - 10000.0 * (1 - attention_mask)
+                attention_scores = flow.mul(attention_scores, attention_mask)
+                attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
                 # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
                 # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
                 attention_weights = flow.softmax(attention_scores, dim=-1)
