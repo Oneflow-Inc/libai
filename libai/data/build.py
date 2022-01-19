@@ -146,7 +146,8 @@ def build_nlp_test_loader(
 
 def build_image_train_loader(
     dataset,
-    batch_size,
+    train_batch_size,
+    test_batch_size=None,
     sampler=None,
     num_workers=4,
     consumed_samples=0,
@@ -174,7 +175,7 @@ def build_image_train_loader(
     if sampler is None:
         sampler = CyclicSampler(
             dataset=dataset,
-            micro_batch_size=batch_size,
+            micro_batch_size=train_batch_size,
             shuffle=True,
             consumed_samples=consumed_samples,
             data_parallel_rank=dist.get_data_parallel_rank(),
@@ -194,13 +195,13 @@ def build_image_train_loader(
 
 
 def build_image_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, seed=42, collate_fn=None, **kwargs
+    dataset, test_batch_size, sampler=None, num_workers=4, seed=42, collate_fn=None, **kwargs
 ):
 
     if sampler is None:
         sampler = SingleRoundSampler(
             dataset=dataset,
-            micro_batch_size=batch_size,
+            micro_batch_size=test_batch_size,
             shuffle=False,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),

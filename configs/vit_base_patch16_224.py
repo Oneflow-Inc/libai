@@ -27,8 +27,7 @@ scheduler = LazyCall(WarmupCosineLR)(
 train.dist.pipeline_num_layers = model.cfg.num_layers
 
 # Refine train cfg for vit model
-train.warmup_epochs = 20
-train.epochs = 300
+train.train_iter = 1000
 train.micro_batch_size = 128
 
 # Set fp16 ON

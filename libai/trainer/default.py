@@ -359,6 +359,11 @@ class DefaultTrainer(TrainerBase):
     def run_step(self):
         self._trainer.iter = self.iter
         self._trainer.run_step(self.get_batch)
+        # write loss
+        all_losses = self._trainer.all_losses
+        with open("of_vit_loss.txt", "w") as f:
+            for loss in all_losses:
+                f.write(str(loss) + "\n")
 
     @classmethod
     def get_batch(cls, data: Instance):
