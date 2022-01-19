@@ -72,8 +72,10 @@ class MultiheadAttention(nn.Module):
 
         self.dropout = nn.Dropout(p=attention_dropout_prob)
         self.norm_factor = 1.0 / math.sqrt(float(self.head_size))
+        self.coeff = None
         if apply_query_key_layer_scaling:
-            self.norm_factor /= float(layer_idx + 1)
+            self.coeff = layer_idx + 1
+            self.norm_factor /= self.coeff
 
         self.is_cross_attention = is_cross_attention
         self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
@@ -205,11 +207,13 @@ class MultiheadAttention(nn.Module):
                     attention_scores, attention_mask, fill_value=-10000.0
                 )
             else:
-                attention_scores = flow.mul(attention_scores, attention_mask)
+                if self.coeff is not None:
+                    attention_scores *= self.coeff
+                attention_scores = flow.mul(
+                    attention_scores, attention_mask
+                ) - 10000.0 * (1 - attention_mask)
                 # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
-                # attention_scores = attention_scores.masked_fill(attention_mask, -10000.0)
-                attention_scores *= 1 - attention_mask
-                attention_scores += attention_mask * -10000.0
+                # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
                 attention_weights = flow.softmax(attention_scores, dim=-1)
         else:
             attention_weights = flow.softmax(attention_scores, dim=-1)

@@ -46,10 +46,7 @@ class BertExtendedAttnMask(nn.Module):
         extended_attention_mask = attention_mask_bss.unsqueeze(1)
 
         # Convert attention mask to binary.
-        extended_attention_mask = flow.le(extended_attention_mask, 0.5)
-        # NOTE(Lxy): '<' is not work!
-        # extended_attention_mask = (extended_attention_mask < 0.5)
-
+        extended_attention_mask = extended_attention_mask > 0.5
         return extended_attention_mask
 
 
