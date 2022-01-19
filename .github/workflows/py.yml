@@ -13,8 +13,8 @@ on:
         description: "placeholder, no effect"
         required: false
 jobs:
-  linter:
-    name: Run linter
+  check_license_and_format:
+    name: License and format
     runs-on: ubuntu-18.04
     if: github.event.pull_request.draft == false && contains(github.event.pull_request.requested_reviewers.*.login, 'oneflow-ci-bot')
     steps:
