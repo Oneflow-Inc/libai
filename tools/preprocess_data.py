@@ -184,14 +184,7 @@ def parse_args_to_config(args):
         tokenizer=dict(
             tokenizer_name="",
             tokenizer_cfg=dict(
-<<<<<<< HEAD
                 vocab_file=None, merges_file=None, do_lower_case=False, extra_ids=0,
-=======
-                vocab_file=None,
-                merge_file=None,
-                do_lower_case=False,
-                extra_ids=0,
->>>>>>> e83df11055c47734e4924a17e02b88b28807c47d
             ),
             append_eod=False,
         ),

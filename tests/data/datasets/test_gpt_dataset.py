@@ -14,8 +14,8 @@
 # limitations under the License.
 
 from libai.config import LazyConfig
-from libai.data.data_utils import get_indexed_dataset
 from libai.data import GPT2Dataset
+from libai.data.data_utils import get_indexed_dataset
 from libai.tokenizer import GPT2Tokenizer
 
 datat_prefix = "gpt_samples_mmap_text_sentence"

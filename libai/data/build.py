@@ -20,9 +20,9 @@ from oneflow.utils.data.dataset import ConcatDataset
 
 from libai.utils import distributed as dist
 
-from .structures import Instance
 from .data_utils import split_ds, BlendableDataset
 from .samplers import CyclicSampler, SingleRoundSampler
+from .structures import Instance
 
 
 def build_nlp_train_val_test_loader(

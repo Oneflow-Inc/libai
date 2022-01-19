@@ -13,7 +13,6 @@
 
 import logging
 import os
-import time
 import shutil
 import struct
 import time

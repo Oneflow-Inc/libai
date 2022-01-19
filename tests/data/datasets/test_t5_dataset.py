@@ -14,8 +14,8 @@
 # limitations under the License.
 
 from libai.config import LazyConfig
-from libai.data.data_utils import get_indexed_dataset
 from libai.data import T5Dataset
+from libai.data.data_utils import get_indexed_dataset
 from libai.tokenizer import T5Tokenizer
 
 datat_prefix = "t5_samples_lazy_text_sentence"

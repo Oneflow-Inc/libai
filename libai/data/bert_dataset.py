@@ -14,14 +14,14 @@
 # limitations under the License.
 """dataset for bert."""
 
+import collections
 import math
 import random
-import collections
 import numpy as np
 import oneflow as flow
 
 from .data_utils import SentenceIndexedDataset
-from .structures import Instance, DistTensorData
+from .structures import DistTensorData, Instance
 
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])

@@ -14,8 +14,8 @@
 # limitations under the License.
 
 from libai.config import LazyConfig
-from libai.data.data_utils import get_indexed_dataset
 from libai.data import BertDataset
+from libai.data.data_utils import get_indexed_dataset
 from libai.tokenizer import BertTokenizer
 
 datat_prefix = "test_samples_lazy_text_sentence"

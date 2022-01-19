@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 import oneflow as flow
-from oneflow.utils.data import TensorDataset, DataLoader
+from oneflow.utils.data import DataLoader, TensorDataset
 
 from libai.data.samplers import CyclicSampler, SingleRoundSampler
 
