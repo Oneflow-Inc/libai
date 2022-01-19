@@ -250,7 +250,6 @@ class DefaultTrainer(TrainerBase):
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
-
         # Assume no other objects need to be checkpointed.
         # We can later make it checkpoint the stateful hooks
         self.checkpointer = Checkpointer(
@@ -494,12 +493,24 @@ class DefaultTrainer(TrainerBase):
         cfg.scheduler.warmup_iters = cfg.train.warmup_iter
 
         if cfg.train.train_epoch:
-            cfg.train.train_iter = max(len(data_loader) * cfg.train.train_epoch, cfg.train.train_iter)
-            logger.info("`cfg.train.train_epoch` is setted, automatically scale the train iters to {}.".format(cfg.train.train_iter))
+            cfg.train.train_iter = max(
+                len(data_loader) * cfg.train.train_epoch, cfg.train.train_iter
+            )
+            logger.info(
+                "`cfg.train.train_epoch` is setted, scale the train iters to {}.".format(
+                    cfg.train.train_iter
+                )
+            )
             cfg.scheduler.max_iters = cfg.train.train_iter
         if cfg.train.warmup_epoch:
-            cfg.train.warmup_iter = max(len(data_loader) * cfg.train.warmup_epoch, cfg.train.warmup_iter)
-            logger.info("`cfg.train.warmup_epoch` is setted, automatically scale the warmup iters to {}.".format(cfg.train.warmup_iter))
+            cfg.train.warmup_iter = max(
+                len(data_loader) * cfg.train.warmup_epoch, cfg.train.warmup_iter
+            )
+            logger.info(
+                "`cfg.train.warmup_epoch` is setted, scale the warmup iters to {}.".format(
+                    cfg.train.warmup_iter
+                )
+            )
             cfg.scheduler.warmup_iters = cfg.train.warmup_iter
-        
+
         return cfg
