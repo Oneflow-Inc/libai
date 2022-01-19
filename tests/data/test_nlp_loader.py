@@ -13,20 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
 import sys
+
+import oneflow as flow
 from omegaconf import OmegaConf
 
 sys.path.append(".")
-from libai.trainer import DefaultTrainer, default_setup
-from libai.config import default_argument_parser, LazyCall
+from libai.config import LazyCall, default_argument_parser
+from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
+from libai.data.structures import Instance
 from libai.optim import get_default_optimizer_params
 from libai.scheduler import WarmupCosineLR
-from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
+from libai.trainer import DefaultTrainer, default_setup
 from tests.data.datasets.demo_dataset import DemoNlpDataset
-from libai.data.structures import Instance
-
-from tests.layers.test_trainer_model import build_model, build_graph
+from tests.layers.test_trainer_model import build_graph, build_model
 
 
 def setup(args):
@@ -58,7 +58,8 @@ def setup(args):
 
     cfg.optim = LazyCall(flow.optim.AdamW)(
         parameters=LazyCall(get_default_optimizer_params)(
-            # parameters.model is meant to be set to the model object, before instantiating the optimizer.
+            # parameters.model is meant to be set to the model object,
+            # before instantiating the optimizer.
             clip_grad_max_norm=1.0,
             clip_grad_norm_type=2.0,
             weight_decay_norm=0.0,
@@ -82,8 +83,12 @@ def setup(args):
 
     cfg.dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
         dataset=[
-            LazyCall(DemoNlpDataset)(data_root="train1",),
-            LazyCall(DemoNlpDataset)(data_root="train2",),
+            LazyCall(DemoNlpDataset)(
+                data_root="train1",
+            ),
+            LazyCall(DemoNlpDataset)(
+                data_root="train2",
+            ),
         ],
         splits=[[949.0, 50.0, 1.0], [900.0, 99.0, 1.0]],
         weights=[0.5, 0.5],
@@ -92,14 +97,20 @@ def setup(args):
 
     cfg.dataloader.test = [
         LazyCall(build_nlp_test_loader)(
-            dataset=LazyCall(DemoNlpDataset)(data_root="test1",)
+            dataset=LazyCall(DemoNlpDataset)(
+                data_root="test1",
+            )
         ),
         LazyCall(build_nlp_test_loader)(
-            dataset=LazyCall(DemoNlpDataset)(data_root="test2",)
+            dataset=LazyCall(DemoNlpDataset)(
+                data_root="test2",
+            )
         ),
     ]
 
-    cfg.graph = dict(enabled=True,)
+    cfg.graph = dict(
+        enabled=True,
+    )
 
     default_setup(cfg, args)
     return cfg

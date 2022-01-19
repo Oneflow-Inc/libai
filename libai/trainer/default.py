@@ -18,21 +18,23 @@ import os
 from collections import OrderedDict
 import omegaconf
 
+import omegaconf
 import oneflow as flow
+
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
-from libai.tokenizer import build_tokenizer
-from libai.models import build_model, build_graph
+from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
+from libai.tokenizer import build_tokenizer
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
-from termcolor import colored 
+from termcolor import colored
 from libai.evaluation import DatasetEvaluator, inference_on_dataset, print_csv_format, ClassEvaluator
 
 
@@ -68,7 +70,8 @@ def _check_batch_size(cfg):
             ):
                 raise ValueError(
                     f"global_batch_size {global_batch_size} must be divisible by "
-                    f"train_micro_batch_size * data_parallel_size ({train_micro_batch_size} * {dist.get_data_parallel_size()})"
+                    "train_micro_batch_size * data_parallel_size "
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()})"
                 )
 
             cfg.train.num_accumulation_steps = global_batch_size // (
@@ -83,9 +86,9 @@ def _check_batch_size(cfg):
                 * num_accumulation_steps
             ):
                 raise ValueError(
-                    f"global_batch_size {global_batch_size} must equal"
-                    " train_micro_batch_size * data_parallel_size * num_accumulation_steps"
-                    f" ({train_micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"
+                    f"global_batch_size {global_batch_size} must equal to "
+                    "train_micro_batch_size * data_parallel_size * num_accumulation_steps "
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"  # noqa
                 )
     elif train_micro_batch_size is not None and global_batch_size is None:
         if num_accumulation_steps is None:
@@ -318,13 +321,13 @@ class DefaultTrainer(TrainerBase):
                 self.checkpointer, self.cfg.train.checkpointer.period
             ),
         ]
-        
+
         def test_and_save_results():
             self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
             return self._last_eval_results
-        
+
         ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
-        
+
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
             ret.append(
@@ -485,7 +488,7 @@ class DefaultTrainer(TrainerBase):
             cfg.dataloader.test
         )  # list[dataloader1, dataloader2, ...]
         return test_loader
-    
+
     @classmethod
     def build_evaluator(cls, cfg):
         return ClassEvaluator(cfg)
@@ -511,7 +514,6 @@ class DefaultTrainer(TrainerBase):
         #     evaluators = [evaluators]
         test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
         evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
-    
 
         results = OrderedDict()
         for idx, data_loader in enumerate(test_loaders):
@@ -531,8 +533,9 @@ class DefaultTrainer(TrainerBase):
             #         )
             #         results[dataset_name] = {}
             #         continue
-            
-            results_i = inference_on_dataset(model, data_loader, test_batch_size, cls.get_batch, evaluator)
+
+            results_i = inference_on_dataset(
+                model, data_loader, test_batch_size, cls.get_batch, evaluator)
             results[dataset_name] = results_i
             if dist.is_main_process():
                 assert isinstance(
@@ -540,7 +543,8 @@ class DefaultTrainer(TrainerBase):
                 ), "Evaluator must return a dict on the main process. Got {} instead.".format(
                     results_i
                 )
-                logger.info("Evaluation results for {} in csv format:".format(colored(dataset_name, "green")))
+                logger.info("Evaluation results for {} in csv format:".format(
+                    colored(dataset_name, "green")))
                 print_csv_format(results_i)
 
         if len(results) == 1:

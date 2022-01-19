@@ -15,13 +15,12 @@
 
 """Blendable dataset."""
 
-import time
 import logging
-
+import time
 from collections import OrderedDict
+
 import numpy as np
 import oneflow as flow
-
 
 logger = logging.getLogger(__name__)
 

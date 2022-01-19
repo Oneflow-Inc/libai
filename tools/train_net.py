@@ -13,13 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-
-sys.path.append(".")
 from libai.config import LazyConfig, default_argument_parser
-from libai.utils.checkpoint import Checkpointer
-
 from libai.trainer import DefaultTrainer, default_setup
+from libai.utils.checkpoint import Checkpointer
 
 
 def main(args):
@@ -33,7 +29,7 @@ def main(args):
             cfg.train.load_weight, resume=args.resume
         )
         graph = DefaultTrainer.build_graph(cfg, model, is_train=False)
-        res = DefaultTrainer.test(cfg, graph)
+        res = DefaultTrainer.test(cfg, graph)  # noqa
 
     trainer = DefaultTrainer(cfg)
     return trainer.train()

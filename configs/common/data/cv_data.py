@@ -1,12 +1,6 @@
 from omegaconf import OmegaConf
-from libai.config.instantiate import instantiate
 
-from libai.data.datasets import (
-    ImageNetDataset,
-    CIFAR10Dataset,
-    CIFAR100Dataset,
-    MNISTDataset,
-)
+from libai.data.datasets import ImageNetDataset
 from libai.data.build import build_image_train_loader, build_image_test_loader
 from libai.config import LazyCall
 

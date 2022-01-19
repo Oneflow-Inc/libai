@@ -14,12 +14,10 @@
 # limitations under the License.
 
 import datetime
-import itertools
 import logging
-import os
-import tempfile
 import time
 from collections import Counter
+
 import oneflow as flow
 
 from libai.trainer.trainer import HookBase
@@ -209,7 +207,7 @@ class EvalHook(HookBase):
     def _do_eval(self):
 
         results = self._func()
-        
+
         if results:
             assert isinstance(
                 results, dict
