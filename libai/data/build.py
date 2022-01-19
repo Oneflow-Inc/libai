@@ -73,9 +73,12 @@ def build_train_valid_test_data_iterators(cfg):
     ) * cfg.train.eval_iter
     test_iter = cfg.train.eval_iter
     train_val_test_num_samples = [
-        train_samples,
-        eval_iter * cfg.train.global_batch_size,
-        test_iter * cfg.train.global_batch_size,
+        # train_samples,
+        # eval_iter * cfg.train.global_batch_size,
+        # test_iter * cfg.train.global_batch_size,
+        160000,
+        1760,
+        160,
     ]
     logger.info(" > datasets target sizes (minimum size):")
     logger.info("    train:      {}".format(train_val_test_num_samples[0]))

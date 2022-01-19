@@ -40,6 +40,9 @@ data.dataset_type = "t5"
 data.tokenizer_type = "BertWordPieceLowerCase"
 data.data_path = ['/home/wang/data/t5/dataset/loss_compara_content_sentence']
 data.vocab_file = '/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
+data.num_workers = 1
+data.vocab_extra_ids = 100
+data.mmap_warmup = False
 
 # fmt: off
 graph = dict(

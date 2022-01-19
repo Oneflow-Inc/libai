@@ -55,7 +55,6 @@ class T5Dataset(flow.utils.data.Dataset):
                                                    self.seed,
                                                    self.name,
                                                    False)
-
         # Vocab stuff.
         tokenizer = get_tokenizer()
         self.vocab_id_list = list(tokenizer.inv_vocab.keys())
@@ -66,14 +65,13 @@ class T5Dataset(flow.utils.data.Dataset):
         self.pad_id = tokenizer.pad
         self.bos_id = tokenizer.bos_token_id
         self.eos_id = tokenizer.eos_token_id
-        self.sentinel_tokens = [x for x in range(self.eos_id, self.eos_id + 100)]
+        self.sentinel_tokens = [x for x in range(self.eos_id + 1, self.eos_id + 101)]
         assert len(self.sentinel_tokens) > 0, "Provide the argument --vocab-extra-ids 100 to the script"
 
     def __len__(self):
         return self.samples_mapping.shape[0]
 
     def __getitem__(self, idx):
-
         start_index, end_index, seq_length = self.samples_mapping[idx]
         sample = []
         for index in range(start_index, end_index):
