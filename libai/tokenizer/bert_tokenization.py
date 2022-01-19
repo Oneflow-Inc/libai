@@ -124,7 +124,8 @@ def load_vocab(vocab_file):
     """Loads a vocabulary file into a dictionary."""
     vocab = collections.OrderedDict()
     index = 0
-    with open(vocab_file, "r", encoding="utf-8") as reader:
+    # with open(vocab_file, "r", encoding="utf-8") as reader:
+    with open(vocab_file, "r") as reader:
         while True:
             token = convert_to_unicode(reader.readline())
             if not token:
@@ -135,23 +136,11 @@ def load_vocab(vocab_file):
     return vocab
 
 
-def convert_by_vocab(vocab, items, inv=False):
-    """Converts a sequence of [tokens|ids] using the vocab.
-       这里统一的处理方式是将中文substr的id设置为vocab_size+id(substr.remove(##))，
-       然后在构建样本mask的时候再考虑。
-    """
+def convert_by_vocab(vocab, items):
+    """Converts a sequence of [tokens|ids] using the vocab."""
     output = []
     for item in items:
-        if not inv:
-            if _is_chinese_substr(item):
-                output.append(vocab[item[2:]] + len(vocab))
-            else:
-                output.append(vocab[item])
-        else:
-            if item > len(vocab):
-                output.append("##" + vocab[item - len(vocab)])
-            else:
-                output.append(vocab[item])
+        output.append(vocab[item])
     return output
 
 
@@ -160,7 +149,7 @@ def convert_tokens_to_ids(vocab, tokens):
 
 
 def convert_ids_to_tokens(inv_vocab, ids):
-    return convert_by_vocab(inv_vocab, ids, inv=True)
+    return convert_by_vocab(inv_vocab, ids)
 
 
 def whitespace_tokenize(text):
@@ -175,13 +164,10 @@ def whitespace_tokenize(text):
 class FullTokenizer(object):
     """Runs end-to-end tokenziation."""
 
-    def __init__(self, vocab_file, do_lower_case=True, do_chinese_wwm=False):
-        self.vocab = load_vocab(vocab_file)  # _BertTokenizer会增加[BOS]和[EOS]
+    def __init__(self, vocab_file, do_lower_case=True):
+        self.vocab = load_vocab(vocab_file)  
         self.inv_vocab = {v: k for k, v in self.vocab.items()}
-        if not do_chinese_wwm:
-            self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
-        else:
-            self.basic_tokenizer = BasicTokenizerWithChineseWWM(do_lower_case)
+        self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab)
 
     def tokenize(self, text):
@@ -196,7 +182,7 @@ class FullTokenizer(object):
         return convert_by_vocab(self.vocab, tokens)
 
     def convert_ids_to_tokens(self, ids):
-        return convert_by_vocab(self.inv_vocab, ids, inv=True)
+        return convert_by_vocab(self.inv_vocab, ids)
 
     @staticmethod
     def convert_tokens_to_string(tokens, clean_up_tokenization_spaces=True):
@@ -320,16 +306,14 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if (
-            (cp >= 0x4E00 and cp <= 0x9FFF)
+        if ((cp >= 0x4E00 and cp <= 0x9FFF)
             or (cp >= 0x3400 and cp <= 0x4DBF)  #
             or (cp >= 0x20000 and cp <= 0x2A6DF)  #
             or (cp >= 0x2A700 and cp <= 0x2B73F)  #
             or (cp >= 0x2B740 and cp <= 0x2B81F)  #
             or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
             or (cp >= 0xF900 and cp <= 0xFAFF)
-            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
-        ):  #
+            or (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
             return True
 
         return False
@@ -365,15 +349,6 @@ class WordpieceTokenizer(object):
         For example:
           input = "unaffable"
           output = ["un", "##aff", "##able"]
-          input = "有没有"
-          output = ["有", "##没", "##有"]
-
-        （NickPan）对中文的特殊处理：
-          中文的substr和原字不应该用不同的embedding，因此"有"和"##有"应该要用同样的id，
-          考虑到有些中文词表中本身带有中文substr，有些则没有（如bert4kreas），为了兼容
-          两种情况，这里统一的处理方式是将中文substr的id设置为vocab_size+id(substr.remove(##))，
-          然后在构建样本mask的时候再考虑。因此在wordpiece_tokenize时，不需要考虑"##有"是否在词表中，
-          只需要考虑"有"在词表中即可。
 
         Args:
           text: A single token or whitespace separated tokens. This should have
@@ -398,31 +373,17 @@ class WordpieceTokenizer(object):
             while start < len(chars):
                 end = len(chars)
                 cur_substr = None
-
                 while start < end:
                     substr = "".join(chars[start:end])
                     if start > 0:
                         substr = "##" + substr
-
-                    if substr.startswith("##"):
-                        if _is_chinese_substr(substr):
-                            if substr[2:] in self.vocab:  # 中文substr
-                                cur_substr = substr
-                                break
-                        else:
-                            if substr in self.vocab:
-                                cur_substr = substr  # 英文substr
-                                break
-                    else:
-                        if substr in self.vocab:  # 非substr，可以是字，也可以是整个中文词
-                            cur_substr = substr
-                            break
+                    if substr in self.vocab:
+                        cur_substr = substr
+                        break
                     end -= 1
-
                 if cur_substr is None:
                     is_bad = True
                     break
-
                 sub_tokens.append(cur_substr)
                 start = end
 
@@ -475,147 +436,3 @@ def _is_punctuation(char):
     if cat.startswith("P"):
         return True
     return False
-
-
-class BasicTokenizerWithChineseWWM(object):
-    """Runs basic tokenization (punctuation splitting, lower casing, etc.).
-       (nickpan)对中英混杂做了特殊处理，见_tokenize_chinese_chars
-    """
-
-    def __init__(self, do_lower_case=True):
-        """Constructs a BasicTokenizer.
-
-        Args:
-          do_lower_case: Whether to lower case the input.
-        """
-        try:
-            import jieba
-
-            self.pre_tokenizer = lambda x: jieba.lcut(x, HMM=False)
-        except ImportError:
-            raise (ImportError("Chinese WWM need jieba"))
-
-        self.do_lower_case = do_lower_case
-
-    def tokenize(self, text):
-        """Tokenizes a piece of text."""
-        text = convert_to_unicode(text)
-        text = self._clean_text(text)
-
-        # This was added on November 1st, 2018 for the multilingual and Chinese
-        # models. This is also applied to the English models now, but it doesn't
-        # matter since the English models were not trained on any Chinese data
-        # and generally don't have any Chinese data in them (there are Chinese
-        # characters in the vocabulary because Wikipedia does have some Chinese
-        # words in the English Wikipedia.).
-        text = self._tokenize_chinese_chars(text)
-        orig_tokens = whitespace_tokenize(text)
-        split_tokens = []
-        for token in orig_tokens:
-            if self.do_lower_case:
-                token = token.lower()
-                token = self._run_strip_accents(token)
-            split_tokens.extend(self._run_split_on_punc(token))
-
-        output_tokens = whitespace_tokenize(" ".join(split_tokens))
-        return output_tokens
-
-    def _run_strip_accents(self, text):
-        """Strips accents from a piece of text."""
-        text = unicodedata.normalize("NFD", text)
-        output = []
-        for char in text:
-            cat = unicodedata.category(char)
-            if cat == "Mn":
-                continue
-            output.append(char)
-        return "".join(output)
-
-    def _run_split_on_punc(self, text):
-        """Splits punctuation on a piece of text."""
-        chars = list(text)
-        i = 0
-        start_new_word = True
-        output = []
-        while i < len(chars):
-            char = chars[i]
-            if _is_punctuation(char):
-                output.append([char])
-                start_new_word = True
-            else:
-                if start_new_word:
-                    output.append([])
-                start_new_word = False
-                output[-1].append(char)
-            i += 1
-
-        return ["".join(x) for x in output]
-
-    def _tokenize_chinese_chars(self, text):
-        """Adds whitespace around any CJK character.
-           (nickpan)并且如果是纯中文片段，则用jieba分词，否则则保留
-           两边加空格的操作。       
-        """
-        output = []
-        piece = ""
-        for char in text:
-            cp = ord(char)
-            if self._is_chinese_char(cp):
-                piece += char
-            else:
-                chinese_words = self.pre_tokenizer(piece)
-                for word in chinese_words:
-                    output.append(" ")
-                    output.append(word)
-                    output.append(" ")
-                output.append(char)
-                piece = ""
-
-        chinese_words = self.pre_tokenizer(piece)
-        for word in chinese_words:
-            output.append(" ")
-            output.append(word)
-            output.append(" ")
-
-        return "".join(output)
-
-    def _is_chinese_char(self, cp):
-        """Checks whether CP is the codepoint of a CJK character."""
-        # This defines a "chinese character" as anything in the CJK Unicode block:
-        #   https://en.wikipedia.org/wiki/CJK_Unified_Ideographs_(Unicode_block)
-        #
-        # Note that the CJK Unicode block is NOT all Japanese and Korean characters,
-        # despite its name. The modern Korean Hangul alphabet is a different block,
-        # as is Japanese Hiragana and Katakana. Those alphabets are used to write
-        # space-separated words, so they are not treated specially and handled
-        # like the all of the other languages.
-        if (
-            (cp >= 0x4E00 and cp <= 0x9FFF)
-            or (cp >= 0x3400 and cp <= 0x4DBF)  #
-            or (cp >= 0x20000 and cp <= 0x2A6DF)  #
-            or (cp >= 0x2A700 and cp <= 0x2B73F)  #
-            or (cp >= 0x2B740 and cp <= 0x2B81F)  #
-            or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
-            or (cp >= 0xF900 and cp <= 0xFAFF)
-            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
-        ):  #
-            return True
-
-        return False
-
-    def _clean_text(self, text):
-        """Performs invalid character removal and whitespace cleanup on text."""
-        output = []
-        for char in text:
-            cp = ord(char)
-            if cp == 0 or cp == 0xFFFD or _is_control(char):
-                continue
-            if _is_whitespace(char):
-                output.append(" ")
-            else:
-                output.append(char)
-        return "".join(output)
-
-
-def _is_chinese_substr(char):
-    return re.findall("##[\u4E00-\u9FA5]", char)
