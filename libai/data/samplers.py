@@ -97,7 +97,7 @@ class CyclicSampler(Sampler):
                     self.consumed_samples += self.actual_batch_size
                     yield batch
                     batch = []
-            
+
             current_epoch_samples = 0
 
     def __len__(self):

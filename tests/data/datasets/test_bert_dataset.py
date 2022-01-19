@@ -18,14 +18,14 @@ from libai.data.data_utils import get_indexed_dataset
 from libai.tokenizer import BertTokenizer
 
 datat_prefix = "test_samples_lazy_text_sentence"
-tokenizer = BertTokenizer(vocab_file='bert-vocab.txt', do_lower_case=True)
-indexed_dataset = get_indexed_dataset(datat_prefix, data_impl='lazy', skip_warmup=False)
+tokenizer = BertTokenizer(vocab_file="bert-vocab.txt", do_lower_case=True)
+indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="lazy", skip_warmup=False)
 
 dataset = BertDataset(
     tokenizer,
     data_prefix=datat_prefix,
     indexed_dataset=indexed_dataset,
-    binary_head=False
+    binary_head=False,
 )
 
 print(len(indexed_dataset))

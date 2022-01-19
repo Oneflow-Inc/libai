@@ -21,7 +21,7 @@ from libai.tokenizer import BertTokenizer
 
 def test_indexed_dataset(args):
     ds = indexed_dataset.make_dataset(args.data, args.dataset_impl)
-    tokenizer = BertTokenizer(vocab_file='bert-vocab.txt')
+    tokenizer = BertTokenizer(vocab_file="bert-vocab.txt")
     print(len(ds.doc_idx))
     print(len(ds))
     print(ds.doc_idx[-1])
@@ -48,7 +48,7 @@ def test_indexed_dataset(args):
 
 def test_indexed_dataset_get(args):
     ds = indexed_dataset.make_dataset(args.data, args.dataset_impl)
-    tokenizer =  BertTokenizer(vocab_file='bert-vocab.txt')
+    tokenizer = BertTokenizer(vocab_file="bert-vocab.txt")
     size = ds.sizes[0]
     print(f"size: {size}")
 
@@ -70,17 +70,30 @@ def test_indexed_dataset_get(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', default='test_samples_lazy_text_sentence', type=str, help='prefix to data files')
-    parser.add_argument('--dataset-impl', type=str, default='infer', choices=['lazy', 'cached', 'mmap', 'infer'])
-    parser.add_argument('--count', type=int, default=10, help='Number of samples/documents to print')
+    parser.add_argument(
+        "--data",
+        default="test_samples_lazy_text_sentence",
+        type=str,
+        help="prefix to data files",
+    )
+    parser.add_argument(
+        "--dataset-impl",
+        type=str,
+        default="infer",
+        choices=["lazy", "cached", "mmap", "infer"],
+    )
+    parser.add_argument(
+        "--count", type=int, default=10, help="Number of samples/documents to print"
+    )
     args = parser.parse_args()
-    
-    if args.dataset_impl == 'infer':
+
+    if args.dataset_impl == "infer":
         args.dataset_impl = indexed_dataset.infer_dataset_impl(args.data)
 
     print(args.dataset_impl)
     test_indexed_dataset(args)
     test_indexed_dataset_get(args)
+
 
 if __name__ == "__main__":
     main()

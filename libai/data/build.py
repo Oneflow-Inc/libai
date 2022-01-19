@@ -21,6 +21,7 @@ from oneflow.utils.data.dataset import ConcatDataset
 from libai.utils import distributed as dist
 
 from .data_utils import split_ds
+from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
 
@@ -36,7 +37,7 @@ def build_nlp_train_val_test_loader(
     collate_fn=None,
     blendable_dataset=ConcatDataset,
 ):
-    """ 
+    """
     Build nlp train_val_test dataloder
     """
     # TODO: add input type
@@ -115,9 +116,14 @@ def build_nlp_train_val_test_loader(
 
 
 def build_nlp_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
+    dataset,
+    batch_size,
+    sampler=None,
+    num_workers=4,
+    seed=0,
+    collate_fn=None,
 ):
-    """ 
+    """
     Build nlp test dataloder
     """
     # TODO: add input type
@@ -145,6 +151,7 @@ def build_image_train_loader(
     num_workers=4,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
+    seed=42,
     **kwargs
 ):
     """
@@ -197,7 +204,6 @@ def build_image_test_loader(
             shuffle=False,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
-            seed=seed,
             drop_last=False,
         )
 

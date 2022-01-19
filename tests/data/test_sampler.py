@@ -23,7 +23,6 @@ from libai.data.samplers import CyclicSampler, SingleRoundSampler
 
 
 class TestDataLoader(unittest.TestCase):
-
     def setUp(self):
         super(TestDataLoader, self).setUp()
         self.data = flow.randn(100, 2, 3, 5)
@@ -32,22 +31,24 @@ class TestDataLoader(unittest.TestCase):
         self.persistent_workers = False
 
     def _get_data_loader(self, dataset, **kwargs):
-        persistent_workers = kwargs.get('persistent_workers', self.persistent_workers)
-        if persistent_workers and kwargs.get('num_workers', 0) == 0:
+        persistent_workers = kwargs.get("persistent_workers", self.persistent_workers)
+        if persistent_workers and kwargs.get("num_workers", 0) == 0:
             persistent_workers = False
-        kwargs['persistent_workers'] = persistent_workers
+        kwargs["persistent_workers"] = persistent_workers
         return DataLoader(dataset, **kwargs)
-    
+
     def _test_sampler(self, **kwargs):
         indices = range(2, 12)  # using a regular iterable
-        dl = self._get_data_loader(self.dataset, sampler=indices, batch_size=2, **kwargs)
+        dl = self._get_data_loader(
+            self.dataset, sampler=indices, batch_size=2, **kwargs
+        )
         self.assertEqual(len(dl), 5)
         for i, (input, _target) in enumerate(dl):
             self.assertEqual(len(input), 2)
             self.assertTrue(
                 np.allclose(
                     input.numpy(),
-                    self.data[i * 2 + 2: i * 2 + 4, :, :, :].numpy(),
+                    self.data[i * 2 + 2 : i * 2 + 4, :, :, :].numpy(),
                     atol=1e-4,
                     rtol=1e-4,
                 )
@@ -69,7 +70,7 @@ class TestDataLoader(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(
                         input.numpy(),
-                        self.data[offset:offset + 2, :, :, :].numpy(),
+                        self.data[offset : offset + 2, :, :, :].numpy(),
                         atol=1e-4,
                         rtol=1e-4,
                     )
@@ -80,14 +81,21 @@ class TestDataLoader(unittest.TestCase):
                 self.assertTrue(
                     np.allclose(
                         input.numpy(),
-                        self.data[offset:offset + 3, :, :, :].numpy(),
+                        self.data[offset : offset + 3, :, :, :].numpy(),
                         atol=1e-4,
                         rtol=1e-4,
                     )
                 )
 
     def _test_cyclic_sampler(self, **kwargs):
-        sampler = CyclicSampler(self.dataset, micro_batch_size=4, shuffle=False, consumed_samples=50, data_parallel_size=1, data_parallel_rank=0)
+        sampler = CyclicSampler(
+            self.dataset,
+            micro_batch_size=4,
+            shuffle=False,
+            consumed_samples=50,
+            data_parallel_size=1,
+            data_parallel_rank=0,
+        )
         dl = self._get_data_loader(self.dataset, batch_sampler=sampler, **kwargs)
         offset = 50
         data = self.data.repeat(10, 1, 1, 1)
@@ -96,23 +104,30 @@ class TestDataLoader(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     input.numpy(),
-                    data[i * 4 + offset: i * 4 + 4 + offset, :, :, :].numpy(),
+                    data[i * 4 + offset : i * 4 + 4 + offset, :, :, :].numpy(),
                     atol=1e-4,
                     rtol=1e-4,
                 )
             )
             if i > 50:
                 break
-    
+
     def _test_single_round_sampler(self, **kwargs):
-        sampler = SingleRoundSampler(self.dataset, micro_batch_size=4, shuffle=False, data_parallel_size=1, data_parallel_rank=0, drop_last=False)
+        sampler = SingleRoundSampler(
+            self.dataset,
+            micro_batch_size=4,
+            shuffle=False,
+            data_parallel_size=1,
+            data_parallel_rank=0,
+            drop_last=False,
+        )
         dl = self._get_data_loader(self.dataset, batch_sampler=sampler, **kwargs)
         for i, (input, _target) in enumerate(dl):
             self.assertEqual(len(input), 4)
             self.assertTrue(
                 np.allclose(
                     input.numpy(),
-                    self.data[i * 4: i * 4 + 4, :, :, :].numpy(),
+                    self.data[i * 4 : i * 4 + 4, :, :, :].numpy(),
                     atol=1e-4,
                     rtol=1e-4,
                 )
@@ -129,5 +144,5 @@ class TestDataLoader(unittest.TestCase):
         self._test_single_round_sampler(num_workers=4)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

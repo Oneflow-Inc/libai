@@ -18,8 +18,8 @@ from libai.data.data_utils import get_indexed_dataset
 from libai.tokenizer import GPT2Tokenizer
 
 datat_prefix = "gpt_samples_mmap_text_sentence"
-tokenizer = GPT2Tokenizer(vocab_file='vocab.json', merges_file='merges.txt')
-indexed_dataset = get_indexed_dataset(datat_prefix, data_impl='mmap', skip_warmup=False)
+tokenizer = GPT2Tokenizer(vocab_file="vocab.json", merges_file="merges.txt")
+indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="mmap", skip_warmup=False)
 
 dataset = GPT2Dataset(
     tokenizer,

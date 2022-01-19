@@ -30,9 +30,18 @@ class T5Dataset(flow.utils.data.Dataset):
     """
     Dataset containing sentences for T5 training.
     """
-    def __init__(self, tokenizer, data_prefix, indexed_dataset,
-                 max_seq_length=512, mask_lm_prob=.15, max_preds_per_seq=None,
-                 short_seq_prob=.0, seed=1234):
+
+    def __init__(
+        self,
+        tokenizer,
+        data_prefix,
+        indexed_dataset,
+        max_seq_length=512,
+        mask_lm_prob=0.15,
+        max_preds_per_seq=None,
+        short_seq_prob=0.0,
+        seed=1234,
+    ):
         self.seed = seed
         self.mask_lm_prob = mask_lm_prob
         self.max_seq_length = max_seq_length
@@ -41,12 +50,17 @@ class T5Dataset(flow.utils.data.Dataset):
             max_preds_per_seq = math.ceil(max_seq_length * mask_lm_prob / 10) * 10
         self.max_preds_per_seq = max_preds_per_seq
 
-        self.has_align_dataset = isinstance(indexed_dataset, (list, tuple)) and len(indexed_dataset) > 1
-    
-        self.dataset = SentenceIndexedDataset(data_prefix, indexed_dataset, 
-                                              max_seq_length=self.max_seq_length - 2,
-                                              short_seq_prob=self.short_seq_prob)
-        
+        self.has_align_dataset = (
+            isinstance(indexed_dataset, (list, tuple)) and len(indexed_dataset) > 1
+        )
+
+        self.dataset = SentenceIndexedDataset(
+            data_prefix,
+            indexed_dataset,
+            max_seq_length=self.max_seq_length - 2,
+            short_seq_prob=self.short_seq_prob,
+        )
+
         self.tokenizer = tokenizer
         self.bos_id = tokenizer.bos_token_id
         self.eos_id = tokenizer.eos_token_id
@@ -55,7 +69,7 @@ class T5Dataset(flow.utils.data.Dataset):
 
     def __len__(self):
         return len(self.dataset)
-    
+
     def __getitem__(self, idx):
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
@@ -68,11 +82,29 @@ class T5Dataset(flow.utils.data.Dataset):
             sents, align_labels = sents
 
         tokens = [token for sent in sents for token in sent]
-        align_labels = [label for labels in align_labels for label in labels] if align_labels is not None else None
-        
-        tokens, masked_positions, masked_labels, masked_spans = self.create_masked_lm_predictions(tokens, np_rng, token_boundary=align_labels)
+        align_labels = (
+            [label for labels in align_labels for label in labels]
+            if align_labels is not None
+            else None
+        )
 
-        encoder_input, decoder_input, labels, encoder_padding_mask, decoder_padding_mask, loss_mask = self.pad_and_convert_to_numpy(tokens, masked_spans)
+        (
+            tokens,
+            masked_positions,
+            masked_labels,
+            masked_spans,
+        ) = self.create_masked_lm_predictions(
+            tokens, np_rng, token_boundary=align_labels
+        )
+
+        (
+            encoder_input,
+            decoder_input,
+            labels,
+            encoder_padding_mask,
+            decoder_padding_mask,
+            loss_mask,
+        ) = self.pad_and_convert_to_numpy(tokens, masked_spans)
 
         sample = Instance(
             encoder_input=DistTensorData(encoder_input),
@@ -84,13 +116,23 @@ class T5Dataset(flow.utils.data.Dataset):
         )
         return sample
 
-    def create_masked_lm_predictions(self, tokens, np_rng, max_ngrams=3, do_whole_word_mask=False, token_boundary=None,
-                                     favor_longer_ngram=False, geometric_dist=False):
+    def create_masked_lm_predictions(
+        self,
+        tokens,
+        np_rng,
+        max_ngrams=3,
+        do_whole_word_mask=False,
+        token_boundary=None,
+        favor_longer_ngram=False,
+        geometric_dist=False,
+    ):
         """Creates the predictions for the masked LM objective.
         Note: Tokens here are vocab ids and not text tokens."""
 
         if do_whole_word_mask:
-            assert token_boundary is not None, "token_boundary must be privided when do_whole_word_mask is True."
+            assert (
+                token_boundary is not None
+            ), "token_boundary must be privided when do_whole_word_mask is True."
 
         masked_positions = []
         masked_labels = []
@@ -108,23 +150,25 @@ class T5Dataset(flow.utils.data.Dataset):
             else:
                 cand_indexes.append([i])
 
-        num_to_predict = min(self.max_preds_per_seq, max(1, int(round(len(tokens) * self.mask_lm_prob))))
+        num_to_predict = min(
+            self.max_preds_per_seq, max(1, int(round(len(tokens) * self.mask_lm_prob)))
+        )
 
         ngrams = np.arange(1, max_ngrams + 1, dtype=np.int64)
         if not geometric_dist:
             # By default, we set the probilities to favor shorter ngram sequences.
-            pvals = 1. / np.arange(1, max_ngrams + 1)
+            pvals = 1.0 / np.arange(1, max_ngrams + 1)
             pvals /= pvals.sum(keepdims=True)
             if favor_longer_ngram:
                 pvals = pvals[::-1]
-        
+
         ngram_indexes = []
         for idx in range(len(cand_indexes)):
             ngram_index = []
             for n in ngrams:
-                ngram_index.append(cand_indexes[idx:idx + n])
+                ngram_index.append(cand_indexes[idx : idx + n])
             ngram_indexes.append(ngram_index)
-        
+
         np_rng.shuffle(ngram_indexes)
 
         masked_lms = []
@@ -141,9 +185,11 @@ class T5Dataset(flow.utils.data.Dataset):
                         continue
 
             if not geometric_dist:
-                n = np_rng.choice(ngrams[:len(cand_index_set)],
-                                p=pvals[:len(cand_index_set)] /
-                                pvals[:len(cand_index_set)].sum(keepdims=True))
+                n = np_rng.choice(
+                    ngrams[: len(cand_index_set)],
+                    p=pvals[: len(cand_index_set)]
+                    / pvals[: len(cand_index_set)].sum(keepdims=True),
+                )
             else:
                 # Sampling "n" from the geometric distribution and clipping it to
                 # the max_ngrams. Using p=0.2 default from the SpanBERT paper
@@ -173,12 +219,13 @@ class T5Dataset(flow.utils.data.Dataset):
             for index in index_set:
                 covered_indexes.add(index)
                 masked_lms.append(MaskedLmInstance(index=index, label=tokens[index]))
-            
-            masked_spans.append(MaskedLmInstance(
-                index=index_set,
-                label=[tokens[index] for index in index_set]
-            ))
-        
+
+            masked_spans.append(
+                MaskedLmInstance(
+                    index=index_set, label=[tokens[index] for index in index_set]
+                )
+            )
+
         masked_lms = sorted(masked_lms, key=lambda x: x.index)
         masked_spans = sorted(masked_spans, key=lambda x: x.index[0])
 
@@ -187,7 +234,7 @@ class T5Dataset(flow.utils.data.Dataset):
             masked_labels.append(p.label)
 
         return output_tokens, masked_positions, masked_labels, masked_spans
-  
+
     def pad_and_convert_to_numpy(self, tokens, masked_spans):
         """pad sequences and convert them to numpy array"""
 
@@ -206,11 +253,11 @@ class T5Dataset(flow.utils.data.Dataset):
             decoder_output.extend(span.label)
 
             end_index = span.index[0]
-            encoder_input.extend(tokens[start_index: end_index])
+            encoder_input.extend(tokens[start_index:end_index])
             encoder_input.append(flag)
 
             start_index = span.index[-1] + 1
-        
+
         decoder_output.append(self.eos_id)
         encoder_input.extend(tokens[start_index:])
 
@@ -233,15 +280,26 @@ class T5Dataset(flow.utils.data.Dataset):
         decoder_input = flow.tensor(decoder_input, dtype=flow.long)
 
         # padding mask
-        encoder_padding_mask = flow.tensor([1] * num_tokens + [0] * num_pad, dtype=flow.long)
-        decoder_padding_mask = flow.tensor([1] * num_tokens_dec + [0] * num_pad_dec, dtype=flow.long)
+        encoder_padding_mask = flow.tensor(
+            [1] * num_tokens + [0] * num_pad, dtype=flow.long
+        )
+        decoder_padding_mask = flow.tensor(
+            [1] * num_tokens_dec + [0] * num_pad_dec, dtype=flow.long
+        )
 
         # labels and loss mask
         labels = flow.tensor(decoder_output + [-1] * num_pad_dec, dtype=flow.long)
         loss_mask = [1] * num_tokens_dec + [0] * num_pad_dec
         loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
-        return encoder_input, decoder_input, labels, encoder_padding_mask, decoder_padding_mask, loss_mask
+        return (
+            encoder_input,
+            decoder_input,
+            labels,
+            encoder_padding_mask,
+            decoder_padding_mask,
+            loss_mask,
+        )
 
     @property
     def supports_prefetch(self):
