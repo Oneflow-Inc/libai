@@ -20,23 +20,25 @@ from libai.layers import Linear, build_activation
 
 
 class MLP(nn.Module):
-    """ MLP
+    """MLP
 
-    MLP will take the input with h hidden state, project it to intermediate 
+    MLP will take the input with h hidden state, project it to intermediate
     hidden dimension, perform gelu transformation, and project the
     state back into h hidden dimension.
-    
+
     Arguments:
         hidden_size: size of each input and output sample.
         ffn_hidden_size: size of each intermediate sample.
         output_dropout_prob: Output dropout probability. Defaults to 0.0.
-        init_method: method to initialize the first linear weight. Defaults to nn.init.xavier_normal_.
-        output_layer_init_method: method to initialize the second linear weight. If set to None, 
+        init_method: method to initialize the first linear weight.
+        Defaults to nn.init.xavier_normal_.
+        output_layer_init_method: method to initialize the second linear weight. If set to None,
         it will use ``init_method`` instead. Defaults to None.
-        bias_gelu_fusion: If set to ``True``, it will fuse bias adding and elementwise gelu activation. 
+        bias_gelu_fusion: If set to ``True``, it will fuse bias adding and elementwise
+        gelu activation. Defaults to ``False``.
+        bias_dropout_fusion: If set to ``True``, it will fuse bias adding and dropout.
         Defaults to ``False``.
-        bias_dropout_fusion: If set to ``True``, it will fuse bias adding and dropout. Defaults to ``False``.
-        layer_idx: A layer_idx sign which determines the placement. It will be used in 
+        layer_idx: A layer_idx sign which determines the placement. It will be used in
         pipeline parallelism. Defaults to 0.
     """
 

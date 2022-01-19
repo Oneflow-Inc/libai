@@ -16,20 +16,20 @@
 import oneflow as flow
 from oneflow import nn
 
+from libai.config import configurable
 from libai.layers import (
-    build_activation,
-    VocabEmbedding,
     Embedding,
     LayerNorm,
     Linear,
-    TransformerLayer,
-    ParallelCrossEntropyLoss,
     LMLogits,
+    ParallelCrossEntropyLoss,
+    TransformerLayer,
+    VocabEmbedding,
+    build_activation,
 )
 from libai.utils import distributed as dist
-from libai.config import configurable
 
-from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
+from .build import GRAPH_REGISTRY, MODEL_ARCH_REGISTRY
 from .utils import GraphBase, init_method_normal, scaled_init_method_normal
 
 
@@ -155,8 +155,8 @@ class BertLMPredictionHead(nn.Module):
 
 class BertPooler(nn.Module):
     """Pooler layer.
-    
-    Pool hidden states of the first token and 
+
+    Pool hidden states of the first token and
     add a linear transformation followed by a tanh.
 
     Args:
@@ -176,8 +176,8 @@ class BertPooler(nn.Module):
         self.activation_func = build_activation("tanh")
 
     def forward(self, hidden_states):
-        """Just "pool" the model by simply taking the [CLS] token corresponding to the first token.
-        """
+        """Just "pool" the model by simply taking the [CLS] token corresponding
+        to the first token."""
         # hidden_states: [bsz, seq_len, hidden_size]
         select_token_tensor = hidden_states[:, 0, :]
         pooled_output = self.dense(select_token_tensor)

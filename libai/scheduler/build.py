@@ -20,14 +20,13 @@ SCHEDULER_REGISTRY = Registry("Scheduler")
 SCHEDULER_REGISTRY.__doc__ = """
 Registry for lr scheduler, i.e. WarmupCosineLR
 
-The registered object will be called with `obj(cfg)` 
+The registered object will be called with `obj(cfg)`
 and expected to return a `flow.optim.lr_scheduler._LRScheduler` object.
 """
 
 
 def build_lr_scheduler(cfg, optimizer):
-    """ Build learning rate scheduler, defined by ``cfg``.
-    """
+    """Build learning rate scheduler, defined by ``cfg``."""
     if "_target_" in cfg:
         cfg.optimizer = optimizer
         scheduler = instantiate(cfg)

@@ -15,15 +15,18 @@
 
 import sys
 
+sys.path.append(".")
+
 import oneflow as flow
 from omegaconf import OmegaConf
 
-sys.path.append(".")
 from libai.config import LazyCall, default_argument_parser
+from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
 from libai.optim import get_default_optimizer_params
 from libai.scheduler import WarmupCosineLR
 from libai.trainer import DefaultTrainer, default_setup
-from tests.layers.test_trainer_model import build_graph, build_model
+from tests.data.datasets.demo_dataset import DemoNlpDataset
+from tests.layers.test_evaluator_model import GraphModel, build_model
 
 
 def setup(args):
@@ -35,7 +38,9 @@ def setup(args):
 
     cfg.train = dict(
         output_dir="./demo_output",
-        micro_batch_size=32,
+        train_micro_batch_size=32,
+        test_micro_batch_size=16,
+        eval_period=500,
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
@@ -43,19 +48,17 @@ def setup(args):
             pipeline_num_layers=4,
         ),
         start_iter=0,
-        train_iter=20,
+        train_iter=2000,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
         log_period=1,
-        checkpointer=dict(period=100),
+        checkpointer=dict(period=10000),
         nccl_fusion_threshold_mb=16,
         nccl_fusion_max_ops=24,
     )
 
     cfg.optim = LazyCall(flow.optim.AdamW)(
         parameters=LazyCall(get_default_optimizer_params)(
-            # parameters.model is meant to be set to the model object, before
-            # instantiating the optimizer.
             clip_grad_max_norm=1.0,
             clip_grad_norm_type=2.0,
             weight_decay_norm=0.0,
@@ -75,8 +78,44 @@ def setup(args):
         warmup_method="linear",
     )
 
+    cfg.dataloader = OmegaConf.create()
+
+    cfg.dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
+        dataset=[
+            LazyCall(DemoNlpDataset)(
+                data_root="train1",
+            ),
+            LazyCall(DemoNlpDataset)(
+                data_root="train2",
+            ),
+        ],
+        splits=[[949.0, 50.0, 1.0], [900.0, 99.0, 1.0]],
+        weights=[0.5, 0.5],
+        num_workers=4,
+    )
+
+    cfg.dataloader.test = [
+        LazyCall(build_nlp_test_loader)(
+            dataset=LazyCall(DemoNlpDataset)(
+                data_root="test1", datasetname="Demodataset1"
+            )
+        ),
+        LazyCall(build_nlp_test_loader)(
+            dataset=LazyCall(DemoNlpDataset)(
+                data_root="test2", datasetname="Demodataset2"
+            )
+        ),
+    ]
+
     cfg.graph = dict(
+        # options for graph or eager mode
         enabled=True,
+        debug=-1,  # debug mode for graph
+        train_graph=LazyCall(GraphModel)(
+            fp16=True,
+            is_train=True,
+        ),
+        eval_graph=LazyCall(GraphModel)(fp16=True, is_train=False),
     )
 
     default_setup(cfg, args)
@@ -95,37 +134,13 @@ class DemoTrainer(DefaultTrainer):
         model = build_model(cfg)
         return model
 
-    @classmethod
-    def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
-        return build_graph(cfg, model, optimizer, lr_scheduler)
-
-    @classmethod
-    def get_batch(cls, data):
-        return [
-            flow.randn(
-                32,
-                512,
-                sbp=flow.sbp.split(0),
-                placement=flow.placement("cuda", {0: [0]}),
-            )
-        ]
-
-    @classmethod
-    def build_train_loader(cls, cfg):
-        return range(1000), range(10), range(10)
-
-    @classmethod
-    def build_test_loader(cls, cfg):
-        return [range(10)]
-
 
 def main(args):
     cfg = setup(args)
 
     trainer = DemoTrainer(cfg)
 
-    # trainer.resume_or_load(resume=args.resume)
-    return trainer.train()
+    trainer.train()
 
 
 if __name__ == "__main__":

@@ -15,15 +15,20 @@
 
 import logging
 import os
+from collections import OrderedDict
 
+import omegaconf
 import oneflow as flow
+from termcolor import colored
+
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
-from libai.tokenizer import build_tokenizer
-from libai.models import build_model, build_graph
+from libai.evaluation import ClsEvaluator, inference_on_dataset, print_csv_format
+from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
+from libai.tokenizer import build_tokenizer
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.utils import distributed as dist
@@ -47,49 +52,53 @@ def _highlight(code, filename):
 
 
 def _check_batch_size(cfg):
-    micro_batch_size = try_get_key(cfg, "train.micro_batch_size", default=None)
+    train_micro_batch_size = try_get_key(
+        cfg, "train.train_micro_batch_size", default=None
+    )
     global_batch_size = try_get_key(cfg, "train.global_batch_size", default=None)
     num_accumulation_steps = try_get_key(
         cfg, "train.num_accumulation_steps", default=None
     )
 
-    if micro_batch_size is not None and global_batch_size is not None:
+    if train_micro_batch_size is not None and global_batch_size is not None:
         if num_accumulation_steps is None:
             if (
-                global_batch_size % (micro_batch_size * dist.get_data_parallel_size())
+                global_batch_size
+                % (train_micro_batch_size * dist.get_data_parallel_size())
                 != 0
             ):
                 raise ValueError(
                     f"global_batch_size {global_batch_size} must be divisible by "
-                    f"micro_batch_size * data_parallel_size ({micro_batch_size} * {dist.get_data_parallel_size()})"
+                    "train_micro_batch_size * data_parallel_size "
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()})"
                 )
 
             cfg.train.num_accumulation_steps = global_batch_size // (
-                micro_batch_size * dist.get_data_parallel_size()
+                train_micro_batch_size * dist.get_data_parallel_size()
             )
 
         else:
             if (
                 global_batch_size
-                != micro_batch_size
+                != train_micro_batch_size
                 * dist.get_data_parallel_size()
                 * num_accumulation_steps
             ):
                 raise ValueError(
-                    f"global_batch_size {global_batch_size} must equal"
-                    " micro_batch_size * data_parallel_size * num_accumulation_steps"
-                    f" ({micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"
+                    f"global_batch_size {global_batch_size} must equal to "
+                    "train_micro_batch_size * data_parallel_size * num_accumulation_steps "
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"  # noqa
                 )
-    elif micro_batch_size is not None and global_batch_size is None:
+    elif train_micro_batch_size is not None and global_batch_size is None:
         if num_accumulation_steps is None:
             cfg.train.num_accumulation_steps = 1
 
         cfg.train.global_batch_size = (
-            micro_batch_size
+            train_micro_batch_size
             * dist.get_data_parallel_size()
             * cfg.train.num_accumulation_steps
         )
-    elif micro_batch_size is None and global_batch_size is not None:
+    elif train_micro_batch_size is None and global_batch_size is not None:
         if num_accumulation_steps is None:
             cfg.train.num_accumulation_steps = 1
 
@@ -104,11 +113,13 @@ def _check_batch_size(cfg):
                 f"({dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
             )
 
-        cfg.train.micro_batch_size = global_batch_size // (
+        cfg.train.train_micro_batch_size = global_batch_size // (
             dist.get_data_parallel_size() * cfg.train.num_accumulation_steps
         )
     else:
-        raise ValueError("micro_batch_size and global_batch_size must be set either")
+        raise ValueError(
+            "train_micro_batch_size and global_batch_size must be set either"
+        )
 
 
 def default_setup(cfg, args):
@@ -255,11 +266,11 @@ class DefaultTrainer(TrainerBase):
         self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
-            graph_train = self.build_graph(
+            self.graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
-            graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            self._trainer = GraphTrainer(graph_train, self.train_loader)
+            self.graph_eval = self.build_graph(cfg, self.model, is_train=False)
+            self._trainer = GraphTrainer(self.graph_train, self.train_loader)
         else:
             self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)
 
@@ -309,6 +320,15 @@ class DefaultTrainer(TrainerBase):
                 self.checkpointer, self.cfg.train.checkpointer.period
             ),
         ]
+
+        def test_and_save_results():
+            self._last_eval_results = self.test(
+                self.cfg, self.test_loader, self.graph_eval
+            )
+            return self._last_eval_results
+
+        ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
+
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
             ret.append(
@@ -447,6 +467,8 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training, validating, testing set")
+        cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
+        cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
         return train_loader, valid_loader, test_loader
 
@@ -458,5 +480,81 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.test` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
-        test_loader = instantiate(cfg.dataloader.test)  # list[dataloader1, dataloader2]
+        assert isinstance(
+            cfg.dataloader.test, omegaconf.listconfig.ListConfig
+        ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
+        for i in range(len(cfg.dataloader.test)):
+            cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+        # list[dataloader1, dataloader2, ...]
+        test_loader = instantiate(cfg.dataloader.test)
         return test_loader
+
+    @classmethod
+    def build_evaluator(cls, cfg):
+        return ClsEvaluator(cfg)
+
+    @classmethod
+    def test(cls, cfg, test_loaders, model, evaluator=None):
+        """
+        Evaluate the given model. The given model is expected to already contain
+        weights to evaluate.
+        Args:
+            cfg (CfgNode):
+            test_loaders: list [dataloader1, dataloader2, ...]
+            model (nn.Graph):
+            evaluators (list[DatasetEvaluator] or None): if None, will call
+                :meth:`build_evaluator`. Otherwise, must have the same length as
+                ``cfg.DATASETS.TEST``.
+        Returns:
+            dict: a dict of result metrics
+        """
+        logger = logging.getLogger(__name__)
+        # TODO: support multi evaluator
+        # if isinstance(evaluators, DatasetEvaluator):
+        #     evaluators = [evaluators]
+        test_batch_size = (
+            cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
+        )
+        evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
+
+        results = OrderedDict()
+        for idx, data_loader in enumerate(test_loaders):
+            # When evaluators are passed in as arguments,
+            # implicitly assume that evaluators can be created before data_loader.
+            dataset_name = getattr(
+                data_loader.dataset, "datasetname", "UndefinedDataset"
+            )
+            # TODO: support multi evaluator
+            # if evaluators is not None:
+            #     evaluator = evaluators[idx]
+            # else:
+            #     try:
+            #         evaluator = cls.build_evaluator(cfg)
+            #     except NotImplementedError:
+            #         logger.warn(
+            #             "No evaluator found. Use `DefaultTrainer.test(evaluators=)`, "
+            #             "or implement its `build_evaluator` method."
+            #         )
+            #         results[dataset_name] = {}
+            #         continue
+
+            results_i = inference_on_dataset(
+                model, data_loader, test_batch_size, cls.get_batch, evaluator
+            )
+            results[dataset_name] = results_i
+            if dist.is_main_process():
+                assert isinstance(
+                    results_i, dict
+                ), "Evaluator must return a dict on the main process. Got {} instead.".format(
+                    results_i
+                )
+                logger.info(
+                    "Evaluation results for {} in csv format:".format(
+                        colored(dataset_name, "green")
+                    )
+                )
+                print_csv_format(results_i)
+
+        if len(results) == 1:
+            results = list(results.values())[0]
+        return results

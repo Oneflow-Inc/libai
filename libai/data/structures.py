@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass, field
 from collections import OrderedDict
-from typing import List, Any
+from dataclasses import dataclass, field
+from typing import Any, List
+
 import oneflow as flow
 
 from libai.utils import distributed as dist
@@ -92,17 +93,17 @@ class DistTensorData:
 
 
 class Instance:
-    """ 
+    """
     This class represents a instance with metadata as attributes.
     It stores the attributes of an instance (e.g., image, tokens) as "fields".
 
     all other (non-filed) attributes of this class are considered private:
     they must start with '_' and are not modifiable by a user.
-    
+
     Some basic usage:
-    
+
     1. Set/get/check a field:
-    
+
         .. code-block:: python
 
             instance.tokens = Metadata(...)
@@ -131,7 +132,7 @@ class Instance:
         return self._fields[name]
 
     def set(self, name: str, value: Any):
-        """ 
+        """
         Set the field named `name` to `value`.
         """
         self._fields[name] = value
