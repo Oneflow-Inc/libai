@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from omegaconf import OmegaConf
 import functools
 import inspect
+
+from omegaconf import OmegaConf
 
 
 def configurable(init_func=None, *, from_config=None):

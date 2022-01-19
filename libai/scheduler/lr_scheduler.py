@@ -30,7 +30,7 @@ def WarmupCosineLR(
     warmup_iters: int,
     alpha: float = 0.0,
     warmup_method: str = "linear",
-    **kwargs
+    **kwargs,
 ):
     cosine_decay_lr = flow.optim.lr_scheduler.CosineDecayLR(
         optimizer, decay_steps=max_iters, alpha=alpha
@@ -45,7 +45,7 @@ def WarmupCosineLR(
         warmup_factor=warmup_factor,
         warmup_iters=warmup_iters,
         warmup_method=warmup_method,
-        **kwargs
+        **kwargs,
     )
     return warmup_cosine_lr
 
@@ -58,7 +58,7 @@ def WarmupCosineAnnealingLR(
     warmup_iters: int,
     eta_min: float = 0.0,
     warmup_method: str = "linear",
-    **kwargs
+    **kwargs,
 ):
     cosine_annealing_lr = flow.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=max_iters, eta_min=eta_min
@@ -71,7 +71,7 @@ def WarmupCosineAnnealingLR(
         warmup_factor=warmup_factor,
         warmup_iters=warmup_iters,
         warmup_method=warmup_method,
-        **kwargs
+        **kwargs,
     )
     return warmup_cosine_annealing_lr
 
@@ -84,7 +84,7 @@ def WarmupMultiStepLR(
     milestones: list,
     gamma: float = 0.1,
     warmup_method: str = "linear",
-    **kwargs
+    **kwargs,
 ):
     multistep_lr = flow.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=milestones, gamma=gamma
@@ -97,7 +97,7 @@ def WarmupMultiStepLR(
         warmup_factor=warmup_factor,
         warmup_iters=warmup_iters,
         warmup_method=warmup_method,
-        **kwargs
+        **kwargs,
     )
     return warmup_multistep_lr
 
@@ -110,7 +110,7 @@ def WarmupFixedStepLR(
     step_size: int,
     gamma: float = 0.1,
     warmup_method: str = "linear",
-    **kwargs
+    **kwargs,
 ):
     fixedstep_lr = flow.optim.lr_scheduler.StepLR(
         optimizer, step_size=step_size, gamma=gamma
@@ -123,7 +123,7 @@ def WarmupFixedStepLR(
         warmup_factor=warmup_factor,
         warmup_iters=warmup_iters,
         warmup_method=warmup_method,
-        **kwargs
+        **kwargs,
     )
     return warmup_fixedstep_lr
 
@@ -135,7 +135,7 @@ def WarmupExponentialLR(
     warmup_factor: float,
     warmup_iters: int,
     warmup_method: str = "linear",
-    **kwargs
+    **kwargs,
 ):
     exponential_lr = flow.optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
     if warmup_iters == 0:
@@ -146,6 +146,6 @@ def WarmupExponentialLR(
         warmup_factor=warmup_factor,
         warmup_iters=warmup_iters,
         warmup_method=warmup_method,
-        **kwargs
+        **kwargs,
     )
     return warmup_exponential_lr

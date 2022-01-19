@@ -22,8 +22,8 @@ import time
 from collections import defaultdict
 from contextlib import contextmanager
 
-from libai.utils.history_buffer import HistoryBuffer
 from libai.utils.file_io import PathManager
+from libai.utils.history_buffer import HistoryBuffer
 
 __all__ = [
     "get_event_storage",

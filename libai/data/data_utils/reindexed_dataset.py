@@ -14,16 +14,15 @@
 # limitations under the License.
 
 
-import os
-import math
-import time
 import logging
+import os
+import time
+
 import numpy as np
 import oneflow as flow
 
-from libai.utils import distributed as dist
 from libai.data.data_utils import helpers
-from .indexed_dataset import make_dataset as make_indexed_dataset
+from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,8 @@ logger = logging.getLogger(__name__)
 def get_samples_mapping(
     data_prefix, indexed_dataset, max_seq_length, short_seq_prob, binary_head
 ):
-    """Get a list that maps a sample index to a starting sentence index, end sentence index, and length"""
+    """Get a list that maps a sample index to a starting sentence index,
+    end sentence index, and length"""
 
     # Filename of the index mapping
     indexmap_filename = data_prefix
@@ -85,9 +85,12 @@ def get_samples_mapping(
 
 
 class SentenceIndexedDataset(flow.utils.data.Dataset):
-    """ This class is propused for building sample mapping index from `indexed_dataset` to actural dataset.
-    It will combine as many consecutive sentences as possible in the same document without exceeding `max_seq_length`.
-    When it does not reach maximum length, the pad will be filled later. All the sentences in it are complete. 
+    """This class is propused for building sample mapping index from `indexed_dataset` to
+    actural dataset.
+    It will combine as many consecutive sentences as possible in the same document without
+    exceeding `max_seq_length`.
+    When it does not reach maximum length, the pad will be filled later. All the sentences in it
+    are complete.
     `binary_head` controls whether to return one or two sentences, which will be used in Bert.
     """
 
@@ -192,10 +195,12 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
 
 
 class BlockIndexedDataset(flow.utils.data.Dataset):
-    """ This class is propused for building sample mapping index from `indexed_dataset` to actural dataset.
-    It will extract the sentence with the length of `max_seq_length` from the document. 
-    If it is less than the maximum length, it will be intercepted from the next document. 
-    Therefore, it always returns sentences with `max_seq_length`, but it may contain incomplete sentences.
+    """This class is propused for building sample mapping index from `indexed_dataset`
+    to actural dataset.
+    It will extract the sentence with the length of `max_seq_length` from the document.
+    If it is less than the maximum length, it will be intercepted from the next document.
+    Therefore, it always returns sentences with `max_seq_length`, but it may
+    contain incomplete sentences.
     This is used for GPT training, and it can reduce padding and improve training efficiency.
     """
 

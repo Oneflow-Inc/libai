@@ -15,18 +15,15 @@
 
 """Tokenization class for T5 (sentence piece)."""
 
-import json
 import logging
 import os
-import regex as re
-from io import open
-from functools import lru_cache
+from shutil import copyfile
 
+import regex as re
 import sentencepiece as spm
 
-from .tokenization_base import PreTrainedTokenizer
 from .build import TOKENIZER_REGISTRY
-
+from .tokenization_base import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +73,8 @@ class T5Tokenizer(PreTrainedTokenizer):
             )
             if extra_tokens != extra_ids:
                 raise ValueError(
-                    f"Both extra_ids ({extra_ids}) and additional_special_tokens ({additional_special_tokens}) are privided to T5Tokenizer. "
+                    f"Both extra_ids ({extra_ids}) and additional_special_tokens "
+                    f"({additional_special_tokens}) are privided to T5Tokenizer. "
                     "In this case the additional_special_tokens must include the extra_ids tokens"
                 )
 
@@ -121,7 +119,7 @@ class T5Tokenizer(PreTrainedTokenizer):
         if index < self.sp_model.get_piece_size():
             token = self.sp_model.IdToPiece(index)
         else:
-            token = f"<extra_id_{self.vocab_size - i - index}>"
+            token = f"<extra_id_{self.vocab_size - 1 - index}>"
         return token
 
     def convert_tokens_to_string(self, tokens):

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+
 from libai.config import instantiate
 from libai.utils.registry import Registry
 
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 TOKENIZER_REGISTRY = Registry("tokenizer")
 TOKENIZER_REGISTRY.__doc__ = """
 Registry for tokenizer, i.e. BertTokenizer.
-The registered object will be called with `obj(cfg)` 
+The registered object will be called with `obj(cfg)`
 and expected to return a `PreTrainedTokenizer` object.
 """
 

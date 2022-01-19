@@ -36,7 +36,7 @@ class LMLogits(nn.Module):
         )
 
     def forward(self, input, word_embeddings):
-        """LM logits using word embedding weights """
+        """LM logits using word embedding weights"""
         # input with sbp sign [S(0), B] and word_embeddings with sbp sign [S(0), B]
 
         # NOTE(l1aoxingyu): This is for pipeline parallelism

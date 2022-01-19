@@ -11,12 +11,13 @@
 # Added document index to index file and made it accessible.
 #    An empty sentence no longer separates documents.
 
-from functools import lru_cache
+import logging
 import os
 import time
 import shutil
-import logging
 import struct
+import time
+from functools import lru_cache
 from itertools import accumulate
 
 import numpy as np
@@ -49,7 +50,8 @@ def infer_dataset_impl(path):
     else:
         logger.info(f"Dataset does not exist: {path}")
         logger.info(
-            "Path should be a basename that both .idx and .bin can be appended to get full filenames."
+            "Path should be a basename that both .idx and .bin can be "
+            "appended to get full filenames."
         )
         return None
 
@@ -67,7 +69,8 @@ def make_dataset(path, impl, skip_warmup=False):
     if not IndexedDataset.exists(path):
         logger.info(f"Dataset does not exist: {path}")
         logger.info(
-            "Path should be a basename that both .idx and .bin can be appended to get full filenames."
+            "Path should be a basename that both .idx and .bin can be "
+            "appended to get full filenames."
         )
         return None
     if impl == "infer":
@@ -518,7 +521,7 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
             return sents
 
     def get(self, idx, offset=0, length=None):
-        """ Retrieves a single item from the dataset with the option to only
+        """Retrieves a single item from the dataset with the option to only
         return a portion of the item.
 
         get(idx) is the same as [idx] but get() does not support slicing.

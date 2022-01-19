@@ -16,18 +16,14 @@
 """Processing data for pretraining."""
 
 import argparse
-from omegaconf import DictConfig
 import json
 import multiprocessing
 import os
 import sys
-
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
-)
 import time
 
 import oneflow as flow
+from omegaconf import DictConfig
 
 try:
     import nltk
@@ -36,8 +32,13 @@ try:
 except ImportError:
     nltk_available = False
 
-from libai.tokenizer import build_tokenizer
 from libai.data.data_utils import indexed_dataset
+from libai.tokenizer import build_tokenizer
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
+)
+
 
 # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
 class CustomLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
@@ -183,12 +184,23 @@ def parse_args_to_config(args):
         tokenizer=dict(
             tokenizer_name="",
             tokenizer_cfg=dict(
+<<<<<<< HEAD
                 vocab_file=None, merges_file=None, do_lower_case=False, extra_ids=0,
+=======
+                vocab_file=None,
+                merge_file=None,
+                do_lower_case=False,
+                extra_ids=0,
+>>>>>>> e83df11055c47734e4924a17e02b88b28807c47d
             ),
             append_eod=False,
         ),
-        data=dict(make_vocab_size_divisible_by=128,),
-        dist=dict(tensor_parallel_size=1,),
+        data=dict(
+            make_vocab_size_divisible_by=128,
+        ),
+        dist=dict(
+            tensor_parallel_size=1,
+        ),
     )
 
     cfg = DictConfig(default_cfg)

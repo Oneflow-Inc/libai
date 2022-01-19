@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertModel, BertForPreTraining, BertForPretrainingGraph
-from .build import build_model, build_graph
+from .bert_model import BertForPreTraining, BertForPretrainingGraph, BertModel
+from .build import build_graph, build_model
 
 __all__ = [
     "build_model",
