@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 def accuracy(output, target, topk=1):
     """Computes the accuracy over the k top predictions for the specified values of k"""
     with flow.no_grad():
+        # TODO: support tuple topk=(1, 5, 10)
         # maxk = max(topk)
         batch_size = target.size(0)
 
@@ -35,6 +36,7 @@ def accuracy(output, target, topk=1):
         pred = pred.transpose(0, 1)
         correct = pred.eq(target.view(1, -1).expand_as(pred))
 
+        # TODO: support tuple topk
         # res = []
         # for k in topk:
         #     correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
@@ -53,8 +55,9 @@ class ClassEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        pred_logits = outputs[-1] # decide by your model output
-        labels = inputs[-1] # decide by your dataloder output
+        # FIX ME: support dict args, not implement in graph right now
+        pred_logits = outputs[-1]  # decide by your model output
+        labels = inputs[-1]  # decide by your dataloder output
 
         # measure accuracy
         acc1 = accuracy(pred_logits, labels, topk=1)
@@ -63,7 +66,7 @@ class ClassEvaluator(DatasetEvaluator):
         self._predictions.append({"num_correct": num_correct_acc1, "num_samples": labels.size(0)})
 
     def evaluate(self):
-        if not dist.is_main_process(): 
+        if not dist.is_main_process():
             return {}
         else:
             predictions = self._predictions
@@ -78,6 +81,5 @@ class ClassEvaluator(DatasetEvaluator):
 
         self._results = OrderedDict()
         self._results["Acc@1"] = acc1
-        self._results["metric"] = acc1
 
         return copy.deepcopy(self._results)

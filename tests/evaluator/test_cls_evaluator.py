@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
 import sys
-from omegaconf import OmegaConf
-
 sys.path.append(".")
+
+from omegaconf import OmegaConf
+import oneflow as flow
 from libai.trainer import DefaultTrainer, default_setup
 from libai.config import default_argument_parser, LazyCall
 from libai.optim import get_default_optimizer_params
@@ -26,7 +26,6 @@ from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loa
 
 from tests.data.datasets.demo_dataset import DemoNlpDataset
 from tests.layers.test_evaluator_model import build_model, GraphModel
-
 
 def setup(args):
     """
@@ -100,16 +99,16 @@ def setup(args):
     ]
 
     cfg.graph = dict(
-    # options for graph or eager mode
-    enabled=True,
-    debug=-1, # debug mode for graph
-    train_graph=LazyCall(GraphModel)(
-        fp16=True,
-        is_train=True,
-    ),
-    eval_graph=LazyCall(GraphModel)(
-        fp16=True, 
-        is_train=False
+        # options for graph or eager mode
+        enabled=True,
+        debug=-1,  # debug mode for graph
+        train_graph=LazyCall(GraphModel)(
+            fp16=True,
+            is_train=True,
+        ),
+        eval_graph=LazyCall(GraphModel)(
+            fp16=True,
+            is_train=False
         ),
     )
 
@@ -136,6 +135,7 @@ def main(args):
     trainer = DemoTrainer(cfg)
 
     trainer.train()
+
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()

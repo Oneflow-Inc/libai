@@ -17,11 +17,12 @@ import oneflow as flow
 from oneflow import nn
 from libai.models.utils.graph_base import GraphBase
 
+
 class demo_model(nn.Module):
     def __init__(self, input_dim=512, out_dim=3):
         super().__init__()
-        self.linear1 = nn.Linear(input_dim, input_dim//2)
-        self.linear2 = nn.Linear(input_dim//2, out_dim)
+        self.linear1 = nn.Linear(input_dim, input_dim // 2)
+        self.linear2 = nn.Linear(input_dim // 2, out_dim)
 
     def forward(self, x, label=None):
         x = x.to(dtype=flow.float32)
@@ -51,4 +52,3 @@ class GraphModel(GraphBase):
             return loss
         else:
             return self.model(x)
-    

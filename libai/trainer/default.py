@@ -484,9 +484,10 @@ class DefaultTrainer(TrainerBase):
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+        # list[dataloader1, dataloader2, ...]
         test_loader = instantiate(
             cfg.dataloader.test
-        )  # list[dataloader1, dataloader2, ...]
+        )
         return test_loader
 
     @classmethod

@@ -17,6 +17,7 @@ import logging
 from collections.abc import Mapping
 import oneflow as flow
 
+
 def pad_batch(x_list, batch_size):
     x = x_list[0]
     valid_sample = x.shape[0]
@@ -24,12 +25,12 @@ def pad_batch(x_list, batch_size):
     # check all batch size is equal
     for xi in x_list[1:]:
         assert xi.shape[0] == valid_sample
-    
+
     if valid_sample == batch_size:
         return x_list, batch_size
     # pad all data
     padded_list = []
-    for xi in x_list: 
+    for xi in x_list:
         pad_shape = (batch_size, *xi.shape[1:])
         padded_xi = flow.zeros(pad_shape, sbp=xi.sbp, placement=xi.placement, dtype=xi.dtype)
         padded_xi[:valid_sample, ...] = padded_xi[:valid_sample, ...] + xi

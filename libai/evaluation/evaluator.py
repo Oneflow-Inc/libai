@@ -24,6 +24,7 @@ from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
 from .utils import pad_batch
 
+
 class DatasetEvaluator:
     """
     Base class for a dataset evaluator.
@@ -128,7 +129,7 @@ def inference_on_dataset(
     """
     num_devices = dist.get_world_size()
     logger = logging.getLogger(__name__)
-    logger.info("Start inference on {} batches".format(len(data_loader)))
+    logger.info("Start inference on {} samples".format(len(data_loader)))
 
     total = len(data_loader)  # inference data loader must have a fixed length
     if evaluator is None:
@@ -144,7 +145,7 @@ def inference_on_dataset(
     total_compute_time = 0
     total_eval_time = 0
     with flow.no_grad():
-        
+
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
             total_data_time += time.perf_counter() - start_data_time
@@ -162,11 +163,11 @@ def inference_on_dataset(
             valid_data = [d[:valid_sample] for d in data]
             if isinstance(outputs, (list, tuple)):
                 valid_outputs = [op[:valid_sample] for op in outputs]
-            elif isinstance (outputs, flow.Tensor):
+            elif isinstance(outputs, flow.Tensor):
                 valid_outputs = [outputs[:valid_sample]]
             else:
-                raise NotImplementedError(f"model output type {type(outputs)} is not supported")            
-            
+                raise NotImplementedError(f"model output type {type(outputs)} is not supported")
+
             if flow.cuda.is_available():
                 dist.synchronize()
             total_compute_time += time.perf_counter() - start_compute_time
