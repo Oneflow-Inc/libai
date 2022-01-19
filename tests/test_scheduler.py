@@ -14,18 +14,18 @@
 # limitations under the License.
 
 import math
-from unittest import TestCase
 import unittest
+from unittest import TestCase
 
 import numpy as np
 import oneflow as flow
 import oneflow.nn as nn
+
 from libai.scheduler import (
     WarmupCosineLR,
-    WarmupMultiStepLR,
-    WarmupFixedStepLR,
     WarmupExponentialLR,
-    WarmupCosineAnnealingLR,
+    WarmupFixedStepLR,
+    WarmupMultiStepLR,
 )
 
 

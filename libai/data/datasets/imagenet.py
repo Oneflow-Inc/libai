@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import oneflow as flow
 from flowvision import datasets
@@ -23,8 +23,7 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class ImageNetDataset(datasets.ImageFolder):
-    """ImageNet Dataset
-    """
+    """ImageNet Dataset"""
 
     def __init__(
         self,

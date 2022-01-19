@@ -14,18 +14,15 @@
 # limitations under the License.
 """dataset for bert."""
 
-import math
-import random
-import collections
-import numpy as np
 import oneflow as flow
 
-from libai.data.structures import Instance, DistTensorData
+from libai.data.structures import DistTensorData, Instance
 
 
 class DemoNlpDataset(flow.utils.data.Dataset):
     def __init__(
-        self, data_root="",
+        self,
+        data_root="",
     ):
         self.data_root = data_root
         self.dataset = list(range(10000))
@@ -36,9 +33,9 @@ class DemoNlpDataset(flow.utils.data.Dataset):
     def __getitem__(self, idx):
         sample = Instance(
             input=DistTensorData(
-                flow.ones((32, 128), dtype=flow.long), placement_idx=0
+                flow.ones((128, 256), dtype=flow.long), placement_idx=0
             ),
-            label=DistTensorData(flow.ones((32,), dtype=flow.long), placement_idx=-1),
+            label=DistTensorData(flow.ones((128,), dtype=flow.long), placement_idx=-1),
         )
         return sample
 

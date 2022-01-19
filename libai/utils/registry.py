@@ -19,11 +19,10 @@ https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/regist
 https://github.com/facebookresearch/hydra/blob/main/hydra/_internal/utils.py
 """
 
-from typing import Any, Dict, Iterable, Iterator, Tuple, Union, Callable
 import pydoc
+from typing import Any, Callable, Dict, Iterable, Iterator, Tuple, Union
 
 from tabulate import tabulate
-
 
 __all__ = ["Registry", "locate"]
 

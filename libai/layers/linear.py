@@ -24,9 +24,11 @@ class Linear1D(nn.Module):
     """Linear layer with 1D parallelism which includes column parallelism and row parallelism.
     The linear layer is defined as :math:`Y = XA + b`.
 
-    In column parallelism, A is parallelized along the second dimension as :math:`A = [A_1, ..., A_p]`.
-    
-    In row parallelism, A is parallelized along the first dimension and X along its second dimension as:
+    In column parallelism, A is parallelized along the second dimension
+    as :math:`A = [A_1, ..., A_p]`.
+
+    In row parallelism, A is parallelized along the first dimension and X along its second
+    dimension as:
                 | A_1 |
                 |  .  |
             A = |  .  |         X = [X_1, ..., X_p]
@@ -39,8 +41,10 @@ class Linear1D(nn.Module):
         bias: If set to ``False``, the layer will not learn an additive bias. Defaults to ``True``.
         parallel: . Defaults to "data".
         init_method: method to initialize weight. Defaults to nn.init.xavier_normal_.
-        skip_bias_add: skip adding bias but instead return it, so that adding bias can be fused with other elementwise operations. Defaults to ``False``.
-        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline parallelism. Defaults to 0.
+        skip_bias_add: skip adding bias but instead return it, so that adding bias can be fused with
+        other elementwise operations. Defaults to ``False``.
+        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
+        parallelism. Defaults to 0.
     """
 
     def __init__(
@@ -117,7 +121,8 @@ class Linear1D(nn.Module):
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
         ):
-            # if the last dim of weight sbp sign is S(0), the last dim of x sbp sign must be S(ndim-1).
+            # if the last dim of weight sbp sign is S(0), the last dim of x sbp
+            # sign must be S(ndim-1).
             if self.weight.sbp[-1] == flow.sbp.split(0):
                 x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
                 x = x.to_consistent(sbp=x_sbp)
@@ -152,7 +157,10 @@ class Linear1D(nn.Module):
 
     def extra_repr(self) -> str:
         return "in_features={}, out_features={}, bias={}, parallel={}".format(
-            self.in_features, self.out_features, self.bias is not None, self.parallel,
+            self.in_features,
+            self.out_features,
+            self.bias is not None,
+            self.parallel,
         )
 
 
