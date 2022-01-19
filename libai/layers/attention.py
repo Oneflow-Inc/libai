@@ -128,15 +128,15 @@ class MultiheadAttention(nn.Module):
         """
         hidden_states: [bsz, tgt_len, hidden_size].
         encoder_states: [bsz, src_len, hidden_size].
-        attention_mask: [bsz, 1, tgt_len, src_len], it should be the combination of
-        padding mask and casual mask.
+        attention_mask: [bsz, 1, tgt_len, src_len].
+        it should be the combination of padding mask and casual mask.
         In case of self attention in encoder, it is the padding mask of source input.
-        In case of self attention in decoder, it is the combination of padding mask of target
-        input and casual mask.
+        In case of self attention in decoder, it is the combination of padding mask of
+        target input and casual mask.
         In case of cross attention in decoder, it is the padding mask of source input.
         past_key_value: tuple of key and value, each shape is [bsz, num_heads, src_len, head_size].
-        use_cache: it will be set to True, when the model is in the inference phase and
-        used for incremental decoding.
+        use_cache: it will be set to True, when the model is in the inference phase
+        and used for incremental decoding.
         """
 
         # hidden_states, encoder_states: [S(0), B]
