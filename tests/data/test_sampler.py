@@ -21,6 +21,7 @@ from oneflow.utils.data import DataLoader, TensorDataset
 
 from libai.data.samplers import CyclicSampler, SingleRoundSampler
 
+
 class TestDataLoader(unittest.TestCase):
 
     def setUp(self):

@@ -14,10 +14,6 @@
 # limitations under the License.
 
 import argparse
-import os
-import sys
-
-import oneflow as flow
 
 from libai.data.data_utils import indexed_dataset
 from libai.tokenizer import BertTokenizer

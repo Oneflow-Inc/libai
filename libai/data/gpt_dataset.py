@@ -19,7 +19,7 @@ import numpy as np
 import oneflow as flow
 
 from .data_utils import BlockIndexedDataset
-from .structures import Instance, DistTensorData
+from .structures import DistTensorData, Instance
 
 
 class GPT2Dataset(flow.utils.data.Dataset):

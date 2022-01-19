@@ -16,7 +16,7 @@
 
 import collections
 import math
-import random
+
 import numpy as np
 import oneflow as flow
 
