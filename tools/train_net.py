@@ -36,6 +36,7 @@ def main(args):
         res = DefaultTrainer.test(cfg, graph)
 
     trainer = DefaultTrainer(cfg)
+    trainer.resume_or_load(resume=True)
     return trainer.train()
 
 

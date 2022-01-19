@@ -1,4 +1,5 @@
 from libai.models import T5Model
+from libai.utils.checkpoint import Checkpointer
 import oneflow as flow
 
 if __name__ == '__main__':
