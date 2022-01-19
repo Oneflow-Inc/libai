@@ -32,7 +32,8 @@ from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
-from libai.evaluation import DatasetEvaluator, inference_on_dataset, print_csv_format
+from termcolor import colored 
+from libai.evaluation import DatasetEvaluator, inference_on_dataset, print_csv_format, ClassEvaluator
 
 
 def _highlight(code, filename):
@@ -319,7 +320,7 @@ class DefaultTrainer(TrainerBase):
         ]
         
         def test_and_save_results():
-            self._last_eval_results = self.test(self.cfg, self.graph_eval)
+            self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
             return self._last_eval_results
         
         ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
@@ -484,14 +485,19 @@ class DefaultTrainer(TrainerBase):
             cfg.dataloader.test
         )  # list[dataloader1, dataloader2, ...]
         return test_loader
+    
+    @classmethod
+    def build_evaluator(cls, cfg):
+        return ClassEvaluator(cfg)
 
     @classmethod
-    def test(cls, cfg, model, evaluators=None):
+    def test(cls, cfg, test_loaders, model, evaluator=None):
         """
         Evaluate the given model. The given model is expected to already contain
         weights to evaluate.
         Args:
             cfg (CfgNode):
+            test_loaders: list [dataloader1, dataloader2, ...]
             model (nn.Graph):
             evaluators (list[DatasetEvaluator] or None): if None, will call
                 :meth:`build_evaluator`. Otherwise, must have the same length as
@@ -500,30 +506,33 @@ class DefaultTrainer(TrainerBase):
             dict: a dict of result metrics
         """
         logger = logging.getLogger(__name__)
-        if isinstance(evaluators, DatasetEvaluator):
-            evaluators = [evaluators]
-        if evaluators is not None:
-            assert len(cfg.DATASETS.TEST) == len(evaluators), "{} != {}".format(
-                len(cfg.DATASETS.TEST), len(evaluators)
-            )
+        # TODO: support multi evaluator
+        # if isinstance(evaluators, DatasetEvaluator):
+        #     evaluators = [evaluators]
+        test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
+        evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
+    
 
         results = OrderedDict()
-        for idx, data_loader in enumerate(cls.test_loader):
+        for idx, data_loader in enumerate(test_loaders):
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
-            if evaluators is not None:
-                evaluator = evaluators[idx]
-            else:
-                try:
-                    evaluator = cls.build_evaluator(cfg, dataset_name)
-                except NotImplementedError:
-                    logger.warn(
-                        "No evaluator found. Use `DefaultTrainer.test(evaluators=)`, "
-                        "or implement its `build_evaluator` method."
-                    )
-                    results[dataset_name] = {}
-                    continue
-            results_i = inference_on_dataset(model, data_loader, cls.get_batch, evaluator)
+            dataset_name = getattr(data_loader.dataset, 'datasetname', "UndefinedDataset")
+            # TODO: support multi evaluator
+            # if evaluators is not None:
+            #     evaluator = evaluators[idx]
+            # else:
+            #     try:
+            #         evaluator = cls.build_evaluator(cfg)
+            #     except NotImplementedError:
+            #         logger.warn(
+            #             "No evaluator found. Use `DefaultTrainer.test(evaluators=)`, "
+            #             "or implement its `build_evaluator` method."
+            #         )
+            #         results[dataset_name] = {}
+            #         continue
+            
+            results_i = inference_on_dataset(model, data_loader, test_batch_size, cls.get_batch, evaluator)
             results[dataset_name] = results_i
             if dist.is_main_process():
                 assert isinstance(
@@ -531,7 +540,7 @@ class DefaultTrainer(TrainerBase):
                 ), "Evaluator must return a dict on the main process. Got {} instead.".format(
                     results_i
                 )
-                logger.info("Evaluation results for {} in csv format:".format(dataset_name))
+                logger.info("Evaluation results for {} in csv format:".format(colored(dataset_name, "green")))
                 print_csv_format(results_i)
 
         if len(results) == 1:

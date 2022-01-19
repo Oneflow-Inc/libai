@@ -17,7 +17,6 @@ import datetime
 import logging
 import time
 from collections import OrderedDict, abc
-from contextlib import ExitStack, contextmanager
 from typing import List, Union, Callable
 import oneflow as flow
 
@@ -163,8 +162,8 @@ def inference_on_dataset(
             valid_data = [d[:valid_sample] for d in data]
             if isinstance(outputs, (list, tuple)):
                 valid_outputs = [op[:valid_sample] for op in outputs]
-            elif isinstance (outputs, flow.tensor):
-                valid_outputs = outputs[:valid_sample]
+            elif isinstance (outputs, flow.Tensor):
+                valid_outputs = [outputs[:valid_sample]]
             else:
                 raise NotImplementedError(f"model output type {type(outputs)} is not supported")            
             

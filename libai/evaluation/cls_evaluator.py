@@ -14,61 +14,57 @@
 # limitations under the License.
 
 import copy
-import itertools
 import logging
 from collections import OrderedDict
 
+import oneflow as flow
+
+from libai.utils import distributed as dist
 from .evaluator import DatasetEvaluator
 
 logger = logging.getLogger(__name__)
 
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, target, topk=1):
     """Computes the accuracy over the k top predictions for the specified values of k"""
-    with torch.no_grad():
-        maxk = max(topk)
+    with flow.no_grad():
+        # maxk = max(topk)
         batch_size = target.size(0)
 
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
+        _, pred = output.topk(topk, 1, True, True)
+        pred = pred.transpose(0, 1)
         correct = pred.eq(target.view(1, -1).expand_as(pred))
 
-        res = []
-        for k in topk:
-            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
+        # res = []
+        # for k in topk:
+        #     correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+        #     res.append(correct_k.mul_(100.0 / batch_size))
+        correct_k = correct[:topk].reshape(-1).float().sum(0, keepdim=True)
+        res = correct_k.mul_(100.0 / batch_size).item()
         return res
 
 
-class ClasEvaluator(DatasetEvaluator):
-    def __init__(self, cfg, output_dir=None):
+class ClassEvaluator(DatasetEvaluator):
+    def __init__(self, cfg):
         self.cfg = cfg
-        self._output_dir = output_dir
-        self._cpu_device = torch.device('cpu')
-
         self._predictions = []
 
     def reset(self):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        pred_logits = outputs.to(self._cpu_device, torch.float32)
-        labels = inputs["targets"].to(self._cpu_device)
+        pred_logits = outputs[-1] # decide by your model output
+        labels = inputs[-1] # decide by your dataloder output
 
         # measure accuracy
-        acc1, = accuracy(pred_logits, labels, topk=(1,))
+        acc1 = accuracy(pred_logits, labels, topk=1)
         num_correct_acc1 = acc1 * labels.size(0) / 100
 
         self._predictions.append({"num_correct": num_correct_acc1, "num_samples": labels.size(0)})
 
     def evaluate(self):
-        if comm.get_world_size() > 1:
-            comm.synchronize()
-            predictions = comm.gather(self._predictions, dst=0)
-            predictions = list(itertools.chain(*predictions))
-
-            if not comm.is_main_process(): return {}
-
+        if not dist.is_main_process(): 
+            return {}
         else:
             predictions = self._predictions
 
