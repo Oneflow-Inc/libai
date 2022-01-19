@@ -20,7 +20,7 @@ from oneflow.utils.data.dataset import ConcatDataset
 
 from libai.utils import distributed as dist
 
-from .data_utils import BlendableDataset, split_ds
+from .data_utils import split_ds
 from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
