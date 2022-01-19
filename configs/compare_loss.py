@@ -10,7 +10,6 @@ from libai.scheduler import WarmupMultiStepLR
 # Set all dropout to 0.
 model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
-model.cfg.bias_dropout_fusion = True
 
 # Set matched model arguments
 model.cfg.hidden_layers = 5
@@ -29,6 +28,7 @@ optim.lr = 0.0001
 
 # Set a constant lr scheduler after warmup
 scheduler._target_ = WarmupMultiStepLR
+scheduler.warmup_iters = 10
 scheduler.milestones = [1000000]
 del scheduler.max_iters
 
@@ -40,13 +40,13 @@ data.tokenizer_type = "BertCNWWMTokenizer"
 graph = dict(
     # options for graph or eager mode
     enabled=True,
-    debug=-1, # debug mode for graph
+    debug=-1,  # debug mode for graph
     train_graph=LazyCall(BertForPretrainingGraph)(
         fp16=train.amp.enabled,
         is_train=True,
     ),
     eval_graph=LazyCall(BertForPretrainingGraph)(
-        fp16=train.amp.enabled, 
+        fp16=train.amp.enabled,
         is_train=False
     ),
 )

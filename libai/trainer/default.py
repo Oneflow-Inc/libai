@@ -30,6 +30,7 @@ from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
+from libai.utils.load_megatron_weight import load_megatron_bert
 
 
 def _highlight(code, filename):
@@ -226,6 +227,10 @@ class DefaultTrainer(TrainerBase):
         self.model = self.build_model(cfg)
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
+        
+        # Load megatron state_dict
+        logger.info("Loadding megatron weight")
+        load_megatron_bert(self.model, "/workspace/idea_model/idea_bert/megatron_model_save/bert-cn-wwm/compare_oneflow_loss_reproduce_ckpt/iter_0000100/mp_rank_00/model_optim_rng.pt")
 
         # Assume no other objects need to be checkpointed.
         # We can later make it checkpoint the stateful hooks
