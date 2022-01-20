@@ -297,9 +297,7 @@ class GraphTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert (
-            self.graph.model.training
-        ), "[SimpleTrainer] model was changed to eval mode!"
+        assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.

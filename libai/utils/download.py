@@ -25,9 +25,7 @@ from typing import Callable, List, Optional
 from urllib import request
 
 
-def download(
-    url: str, dir: str, *, filename: Optional[str] = None, progress: bool = True
-) -> str:
+def download(url: str, dir: str, *, filename: Optional[str] = None, progress: bool = True) -> str:
     """
     Download a file from a given URL to a directory. If file exists, will not
         overwrite the existing file.

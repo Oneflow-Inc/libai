@@ -248,9 +248,7 @@ class TestNativeIO(unittest.TestCase):
 
         self._pathmgr.set_strict_kwargs_checking(False)
 
-        self._pathmgr.copy(
-            self._tmpfile, self._tmpfile + "2", foo="foo"  # type: ignore
-        )
+        self._pathmgr.copy(self._tmpfile, self._tmpfile + "2", foo="foo")  # type: ignore
         self._pathmgr.exists(self._tmpfile, foo="foo")  # type: ignore
         self._pathmgr.get_local_path(self._tmpfile, foo="foo")  # type: ignore
         self._pathmgr.isdir(self._tmpfile, foo="foo")  # type: ignore

@@ -34,9 +34,7 @@ def build_tokenizer(cfg):
         tokenizer = instantiate(cfg.tokenizer)
     else:
         tokenizer_name = cfg.tokenizer.tokenizer_name
-        tokenizer = TOKENIZER_REGISTRY.get(tokenizer_name)(
-            **cfg.tokenizer.tokenizer_cfg
-        )
+        tokenizer = TOKENIZER_REGISTRY.get(tokenizer_name)(**cfg.tokenizer.tokenizer_cfg)
 
     if cfg.tokenizer.append_eod and tokenizer.eod_token is None:
         if tokenizer.eos_token is not None:

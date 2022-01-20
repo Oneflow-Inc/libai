@@ -49,10 +49,7 @@ class _DistributeUtil(object):
         num_nodes = get_num_nodes()
         num_gpus_per_node = get_world_size() // num_nodes
 
-        if (
-            try_get_key(cfg, "num_gpus_per_node", default=num_gpus_per_node)
-            != num_gpus_per_node
-        ):
+        if try_get_key(cfg, "num_gpus_per_node", default=num_gpus_per_node) != num_gpus_per_node:
             # This means key(num_gpus_per_node) saved in config is not equal
             # to environment variable.
             # Give user a warning about inconsistent reproduce environment.
@@ -100,9 +97,7 @@ class _DistributeUtil(object):
         # Set the actual pipeline parallel size to cfg
         cfg.pipeline_parallel_size = self._pipeline_parallel_size
 
-        self._model_parallel_size = (
-            self._pipeline_parallel_size * self._tensor_parallel_size
-        )
+        self._model_parallel_size = self._pipeline_parallel_size * self._tensor_parallel_size
 
         assert self.world_size % self._model_parallel_size == 0, (
             f"world size ({self.world_size}) is not divisible by"
@@ -133,12 +128,8 @@ class _DistributeUtil(object):
         )
         num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
 
-        self._layers_stage_ids = [
-            i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)
-        ]
-        self._layers_devices = [
-            stages_devices[stage_id] for stage_id in self._layers_stage_ids
-        ]
+        self._layers_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
+        self._layers_devices = [stages_devices[stage_id] for stage_id in self._layers_stage_ids]
 
     def _init_parallel_hierarchy(self):
         if self.is_data_model_parallel():

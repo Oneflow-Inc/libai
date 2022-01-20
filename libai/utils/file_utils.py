@@ -121,9 +121,7 @@ def cached_path(url_or_filename, cache_dir=None, force_download=False, proxies=N
         raise EnvironmentError("file {} not found".format(url_or_filename))
     else:
         # Something unknown
-        raise ValueError(
-            "unable to parse {} as a URL or as a local path".format(url_or_filename)
-        )
+        raise ValueError("unable to parse {} as a URL or as a local path".format(url_or_filename))
 
 
 def split_s3_path(url):
@@ -187,9 +185,7 @@ def http_get(url, temp_file, proxies=None):
     progress.close()
 
 
-def get_from_cache(
-    url, cache_dir=None, force_download=False, proxies=None, etag_timeout=10
-):
+def get_from_cache(url, cache_dir=None, force_download=False, proxies=None, etag_timeout=10):
     """
     Given a URL, look for the corresponding dataset in the local cache.
     If it's not there, download it. Then return the path to the cached file.

@@ -1,10 +1,9 @@
 format:
-	autoflake -i --ignore-init-module-imports --remove-all-unused-imports -r .
-	black .
 	isort .
+	black -l 100 .
 	flake8 .
 
 lint:
-	autoflake --ignore-init-module-imports --remove-all-unused-imports -r .
-	isort --diff --check .
+	isort --check .
+	black -l 100 --check .
 	flake8 .

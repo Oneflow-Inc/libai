@@ -40,8 +40,6 @@ class MNISTDataset(datasets.MNIST):
         img, target = super().__getitem__(index)
         data_sample = Instance(
             images=DistTensorData(img, placement_idx=0),
-            targets=DistTensorData(
-                flow.tensor(target, dtype=flow.long), placement_idx=-1
-            ),
+            targets=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample
