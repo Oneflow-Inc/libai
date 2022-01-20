@@ -1,6 +1,8 @@
 from libai.config import LazyCall
 from .common.models.bert import pretrain_model as model
 from .common.train import train
+from .common.optim import optim, scheduler
+from .common.data.bert_dataset import dataloader, tokenization
 
 from libai.models import BertForPretrainingGraph
 
@@ -12,9 +14,8 @@ model.cfg.hidden_layers = 8
 train.micro_batch_size = 16
 
 # Set fp16 ON
-train.amp.enabled = True
+# train.amp.enabled = True
 
-# fmt: off
 # LazyCall
 graph = dict(
     # options for graph or eager mode
@@ -24,9 +25,5 @@ graph = dict(
         fp16=train.amp.enabled,
         is_train=True,
     ),
-    eval_graph=LazyCall(BertForPretrainingGraph)(
-        fp16=train.amp.enabled,
-        is_train=False
-    ),
+    eval_graph=LazyCall(BertForPretrainingGraph)(fp16=train.amp.enabled, is_train=False),
 )
-# fmt: on

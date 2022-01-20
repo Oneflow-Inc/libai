@@ -211,7 +211,8 @@ class DefaultTrainer(TrainerBase):
             setup_logger()
 
         # Initialize tokenizer
-        if try_get_key(cfg, "data.tokenizer_setup", default=False):
+        self.tokenizer = None
+        if try_get_key(cfg, "tokenization.setup", default=False):
             self.tokenizer = self.build_tokenizer(cfg)
 
         # Assume these objects must be constructed in this order.
@@ -238,7 +239,7 @@ class DefaultTrainer(TrainerBase):
         self.train_loader = None
         self.test_loader = []
 
-        train_loader, val_loader, test_loader = self.build_train_loader(cfg)
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
         self.train_loader = train_loader
 
         if val_loader is not None:
@@ -371,7 +372,9 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_tokenizer(cls, cfg):
-        assert try_get_key(cfg, "tokenizer") is not None, "cfg must contain `tokenizer` namespace"
+        assert (
+            try_get_key(cfg, "tokenization") is not None
+        ), "cfg must contain `tokenization` namespace"
         return build_tokenizer(cfg)
 
     @classmethod
@@ -421,7 +424,7 @@ class DefaultTrainer(TrainerBase):
         return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
-    def build_train_loader(cls, cfg):
+    def build_train_loader(cls, cfg, tokenizer=None):
         """
         Returns:
             iterable
@@ -435,15 +438,24 @@ class DefaultTrainer(TrainerBase):
         logger.info("Prepare training, validating, testing set")
         cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
+
+        # Set tokenizer for each dataset
+        if tokenizer:
+            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
+                for dataset in cfg.dataloader.train.dataset:
+                    dataset.tokenizer = tokenizer
+            else:
+                cfg.dataloader.train.dataset.tokenizer = tokenizer
+
         train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
         return train_loader, valid_loader, test_loader
 
     @classmethod
     def build_test_loader(cls, cfg):
         # TODO: add doc string
-        assert (
-            try_get_key(cfg, "dataloader.test") is not None
-        ), "cfg must contain `dataloader.test` namespace"
+        # If there is no test_loader, just return []
+        if not try_get_key(cfg, "dataloader.test", default=False):
+            return []
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
         assert isinstance(
