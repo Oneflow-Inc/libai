@@ -441,8 +441,11 @@ class DefaultTrainer(TrainerBase):
 
         # Set tokenizer for each dataset
         if tokenizer:
-            for dataset in cfg.dataloader.train.dataset:
-                dataset.tokenizer = tokenizer
+            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
+                for dataset in cfg.dataloader.train.dataset:
+                    dataset.tokenizer = tokenizer
+            else:
+                cfg.dataloader.train.dataset.tokenizer = tokenizer
 
         train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
         return train_loader, valid_loader, test_loader

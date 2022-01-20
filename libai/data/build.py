@@ -42,13 +42,13 @@ def build_nlp_train_val_test_loader(
     Build nlp train_val_test dataloader
     """
     # TODO: add input type
-    assert len(dataset) == len(splits), "datasets length must equal splits length"
-    assert len(dataset) == len(weights), "datasets length must equal weights length"
-
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
         dataset = [dataset]
+
+    assert len(dataset) == len(splits), "datasets length must equal splits length"
+    assert len(dataset) == len(weights), "datasets length must equal weights length"
 
     train_datasets, val_datasets, test_datasets = [], [], []
     for dst, split in zip(dataset, splits):
