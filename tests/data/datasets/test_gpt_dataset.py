@@ -13,8 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .structures import DistTensorData, Instance
-from .bert_dataset import BertDataset
-from .gpt_dataset import GPT2Dataset
-from .t5_dataset import T5Dataset
-from .build import build_image_train_loader, build_image_test_loader
+from libai.data import GPT2Dataset
+from libai.data.data_utils import get_indexed_dataset
+from libai.tokenizer import GPT2Tokenizer
+
+datat_prefix = "gpt_samples_mmap_text_sentence"
+tokenizer = GPT2Tokenizer(vocab_file="vocab.json", merges_file="merges.txt")
+indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="mmap", skip_warmup=False)
+
+dataset = GPT2Dataset(
+    tokenizer,
+    data_prefix=datat_prefix,
+    indexed_dataset=indexed_dataset,
+)
+
+print(len(indexed_dataset))
+print(len(dataset))
+print(dataset[0])

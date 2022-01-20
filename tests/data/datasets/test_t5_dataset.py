@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+# Copyright 2021 The OneFlow Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,12 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .blendable_dataset import BlendableDataset
-from .indexed_dataset import (
-    IndexedCachedDataset,
-    IndexedDataset,
-    MMapIndexedDataset,
-    get_indexed_dataset,
+from libai.data import T5Dataset
+from libai.data.data_utils import get_indexed_dataset
+from libai.tokenizer import T5Tokenizer
+
+datat_prefix = "t5_samples_lazy_text_sentence"
+tokenizer = T5Tokenizer(vocab_file="spiece.model", bos_token="<s/>")
+indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="lazy", skip_warmup=False)
+
+dataset = T5Dataset(
+    tokenizer,
+    data_prefix=datat_prefix,
+    indexed_dataset=indexed_dataset,
 )
-from .reindexed_dataset import BlockIndexedDataset, SentenceIndexedDataset
-from .split_dataset import SplitDataset, split_ds
+
+print(len(indexed_dataset))
+print(len(dataset))
+print(dataset[0])
