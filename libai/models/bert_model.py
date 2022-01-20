@@ -138,6 +138,9 @@ class BertLMPredictionHead(nn.Module):
     def forward(self, hidden_states):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.activation_func(hidden_states)
+        hidden_states = hidden_states.to_consistent(
+            grad_sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(2)])
+        )
 
         # NOTE(l1aoxingyu): hidden_states shape is [B, S, H] whose sbp sign: [S(0), S(2)]
         # Change from [S(0), S(2)] -> [S(0), B] because layernorm cannot get inputs with sbp S(2)
@@ -188,7 +191,7 @@ class BertPreTrainingHeads(nn.Module):
             hidden_size,
             2,
             bias=True,
-            parallel="row",
+            parallel="data",
             init_method=init_method,
             layer_idx=-1,
         )
