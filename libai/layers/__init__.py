@@ -15,7 +15,7 @@
 
 from .activation import build_activation
 from .cross_entropy import ParallelCrossEntropyLoss
-from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding
+from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding, PatchEmbedding
 from .layer_norm import LayerNorm
 from .linear import Linear, Linear1D
 from .lm_logits import LMLogits
@@ -26,6 +26,7 @@ __all__ = [
     "Embedding",
     "VocabEmbedding",
     "SinePositionalEmbedding",
+    "PatchEmbedding",
     "build_activation",
     "Linear",
     "Linear1D",
