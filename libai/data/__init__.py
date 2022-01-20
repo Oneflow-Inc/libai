@@ -17,4 +17,9 @@ from .structures import DistTensorData, Instance
 from .bert_dataset import BertDataset
 from .gpt_dataset import GPT2Dataset
 from .t5_dataset import T5Dataset
-from .build import build_image_train_loader, build_image_test_loader
+from .build import (
+    build_image_train_loader,
+    build_image_test_loader,
+    build_nlp_train_val_test_loader,
+    build_nlp_test_loader,
+)
