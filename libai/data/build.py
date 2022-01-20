@@ -218,8 +218,6 @@ def build_image_test_loader(
 
 
 def trivial_batch_collator(batch):
-    assert isinstance(
-        batch[0], Instance
-    ), "batch[0] must be `instance` for trivial batch collator"
+    assert isinstance(batch[0], Instance), "batch[0] must be `instance` for trivial batch collator"
     batch = Instance.stack(batch)
     return batch

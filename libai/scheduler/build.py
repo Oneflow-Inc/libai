@@ -32,7 +32,5 @@ def build_lr_scheduler(cfg, optimizer):
         scheduler = instantiate(cfg)
     else:
         scheduler_name = cfg.scheduler_name
-        scheduler = SCHEDULER_REGISTRY.get(scheduler_name)(
-            optimizer, **cfg.scheduler_cfg
-        )
+        scheduler = SCHEDULER_REGISTRY.get(scheduler_name)(optimizer, **cfg.scheduler_cfg)
     return scheduler

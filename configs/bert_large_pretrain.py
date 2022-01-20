@@ -1,6 +1,7 @@
 from libai.config import LazyCall
 from .common.models.bert import pretrain_model as model
 from .common.train import train
+from .common.optim import optim, scheduler
 
 from libai.models import BertForPretrainingGraph
 

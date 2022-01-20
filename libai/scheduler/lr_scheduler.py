@@ -112,9 +112,7 @@ def WarmupFixedStepLR(
     warmup_method: str = "linear",
     **kwargs,
 ):
-    fixedstep_lr = flow.optim.lr_scheduler.StepLR(
-        optimizer, step_size=step_size, gamma=gamma
-    )
+    fixedstep_lr = flow.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
     if warmup_iters == 0:
         logger.warning("warmup iters equals to zero, return FixedStepLR")
         return fixedstep_lr

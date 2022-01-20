@@ -47,9 +47,7 @@ class _ColorfulFormatter(logging.Formatter):
 
 
 @functools.lru_cache()  # so that calling setup_logger multiple times won't add many handlers
-def setup_logger(
-    output=None, distributed_rank=0, *, color=True, name="libai", abbrev_name=None
-):
+def setup_logger(output=None, distributed_rank=0, *, color=True, name="libai", abbrev_name=None):
     """
     Args:
         output (str): a file name or a directory to save log. If None, will not save log file.

@@ -65,11 +65,7 @@ class T5Tokenizer(PreTrainedTokenizer):
             additional_special_tokens = [f"<extra_id_{i}>" for i in range(extra_ids)]
         elif extra_ids > 0 and additional_special_tokens is not None:
             extra_tokens = len(
-                set(
-                    filter(
-                        lambda x: bool("extra_id" in str(x)), additional_special_tokens
-                    )
-                )
+                set(filter(lambda x: bool("extra_id" in str(x)), additional_special_tokens))
             )
             if extra_tokens != extra_ids:
                 raise ValueError(
@@ -129,9 +125,7 @@ class T5Tokenizer(PreTrainedTokenizer):
         for token in tokens:
             # make sure that special tokens are not decoded using sentencepiece model
             if token in self.all_special_tokens:
-                out_string += (
-                    self.sp_model.decode_pieces(current_sub_tokens) + token + " "
-                )
+                out_string += self.sp_model.decode_pieces(current_sub_tokens) + token + " "
                 current_sub_tokens = []
             else:
                 current_sub_tokens.append(token)
@@ -145,8 +139,7 @@ class T5Tokenizer(PreTrainedTokenizer):
             return
         out_vocab_file = os.path.join(
             save_directory,
-            (filename_prefix + "-" if filename_prefix else "")
-            + VOCAB_FILES_NAMES["vocab_file"],
+            (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["vocab_file"],
         )
 
         if os.path.abspath(self.vocab_file) != os.path.abspath(out_vocab_file):

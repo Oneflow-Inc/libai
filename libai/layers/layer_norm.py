@@ -33,9 +33,7 @@ class LayerNorm(nn.Module):
         parallelism. Defaults to 0.
     """
 
-    def __init__(
-        self, normalized_shape, eps=1e-5, elementwise_affine=True, *, layer_idx=0
-    ):
+    def __init__(self, normalized_shape, eps=1e-5, elementwise_affine=True, *, layer_idx=0):
         super().__init__()
         if isinstance(normalized_shape, int):
             normalized_shape = (normalized_shape,)

@@ -27,9 +27,7 @@ from libai.utils import distributed as dist
 logger = logging.getLogger(__name__)
 
 
-def get_samples_mapping(
-    data_prefix, indexed_dataset, max_seq_length, short_seq_prob, binary_head
-):
+def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_prob, binary_head):
     """Get a list that maps a sample index to a starting sentence index,
     end sentence index, and length"""
 
@@ -76,9 +74,7 @@ def get_samples_mapping(
     logger.info("loading indexed mapping from {}".format(indexmap_filename))
     start_time = time.time()
     samples_mapping = np.load(indexmap_filename, allow_pickle=True, mmap_mode="r")
-    logger.info(
-        "loaded indexed file in {:3.3f} seconds".format(time.time() - start_time)
-    )
+    logger.info("loaded indexed file in {:3.3f} seconds".format(time.time() - start_time))
     logger.info("total number of samples: {}".format(samples_mapping.shape[0]))
 
     return samples_mapping
@@ -107,9 +103,7 @@ class SentenceIndexedDataset(flow.utils.data.Dataset):
         self.binary_head = binary_head
         if isinstance(indexed_dataset, (list, tuple)):
             self.indexed_dataset = indexed_dataset[0]
-            self.align_indexed_dataset = (
-                indexed_dataset[1] if len(indexed_dataset) > 1 else None
-            )
+            self.align_indexed_dataset = indexed_dataset[1] if len(indexed_dataset) > 1 else None
         else:
             self.indexed_dataset = indexed_dataset
             self.align_indexed_dataset = None
@@ -129,9 +123,7 @@ class SentenceIndexedDataset(flow.utils.data.Dataset):
         start_idx, end_idx, seq_length = self.samples_mapping[idx]
         sample = [self.indexed_dataset[i] for i in range(start_idx, end_idx)]
         if self.align_indexed_dataset is not None:
-            align_sample = [
-                self.align_indexed_dataset[i] for i in range(start_idx, end_idx)
-            ]
+            align_sample = [self.align_indexed_dataset[i] for i in range(start_idx, end_idx)]
             sample = (sample, align_sample)
         assert seq_length <= self.max_seq_length
         return sample
@@ -165,15 +157,11 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
 
     # Build the indexed mapping if not exist.
     if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename):
-        logger.info(
-            "could not find index map files, building the indices on rank 0 ..."
-        )
+        logger.info("could not find index map files, building the indices on rank 0 ...")
 
         # sample-idx.
         start_time = time.time()
-        sample_idx = helpers.build_sample_idx(
-            documents, sizes, max_seq_length, num_tokens
-        )
+        sample_idx = helpers.build_sample_idx(documents, sizes, max_seq_length, num_tokens)
         np.save(indexmap_filename, sample_idx, allow_pickle=True)
         logger.info(
             "elasped time to build and save sample-idx mapping "
@@ -186,9 +174,7 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
     start_time = time.time()
     logger.info(" > loading sample-idx mapping from {}".format(indexmap_filename))
     sample_idx = np.load(indexmap_filename, allow_pickle=True, mmap_mode="r")
-    logger.info(
-        "loaded indexed file in {:3.3f} seconds".format(time.time() - start_time)
-    )
+    logger.info("loaded indexed file in {:3.3f} seconds".format(time.time() - start_time))
     logger.info("total number of samples: {}".format(sample_idx.shape[0]))
 
     return sample_idx
@@ -208,9 +194,7 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
         self.max_seq_length = max_seq_length
         if isinstance(indexed_dataset, (list, tuple)):
             self.indexed_dataset = indexed_dataset[0]
-            self.align_indexed_dataset = (
-                indexed_dataset[1] if len(indexed_dataset) > 1 else None
-            )
+            self.align_indexed_dataset = indexed_dataset[1] if len(indexed_dataset) > 1 else None
         else:
             self.indexed_dataset = indexed_dataset
             self.align_indexed_dataset = None
@@ -243,14 +227,10 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
             for i in range(doc_index_f + 1, doc_index_l):
                 sample_list.append(self.indexed_dataset.get(i))
             # And finally add the relevant portion of last document.
-            sample_list.append(
-                self.indexed_dataset.get(doc_index_l, length=offset_l + 1)
-            )
+            sample_list.append(self.indexed_dataset.get(doc_index_l, length=offset_l + 1))
             sample = np.concatenate(sample_list)
             if self.align_indexed_dataset is not None:
-                align_sample_list = [
-                    self.align_indexed_dataset.get(doc_index_f, offset=offset_f)
-                ]
+                align_sample_list = [self.align_indexed_dataset.get(doc_index_f, offset=offset_f)]
                 for i in range(doc_index_f + 1, doc_index_l):
                     align_sample_list.append(self.align_indexed_dataset.get(i))
                 align_sample_list.append(
