@@ -1,6 +1,7 @@
 from libai.config import LazyCall
 from omegaconf import OmegaConf
-from libai.data import BertDataset, build_nlp_test_loader, build_nlp_train_val_test_loader
+from libai.data import build_nlp_test_loader, build_nlp_train_val_test_loader
+from libai.data.datasets import BertDataset
 from libai.data.data_utils import get_indexed_dataset
 
 from libai.tokenizer import BertTokenizer
