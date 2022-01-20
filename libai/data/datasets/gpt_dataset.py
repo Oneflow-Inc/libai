@@ -18,8 +18,8 @@
 import numpy as np
 import oneflow as flow
 
-from ..data_utils import BlockIndexedDataset
-from ..structures import DistTensorData, Instance
+from libai.data.data_utils import BlockIndexedDataset
+from libai.data.structures import DistTensorData, Instance
 
 
 class GPT2Dataset(flow.utils.data.Dataset):
