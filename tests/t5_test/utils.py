@@ -37,6 +37,8 @@ def get_sample(mode: str):
         'torch': lambda x: torch.from_numpy(x).cuda(),
         'numpy': lambda x: x,
     }
+    if mode == 'flow':
+        enc_mask, dec_mask, enc_dec_mask = map(lambda x: ~x, [enc_mask, dec_mask, enc_dec_mask])
     
     tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = map(
         func[mode], [tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask])
@@ -47,7 +49,7 @@ def get_random_sample(vocab_size):
     tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = get_sample('numpy')
     tokens_enc = np.random.randint(0, vocab_size, size=tokens_enc.shape)
     tokens_dec = np.random.randint(0, vocab_size, size=tokens_dec.shape)
-    flow_tensors = tuple(map(numpy_to_flow, [tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask]))
+    flow_tensors = tuple(map(numpy_to_flow, [tokens_enc, tokens_dec, ~enc_mask, ~dec_mask, ~enc_dec_mask]))
     torch_tensors = tuple(map(
         lambda x: torch.from_numpy(x).cuda(), 
         [tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask]
