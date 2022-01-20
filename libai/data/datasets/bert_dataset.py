@@ -20,8 +20,8 @@ import math
 import numpy as np
 import oneflow as flow
 
-from .data_utils import SentenceIndexedDataset
-from .structures import DistTensorData, Instance
+from libai.data.data_utils import SentenceIndexedDataset
+from libai.data.structures import DistTensorData, Instance
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 

@@ -29,7 +29,8 @@ def build_nlp_train_val_test_loader(
     dataset,
     splits,
     weights,
-    batch_size,
+    train_batch_size,
+    test_batch_size,
     sampler=None,
     num_workers=4,
     consumed_samples=0,
@@ -38,16 +39,16 @@ def build_nlp_train_val_test_loader(
     blendable_dataset=ConcatDataset,
 ):
     """
-    Build nlp train_val_test dataloder
+    Build nlp train_val_test dataloader
     """
     # TODO: add input type
-    assert len(dataset) == len(splits), "datasets length must equal splits length"
-    assert len(dataset) == len(weights), "datasets length must equal weights length"
-
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
         dataset = [dataset]
+
+    assert len(dataset) == len(splits), "datasets length must equal splits length"
+    assert len(dataset) == len(weights), "datasets length must equal weights length"
 
     train_datasets, val_datasets, test_datasets = [], [], []
     for dst, split in zip(dataset, splits):
@@ -65,7 +66,7 @@ def build_nlp_train_val_test_loader(
     if sampler is None:
         train_sampler = CyclicSampler(
             dataset=train_dataset,
-            micro_batch_size=batch_size,
+            micro_batch_size=train_batch_size,
             shuffle=True,
             consumed_samples=consumed_samples,
             data_parallel_rank=dist.get_data_parallel_rank(),
@@ -74,7 +75,7 @@ def build_nlp_train_val_test_loader(
         )
     valid_sampler = SingleRoundSampler(
         dataset=val_dataset,
-        micro_batch_size=batch_size,
+        micro_batch_size=test_batch_size,
         shuffle=False,
         data_parallel_rank=dist.get_data_parallel_rank(),
         data_parallel_size=dist.get_data_parallel_size(),
@@ -83,7 +84,7 @@ def build_nlp_train_val_test_loader(
     )
     test_sampler = SingleRoundSampler(
         dataset=test_dataset,
-        micro_batch_size=batch_size,
+        micro_batch_size=test_batch_size,
         shuffle=False,
         data_parallel_rank=dist.get_data_parallel_rank(),
         data_parallel_size=dist.get_data_parallel_size(),
@@ -124,7 +125,7 @@ def build_nlp_test_loader(
     collate_fn=None,
 ):
     """
-    Build nlp test dataloder
+    Build nlp test dataloader
     """
     # TODO: add input type
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
@@ -171,7 +172,7 @@ def build_image_train_loader(
         dataset = dataset[0]
 
     if sampler is None:
-        # TODO: initilize train sampler
+        # TODO: initialize train sampler
         sampler = CyclicSampler(
             dataset=dataset,
             micro_batch_size=batch_size,
@@ -197,7 +198,7 @@ def build_image_test_loader(
 ):
     # TODO: add input type
     if sampler is None:
-        # TODO: initilize test_sampler
+        # TODO: initialize test_sampler
         sampler = SingleRoundSampler(
             dataset=dataset,
             micro_batch_size=batch_size,
