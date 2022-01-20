@@ -61,9 +61,7 @@ class BertEmbeddings(nn.Module):
         init_method=nn.init.xavier_normal_,
     ):
         super().__init__()
-        self.vocab_embeddings = VocabEmbedding(
-            vocab_size, hidden_size, init_method=init_method
-        )
+        self.vocab_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
         self.position_embeddings = Embedding(
             max_sequence_length, hidden_size, init_method=init_method
         )
@@ -289,13 +287,9 @@ class BertModel(nn.Module):
                 for i in range(hidden_layers)
             ]
         )
-        self.final_layernorm = LayerNorm(
-            (hidden_size,), eps=layernorm_eps, layer_idx=-1
-        )
+        self.final_layernorm = LayerNorm((hidden_size,), eps=layernorm_eps, layer_idx=-1)
 
-        self.pooler = (
-            BertPooler(hidden_size, init_method) if add_pooling_layer else None
-        )
+        self.pooler = BertPooler(hidden_size, init_method) if add_pooling_layer else None
 
     @classmethod
     def from_config(cls, cfg):
@@ -338,9 +332,7 @@ class BertForPreTraining(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.bert = BertModel(cfg)
-        self.cls = BertPreTrainingHeads(
-            cfg.hidden_size, init_method_normal(cfg.initializer_range)
-        )
+        self.cls = BertPreTrainingHeads(cfg.hidden_size, init_method_normal(cfg.initializer_range))
         self.lm_logits = LMLogits(cfg.vocab_size, bias=True)
         self.loss_func = BertLoss()
 
@@ -356,13 +348,9 @@ class BertForPreTraining(nn.Module):
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 
-        sequence_output, seq_relationship_score = self.cls(
-            sequence_output, pooled_output
-        )
+        sequence_output, seq_relationship_score = self.cls(sequence_output, pooled_output)
 
-        prediction_scores = self.lm_logits(
-            sequence_output, self.bert.word_embeddings_weight()
-        )
+        prediction_scores = self.lm_logits(sequence_output, self.bert.word_embeddings_weight())
 
         if lm_labels is not None and ns_labels is not None:
             total_loss = self.loss_func(
@@ -410,9 +398,7 @@ class BertForPretrainingGraph(GraphBase):
             elif isinstance(module_block.origin, BertExtendedAttnMask):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(
-                    module_block.layer_idx
-                )
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
             elif isinstance(module_block.origin, BertPreTrainingHeads):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
             elif isinstance(module_block.origin, LMLogits):
@@ -423,7 +409,5 @@ class BertForPretrainingGraph(GraphBase):
                 pass
 
         # Set the last layernorm stage id
-        self.model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
-            -1
-        )
+        self.model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
         self.model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)

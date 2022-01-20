@@ -25,9 +25,7 @@ default_train_transform = LazyCall(transforms.Compose)(
             config_str="rand-m9-mstd0.5-inc1",
             hparams=dict(
                 translate_const=int(224 * 0.45),
-                img_mean=tuple(
-                    [min(255, round(255 * x)) for x in IMAGENET_DEFAULT_MEAN]
-                ),
+                img_mean=tuple([min(255, round(255 * x)) for x in IMAGENET_DEFAULT_MEAN]),
                 interpolation=str_to_interp_mode("bicubic"),
             ),
         ),

@@ -141,18 +141,14 @@ def main(args):
     print(len(trainer.train_loader), len(trainer.test_loader))
     for sample in trainer.train_loader:
         assert isinstance(sample, Instance)
-        print(
-            f"train sample shape {sample.input.tensor.shape} {sample.label.tensor.shape}"
-        )
+        print(f"train sample shape {sample.input.tensor.shape} {sample.label.tensor.shape}")
         break
 
     for loader in trainer.test_loader:
         print(f"test loader: {len(loader)}")
         for sample in loader:
             assert isinstance(sample, Instance)
-            print(
-                f"train sample shape {sample.input.tensor.shape} {sample.label.tensor.shape}"
-            )
+            print(f"train sample shape {sample.input.tensor.shape} {sample.label.tensor.shape}")
             break
 
 

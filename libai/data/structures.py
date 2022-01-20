@@ -67,9 +67,7 @@ class DistTensorData:
         if len(distTensor_lists) == 1:
             # TODO(l1aoxingyu): add inplace unsqueeze
             # distTensor_lists[0].tensor.unsqueeze_(0)  # add batch dim
-            distTensor_lists[0].tensor = distTensor_lists[0].tensor.unsqueeze(
-                0
-            )  # add batch dim
+            distTensor_lists[0].tensor = distTensor_lists[0].tensor.unsqueeze(0)  # add batch dim
             return distTensor_lists[0]
 
         tensor_size = distTensor_lists[0].tensor.size()
@@ -177,9 +175,7 @@ class Instance:
 
     def __str__(self):
         s = self.__class__.__name__ + "("
-        s += "fields=[{}]".format(
-            ", ".join((f"{k}: {v}" for k, v in self._fields.items()))
-        )
+        s += "fields=[{}]".format(", ".join((f"{k}: {v}" for k, v in self._fields.items())))
         return s
 
     __repr__ = __str__

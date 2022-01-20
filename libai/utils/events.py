@@ -104,9 +104,7 @@ class JSONWriter(EventWriter):
         storage = get_event_storage()
         to_save = defaultdict(dict)
 
-        for k, (v, iter) in storage.latest_with_smoothing_hint(
-            self._window_size
-        ).items():
+        for k, (v, iter) in storage.latest_with_smoothing_hint(self._window_size).items():
             # keep scalars that have not been written
             if iter <= self._last_write:
                 continue
@@ -168,9 +166,7 @@ class CommonMetricPrinter(EventWriter):
         eta_string = None
         try:
             iter_time = storage.history("time").global_avg()
-            eta_seconds = storage.history("time").median(1000) * (
-                self._max_iter - iteration - 1
-            )
+            eta_seconds = storage.history("time").median(1000) * (self._max_iter - iteration - 1)
             storage.put_scalar("eta_seconds", eta_seconds, smoothing_hint=False)
             eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
         except KeyError:
@@ -208,18 +204,12 @@ class CommonMetricPrinter(EventWriter):
                         if "loss" in k
                     ]
                 ),
-                time="time: {:.4f}({:.2f})  ".format(
-                    iter_time, self._batch_size / iter_time
-                )
+                time="time: {:.4f}({:.2f})  ".format(iter_time, self._batch_size / iter_time)
                 if iter_time is not None
                 else "",
-                data_time="data_time: {:.4f}".format(data_time)
-                if data_time is not None
-                else "",
+                data_time="data_time: {:.4f}".format(data_time) if data_time is not None else "",
                 lr=lr,
-                memory="max_mem: {:.0f}M".format(max_mem_mb)
-                if max_mem_mb is not None
-                else "",
+                memory="max_mem: {:.0f}M".format(max_mem_mb) if max_mem_mb is not None else "",
             )
         )
 

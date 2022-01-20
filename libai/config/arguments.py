@@ -55,18 +55,14 @@ Run on multiple machines:
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "--config-file", default="", metavar="FILE", help="path to config file"
-    )
+    parser.add_argument("--config-file", default="", metavar="FILE", help="path to config file")
     parser.add_argument(
         "--resume",
         action="store_true",
         help="Whether to attempt to resume from the checkpoint directory. "
         "See documentation of `DefaultTrainer.resume_or_load()` for what it means.",
     )
-    parser.add_argument(
-        "--eval-only", action="store_true", help="perform evaluation only"
-    )
+    parser.add_argument("--eval-only", action="store_true", help="perform evaluation only")
     parser.add_argument(
         "opts",
         help="""

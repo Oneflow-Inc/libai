@@ -93,9 +93,7 @@ class T5Dataset(flow.utils.data.Dataset):
             masked_positions,
             masked_labels,
             masked_spans,
-        ) = self.create_masked_lm_predictions(
-            tokens, np_rng, token_boundary=align_labels
-        )
+        ) = self.create_masked_lm_predictions(tokens, np_rng, token_boundary=align_labels)
 
         (
             encoder_input,
@@ -221,9 +219,7 @@ class T5Dataset(flow.utils.data.Dataset):
                 masked_lms.append(MaskedLmInstance(index=index, label=tokens[index]))
 
             masked_spans.append(
-                MaskedLmInstance(
-                    index=index_set, label=[tokens[index] for index in index_set]
-                )
+                MaskedLmInstance(index=index_set, label=[tokens[index] for index in index_set])
             )
 
         masked_lms = sorted(masked_lms, key=lambda x: x.index)
@@ -280,9 +276,7 @@ class T5Dataset(flow.utils.data.Dataset):
         decoder_input = flow.tensor(decoder_input, dtype=flow.long)
 
         # padding mask
-        encoder_padding_mask = flow.tensor(
-            [1] * num_tokens + [0] * num_pad, dtype=flow.long
-        )
+        encoder_padding_mask = flow.tensor([1] * num_tokens + [0] * num_pad, dtype=flow.long)
         decoder_padding_mask = flow.tensor(
             [1] * num_tokens_dec + [0] * num_pad_dec, dtype=flow.long
         )

@@ -166,9 +166,7 @@ class PreTrainedTokenizer(object):
                 continue
             if key in self.SPECIAL_TOKENS_ATTRIBUTES:
                 if key == "additional_special_tokens":
-                    assert isinstance(
-                        value, (list, tuple)
-                    ), f"Value {value} is not a list or tuple"
+                    assert isinstance(value, (list, tuple)), f"Value {value} is not a list or tuple"
                     assert all(
                         isinstance(t, str) for t in value
                     ), "One of the tokens is not a string"
@@ -176,9 +174,7 @@ class PreTrainedTokenizer(object):
                 elif isinstance(value, str):
                     setattr(self, key, value)
                 else:
-                    raise TypeError(
-                        f"special token {key} has to be str but got: {type(value)}"
-                    )
+                    raise TypeError(f"special token {key} has to be str but got: {type(value)}")
 
     @classmethod
     def from_pretrained(cls, *inputs, **kwargs):
@@ -266,17 +262,13 @@ class PreTrainedTokenizer(object):
             for file_id, file_name in cls.vocab_files_names.items():
                 if os.path.isdir(pretrained_model_name_or_path):
                     # If a directory is provided we look for the standard filenames
-                    full_file_name = os.path.join(
-                        pretrained_model_name_or_path, file_name
-                    )
+                    full_file_name = os.path.join(pretrained_model_name_or_path, file_name)
                 else:
                     # If a path to a file is provided we use it (will only work for non-BPE
                     # tokenizer using a single vocabulary file)
                     full_file_name = pretrained_model_name_or_path
                 if not os.path.exists(full_file_name):
-                    logger.info(
-                        "Didn't find file {}. We won't load it.".format(full_file_name)
-                    )
+                    logger.info("Didn't find file {}. We won't load it.".format(full_file_name))
                     full_file_name = None
                 vocab_files[file_id] = full_file_name
 
@@ -295,9 +287,7 @@ class PreTrainedTokenizer(object):
             for file_id, file_name in additional_files_names.items():
                 full_file_name = os.path.join(saved_directory, file_name)
                 if not os.path.exists(full_file_name):
-                    logger.info(
-                        "Didn't find file {}. We won't load it.".format(full_file_name)
-                    )
+                    logger.info("Didn't find file {}. We won't load it.".format(full_file_name))
                     full_file_name = None
                 vocab_files[file_id] = full_file_name
 
@@ -372,22 +362,16 @@ class PreTrainedTokenizer(object):
             # wont index sequences longer than the number of positional embeddings
             max_len = cls.max_model_input_sizes[pretrained_model_name_or_path]
             if max_len is not None and isinstance(max_len, (int, float)):
-                init_kwargs["max_len"] = min(
-                    init_kwargs.get("max_len", int(1e12)), max_len
-                )
+                init_kwargs["max_len"] = min(init_kwargs.get("max_len", int(1e12)), max_len)
 
         # Merge resolved_vocab_files arguments in init_kwargs.
         added_tokens_file = resolved_vocab_files.pop("added_tokens_file", None)
-        special_tokens_map_file = resolved_vocab_files.pop(
-            "special_tokens_map_file", None
-        )
+        special_tokens_map_file = resolved_vocab_files.pop("special_tokens_map_file", None)
         for args_name, file_path in resolved_vocab_files.items():
             if args_name not in init_kwargs:
                 init_kwargs[args_name] = file_path
         if special_tokens_map_file is not None:
-            special_tokens_map = json.load(
-                open(special_tokens_map_file, encoding="utf-8")
-            )
+            special_tokens_map = json.load(open(special_tokens_map_file, encoding="utf-8"))
             for key, value in special_tokens_map.items():
                 if key not in init_kwargs:
                     init_kwargs[key] = value
@@ -421,9 +405,7 @@ class PreTrainedTokenizer(object):
         :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
         """
         if not os.path.isdir(save_directory):
-            logger.error(
-                "Saving directory ({}) should be a directory".format(save_directory)
-            )
+            logger.error("Saving directory ({}) should be a directory".format(save_directory))
             return
 
         special_tokens_map_file = os.path.join(save_directory, SPECIAL_TOKENS_MAP_FILE)
@@ -489,9 +471,7 @@ class PreTrainedTokenizer(object):
         """
         return self.added_tokens_encoder
 
-    def add_tokens(
-        self, new_tokens: Union[str, List[str]], special_tokens: bool = False
-    ) -> int:
+    def add_tokens(self, new_tokens: Union[str, List[str]], special_tokens: bool = False) -> int:
         """
         Add a list of new tokens to the tokenizer class. If the new tokens are not in the
         vocabulary, they are added to it with indices starting from length of
@@ -531,25 +511,18 @@ class PreTrainedTokenizer(object):
         for token in new_tokens:
             if not isinstance(token, str):
                 raise TypeError(f"Token {token} is not a string but a {type(token)}.")
-            if (
-                not special_tokens
-                and hasattr(self, "do_lower_case")
-                and self.do_lower_case
-            ):
+            if not special_tokens and hasattr(self, "do_lower_case") and self.do_lower_case:
                 token = token.lower()
             if (
                 token != self.unk_token
-                and self.convert_tokens_to_ids(token)
-                == self.convert_tokens_to_ids(self.unk_token)
+                and self.convert_tokens_to_ids(token) == self.convert_tokens_to_ids(self.unk_token)
                 and token not in tokens_to_add
             ):
                 tokens_to_add.append(token)
                 if self.verbose:
                     logger.info(f"Adding {token} to the vocabulary")
 
-        added_tok_encoder = dict(
-            (tok, len(self) + i) for i, tok in enumerate(tokens_to_add)
-        )
+        added_tok_encoder = dict((tok, len(self) + i) for i, tok in enumerate(tokens_to_add))
         added_tok_decoder = {v: k for k, v in added_tok_encoder.items()}
         self.added_tokens_encoder.update(added_tok_encoder)
         self.added_tokens_decoder.update(added_tok_decoder)
@@ -601,9 +574,7 @@ class PreTrainedTokenizer(object):
 
         added_tokens = 0
         for key, value in special_tokens_dict.items():
-            assert (
-                key in self.SPECIAL_TOKENS_ATTRIBUTES
-            ), f"Key {key} is not a special token"
+            assert key in self.SPECIAL_TOKENS_ATTRIBUTES, f"Key {key} is not a special token"
 
             if self.verbose:
                 logger.info(f"Assigning {value} to the {key} key of the tokenizer")
@@ -615,9 +586,7 @@ class PreTrainedTokenizer(object):
                 ), f"Tokens {value} for key {key} should all be a string"
                 added_tokens += self.add_tokens(value, special_tokens=True)
             else:
-                assert isinstance(
-                    value, str
-                ), f"Token {value} for key {key} should be a string"
+                assert isinstance(value, str), f"Token {value} for key {key} should be a string"
                 added_tokens += self.add_tokens([value], special_tokens=True)
 
         return added_tokens
@@ -698,9 +667,7 @@ class PreTrainedTokenizer(object):
         """
         raise NotImplementedError
 
-    def convert_tokens_to_ids(
-        self, tokens: Union[str, List[str]]
-    ) -> Union[int, List[int]]:
+    def convert_tokens_to_ids(self, tokens: Union[str, List[str]]) -> Union[int, List[int]]:
         """Converts a token string (or a sequence of tokens) in a single integer id
         (or a sequence of ids), using the vocabulary.
         """
@@ -730,18 +697,10 @@ class PreTrainedTokenizer(object):
         if isinstance(text, str):
             tokens = self.tokenize(text)
             return self.convert_tokens_to_ids(tokens)
-        elif (
-            isinstance(text, (list, tuple))
-            and len(text) > 0
-            and isinstance(text[0], str)
-        ):
+        elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], str):
             tokens = [self.tokenize(t) for t in text]
             return self.convert_tokens_to_ids(tokens)
-        elif (
-            isinstance(text, (list, tuple))
-            and len(text) > 0
-            and isinstance(text[0], int)
-        ):
+        elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], int):
             return text
         else:
             raise ValueError(
@@ -1089,9 +1048,7 @@ class PreTrainedTokenizer(object):
         set_attr = self.special_tokens_map
         for attr_value in set_attr.values():
             all_toks = all_toks + (
-                list(attr_value)
-                if isinstance(attr_value, (list, tuple))
-                else [attr_value]
+                list(attr_value) if isinstance(attr_value, (list, tuple)) else [attr_value]
             )
         all_toks = list(set(all_toks))
         return all_toks

@@ -57,9 +57,7 @@ def infer_dataset_impl(path):
 
 def make_builder(out_file, impl, vocab_size=None):
     if impl == "mmap":
-        return MMapIndexedDatasetBuilder(
-            out_file, dtype=__best_fitting_dtype(vocab_size)
-        )
+        return MMapIndexedDatasetBuilder(out_file, dtype=__best_fitting_dtype(vocab_size))
     else:
         return IndexedDatasetBuilder(out_file)
 
@@ -212,9 +210,7 @@ class IndexedDataset(flow.utils.data.Dataset):
 
     @staticmethod
     def exists(path):
-        return os.path.exists(index_file_path(path)) and os.path.exists(
-            data_file_path(path)
-        )
+        return os.path.exists(index_file_path(path)) and os.path.exists(data_file_path(path))
 
     @property
     def supports_prefetch(self):
@@ -483,9 +479,7 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
             logger.info("warming up data mmap file...")
             _warmup_mmap_file(data_file_path(self._path))
         logger.info("creating numpy buffer of mmap...")
-        self._bin_buffer_mmap = np.memmap(
-            data_file_path(self._path), mode="r", order="C"
-        )
+        self._bin_buffer_mmap = np.memmap(data_file_path(self._path), mode="r", order="C")
         logger.info("creating memory view of numpy buffer...")
         self._bin_buffer = memoryview(self._bin_buffer_mmap)
 
@@ -554,9 +548,7 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
 
     @staticmethod
     def exists(path):
-        return os.path.exists(index_file_path(path)) and os.path.exists(
-            data_file_path(path)
-        )
+        return os.path.exists(index_file_path(path)) and os.path.exists(data_file_path(path))
 
 
 class MMapIndexedDatasetBuilder(object):
@@ -601,8 +593,7 @@ def get_indexed_dataset(data_prefix, data_impl, skip_warmup, align_postfix=None)
     indexed_dataset = make_dataset(data_prefix, data_impl, skip_warmup)
     assert indexed_dataset.sizes.shape[0] == indexed_dataset.doc_idx[-1]
     logger.info(
-        "inished creating indexed dataset in {:4f} "
-        "seconds".format(time.time() - start_time)
+        "inished creating indexed dataset in {:4f} " "seconds".format(time.time() - start_time)
     )
 
     logger.info("indexed dataset stats:")
@@ -615,8 +606,7 @@ def get_indexed_dataset(data_prefix, data_impl, skip_warmup, align_postfix=None)
         align_indexed_dataset = make_dataset(align_data_prefix, data_impl, skip_warmup)
         assert indexed_dataset.sizes.shape[0] == indexed_dataset.doc_idx[-1]
         logger.info(
-            "inished creating indexed dataset in {:4f} "
-            "seconds".format(time.time() - start_time)
+            "inished creating indexed dataset in {:4f} " "seconds".format(time.time() - start_time)
         )
         indexed_dataset = (indexed_dataset, align_indexed_dataset)
 
