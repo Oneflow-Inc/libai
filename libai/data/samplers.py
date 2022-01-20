@@ -64,10 +64,10 @@ class CyclicSampler(Sampler):
         will load the corresponding data.
         """
         epoch = self.consumed_samples // self.data_size
+        current_epoch_samples = self.consumed_samples % self.data_size
         batch = []
-        while True:
-            current_epoch_samples = self.consumed_samples % self.data_size
 
+        while True:
             bucket_size = (
                 self.data_size // self.actual_batch_size * self.micro_batch_size
             )
@@ -98,11 +98,13 @@ class CyclicSampler(Sampler):
                     yield batch
                     batch = []
 
+            current_epoch_samples = 0
+
     def __len__(self):
         return self.data_size
 
     def set_consumed_samples(self, consumed_samples):
-        """you can recover the training iteration by setting `consumed_samplers`."""
+        """you can recover the training iteration by setting `consumed_samples`."""
         self.consumed_samples = consumed_samples
 
     def set_epoch(self, epoch):

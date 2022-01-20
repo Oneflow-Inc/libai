@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+# Copyright 2021 The OneFlow Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,12 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .blendable_dataset import BlendableDataset
-from .indexed_dataset import (
-    IndexedCachedDataset,
-    IndexedDataset,
-    MMapIndexedDataset,
-    get_indexed_dataset,
-)
-from .reindexed_dataset import BlockIndexedDataset, SentenceIndexedDataset
-from .split_dataset import SplitDataset, split_ds
+from .evaluator import DatasetEvaluator, inference_on_dataset
+from .utils import print_csv_format, flatten_results_dict
+from .cls_evaluator import ClsEvaluator
