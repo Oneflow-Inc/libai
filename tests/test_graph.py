@@ -63,12 +63,8 @@ reg_graph_cfg = DictConfig(
     )
 )
 
-lazy_train_graph = build_graph(
-    lazy_graph_cfg, model, optimizer, lr_scheduler, is_train=True
-)
+lazy_train_graph = build_graph(lazy_graph_cfg, model, optimizer, lr_scheduler, is_train=True)
 lazy_eval_graph = build_graph(lazy_graph_cfg, model, is_train=False)
 
-reg_train_graph = build_graph(
-    reg_graph_cfg, model, optimizer, lr_scheduler, is_train=True
-)
+reg_train_graph = build_graph(reg_graph_cfg, model, optimizer, lr_scheduler, is_train=True)
 reg_eval_graph = build_graph(reg_graph_cfg, model, is_train=False)

@@ -38,9 +38,7 @@ class CallbackHook(HookBase):
     Create a hook using callback functions provided by the user.
     """
 
-    def __init__(
-        self, *, before_train=None, after_train=None, before_step=None, after_step=None
-    ):
+    def __init__(self, *, before_train=None, after_train=None, before_step=None, after_step=None):
         """
         Each argument is a function that takes one argument: the trainer.
         """
@@ -269,9 +267,7 @@ class LRScheduler(HookBase):
     def get_best_param_group_id(optimizer):
         # NOTE: some heuristics on what LR to summarize
         # summarize the param group with most parameters
-        largest_group = max(
-            len(g["params"]) for g in optimizer.state_dict()["param_groups"]
-        )
+        largest_group = max(len(g["params"]) for g in optimizer.state_dict()["param_groups"])
 
         if largest_group == 1:
             # If all groups have one parameter,
