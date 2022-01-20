@@ -18,8 +18,6 @@ model.cfg.intermediate_size = 1536
 model.cfg.num_attention_heads = 16
 model.cfg.max_position_embeddings = 512
 
-train.dist.pipeline_num_layers = model.cfg.hidden_layers
-
 train.train_iter = 1000
 train.micro_batch_size = 16
 train.log_period = 1
