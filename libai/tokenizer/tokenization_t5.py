@@ -103,7 +103,7 @@ class T5Tokenizer(PreTrainedTokenizer):
 
     def _tokenize(self, text):
         """Tokenize a string."""
-        pieces = self.sp_model.EncodeAsPieces(text, out_type=str)
+        pieces = self.sp_model.encode(text, out_type=str)
         return pieces
 
     def _convert_token_to_id(self, token):

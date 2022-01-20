@@ -13,8 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .structures import DistTensorData, Instance
-from .bert_dataset import BertDataset
-from .gpt_dataset import GPT2Dataset
-from .t5_dataset import T5Dataset
-from .build import build_image_train_loader, build_image_test_loader
+from libai.data import BertDataset
+from libai.data.data_utils import get_indexed_dataset
+from libai.tokenizer import BertTokenizer
+
+datat_prefix = "test_samples_lazy_text_sentence"
+tokenizer = BertTokenizer(vocab_file="bert-vocab.txt", do_lower_case=True)
+indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="lazy", skip_warmup=False)
+
+dataset = BertDataset(
+    tokenizer,
+    data_prefix=datat_prefix,
+    indexed_dataset=indexed_dataset,
+    binary_head=False,
+)
+
+print(len(indexed_dataset))
+print(len(dataset))
+print(dataset[0])
