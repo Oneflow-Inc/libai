@@ -3,10 +3,10 @@ from libai.utils.checkpoint import Checkpointer
 import oneflow as flow
 
 if __name__ == '__main__':
-    HIDDEN_SIZE=768
+    HIDDEN_SIZE=384
     VOCAB_SIZE=21248
     NUM_ATTENTION_HEADS=12
-    FFN_HIDDEN_SIZE=3072
+    FFN_HIDDEN_SIZE=1536
     ENCODER_SEQ_LENGTH=512
     DECODER_SEQ_LENGTH=128
 
@@ -28,6 +28,7 @@ if __name__ == '__main__':
     
     megatron_t5 = get_t5_model()
     load_megatron_weight(flow_t5, megatron_t5)
+    flow.save(flow_t5.state_dict(), "flow_t5.f", consistent_dst_rank=0)
 
     
     FLOW_FM = None

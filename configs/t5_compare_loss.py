@@ -13,7 +13,7 @@ model.cfg.attention_probs_dropout_prob = 0.0
 model.cfg.bias_dropout_fusion = True
 
 # Set matched model arguments
-model.cfg.hidden_layers = 6
+model.cfg.hidden_layers = 12
 model.cfg.hidden_size = 384
 model.cfg.intermediate_size = 1536
 model.cfg.num_attention_heads = 16
@@ -24,7 +24,7 @@ train.dist.pipeline_num_layers = model.cfg.hidden_layers
 train.train_iter = 1000
 train.micro_batch_size = 16
 train.log_period = 1
-train.load_weight = "./test/test_t5/flow_t5.f"
+train.load_weight = "./tests/t5_test/flow_t5.f/"
 
 optim.lr = 0.0001
 

@@ -26,10 +26,10 @@ os.environ['CHECKPOINT_PATH']='/home/wang/workspace/Megatron-LM/examples'
 import sys
 sys.argv.extend([
     '--num-layers', '12',
-    '--hidden-size', '768', 
+    '--hidden-size', '384', 
     '--num-attention-heads', '12', 
-    '--kv-channels', '64', 
-    '--ffn-hidden-size', '3072', 
+    '--kv-channels', '32', 
+    '--ffn-hidden-size', '1536', 
     '--encoder-seq-length', '512', 
     '--decoder-seq-length', '128', 
     '--micro-batch-size', '16', 
