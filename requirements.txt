@@ -18,5 +18,4 @@ tqdm
 pybind11
 flake8==3.8.1 
 isort==5.10.1 
-autoflake==1.4
 black==21.4b2
