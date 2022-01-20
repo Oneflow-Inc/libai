@@ -1,0 +1,1976 @@
+[01/20 15:42:39] libai INFO: Rank of current process: 3. World size: 4
+[01/20 15:42:39] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=[], resume=False)
+[01/20 15:42:39] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m8[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mmicro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;242m# train.amp.enabled = True[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 15:42:39] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 15:42:39] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 15:42:45] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=768)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=768)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (5): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (6): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (7): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=768, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 15:42:45] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.105790 seconds
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 15:42:45] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 15:42:45] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 15:42:45] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.006 seconds
+[01/20 15:42:45] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 15:42:46] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 15:45:37] libai INFO: Rank of current process: 3. World size: 4
+[01/20 15:45:37] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=2'], resume=False)
+[01/20 15:45:37] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m8[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mmicro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 15:45:37] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 15:45:37] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 15:45:44] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=768)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=768)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (5): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (6): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (7): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=768, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 15:45:44] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.113052 seconds
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 15:45:44] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 15:45:44] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 15:45:44] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.006 seconds
+[01/20 15:45:44] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 15:45:44] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 15:45:47] libai.trainer.trainer ERROR: Exception during training:
+Traceback (most recent call last):
+  File "/workspace/libai/libai/trainer/trainer.py", line 136, in train
+    self.run_step()
+  File "/workspace/libai/libai/trainer/default.py", line 350, in run_step
+    self._trainer.run_step(self.get_batch)
+  File "/workspace/libai/libai/trainer/trainer.py", line 310, in run_step
+    losses = self.graph(*data)
+  File "/home/dev/.local/lib/python3.6/site-packages/oneflow/nn/graph/graph.py", line 258, in __call__
+    self._compile(*args)
+  File "/home/dev/.local/lib/python3.6/site-packages/oneflow/nn/graph/graph.py", line 497, in _compile
+    eager_outputs = self._build_graph(*args)
+  File "/home/dev/.local/lib/python3.6/site-packages/oneflow/nn/graph/graph.py", line 618, in _build_graph
+    oneflow._oneflow_internal.CurJobBuildAndInferCtx_Complete()
+IndexError: vector::_M_range_check: __n (which is 1) >= this->size() (which is 1)
+[01/20 15:45:47] libai.trainer.hooks INFO: Total training time: 0:00:02 (0:00:00 on hooks)
+[01/20 15:49:57] libai INFO: Rank of current process: 3. World size: 4
+[01/20 15:49:57] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=2'], resume=False)
+[01/20 15:49:57] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m8[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mmicro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 15:49:57] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 15:49:57] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 15:50:03] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=768)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=768)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (5): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (6): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (7): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=768, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 15:50:03] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.111631 seconds
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 15:50:03] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 15:50:03] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 15:50:03] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.007 seconds
+[01/20 15:50:03] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 15:50:04] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 15:52:47] libai INFO: Rank of current process: 3. World size: 4
+[01/20 15:52:47] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=[], resume=False)
+[01/20 15:52:47] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m8[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mmicro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 15:52:47] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 15:52:47] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 15:52:54] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=768)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=768)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (5): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (6): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+      (7): TransformerLayer(
+        (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=768, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+          (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=768, out_features=4096, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=4096, out_features=768, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=768, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 15:52:54] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.115137 seconds
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 15:52:54] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 15:52:54] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 15:52:54] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.007 seconds
+[01/20 15:52:54] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 15:52:54] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 15:57:45] libai INFO: Rank of current process: 3. World size: 4
+[01/20 15:57:45] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=4'], resume=False)
+[01/20 15:57:45] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m384[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mintermediate_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1536[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_position_embeddings[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m512[39m
+
+[38;5;242m# model.cfg.num_attention_heads = 16[39m
+[38;5;242m# model.cfg.hidden_size = 768[39m
+[38;5;242m# model.cfg.hidden_layers = 5[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mtrain_micro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 15:57:45] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 15:57:45] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 376 dummy tokens (new size: 21504)
+[01/20 15:57:50] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21504, embedding_dim=384)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=384)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=384)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=384, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 15:57:50] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.115188 seconds
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 15:57:50] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 15:57:50] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 15:57:50] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.007 seconds
+[01/20 15:57:50] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 15:57:50] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 16:01:11] libai INFO: Rank of current process: 3. World size: 4
+[01/20 16:01:11] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=2'], resume=False)
+[01/20 16:01:11] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m384[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mintermediate_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1536[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_position_embeddings[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m512[39m
+
+[38;5;242m# model.cfg.num_attention_heads = 16[39m
+[38;5;242m# model.cfg.hidden_size = 768[39m
+[38;5;242m# model.cfg.hidden_layers = 5[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mtrain_micro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 16:01:11] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 16:01:11] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 16:01:16] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=384)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=384)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=384)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=384, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 16:01:16] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.109942 seconds
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 16:01:16] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 16:01:16] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 16:01:16] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.008 seconds
+[01/20 16:01:16] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 16:01:16] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 16:04:36] libai INFO: Rank of current process: 3. World size: 4
+[01/20 16:04:36] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=2'], resume=False)
+[01/20 16:04:36] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m384[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mintermediate_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1536[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_position_embeddings[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m512[39m
+
+[38;5;242m# model.cfg.num_attention_heads = 16[39m
+[38;5;242m# model.cfg.hidden_size = 768[39m
+[38;5;242m# model.cfg.hidden_layers = 5[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mtrain_micro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 16:04:36] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 16:04:36] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 16:04:40] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=384)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=384)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=384)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=384, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 16:04:40] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 16:04:40] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 16:04:40] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 16:04:40] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 16:04:40] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 16:04:40] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 16:04:40] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 16:04:41] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 16:04:41] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 16:04:41] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.107249 seconds
+[01/20 16:04:41] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 16:04:41] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 16:04:41] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 16:04:41] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 16:04:41] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.007 seconds
+[01/20 16:04:41] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 16:04:41] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 16:08:02] libai INFO: Rank of current process: 3. World size: 4
+[01/20 16:08:02] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=2'], resume=False)
+[01/20 16:08:02] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m384[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mintermediate_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1536[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_position_embeddings[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m512[39m
+
+[38;5;242m# model.cfg.num_attention_heads = 16[39m
+[38;5;242m# model.cfg.hidden_size = 768[39m
+[38;5;242m# model.cfg.hidden_layers = 5[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mtrain_micro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 16:08:02] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 16:08:02] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 16:08:06] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=384)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=384)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=384)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=384, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 16:08:06] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.100697 seconds
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 16:08:06] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 16:08:06] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 16:08:06] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.013 seconds
+[01/20 16:08:06] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 16:08:07] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 16:11:50] libai INFO: Rank of current process: 3. World size: 4
+[01/20 16:11:50] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=2'], resume=False)
+[01/20 16:11:50] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m384[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mintermediate_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1536[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_position_embeddings[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m512[39m
+
+[38;5;242m# model.cfg.num_attention_heads = 16[39m
+[38;5;242m# model.cfg.hidden_size = 768[39m
+[38;5;242m# model.cfg.hidden_layers = 5[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mtrain_micro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 16:11:50] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 16:11:50] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 16:11:55] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=384)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=384)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=384)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=384, out_features=2, bias=True, parallel=row)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 16:11:55] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.103379 seconds
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 16:11:55] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 16:11:55] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 16:11:55] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.007 seconds
+[01/20 16:11:55] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 16:11:55] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 16:19:42] libai INFO: Rank of current process: 3. World size: 4
+[01/20 16:19:42] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=2'], resume=False)
+[01/20 16:19:42] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m384[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mintermediate_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1536[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_position_embeddings[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m512[39m
+
+[38;5;242m# model.cfg.num_attention_heads = 16[39m
+[38;5;242m# model.cfg.hidden_size = 768[39m
+[38;5;242m# model.cfg.hidden_layers = 5[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mtrain_micro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 16:19:42] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 16:19:42] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 16:19:47] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=384)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=384)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=384)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=384, out_features=2, bias=True, parallel=data)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 16:19:47] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.108483 seconds
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 16:19:47] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 16:19:47] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 16:19:47] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.006 seconds
+[01/20 16:19:47] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 16:19:48] libai.trainer.trainer INFO: Starting training from iteration 0
+[01/20 16:25:51] libai INFO: Rank of current process: 3. World size: 4
+[01/20 16:25:51] libai INFO: Command line arguments: Namespace(config_file='configs/bert_large_pretrain.py', eval_only=False, opts=['train.dist.tensor_parallel_size=2'], resume=False)
+[01/20 16:25:51] libai INFO: Contents of args.config_file=configs/bert_large_pretrain.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mbert[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mscheduler[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mdata[39m[38;5;15m.[39m[38;5;15mbert_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mBertForPretrainingGraph[39m
+
+[38;5;242m# Bert-large model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m384[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mintermediate_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1536[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_position_embeddings[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m512[39m
+
+[38;5;242m# model.cfg.num_attention_heads = 16[39m
+[38;5;242m# model.cfg.hidden_size = 768[39m
+[38;5;242m# model.cfg.hidden_layers = 5[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mtrain_micro_batch_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m16[39m
+
+[38;5;242m# Set fp16 ON[39m
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+
+[38;5;242m# LazyCall[39m
+[38;5;15mgraph[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;242m# options for graph or eager mode[39m
+[38;5;15m    [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15mdebug[39m[38;5;197m=[39m[38;5;197m-[39m[38;5;141m1[39m[38;5;15m,[39m[38;5;15m  [39m[38;5;242m# debug mode for graph[39m
+[38;5;15m    [39m[38;5;15mtrain_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15meval_graph[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mBertForPretrainingGraph[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15mfp16[39m[38;5;197m=[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mamp[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mis_train[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m)[39m
+
+[01/20 16:25:51] libai.utils.distributed WARNING: Please set `train.dist.pipeline_num_layers` if you want to train with pipeline parallelism, otherwise just ignore it.
+[01/20 16:25:51] libai.tokenizer.build INFO:  > padded vocab (size: 21128) with 120 dummy tokens (new size: 21248)
+[01/20 16:25:56] libai.trainer.default INFO: Model:
+BertForPreTraining(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (vocab_embeddings): VocabEmbedding(num_embeddings=21248, embedding_dim=384)
+      (position_embeddings): Embedding(num_embeddings=512, embedding_dim=384)
+      (tokentype_embeddings): Embedding(num_embeddings=2, embedding_dim=384)
+      (embedding_dropout): Dropout(p=0.1, inplace=False)
+    )
+    (extended_attn_mask): BertExtendedAttnMask()
+    (encoders): ModuleList(
+      (0): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (1): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (2): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (3): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+      (4): TransformerLayer(
+        (input_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (self_attention): MultiheadAttention(
+          hidden_size=384, num_heads=16, is_cross_attention=False
+          (dropout): Dropout(p=0.1, inplace=False)
+          (query_key_value): Linear1D(in_features=384, out_features=1152, bias=True, parallel=col)
+          (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=row)
+        )
+        (post_attention_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+        (mlp): MLP(
+          bias_gelu_fusion=True, bias_dropout_fusion=True, dropout=0.1
+          (dense_h_to_4h): Linear1D(in_features=384, out_features=1536, bias=True, parallel=col)
+          (dense_4h_to_h): Linear1D(in_features=1536, out_features=384, bias=True, parallel=row)
+        )
+      )
+    )
+    (final_layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    (pooler): BertPooler(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): Tanh()
+    )
+  )
+  (cls): BertPreTrainingHeads(
+    (predictions): BertLMPredictionHead(
+      (dense): Linear1D(in_features=384, out_features=384, bias=True, parallel=col)
+      (activation_func): GELU()
+      (layernorm): LayerNorm((384,), eps=1e-05, elementwise_affine=True)
+    )
+    (seq_relationship): Linear1D(in_features=384, out_features=2, bias=True, parallel=data)
+  )
+  (lm_logits): LMLogits()
+  (loss_func): BertLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[01/20 16:25:56] libai.trainer.default INFO: Prepare training, validating, testing set
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: inished creating indexed dataset in 0.107703 seconds
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: number of documents: 50000
+[01/20 16:25:56] libai.data.data_utils.indexed_dataset INFO: number of sentences: 1249934
+[01/20 16:25:56] libai.data.data_utils.reindexed_dataset INFO: loading indexed mapping from /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence_509msl_0.1ssp_sample_mapping.npy
+[01/20 16:25:56] libai.data.data_utils.reindexed_dataset INFO: loaded indexed file in 0.007 seconds
+[01/20 16:25:56] libai.data.data_utils.reindexed_dataset INFO: total number of samples: 119067
+[01/20 16:25:56] libai.trainer.trainer INFO: Starting training from iteration 0

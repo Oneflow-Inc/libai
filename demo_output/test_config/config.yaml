@@ -1,0 +1,61 @@
+dataloader:
+  train:
+    _target_: libai.data.build_nlp_train_val_test_loader
+    dataset:
+    - _target_: libai.data.BertDataset
+      data_prefix: /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence
+      indexed_dataset: {_target_: libai.data.data_utils.get_indexed_dataset, data_impl: mmap, data_prefix: /workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence, skip_warmup: false}
+      mask_lm_prob: 0.15
+      max_seq_length: 512
+      short_seq_prob: 0.1
+    num_workers: 4
+    splits:
+    - [949.0, 50.0, 1.0]
+    weights: [1.0]
+graph:
+  debug: -1
+  enabled: true
+  eval_graph: {_target_: libai.models.BertForPretrainingGraph, fp16: false, is_train: false}
+  train_graph: {_target_: libai.models.BertForPretrainingGraph, fp16: false, is_train: true}
+model:
+  _target_: libai.models.BertForPreTraining
+  cfg: {add_pooling_layer: true, apply_query_key_layer_scaling: true, attention_probs_dropout_prob: 0.1, bias_dropout_fusion: true, bias_gelu_fusion: true, hidden_dropout_prob: 0.1, hidden_layers: 8, hidden_size: 768, initializer_range: 0.02, intermediate_size: 4096, layernorm_eps: 1.0e-05, max_position_embeddings: 512, num_attention_heads: 16, num_tokentypes: 2, scale_mask_softmax_fusion: false, vocab_size: 30522}
+optim:
+  _target_: oneflow.nn.optimizer.adamw.AdamW
+  betas: [0.9, 0.999]
+  do_bias_correction: true
+  lr: 0.0001
+  parameters: {_target_: libai.optim.get_default_optimizer_params, clip_grad_max_norm: 1.0, clip_grad_norm_type: 2.0, weight_decay_bias: 0.0, weight_decay_norm: 0.0}
+  weight_decay: 0.01
+scheduler: {_target_: libai.scheduler.WarmupCosineAnnealingLR, max_iters: 1000, warmup_factor: 0, warmup_iters: 100, warmup_method: linear}
+tokenization:
+  append_eod: false
+  make_vocab_size_divisible_by: 128
+  setup: true
+  tokenizer: {_target_: libai.tokenizer.BertTokenizer, do_lower_case: true, vocab_file: /workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt}
+train:
+  amp: {enabled: false}
+  checkpointer: {max_to_keep: 100, period: 5000}
+  consumed_train_samples: 0
+  consumed_valid_samples: 0
+  dist: {data_parallel_size: 1, num_gpus_per_node: 1, num_nodes: 1, pipeline_num_layers: 10000, pipeline_parallel_size: 1, tensor_parallel_size: 1}
+  enable_use_compute_stream: true
+  eval_iter: 10000
+  eval_period: 5000
+  global_batch_size: 32
+  load_weight: ''
+  log_period: 20
+  lr_decay_iter: null
+  lr_warmup_fraction: 0.01
+  micro_batch_size: 16
+  nccl_fusion_max_ops: 24
+  nccl_fusion_threshold_mb: 16
+  num_accumulation_steps: 1
+  output_dir: ./demo_output/test_config
+  resume: false
+  seed: 1234
+  start_iter: 0
+  test_micro_batch_size: 32
+  train_iter: 10000
+  train_micro_batch_size: 32
+  train_samples: null
