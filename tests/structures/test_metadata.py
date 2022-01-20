@@ -55,16 +55,12 @@ class TestMetadata(unittest.TestCase):
             DistTensorData.stack(x_list)
         x_list.pop(-1)
 
-        x_list.append(
-            DistTensorData(flow.rand(10, 8), sbp_list=["broadcast"])
-        )  # sbp mismatch
+        x_list.append(DistTensorData(flow.rand(10, 8), sbp_list=["broadcast"]))  # sbp mismatch
         with self.assertRaises(Exception):
             DistTensorData.stack(x_list)
         x_list.pop(-1)
 
-        x_list.append(
-            DistTensorData(flow.rand(10, 8), placement_idx=2)
-        )  # placement mismatch
+        x_list.append(DistTensorData(flow.rand(10, 8), placement_idx=2))  # placement mismatch
         with self.assertRaises(Exception):
             DistTensorData.stack(x_list)
         x_list.pop(-1)

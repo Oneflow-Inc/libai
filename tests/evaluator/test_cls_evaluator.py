@@ -96,14 +96,10 @@ def setup(args):
 
     cfg.dataloader.test = [
         LazyCall(build_nlp_test_loader)(
-            dataset=LazyCall(DemoNlpDataset)(
-                data_root="test1", datasetname="Demodataset1"
-            )
+            dataset=LazyCall(DemoNlpDataset)(data_root="test1", datasetname="Demodataset1")
         ),
         LazyCall(build_nlp_test_loader)(
-            dataset=LazyCall(DemoNlpDataset)(
-                data_root="test2", datasetname="Demodataset2"
-            )
+            dataset=LazyCall(DemoNlpDataset)(data_root="test2", datasetname="Demodataset2")
         ),
     ]
 
