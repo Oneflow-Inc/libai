@@ -127,6 +127,7 @@ class T5Model(flow.nn.Module):
         hidden_layers,
         num_attention_heads,
         intermediate_size,
+        embedding_dropout_prob,
         hidden_dropout_prob,
         attention_probs_dropout_prob,
         max_position_embeddings,
@@ -146,7 +147,7 @@ class T5Model(flow.nn.Module):
             hidden_size=hidden_size,
             vocab_size=vocab_size,
             max_sequence_length=max_position_embeddings,
-            embedding_dropout_prob=hidden_dropout_prob,
+            embedding_dropout_prob=embedding_dropout_prob,
             num_tokentypes=num_tokentypes,
             init_method=init_method,
             fp16=fp16,
@@ -225,6 +226,7 @@ class T5Model(flow.nn.Module):
             "hidden_layers": cfg.hidden_layers,
             "num_attention_heads": cfg.num_attention_heads,
             "intermediate_size": cfg.intermediate_size,
+            "embedding_dropout_prob": cfg.embedding_dropout_prob,
             "hidden_dropout_prob": cfg.hidden_dropout_prob,
             "attention_probs_dropout_prob": cfg.attention_probs_dropout_prob,
             "max_position_embeddings": cfg.max_position_embeddings,
@@ -248,10 +250,9 @@ class T5Model(flow.nn.Module):
         tokentype_ids=None,
         # enc_hidden_states=None,
     ):
-        # encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
-        # decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
-        # encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
-
+        encoder_attn_mask = encoder_attn_mask.unsqueeze(1)
+        decoder_attn_mask = decoder_attn_mask.unsqueeze(1)
+        encoder_decoder_attn_mask = encoder_decoder_attn_mask.unsqueeze(1)
         enc_embedding_output = self.embedding(encoder_input_ids, tokentype_ids)
         enc_hidden_states = enc_embedding_output
         for layer in self.encoder.layers:
