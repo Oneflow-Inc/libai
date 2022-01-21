@@ -203,7 +203,7 @@ class CommonMetricPrinter(EventWriter):
                 sample=f"consumed samples: {consumed_samples}",
                 losses="  ".join(
                     [
-                        "{}: {:.4g}".format(k, v.median(200))
+                        "{}: {:.6g}".format(k, v.median(200))
                         for k, v in storage.histories().items()
                         if "loss" in k
                     ]

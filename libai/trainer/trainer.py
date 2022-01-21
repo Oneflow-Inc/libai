@@ -249,7 +249,7 @@ class EagerTrainer(TrainerBase):
         # If you want your model (or a submodule of it) to behave
         # like evaluation during training, you can overwrite its train() method.
 
-        model.train()
+        # model.train()
 
         self.model = model
         self._data_loader_iter = iter(data_loader_iter)
@@ -259,7 +259,7 @@ class EagerTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert self.model.training, "[EagerTrainer] model was changed to eval mode!"
+        # assert self.model.training, "[EagerTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.

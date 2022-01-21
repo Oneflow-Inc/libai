@@ -25,7 +25,7 @@ os.environ['VOCAB_FILE']='/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt
 os.environ['CHECKPOINT_PATH']='/home/wang/workspace/Megatron-LM/examples'
 import sys
 sys.argv.extend([
-    '--num-layers', '12',
+    '--num-layers', '6',
     '--hidden-size', '384', 
     '--num-attention-heads', '12', 
     '--kv-channels', '32', 

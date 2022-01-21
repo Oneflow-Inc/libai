@@ -9,15 +9,17 @@ from libai.scheduler import WarmupMultiStepLR
 
 # Set all dropout to 0.
 model.cfg.hidden_dropout_prob = 0.0
-model.cfg.attention_probs_dropout_prob = 0.0
-model.cfg.bias_dropout_fusion = True
+model.cfg.bias_dropout_fusion = False
+model.cfg.bias_gelu_fusion=False
 
 # Set matched model arguments
-model.cfg.hidden_layers = 12
+model.cfg.hidden_layers = 6
 model.cfg.hidden_size = 384
 model.cfg.intermediate_size = 1536
-model.cfg.num_attention_heads = 16
+model.cfg.num_attention_heads = 12
 model.cfg.max_position_embeddings = 512
+model.cfg.embedding_dropout_prob = 0.1
+model.cfg.attention_probs_dropout_prob = 0.1
 
 train.dist.pipeline_num_layers = model.cfg.hidden_layers
 
@@ -48,7 +50,8 @@ data.mmap_warmup = False
 # fmt: off
 graph = dict(
     # options for graph or eager mode
-    enabled=True,
+    # enabled=True
+    enabled=False,
     debug=-1, # debug mode for graph
     train_graph=LazyCall(T5ForPretrainingGraph)(
         fp16=train.amp.enabled,

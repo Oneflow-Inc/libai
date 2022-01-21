@@ -5,7 +5,7 @@ from libai.scheduler import WarmupCosineAnnealingLR
 from libai.config import LazyCall
 
 optim = LazyCall(flow.optim.AdamW)(
-    parameters=LazyCall(get_default_optimizer_params)(
+    params=LazyCall(get_default_optimizer_params)(
         # parameters.model is meant to be set to the model object, before instantiating the optimizer.
         clip_grad_max_norm=1.0,
         clip_grad_norm_type=2.0,

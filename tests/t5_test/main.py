@@ -1,6 +1,8 @@
+from pathlib import Path
 from libai.models import T5Model
 from libai.utils.checkpoint import Checkpointer
 import oneflow as flow
+import torch
 
 if __name__ == '__main__':
     HIDDEN_SIZE=384
@@ -13,8 +15,9 @@ if __name__ == '__main__':
     flow_t5 = T5Model(
         vocab_size=VOCAB_SIZE,
         hidden_size=HIDDEN_SIZE,
-        hidden_layers=12,
+        hidden_layers=6,
         num_attention_heads=NUM_ATTENTION_HEADS,
+        embedding_dropout_prob=0.1,
         intermediate_size=FFN_HIDDEN_SIZE,
         hidden_dropout_prob=0.1,
         attention_probs_dropout_prob=0.1,
@@ -27,8 +30,18 @@ if __name__ == '__main__':
     from utils import load_megatron_weight, get_sample, get_random_sample
     
     megatron_t5 = get_t5_model()
-    load_megatron_weight(flow_t5, megatron_t5)
+
+    if Path('megatron_t5.pth').exists():
+        for k, v in torch.load('megatron_t5.pth').items():
+            megatron_t5.state_dict()[k].copy_(v)
+
+    if not Path('flow_t5.f/').exists():
+        load_megatron_weight(flow_t5, megatron_t5)
+    else:
+        flow_t5.load_state_dict(flow.load('flow_t5.f', 0))
+
     flow.save(flow_t5.state_dict(), "flow_t5.f", consistent_dst_rank=0)
+    torch.save(megatron_t5.state_dict(), "megatron_t5.pth")
 
     
     FLOW_FM = None
@@ -71,28 +84,28 @@ if __name__ == '__main__':
     print('max diff: ', np.max(np.max(flow_output.numpy() - megatron_output.detach().cpu().numpy())))
 
 
-    diff_results = []
-    for i in range(100):
-        flow_tensor, torch_tensor = get_random_sample(VOCAB_SIZE)
-        tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = flow_tensor
-        with flow.no_grad():
-            flow_output = flow_t5(
-                tokens_enc,
-                tokens_dec,
-                enc_mask,
-                dec_mask,
-                enc_dec_mask,
-            )
+    # diff_results = []
+    # for i in range(100):
+    #     flow_tensor, torch_tensor = get_random_sample(VOCAB_SIZE)
+    #     tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = flow_tensor
+    #     with flow.no_grad():
+    #         flow_output = flow_t5(
+    #             tokens_enc,
+    #             tokens_dec,
+    #             enc_mask,
+    #             dec_mask,
+    #             enc_dec_mask,
+    #         )
 
-        tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = torch_tensor
-        with torch.no_grad():
-            megatron_output = megatron_t5(
-                tokens_enc,
-                tokens_dec,
-                enc_mask,
-                dec_mask,
-                enc_dec_mask,
-            )
-        print(f'{i}th max diff: ', np.max(np.max(flow_output.numpy() - megatron_output.detach().cpu().numpy())))
-        diff_results.append(np.max(np.max(flow_output.numpy() - megatron_output.detach().cpu().numpy()))) 
-    print('avg max diff: ', np.average(diff_results))
+    #     tokens_enc, tokens_dec, enc_mask, dec_mask, enc_dec_mask = torch_tensor
+    #     with torch.no_grad():
+    #         megatron_output = megatron_t5(
+    #             tokens_enc,
+    #             tokens_dec,
+    #             enc_mask,
+    #             dec_mask,
+    #             enc_dec_mask,
+    #         )
+    #     print(f'{i}th max diff: ', np.max(np.max(flow_output.detach().numpy() - megatron_output.detach().cpu().numpy())))
+    #     diff_results.append(np.max(np.max(flow_output.numpy() - megatron_output.detach().cpu().numpy()))) 
+    # print('avg max diff: ', np.average(diff_results))

@@ -27,11 +27,11 @@ def numpy_to_flow(tensor: np.ndarray) -> flow.Tensor:
 def get_sample(mode: str):
     from pathlib import Path
     data_path = Path("/home/wang/data/t5/samples")
-    tokens_enc = np.load(data_path / 'tokens_enc.npy')[0: 1]
-    tokens_dec = np.load(data_path / 'tokens_dec.npy')[0: 1]
-    enc_mask = np.load(data_path / 'enc_mask.npy')[0: 1]
-    dec_mask = np.load(data_path / 'dec_mask.npy')[0: 1]
-    enc_dec_mask = np.load(data_path / 'enc_dec_mask.npy')[0: 1]
+    tokens_enc = np.load(data_path / 'tokens_enc.npy')[0: 16]
+    tokens_dec = np.load(data_path / 'tokens_dec.npy')[0: 16]
+    enc_mask = np.load(data_path / 'enc_attn_mask.npy')[0: 16]
+    dec_mask = np.load(data_path / 'dec_attn_mask.npy')[0: 16]
+    enc_dec_mask = np.load(data_path / 'enc_dec_attn_mask.npy')[0: 16]
     func = {
         'flow': numpy_to_flow,
         'torch': lambda x: torch.from_numpy(x).cuda(),
