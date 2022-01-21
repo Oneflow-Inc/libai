@@ -36,12 +36,12 @@ def build_nlp_train_val_test_loader(
     consumed_samples=0,
     seed=0,
     collate_fn=None,
-    blendable_dataset=ConcatDataset,
+    dataset_mixer=ConcatDataset,
 ):
     """
     Build nlp train_val_test dataloader
     """
-    # TODO: add input type
+    # TODO: add input type, add dataset_weights sampler
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
@@ -58,9 +58,9 @@ def build_nlp_train_val_test_loader(
         test_datasets.append(test_dataset)
 
     # [dataset, dataset] -> dataset -> dataloader
-    train_dataset = blendable_dataset(train_datasets)  # , weights=weights)
-    val_dataset = blendable_dataset(val_datasets)  # , weights=weights)
-    test_dataset = blendable_dataset(test_datasets)  # , weights=weights)
+    train_dataset = dataset_mixer(train_datasets)
+    val_dataset = dataset_mixer(val_datasets)
+    test_dataset = dataset_mixer(test_datasets)
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
     if sampler is None:
@@ -118,7 +118,7 @@ def build_nlp_train_val_test_loader(
 
 def build_nlp_test_loader(
     dataset,
-    batch_size,
+    test_batch_size,
     sampler=None,
     num_workers=4,
     seed=0,
@@ -132,7 +132,7 @@ def build_nlp_test_loader(
     if sampler is None:
         sampler = SingleRoundSampler(
             dataset=dataset,
-            micro_batch_size=batch_size,
+            micro_batch_size=test_batch_size,
             shuffle=False,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
@@ -147,7 +147,8 @@ def build_nlp_test_loader(
 
 def build_image_train_loader(
     dataset,
-    batch_size,
+    train_batch_size,
+    test_batch_size=None,
     sampler=None,
     num_workers=4,
     collate_fn=None,
@@ -175,7 +176,7 @@ def build_image_train_loader(
         # TODO: initialize train sampler
         sampler = CyclicSampler(
             dataset=dataset,
-            micro_batch_size=batch_size,
+            micro_batch_size=train_batch_size,
             shuffle=True,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
@@ -194,14 +195,14 @@ def build_image_train_loader(
 
 
 def build_image_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
+    dataset, test_batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
 ):
     # TODO: add input type
     if sampler is None:
         # TODO: initialize test_sampler
         sampler = SingleRoundSampler(
             dataset=dataset,
-            micro_batch_size=batch_size,
+            micro_batch_size=test_batch_size,
             shuffle=False,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
@@ -210,7 +211,7 @@ def build_image_test_loader(
 
     return DataLoader(
         dataset,
-        batch_size=batch_size,
+        batch_size=test_batch_size,
         batch_sampler=sampler,
         num_workers=num_workers,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
