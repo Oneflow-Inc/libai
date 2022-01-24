@@ -6,7 +6,7 @@ hydra-core
 nltk
 numpy
 omegaconf
-oneflow>=0.6.0
+oneflow>=0.6
 Pygments
 PyYAML
 regex
@@ -16,6 +16,7 @@ tabulate
 termcolor
 tqdm
 pybind11
+portalocker
 flake8==3.8.1 
 isort==5.10.1
 black==21.4b2
