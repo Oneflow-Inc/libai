@@ -369,7 +369,7 @@ class BasicTokenizer(object):
 
 
 class BasicTokenizerWithChineseWWM(BasicTokenizer):
-    """Pre-segmentation for Chinese sentences, which will be used in WWM."""
+    """Pre-segmentation for Chinese sentences, which will be used in whole word mask."""
     
     def __init__(self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True):
         super(BasicTokenizerWithChineseWWM, self).__init__(
@@ -382,7 +382,7 @@ class BasicTokenizerWithChineseWWM(BasicTokenizer):
 
             self.pre_tokenizer = lambda x: jieba.lcut(x, HMM=False)
         except ImportError:
-            raise (ImportError("Chinese WWM need jieba"))
+            raise (ImportError("Chinese whole word mask need jieba"))
         
     def _tokenize_chinese_chars(self, text):
         """For Chinese pieces, uses jieba to segment the words and adds whitespace around CJK character."""

@@ -25,6 +25,14 @@ from libai.data.structures import DistTensorData, Instance
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
+def is_start_piece(piece):
+    """Check if the current word piece is the starting piece (BERT)."""
+    # When a word has been split into
+    # WordPieces, the first token does not have any marker and any subsequence
+    # tokens are prefixed with ##. So whenever we see the ## token, we
+    # append it to the previous set of word indexes.
+    return not piece.startswith("##")
+
 
 class BertDataset(flow.utils.data.Dataset):
     """
@@ -198,18 +206,38 @@ class BertDataset(flow.utils.data.Dataset):
         tokens,
         np_rng,
         max_ngrams=3,
-        do_whole_word_mask=False,
-        token_boundary=None,
+        do_whole_word_mask=True,
         favor_longer_ngram=False,
         geometric_dist=False,
     ):
         """Creates the predictions for the masked LM objective.
         Note: Tokens here are vocab ids and not text tokens."""
+        
+        cand_indexes = []
+        token_boundary = [0] * len(tokens)
+        new_tokens = []
 
-        if do_whole_word_mask:
-            assert (
-                token_boundary is not None
-            ), "token_boundary must be privided when do_whole_word_mask is True."
+        for (i, token) in enumerate(tokens):
+            new_tokens.append(token % self.tokenizer.vocab_size)
+
+            if token == self.cls_id or token == self.sep_id:
+                token_boundary[i] = 1
+                continue
+            # Whole Word Masking means that if we mask all of the wordpieces
+            # corresponding to an original word.
+            #
+            # Note that Whole Word Masking does *not* change the training code
+            # at all -- we still predict each WordPiece independently, softmaxed
+            # over the entire vocabulary.
+            if (do_whole_word_mask and len(cand_indexes) >= 1 and
+                    not is_start_piece(self.tokenizer._convert_id_to_token(token))):
+                cand_indexes[-1].append(i)
+            else:
+                cand_indexes.append([i])
+                if is_start_piece(self.tokenizer._convert_id_to_token(token))):
+                    token_boundary[i] = 1
+
+        tokens = new_tokens
 
         masked_positions = []
         masked_labels = []
