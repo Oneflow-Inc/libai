@@ -225,8 +225,10 @@ class BertLoss(nn.Module):
         sop_loss = flow._C.cross_entropy(
             binary_logits, ns_labels, ignore_index=-1, reduction="none"
         ).mean()
-        losses = masked_lm_loss + sop_loss
-        return losses
+        return {
+            "mlm loss": masked_lm_loss,
+            "sop loss": sop_loss,
+        }
 
 
 class BertModel(nn.Module):
@@ -341,14 +343,14 @@ class BertForPreTraining(nn.Module):
 
     def forward(
         self,
-        input_ids,
-        attention_mask,
+        tokens,
+        padding_mask,
         tokentype_ids=None,
         ns_labels=None,
         lm_labels=None,
         loss_mask=None,
     ):
-        outputs = self.bert(input_ids, attention_mask, tokentype_ids)
+        outputs = self.bert(tokens, padding_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 
         sequence_output, seq_relationship_score = self.cls(sequence_output, pooled_output)
@@ -356,14 +358,13 @@ class BertForPreTraining(nn.Module):
         prediction_scores = self.lm_logits(sequence_output, self.bert.word_embeddings_weight())
 
         if lm_labels is not None and ns_labels is not None:
-            total_loss = self.loss_func(
+            return self.loss_func(
                 prediction_scores,
                 lm_labels,
                 loss_mask,
                 seq_relationship_score,
                 ns_labels,
             )
-            return total_loss
         else:
             return prediction_scores, seq_relationship_score
 
@@ -382,11 +383,12 @@ class BertForPretrainingGraph(GraphBase):
 
         # Forward pass through the model
         if self.is_train:
-            losses = self.model(
+            loss_dict = self.model(
                 tokens, padding_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
             )
+            losses = sum(loss_dict.values())
             losses.backward()
-            return losses
+            return loss_dict
         else:
             return self.model(tokens, padding_mask, tokentype_ids)
 

@@ -267,8 +267,8 @@ class EagerTrainer(TrainerBase):
 
         # If you want to do something with the losses, you can wrap the model.
 
-        losses = self.model(*data)
-        loss_dict = {"total_loss": losses}
+        loss_dict = self.model(**data)
+        losses = sum(loss_dict.values())
 
         # If you need to accumulate gradients or do something similar, you can
         # wrap the optimizer with your custom `zero_grad()` method.
@@ -306,8 +306,6 @@ class GraphTrainer(TrainerBase):
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
-
-        losses = self.graph(*data)
-        loss_dict = {"total_loss": losses}
+        loss_dict = self.graph(**data)
 
         self.write_metrics(loss_dict, data_time)
