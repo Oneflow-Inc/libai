@@ -15,31 +15,26 @@
 
 import logging
 import os
-from typing import Callable
+from collections import OrderedDict
 
+import omegaconf
 import oneflow as flow
-from libai.config import LazyConfig, instantiate
-from libai.data.build import build_train_valid_test_data_iterators
-from libai.tokenizer import setup_tokenizer
+from termcolor import colored
+
+from libai.config import LazyConfig, try_get_key
+from libai.config.instantiate import instantiate
+from libai.data import Instance
+from libai.evaluation import ClsEvaluator, inference_on_dataset, print_csv_format
+from libai.models import build_graph, build_model
+from libai.optim import build_optimizer
+from libai.scheduler import build_lr_scheduler
+from libai.tokenizer import build_tokenizer
 from libai.trainer import hooks
 from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
-from omegaconf import OmegaConf
-
-
-def _try_get_key(cfg, *keys, default=None):
-    """
-    Try select keys from cfg until the first key that exists. Otherwise return default.
-    """
-    for k in keys:
-        none = object()
-        p = OmegaConf.select(cfg, k, default=none)
-        if p is not none:
-            return p
-    return default
 
 
 def _highlight(code, filename):
@@ -57,99 +52,77 @@ def _highlight(code, filename):
 
 
 def _check_batch_size(cfg):
-    if (
-        cfg.train.micro_batch_size is not None
-        and cfg.train.global_batch_size is not None
-    ):
-        if cfg.train.num_accumulation_steps is None:
-            if (
-                cfg.train.global_batch_size
-                % (cfg.train.micro_batch_size * dist.get_data_parallel_size())
-                != 0
-            ):
+    train_micro_batch_size = try_get_key(cfg, "train.train_micro_batch_size", default=None)
+    global_batch_size = try_get_key(cfg, "train.global_batch_size", default=None)
+    num_accumulation_steps = try_get_key(cfg, "train.num_accumulation_steps", default=None)
+
+    if train_micro_batch_size is not None and global_batch_size is not None:
+        if num_accumulation_steps is None:
+            if global_batch_size % (train_micro_batch_size * dist.get_data_parallel_size()) != 0:
                 raise ValueError(
-                    f"global_batch_size {cfg.train.global_batch_size} must be divisible by "
-                    f"micro_batch_size * data_parallel_size ({cfg.train.micro_batch_size} * {dist.get_data_parallel_size()})"
+                    f"global_batch_size {global_batch_size} must be divisible by "
+                    "train_micro_batch_size * data_parallel_size "
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()})"
                 )
 
-            cfg.train.num_accumulation_steps = cfg.train.global_batch_size // (
-                cfg.train.micro_batch_size * dist.get_data_parallel_size()
+            cfg.train.num_accumulation_steps = global_batch_size // (
+                train_micro_batch_size * dist.get_data_parallel_size()
             )
+
         else:
             if (
-                cfg.train.global_batch_size
-                != cfg.train.micro_batch_size
-                * dist.get_data_parallel_size()
-                * cfg.train.num_accumulation_steps
+                global_batch_size
+                != train_micro_batch_size * dist.get_data_parallel_size() * num_accumulation_steps
             ):
                 raise ValueError(
-                    f"global_batch_size {cfg.train.global_batch_size} must equal"
-                    " micro_batch_size * data_parallel_size * num_accumulation_steps"
-                    f" ({cfg.train.micro_batch_size} * {dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
+                    f"global_batch_size {global_batch_size} must equal to "
+                    "train_micro_batch_size * data_parallel_size * num_accumulation_steps "
+                    f"({train_micro_batch_size} * {dist.get_data_parallel_size()} * {num_accumulation_steps})"  # noqa
                 )
-    elif cfg.train.micro_batch_size is not None and cfg.train.global_batch_size is None:
-        if cfg.train.num_accumulation_steps is None:
+    elif train_micro_batch_size is not None and global_batch_size is None:
+        if num_accumulation_steps is None:
             cfg.train.num_accumulation_steps = 1
 
         cfg.train.global_batch_size = (
-            cfg.train.micro_batch_size
+            train_micro_batch_size
             * dist.get_data_parallel_size()
             * cfg.train.num_accumulation_steps
         )
-    elif cfg.train.micro_batch_size is None and cfg.train.global_batch_size is not None:
-        if cfg.train.num_accumulation_steps is None:
-            cfg.num_accumulation_steps = 1
+    elif train_micro_batch_size is None and global_batch_size is not None:
+        if num_accumulation_steps is None:
+            cfg.train.num_accumulation_steps = 1
 
         if (
-            cfg.train.global_batch_size
-            % (dist.get_data_parallel_size() * cfg.train.num_accumulation_steps)
+            global_batch_size % (dist.get_data_parallel_size() * cfg.train.num_accumulation_steps)
             != 0
         ):
             raise ValueError(
-                f"global_batch_size {cfg.global_batch_size} must be divisible by "
+                f"global_batch_size {global_batch_size} must be divisible by "
                 "data_parallel_size * num_accumulation_steps "
                 f"({dist.get_data_parallel_size()} * {cfg.train.num_accumulation_steps})"
             )
 
-        cfg.train.micro_batch_size = cfg.train.global_batch_size // (
+        cfg.train.train_micro_batch_size = global_batch_size // (
             dist.get_data_parallel_size() * cfg.train.num_accumulation_steps
         )
     else:
-        raise ValueError("micro_batch_size and global_batch_size must be set either")
-
-    assert cfg.train.num_accumulation_steps is not None
-    if cfg.train.num_accumulation_steps > 1 and cfg.data.use_external_dataset:
-        raise ValueError(
-            "num_accumulation_steps couldn't be greater than 1 when use external dataset"
-        )
+        raise ValueError("train_micro_batch_size and global_batch_size must be set either")
 
 
 def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
-    1. Check config namespace
-    2. Set up the libai logger
-    3. Log basic information about environment, cmdline arguments, and config
-    4. Setup the distributed environment
-    5. Setup tokenizer if it's NLP related task
-    6. Check batch_size
-    7. Backup the config to the output directory
+    1. Set up the libai logger
+    2. Log basic information about environment, cmdline arguments, and config
+    3. Setup the distributed environment
+    4. Setup tokenizer if it's NLP related task
+    5. Check batch_size
+    6. Backup the config to the output directory
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
-    # Check namespace in cfg
-    assert _try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
-    assert _try_get_key(cfg, "data") is not None, "cfg must contain `data` namespace"
-    assert _try_get_key(cfg, "train") is not None, "cfg must contain `train` namespace"
-    if not args.eval_only:
-        assert (
-            _try_get_key(cfg, "optim") is not None
-        ), "cfg must contain `optim` namespace when training"
-        assert (
-            _try_get_key(cfg, "lr_scheduler") is not None
-        ), "cfg must contain `lr_scheduler` namespace when training"
 
-    output_dir = _try_get_key(cfg, "train.output_dir")
+    output_dir = try_get_key(cfg, "train.output_dir")
     if dist.is_main_process() and output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -158,11 +131,7 @@ def default_setup(cfg, args):
     rank = dist.get_rank()
     logger = setup_logger(output_dir, distributed_rank=rank)
 
-    logger.info(
-        "Rank of current process: {}. World size: {}".format(
-            rank, dist.get_world_size()
-        )
-    )
+    logger.info("Rank of current process: {}. World size: {}".format(rank, dist.get_world_size()))
     logger.info("Command line arguments: " + str(args))
 
     if hasattr(args, "config_file") and args.config_file != "":
@@ -173,14 +142,7 @@ def default_setup(cfg, args):
             )
         )
 
-    # Initialize the distributed environment.
-    cfg.train.dist.num_gpus_per_node = args.num_gpus
-    cfg.train.dist.num_nodes = args.num_machines
-    dist.setup_dist_util(_try_get_key(cfg, "train.dist"))
-
-    # Initialize tokenizer
-    if _try_get_key(cfg, "data.tokenizer_setup", default=False):
-        setup_tokenizer(cfg)
+    dist.setup_dist_util(cfg.train.dist)
 
     _check_batch_size(cfg)
 
@@ -192,13 +154,13 @@ def default_setup(cfg, args):
         logger.info("Full config saved to {}".format(path))
 
     flow.boxing.nccl.set_fusion_threshold_mbytes(
-        _try_get_key(cfg, "train.nccl_fusion_threshold_mb", default=16)
+        try_get_key(cfg, "train.nccl_fusion_threshold_mb", default=16)
     )
     flow.boxing.nccl.set_fusion_max_ops_num(
-        _try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
+        try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
     flow.boxing.nccl.enable_use_compute_stream(
-        _try_get_key(cfg, "train.enable_use_compute_stream", default=True)
+        try_get_key(cfg, "train.enable_use_compute_stream", default=True)
     )
 
 
@@ -248,6 +210,11 @@ class DefaultTrainer(TrainerBase):
         if not logger.isEnabledFor(logging.INFO):
             setup_logger()
 
+        # Initialize tokenizer
+        self.tokenizer = None
+        if try_get_key(cfg, "tokenization.setup", default=False):
+            self.tokenizer = self.build_tokenizer(cfg)
+
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
         self.optimizer = self.build_optimizer(cfg, self.model)
@@ -269,23 +236,27 @@ class DefaultTrainer(TrainerBase):
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
 
-        (
-            self.train_data_iterator,
-            self.valid_data_iterator,
-            self.test_data_iterator,
-        ) = self.build_train_valid_test_loader(cfg)
+        self.train_loader = None
+        self.test_loader = []
+
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
+        self.train_loader = train_loader
+
+        if val_loader is not None:
+            self.test_loader.append(val_loader)
+        if test_loader is not None:
+            self.test_loader.append(test_loader)
+
+        self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
-            graph_train = self.build_graph(
+            self.graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
-            graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            # graph_train.debug(0)
-            self._trainer = GraphTrainer(graph_train, self.train_data_iterator)
+            self.graph_eval = self.build_graph(cfg, self.model, is_train=False)
+            self._trainer = GraphTrainer(self.graph_train, self.train_loader)
         else:
-            self._trainer = EagerTrainer(
-                self.model, self.train_data_iterator, self.optimizer
-            )
+            self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)
 
         self.global_batch_size = cfg.train.global_batch_size
         self.max_iter = cfg.train.train_iter
@@ -309,8 +280,7 @@ class DefaultTrainer(TrainerBase):
                 # The checkpoint stores the training iteration that just finished, thus we start
                 # at the next iteration (or iter zero if there's no checkpoint).
                 self.start_iter = (
-                    self.checkpointer.resume_or_load(None, resume=True).get("iter", -1)
-                    + 1
+                    self.checkpointer.resume_or_load(None, resume=True).get("iter", -1) + 1
                 )
             else:
                 # This is considered as an independent training.
@@ -329,15 +299,18 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),
-            hooks.PeriodicCheckpointer(
-                self.checkpointer, self.cfg.train.checkpointer.period
-            ),
+            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
         ]
+
+        def test_and_save_results():
+            self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
+            return self._last_eval_results
+
+        ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
+
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
-            ret.append(
-                hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period)
-            )
+            ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
         return ret
 
     def build_writers(self):
@@ -372,82 +345,190 @@ class DefaultTrainer(TrainerBase):
         """
         super().train(self.start_iter, self.max_iter)
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self):
         self._trainer.iter = self.iter
-        self._trainer.run_step(get_batch)
+        self._trainer.run_step(self.get_batch)
+
+    @classmethod
+    def get_batch(cls, data: Instance):
+        """
+        Convert batched local tensor to distributed tensor for model step running.
+
+        If you want to do something with batched data before model, (e.g. mixup),
+        you can rewrite this function.
+        """
+        if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
+            data.reraise()
+
+        ret_dict = {}
+        ret_list = []
+        for key, value in data.get_fields().items():
+            value.to_consistent()
+            ret_dict[key] = value.tensor
+            ret_list.append(value.tensor)
+        # FIXME(l1aoxingyu): `nn.Graph` cannot accpet key-value arguments right now,
+        # just pass list instead.
+        return ret_list
+
+    @classmethod
+    def build_tokenizer(cls, cfg):
+        assert (
+            try_get_key(cfg, "tokenization") is not None
+        ), "cfg must contain `tokenization` namespace"
+        return build_tokenizer(cfg)
 
     @classmethod
     def build_model(cls, cfg):
         """
         Returns:
             flow.nn.Module:
-        It now calls :func:`libai.layers.build_model`.
+        It now calls :func:`libai.models.build_model`.
         Overwrite it if you'd like a different model.
         """
-        model = instantiate(cfg.model)
+        assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
+        model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
+        model.apply(dist.convert_to_distributed_default_setting)
         return model
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
-        if is_train:
-            # Set train graph
-            assert optimizer is not None, "optimizer must be set for train graph"
-            assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
-            cfg.graph.num_accumulation_steps = cfg.train.num_accumulation_steps
-            cfg.graph.train.model = model
-            cfg.graph.train.optimizer = optimizer
-            cfg.graph.train.lr_scheduler = lr_scheduler
-            return instantiate(cfg.graph.train)
-        else:
-            # Set eval graph
-            cfg.graph.eval.model = model
-            return instantiate(cfg.graph.eval)
+        assert try_get_key(cfg, "graph") is not None, "cfg must contain `graph` namespace"
+        graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
+        logger = logging.getLogger(__name__)
+        debug_graph = try_get_key(cfg, "graph.debug", default=-1)
+        if debug_graph >= 0:
+            logger.info("Graph debug mode on, automatically output debug info.")
+            graph.debug(cfg.graph.debug)
+        return graph
 
     @classmethod
     def build_optimizer(cls, cfg, model):
         """
         Returns:
             torch.optim.Optimizer:
-        It now calls :func:`libai.solver.build_optimizer`.
+        It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        optim = cfg.optim
-        optim.parameters.model = model
-        return instantiate(optim)
+        assert try_get_key(cfg, "optim") is not None, "cfg must contain `optim` namespace"
+        return build_optimizer(cfg.optim, model)
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
         """
-        It now calls :func:`libai.solver.build_lr_scheduler`.
+        It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        if cfg.train.lr_decay_iter is None:
-            cfg.train.lr_decay_iter = cfg.train.train_iter
-        decay_steps = int(cfg.train.lr_decay_iter)
-        if cfg.train.lr_warmup_fraction is not None:
-            warmup_iters = cfg.train.lr_warmup_fraction * decay_steps
-        else:
-            warmup_iters = cfg.train.lr_warmup_iters
-        warmup_iters = int(warmup_iters)
-
-        lr_scheduler = cfg.lr_scheduler
-        # Setup warmup iters
-        lr_scheduler.warmup_iters = warmup_iters
-        # Setup optimizer and decay iters
-        lr_scheduler.lrsch_or_optimizer.optimizer = optimizer
-        lr_scheduler.lrsch_or_optimizer.steps = decay_steps
-        return instantiate(lr_scheduler)
+        assert try_get_key(cfg, "scheduler") is not None, "cfg must contain `scheduler` namespace"
+        return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
-    def build_train_valid_test_loader(cls, cfg):
+    def build_train_loader(cls, cfg, tokenizer=None):
         """
         Returns:
             iterable
         It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
+        assert (
+            try_get_key(cfg, "dataloader.train") is not None
+        ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
-        logger.info("Prepare training set")
-        return build_train_valid_test_data_iterators(cfg)
+        logger.info("Prepare training, validating, testing set")
+        cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
+        cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
+
+        # Set tokenizer for each dataset
+        if tokenizer:
+            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
+                for dataset in cfg.dataloader.train.dataset:
+                    dataset.tokenizer = tokenizer
+            else:
+                cfg.dataloader.train.dataset.tokenizer = tokenizer
+
+        train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
+        return train_loader, valid_loader, test_loader
+
+    @classmethod
+    def build_test_loader(cls, cfg):
+        # TODO: add doc string
+        # If there is no test_loader, just return []
+        if not try_get_key(cfg, "dataloader.test", default=False):
+            return []
+        logger = logging.getLogger(__name__)
+        logger.info("Prepare testing set")
+        assert isinstance(
+            cfg.dataloader.test, omegaconf.listconfig.ListConfig
+        ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
+        for i in range(len(cfg.dataloader.test)):
+            cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+        # list[dataloader1, dataloader2, ...]
+        test_loader = instantiate(cfg.dataloader.test)
+        return test_loader
+
+    @classmethod
+    def build_evaluator(cls, cfg):
+        return ClsEvaluator(cfg)
+
+    @classmethod
+    def test(cls, cfg, test_loaders, model, evaluator=None):
+        """
+        Evaluate the given model. The given model is expected to already contain
+        weights to evaluate.
+        Args:
+            cfg (CfgNode):
+            test_loaders: list [dataloader1, dataloader2, ...]
+            model (nn.Graph):
+            evaluators (list[DatasetEvaluator] or None): if None, will call
+                :meth:`build_evaluator`. Otherwise, must have the same length as
+                ``cfg.DATASETS.TEST``.
+        Returns:
+            dict: a dict of result metrics
+        """
+        logger = logging.getLogger(__name__)
+        # TODO: support multi evaluator
+        # if isinstance(evaluators, DatasetEvaluator):
+        #     evaluators = [evaluators]
+        test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
+        evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
+
+        results = OrderedDict()
+        for idx, data_loader in enumerate(test_loaders):
+            # When evaluators are passed in as arguments,
+            # implicitly assume that evaluators can be created before data_loader.
+            dataset_name = getattr(data_loader.dataset, "datasetname", "UndefinedDataset")
+            # TODO: support multi evaluator
+            # if evaluators is not None:
+            #     evaluator = evaluators[idx]
+            # else:
+            #     try:
+            #         evaluator = cls.build_evaluator(cfg)
+            #     except NotImplementedError:
+            #         logger.warn(
+            #             "No evaluator found. Use `DefaultTrainer.test(evaluators=)`, "
+            #             "or implement its `build_evaluator` method."
+            #         )
+            #         results[dataset_name] = {}
+            #         continue
+
+            results_i = inference_on_dataset(
+                model, data_loader, test_batch_size, cls.get_batch, evaluator
+            )
+            results[dataset_name] = results_i
+            if dist.is_main_process():
+                assert isinstance(
+                    results_i, dict
+                ), "Evaluator must return a dict on the main process. Got {} instead.".format(
+                    results_i
+                )
+                logger.info(
+                    "Evaluation results for {} in csv format:".format(
+                        colored(dataset_name, "green")
+                    )
+                )
+                print_csv_format(results_i)
+
+        if len(results) == 1:
+            results = list(results.values())[0]
+        return results

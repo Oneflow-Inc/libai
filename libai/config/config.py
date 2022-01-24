@@ -16,6 +16,11 @@
 import functools
 import inspect
 
+<<<<<<< HEAD
+=======
+from omegaconf import OmegaConf
+
+>>>>>>> main
 
 def configurable(init_func=None, *, from_config=None):
     """
@@ -29,20 +34,40 @@ def configurable(init_func=None, *, from_config=None):
             @configurable
             def __init__(self, a, b=2, c=3):
                 pass
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
             @classmethod
             def from_config(cls, cfg):   # 'cfg' must be the first argument
                 # Returns kwargs to be passed to __init__
                 return {"a": cfg.A, "b": cfg.B}
+<<<<<<< HEAD
         a1 = A(a=1, b=2)  # regular construction
         a2 = A(cfg)       # construct with a cfg
         a3 = A(cfg, b=3, c=4)  # construct with extra overwrite
+=======
+
+        a1 = A(a=1, b=2)  # regular construction
+        a2 = A(cfg)       # construct with a cfg
+        a3 = A(cfg, b=3, c=4)  # construct with extra overwrite
+
+>>>>>>> main
         # Usage 2: Decorator on any function. Needs an extra from_config argument:
         @configurable(from_config=lambda cfg: {"a: cfg.A, "b": cfg.B})
         def a_func(a, b=2, c=3):
             pass
+<<<<<<< HEAD
         a1 = a_func(a=1, b=2)  # regular call
         a2 = a_func(cfg)       # call with a cfg
         a3 = a_func(cfg, b=3, c=4)  # call with extra overwrite
+=======
+
+        a1 = a_func(a=1, b=2)  # regular call
+        a2 = a_func(cfg)       # call with a cfg
+        a3 = a_func(cfg, b=3, c=4)  # call with extra overwrite
+
+>>>>>>> main
     Args:
         init_func (callable): a class's ``__init__`` method in usage 1. The
             class must have a ``from_config`` classmethod which takes `cfg` as
@@ -67,9 +92,13 @@ def configurable(init_func=None, *, from_config=None):
                     "Class with @configurable must have a 'from_config' classmethod."
                 ) from e
             if not inspect.ismethod(from_config_func):
+<<<<<<< HEAD
                 raise TypeError(
                     "Class with @configurable must have a 'from_config' classmethod."
                 )
+=======
+                raise TypeError("Class with @configurable must have a 'from_config' classmethod.")
+>>>>>>> main
 
             if _called_with_cfg(*args, **kwargs):
                 explicit_args = _get_args_from_config(from_config_func, *args, **kwargs)
@@ -118,9 +147,13 @@ def _get_args_from_config(from_config_func, *args, **kwargs):
         param.kind in [param.VAR_POSITIONAL, param.VAR_KEYWORD]
         for param in signature.parameters.values()
     )
+<<<<<<< HEAD
     if (
         support_var_arg
     ):  # forward all arguments to from_config, if from_config accepts them
+=======
+    if support_var_arg:  # forward all arguments to from_config, if from_config accepts them
+>>>>>>> main
         ret = from_config_func(*args, **kwargs)
     else:
         # forward supported arguments to from_config
@@ -150,3 +183,18 @@ def _called_with_cfg(*args, **kwargs):
     # `from_config`'s first argument is forced to be "cfg".
     # So the above check covers all cases.
     return False
+<<<<<<< HEAD
+=======
+
+
+def try_get_key(cfg, *keys, default=None):
+    """
+    Try select keys from cfg until the first key that exists. Otherwise return default.
+    """
+    for k in keys:
+        none = object()
+        p = OmegaConf.select(cfg, k, default=none)
+        if p is not none:
+            return p
+    return default
+>>>>>>> main

@@ -13,11 +13,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
 import copy
+import inspect
+from collections import defaultdict
+from typing import Any, Dict, List
+
 import oneflow as flow
-from typing import List, Dict, Any
+
+from libai.config import instantiate
 from libai.layers import LayerNorm
+from libai.utils.registry import Registry
+
+OPTIMIZER_REGISTRY = Registry("Optimizer")
+OPTIMIZER_REGISTRY.__doc__ = """
+Registry for optimizer, i.e. SGD, AdamW
+
+The registered object will be called with `obj(cfg)`
+and expected to return a `flow.optim.Optimizer` object.
+"""
+
+
+def register_optimizer():
+    flow_optimizers = []
+    for module_name in dir(flow.optim):
+        if module_name.startswith("__"):
+            continue
+        _optim = getattr(flow.optim, module_name)
+        if inspect.isclass(_optim) and issubclass(_optim, flow.optim.Optimizer):
+            OPTIMIZER_REGISTRY.register(_optim)
+            flow_optimizers.append(module_name)
+    return flow_optimizers
+
+
+FLOW_OPTIMIZERS = register_optimizer()
+
+
+def build_optimizer(cfg, model):
+    if "_target_" in cfg:
+        cfg.parameters.model = model
+        optim = instantiate(cfg)
+    else:
+        optim_name = cfg.optim_name
+        optim = OPTIMIZER_REGISTRY.get(optim_name)(
+            get_default_optimizer_params(model, **cfg.param_cfg), **cfg.optim_cfg
+        )
+    return optim
 
 
 def get_default_optimizer_params(
@@ -31,8 +71,9 @@ def get_default_optimizer_params(
     overrides=None,
 ):
     """
-    Get default param list for optimizer, with suport for a few types of overrides. If no overrides needed, this is equivalent to `model.parameters()`.
-    
+    Get default param list for optimizer, with suport for a few types of overrides.
+    If no overrides needed, this is equivalent to `model.parameters()`.
+
     Arguments:
         base_lr: lr for every group by default. Can be omitted to use the one in optimizer.
         weight_decay: weight decay for every group by default. Can be omitted to use the one
@@ -43,12 +84,11 @@ def get_default_optimizer_params(
             (LR, weight decay) for module parameters with a given name; e.g.
             ``{"embedding": {"lr": 0.01, "weight_decay": 0.1}}`` will set the LR and
             weight decay values for all module parameters named `embedding`.
-
-    For common transformer models, ``weight_decay_norm,weight_decay_bias`` is usually set to 0. 
-
+    For common transformer models, ``weight_decay_norm,weight_decay_bias`` is usually set to 0.
     Example:
     ::
-        flow.optim.AdamW(get_default_optimizer_params(model, weight_decay_norm=0, weight_decay_bias=0),
+        flow.optim.AdamW(
+            get_default_optimizer_params(model, weight_decay_norm=0, weight_decay_bias=0),
                        lr=0.01, weight_decay=1e-4)
     """
     if overrides is None:
@@ -102,7 +142,7 @@ def get_default_optimizer_params(
 
 
 def _expand_param_groups(params: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """ 
+    """
     Transform parameter groups into per-parameter structure.
     Later items in `params` can overwrite parameters set in previous items.
     """

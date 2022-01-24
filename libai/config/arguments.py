@@ -14,9 +14,14 @@
 # limitations under the License.
 
 
+<<<<<<< HEAD
 import os
 import sys
 import argparse
+=======
+import argparse
+import sys
+>>>>>>> main
 
 
 def default_argument_parser(epilog=None):
@@ -35,6 +40,7 @@ def default_argument_parser(epilog=None):
 Examples:
 
 Run on single machine:
+<<<<<<< HEAD
     $ {sys.argv[0]} --num-gpus 8 --config-file cfg.yaml
 
 Change some config options:
@@ -49,12 +55,37 @@ Run on multiple machines:
     parser.add_argument(
         "--config-file", default="", metavar="FILE", help="path to config file"
     )
+=======
+    $ python3 -m oneflow.distributed.launch \
+    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
+    --config-file cfg.yaml
+
+Change some config options:
+    $ python3 -m oneflow.distributed.launch \
+    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
+    --config-file cfg.yaml train.load_weight=/path/to/weight.pth optim.lr=0.001
+
+Run on multiple machines:
+    (machine0)$ python3 -m oneflow.distributed.launch \
+    --nproc_per_node 8 --nnodes 2 --node_rank 0 --master_addr <URL> {sys.argv[0]} \
+    --config-file cfg.yaml
+
+    $ python3 -m oneflow.distributed.launch \
+    --nproc_per_node 8 --nnodes 2 --node_rank 1 --master_addr <URL> {sys.argv[0]} \
+    --config-file cfg.yaml
+
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--config-file", default="", metavar="FILE", help="path to config file")
+>>>>>>> main
     parser.add_argument(
         "--resume",
         action="store_true",
         help="Whether to attempt to resume from the checkpoint directory. "
         "See documentation of `DefaultTrainer.resume_or_load()` for what it means.",
     )
+<<<<<<< HEAD
     parser.add_argument(
         "--eval-only", action="store_true", help="perform evaluation only"
     )
@@ -85,6 +116,9 @@ Run on multiple machines:
         help="initialization URL for pytorch distributed backend. See "
         "https://pytorch.org/docs/stable/distributed.html for details.",
     )
+=======
+    parser.add_argument("--eval-only", action="store_true", help="perform evaluation only")
+>>>>>>> main
     parser.add_argument(
         "opts",
         help="""

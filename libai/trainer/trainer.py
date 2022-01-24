@@ -13,15 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
-import time
-from typing import Mapping
-import numpy as np
 import logging
+import time
 import weakref
+from typing import Callable, List, Mapping
+
+import numpy as np
+import oneflow as flow
+
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
-from typing import Callable, List
 
 
 class HookBase:
@@ -60,25 +61,21 @@ class HookBase:
         """
         Called before the first iteration.
         """
-        pass
 
     def after_train(self):
         """
         Called after the last iteration.
         """
-        pass
 
     def before_step(self):
         """
         Called before each iteration.
         """
-        pass
 
     def after_step(self):
         """
         Called after each iteration.
         """
-        pass
 
 
 class TrainerBase:
@@ -91,7 +88,7 @@ class TrainerBase:
         iter(int): the current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
-        
+
         max_iter(int): The iteration to end training.
         storage(EventStorage): An EventStorage that's opened during the course of training.
     """
@@ -172,7 +169,9 @@ class TrainerBase:
 
     @staticmethod
     def write_metrics(
-        loss_dict: Mapping[str, flow.Tensor], data_time: float, prefix: str = "",
+        loss_dict: Mapping[str, flow.Tensor],
+        data_time: float,
+        prefix: str = "",
     ) -> None:
         """
         Args:
@@ -262,7 +261,8 @@ class EagerTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter)
+        data = next(self._data_loader_iter)
+        data = get_batch(data)
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
@@ -297,13 +297,12 @@ class GraphTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert (
-            self.graph.model.training
-        ), "[SimpleTrainer] model was changed to eval mode!"
+        assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter)
+        data = next(self._data_loader_iter)
+        data = get_batch(data)
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.

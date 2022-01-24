@@ -17,13 +17,14 @@ import copy
 import logging
 import os
 from collections import defaultdict
-from typing import Any
-from typing import Optional, List, Dict, NamedTuple, Tuple, Iterable
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 import oneflow as flow
 from oneflow import nn
 from termcolor import colored
+
+from libai.utils.file_io import HTTPURLHandler, PathManagerBase
 
 
 class _IncompatibleKeys(
@@ -76,6 +77,10 @@ class Checkpointer(object):
         self.logger = logging.getLogger(__name__)
         self.save_dir = save_dir
         self.save_to_disk = save_to_disk
+        # Default PathManager, support HTTP URLs
+        # A user may want to use a different project-specific PathManagerBase'
+        self.path_manager: PathManagerBase = PathManagerBase()
+        self.path_manager.register_handler(HTTPURLHandler())
 
     def save(self, name: str, **kwargs: Dict[str, str]):
         """
@@ -94,8 +99,8 @@ class Checkpointer(object):
         basename = name
         save_dir = os.path.join(self.save_dir, basename)
         assert os.path.basename(save_dir) == basename, basename
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir, exist_ok=True)
+        if not self.path_manager.exists(save_dir):
+            self.path_manager.mkdirs(save_dir)
         self.logger.info("Saving checkpoint to {}".format(save_dir))
 
         for save_name in data:
@@ -103,8 +108,8 @@ class Checkpointer(object):
                 continue
             save_file = os.path.join(save_dir, save_name)
             # If directory existing, remove it for saving
-            if os.path.exists(save_file):
-                os.makedirs(save_file, exist_ok=True)
+            if self.path_manager.exists(save_file):
+                self.path_manager.mkdirs(save_file)
 
             flow.save(data[save_name], save_file, consistent_dst_rank=0)
 
@@ -133,9 +138,7 @@ class Checkpointer(object):
 
         checkpoint = self._load_file(path)
         incompatible = self._load_model(checkpoint)
-        if (
-            incompatible is not None
-        ):  # handle some existing subclasses that returns None
+        if incompatible is not None:  # handle some existing subclasses that returns None
             self._log_incompatible_keys(incompatible)
 
         for key in self.checkpointables if checkpointables is None else checkpointables:
@@ -153,7 +156,7 @@ class Checkpointer(object):
             bool: whether a checkpoint exists in the target directory.
         """
         save_file = os.path.join(self.save_dir, "last_checkpoint")
-        return os.path.exists(save_file)
+        return self.path_manager.exists(save_file)
 
     def get_checkpoint_file(self):
         """
@@ -194,8 +197,8 @@ class Checkpointer(object):
             last_filename_basename (str): the basename of the last filename.
         """
         save_file = os.path.join(self.save_dir, "last_checkpoint")
-        with open(save_file, "w") as f:
-            f.write(last_filename_basename)
+        with self.path_manager.open(save_file, "w") as f:
+            f.write(last_filename_basename)  # pyre-ignore
 
     def _load_file(self, f: str):
         """
@@ -209,7 +212,7 @@ class Checkpointer(object):
                 to torch.Tensor or numpy arrays.
         """
         data = {}
-        keys = os.listdir(f)
+        keys = self.path_manager.ls(f)
         for key in keys:
             data[key] = flow.load(os.path.join(f, key))
         data["iter"] = int(f.split("_")[-1])
@@ -259,15 +262,11 @@ class Checkpointer(object):
                 )
             )
         if incompatible.missing_keys:
-            missing_keys = _filter_reused_missing_keys(
-                self.model, incompatible.missing_keys
-            )
+            missing_keys = _filter_reused_missing_keys(self.model, incompatible.missing_keys)
             if missing_keys:
                 self.logger.info(get_missing_parameters_message(missing_keys))
         if incompatible.unexpected_keys:
-            self.logger.info(
-                get_unexpected_parameters_message(incompatible.unexpected_keys)
-            )
+            self.logger.info(get_unexpected_parameters_message(incompatible.unexpected_keys))
 
     def _convert_ndarray_to_tensor(self, state_dict: dict):
         """
@@ -281,16 +280,12 @@ class Checkpointer(object):
         for k in list(state_dict.keys()):
             v = state_dict[k]
             if not isinstance(v, np.ndarray) and not isinstance(v, flow.Tensor):
-                raise ValueError(
-                    "Unsupported type found in checkpoint! {}: {}".format(k, type(v))
-                )
+                raise ValueError("Unsupported type found in checkpoint! {}: {}".format(k, type(v)))
             # If it's local tensor, convert it to consistent tensor.
             if not v.is_consistent:
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
-                    state_dict[k] = v.to_consistent(
-                        sbp=model_v.sbp, placement=model_v.placement
-                    )
+                    state_dict[k] = v.to_consistent(sbp=model_v.sbp, placement=model_v.placement)
             # if not isinstance(v, flow.Tensor):
             #     state_dict[k] = flow.tensor(v)
 
@@ -326,6 +321,7 @@ class PeriodicCheckpointer:
         self.max_to_keep = max_to_keep
         self.recent_checkpoints: List[str] = []
         self.file_prefix = file_prefix
+        self.path_manager: PathManagerBase = checkpointer.path_manager
 
     def step(self, iteration: int, **kwargs: Any):
         """
@@ -348,10 +344,10 @@ class PeriodicCheckpointer:
                 self.recent_checkpoints.append(self.checkpointer.get_checkpoint_file())
                 if len(self.recent_checkpoints) > self.max_to_keep:
                     file_to_delete = self.recent_checkpoints.pop(0)
-                    if os.path.exists(file_to_delete) and not file_to_delete.endswith(
+                    if self.path_manager.exists(file_to_delete) and not file_to_delete.endswith(
                         "{}_{:07d}".format(self.file_prefix, iteration)
                     ):
-                        os.remove(file_to_delete)
+                        self.path_manager.rm(file_to_delete)
 
         if self.max_iter is not None:
             if iteration >= self.max_iter - 1:
@@ -400,9 +396,7 @@ def get_missing_parameters_message(keys: List[str]) -> str:
     """
     groups = _group_checkpoint_keys(keys)
     msg = "Some model parameters or buffers are not found in the checkpoint:\n"
-    msg += "\n".join(
-        "  " + colored(k + _group_to_str(v), "blue") for k, v in groups.items()
-    )
+    msg += "\n".join("  " + colored(k + _group_to_str(v), "blue") for k, v in groups.items())
     return msg
 
 
@@ -417,9 +411,7 @@ def get_unexpected_parameters_message(keys: List[str]) -> str:
     """
     groups = _group_checkpoint_keys(keys)
     msg = "The checkpoint state_dict contains keys that are not used by the model:\n"
-    msg += "\n".join(
-        "  " + colored(k + _group_to_str(v), "magenta") for k, v in groups.items()
-    )
+    msg += "\n".join("  " + colored(k + _group_to_str(v), "magenta") for k, v in groups.items())
     return msg
 
 
@@ -494,9 +486,7 @@ def _group_to_str(group: List[str]) -> str:
     return ".{" + ", ".join(group) + "}"
 
 
-def _named_modules_with_dup(
-    model: nn.Module, prefix: str = ""
-) -> Iterable[Tuple[str, nn.Module]]:
+def _named_modules_with_dup(model: nn.Module, prefix: str = "") -> Iterable[Tuple[str, nn.Module]]:
     """
     The same as `model.named_modules()`, except that it includes
     duplicated modules that have more than one name.

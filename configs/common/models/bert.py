@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from libai.config import LazyCall as L
+=======
+from libai.config import LazyCall
+>>>>>>> main
 
 from libai.models import BertModel, BertForPreTraining
 
@@ -21,6 +25,12 @@ cfg = dict(
     apply_query_key_layer_scaling=True,
 )
 
+<<<<<<< HEAD
 bert_model = L(BertModel)(cfg=cfg)
 
 pretrain_model = L(BertForPreTraining)(cfg=cfg)
+=======
+bert_model = LazyCall(BertModel)(cfg=cfg)
+
+pretrain_model = LazyCall(BertForPreTraining)(cfg=cfg)
+>>>>>>> main
