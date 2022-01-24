@@ -31,6 +31,7 @@ def configurable(init_func=None, *, from_config=None):
             @configurable
             def __init__(self, a, b=2, c=3):
                 pass
+
             @classmethod
             def from_config(cls, cfg):   # 'cfg' must be the first argument
                 # Returns kwargs to be passed to __init__
@@ -122,13 +123,7 @@ def _get_args_from_config(from_config_func, *args, **kwargs):
         param.kind in [param.VAR_POSITIONAL, param.VAR_KEYWORD]
         for param in signature.parameters.values()
     )
-<<<<<<< HEAD
-    if (
-        support_var_arg
-    ):  # forward all arguments to from_config, if from_config accepts them
-=======
     if support_var_arg:  # forward all arguments to from_config, if from_config accepts them
->>>>>>> main
         ret = from_config_func(*args, **kwargs)
     else:
         # forward supported arguments to from_config
