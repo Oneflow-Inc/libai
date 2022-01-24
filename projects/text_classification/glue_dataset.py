@@ -42,6 +42,7 @@ class GlueDataset(Dataset):
         tokenizer,
         max_seq_length: int = 128,
         mode: Union[str, Split] = Split.train,
+        pattern: EncodePattern = EncodePattern.bert_pattern,
         cache_dir: Optional[str] = None,
         overwrite_cache: bool = False,
     ):
@@ -86,6 +87,7 @@ class GlueDataset(Dataset):
                     examples,
                     tokenizer,
                     max_length=max_seq_length,
+                    pattern=pattern,
                     label_list=label_list,
                     output_mode=self.output_mode,
                 )

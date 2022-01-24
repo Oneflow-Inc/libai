@@ -21,7 +21,7 @@ from typing import List, Optional, Union
 
 
 class EncodePattern(Enum):
-    """
+    """ encode pattern
     bert pattern: 
         single sentence: [CLS] A [SEP]
         pair of sentences: [CLS] A [SEP] B [SEP]

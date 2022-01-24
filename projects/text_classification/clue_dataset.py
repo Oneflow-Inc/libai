@@ -26,6 +26,7 @@ from oneflow.utils.data import Dataset
 from libai.data.structures import DistTensorData, Instance
 
 from .utils_clue import clue_convert_examples_to_features, clue_output_modes, clue_processors
+from .utils import EncodePattern
 
 logger = logging.get_logger(__name__)
 
@@ -44,6 +45,7 @@ class ClueDataset(Dataset):
         tokenizer,
         max_seq_length: int = 128,
         mode: Union[str, Split] = Split.train,
+        pattern: EncodePattern = EncodePattern.bert_pattern,
         cache_dir: Optional[str] = None,
         overwrite_cache: bool = False,
     ):
@@ -88,6 +90,7 @@ class ClueDataset(Dataset):
                     examples,
                     tokenizer,
                     max_length=max_seq_length,
+                    pattern=pattern,
                     label_list=label_list,
                     output_mode=self.output_mode,
                 )
