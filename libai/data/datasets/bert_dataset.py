@@ -53,10 +53,6 @@ class BertDataset(flow.utils.data.Dataset):
             max_preds_per_seq = math.ceil(max_seq_length * mask_lm_prob / 10) * 10
         self.max_preds_per_seq = max_preds_per_seq
 
-        self.has_align_dataset = (
-            isinstance(indexed_dataset, (list, tuple)) and len(indexed_dataset) > 1
-        )
-
         self.dataset = SentenceIndexedDataset(
             data_prefix,
             indexed_dataset,
@@ -81,14 +77,11 @@ class BertDataset(flow.utils.data.Dataset):
         # We % 2 ** 32 since numpy requres the seed to be between 0 and 2 ** 32 - 1
         np_rng = np.random.RandomState(seed=((self.seed + idx) % 2 ** 32))
 
-        sents = self.dataset[idx]
-        align_labels = None
-        if self.has_align_dataset:
-            sents, align_labels = sents
+        sents = self.dataset[idx]        
 
         if self.binary_head:
             tokens_a, tokens_b, is_next_random = self.create_random_sentence_pair(
-                sents, np_rng, align_labels=align_labels
+                sents, np_rng
             )
         else:
             tokens_a = []
@@ -96,20 +89,15 @@ class BertDataset(flow.utils.data.Dataset):
                 tokens_a.extend(sents[j])
             tokens_b = []
             is_next_random = False
-            if align_labels is not None:
-                align_labels_a = [label for labels in align_labels for label in labels]
-                align_labels_b = []
-                tokens_a = (tokens_a, align_labels_a)
-                tokens_b = (tokens_b, align_labels_b)
 
         tokens_a, tokens_b = self.truncate_seq_pair(
             tokens_a, tokens_b, self.max_seq_length - 3, np_rng
         )
 
-        tokens, token_types, align_labels = self.create_tokens_and_token_types(tokens_a, tokens_b)
+        tokens, token_types = self.create_tokens_and_token_types(tokens_a, tokens_b)
 
         tokens, masked_positions, masked_labels = self.create_masked_lm_predictions(
-            tokens, np_rng, token_boundary=align_labels
+            tokens, np_rng
         )
 
         (
@@ -132,7 +120,7 @@ class BertDataset(flow.utils.data.Dataset):
         )
         return sample
 
-    def create_random_sentence_pair(self, sample, np_rng, align_labels=None):
+    def create_random_sentence_pair(self, sample, np_rng):
         num_sentences = len(sample)
         assert num_sentences > 1, "make sure each sample has at least two sentences."
 
@@ -148,17 +136,6 @@ class BertDataset(flow.utils.data.Dataset):
         for j in range(a_end, num_sentences):
             tokens_b.extend(sample[j])
 
-        if align_labels is not None:
-            align_labels_a = []
-            align_labels_b = []
-            for j in range(a_end):
-                align_labels_a.extend(align_labels[j])
-            for j in range(a_end, num_sentences):
-                align_labels_b.extend(align_labels[j])
-
-            tokens_a = (tokens_a, align_labels_a)
-            tokens_b = (tokens_b, align_labels_b)
-
         is_next_random = False
         if np_rng.random() < 0.5:
             is_next_random = True
@@ -168,11 +145,6 @@ class BertDataset(flow.utils.data.Dataset):
 
     def truncate_seq_pair(self, tokens_a, tokens_b, max_num_tokens, np_rng):
         """truncate sequence pair to a maximum sequence length"""
-        if self.has_align_dataset:
-            tokens_a, align_labels_a = tokens_a
-            tokens_b, align_labels_b = tokens_b
-        else:
-            align_labels_a, align_labels_b = [], []
 
         len_a, len_b = len(tokens_a), len(tokens_b)
         while True:
@@ -181,48 +153,27 @@ class BertDataset(flow.utils.data.Dataset):
                 break
             if len_a > len_b:
                 trunc_tokens = tokens_a
-                trunc_labels = align_labels_a
                 len_a -= 1
             else:
                 trunc_tokens = tokens_b
-                trunc_labels = align_labels_b
                 len_b -= 1
 
             if np_rng.random() < 0.5:
                 trunc_tokens.pop(0)  # remove the first element
-                if len(trunc_labels) > 0:
-                    trunc_labels.pop(0)
             else:
                 trunc_tokens.pop()  # remove the last element
-                if len(trunc_labels) > 0:
-                    trunc_labels.pop()
-
-        if self.has_align_dataset:
-            tokens_a = (tokens_a, align_labels_a)
-            tokens_b = (tokens_b, align_labels_b)
 
         return tokens_a, tokens_b
 
     def create_tokens_and_token_types(self, tokens_a, tokens_b):
         """merge segments A and B, add [CLS] and [SEP] and build token types."""
-        if self.has_align_dataset:
-            tokens_a, align_labels_a = tokens_a
-            tokens_b, align_labels_b = tokens_b
-
         tokens = [self.cls_id] + tokens_a + [self.sep_id]
         token_types = [0] * (len(tokens_a) + 2)
         if len(tokens_b) > 0:
             tokens = tokens + tokens_b + [self.sep_id]
             token_types = token_types + [1] * (len(tokens_b) + 1)
 
-        if self.has_align_dataset:
-            align_labels = [1] + align_labels_a + [1]
-            if len(align_labels_b) > 0:
-                align_labels = align_labels + align_labels_b + [1]
-        else:
-            align_labels = None
-
-        return tokens, token_types, align_labels
+        return tokens, token_types
 
     def mask_token(self, idx, tokens, np_rng):
         """

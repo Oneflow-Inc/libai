@@ -50,10 +50,6 @@ class T5Dataset(flow.utils.data.Dataset):
             max_preds_per_seq = math.ceil(max_seq_length * mask_lm_prob / 10) * 10
         self.max_preds_per_seq = max_preds_per_seq
 
-        self.has_align_dataset = (
-            isinstance(indexed_dataset, (list, tuple)) and len(indexed_dataset) > 1
-        )
-
         self.dataset = SentenceIndexedDataset(
             data_prefix,
             indexed_dataset,
@@ -77,23 +73,14 @@ class T5Dataset(flow.utils.data.Dataset):
         np_rng = np.random.RandomState(seed=((self.seed + idx) % 2 ** 32))
 
         sents = self.dataset[idx]
-        align_labels = None
-        if self.has_align_dataset:
-            sents, align_labels = sents
-
         tokens = [token for sent in sents for token in sent]
-        align_labels = (
-            [label for labels in align_labels for label in labels]
-            if align_labels is not None
-            else None
-        )
 
         (
             tokens,
             masked_positions,
             masked_labels,
             masked_spans,
-        ) = self.create_masked_lm_predictions(tokens, np_rng, token_boundary=align_labels)
+        ) = self.create_masked_lm_predictions(tokens, np_rng)
 
         (
             encoder_input,
