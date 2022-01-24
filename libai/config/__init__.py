@@ -13,17 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<< HEAD
-from .lazy import LazyCall, LazyConfig
-from .instantiate import instantiate
-from .arguments import default_argument_parser
-from .config import configurable
-=======
 from .arguments import default_argument_parser
 from .config import configurable, try_get_key
 from .instantiate import instantiate
 from .lazy import LazyCall, LazyConfig
->>>>>>> main
 
 __all__ = [
     "LazyCall",
@@ -31,8 +24,5 @@ __all__ = [
     "instantiate",
     "default_argument_parser",
     "configurable",
-<<<<<<< HEAD
-=======
     "try_get_key",
->>>>>>> main
 ]

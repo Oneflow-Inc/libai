@@ -29,7 +29,6 @@ __all__ = [
     "build_activation",
     "Linear",
     "Linear1D",
-    "ActivationCheckpointing",
     "MLP",
     "LayerNorm",
     "TransformerLayer",
