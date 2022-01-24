@@ -16,7 +16,21 @@
 import csv
 import json
 from dataclasses import dataclass
+from enum import Enum
 from typing import List, Optional, Union
+
+
+class EncodePattern(Enum):
+    """
+    bert pattern: 
+        single sentence: [CLS] A [SEP]
+        pair of sentences: [CLS] A [SEP] B [SEP]
+    roberta/bart pattern:
+        single sentence: <s> A </s>
+        pair of sentences: <s> A </s> </s> B </s>
+    """
+    bert_pattern = "S*E*E"
+    roberta_pattern = "S*EE*E"
 
 
 @dataclass
@@ -101,3 +115,4 @@ class DataProcessor:
             for line in reader:
                 lines.append(json.loads(line.strip()))
             return lines
+

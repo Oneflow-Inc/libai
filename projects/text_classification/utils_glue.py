@@ -16,7 +16,7 @@
 import logging
 import os
 
-from .utils import DataProcessor, InputExample, InputFeatures
+from .utils import DataProcessor, EncodePattern, InputExample, InputFeatures
 
 logger = logging.get_logger(__name__)
 
@@ -26,6 +26,7 @@ def glue_convert_examples_to_features(
     tokenizer,
     max_length,
     task=None,
+    pattern=EncodePattern.bert_pattern,
     label_list=None,
     output_mode=None,
 ):
@@ -44,6 +45,13 @@ def glue_convert_examples_to_features(
     end_token = [] if tokenizer.end_token is None else [tokenizer.end_token]
     pad_id = tokenizer.pad_token_id
 
+    if pattern == EncodePattern.bert_pattern:
+        added_special_tokens = [2, 3]
+    elif pattern == EncodePattern.roberta_pattern:
+        added_special_tokens = [2, 4]
+    else:
+        raise KeyError("pattern is not a valid EncodePattern")
+
     features = []
     for (ex_index, example) in enumerate(examples):
         if ex_index % 10000 == 0:
@@ -54,16 +62,25 @@ def glue_convert_examples_to_features(
         tokens_b = None
         if example.text_b:
             tokens_b = tokenizer.tokenize(example.text_b)
-            _truncate_seq_pair(tokens_a, tokens_b, max_length - 3)
+            _truncate_seq_pair(tokens_a, tokens_b, max_length - added_special_tokens[1])
         else:
-            if len(tokens_a) > max_length - 2:
-                tokens_a = tokens_a[: (max_length - 2)]
+            if len(tokens_a) > max_length - added_special_tokens[0]:
+                tokens_a = tokens_a[: (max_length - added_special_tokens[0])]
 
-        tokens = start_token + tokens_a + end_token
-        token_type_ids = [0] * len(tokens)
-        if tokens_b:
-            tokens += tokens_b + end_token
-            token_type_ids = [1] * (len(tokens) - len(token_type_ids))
+        if pattern is EncodePattern.bert_pattern:
+            tokens = start_token + tokens_a + end_token
+            token_type_ids = [0] * len(tokens)
+            if tokens_b:
+                tokens += tokens_b + end_token
+                token_type_ids = [1] * (len(tokens) - len(token_type_ids))
+        elif pattern is EncodePattern.roberta_pattern:
+            tokens = start_token + tokens_a + end_token
+            token_type_ids = [0] * len(tokens)
+            if tokens_b:
+                tokens += end_token + tokens_b + end_token
+                token_type_ids = [1] * (len(tokens) - len(token_type_ids))
+        else:
+            raise KeyError("pattern is not a valid EncodePattern")
 
         input_ids = tokenizer.convert_tokens_to_ids(tokens)
         attention_mask = [1] * len(input_ids)
@@ -80,6 +97,14 @@ def glue_convert_examples_to_features(
             elif output_mode == "regression":
                 label = float(example.label)
 
+        if ex_index < 5:
+            logger.info("*** Example ***")
+            logger.info("guid: %s" % (example.guid))
+            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+            logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
+            logger.info("token_type_ids: %s" % " ".join([str(x) for x in token_type_ids]))
+            logger.info("label: %s (id = %d)" % (example.label, label))
+
         features.append(
             InputFeatures(
                 input_ids=input_ids,
@@ -88,11 +113,6 @@ def glue_convert_examples_to_features(
                 label=label,
             )
         )
-
-        if ex_index < 5:
-            logger.info("*** Example ***")
-            logger.info(f"guid: {example.guid}")
-            logger.info(f"features: {features[-1]}")
 
     return features
 

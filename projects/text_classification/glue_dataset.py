@@ -23,8 +23,7 @@ import oneflow as flow
 from filelock import FileLock
 from oneflow.utils.data import Dataset
 
-from .processors.glue import glue_convert_examples_to_features, glue_output_modes, glue_processors
-from .processors.utils import InputFeatures
+from .glue_utils import glue_convert_examples_to_features, glue_output_modes, glue_processors
 
 logger = logging.get_logger(__name__)
 
@@ -100,8 +99,20 @@ class GlueDataset(Dataset):
     def __len__(self):
         return len(self.features)
 
-    def __getitem__(self, i) -> InputFeatures:
-        return self.features[i]
+    def __getitem__(self, i):
+        feature = self.features[i]
+        tensors = {}
+        for k, v in feature.items():
+            if v is not None:
+                if k == "label":
+                    dtype = flow.long if isinstance(v, int) else flow.float
+                    t = flow.tensor(v, dtype=dtype)
+                    tensors[k] = DistTensorData(t, placement_idx=-1)
+                else:
+                    t = flow.tensor(v, dtype=flow.long)
+                    tensors[k] = DistTensorData(t)
+        sample = Instance(**tensors)
+        return sample
 
     def get_labels(self):
         return self.label_list

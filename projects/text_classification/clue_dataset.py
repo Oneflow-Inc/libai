@@ -23,8 +23,9 @@ import oneflow as flow
 from filelock import FileLock
 from oneflow.utils.data import Dataset
 
-from .processors.clue import clue_convert_examples_to_features, clue_output_modes, clue_processors
-from .processors.utils import InputFeatures
+from libai.data.structures import DistTensorData, Instance
+
+from .utils_clue import clue_convert_examples_to_features, clue_output_modes, clue_processors
 
 logger = logging.get_logger(__name__)
 
@@ -100,8 +101,20 @@ class ClueDataset(Dataset):
     def __len__(self):
         return len(self.features)
 
-    def __getitem__(self, i) -> InputFeatures:
-        return self.features[i]
+    def __getitem__(self, i):
+        feature = self.features[i]
+        tensors = {}
+        for k, v in feature.items():
+            if v is not None:
+                if k == "label":
+                    dtype = flow.long if isinstance(v, int) else flow.float
+                    t = flow.tensor(v, dtype=dtype)
+                    tensors[k] = DistTensorData(t, placement_idx=-1)
+                else:
+                    t = flow.tensor(v, dtype=flow.long)
+                    tensors[k] = DistTensorData(t)
+        sample = Instance(**tensors)
+        return sample
 
     def get_labels(self):
         return self.label_list

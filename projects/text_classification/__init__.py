@@ -13,16 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .clue import (
-    clue_convert_examples_to_features,
-    clue_output_modes,
-    clue_processors,
-    clue_tasks_num_labels,
-)
-from .glue import (
-    glue_convert_examples_to_features,
-    glue_output_modes,
-    glue_processors,
-    glue_tasks_num_labels,
-)
-from .utils import DataProcessor, InputExample, InputFeatures
+from .clue_dataset import ClueDataset
+from .glue_dataset import GlueDataset
