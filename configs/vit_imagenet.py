@@ -1,5 +1,6 @@
 from libai.config import LazyCall
 from libai.scheduler import WarmupCosineLR
+from libai.scheduler.lr_scheduler import WarmupMultiStepLR
 from .common.models.vit import vit_model as model
 from .common.train import train
 from .common.optim import optim
@@ -8,30 +9,26 @@ from .common.data.cv_data import dataloader
 
 from libai.models import VisionTransformerGraph
 
-# ViT-Base-Patch16-224 model config
-model.cfg.img_size = 224
-
 # Refine optimizer cfg for vit model
-optim.lr = 5e-4
+optim.lr = 0.0001
 optim.weight_decay = 1e-8
 
 # Set scheduler cfg for vit model
-scheduler = LazyCall(WarmupCosineLR)(
-    max_iters=10000,
-    warmup_iters=1000,
-    warmup_factor = 0.001,
-    alpha = 0.01
+scheduler = LazyCall(WarmupMultiStepLR)(
+    warmup_iters=0,
+    warmup_factor = 0.0001,
+    gamma = 0.1,
+    milestones=[100]
 )
 
 # Set pipeline layers for paralleleism
-train.dist.pipeline_num_layers = model.cfg.num_layers
+train.dist.pipeline_num_layers = model.cfg.depth
 
 # Refine train cfg for vit model
-train.train_iter = 1000
-train.micro_batch_size = 128
+train.train_iter = 500
 
 # Set fp16 ON
-train.amp.enabled = True
+train.amp.enabled = False
 
 # fmt: off
 graph = dict(

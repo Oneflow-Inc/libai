@@ -15,7 +15,7 @@
 
 from .bert_model import BertForPreTraining, BertForPretrainingGraph, BertModel
 from .build import build_graph, build_model
-from .timm_vit import VisionTransformer, VisionTransformerGraph
+from .vit import VisionTransformer, VisionTransformerGraph
 
 __all__ = [
     "build_model",

@@ -1,11 +1,22 @@
-"""
-Modified from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py
-"""
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import math
 import logging
 from functools import partial
 from collections import OrderedDict
-from copy import deepcopy
 
 import oneflow as flow
 import oneflow.nn as nn
@@ -15,56 +26,11 @@ from flowvision.layers.blocks import PatchEmbed, Mlp
 from flowvision.layers.regularization import DropPath
 from flowvision.layers.weight_init import trunc_normal_, lecun_normal_
 from flowvision.models.helpers import named_apply
-from flowvision.models.utils import load_state_dict_from_url
+
 
 from libai.config.config import configurable
-
 from .utils import GraphBase
 from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
-
-model_urls = {
-    "vit_tiny_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_tiny_patch16_224.zip",
-    "vit_tiny_patch16_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_tiny_patch16_384.zip",
-    "vit_small_patch32_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_small_patch32_224.zip",
-    "vit_small_patch32_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_small_patch32_384.zip",
-    "vit_small_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_small_patch16_224.zip",
-    "vit_small_patch16_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_small_patch16_384.zip",
-    "vit_base_patch32_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch32_224.zip",
-    "vit_base_patch32_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch32_384.zip",
-    "vit_base_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch16_224.zip",
-    "vit_base_patch16_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch16_384.zip",
-    "vit_base_patch8_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch8_224.zip",
-    "vit_large_patch32_224": None,
-    "vit_large_patch32_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_large_patch32_384.zip",
-    "vit_large_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_large_patch16_224.zip",
-    "vit_large_patch16_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_large_patch16_384.zip",
-    "vit_base_patch16_sam_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch16_sam_224.zip",
-    "vit_base_patch32_sam_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch32_sam_224.zip",
-    "vit_huge_patch14_224": None,
-    "vit_giant_patch14_224": None,
-    "vit_gigantic_patch14_224": None,
-    "vit_tiny_patch16_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_tiny_patch16_224_in21k.zip",
-    "vit_small_patch32_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_small_patch32_224_in21k.zip",
-    "vit_small_patch16_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_small_patch16_224_in21k.zip",
-    "vit_base_patch32_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch32_224_in21k.zip",
-    "vit_base_patch16_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch16_224_in21k.zip",
-    "vit_base_patch8_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch8_224_in21k.zip",
-    "vit_large_patch32_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_large_patch32_224_in21k.zip",
-    "vit_large_patch16_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_large_patch16_224_in21k.zip",
-    "vit_huge_patch14_224_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_huge_patch14_224_in21k.zip",
-    "deit_tiny_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/deit_tiny_patch16_224.zip",
-    "deit_small_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/deit_small_patch16_224.zip",
-    "deit_base_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/deit_base_patch16_224.zip",
-    "deit_base_patch16_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/deit_base_patch16_384.zip",
-    "deit_tiny_distilled_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/deit_tiny_distilled_patch16_224.zip",
-    "deit_small_distilled_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/deit_small_distilled_patch16_224.zip",
-    "deit_base_distilled_patch16_224": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/deit_base_distilled_patch16_224.zip",
-    "deit_base_distilled_patch16_384": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/deit_base_distilled_patch16_384.zip",
-    "vit_base_patch16_224_miil_in21k": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch16_224_miil_in21k.zip",
-    "vit_base_patch16_224_miil": "https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/flowvision/classification/VisionTransformer/vit_base_patch16_224_miil.zip",
-}
-
-_logger = logging.getLogger(__name__)
 
 
 class Attention(nn.Module):
@@ -385,84 +351,6 @@ def _init_vit_weights(
     elif isinstance(module, (nn.LayerNorm, nn.GroupNorm, nn.BatchNorm2d)):
         nn.init.zeros_(module.bias)
         nn.init.ones_(module.weight)
-
-
-def resize_pos_embed(posemb, posemb_new, num_tokens=1, gs_new=()):
-    # Rescale the grid of position embeddings when loading from state_dict. Adapted from
-    # https://github.com/google-research/vision_transformer/blob/00883dd691c63a6830751563748663526e811cee/vit_jax/checkpoint.py#L224
-    _logger.info("Resized position embedding: %s to %s", posemb.shape, posemb_new.shape)
-    ntok_new = posemb_new.shape[1]
-    if num_tokens:
-        posemb_tok, posemb_grid = posemb[:, :num_tokens], posemb[0, num_tokens:]
-        ntok_new -= num_tokens
-    else:
-        posemb_tok, posemb_grid = posemb[:, :0], posemb[0]
-    gs_old = int(math.sqrt(len(posemb_grid)))
-    if not len(gs_new):  # backwards compatibility
-        gs_new = [int(math.sqrt(ntok_new))] * 2
-    assert len(gs_new) >= 2
-    _logger.info("Position embedding grid-size from %s to %s", [gs_old, gs_old], gs_new)
-    posemb_grid = posemb_grid.reshape(1, gs_old, gs_old, -1).permute(0, 3, 1, 2)
-    posemb_grid = F.interpolate(
-        posemb_grid, size=gs_new, mode="bicubic", align_corners=False
-    )
-    posemb_grid = posemb_grid.permute(0, 2, 3, 1).reshape(1, gs_new[0] * gs_new[1], -1)
-    posemb = flow.cat([posemb_tok, posemb_grid], dim=1)
-    return posemb
-
-
-def _create_vision_transformer(arch, pretrained=False, progress=True, **model_kwargs):
-    model = VisionTransformer(**model_kwargs)
-    if pretrained:
-        state_dict = load_state_dict_from_url(model_urls[arch], progress=progress)
-        model.load_state_dict(state_dict)
-    return model
-
-
-def vit_tiny_patch16_224(pretrained=False, progress=True, **kwargs):
-    """
-    Constructs the ViT-Tiny-patch16-224 model.
-    .. note::
-        ViT-Tiny-patch16-224 model from `"An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale" <https://arxiv.org/pdf/2010.11929.pdf>`_.
-        The required input size of the model is 224x224.
-    Args:
-        pretrained (bool): Whether to download the pre-trained model on ImageNet. Default: ``False``
-        progress (bool): If True, displays a progress bar of the download to stderr. Default: ``True``
-    For example:
-    .. code-block:: python
-        >>> import flowvision
-        >>> vit_tiny_patch16_224 = flowvision.models.vit_tiny_patch16_224(pretrained=False, progress=True)
-    """
-    model_kwargs = dict(
-        img_size=224, patch_size=16, embed_dim=192, depth=12, num_heads=3, **kwargs
-    )
-    model = _create_vision_transformer(
-        "vit_tiny_patch16_224", pretrained=pretrained, progress=progress, **model_kwargs
-    )
-    return model
-
-
-def vit_tiny_patch16_384(pretrained=False, progress=True, **kwargs):
-    """
-    Constructs the ViT-Tiny-patch16-384 model.
-    .. note::
-        ViT-Tiny-patch16-384 model from `"An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale" <https://arxiv.org/pdf/2010.11929.pdf>`_.
-        The required input size of the model is 384x384.
-    Args:
-        pretrained (bool): Whether to download the pre-trained model on ImageNet. Default: ``False``
-        progress (bool): If True, displays a progress bar of the download to stderr. Default: ``True``
-    For example:
-    .. code-block:: python
-        >>> import flowvision
-        >>> vit_tiny_patch16_384 = flowvision.models.vit_tiny_patch16_384(pretrained=False, progress=True)
-    """
-    model_kwargs = dict(
-        img_size=384, patch_size=16, embed_dim=192, depth=12, num_heads=3, **kwargs
-    )
-    model = _create_vision_transformer(
-        "vit_tiny_patch16_384", pretrained=pretrained, progress=progress, **model_kwargs
-    )
-    return model
 
 
 @GRAPH_REGISTRY.register()
