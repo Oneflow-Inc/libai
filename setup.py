@@ -13,23 +13,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
 import sys
 
 import pybind11
 from setuptools import Extension, find_packages, setup
 
+version = "0.0.1.1"
+package_name = "LiBai"
+cwd = os.path.dirname(os.path.abspath(__file__))
+
+sha = "Unknown"
+try:
+    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=cwd).decode("ascii").strip()
+except Exception:
+    pass
+
+
+def write_version_file():
+    version_path = os.path.join(cwd, "libai", "version.py")
+    with open(version_path, "w") as f:
+        f.write(f"__version__ = '{version}'\n")
+        f.write(f"git_version = {repr(sha)}\n")
+
+
 if sys.version_info < (3,):
     sys.exit("Sorry, Python3 is required for LiBai.")
 
-with open("README.md") as f:
-    readme = f.read()
-
-with open("LICENSE") as f:
-    license = f.read()
-
-with open("requirements.txt") as f:
-    reqs = f.read()
-
+requirements = [
+    "boto3",
+    "botocore",
+    "cloudpickle",
+    "flowvision>=0.0.6",
+    "hydra-core",
+    "nltk",
+    "numpy",
+    "omegaconf",
+    "oneflow>=0.6.0",
+    "Pygments",
+    "PyYAML",
+    "regex",
+    "requests",
+    "sentencepiece>=0.1",
+    "tabulate",
+    "termcolor",
+    "tqdm",
+    "pybind11",
+    "portalocker",
+    "flake8==3.8.1 ",
+    "isort==5.10.1",
+    "black==21.4b2",
+]
 
 extensions = [
     Extension(
@@ -47,14 +82,25 @@ extensions = [
     ),
 ]
 
-setup(
-    name="LiBai",
-    version="0.0.1",
-    description="Toolkit for Pretraining Models with OneFlow",
-    long_description=readme,
-    license=license,
-    install_requires=reqs.strip().split("\n"),
-    packages=find_packages(),
-    ext_modules=extensions,
-    test_suite="tests",
-)
+if __name__ == "__main__":
+    print(f"Building wheel {package_name}-{version}")
+
+    with open("README.md", "r", encoding="utf-8") as f:
+        readme = f.read()
+
+    with open("LICENSE", "r", encoding="utf-8") as f:
+        license = f.read()
+
+    write_version_file()
+
+    setup(
+        name=package_name,
+        version=version,
+        description="Toolkit for Pretraining Models with OneFlow",
+        long_description=readme,
+        license=license,
+        install_requires=requirements,
+        packages=find_packages(),
+        ext_modules=extensions,
+        test_suite="tests",
+    )

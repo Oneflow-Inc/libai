@@ -21,11 +21,7 @@ datat_prefix = "gpt_samples_mmap_text_sentence"
 tokenizer = GPT2Tokenizer(vocab_file="vocab.json", merges_file="merges.txt")
 indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="mmap", skip_warmup=False)
 
-dataset = GPT2Dataset(
-    tokenizer,
-    data_prefix=datat_prefix,
-    indexed_dataset=indexed_dataset,
-)
+dataset = GPT2Dataset(tokenizer, data_prefix=datat_prefix, indexed_dataset=indexed_dataset,)
 
 print(len(indexed_dataset))
 print(len(dataset))

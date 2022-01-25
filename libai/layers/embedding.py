@@ -34,11 +34,7 @@ class Embedding(nn.Module):
     """
 
     def __init__(
-        self,
-        num_embeddings,
-        embedding_dim,
-        padding_idx=None,
-        init_method=init.xavier_normal_,
+        self, num_embeddings, embedding_dim, padding_idx=None, init_method=init.xavier_normal_,
     ):
         super().__init__()
         self.num_embeddings = num_embeddings
@@ -104,11 +100,7 @@ class VocabEmbedding(nn.Module):
     """
 
     def __init__(
-        self,
-        num_embeddings,
-        embedding_dim,
-        padding_idx=None,
-        init_method=init.xavier_normal_,
+        self, num_embeddings, embedding_dim, padding_idx=None, init_method=init.xavier_normal_,
     ):
         super().__init__()
         self.num_embeddings = num_embeddings
