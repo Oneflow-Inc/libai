@@ -23,4 +23,4 @@ cfg = dict(
 
 bert_model = LazyCall(BertModel)(cfg=cfg)
 
-pretrain_model = LazyCall(BertForPreTraining)(cfg=cfg)
+pretrain_model = LazyCall(BertForPreTraining)(cfg=cfg, add_binary_head=True)

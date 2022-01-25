@@ -184,8 +184,9 @@ class BertPooler(nn.Module):
 
 
 class BertLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, add_binary_head):
         super().__init__()
+        self.add_binary_head = add_binary_head
         self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask, binary_logits, ns_labels):
@@ -203,13 +204,14 @@ class BertLoss(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
         )
 
-        sop_loss = flow._C.cross_entropy(
-            binary_logits, ns_labels, ignore_index=-1, reduction="none"
-        ).mean()
-        return {
-            "mlm loss": masked_lm_loss,
-            "sop loss": sop_loss,
-        }
+        loss_dict = {"lm loss": masked_lm_loss}
+
+        if self.add_binary_head:
+            sop_loss = flow._C.cross_entropy(
+                binary_logits, ns_labels, ignore_index=-1, reduction="none"
+            ).mean()
+            loss_dict["sop loss"] = sop_loss
+        return loss_dict
 
 
 class BertModel(nn.Module):
@@ -314,9 +316,7 @@ class BertModel(nn.Module):
 
 
 class BertPreTrainingHeads(nn.Module):
-    layer_idx = -1
-
-    def __init__(self, vocab_size, hidden_size, init_method):
+    def __init__(self, vocab_size, hidden_size, init_method, add_binary_head=True):
         super().__init__()
         self.predictions = BertLMPredictionHead(hidden_size, init_method)
         self.seq_relationship = Linear(
@@ -328,7 +328,7 @@ class BertPreTrainingHeads(nn.Module):
             layer_idx=-1,
         )
         self.lm_logits = LMLogits(vocab_size, bias=True)
-        self.loss_func = BertLoss()
+        self.loss_func = BertLoss(add_binary_head)
 
     def forward(
         self,
@@ -343,7 +343,7 @@ class BertPreTrainingHeads(nn.Module):
         seq_relationship_score = self.seq_relationship(pooled_output)
         prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
 
-        if lm_labels is not None and ns_labels is not None:
+        if lm_labels is not None:
             return self.loss_func(
                 prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
             )
@@ -355,11 +355,14 @@ class BertPreTrainingHeads(nn.Module):
 
 @MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, add_binary_head):
         super().__init__()
         self.bert = BertModel(cfg)
         self.cls_head = BertPreTrainingHeads(
-            cfg.vocab_size, cfg.hidden_size, init_method_normal(cfg.initializer_range)
+            cfg.vocab_size,
+            cfg.hidden_size,
+            init_method_normal(cfg.initializer_range),
+            add_binary_head,
         )
 
     def forward(
@@ -398,8 +401,6 @@ class BertForPreTraining(nn.Module):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
             elif isinstance(module_block.origin, BertPreTrainingHeads):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-            else:
-                pass
 
         # Set the last layernorm stage id
         model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
