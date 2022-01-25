@@ -16,6 +16,7 @@
 import sys
 
 import oneflow as flow
+from oneflow.utils.data import TensorDataset, DataLoader
 from omegaconf import OmegaConf
 
 sys.path.append(".")
@@ -43,16 +44,20 @@ def setup(args):
             pipeline_num_layers=4,
         ),
         start_iter=0,
-        warmup_iter=5,
         train_iter=20,
-        warmup_epoch=1,
         train_epoch=10,
+        warmup_ratio=0.05,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
         log_period=1,
         checkpointer=dict(period=100),
         nccl_fusion_threshold_mb=16,
         nccl_fusion_max_ops=24,
+        scheduler=LazyCall(WarmupCosineLR)(
+            warmup_factor=0.001,
+            alpha=0.01,
+            warmup_method="linear",
+        )
     )
 
     cfg.optim = LazyCall(flow.optim.AdamW)(
@@ -68,10 +73,6 @@ def setup(args):
         weight_decay=0.01,
         betas=(0.9, 0.999),
         do_bias_correction=True,
-    )
-
-    cfg.scheduler = LazyCall(WarmupCosineLR)(
-        max_iters=2000, alpha=0.001, warmup_factor=0.001, warmup_iters=1000, warmup_method="linear",
     )
 
     cfg.graph = dict(enabled=True,)
@@ -104,11 +105,15 @@ class DemoTrainer(DefaultTrainer):
 
     @classmethod
     def build_train_loader(cls, cfg):
-        return range(1000), range(10), range(10)
+        return (
+            DataLoader(TensorDataset(flow.randn(1000)), batch_size=16), 
+            DataLoader(TensorDataset(flow.randn(1000)), batch_size=16), 
+            DataLoader(TensorDataset(flow.randn(1000)), batch_size=16)
+        )
 
     @classmethod
     def build_test_loader(cls, cfg):
-        return [range(10)]
+        return [DataLoader(TensorDataset(flow.randn(1000)), batch_size=16)]
 
 
 def main(args):

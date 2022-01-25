@@ -442,7 +442,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        assert try_get_key(cfg, "scheduler") is not None, "cfg must contain `scheduler` namespace"
+        assert try_get_key(cfg, "train.scheduler") is not None, "cfg.train must contain `scheduler` namespace"
         return build_lr_scheduler(cfg.train.scheduler, optimizer)
 
     @classmethod
@@ -504,7 +504,7 @@ class DefaultTrainer(TrainerBase):
         # The total iters in one epoch is `len(dataset) / global_batch_size`
         cfg.train.train_iter = max(math.ceil(len(data_loader.dataset) * cfg.train.train_epoch / cfg.train.global_batch_size), cfg.train.train_iter)
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
-        logger.info(f"Auto-scaling the config to train_iter={cfg.train.train_iter}, warmup={cfg.train.warmup_iter}.")
+        logger.info(f"Auto-scaling the config to train_iter={cfg.train.train_iter}, warmup_iter={cfg.train.warmup_iter}.")
 
         # Consistent scheduler cfg
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
