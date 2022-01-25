@@ -213,12 +213,10 @@ class TestNativeIO(unittest.TestCase):
         self._pathmgr.set_cwd(self._tmpdir)
         # Make sure _get_path_with_cwd() returns correctly.
         self.assertEqual(
-            self._pathmgr._native_path_handler._get_path_with_cwd(self._filename),
-            self._tmpfile,
+            self._pathmgr._native_path_handler._get_path_with_cwd(self._filename), self._tmpfile,
         )
         self.assertEqual(
-            self._pathmgr._native_path_handler._get_path_with_cwd("/abs.txt"),
-            "/abs.txt",
+            self._pathmgr._native_path_handler._get_path_with_cwd("/abs.txt"), "/abs.txt",
         )
 
     def test_bad_args(self) -> None:

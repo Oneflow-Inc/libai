@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import os
 import subprocess
+import sys
 
 import pybind11
 from setuptools import Extension, find_packages, setup
@@ -26,13 +26,10 @@ cwd = os.path.dirname(os.path.abspath(__file__))
 
 sha = "Unknown"
 try:
-    sha = (
-        subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=cwd)
-        .decode("ascii")
-        .strip()
-    )
+    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=cwd).decode("ascii").strip()
 except Exception:
     pass
+
 
 def write_version_file():
     version_path = os.path.join(cwd, "libai", "version.py")
@@ -40,15 +37,33 @@ def write_version_file():
         f.write(f"__version__ = '{version}'\n")
         f.write(f"git_version = {repr(sha)}\n")
 
+
 if sys.version_info < (3,):
     sys.exit("Sorry, Python3 is required for LiBai.")
 
 requirements = [
-    "boto3","botocore","cloudpickle","flowvision>=0.0.6",
-    "hydra-core","nltk","numpy","omegaconf",
-    "oneflow>=0.6.0","Pygments","PyYAML","regex","requests",
-    "sentencepiece>=0.1","tabulate","termcolor","tqdm","pybind11",
-    "portalocker","flake8==3.8.1 ","isort==5.10.1","black==21.4b2"
+    "boto3",
+    "botocore",
+    "cloudpickle",
+    "flowvision>=0.0.6",
+    "hydra-core",
+    "nltk",
+    "numpy",
+    "omegaconf",
+    "oneflow>=0.6.0",
+    "Pygments",
+    "PyYAML",
+    "regex",
+    "requests",
+    "sentencepiece>=0.1",
+    "tabulate",
+    "termcolor",
+    "tqdm",
+    "pybind11",
+    "portalocker",
+    "flake8==3.8.1 ",
+    "isort==5.10.1",
+    "black==21.4b2",
 ]
 
 extensions = [
