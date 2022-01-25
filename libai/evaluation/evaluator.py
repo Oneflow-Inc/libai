@@ -147,6 +147,7 @@ def inference_on_dataset(
     total_data_time = 0
     total_compute_time = 0
     total_eval_time = 0
+    consumed_samples = 0
     with flow.no_grad():
 
         start_data_time = time.perf_counter()
@@ -179,6 +180,7 @@ def inference_on_dataset(
             evaluator.process(valid_data, valid_outputs)
             total_eval_time += time.perf_counter() - start_eval_time
 
+            consumed_samples += (idx + 1) * valid_sample
             iters_after_start = idx + 1 - num_warmup * int(idx >= num_warmup)
             data_seconds_per_iter = total_data_time / iters_after_start
             compute_seconds_per_iter = total_compute_time / iters_after_start
@@ -189,7 +191,7 @@ def inference_on_dataset(
                 log_every_n_seconds(
                     logging.INFO,
                     (
-                        f"Inference done {idx + 1}/{total}. "
+                        f"Inference done {consumed_samples}/{total}. "
                         f"Dataloading: {data_seconds_per_iter:.4f} s/iter. "
                         f"Inference: {compute_seconds_per_iter:.4f} s/iter. "
                         f"Eval: {eval_seconds_per_iter:.4f} s/iter. "
