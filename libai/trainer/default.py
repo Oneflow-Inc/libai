@@ -224,7 +224,7 @@ class DefaultTrainer(TrainerBase):
         self.train_loader = None
         self.test_loader = []
 
-        train_loader, val_loader, test_loader = self.build_train_loader(cfg)
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
         self.train_loader = train_loader
 
         if val_loader is not None:
@@ -258,18 +258,18 @@ class DefaultTrainer(TrainerBase):
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
 
-        self.train_loader = None
-        self.test_loader = []
+        # self.train_loader = None
+        # self.test_loader = []
 
-        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
-        self.train_loader = train_loader
+        # train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
+        # self.train_loader = train_loader
 
-        if val_loader is not None:
-            self.test_loader.append(val_loader)
-        if test_loader is not None:
-            self.test_loader.append(test_loader)
+        # if val_loader is not None:
+        #     self.test_loader.append(val_loader)
+        # if test_loader is not None:
+        #     self.test_loader.append(test_loader)
 
-        self.test_loader.extend(self.build_test_loader(cfg))
+        # self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
             self.graph_train = self.build_graph(

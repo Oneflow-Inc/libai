@@ -37,6 +37,7 @@ def setup(args):
     cfg.train = dict(
         output_dir="./demo_output",
         train_micro_batch_size=32,
+        test_micro_batch_size=32,
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
@@ -45,10 +46,11 @@ def setup(args):
         ),
         start_iter=0,
         train_iter=20,
-        train_epoch=10,
+        train_epoch=1,
         warmup_ratio=0.05,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
+        eval_period=1000,
         log_period=1,
         checkpointer=dict(period=100),
         nccl_fusion_threshold_mb=16,
@@ -104,16 +106,18 @@ class DemoTrainer(DefaultTrainer):
         ]
 
     @classmethod
-    def build_train_loader(cls, cfg):
+    def build_train_loader(cls, cfg, tokenizer=None):
         return (
-            DataLoader(TensorDataset(flow.randn(1000)), batch_size=16), 
-            DataLoader(TensorDataset(flow.randn(1000)), batch_size=16), 
-            DataLoader(TensorDataset(flow.randn(1000)), batch_size=16)
+            DataLoader(TensorDataset(flow.randn(1000)), batch_size=cfg.train.train_micro_batch_size), 
+            # DataLoader(TensorDataset(flow.randn(1000)), batch_size=cfg.train.train_micro_batch_size), 
+            # DataLoader(TensorDataset(flow.randn(1000)), batch_size=cfg.train.train_micro_batch_size)
+            None,
+            None,
         )
 
     @classmethod
     def build_test_loader(cls, cfg):
-        return [DataLoader(TensorDataset(flow.randn(1000)), batch_size=16)]
+        return []
 
 
 def main(args):
