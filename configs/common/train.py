@@ -8,10 +8,9 @@ train = dict(
     num_accumulation_steps=None,
 
     start_iter=0,
-    warmup_ratio=20/300,
     train_iter=10000,
-    warmup_epoch=0,  # default warmup epoch is setted to 0
-    train_epoch=0,  # default train epoch is setted to 0
+    train_epoch=0,  # default train epoch is set to 0
+    warmup_ratio=0,  # default warmup ratio is set to 0 
     lr_decay_iter=None,
     eval_iter=10000,
     lr_warmup_fraction=0.01,

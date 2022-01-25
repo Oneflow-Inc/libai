@@ -15,6 +15,7 @@
 
 import logging
 import os
+import math
 from collections import OrderedDict
 
 import omegaconf
@@ -443,7 +444,7 @@ class DefaultTrainer(TrainerBase):
         Overwrite it if you'd like a different scheduler.
         """
         assert try_get_key(cfg, "scheduler") is not None, "cfg must contain `scheduler` namespace"
-        return build_lr_scheduler(cfg.scheduler, optimizer)
+        return build_lr_scheduler(cfg.train.scheduler, optimizer)
 
     @classmethod
     def build_train_loader(cls, cfg, tokenizer=None):
@@ -494,21 +495,21 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
 
         # Get or set default iteration cfg
-        cfg.train.warmup_iter = try_get_key(cfg, "train.warmup_iter", default=0)
         cfg.train.train_iter = try_get_key(cfg, "train.train_iter", default=0)
-        cfg.train.warmup_epoch = try_get_key(cfg, "train.warmup_epoch", default=0)
         cfg.train.train_epoch = try_get_key(cfg, "train.train_epoch", default=0)
+        cfg.train.warmup_ratio = try_get_key(cfg, "train.warmup_ratio", default=0)
+        assert cfg.train.warmup_ratio < 1 and cfg.train.warmup_ratio >= 0, (
+            "cfg.train.warmup_ratio must be in [0, 1) that presents the ratio of warmup iter to the train iter.")
 
         # Automatically scale iteration num depend on the settings
-        cfg.train.warmup_iter = max(len(data_loader) * cfg.train.warmup_epoch, cfg.train.warmup_iter)
-        cfg.train.train_iter = max(len(data_loader) * cfg.train.train_epoch, cfg.train.train_iter)
-        logger.info("Automatically scale the total warmup iters to {} which is the larger num between len(dataloader) * warmup_epoch and warmup_iter".format(cfg.train.warmup_iter))
-        logger.info("Automatically scale the total train iters to {} which is the larger num between len(dataloader) * train_epoch and train_iter".format(cfg.train.train_iter))
+        # The total iters in one epoch is `len(dataset) / global_batch_size`
+        cfg.train.train_iter = max(math.ceil(len(data_loader.dataset) * cfg.train.train_epoch / cfg.train.global_batch_size), cfg.train.train_iter)
+        cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
+        logger.info(f"Auto-scaling the config to train_iter={cfg.train.train_iter}, warmup={cfg.train.warmup_iter}.")
 
         # Consistent scheduler cfg
-        # FIXME
-        cfg.scheduler.warmup_iters = cfg.train.warmup_iter
-        cfg.scheduler.max_iters = cfg.train.train_iter
+        cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
+        cfg.train.scheduler.max_iter = cfg.train.train_iter
 
     def build_evaluator(cls, cfg):
         return ClsEvaluator(cfg)
