@@ -505,6 +505,10 @@ class DefaultTrainer(TrainerBase):
         cfg.train.train_iter = max(math.ceil(len(data_loader.dataset) * cfg.train.train_epoch / cfg.train.global_batch_size), cfg.train.train_iter)
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
         logger.info(f"Auto-scaling the config to train_iter={cfg.train.train_iter}, warmup_iter={cfg.train.warmup_iter}.")
+        if try_get_key(cfg.train.scheduler.milestones):
+            if len([milestone for milestone in cfg.train.scheduler.milestones if milestone <0 or milestone>=1]):
+                raise ValueError("In libai, we defined the milestone should be a list of ratio and all the elements should be in [0, 1)")
+            cfg.train.scheduler.milestones = [int(milestone * cfg.train.train_iter) for milestone in cfg.scheduler.milestones]
 
         # Consistent scheduler cfg
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
