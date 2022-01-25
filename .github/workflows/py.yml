@@ -29,18 +29,15 @@ jobs:
         # flake8-bugbear flake8-comprehensions are useful but not available internally
         run: |
           python -m pip install --upgrade pip
-          python -m pip install flake8==3.8.1 isort==5.10.1 autoflake==1.4
+          python -m pip install flake8==3.8.1 isort==5.10.1
           python -m pip install black==21.4b2
           flake8 --version
 
       - name: Lint
         id: py_check
         run: |
-          echo "Running autoflake"
-          autoflake --ignore-init-module-imports --remove-all-unused-imports -r .
-          echo "Running isort"
-          isort --diff --check .
-          echo "Running flake8"
+          isort --check .
+          black -l 100 --check .
           flake8 .
 
       - name: Please request CI again

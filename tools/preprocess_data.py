@@ -32,12 +32,10 @@ try:
 except ImportError:
     nltk_available = False
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+
 from libai.data.data_utils import indexed_dataset
 from libai.tokenizer import build_tokenizer
-
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
-)
 
 
 # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
@@ -128,18 +126,14 @@ def get_args():
         choices=["BertTokenizer", "GPT2Tokenizer", "T5Tokenizer"],
         help="What type of tokenizer to use.",
     )
+    group.add_argument("--vocab-file", type=str, default=None, help="Path to the vocab file")
     group.add_argument(
-        "--vocab-file", type=str, default=None, help="Path to the vocab file"
-    )
-    group.add_argument(
-        "--merge-file",
+        "--merges-file",
         type=str,
         default=None,
         help="Path to the BPE merge file (if necessary).",
     )
-    group.add_argument(
-        "--do-lower-case", action="store_true", help="Whether to do lower case."
-    )
+    group.add_argument("--do-lower-case", action="store_true", help="Whether to do lower case.")
     group.add_argument("--extra-ids", type=int, default=0, help="Number of extra ids.")
     group.add_argument(
         "--append-eod",
@@ -172,9 +166,7 @@ def get_args():
 
     if args.tokenizer_name.startswith("Bert"):
         if not args.split_sentences:
-            print(
-                "Bert tokenizer detected, are you sure you don't want to split sentences?"
-            )
+            print("Bert tokenizer detected, are you sure you don't want to split sentences?")
 
     return args
 
@@ -185,7 +177,7 @@ def parse_args_to_config(args):
             tokenizer_name="",
             tokenizer_cfg=dict(
                 vocab_file=None,
-                merge_file=None,
+                merges_file=None,
                 do_lower_case=False,
                 extra_ids=0,
             ),
@@ -202,7 +194,7 @@ def parse_args_to_config(args):
     cfg = DictConfig(default_cfg)
     cfg.tokenizer.tokenizer_name = args.tokenizer_name
     cfg.tokenizer.tokenizer_cfg.vocab_file = args.vocab_file
-    cfg.tokenizer.tokenizer_cfg.merge_file = args.merge_file
+    cfg.tokenizer.tokenizer_cfg.merges_file = args.merges_file
     cfg.tokenizer.tokenizer_cfg.do_lower_case = args.do_lower_case
     cfg.tokenizer.tokenizer_cfg.extra_id = args.extra_ids
     cfg.tokenizer.append_eod = args.append_eod

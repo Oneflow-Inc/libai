@@ -13,5 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .build import build_image_test_loader, build_image_train_loader
 from .structures import DistTensorData, Instance
+from .build import (
+    build_image_train_loader,
+    build_image_test_loader,
+    build_nlp_train_val_test_loader,
+    build_nlp_test_loader,
+)

@@ -13,14 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import omegaconf
-import oneflow.utils.data as flowdata
+from oneflow.utils.data import DataLoader
 from oneflow.utils.data.dataset import ConcatDataset
 
 from libai.utils import distributed as dist
 
+from .data_utils import split_ds
+from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
-from .temp_file import CyclicSampler, SingleRoundSampler, split_ds
 
 
 def build_nlp_train_val_test_loader(
@@ -34,13 +36,12 @@ def build_nlp_train_val_test_loader(
     consumed_samples=0,
     seed=0,
     collate_fn=None,
-    blendable_dataset=ConcatDataset,
+    dataset_mixer=ConcatDataset,
 ):
     """
     Build nlp train_val_test dataloader
     """
-    # TODO: add input type
-
+    # TODO: add input type, add dataset_weights sampler
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
@@ -57,9 +58,9 @@ def build_nlp_train_val_test_loader(
         test_datasets.append(test_dataset)
 
     # [dataset, dataset] -> dataset -> dataloader
-    train_dataset = blendable_dataset(train_datasets)  # , weights=weights)
-    val_dataset = blendable_dataset(val_datasets)  # , weights=weights)
-    test_dataset = blendable_dataset(test_datasets)  # , weights=weights)
+    train_dataset = dataset_mixer(train_datasets)
+    val_dataset = dataset_mixer(val_datasets)
+    test_dataset = dataset_mixer(test_datasets)
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
     if sampler is None:
@@ -91,21 +92,21 @@ def build_nlp_train_val_test_loader(
         drop_last=False,
     )
 
-    train_loader = flowdata.DataLoader(
+    train_loader = DataLoader(
         train_dataset,
         batch_sampler=train_sampler,
         num_workers=num_workers,
         collate_fn=collate_fn,
     )
 
-    valid_loader = flowdata.DataLoader(
+    valid_loader = DataLoader(
         val_dataset,
         batch_sampler=valid_sampler,
         num_workers=num_workers,
         collate_fn=collate_fn,
     )
 
-    test_loader = flowdata.DataLoader(
+    test_loader = DataLoader(
         test_dataset,
         batch_sampler=test_sampler,
         num_workers=num_workers,
@@ -124,7 +125,7 @@ def build_nlp_test_loader(
     collate_fn=None,
 ):
     """
-    Build nlp test dataloder
+    Build nlp test dataloader
     """
     # TODO: add input type
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
@@ -138,7 +139,7 @@ def build_nlp_test_loader(
             seed=seed,
             drop_last=False,
         )
-    test_loader = flowdata.DataLoader(
+    test_loader = DataLoader(
         dataset, batch_sampler=sampler, num_workers=num_workers, collate_fn=collate_fn
     )
     return test_loader
@@ -146,9 +147,12 @@ def build_nlp_test_loader(
 
 def build_image_train_loader(
     dataset,
-    batch_size,
+    train_batch_size,
+    test_batch_size=None,
     sampler=None,
     num_workers=4,
+    consumed_samples=0,
+    seed=42,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
     **kwargs
@@ -170,10 +174,17 @@ def build_image_train_loader(
         dataset = dataset[0]
 
     if sampler is None:
-        # TODO: initilize train sampler
-        sampler = CyclicSampler()
+        sampler = CyclicSampler(
+            dataset=dataset,
+            micro_batch_size=train_batch_size,
+            shuffle=True,
+            consumed_samples=consumed_samples,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+        )
 
-    dataloader = flowdata.DataLoader(
+    dataloader = DataLoader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
@@ -185,16 +196,22 @@ def build_image_train_loader(
 
 
 def build_image_test_loader(
-    dataset, batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
+    dataset, test_batch_size, sampler=None, num_workers=4, seed=42, collate_fn=None, **kwargs
 ):
-    # TODO: add input type
-    if sampler is None:
-        # TODO: initilize test_sampler
-        sampler = SingleRoundSampler()
 
-    return flowdata.DataLoader(
+    if sampler is None:
+        sampler = SingleRoundSampler(
+            dataset=dataset,
+            micro_batch_size=test_batch_size,
+            shuffle=False,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+            drop_last=False,
+        )
+
+    return DataLoader(
         dataset,
-        batch_size=batch_size,
         batch_sampler=sampler,
         num_workers=num_workers,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
@@ -203,8 +220,6 @@ def build_image_test_loader(
 
 
 def trivial_batch_collator(batch):
-    assert isinstance(
-        batch[0], Instance
-    ), "batch[0] must be `instance` for trivial batch collator"
+    assert isinstance(batch[0], Instance), "batch[0] must be `instance` for trivial batch collator"
     batch = Instance.stack(batch)
     return batch

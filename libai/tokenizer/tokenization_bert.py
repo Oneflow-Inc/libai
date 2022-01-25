@@ -143,9 +143,7 @@ class BertTokenizer(PreTrainedTokenizer):
                 never_split=never_split,
                 tokenize_chinese_chars=tokenize_chinese_chars,
             )
-        self.wordpiece_tokenizer = WordpieceTokenizer(
-            vocab=self.vocab, unk_token=self.unk_token
-        )
+        self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab, unk_token=self.unk_token)
 
     @property
     def vocab_size(self):
@@ -157,9 +155,7 @@ class BertTokenizer(PreTrainedTokenizer):
     def _tokenize(self, text):
         split_tokens = []
         if self.do_basic_tokenize:
-            for token in self.basic_tokenizer.tokenize(
-                text, never_split=self.all_special_tokens
-            ):
+            for token in self.basic_tokenizer.tokenize(text, never_split=self.all_special_tokens):
                 for sub_token in self.wordpiece_tokenizer.tokenize(token):
                     split_tokens.append(sub_token)
         else:
@@ -189,17 +185,13 @@ class BertTokenizer(PreTrainedTokenizer):
                 + VOCAB_FILES_NAMES["vocab_file"],
             )
         else:
-            vocab_file = (
-                filename_prefix + "-" if filename_prefix else ""
-            ) + save_directory
+            vocab_file = (filename_prefix + "-" if filename_prefix else "") + save_directory
         with open(vocab_file, "w", encoding="utf-8") as writer:
             for token, token_index in sorted(self.vocab.items(), key=lambda kv: kv[1]):
                 if index != token_index:
                     logger.warning(
                         "Saving vocabulary to {}: vocabulary indices are not consecutive."
-                        " Please check that the vocabulary is not corrupted!".format(
-                            vocab_file
-                        )
+                        " Please check that the vocabulary is not corrupted!".format(vocab_file)
                     )
                     index = token_index
                 writer.write(token + "\n")
@@ -213,9 +205,7 @@ class BasicTokenizer(object):
     tokenization (punctuation splitting, lower casing, etc.).
     """
 
-    def __init__(
-        self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True
-    ):
+    def __init__(self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True):
         """Constructs a BasicTokenizer.
         Args:
             **do_lower_case**: Whether to lower case the input.
@@ -248,11 +238,7 @@ class BasicTokenizer(object):
                 List of token not to split.
         """
         # union() returns a new set by concatenating the two sets.
-        never_split = (
-            self.never_split.union(set(never_split))
-            if never_split
-            else self.never_split
-        )
+        never_split = self.never_split.union(set(never_split)) if never_split else self.never_split
         text = self._clean_text(text)
 
         # This was added on November 1st, 2018 for the multilingual and Chinese

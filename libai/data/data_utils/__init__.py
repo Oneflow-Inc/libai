@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .blendable_dataset import BlendableDataset
-from .data_utils import get_prefixes_and_weights
 from .indexed_dataset import (
     IndexedCachedDataset,
     IndexedDataset,
