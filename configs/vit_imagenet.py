@@ -26,6 +26,8 @@ train.dist.pipeline_num_layers = model.cfg.depth
 
 # Refine train cfg for vit model
 train.train_iter = 500
+train.eval_period = 20
+train.log_period = 1
 
 # Set fp16 ON
 train.amp.enabled = False
