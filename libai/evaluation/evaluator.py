@@ -180,7 +180,7 @@ def inference_on_dataset(
             evaluator.process(valid_data, valid_outputs)
             total_eval_time += time.perf_counter() - start_eval_time
 
-            consumed_samples += (idx + 1) * valid_sample
+            consumed_samples += valid_sample
             iters_after_start = idx + 1 - num_warmup * int(idx >= num_warmup)
             data_seconds_per_iter = total_data_time / iters_after_start
             compute_seconds_per_iter = total_compute_time / iters_after_start
