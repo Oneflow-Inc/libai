@@ -20,9 +20,9 @@ from oneflow.utils.data import TensorDataset, DataLoader
 from omegaconf import OmegaConf
 
 sys.path.append(".")
-from libai.config import LazyCall, default_argument_parser
+from libai.config import LazyCall, default_argument_parser, try_get_key
 from libai.optim import get_default_optimizer_params
-from libai.scheduler import WarmupCosineLR
+from libai.scheduler import WarmupCosineLR, WarmupMultiStepLR
 from libai.trainer import DefaultTrainer, default_setup
 from tests.layers.test_trainer_model import build_graph, build_model
 
@@ -55,10 +55,11 @@ def setup(args):
         checkpointer=dict(period=100),
         nccl_fusion_threshold_mb=16,
         nccl_fusion_max_ops=24,
-        scheduler=LazyCall(WarmupCosineLR)(
+        scheduler=LazyCall(WarmupMultiStepLR)(
             warmup_factor=0.001,
-            alpha=0.01,
+            # alpha=0.01,
             warmup_method="linear",
+            milestones=[0.1, 0.2],
         )
     )
 

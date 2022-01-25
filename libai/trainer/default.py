@@ -494,21 +494,22 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
 
         # Get or set default iteration cfg
-        cfg.train.train_iter = try_get_key(cfg, "train.train_iter", default=0)
-        cfg.train.train_epoch = try_get_key(cfg, "train.train_epoch", default=0)
-        cfg.train.warmup_ratio = try_get_key(cfg, "train.warmup_ratio", default=0)
-        assert cfg.train.warmup_ratio < 1 and cfg.train.warmup_ratio >= 0, (
+        train_iter = try_get_key(cfg, "train.train_iter", default=0)
+        train_epoch = try_get_key(cfg, "train.train_epoch", default=0)
+        warmup_ratio = try_get_key(cfg, "train.warmup_ratio", default=0)
+        assert warmup_ratio < 1 and warmup_ratio >= 0, (
             "cfg.train.warmup_ratio must be in [0, 1) that presents the ratio of warmup iter to the train iter.")
 
         # Automatically scale iteration num depend on the settings
         # The total iters in one epoch is `len(dataset) / global_batch_size`
-        cfg.train.train_iter = max(math.ceil(len(data_loader.dataset) * cfg.train.train_epoch / cfg.train.global_batch_size), cfg.train.train_iter)
+        cfg.train.train_iter = max(math.ceil(len(data_loader.dataset) * train_epoch / cfg.train.global_batch_size), train_iter)
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
         logger.info(f"Auto-scaling the config to train_iter={cfg.train.train_iter}, warmup_iter={cfg.train.warmup_iter}.")
-        if try_get_key(cfg.train.scheduler.milestones):
+        if try_get_key(cfg, "train.scheduler.milestones"):
             if len([milestone for milestone in cfg.train.scheduler.milestones if milestone <0 or milestone>=1]):
-                raise ValueError("In libai, we defined the milestone should be a list of ratio and all the elements should be in [0, 1)")
-            cfg.train.scheduler.milestones = [int(milestone * cfg.train.train_iter) for milestone in cfg.scheduler.milestones]
+                raise ValueError("The milestone should be a list of ratio and all the elements should be in [0, 1)")
+            cfg.train.scheduler.milestones = [int(milestone * cfg.train.train_iter) for milestone in cfg.train.scheduler.milestones]
+            logger.info(f"Auto-scaling the config to milestones={cfg.train.scheduler.milestones}.")
 
         # Consistent scheduler cfg
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
