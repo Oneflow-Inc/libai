@@ -151,9 +151,10 @@ def build_image_train_loader(
     test_batch_size=None,
     sampler=None,
     num_workers=4,
+    consumed_samples=0,
+    seed=42,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
-    seed=42,
     **kwargs
 ):
     """
@@ -173,11 +174,11 @@ def build_image_train_loader(
         dataset = dataset[0]
 
     if sampler is None:
-        # TODO: initialize train sampler
         sampler = CyclicSampler(
             dataset=dataset,
             micro_batch_size=train_batch_size,
             shuffle=True,
+            consumed_samples=consumed_samples,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
             seed=seed,
@@ -195,23 +196,22 @@ def build_image_train_loader(
 
 
 def build_image_test_loader(
-    dataset, test_batch_size, sampler=None, num_workers=4, collate_fn=None, **kwargs
+    dataset, test_batch_size, sampler=None, num_workers=4, seed=42, collate_fn=None, **kwargs
 ):
-    # TODO: add input type
+
     if sampler is None:
-        # TODO: initialize test_sampler
         sampler = SingleRoundSampler(
             dataset=dataset,
             micro_batch_size=test_batch_size,
             shuffle=False,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
             drop_last=False,
         )
 
     return DataLoader(
         dataset,
-        batch_size=test_batch_size,
         batch_sampler=sampler,
         num_workers=num_workers,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
