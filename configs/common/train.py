@@ -1,3 +1,6 @@
+from libai.config import LazyCall
+from libai.scheduler import WarmupCosineLR
+
 # fmt: off
 train = dict(
     output_dir="./demo_output/test_config",
@@ -23,11 +26,13 @@ train = dict(
     consumed_valid_samples=0,
     train_samples=None,
 
-    # Scheduler
-    # TODO: 1. 统一train_iters后续的s命名
-    # TODO: 2. 传入warmup的比率
-    # TODO: 3. 每个都加max iter
-    # TODO: 4. 将scheduler移到train下
+    # Scheduler arguments
+    scheduler = LazyCall(WarmupCosineLR)(
+        # in DefaultTrainer we will automatically set max_iter and warmup_iter by the given train cfg.
+        warmup_factor=0.001,
+        alpha=0.01,
+        warmup_method="linear",
+    ),
 
     # Distributed arguments
     dist=dict(
