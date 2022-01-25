@@ -391,7 +391,7 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
         assert try_get_key(cfg, "graph") is not None, "cfg must contain `graph` namespace"
-        graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
+        graph = build_graph(cfg, model, optimizer, lr_scheduler, is_train)
         logger = logging.getLogger(__name__)
         debug_graph = try_get_key(cfg, "graph.debug", default=-1)
         if debug_graph >= 0:

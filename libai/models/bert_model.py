@@ -29,8 +29,8 @@ from libai.layers import (
 )
 from libai.utils import distributed as dist
 
-from .build import GRAPH_REGISTRY, MODEL_ARCH_REGISTRY
-from .utils import GraphBase, init_method_normal, scaled_init_method_normal
+from .build import MODEL_ARCH_REGISTRY
+from .utils import init_method_normal, scaled_init_method_normal
 
 
 class BertExtendedAttnMask(nn.Module):
@@ -183,25 +183,6 @@ class BertPooler(nn.Module):
         return pooled_output
 
 
-class BertPreTrainingHeads(nn.Module):
-    def __init__(self, hidden_size, init_method):
-        super().__init__()
-        self.predictions = BertLMPredictionHead(hidden_size, init_method)
-        self.seq_relationship = Linear(
-            hidden_size,
-            2,
-            bias=True,
-            parallel="data",
-            init_method=init_method,
-            layer_idx=-1,
-        )
-
-    def forward(self, sequence_output, pooled_output):
-        prediction_scores = self.predictions(sequence_output)
-        seq_relationship_score = self.seq_relationship(pooled_output)
-        return prediction_scores, seq_relationship_score
-
-
 class BertLoss(nn.Module):
     def __init__(self):
         super().__init__()
@@ -332,14 +313,54 @@ class BertModel(nn.Module):
         return self.embeddings.word_embeddings()
 
 
+class BertPreTrainingHeads(nn.Module):
+    layer_idx = -1
+
+    def __init__(self, vocab_size, hidden_size, init_method):
+        super().__init__()
+        self.predictions = BertLMPredictionHead(hidden_size, init_method)
+        self.seq_relationship = Linear(
+            hidden_size,
+            2,
+            bias=True,
+            parallel="data",
+            init_method=init_method,
+            layer_idx=-1,
+        )
+        self.lm_logits = LMLogits(vocab_size, bias=True)
+        self.loss_func = BertLoss()
+
+    def forward(
+        self,
+        sequence_output,
+        pooled_output,
+        word_embeddings_weight,
+        ns_labels,
+        lm_labels,
+        loss_mask,
+    ):
+        prediction_scores = self.predictions(sequence_output)
+        seq_relationship_score = self.seq_relationship(pooled_output)
+        prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
+
+        if lm_labels is not None and ns_labels is not None:
+            return self.loss_func(
+                prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
+            )
+        return {
+            "prediction_scores": prediction_scores,
+            "seq_relationship_score": seq_relationship_score,
+        }
+
+
 @MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.bert = BertModel(cfg)
-        self.cls = BertPreTrainingHeads(cfg.hidden_size, init_method_normal(cfg.initializer_range))
-        self.lm_logits = LMLogits(cfg.vocab_size, bias=True)
-        self.loss_func = BertLoss()
+        self.cls_head = BertPreTrainingHeads(
+            cfg.vocab_size, cfg.hidden_size, init_method_normal(cfg.initializer_range)
+        )
 
     def forward(
         self,
@@ -353,32 +374,21 @@ class BertForPreTraining(nn.Module):
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 
-        sequence_output, seq_relationship_score = self.cls(sequence_output, pooled_output)
+        return self.cls_head(
+            sequence_output,
+            pooled_output,
+            self.bert.word_embeddings_weight(),
+            ns_labels,
+            lm_labels,
+            loss_mask,
+        )
 
-        prediction_scores = self.lm_logits(sequence_output, self.bert.word_embeddings_weight())
-
-        if lm_labels is not None and ns_labels is not None:
-            return self.loss_func(
-                prediction_scores,
-                lm_labels,
-                loss_mask,
-                seq_relationship_score,
-                ns_labels,
-            )
-        else:
-            return {
-                "prediction_scores": prediction_scores,
-                "seq_relationship_score": seq_relationship_score,
-            }
-
-
-@GRAPH_REGISTRY.register()
-class BertForPretrainingGraph(GraphBase):
-    def set_pipeline_stage_id(self):
+    @staticmethod
+    def set_pipeline_stage_id(model):
         dist_utils = dist.get_dist_util()
 
-        # 设置模型的 stage_id
-        for module_block in self.model.modules():
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, BertEmbeddings):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
@@ -388,13 +398,8 @@ class BertForPretrainingGraph(GraphBase):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
             elif isinstance(module_block.origin, BertPreTrainingHeads):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-            elif isinstance(module_block.origin, LMLogits):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-            elif isinstance(module_block.origin, BertLoss):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
             else:
                 pass
 
         # Set the last layernorm stage id
-        self.model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        self.model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)

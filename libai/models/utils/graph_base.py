@@ -66,4 +66,5 @@ class GraphBase(nn.Graph):
                 module_block.config.activation_checkpointing = True
 
     def set_pipeline_stage_id(self):
-        pass
+        if hasattr(type(self.model.origin), "set_pipeline_stage_id"):
+            type(self.model.origin).set_pipeline_stage_id(self.model)

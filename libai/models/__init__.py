@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertForPreTraining, BertForPretrainingGraph, BertModel
+from .bert_model import BertForPreTraining, BertModel
 from .build import build_graph, build_model
 
 __all__ = [
@@ -21,5 +21,4 @@ __all__ = [
     "build_graph",
     "BertModel",
     "BertForPreTraining",
-    "BertForPretrainingGraph",
 ]
