@@ -196,8 +196,8 @@ def build_training_sample(
     )
 
     train_sample = Instance(
-        tokens=DistTensorData(tensor=flow.tensor(tokens_np), placement_idx=0),
-        padding_mask=DistTensorData(tensor=flow.tensor(padding_mask_np), placement_idx=0),
+        input_ids=DistTensorData(tensor=flow.tensor(tokens_np), placement_idx=0),
+        attention_mask=DistTensorData(tensor=flow.tensor(padding_mask_np), placement_idx=0),
         tokentype_ids=DistTensorData(tensor=flow.tensor(tokentypes_np), placement_idx=0),
         ns_labels=DistTensorData(tensor=flow.tensor(int(is_next_random)), placement_idx=-1),
         lm_labels=DistTensorData(tensor=flow.tensor(labels_np), placement_idx=-1),

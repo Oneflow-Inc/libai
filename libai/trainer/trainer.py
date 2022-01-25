@@ -16,7 +16,7 @@
 import logging
 import time
 import weakref
-from typing import List, Mapping, Callable
+from typing import Callable, List, Mapping
 
 import numpy as np
 import oneflow as flow
@@ -61,25 +61,21 @@ class HookBase:
         """
         Called before the first iteration.
         """
-        pass
 
     def after_train(self):
         """
         Called after the last iteration.
         """
-        pass
 
     def before_step(self):
         """
         Called before each iteration.
         """
-        pass
 
     def after_step(self):
         """
         Called after each iteration.
         """
-        pass
 
 
 class TrainerBase:
@@ -92,7 +88,7 @@ class TrainerBase:
         iter(int): the current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
-        
+
         max_iter(int): The iteration to end training.
         storage(EventStorage): An EventStorage that's opened during the course of training.
     """
@@ -173,7 +169,9 @@ class TrainerBase:
 
     @staticmethod
     def write_metrics(
-        loss_dict: Mapping[str, flow.Tensor], data_time: float, prefix: str = "",
+        loss_dict: Mapping[str, flow.Tensor],
+        data_time: float,
+        prefix: str = "",
     ) -> None:
         """
         Args:
@@ -259,7 +257,7 @@ class EagerTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert self.model.training, "[EagerTrainer] model was changed to eval mode!"
+        assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
@@ -269,8 +267,8 @@ class EagerTrainer(TrainerBase):
 
         # If you want to do something with the losses, you can wrap the model.
 
-        losses = self.model(*data)
-        loss_dict = {"total_loss": losses}
+        loss_dict = self.model(**data)
+        losses = sum(loss_dict.values())
 
         # If you need to accumulate gradients or do something similar, you can
         # wrap the optimizer with your custom `zero_grad()` method.
@@ -294,15 +292,12 @@ class GraphTrainer(TrainerBase):
         graph.model.train()
         self._data_loader_iter = iter(data_loader_iter)
         self.graph = graph
-        self.all_losses = []
 
     def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.
         """
-        assert (
-            self.graph.model.training
-        ), "[GraphTrainer] model was changed to eval mode!"
+        assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
@@ -311,9 +306,6 @@ class GraphTrainer(TrainerBase):
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
-
-        losses = self.graph(*data)
-        loss_dict = {"total_loss": losses}
+        loss_dict = self.graph(**data)
 
         self.write_metrics(loss_dict, data_time)
-        self.all_losses.append(dist.tton(losses).item())

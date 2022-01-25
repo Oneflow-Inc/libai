@@ -65,24 +65,24 @@ def change_megatron_key(state_dict):
 
     # LM head.
     lm_head = state_dict["lm_head"]
-    of_state_dict["cls.predictions.dense.weight"] = convert_tensor(
+    of_state_dict["cls_head.predictions.dense.weight"] = convert_tensor(
         lm_head["dense.weight"]
     )
-    of_state_dict["cls.predictions.dense.bias"] = convert_tensor(lm_head["dense.bias"])
+    of_state_dict["cls_head.predictions.dense.bias"] = convert_tensor(lm_head["dense.bias"])
 
-    of_state_dict["cls.predictions.layernorm.weight"] = convert_tensor(
+    of_state_dict["cls_head.predictions.layernorm.weight"] = convert_tensor(
         lm_head["layernorm.weight"]
     )
-    of_state_dict["cls.predictions.layernorm.bias"] = convert_tensor(
+    of_state_dict["cls_head.predictions.layernorm.bias"] = convert_tensor(
         lm_head["layernorm.bias"]
     )
 
-    of_state_dict["lm_logits.bias"] = convert_tensor(lm_head["bias"])
+    of_state_dict["cls_head.lm_logits.bias"] = convert_tensor(lm_head["bias"])
 
     # Binary head.
     binary_head = state_dict["binary_head"]
-    of_state_dict["cls.seq_relationship.weight"] = convert_tensor(binary_head["weight"])
-    of_state_dict["cls.seq_relationship.bias"] = convert_tensor((binary_head["bias"]))
+    of_state_dict["cls_head.seq_relationship.weight"] = convert_tensor(binary_head["weight"])
+    of_state_dict["cls_head.seq_relationship.bias"] = convert_tensor((binary_head["bias"]))
 
     return of_state_dict
 

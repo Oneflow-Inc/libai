@@ -4,7 +4,7 @@ from .common.train import train
 from .common.optim import optim, scheduler
 from .common.data.nlp_data import data
 
-from libai.models import BertForPretrainingGraph
+from libai.models.utils import GraphBase
 
 # Bert-large model config
 model.cfg.num_attention_heads = 16
@@ -22,11 +22,11 @@ graph = dict(
     # options for graph or eager mode
     enabled=True,
     debug=-1, # debug mode for graph
-    train_graph=LazyCall(BertForPretrainingGraph)(
+    train_graph=LazyCall(GraphBase)(
         fp16=train.amp.enabled,
         is_train=True,
     ),
-    eval_graph=LazyCall(BertForPretrainingGraph)(
+    eval_graph=LazyCall(GraphBase)(
         fp16=train.amp.enabled, 
         is_train=False
     ),

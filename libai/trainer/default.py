@@ -375,14 +375,10 @@ class DefaultTrainer(TrainerBase):
             data.reraise()
 
         ret_dict = {}
-        ret_list = []
         for key, value in data.get_fields().items():
             value.to_consistent()
             ret_dict[key] = value.tensor
-            ret_list.append(value.tensor)
-        # FIXME(l1aoxingyu): `nn.Graph` cannot accpet key-value arguments right now,
-        # just pass list instead.
-        return ret_list
+        return ret_dict
 
     @classmethod
     def build_tokenizer(cls, cfg):
@@ -413,7 +409,7 @@ class DefaultTrainer(TrainerBase):
         assert (
             try_get_key(cfg, "graph") is not None
         ), "cfg must contain `graph` namespace"
-        graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
+        graph = build_graph(cfg, model, optimizer, lr_scheduler, is_train)
         logger = logging.getLogger(__name__)
         debug_graph = try_get_key(cfg, "graph.debug", default=-1)
         if debug_graph >= 0:

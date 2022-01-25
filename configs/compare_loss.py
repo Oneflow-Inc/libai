@@ -4,8 +4,9 @@ from .common.optim import optim, scheduler
 from .common.data.nlp_data import data
 
 from libai.config import LazyCall
-from libai.models import BertForPretrainingGraph
 from libai.scheduler import WarmupMultiStepLR
+
+from libai.models.utils import GraphBase
 
 # Set all dropout to 0.
 model.cfg.hidden_dropout_prob = 0.0
@@ -39,11 +40,11 @@ graph = dict(
     # options for graph or eager mode
     enabled=True,
     debug=-1,  # debug mode for graph
-    train_graph=LazyCall(BertForPretrainingGraph)(
+    train_graph=LazyCall(GraphBase)(
         fp16=train.amp.enabled,
         is_train=True,
     ),
-    eval_graph=LazyCall(BertForPretrainingGraph)(
+    eval_graph=LazyCall(GraphBase)(
         fp16=train.amp.enabled,
         is_train=False
     ),
