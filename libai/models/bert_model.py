@@ -343,14 +343,14 @@ class BertForPreTraining(nn.Module):
 
     def forward(
         self,
-        tokens,
-        padding_mask,
+        input_ids,
+        attention_mask,
         tokentype_ids=None,
         ns_labels=None,
         lm_labels=None,
         loss_mask=None,
     ):
-        outputs = self.bert(tokens, padding_mask, tokentype_ids)
+        outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 
         sequence_output, seq_relationship_score = self.cls(sequence_output, pooled_output)
@@ -366,32 +366,14 @@ class BertForPreTraining(nn.Module):
                 ns_labels,
             )
         else:
-            return prediction_scores, seq_relationship_score
+            return {
+                "prediction_scores": prediction_scores,
+                "seq_relationship_score": seq_relationship_score,
+            }
 
 
 @GRAPH_REGISTRY.register()
 class BertForPretrainingGraph(GraphBase):
-    def build(
-        self,
-        tokens,
-        padding_mask,
-        tokentype_ids,
-        ns_labels=None,
-        lm_labels=None,
-        loss_mask=None,
-    ):
-
-        # Forward pass through the model
-        if self.is_train:
-            loss_dict = self.model(
-                tokens, padding_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
-            )
-            losses = sum(loss_dict.values())
-            losses.backward()
-            return loss_dict
-        else:
-            return self.model(tokens, padding_mask, tokentype_ids)
-
     def set_pipeline_stage_id(self):
         dist_utils = dist.get_dist_util()
 

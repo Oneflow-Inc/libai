@@ -25,8 +25,8 @@ class GraphBase(nn.Graph):
         model: nn.Module,
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
-        fp16=False,
-        is_train=True,
+        fp16: bool = False,
+        is_train: bool = True,
     ):
         super().__init__()
 
@@ -50,6 +50,15 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
+
+    def build(self, **kwargs):
+        if self.is_train:
+            loss_dict = self.model(**kwargs)
+            losses = sum(loss_dict.values())
+            losses.backward()
+            return loss_dict
+        else:
+            return self.model(**kwargs)
 
     def set_activation_checkpoint(self):
         for module_block in self.model.modules():

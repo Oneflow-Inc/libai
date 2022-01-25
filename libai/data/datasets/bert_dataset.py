@@ -121,8 +121,8 @@ class BertDataset(flow.utils.data.Dataset):
         ) = self.pad_and_convert_to_tensor(tokens, token_types, masked_positions, masked_labels)
 
         sample = Instance(
-            tokens=DistTensorData(tokens),
-            padding_mask=DistTensorData(padding_mask),
+            input_ids=DistTensorData(tokens),
+            attention_mask=DistTensorData(padding_mask),
             tokentype_ids=DistTensorData(token_types),
             ns_labels=DistTensorData(
                 flow.tensor(int(is_next_random), dtype=flow.long), placement_idx=-1
