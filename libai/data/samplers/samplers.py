@@ -172,4 +172,4 @@ class SingleRoundSampler(Sampler):
             yield batch
 
     def __len__(self):
-        return self.data_size // (self.micro_batch_size * self.data_parallel_size)
+        return self.data_size
