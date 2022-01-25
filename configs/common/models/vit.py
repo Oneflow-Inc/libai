@@ -5,13 +5,16 @@ from libai.models import VisionTransformer
 cfg = dict(
     img_size=224,
     patch_size=16,
-    hidden_dim=768,
-    mlp_dim=3072,
-    num_heads=12,
-    num_layers=12,
+    in_chans=3,
+    embed_dim=192,
+    mlp_ratio=4.0,
+    depth=12,
+    num_heads=3,
+    qkv_bias=True,
+    drop_rate=0.0,
+    attn_drop_rate=0.0,
+    drop_path_rate=0.0,
     num_classes=1000,
-    attn_dropout=0.0,
-    dropout=0.1,
 )
 
 vit_model = LazyCall(VisionTransformer)(cfg=cfg)
