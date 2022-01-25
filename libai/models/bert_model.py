@@ -204,13 +204,13 @@ class BertLoss(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
         )
 
-        loss_dict = {"lm loss": masked_lm_loss}
+        loss_dict = {"lm_loss": masked_lm_loss}
 
         if self.add_binary_head:
             sop_loss = flow._C.cross_entropy(
                 binary_logits, ns_labels, ignore_index=-1, reduction="none"
             ).mean()
-            loss_dict["sop loss"] = sop_loss
+            loss_dict["sop_loss"] = sop_loss
         return loss_dict
 
 

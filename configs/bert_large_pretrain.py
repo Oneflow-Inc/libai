@@ -9,7 +9,7 @@ model.cfg.num_attention_heads = 16
 model.cfg.hidden_size = 768
 model.cfg.hidden_layers = 8
 
-model.add_binary_head = False
+model.add_binary_head = True
 
 train.train_micro_batch_size = 16
 
