@@ -16,7 +16,6 @@ dataloader.train = LazyCall(build_image_train_loader)(
             root="/DATA/disk1/ImageNet/extract/", train=True, transform=train_aug_cfg
         ),
     ],
-    batch_size=16,
 )
 
 
@@ -25,6 +24,5 @@ dataloader.test = [
         dataset=LazyCall(ImageNetDataset)(
             root="/DATA/disk1/ImageNet/extract/", train=False, transform=test_aug_cfg
         ),
-        batch_size=16,
     )
 ]
