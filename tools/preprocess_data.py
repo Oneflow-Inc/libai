@@ -140,6 +140,7 @@ def get_args():
         action="store_true",
         help="Append an <eod> token to the end of a document.",
     )
+    group.add_argument("--do-chinese-wwm", action="store_true", help="Whether to do whole word mask for Chinese.")
 
     group = parser.add_argument_group(title="output data")
     group.add_argument(
@@ -180,6 +181,7 @@ def parse_args_to_config(args):
                 merges_file=None,
                 do_lower_case=False,
                 extra_ids=0,
+                do_chinese_wwm=False,
             ),
             append_eod=False,
         ),
@@ -197,6 +199,7 @@ def parse_args_to_config(args):
     cfg.tokenizer.tokenizer_cfg.merges_file = args.merges_file
     cfg.tokenizer.tokenizer_cfg.do_lower_case = args.do_lower_case
     cfg.tokenizer.tokenizer_cfg.extra_id = args.extra_ids
+    cfg.tokenizer.tokenizer_cfg.do_chinese_wwm = args.do_chinese_wwm
     cfg.tokenizer.append_eod = args.append_eod
 
     return cfg
