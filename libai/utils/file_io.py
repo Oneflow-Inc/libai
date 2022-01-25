@@ -149,7 +149,10 @@ class PathHandler:
 
     _strict_kwargs_check = True
 
-    def __init__(self, async_executor: Optional[concurrent.futures.Executor] = None,) -> None:
+    def __init__(
+        self,
+        async_executor: Optional[concurrent.futures.Executor] = None,
+    ) -> None:
         """
         When registering a `PathHandler`, the user can optionally pass in a
         `Executor` to run the asynchronous file operations.
@@ -304,7 +307,8 @@ class PathHandler:
         # buffering for any storage backend.
         if not self._non_blocking_io_manager:
             self._non_blocking_io_manager = NonBlockingIOManager(
-                buffered=False, executor=self._non_blocking_io_executor,
+                buffered=False,
+                executor=self._non_blocking_io_executor,
             )
 
         try:

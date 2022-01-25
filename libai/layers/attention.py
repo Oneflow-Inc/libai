@@ -240,5 +240,7 @@ class MultiheadAttention(nn.Module):
 
     def extra_repr(self) -> str:
         return "hidden_size={}, num_heads={}, is_cross_attention={}".format(
-            self.hidden_size, self.num_heads, self.is_cross_attention,
+            self.hidden_size,
+            self.num_heads,
+            self.is_cross_attention,
         )

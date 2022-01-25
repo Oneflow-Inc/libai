@@ -72,15 +72,23 @@ def setup(args):
     )
 
     cfg.scheduler = LazyCall(WarmupCosineLR)(
-        max_iters=2000, alpha=0.001, warmup_factor=0.001, warmup_iters=1000, warmup_method="linear",
+        max_iters=2000,
+        alpha=0.001,
+        warmup_factor=0.001,
+        warmup_iters=1000,
+        warmup_method="linear",
     )
 
     cfg.dataloader = OmegaConf.create()
 
     cfg.dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
         dataset=[
-            LazyCall(DemoNlpDataset)(data_root="train1",),
-            LazyCall(DemoNlpDataset)(data_root="train2",),
+            LazyCall(DemoNlpDataset)(
+                data_root="train1",
+            ),
+            LazyCall(DemoNlpDataset)(
+                data_root="train2",
+            ),
         ],
         splits=[[949.0, 50.0, 1.0], [900.0, 99.0, 1.0]],
         weights=[0.5, 0.5],
@@ -88,11 +96,21 @@ def setup(args):
     )
 
     cfg.dataloader.test = [
-        LazyCall(build_nlp_test_loader)(dataset=LazyCall(DemoNlpDataset)(data_root="test1",)),
-        LazyCall(build_nlp_test_loader)(dataset=LazyCall(DemoNlpDataset)(data_root="test2",)),
+        LazyCall(build_nlp_test_loader)(
+            dataset=LazyCall(DemoNlpDataset)(
+                data_root="test1",
+            )
+        ),
+        LazyCall(build_nlp_test_loader)(
+            dataset=LazyCall(DemoNlpDataset)(
+                data_root="test2",
+            )
+        ),
     ]
 
-    cfg.graph = dict(enabled=True,)
+    cfg.graph = dict(
+        enabled=True,
+    )
 
     default_setup(cfg, args)
     return cfg

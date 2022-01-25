@@ -21,6 +21,9 @@ graph = dict(
     # options for graph or eager mode
     enabled=True,
     debug=-1,  # debug mode for graph
-    train_graph=LazyCall(BertForPretrainingGraph)(fp16=train.amp.enabled, is_train=True,),
+    train_graph=LazyCall(BertForPretrainingGraph)(
+        fp16=train.amp.enabled,
+        is_train=True,
+    ),
     eval_graph=LazyCall(BertForPretrainingGraph)(fp16=train.amp.enabled, is_train=False),
 )

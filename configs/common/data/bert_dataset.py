@@ -11,7 +11,8 @@ tokenization = OmegaConf.create()
 
 tokenization.setup = True
 tokenization.tokenizer = LazyCall(BertTokenizer)(
-    vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt", do_lower_case=True,
+    vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
+    do_lower_case=True,
 )
 tokenization.append_eod = False
 tokenization.make_vocab_size_divisible_by = 128

@@ -206,7 +206,11 @@ def get_dist_util():
 
         setup_dist_util(
             DictConfig(
-                dict(data_parallel_size=1, tensor_parallel_size=1, pipeline_parallel_size=1,)
+                dict(
+                    data_parallel_size=1,
+                    tensor_parallel_size=1,
+                    pipeline_parallel_size=1,
+                )
             )
         )
     return _DIST_UTIL
@@ -215,7 +219,9 @@ def get_dist_util():
 def get_layer_placement(layer_idx, device_type="cuda"):
     dist_util = get_dist_util()
     return flow.placement(
-        device_type, dist_util.get_layer_devices(layer_idx), dist_util.parallel_hierarchy,
+        device_type,
+        dist_util.get_layer_devices(layer_idx),
+        dist_util.parallel_hierarchy,
     )
 
 

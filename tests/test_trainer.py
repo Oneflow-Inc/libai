@@ -68,10 +68,16 @@ def setup(args):
     )
 
     cfg.scheduler = LazyCall(WarmupCosineLR)(
-        max_iters=2000, alpha=0.001, warmup_factor=0.001, warmup_iters=1000, warmup_method="linear",
+        max_iters=2000,
+        alpha=0.001,
+        warmup_factor=0.001,
+        warmup_iters=1000,
+        warmup_method="linear",
     )
 
-    cfg.graph = dict(enabled=True,)
+    cfg.graph = dict(
+        enabled=True,
+    )
 
     default_setup(cfg, args)
     return cfg
@@ -96,7 +102,12 @@ class DemoTrainer(DefaultTrainer):
     @classmethod
     def get_batch(cls, data):
         return [
-            flow.randn(32, 512, sbp=flow.sbp.split(0), placement=flow.placement("cuda", {0: [0]}),)
+            flow.randn(
+                32,
+                512,
+                sbp=flow.sbp.split(0),
+                placement=flow.placement("cuda", {0: [0]}),
+            )
         ]
 
     @classmethod

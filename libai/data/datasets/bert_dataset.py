@@ -112,9 +112,13 @@ class BertDataset(flow.utils.data.Dataset):
             tokens, np_rng, token_boundary=align_labels
         )
 
-        (tokens, token_types, labels, padding_mask, loss_mask,) = self.pad_and_convert_to_tensor(
-            tokens, token_types, masked_positions, masked_labels
-        )
+        (
+            tokens,
+            token_types,
+            labels,
+            padding_mask,
+            loss_mask,
+        ) = self.pad_and_convert_to_tensor(tokens, token_types, masked_positions, masked_labels)
 
         sample = Instance(
             tokens=DistTensorData(tokens),
