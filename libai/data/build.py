@@ -93,22 +93,36 @@ def build_nlp_train_val_test_loader(
     )
 
     train_loader = DataLoader(
-        train_dataset, batch_sampler=train_sampler, num_workers=num_workers, collate_fn=collate_fn,
+        train_dataset,
+        batch_sampler=train_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
     )
 
     valid_loader = DataLoader(
-        val_dataset, batch_sampler=valid_sampler, num_workers=num_workers, collate_fn=collate_fn,
+        val_dataset,
+        batch_sampler=valid_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
     )
 
     test_loader = DataLoader(
-        test_dataset, batch_sampler=test_sampler, num_workers=num_workers, collate_fn=collate_fn,
+        test_dataset,
+        batch_sampler=test_sampler,
+        num_workers=num_workers,
+        collate_fn=collate_fn,
     )
 
     return train_loader, valid_loader, test_loader
 
 
 def build_nlp_test_loader(
-    dataset, test_batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None,
+    dataset,
+    test_batch_size,
+    sampler=None,
+    num_workers=4,
+    seed=0,
+    collate_fn=None,
 ):
     """
     Build nlp test dataloader

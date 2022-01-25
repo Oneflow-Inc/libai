@@ -115,7 +115,11 @@ class TestScheduler(TestCase):
         opt = flow.optim.SGD([p], lr=5.0)
 
         sched = WarmupExponentialLR(
-            optimizer=opt, gamma=0.1, warmup_factor=0.001, warmup_iters=5, warmup_method="linear",
+            optimizer=opt,
+            gamma=0.1,
+            warmup_factor=0.001,
+            warmup_iters=5,
+            warmup_method="linear",
         )
 
         p.sum().backward()

@@ -71,15 +71,23 @@ def setup(args):
     )
 
     cfg.scheduler = LazyCall(WarmupCosineLR)(
-        max_iters=2000, alpha=0.001, warmup_factor=0.001, warmup_iters=1000, warmup_method="linear",
+        max_iters=2000,
+        alpha=0.001,
+        warmup_factor=0.001,
+        warmup_iters=1000,
+        warmup_method="linear",
     )
 
     cfg.dataloader = OmegaConf.create()
 
     cfg.dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
         dataset=[
-            LazyCall(DemoNlpDataset)(data_root="train1",),
-            LazyCall(DemoNlpDataset)(data_root="train2",),
+            LazyCall(DemoNlpDataset)(
+                data_root="train1",
+            ),
+            LazyCall(DemoNlpDataset)(
+                data_root="train2",
+            ),
         ],
         splits=[[949.0, 50.0, 1.0], [900.0, 99.0, 1.0]],
         weights=[0.5, 0.5],
@@ -99,7 +107,10 @@ def setup(args):
         # options for graph or eager mode
         enabled=True,
         debug=-1,  # debug mode for graph
-        train_graph=LazyCall(GraphModel)(fp16=True, is_train=True,),
+        train_graph=LazyCall(GraphModel)(
+            fp16=True,
+            is_train=True,
+        ),
         eval_graph=LazyCall(GraphModel)(fp16=True, is_train=False),
     )
 

@@ -22,7 +22,10 @@ tokenizer = BertTokenizer(vocab_file="bert-vocab.txt", do_lower_case=True)
 indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="lazy", skip_warmup=False)
 
 dataset = BertDataset(
-    tokenizer, data_prefix=datat_prefix, indexed_dataset=indexed_dataset, binary_head=False,
+    tokenizer,
+    data_prefix=datat_prefix,
+    indexed_dataset=indexed_dataset,
+    binary_head=False,
 )
 
 print(len(indexed_dataset))
