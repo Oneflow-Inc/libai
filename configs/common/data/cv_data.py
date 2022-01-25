@@ -1,6 +1,6 @@
 from omegaconf import OmegaConf
 
-from libai.data.datasets import ImageNetDataset
+from libai.data.datasets import ImageNetDataset, CIFAR100Dataset
 from libai.data.build import build_image_train_loader, build_image_test_loader
 from libai.config import LazyCall
 
@@ -12,8 +12,8 @@ dataloader = OmegaConf.create()
 
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
-        LazyCall(ImageNetDataset)(
-            root="/DATA/disk1/ImageNet/extract/", train=True, transform=train_aug_cfg
+        LazyCall(CIFAR100Dataset)(
+            root="./", train=True, download=True, transform=train_aug_cfg
         ),
     ],
 )
@@ -21,8 +21,8 @@ dataloader.train = LazyCall(build_image_train_loader)(
 
 dataloader.test = [
     LazyCall(build_image_test_loader)(
-        dataset=LazyCall(ImageNetDataset)(
-            root="/DATA/disk1/ImageNet/extract/", train=False, transform=test_aug_cfg
+        dataset=LazyCall(CIFAR100Dataset)(
+            root="./", train=False, download=True, transform=test_aug_cfg
         ),
     )
 ]
