@@ -8,7 +8,7 @@ train = dict(
     num_accumulation_steps=None,
 
     start_iter=0,
-    warmup_iter=2000,
+    warmup_ratio=20/300,
     train_iter=10000,
     warmup_epoch=0,  # default warmup epoch is setted to 0
     train_epoch=0,  # default train epoch is setted to 0
@@ -23,6 +23,12 @@ train = dict(
     consumed_train_samples=0,
     consumed_valid_samples=0,
     train_samples=None,
+
+    # Scheduler
+    # TODO: 1. 统一train_iters后续的s命名
+    # TODO: 2. 传入warmup的比率
+    # TODO: 3. 每个都加max iter
+    # TODO: 4. 将scheduler移到train下
 
     # Distributed arguments
     dist=dict(

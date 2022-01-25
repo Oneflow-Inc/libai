@@ -506,6 +506,7 @@ class DefaultTrainer(TrainerBase):
         logger.info("Automatically scale the total train iters to {} which is the larger num between len(dataloader) * train_epoch and train_iter".format(cfg.train.train_iter))
 
         # Consistent scheduler cfg
+        # FIXME
         cfg.scheduler.warmup_iters = cfg.train.warmup_iter
         cfg.scheduler.max_iters = cfg.train.train_iter
 
