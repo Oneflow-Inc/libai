@@ -39,9 +39,7 @@ class TestDataLoader(unittest.TestCase):
 
     def _test_sampler(self, **kwargs):
         indices = range(2, 12)  # using a regular iterable
-        dl = self._get_data_loader(
-            self.dataset, sampler=indices, batch_size=2, **kwargs
-        )
+        dl = self._get_data_loader(self.dataset, sampler=indices, batch_size=2, **kwargs)
         self.assertEqual(len(dl), 5)
         for i, (input, _target) in enumerate(dl):
             self.assertEqual(len(input), 2)

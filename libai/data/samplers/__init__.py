@@ -13,12 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .build import build_lr_scheduler
-from .lr_scheduler import (
-    WarmupCosineAnnealingLR,
-    WarmupCosineLR,
-    WarmupExponentialLR,
-    WarmupFixedStepLR,
-    WarmupMultiStepLR,
-    WarmupPolynomailLR,
-)
+from .samplers import CyclicSampler, SingleRoundSampler

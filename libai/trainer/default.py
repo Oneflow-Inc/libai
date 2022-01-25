@@ -52,21 +52,13 @@ def _highlight(code, filename):
 
 
 def _check_batch_size(cfg):
-    train_micro_batch_size = try_get_key(
-        cfg, "train.train_micro_batch_size", default=None
-    )
+    train_micro_batch_size = try_get_key(cfg, "train.train_micro_batch_size", default=None)
     global_batch_size = try_get_key(cfg, "train.global_batch_size", default=None)
-    num_accumulation_steps = try_get_key(
-        cfg, "train.num_accumulation_steps", default=None
-    )
+    num_accumulation_steps = try_get_key(cfg, "train.num_accumulation_steps", default=None)
 
     if train_micro_batch_size is not None and global_batch_size is not None:
         if num_accumulation_steps is None:
-            if (
-                global_batch_size
-                % (train_micro_batch_size * dist.get_data_parallel_size())
-                != 0
-            ):
+            if global_batch_size % (train_micro_batch_size * dist.get_data_parallel_size()) != 0:
                 raise ValueError(
                     f"global_batch_size {global_batch_size} must be divisible by "
                     "train_micro_batch_size * data_parallel_size "
@@ -80,9 +72,7 @@ def _check_batch_size(cfg):
         else:
             if (
                 global_batch_size
-                != train_micro_batch_size
-                * dist.get_data_parallel_size()
-                * num_accumulation_steps
+                != train_micro_batch_size * dist.get_data_parallel_size() * num_accumulation_steps
             ):
                 raise ValueError(
                     f"global_batch_size {global_batch_size} must equal to "
@@ -103,8 +93,7 @@ def _check_batch_size(cfg):
             cfg.train.num_accumulation_steps = 1
 
         if (
-            global_batch_size
-            % (dist.get_data_parallel_size() * cfg.train.num_accumulation_steps)
+            global_batch_size % (dist.get_data_parallel_size() * cfg.train.num_accumulation_steps)
             != 0
         ):
             raise ValueError(
@@ -117,9 +106,7 @@ def _check_batch_size(cfg):
             dist.get_data_parallel_size() * cfg.train.num_accumulation_steps
         )
     else:
-        raise ValueError(
-            "train_micro_batch_size and global_batch_size must be set either"
-        )
+        raise ValueError("train_micro_batch_size and global_batch_size must be set either")
 
 
 def default_setup(cfg, args):
@@ -144,11 +131,7 @@ def default_setup(cfg, args):
     rank = dist.get_rank()
     logger = setup_logger(output_dir, distributed_rank=rank)
 
-    logger.info(
-        "Rank of current process: {}. World size: {}".format(
-            rank, dist.get_world_size()
-        )
-    )
+    logger.info("Rank of current process: {}. World size: {}".format(rank, dist.get_world_size()))
     logger.info("Command line arguments: " + str(args))
 
     if hasattr(args, "config_file") and args.config_file != "":
@@ -228,7 +211,8 @@ class DefaultTrainer(TrainerBase):
             setup_logger()
 
         # Initialize tokenizer
-        if try_get_key(cfg, "data.tokenizer_setup", default=False):
+        self.tokenizer = None
+        if try_get_key(cfg, "tokenization.setup", default=False):
             self.tokenizer = self.build_tokenizer(cfg)
 
         # Assume these objects must be constructed in this order.
@@ -255,7 +239,7 @@ class DefaultTrainer(TrainerBase):
         self.train_loader = None
         self.test_loader = []
 
-        train_loader, val_loader, test_loader = self.build_train_loader(cfg)
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
         self.train_loader = train_loader
 
         if val_loader is not None:
@@ -296,8 +280,7 @@ class DefaultTrainer(TrainerBase):
                 # The checkpoint stores the training iteration that just finished, thus we start
                 # at the next iteration (or iter zero if there's no checkpoint).
                 self.start_iter = (
-                    self.checkpointer.resume_or_load(None, resume=True).get("iter", -1)
-                    + 1
+                    self.checkpointer.resume_or_load(None, resume=True).get("iter", -1) + 1
                 )
             else:
                 # This is considered as an independent training.
@@ -316,24 +299,18 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),
-            hooks.PeriodicCheckpointer(
-                self.checkpointer, self.cfg.train.checkpointer.period
-            ),
+            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
         ]
 
         def test_and_save_results():
-            self._last_eval_results = self.test(
-                self.cfg, self.test_loader, self.graph_eval
-            )
+            self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
             return self._last_eval_results
 
         ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
 
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
-            ret.append(
-                hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period)
-            )
+            ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
         return ret
 
     def build_writers(self):
@@ -396,8 +373,8 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def build_tokenizer(cls, cfg):
         assert (
-            try_get_key(cfg, "tokenizer") is not None
-        ), "cfg must contain `tokenizer` namespace"
+            try_get_key(cfg, "tokenization") is not None
+        ), "cfg must contain `tokenization` namespace"
         return build_tokenizer(cfg)
 
     @classmethod
@@ -408,9 +385,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.models.build_model`.
         Overwrite it if you'd like a different model.
         """
-        assert (
-            try_get_key(cfg, "model") is not None
-        ), "cfg must contain `model` namespace"
+        assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
@@ -419,9 +394,7 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
-        assert (
-            try_get_key(cfg, "graph") is not None
-        ), "cfg must contain `graph` namespace"
+        assert try_get_key(cfg, "graph") is not None, "cfg must contain `graph` namespace"
         graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
         logger = logging.getLogger(__name__)
         debug_graph = try_get_key(cfg, "graph.debug", default=-1)
@@ -438,9 +411,7 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
-        assert (
-            try_get_key(cfg, "optim") is not None
-        ), "cfg must contain `optim` namespace"
+        assert try_get_key(cfg, "optim") is not None, "cfg must contain `optim` namespace"
         return build_optimizer(cfg.optim, model)
 
     @classmethod
@@ -449,13 +420,11 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        assert (
-            try_get_key(cfg, "scheduler") is not None
-        ), "cfg must contain `scheduler` namespace"
+        assert try_get_key(cfg, "scheduler") is not None, "cfg must contain `scheduler` namespace"
         return build_lr_scheduler(cfg.scheduler, optimizer)
 
     @classmethod
-    def build_train_loader(cls, cfg):
+    def build_train_loader(cls, cfg, tokenizer=None):
         """
         Returns:
             iterable
@@ -469,15 +438,24 @@ class DefaultTrainer(TrainerBase):
         logger.info("Prepare training, validating, testing set")
         cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
+
+        # Set tokenizer for each dataset
+        if tokenizer:
+            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
+                for dataset in cfg.dataloader.train.dataset:
+                    dataset.tokenizer = tokenizer
+            else:
+                cfg.dataloader.train.dataset.tokenizer = tokenizer
+
         train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
         return train_loader, valid_loader, test_loader
 
     @classmethod
     def build_test_loader(cls, cfg):
         # TODO: add doc string
-        assert (
-            try_get_key(cfg, "dataloader.test") is not None
-        ), "cfg must contain `dataloader.test` namespace"
+        # If there is no test_loader, just return []
+        if not try_get_key(cfg, "dataloader.test", default=False):
+            return []
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
         assert isinstance(
@@ -512,18 +490,14 @@ class DefaultTrainer(TrainerBase):
         # TODO: support multi evaluator
         # if isinstance(evaluators, DatasetEvaluator):
         #     evaluators = [evaluators]
-        test_batch_size = (
-            cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
-        )
+        test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
         evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
 
         results = OrderedDict()
         for idx, data_loader in enumerate(test_loaders):
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
-            dataset_name = getattr(
-                data_loader.dataset, "datasetname", "UndefinedDataset"
-            )
+            dataset_name = getattr(data_loader.dataset, "datasetname", "UndefinedDataset")
             # TODO: support multi evaluator
             # if evaluators is not None:
             #     evaluator = evaluators[idx]

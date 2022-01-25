@@ -20,8 +20,8 @@ import math
 import numpy as np
 import oneflow as flow
 
-from .data_utils import SentenceIndexedDataset
-from .structures import DistTensorData, Instance
+from libai.data.data_utils import SentenceIndexedDataset
+from libai.data.structures import DistTensorData, Instance
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
@@ -106,9 +106,7 @@ class BertDataset(flow.utils.data.Dataset):
             tokens_a, tokens_b, self.max_seq_length - 3, np_rng
         )
 
-        tokens, token_types, align_labels = self.create_tokens_and_token_types(
-            tokens_a, tokens_b
-        )
+        tokens, token_types, align_labels = self.create_tokens_and_token_types(tokens_a, tokens_b)
 
         tokens, masked_positions, masked_labels = self.create_masked_lm_predictions(
             tokens, np_rng, token_boundary=align_labels
@@ -120,9 +118,7 @@ class BertDataset(flow.utils.data.Dataset):
             labels,
             padding_mask,
             loss_mask,
-        ) = self.pad_and_convert_to_tensor(
-            tokens, token_types, masked_positions, masked_labels
-        )
+        ) = self.pad_and_convert_to_tensor(tokens, token_types, masked_positions, masked_labels)
 
         sample = Instance(
             tokens=DistTensorData(tokens),
@@ -365,9 +361,7 @@ class BertDataset(flow.utils.data.Dataset):
 
         return output_tokens, masked_positions, masked_labels
 
-    def pad_and_convert_to_tensor(
-        self, tokens, token_types, masked_positions, masked_labels
-    ):
+    def pad_and_convert_to_tensor(self, tokens, token_types, masked_positions, masked_labels):
         """pad sequences and convert them to tensor"""
 
         # check
