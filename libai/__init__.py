@@ -13,12 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .build import build_lr_scheduler
-from .lr_scheduler import (
-    WarmupCosineAnnealingLR,
-    WarmupCosineLR,
-    WarmupExponentialLR,
-    WarmupFixedStepLR,
-    WarmupMultiStepLR,
-    WarmupPolynomailLR,
-)
+
+# This line will be programatically read/write by setup.py.
+# Leave them at the bottom of this file and don't touch them.
+__version__ = "0.1"
