@@ -354,9 +354,9 @@ class DefaultTrainer(TrainerBase):
             OrderedDict of results, if evaluation is enabled. Otherwise None.
         """
         super().train(self.start_iter, self.max_iter)
-        all_losses = self._trainer.all_losses
+        all_losses = self.storage.history("total_loss").values()
         with open("of_bert_loss.txt", "w") as f:
-            for loss in all_losses:
+            for loss, _ in all_losses:
                 f.write(str(loss) + "\n")
 
     def run_step(self):
