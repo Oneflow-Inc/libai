@@ -20,7 +20,7 @@ import sys
 import pybind11
 from setuptools import Extension, find_packages, setup
 
-version = "0.0.1.1"
+version = "0.0.1.2"
 package_name = "LiBai"
 cwd = os.path.dirname(os.path.abspath(__file__))
 
