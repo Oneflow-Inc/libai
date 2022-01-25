@@ -49,12 +49,7 @@ class TestOptimizer(unittest.TestCase):
         ]
         gt_groups = [
             {"lr": 1.0, "weight_decay": 4.0, "params": ["p1"]},
-            {
-                "lr": 2.0,
-                "weight_decay": 3.0,
-                "momentum": 2.0,
-                "params": ["p2", "p6", "p3"],
-            },
+            {"lr": 2.0, "weight_decay": 3.0, "momentum": 2.0, "params": ["p2", "p6", "p3"]},
             {"lr": 1.0, "weight_decay": 3.0, "params": ["p4"]},
             {"lr": 2.0, "momentum": 2.0, "params": ["p5"]},
         ]

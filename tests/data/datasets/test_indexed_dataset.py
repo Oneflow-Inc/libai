@@ -71,16 +71,10 @@ def test_indexed_dataset_get(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data",
-        default="test_samples_lazy_text_sentence",
-        type=str,
-        help="prefix to data files",
+        "--data", default="test_samples_lazy_text_sentence", type=str, help="prefix to data files",
     )
     parser.add_argument(
-        "--dataset-impl",
-        type=str,
-        default="infer",
-        choices=["lazy", "cached", "mmap", "infer"],
+        "--dataset-impl", type=str, default="infer", choices=["lazy", "cached", "mmap", "infer"],
     )
     parser.add_argument(
         "--count", type=int, default=10, help="Number of samples/documents to print"

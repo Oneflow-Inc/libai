@@ -188,12 +188,7 @@ class BertPreTrainingHeads(nn.Module):
         super().__init__()
         self.predictions = BertLMPredictionHead(hidden_size, init_method)
         self.seq_relationship = Linear(
-            hidden_size,
-            2,
-            bias=True,
-            parallel="data",
-            init_method=init_method,
-            layer_idx=-1,
+            hidden_size, 2, bias=True, parallel="data", init_method=init_method, layer_idx=-1,
         )
 
     def forward(self, sequence_output, pooled_output):
@@ -357,11 +352,7 @@ class BertForPreTraining(nn.Module):
 
         if lm_labels is not None and ns_labels is not None:
             total_loss = self.loss_func(
-                prediction_scores,
-                lm_labels,
-                loss_mask,
-                seq_relationship_score,
-                ns_labels,
+                prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels,
             )
             return total_loss
         else:
@@ -371,13 +362,7 @@ class BertForPreTraining(nn.Module):
 @GRAPH_REGISTRY.register()
 class BertForPretrainingGraph(GraphBase):
     def build(
-        self,
-        tokens,
-        padding_mask,
-        tokentype_ids,
-        ns_labels=None,
-        lm_labels=None,
-        loss_mask=None,
+        self, tokens, padding_mask, tokentype_ids, ns_labels=None, lm_labels=None, loss_mask=None,
     ):
 
         # Forward pass through the model
