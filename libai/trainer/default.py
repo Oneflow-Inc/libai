@@ -398,7 +398,7 @@ class DefaultTrainer(TrainerBase):
         assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
-        logger.info("Model:\n{}".format(model))
+        # logger.info("Model:\n{}".format(model))
         model.apply(dist.convert_to_distributed_default_setting)
         return model
 

@@ -162,7 +162,6 @@ def build_image_train_loader(
         dataset: Dataset list or single dataset.
         batch_size: Batch-size for each GPU.
     """
-    # TODO: add input type
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):

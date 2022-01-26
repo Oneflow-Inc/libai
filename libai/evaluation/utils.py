@@ -35,7 +35,6 @@ def pad_batch(x_list, batch_size):
         pad_shape = (batch_size, *xi.shape[1:])
         padded_xi = flow.zeros(pad_shape, sbp=xi.sbp, placement=xi.placement, dtype=xi.dtype)
         padded_xi[:valid_sample, ...] = padded_xi[:valid_sample, ...] + xi
-        padded_xi[valid_sample:, ...] = padded_xi[valid_sample:, ...] + xi[0].unsqueeze(0)
         padded_list.append(padded_xi)
     return padded_list, valid_sample
 
