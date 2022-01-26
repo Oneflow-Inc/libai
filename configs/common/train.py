@@ -14,8 +14,6 @@ train = dict(
     train_iter=10000,
     train_epoch=0,  # default train epoch is set to 0
     warmup_ratio=0,  # default warmup ratio is set to 0
-    lr_decay_iter=None,
-    eval_iter=10000,
     lr_warmup_fraction=0.01,
     amp=dict(enabled=False),  # options for Automatic Mixed Precision
     checkpointer=dict(period=5000, max_to_keep=100),  # options for PeriodicCheckpointer

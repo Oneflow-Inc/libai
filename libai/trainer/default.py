@@ -500,7 +500,7 @@ class DefaultTrainer(TrainerBase):
         )
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
         log_info += "Auto-scaling the config to train.train_iter={}, train.warmup_iter={}".format(
-            cfg.train.warmup_iter, cfg.train.train_iter
+            cfg.train.train_iter, cfg.train.warmup_iter
         )
 
         # Automatically scale the milestones
@@ -528,6 +528,7 @@ class DefaultTrainer(TrainerBase):
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
         cfg.train.scheduler.max_iter = cfg.train.train_iter
 
+    @classmethod
     def build_evaluator(cls, cfg):
         return ClsEvaluator(cfg)
 

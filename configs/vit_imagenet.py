@@ -13,20 +13,13 @@ from libai.models import VisionTransformerGraph
 optim.lr = 0.0001
 optim.weight_decay = 1e-8
 
-# Set scheduler cfg for vit model
-scheduler = LazyCall(WarmupMultiStepLR)(
-    warmup_iters=0,
-    warmup_factor = 0.0001,
-    gamma = 0.1,
-    milestones=[100]
-)
-
 # Set pipeline layers for paralleleism
 train.dist.pipeline_num_layers = model.cfg.depth
 
 # Refine train cfg for vit model
-train.train_iter = 500
-train.eval_period = 20
+train.train_epoch = 300
+train.warmup_ratio = 20/300
+train.eval_period = 5000
 train.log_period = 1
 
 # Set fp16 ON
