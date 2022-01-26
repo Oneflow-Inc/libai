@@ -14,5 +14,3 @@ python3 -m oneflow.distributed.launch \
     --master_addr $ADDR \
     tools/train_net.py \
     --config-file $CONFIG \
-    --eval-only \
-    
