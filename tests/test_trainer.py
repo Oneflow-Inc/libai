@@ -16,13 +16,13 @@
 import sys
 
 import oneflow as flow
-from oneflow.utils.data import TensorDataset, DataLoader
 from omegaconf import OmegaConf
+from oneflow.utils.data import DataLoader, TensorDataset
 
 sys.path.append(".")
-from libai.config import LazyCall, default_argument_parser, try_get_key
+from libai.config import LazyCall, default_argument_parser
 from libai.optim import get_default_optimizer_params
-from libai.scheduler import WarmupCosineLR, WarmupMultiStepLR
+from libai.scheduler import WarmupMultiStepLR
 from libai.trainer import DefaultTrainer, default_setup
 from tests.layers.test_trainer_model import build_graph, build_model
 
@@ -60,7 +60,7 @@ def setup(args):
             # alpha=0.01,
             warmup_method="linear",
             milestones=[0.1, 0.2],
-        )
+        ),
     )
 
     cfg.optim = LazyCall(flow.optim.AdamW)(
@@ -78,7 +78,9 @@ def setup(args):
         do_bias_correction=True,
     )
 
-    cfg.graph = dict(enabled=True,)
+    cfg.graph = dict(
+        enabled=True,
+    )
 
     default_setup(cfg, args)
     return cfg
@@ -114,9 +116,9 @@ class DemoTrainer(DefaultTrainer):
     @classmethod
     def build_train_loader(cls, cfg, tokenizer=None):
         return (
-            DataLoader(TensorDataset(flow.randn(1000)), batch_size=cfg.train.train_micro_batch_size), 
-            # DataLoader(TensorDataset(flow.randn(1000)), batch_size=cfg.train.train_micro_batch_size), 
-            # DataLoader(TensorDataset(flow.randn(1000)), batch_size=cfg.train.train_micro_batch_size)
+            DataLoader(
+                TensorDataset(flow.randn(1000)), batch_size=cfg.train.train_micro_batch_size
+            ),
             None,
             None,
         )

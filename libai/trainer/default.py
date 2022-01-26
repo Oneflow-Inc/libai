@@ -14,8 +14,8 @@
 # limitations under the License.
 
 import logging
-import os
 import math
+import os
 from collections import OrderedDict
 
 import omegaconf
@@ -430,7 +430,9 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        assert try_get_key(cfg, "train.scheduler") is not None, "cfg.train must contain `scheduler` namespace"
+        assert (
+            try_get_key(cfg, "train.scheduler") is not None
+        ), "cfg.train must contain `scheduler` namespace"
         return build_lr_scheduler(cfg.train.scheduler, optimizer)
 
     @classmethod
@@ -486,20 +488,40 @@ class DefaultTrainer(TrainerBase):
         train_iter = try_get_key(cfg, "train.train_iter", default=0)
         train_epoch = try_get_key(cfg, "train.train_epoch", default=0)
         warmup_ratio = try_get_key(cfg, "train.warmup_ratio", default=0)
-        assert warmup_ratio < 1 and warmup_ratio >= 0, (
-            "cfg.train.warmup_ratio must be in [0, 1) that presents the ratio of warmup iter to the train iter.")
+        assert (
+            warmup_ratio < 1 and warmup_ratio >= 0
+        ), "warmup_ratio must be in [0, 1) that presents the ratio of warmup iter to the train iter"
 
         # Automatically scale iteration num depend on the settings
         # The total iters in one epoch is `len(dataset) / global_batch_size`
-        cfg.train.train_iter = max(math.ceil(len(data_loader.dataset) * train_epoch / cfg.train.global_batch_size), train_iter)
+        cfg.train.train_iter = max(
+            math.ceil(len(data_loader.dataset) * train_epoch / cfg.train.global_batch_size),
+            train_iter,
+        )
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
-        log_info += f"Auto-scaling the config to train.train_iter={cfg.train.train_iter}, train.warmup_iter={cfg.train.warmup_iter}"
-        
+        log_info += "Auto-scaling the config to train.train_iter={}, train.warmup_iter={}".format(
+            cfg.train.warmup_iter,
+            cfg.train.train_iter
+        )
+
         # Automatically scale the milestones
         if try_get_key(cfg, "train.scheduler.milestones"):
-            if len([milestone for milestone in cfg.train.scheduler.milestones if milestone <0 or milestone>=1]):
-                raise ValueError(f"The milestone should be a list of increasing ratio in [0, 1), but got {cfg.train.scheduler.milestones}")
-            cfg.train.scheduler.milestones = [int(milestone * cfg.train.train_iter) for milestone in cfg.train.scheduler.milestones]
+            if len(
+                [
+                    milestone
+                    for milestone in cfg.train.scheduler.milestones
+                    if milestone < 0 or milestone >= 1
+                ]
+            ):
+                raise ValueError(
+                    "The milestone should be a list of increasing ratio in [0, 1), but got {}".format(
+                        cfg.train.scheduler.milestones
+                    )
+                )
+            cfg.train.scheduler.milestones = [
+                int(milestone * cfg.train.train_iter)
+                for milestone in cfg.train.scheduler.milestones
+            ]
             log_info += f", scheduler milestones={cfg.train.scheduler.milestones}"
         logger.info(log_info)
 
