@@ -14,10 +14,12 @@ data = dict(
     make_vocab_size_divisible_by=128,
     data_path=[
         # "/workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence"
-        "/home/wang/data/t5/dataset/loss_compara_content_sentence",
+        # "/home/wang/data/t5/dataset/loss_compara_content_sentence",
+        "/workspace/data/libai_dataset/loss_compara_content_sentence",
     ],
     split="949,50,1",
-    vocab_file="/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt",
+    # vocab_file="/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt",
+    vocab_file="/workspace/data/libai_dataset/bert-base-chinese-vocab.txt",
     merge_file=None,
     vocab_extra_ids=0,
     seq_length=512,

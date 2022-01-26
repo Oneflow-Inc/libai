@@ -33,6 +33,7 @@ optim.lr = 0.0001
 # Set a constant lr scheduler after warmup
 scheduler._target_ = WarmupMultiStepLR
 scheduler.milestones = [1000000]
+scheduler.warmup_iters = 0
 del scheduler.max_iters
 
 data.seq_length = 512
@@ -41,8 +42,10 @@ data.max_seq_length_dec = 128
 data.dataset_type = "t5"
 # data.tokenizer_type = "BertCNWWMTokenizer"
 data.tokenizer_type = "BertWordPieceLowerCase"
-data.data_path = ['/home/wang/data/t5/dataset/loss_compara_content_sentence']
-data.vocab_file = '/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
+# data.data_path = ['/home/wang/data/t5/dataset/loss_compara_content_sentence']
+# data.vocab_file = '/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
+data.data_path = ['/workspace/data/libai_dataset/loss_compara_content_sentence']
+data.vocab_file = '/workspace/data/libai_dataset/bert-base-chinese-vocab.txt'
 data.num_workers = 1
 data.vocab_extra_ids = 100
 data.mmap_warmup = False
@@ -51,7 +54,7 @@ data.mmap_warmup = False
 graph = dict(
     # options for graph or eager mode
     # enabled=True
-    enabled=False,
+    enabled=True,
     debug=-1, # debug mode for graph
     train_graph=LazyCall(T5ForPretrainingGraph)(
         fp16=train.amp.enabled,

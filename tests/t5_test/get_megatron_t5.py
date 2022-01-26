@@ -20,9 +20,12 @@ os.environ['MASTER_ADDR']='localhost'
 os.environ['MASTER_PORT']='12346'
 os.environ['RANK']='0'
 os.environ['WORLD_SIZE']='1'
-os.environ['DATA_PATH']='/home/wang/workspace/Megatron-LM/examples'
-os.environ['VOCAB_FILE']='/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
-os.environ['CHECKPOINT_PATH']='/home/wang/workspace/Megatron-LM/examples'
+# os.environ['DATA_PATH']='/home/wang/workspace/Megatron-LM/examples'
+# os.environ['VOCAB_FILE']='/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
+# os.environ['CHECKPOINT_PATH']='/home/wang/workspace/Megatron-LM/examples'
+os.environ['DATA_PATH']='/workspace/Megatron-LM/examples'
+os.environ['VOCAB_FILE']='/workspace/data/libai_dataset/bert-base-chinese-vocab.txt'
+os.environ['CHECKPOINT_PATH']='/workspace/Megatron-LM/examples'
 import sys
 sys.argv.extend([
     '--num-layers', '6',
@@ -37,10 +40,14 @@ sys.argv.extend([
     '--max-position-embeddings', '512', 
     '--train-iters', '1000000', 
     '--lr-decay-iters', '1000000', 
-    '--save', '/home/wang/workspace/Megatron-LM/examples', 
-    '--load', '/home/wang/workspace/Megatron-LM/examples', 
-    '--data-path', '/home/wang/workspace/Megatron-LM/examples', 
-    '--vocab-file', '/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt', 
+    # '--save', '/home/wang/workspace/Megatron-LM/examples', 
+    # '--load', '/home/wang/workspace/Megatron-LM/examples', 
+    # '--data-path', '/home/wang/workspace/Megatron-LM/examples', 
+    # '--vocab-file', '/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt', 
+    '--save', '/workspace/Megatron-LM/examples', 
+    '--load', '/workspace/Megatron-LM/examples', 
+    '--data-path', '/workspace/Megatron-LM/examples', 
+    '--vocab-file', '/workspace/data/libai_dataset/bert-base-chinese-vocab.txt', 
     '--data-impl', 'mmap', 
     '--split', '949,50,1', 
     '--lr', '0.0001', 
