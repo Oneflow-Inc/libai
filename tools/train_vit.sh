@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 CONFIG=configs/vit_imagenet.py #output/your_task/config.yaml
-GPUS=4
+GPUS=8
 NODE=1
 NODE_RANK=0
 ADDR=127.0.0.1
@@ -14,4 +14,5 @@ python3 -m oneflow.distributed.launch \
     --master_addr $ADDR \
     tools/train_net.py \
     --config-file $CONFIG \
+    --eval-only \
     

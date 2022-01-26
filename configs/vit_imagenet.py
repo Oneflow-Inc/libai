@@ -18,8 +18,8 @@ optim.weight_decay = 0.05
 train.dist.pipeline_num_layers = model.cfg.depth
 
 # Refine train cfg for vit model
-train.train_micro_batch_size = 16
-train.test_micro_batch_size = 64
+train.train_micro_batch_size = 128
+train.test_micro_batch_size = 128
 train.train_epoch = 300
 train.warmup_ratio = 20/300
 train.eval_period = 10
