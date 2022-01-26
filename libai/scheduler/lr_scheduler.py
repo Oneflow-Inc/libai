@@ -98,29 +98,6 @@ def WarmupMultiStepLR(
 
 
 @SCHEDULER_REGISTRY.register()
-def WarmupFixedStepLR(
-    optimizer: flow.optim.Optimizer,
-    max_iter: int,
-    warmup_factor: float,
-    warmup_iter: int,
-    step_size: int,
-    gamma: float = 0.1,
-    warmup_method: str = "linear",
-):
-    fixedstep_lr = flow.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
-    if warmup_iter == 0:
-        logger.warning("warmup iters equals to zero, return FixedStepLR")
-        return fixedstep_lr
-    warmup_fixedstep_lr = flow.optim.lr_scheduler.WarmUpLR(
-        fixedstep_lr,
-        warmup_factor=warmup_factor,
-        warmup_iters=warmup_iter,
-        warmup_method=warmup_method,
-    )
-    return warmup_fixedstep_lr
-
-
-@SCHEDULER_REGISTRY.register()
 def WarmupExponentialLR(
     optimizer: flow.optim.Optimizer,
     max_iter: int,

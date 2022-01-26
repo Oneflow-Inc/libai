@@ -24,7 +24,6 @@ import oneflow.nn as nn
 from libai.scheduler import (
     WarmupCosineLR,
     WarmupExponentialLR,
-    WarmupFixedStepLR,
     WarmupMultiStepLR,
     WarmupPolynomailLR,
 )
@@ -83,32 +82,6 @@ class TestScheduler(TestCase):
                 self.assertAlmostEqual(lr, expected_cosine)
             else:
                 self.assertNotAlmostEqual(lr, expected_cosine)
-
-    def test_warmup_fixedstep(self):
-        p = nn.Parameter(flow.zeros(0))
-        opt = flow.optim.SGD([p], lr=5.0)
-
-        sched = WarmupFixedStepLR(
-            optimizer=opt,
-            step_size=10,
-            gamma=0.1,
-            warmup_factor=0.001,
-            warmup_iters=5,
-            warmup_method="linear",
-        )
-
-        p.sum().backward()
-        opt.step()
-        self.assertEqual(opt.param_groups[0]["lr"], 0.005)
-        lrs = [0.005]
-
-        for _ in range(30):
-            sched.step()
-            lrs.append(opt.param_groups[0]["lr"])
-        self.assertTrue(np.allclose(lrs[:5], [0.005, 1.004, 2.003, 3.002, 4.001]))
-        self.assertTrue(np.allclose(lrs[5:10], 5.0))
-        self.assertTrue(np.allclose(lrs[10:20], 0.5))
-        self.assertTrue(np.allclose(lrs[20:30], 0.05))
 
     def test_warmup_exponential(self):
         p = nn.Parameter(flow.zeros(0))
