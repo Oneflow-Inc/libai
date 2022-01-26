@@ -128,12 +128,17 @@ def get_args():
     )
     group.add_argument("--vocab-file", type=str, default=None, help="Path to the vocab file")
     group.add_argument(
-        "--merges-file", type=str, default=None, help="Path to the BPE merge file (if necessary).",
+        "--merges-file",
+        type=str,
+        default=None,
+        help="Path to the BPE merge file (if necessary).",
     )
     group.add_argument("--do-lower-case", action="store_true", help="Whether to do lower case.")
     group.add_argument("--extra-ids", type=int, default=0, help="Number of extra ids.")
     group.add_argument(
-        "--append-eod", action="store_true", help="Append an <eod> token to the end of a document.",
+        "--append-eod",
+        action="store_true",
+        help="Append an <eod> token to the end of a document.",
     )
 
     group = parser.add_argument_group(title="output data")
@@ -152,7 +157,10 @@ def get_args():
         "--workers", type=int, default=1, help="Number of worker processes to launch"
     )
     group.add_argument(
-        "--log-interval", type=int, default=100, help="Interval between progress updates",
+        "--log-interval",
+        type=int,
+        default=100,
+        help="Interval between progress updates",
     )
     args = parser.parse_args()
 
@@ -168,12 +176,19 @@ def parse_args_to_config(args):
         tokenizer=dict(
             tokenizer_name="",
             tokenizer_cfg=dict(
-                vocab_file=None, merges_file=None, do_lower_case=False, extra_ids=0,
+                vocab_file=None,
+                merges_file=None,
+                do_lower_case=False,
+                extra_ids=0,
             ),
             append_eod=False,
         ),
-        data=dict(make_vocab_size_divisible_by=128,),
-        dist=dict(tensor_parallel_size=1,),
+        data=dict(
+            make_vocab_size_divisible_by=128,
+        ),
+        dist=dict(
+            tensor_parallel_size=1,
+        ),
     )
 
     cfg = DictConfig(default_cfg)
@@ -239,7 +254,9 @@ def main():
             elapsed = current - proc_start
             mbs = total_bytes_processed / elapsed / 1024 / 1024
             print(
-                f"Processed {i} documents", f"({i/elapsed} docs/s, {mbs} MB/s).", file=sys.stderr,
+                f"Processed {i} documents",
+                f"({i/elapsed} docs/s, {mbs} MB/s).",
+                file=sys.stderr,
             )
 
     for key in args.json_keys:

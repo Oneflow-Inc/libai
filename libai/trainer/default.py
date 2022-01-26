@@ -138,7 +138,8 @@ def default_setup(cfg, args):
     if hasattr(args, "config_file") and args.config_file != "":
         logger.info(
             "Contents of args.config_file={}:\n{}".format(
-                args.config_file, _highlight(open(args.config_file, "r").read(), args.config_file),
+                args.config_file,
+                _highlight(open(args.config_file, "r").read(), args.config_file),
             )
         )
 

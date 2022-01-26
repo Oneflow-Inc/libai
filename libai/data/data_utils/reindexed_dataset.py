@@ -52,7 +52,12 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_
         start_time = time.time()
         logger.info("building samples index mapping for {} ...".format(data_prefix))
         samples_mapping = helpers.build_mapping(
-            documents, sizes, max_seq_length, short_seq_prob, verbose, 2 if binary_head else 1,
+            documents,
+            sizes,
+            max_seq_length,
+            short_seq_prob,
+            verbose,
+            2 if binary_head else 1,
         )
         logger.info("done building samples index maping")
         np.save(indexmap_filename, samples_mapping, allow_pickle=True)

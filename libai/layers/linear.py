@@ -149,7 +149,10 @@ class Linear1D(nn.Module):
 
     def extra_repr(self) -> str:
         return "in_features={}, out_features={}, bias={}, parallel={}".format(
-            self.in_features, self.out_features, self.bias is not None, self.parallel,
+            self.in_features,
+            self.out_features,
+            self.bias is not None,
+            self.parallel,
         )
 
 

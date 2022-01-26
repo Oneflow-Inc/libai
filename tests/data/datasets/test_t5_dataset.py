@@ -21,7 +21,11 @@ datat_prefix = "t5_samples_lazy_text_sentence"
 tokenizer = T5Tokenizer(vocab_file="spiece.model", bos_token="<s/>")
 indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="lazy", skip_warmup=False)
 
-dataset = T5Dataset(tokenizer, data_prefix=datat_prefix, indexed_dataset=indexed_dataset,)
+dataset = T5Dataset(
+    tokenizer,
+    data_prefix=datat_prefix,
+    indexed_dataset=indexed_dataset,
+)
 
 print(len(indexed_dataset))
 print(len(dataset))
