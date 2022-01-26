@@ -94,6 +94,9 @@ class CyclicSampler(Sampler):
                     batch = []
 
             current_epoch_samples = 0
+    
+    def __len__(self):
+        return self.data_size
 
     def set_consumed_samples(self, consumed_samples):
         """you can recover the training iteration by setting `consumed_samples`."""
