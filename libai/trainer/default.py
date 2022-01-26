@@ -479,6 +479,7 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def auto_scale_hyperparams(cls, cfg, data_loader):
         logger = logging.getLogger(__name__)
+        log_info = ""
 
         # Get or set default iteration cfg
         train_iter = try_get_key(cfg, "train.train_iter", default=0)
@@ -491,12 +492,15 @@ class DefaultTrainer(TrainerBase):
         # The total iters in one epoch is `len(dataset) / global_batch_size`
         cfg.train.train_iter = max(math.ceil(len(data_loader.dataset) * train_epoch / cfg.train.global_batch_size), train_iter)
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
-        logger.info(f"Auto-scaling the config to train_iter={cfg.train.train_iter}, warmup_iter={cfg.train.warmup_iter}.")
+        log_info += f"Auto-scaling the config to train.train_iter={cfg.train.train_iter}, train.warmup_iter={cfg.train.warmup_iter}"
+        
+        # Automatically scale the milestones
         if try_get_key(cfg, "train.scheduler.milestones"):
             if len([milestone for milestone in cfg.train.scheduler.milestones if milestone <0 or milestone>=1]):
-                raise ValueError("The milestone should be a list of ratio and all the elements should be in [0, 1)")
+                raise ValueError(f"The milestone should be a list of increasing ratio in [0, 1), but got {cfg.train.scheduler.milestones}")
             cfg.train.scheduler.milestones = [int(milestone * cfg.train.train_iter) for milestone in cfg.train.scheduler.milestones]
-            logger.info(f"Auto-scaling the config to milestones={cfg.train.scheduler.milestones}.")
+            log_info += f", scheduler milestones={cfg.train.scheduler.milestones}"
+        logger.info(log_info)
 
         # Consistent scheduler cfg
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
