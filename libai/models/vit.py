@@ -360,7 +360,6 @@ class VisionTransformerGraph(GraphBase):
         images,
         targets,
     ):
-
         # Forward pass through the model
         if self.is_train:
             losses = self.model(images, targets)

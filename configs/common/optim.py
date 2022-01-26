@@ -15,5 +15,6 @@ optim = LazyCall(flow.optim.AdamW)(
     lr=1e-4,
     weight_decay=0.01,
     betas=(0.9, 0.999),
+    eps=1e-8,
     do_bias_correction=True,
 )
