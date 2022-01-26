@@ -1,10 +1,8 @@
 from libai.config import LazyCall
-from libai.scheduler import WarmupCosineLR
-from libai.scheduler.lr_scheduler import WarmupMultiStepLR
 from .common.models.vit import vit_model as model
 from .common.train import train
 from .common.optim import optim
-from .common.data.cv_data import dataloader
+from .common.data.cifar_dataset import dataloader
 
 
 from libai.models import VisionTransformerGraph
