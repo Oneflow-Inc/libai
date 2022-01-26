@@ -132,9 +132,9 @@ def inference_on_dataset(
     """
     num_devices = dist.get_world_size()
     logger = logging.getLogger(__name__)
-    logger.info("Start inference on {} samples".format(len(data_loader)))
+    logger.info("Start inference on {} samples".format(len(data_loader.dataset)))
 
-    total = len(data_loader)  # inference data loader must have a fixed length
+    total = len(data_loader.dataset)  # inference data loader must have a fixed length
     if evaluator is None:
         # create a no-op evaluator
         evaluator = DatasetEvaluators([])
