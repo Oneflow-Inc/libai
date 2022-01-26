@@ -212,7 +212,7 @@ class DefaultTrainer(TrainerBase):
 
         # Initialize tokenizer
         self.tokenizer = None
-        if try_get_key(cfg, "tokenization.setup", default=False):
+        if try_get_key(cfg, "tokenizer.setup", default=False):
             self.tokenizer = self.build_tokenizer(cfg)
 
         # Assume these objects must be constructed in this order.
@@ -373,8 +373,8 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def build_tokenizer(cls, cfg):
         assert (
-            try_get_key(cfg, "tokenization") is not None
-        ), "cfg must contain `tokenization` namespace"
+            try_get_key(cfg, "tokenizer") is not None
+        ), "cfg must contain `tokenizer` namespace"
         return build_tokenizer(cfg)
 
     @classmethod

@@ -7,15 +7,15 @@ from libai.data.data_utils import get_indexed_dataset
 from libai.tokenizer import BertTokenizer
 
 
-tokenization = OmegaConf.create()
+tokenizer = OmegaConf.create()
 
-tokenization.setup = True
-tokenization.tokenizer = LazyCall(BertTokenizer)(
+tokenizer.setup = True
+tokenizer.tokenizer_cfg = LazyCall(BertTokenizer)(
     vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
     do_lower_case=True,
 )
-tokenization.append_eod = False
-tokenization.make_vocab_size_divisible_by = 128
+tokenizer.append_eod = False
+tokenizer.make_vocab_size_divisible_by = 128
 
 dataloader = OmegaConf.create()
 
