@@ -123,7 +123,7 @@ class BertTokenizer(PreTrainedTokenizer):
                 see: https://github.com/huggingface/pytorch-pretrained-BERT/issues/328
             **do_chinese_wwm**: (`optional`) boolean (default False)
                 Whether to do whole word masking for Chinese.
-                Chinese sentence will be segmented by a third-party tool first. 
+                Chinese sentence will be segmented by a third-party tool first.
                 Each substr will be added '##' prefix and its index will be calucated by
                 id(##A) = id(A) + vocab_size.
         """
@@ -376,7 +376,7 @@ class BasicTokenizer(object):
 
 class BasicTokenizerWithChineseWWM(BasicTokenizer):
     """Pre-segmentation for Chinese sentences, which will be used in whole word mask."""
-    
+
     def __init__(self, do_lower_case=True, never_split=None, tokenize_chinese_chars=True):
         super(BasicTokenizerWithChineseWWM, self).__init__(
             do_lower_case=do_lower_case,
@@ -389,9 +389,10 @@ class BasicTokenizerWithChineseWWM(BasicTokenizer):
             self.pre_tokenizer = lambda x: jieba.lcut(x, HMM=False)
         except ImportError:
             raise (ImportError("Chinese whole word mask need jieba"))
-        
+
     def _tokenize_chinese_chars(self, text):
-        """For Chinese pieces, uses jieba to segment the words and adds whitespace around CJK character."""
+        """For Chinese pieces, uses jieba to segment the words and
+        adds whitespace around CJK character."""
         output = []
         piece = ""
         for char in text:
@@ -406,7 +407,7 @@ class BasicTokenizerWithChineseWWM(BasicTokenizer):
                     output.append(" ")
                 output.append(char)
                 piece = ""
-        
+
         chinese_words = self.pre_tokenizer(piece)
         for word in chinese_words:
             output.append(" ")
@@ -458,26 +459,28 @@ class WordpieceTokenizer(object):
                     substr = "".join(chars[start:end])
                     if start > 0:
                         substr = "##" + substr
-                    
+
                     if substr.startswith("##"):
                         if _is_chinese_substr(substr):
-                            if substr[2:] in self.vocab: # for Chinese substr
+                            if substr[2:] in self.vocab:  # for Chinese substr
                                 cur_substr = substr
                                 break
                         else:
-                            if substr in self.vocab: # for English substr
+                            if substr in self.vocab:  # for English substr
                                 cur_substr = substr
                                 break
                     else:
-                        if substr in self.vocab: # non-substr, maybe character or whole Chinese word
+                        if (
+                            substr in self.vocab
+                        ):  # non-substr, maybe character or whole Chinese word
                             cur_substr = substr
                             break
                     end -= 1
-                
+
                 if cur_substr is None:
                     is_bad = True
                     break
-                
+
                 sub_tokens.append(cur_substr)
                 start = end
 

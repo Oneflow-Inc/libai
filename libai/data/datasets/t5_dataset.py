@@ -26,6 +26,15 @@ from libai.data.structures import DistTensorData, Instance
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
 
+def is_start_piece(piece):
+    """Check if the current word piece is the starting piece (BERT)."""
+    # When a word has been split into
+    # WordPieces, the first token does not have any marker and any subsequence
+    # tokens are prefixed with ##. So whenever we see the ## token, we
+    # append it to the previous set of word indexes.
+    return not piece.startswith("##")
+
+
 class T5Dataset(flow.utils.data.Dataset):
     """
     Dataset containing sentences for T5 training.
@@ -129,8 +138,11 @@ class T5Dataset(flow.utils.data.Dataset):
             # Note that Whole Word Masking does *not* change the training code
             # at all -- we still predict each WordPiece independently, softmaxed
             # over the entire vocabulary.
-            if (do_whole_word_mask and len(cand_indexes) >= 1 and
-                    not is_start_piece(self.tokenizer._convert_id_to_token(token))):
+            if (
+                do_whole_word_mask
+                and len(cand_indexes) >= 1
+                and not is_start_piece(self.tokenizer._convert_id_to_token(token))
+            ):
                 cand_indexes[-1].append(i)
             else:
                 cand_indexes.append([i])

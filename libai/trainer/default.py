@@ -211,9 +211,7 @@ class DefaultTrainer(TrainerBase):
             setup_logger()
 
         # Initialize tokenizer
-        self.tokenizer = None
-        if try_get_key(cfg, "tokenizer.setup", default=False):
-            self.tokenizer = self.build_tokenizer(cfg)
+        self.tokenizer = self.build_tokenizer(cfg)
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
@@ -372,10 +370,18 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_tokenizer(cls, cfg):
-        assert (
-            try_get_key(cfg, "tokenizer") is not None
-        ), "cfg must contain `tokenizer` namespace"
-        return build_tokenizer(cfg)
+        """
+        Returns:
+            libai.tokenizer.PreTrainedTokenizer:
+        It now calls :func:`libai.tokenizer.build_tokenizer`.
+        """
+        tokenizer = None
+        if try_get_key(cfg, "tokenizer") is not None:
+            logger = logging.getLogger(__name__)
+            tokenizer_name = cfg.tokenizer.tokenizer_name
+            logger.info("Tokenizer:\n{}".format(tokenizer_name))
+            tokenizer = build_tokenizer(cfg)
+        return tokenizer
 
     @classmethod
     def build_model(cls, cfg):

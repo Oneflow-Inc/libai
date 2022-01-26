@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.data.datasets import GPT2Dataset
 from libai.data.data_utils import get_indexed_dataset
+from libai.data.datasets import GPT2Dataset
 from libai.tokenizer import GPT2Tokenizer
 
 datat_prefix = "gpt_samples_mmap_text_sentence"

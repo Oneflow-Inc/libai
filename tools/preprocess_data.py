@@ -140,7 +140,9 @@ def get_args():
         action="store_true",
         help="Append an <eod> token to the end of a document.",
     )
-    group.add_argument("--do-chinese-wwm", action="store_true", help="Whether to do whole word mask for Chinese.")
+    group.add_argument(
+        "--do-chinese-wwm", action="store_true", help="Whether to do whole word mask for Chinese."
+    )
 
     group = parser.add_argument_group(title="output data")
     group.add_argument(
@@ -187,7 +189,9 @@ def parse_args_to_config(args):
             make_vocab_size_divisible_by=128,
         ),
         train=dict(
-            dist=dict(tensor_parallel_size=1,),
+            dist=dict(
+                tensor_parallel_size=1,
+            ),
         ),
     )
 

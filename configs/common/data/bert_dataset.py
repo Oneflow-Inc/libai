@@ -9,7 +9,6 @@ from libai.tokenizer import BertTokenizer
 
 tokenizer = OmegaConf.create()
 
-tokenizer.setup = True
 tokenizer.tokenizer_cfg = LazyCall(BertTokenizer)(
     vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
     do_lower_case=True,
