@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import math
 import logging
 from functools import partial
@@ -31,7 +32,12 @@ from flowvision.models.helpers import named_apply
 from libai.config.config import configurable
 from .utils import GraphBase
 from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
+from libai.utils import distributed as dist
+from libai.layers import MLP, Linear, LayerNorm
 
+nn.LayerNorm = LayerNorm
+nn.Linear = Linear
+Mlp = MLP
 
 class Attention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, attn_drop=0.0, proj_drop=0.0):
@@ -93,10 +99,11 @@ class Block(nn.Module):
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(
-            in_features=dim,
-            hidden_features=mlp_hidden_dim,
-            act_layer=act_layer,
-            drop=drop,
+            dim, mlp_hidden_dim, drop
+            # in_features=dim,
+            # hidden_features=mlp_hidden_dim,
+            # act_layer=act_layer,
+            # drop=drop,
         )
 
     def forward(self, x):
@@ -170,15 +177,15 @@ class VisionTransformer(nn.Module):
             patch_size=patch_size,
             in_chans=in_chans,
             embed_dim=embed_dim,
-        )
+        ).to_consistent(sbp=flow.sbp.broadcast, placement=dist.get_all_placement())
         num_patches = self.patch_embed.num_patches
 
-        self.cls_token = nn.Parameter(flow.zeros(1, 1, embed_dim))
+        self.cls_token = nn.Parameter(flow.zeros(1, 1, embed_dim, sbp=flow.sbp.broadcast, placement=dist.get_all_placement()))
         self.dist_token = (
-            nn.Parameter(flow.zeros(1, 1, embed_dim)) if distilled else None
+            nn.Parameter(flow.zeros(1, 1, embed_dim, sbp=flow.sbp.broadcast, placement=dist.get_all_placement())) if distilled else None
         )
         self.pos_embed = nn.Parameter(
-            flow.zeros(1, num_patches + self.num_tokens, embed_dim)
+            flow.zeros(1, num_patches + self.num_tokens, embed_dim, sbp=flow.sbp.broadcast, placement=dist.get_all_placement())
         )
         self.pos_drop = nn.Dropout(p=drop_rate)
 
@@ -281,12 +288,15 @@ class VisionTransformer(nn.Module):
         cls_token = self.cls_token.expand(
             x.shape[0], -1, -1
         )  # stole cls_tokens impl from Phil Wang, thanks
+        cls_token = cls_token.to_consistent(sbp=flow.sbp.split(0), placement=cls_token.placement)
         if self.dist_token is None:
             x = flow.cat((cls_token, x), dim=1)
         else:
             x = flow.cat(
-                (cls_token, self.dist_token.expand(x.shape[0], -1, -1), x), dim=1
+                (cls_token, self.dist_token.expand(x.shape[0], -1, -1), x).to_consistent(sbp=flow.sbp.split(0), placement=self.dist_token.placement), dim=1
             )
+        self.pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
+        self.pos_embed = self.pos_embed.to_consistent(sbp=flow.sbp.split(0), placement=self.pos_embed.placement)
         x = self.pos_drop(x + self.pos_embed)
         # transformer encoder
         x = self.blocks(x)
@@ -360,7 +370,6 @@ class VisionTransformerGraph(GraphBase):
         images,
         targets,
     ):
-
         # Forward pass through the model
         if self.is_train:
             losses = self.model(images, targets)
