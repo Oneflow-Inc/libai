@@ -35,7 +35,7 @@ def main(args):
         graph = DefaultTrainer.build_graph(cfg, model, is_train=False)
         test_loader = DefaultTrainer.build_test_loader(cfg)
         res = DefaultTrainer.test(cfg, test_loader, graph)  # noqa
-        return 
+        return
 
     trainer = DefaultTrainer(cfg)
     return trainer.train()

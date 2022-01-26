@@ -21,10 +21,7 @@ train_aug = LazyCall(transforms.Compose)(
         ),
         LazyCall(transforms.RandomHorizontalFlip)(),
         LazyCall(transforms.ToTensor)(),
-        LazyCall(transforms.Normalize)(
-            mean=CIFAR100_TRAIN_MEAN, 
-            std=CIFAR100_TRAIN_STD
-        )
+        LazyCall(transforms.Normalize)(mean=CIFAR100_TRAIN_MEAN, std=CIFAR100_TRAIN_STD),
     ]
 )
 
@@ -50,9 +47,7 @@ test_aug = LazyCall(transforms.Compose)(
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
-        LazyCall(CIFAR100Dataset)(
-            root="./", train=True, download=True, transform=train_aug
-        ),
+        LazyCall(CIFAR100Dataset)(root="./", train=True, download=True, transform=train_aug),
     ],
 )
 

@@ -14,23 +14,20 @@
 # limitations under the License.
 
 import math
-import logging
-from functools import partial
 from collections import OrderedDict
+from functools import partial
 
 import oneflow as flow
 import oneflow.nn as nn
-import oneflow.nn.functional as F
-
-from flowvision.layers.blocks import PatchEmbed, Mlp
+from flowvision.layers.blocks import Mlp, PatchEmbed
 from flowvision.layers.regularization import DropPath
-from flowvision.layers.weight_init import trunc_normal_, lecun_normal_
+from flowvision.layers.weight_init import lecun_normal_, trunc_normal_
 from flowvision.models.helpers import named_apply
 
-
 from libai.config.config import configurable
+
+from .build import GRAPH_REGISTRY, MODEL_ARCH_REGISTRY
 from .utils import GraphBase
-from .build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
 
 
 class Attention(nn.Module):
@@ -48,9 +45,7 @@ class Attention(nn.Module):
     def forward(self, x):
         B, N, C = x.shape
         qkv = (
-            self.qkv(x)
-            .reshape(B, N, 3, self.num_heads, C // self.num_heads)
-            .permute(2, 0, 3, 1, 4)
+            self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         )
         # TODO supported tensor.unbind in oneflow
         # q, k, v = qkv.unbind(0)
@@ -107,8 +102,8 @@ class Block(nn.Module):
 
 @MODEL_ARCH_REGISTRY.register()
 class VisionTransformer(nn.Module):
-    """ Vision Transformer
-    An OneFlow impl of : `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`
+    """Vision Transformer
+    An OneFlow impl of: `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`
         - https://arxiv.org/abs/2010.11929
     Includes distillation token & head support for `DeiT: Data-efficient Image Transformers`
         - https://arxiv.org/abs/2012.12877
@@ -147,7 +142,8 @@ class VisionTransformer(nn.Module):
             num_heads (int): number of attention heads
             mlp_ratio (int): ratio of mlp hidden dim to embedding dim
             qkv_bias (bool): enable bias for qkv if True
-            representation_size (Optional[int]): enable and set representation layer (pre-logits) to this value if set
+            representation_size (Optional[int]): enable and set representation layer (pre-logits)
+                                                 to this value if set
             distilled (bool): model includes a distillation token and head as in DeiT models
             drop_rate (float): dropout rate
             attn_drop_rate (float): attention dropout rate
@@ -174,12 +170,8 @@ class VisionTransformer(nn.Module):
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(flow.zeros(1, 1, embed_dim))
-        self.dist_token = (
-            nn.Parameter(flow.zeros(1, 1, embed_dim)) if distilled else None
-        )
-        self.pos_embed = nn.Parameter(
-            flow.zeros(1, num_patches + self.num_tokens, embed_dim)
-        )
+        self.dist_token = nn.Parameter(flow.zeros(1, 1, embed_dim)) if distilled else None
+        self.pos_embed = nn.Parameter(flow.zeros(1, num_patches + self.num_tokens, embed_dim))
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         dpr = [
@@ -218,24 +210,17 @@ class VisionTransformer(nn.Module):
             self.pre_logits = nn.Identity()
 
         # Classifier head(s)
-        self.head = (
-            nn.Linear(self.num_features, num_classes)
-            if num_classes > 0
-            else nn.Identity()
-        )
+        self.head = nn.Linear(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
         self.head_dist = None
         if distilled:
             self.head_dist = (
-                nn.Linear(self.embed_dim, self.num_classes)
-                if num_classes > 0
-                else nn.Identity()
+                nn.Linear(self.embed_dim, self.num_classes) if num_classes > 0 else nn.Identity()
             )
 
         # Loss func
         self.loss_func = nn.CrossEntropyLoss()
 
         self.init_weights(weight_init)
-
 
     @classmethod
     def from_config(cls, cfg):
@@ -254,7 +239,6 @@ class VisionTransformer(nn.Module):
             "drop_path_rate": cfg.drop_path_rate,
         }
 
-
     def init_weights(self, mode=""):
         assert mode in ("jax", "jax_nlhb", "nlhb", "")
         head_bias = -math.log(self.num_classes) if "nlhb" in mode else 0.0
@@ -263,9 +247,7 @@ class VisionTransformer(nn.Module):
             trunc_normal_(self.dist_token, std=0.02)
         if mode.startswith("jax"):
             # leave cls token as zeros to match jax impl
-            named_apply(
-                partial(_init_vit_weights, head_bias=head_bias, jax_impl=True), self
-            )
+            named_apply(partial(_init_vit_weights, head_bias=head_bias, jax_impl=True), self)
         else:
             trunc_normal_(self.cls_token, std=0.02)
             self.apply(_init_vit_weights)
@@ -286,10 +268,15 @@ class VisionTransformer(nn.Module):
             x = flow.cat((cls_token, x), dim=1)
         else:
             x = flow.cat(
-                (cls_token, self.dist_token.expand(x.shape[0], -1, -1), x).to_consistent(sbp=flow.sbp.split(0), placement=self.dist_token.placement), dim=1
+                (cls_token, self.dist_token.expand(x.shape[0], -1, -1), x).to_consistent(
+                    sbp=flow.sbp.split(0), placement=self.dist_token.placement
+                ),
+                dim=1,
             )
         self.pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
-        self.pos_embed = self.pos_embed.to_consistent(sbp=flow.sbp.split(0), placement=self.pos_embed.placement)
+        self.pos_embed = self.pos_embed.to_consistent(
+            sbp=flow.sbp.split(0), placement=self.pos_embed.placement
+        )
         x = self.pos_drop(x + self.pos_embed)
         # transformer encoder
         x = self.blocks(x)
@@ -323,7 +310,7 @@ class VisionTransformer(nn.Module):
 def _init_vit_weights(
     module: nn.Module, name: str = "", head_bias: float = 0.0, jax_impl: bool = False
 ):
-    """ ViT weight initialization
+    """ViT weight initialization
     * When called without n, head_bias, jax_impl args it will behave exactly the same
       as my original init for compatibility with prev hparam / downstream use cases (ie DeiT).
     * When called w/ valid n (module name) and jax_impl=True, will (hopefully) match JAX impl

@@ -12,9 +12,7 @@ dataloader = OmegaConf.create()
 
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
-        LazyCall(CIFAR100Dataset)(
-            root="./", train=True, download=True, transform=train_aug_cfg
-        ),
+        LazyCall(CIFAR100Dataset)(root="./", train=True, download=True, transform=train_aug_cfg),
     ],
 )
 
