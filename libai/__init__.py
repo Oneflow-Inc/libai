@@ -16,4 +16,18 @@
 
 # This line will be programatically read/write by setup.py.
 # Leave them at the bottom of this file and don't touch them.
-__version__ = "0.1"
+
+from libai import data
+from libai import evaluation
+from libai import layers
+from libai import models
+from libai import optim
+from libai import scheduler
+from libai import tokenizer
+from libai import trainer
+from libai import utils
+
+try:
+    from .version import __version__  # noqa: F401
+except ImportError:
+    pass

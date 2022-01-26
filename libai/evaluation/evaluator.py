@@ -132,9 +132,9 @@ def inference_on_dataset(
     """
     num_devices = dist.get_world_size()
     logger = logging.getLogger(__name__)
-    logger.info("Start inference on {} samples".format(len(data_loader)))
+    logger.info("Start inference on {} samples".format(len(data_loader.dataset)))
 
-    total = len(data_loader)  # inference data loader must have a fixed length
+    total = len(data_loader.dataset)  # inference data loader must have a fixed length
     if evaluator is None:
         # create a no-op evaluator
         evaluator = DatasetEvaluators([])
@@ -187,7 +187,9 @@ def inference_on_dataset(
             eval_seconds_per_iter = total_eval_time / iters_after_start
             total_seconds_per_iter = (time.perf_counter() - start_time) / iters_after_start
             if idx >= num_warmup * 2 or compute_seconds_per_iter > 5:
-                eta = datetime.timedelta(seconds=int(total_seconds_per_iter * (total - idx - 1)))
+                eta = datetime.timedelta(
+                    seconds=int(total_seconds_per_iter * (total // batch_size - idx - 1))
+                )
                 log_every_n_seconds(
                     logging.INFO,
                     (
