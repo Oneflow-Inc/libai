@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.data import GPT2Dataset
+from libai.data.datasets import GPT2Dataset
 from libai.data.data_utils import get_indexed_dataset
 from libai.tokenizer import GPT2Tokenizer
 

@@ -18,6 +18,7 @@
 import collections
 import logging
 import os
+import re
 import unicodedata
 from io import open
 
@@ -120,6 +121,11 @@ class BertTokenizer(PreTrainedTokenizer):
                 Whether to tokenize Chinese characters.
                 This should likely be deactivated for Japanese:
                 see: https://github.com/huggingface/pytorch-pretrained-BERT/issues/328
+            **do_chinese_wwm**: (`optional`) boolean (default False)
+                Whether to do whole word masking for Chinese.
+                Chinese sentence will be segmented by a third-party tool first. 
+                Each substr will be added '##' prefix and its index will be calucated by
+                id(##A) = id(A) + vocab_size.
         """
         super(BertTokenizer, self).__init__(
             unk_token=unk_token,

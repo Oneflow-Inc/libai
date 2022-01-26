@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.data import T5Dataset
+from libai.data.datasets import T5Dataset
 from libai.data.data_utils import get_indexed_dataset
 from libai.tokenizer import T5Tokenizer
 

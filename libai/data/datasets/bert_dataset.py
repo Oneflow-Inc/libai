@@ -234,7 +234,7 @@ class BertDataset(flow.utils.data.Dataset):
                 cand_indexes[-1].append(i)
             else:
                 cand_indexes.append([i])
-                if is_start_piece(self.tokenizer._convert_id_to_token(token))):
+                if is_start_piece(self.tokenizer._convert_id_to_token(token)):
                     token_boundary[i] = 1
 
         tokens = new_tokens

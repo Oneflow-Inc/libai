@@ -184,12 +184,10 @@ def parse_args_to_config(args):
                 do_chinese_wwm=False,
             ),
             append_eod=False,
-        ),
-        data=dict(
             make_vocab_size_divisible_by=128,
         ),
-        dist=dict(
-            tensor_parallel_size=1,
+        train=dict(
+            dist=dict(tensor_parallel_size=1,),
         ),
     )
 
