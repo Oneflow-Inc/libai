@@ -2,7 +2,7 @@ from libai.config import LazyCall
 from .common.models.vit import vit_model as model
 from .common.train import train
 from .common.optim import optim
-from .common.data.cifar_dataset import dataloader
+from .common.data.cifar import dataloader
 
 
 from libai.models import VisionTransformerGraph
