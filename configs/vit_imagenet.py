@@ -1,5 +1,5 @@
 from libai.config import LazyCall
-from .common.models.vit import vit_model as model
+from .common.models.vision_transformer import vit_model as model
 from .common.train import train
 from .common.optim import optim
 from .common.data.cifar import dataloader
