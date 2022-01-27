@@ -5,7 +5,7 @@ from libai.scheduler import WarmupCosineLR
 train = dict(
     output_dir="./demo_output/test_config",
 
-    # batch size and gradient accumulation
+    # Batch size and gradient accumulation
     train_micro_batch_size=32,
     test_micro_batch_size=32,
     global_batch_size=None,
@@ -18,7 +18,7 @@ train = dict(
     lr_decay_iter=None,
     eval_iter=10000,
 
-    # performance related
+    # Performance related
     amp=dict(enabled=False),  # options for Automatic Mixed Precision
     recompute_grad=dict(enabled=False),  # options for recompute gradient
     # NCCL fusion threshold megabytes, set to 0 to compatible with previous version of OneFlow
