@@ -22,9 +22,6 @@ from libai.utils import distributed as dist
 
 from .vision_transformer import drop_path
 
-nn.Linear = Linear
-nn.LayerNorm = LayerNorm
-
 
 # helpers
 def to_2tuple(x):
@@ -117,9 +114,9 @@ class WindowAttention(nn.Module):
             ),
         )
 
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.qkv = Linear(dim, dim * 3, bias=qkv_bias)
         self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
+        self.proj = Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
         self.softmax = nn.Softmax(dim=-1)
         self.fused_bias_add_dropout = fused_bias_add_dropout
@@ -205,8 +202,7 @@ class SwinTransformerBlock(nn.Module):
         drop=0.0,
         attn_drop=0.0,
         drop_path=0.0,
-        act_layer=nn.GELU,
-        norm_layer=nn.LayerNorm,
+        norm_layer=LayerNorm,
     ):
         super().__init__()
         self.dim = dim
@@ -333,11 +329,11 @@ class PatchMerging(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
     """
 
-    def __init__(self, input_resolution, dim, norm_layer=nn.LayerNorm):
+    def __init__(self, input_resolution, dim, norm_layer=LayerNorm):
         super().__init__()
         self.input_resolution = input_resolution
         self.dim = dim
-        self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
+        self.reduction = Linear(4 * dim, 2 * dim, bias=False)
         self.norm = norm_layer(4 * dim)
 
     def forward(self, x):
@@ -447,7 +443,7 @@ class BasicLayer(nn.Module):
         drop=0.0,
         attn_drop=0.0,
         drop_path=0.0,
-        norm_layer=nn.LayerNorm,
+        norm_layer=LayerNorm,
         downsample=None,
         use_checkpoint=False,
     ):
@@ -538,7 +534,7 @@ class SwinTransformer(nn.Module):
         drop_rate=0.0,
         attn_drop_rate=0.0,
         drop_path_rate=0.1,
-        norm_layer=nn.LayerNorm,
+        norm_layer=LayerNorm,
         ape=False,
         patch_norm=True,
         use_checkpoint=False,
@@ -604,8 +600,9 @@ class SwinTransformer(nn.Module):
 
         self.norm = norm_layer(self.num_features)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.head = nn.Linear(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
+        self.head = Linear(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
 
+        self.loss_func = nn.CrossEntropyLoss()
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -631,7 +628,11 @@ class SwinTransformer(nn.Module):
         x = flow.flatten(x, 1)
         return x
 
-    def forward(self, x):
+    def forward(self, x, targets=None):
         x = self.forward_features(x)
         x = self.head(x)
+        if targets is not None:
+            losses = self.loss_func(x, targets)
+            return losses
+
         return x
