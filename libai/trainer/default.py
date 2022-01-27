@@ -528,6 +528,7 @@ class DefaultTrainer(TrainerBase):
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
         cfg.train.scheduler.max_iter = cfg.train.train_iter
 
+    @classmethod
     def build_evaluator(cls, cfg):
         return ClsEvaluator(cfg)
 
