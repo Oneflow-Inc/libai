@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+import math
 import os
 from collections import OrderedDict
 
@@ -213,6 +214,28 @@ class DefaultTrainer(TrainerBase):
         # Initialize tokenizer
         self.tokenizer = self.build_tokenizer(cfg)
 
+        # Create dataloader defined by the given config
+        # Resume dataloader or not
+        # TODO: Add dataloader resume
+        # if cfg.train.resume:
+        #     cfg.dataloader.cousumed_samples = ...
+
+        self.train_loader = None
+        self.test_loader = []
+
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
+        self.train_loader = train_loader
+
+        if val_loader is not None:
+            self.test_loader.append(val_loader)
+        if test_loader is not None:
+            self.test_loader.append(test_loader)
+
+        self.test_loader.extend(self.build_test_loader(cfg))
+
+        # Automatically scale the hyperparams
+        self.auto_scale_hyperparams(cfg, self.train_loader)
+
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
         self.optimizer = self.build_optimizer(cfg, self.model)
@@ -233,19 +256,6 @@ class DefaultTrainer(TrainerBase):
         # the last breakpoint.
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
-
-        self.train_loader = None
-        self.test_loader = []
-
-        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
-        self.train_loader = train_loader
-
-        if val_loader is not None:
-            self.test_loader.append(val_loader)
-        if test_loader is not None:
-            self.test_loader.append(test_loader)
-
-        self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
             self.graph_train = self.build_graph(
@@ -426,8 +436,10 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        assert try_get_key(cfg, "scheduler") is not None, "cfg must contain `scheduler` namespace"
-        return build_lr_scheduler(cfg.scheduler, optimizer)
+        assert (
+            try_get_key(cfg, "train.scheduler") is not None
+        ), "cfg.train must contain `scheduler` namespace"
+        return build_lr_scheduler(cfg.train.scheduler, optimizer)
 
     @classmethod
     def build_train_loader(cls, cfg, tokenizer=None):
@@ -474,6 +486,54 @@ class DefaultTrainer(TrainerBase):
         return test_loader
 
     @classmethod
+    def auto_scale_hyperparams(cls, cfg, data_loader):
+        logger = logging.getLogger(__name__)
+        log_info = ""
+
+        # Get or set default iteration cfg
+        train_iter = try_get_key(cfg, "train.train_iter", default=0)
+        train_epoch = try_get_key(cfg, "train.train_epoch", default=0)
+        warmup_ratio = try_get_key(cfg, "train.warmup_ratio", default=0)
+        assert (
+            warmup_ratio < 1 and warmup_ratio >= 0
+        ), "warmup_ratio must be in [0, 1) that presents the ratio of warmup iter to the train iter"
+
+        # Automatically scale iteration num depend on the settings
+        # The total iters in one epoch is `len(dataset) / global_batch_size`
+        cfg.train.train_iter = max(
+            math.ceil(len(data_loader.dataset) * train_epoch / cfg.train.global_batch_size),
+            train_iter,
+        )
+        cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
+        log_info += "Auto-scaling the config to train.train_iter={}, train.warmup_iter={}".format(
+            cfg.train.warmup_iter, cfg.train.train_iter
+        )
+
+        # Automatically scale the milestones
+        if try_get_key(cfg, "train.scheduler.milestones"):
+            if len(
+                [
+                    milestone
+                    for milestone in cfg.train.scheduler.milestones
+                    if milestone < 0 or milestone >= 1
+                ]
+            ):
+                raise ValueError(
+                    "milestones should be a list of increasing ratio in [0, 1), but got {}".format(
+                        cfg.train.scheduler.milestones
+                    )
+                )
+            cfg.train.scheduler.milestones = [
+                int(milestone * cfg.train.train_iter)
+                for milestone in cfg.train.scheduler.milestones
+            ]
+            log_info += f", scheduler milestones={cfg.train.scheduler.milestones}"
+        logger.info(log_info)
+
+        # Consistent scheduler cfg
+        cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
+        cfg.train.scheduler.max_iter = cfg.train.train_iter
+
     def build_evaluator(cls, cfg):
         return ClsEvaluator(cfg)
 
