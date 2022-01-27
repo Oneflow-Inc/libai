@@ -11,7 +11,6 @@ cfg = dict(
     hidden_dropout_prob=0.1,
     attention_probs_dropout_prob=0.1,
     max_position_embeddings=512,
-    num_tokentypes=0,
     add_pooling_layer=True,
     initializer_range=0.02,
     layernorm_eps=1e-5,
@@ -19,7 +18,6 @@ cfg = dict(
     bias_dropout_fusion=True,
     scale_mask_softmax_fusion=False,
     apply_query_key_layer_scaling=True,
-    fp16=False,
 )
 
 t5_model = LazyCall(T5Model)(cfg=cfg)
