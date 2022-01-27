@@ -1,7 +1,6 @@
 import oneflow as flow
-from libai.optim import get_default_optimizer_params
-from libai.scheduler import WarmupCosineAnnealingLR
 
+from libai.optim import get_default_optimizer_params
 from libai.config import LazyCall
 
 optim = LazyCall(flow.optim.AdamW)(
@@ -17,8 +16,4 @@ optim = LazyCall(flow.optim.AdamW)(
     weight_decay=0.01,
     betas=(0.9, 0.999),
     do_bias_correction=True,
-)
-
-scheduler = LazyCall(WarmupCosineAnnealingLR)(
-    max_iters=1000, warmup_factor=0, warmup_iters=100, warmup_method="linear"
 )

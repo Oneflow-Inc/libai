@@ -17,11 +17,12 @@ import sys
 
 import oneflow as flow
 from omegaconf import OmegaConf
+from oneflow.utils.data import DataLoader, TensorDataset
 
 sys.path.append(".")
 from libai.config import LazyCall, default_argument_parser
 from libai.optim import get_default_optimizer_params
-from libai.scheduler import WarmupCosineLR
+from libai.scheduler import WarmupMultiStepLR
 from libai.trainer import DefaultTrainer, default_setup
 from tests.layers.test_trainer_model import build_graph, build_model
 
@@ -35,7 +36,8 @@ def setup(args):
 
     cfg.train = dict(
         output_dir="./demo_output",
-        micro_batch_size=32,
+        train_micro_batch_size=32,
+        test_micro_batch_size=32,
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
@@ -44,12 +46,21 @@ def setup(args):
         ),
         start_iter=0,
         train_iter=20,
+        train_epoch=1,
+        warmup_ratio=0.05,
         lr_warmup_fraction=0.01,
         lr_decay_iter=6000,
+        eval_period=1000,
         log_period=1,
         checkpointer=dict(period=100),
         nccl_fusion_threshold_mb=16,
         nccl_fusion_max_ops=24,
+        scheduler=LazyCall(WarmupMultiStepLR)(
+            warmup_factor=0.001,
+            # alpha=0.01,
+            warmup_method="linear",
+            milestones=[0.1, 0.2],
+        ),
     )
 
     cfg.optim = LazyCall(flow.optim.AdamW)(
@@ -65,14 +76,6 @@ def setup(args):
         weight_decay=0.01,
         betas=(0.9, 0.999),
         do_bias_correction=True,
-    )
-
-    cfg.scheduler = LazyCall(WarmupCosineLR)(
-        max_iters=2000,
-        alpha=0.001,
-        warmup_factor=0.001,
-        warmup_iters=1000,
-        warmup_method="linear",
     )
 
     cfg.graph = dict(
@@ -111,12 +114,18 @@ class DemoTrainer(DefaultTrainer):
         ]
 
     @classmethod
-    def build_train_loader(cls, cfg):
-        return range(1000), range(10), range(10)
+    def build_train_loader(cls, cfg, tokenizer=None):
+        return (
+            DataLoader(
+                TensorDataset(flow.randn(1000)), batch_size=cfg.train.train_micro_batch_size
+            ),
+            None,
+            None,
+        )
 
     @classmethod
     def build_test_loader(cls, cfg):
-        return [range(10)]
+        return []
 
 
 def main(args):
