@@ -2,7 +2,6 @@ import sys
 import oneflow as flow
 
 sys.path.append(".")
-from dataset.qqp_dataset import build_train_valid_test_data_iterators
 
 from libai.config import LazyConfig, default_argument_parser
 from libai.utils import distributed as dist
@@ -37,21 +36,6 @@ def get_batch(data_iterator):
 
 
 class Trainer(DefaultTrainer):
-    @classmethod
-    def build_train_valid_test_loader(cls, cfg):
-        """
-        Returns:
-            iterable
-        It now calls :func:`libai.data.build_reid_train_loader`.
-        Overwrite it if you'd like a different data loader.
-        """
-        logger = logging.getLogger("libai."+__name__)
-        logger.info("Prepare training set")
-        return build_train_valid_test_data_iterators(cfg)
-    
-
-    def run_step(self):
-        return super().run_step(get_batch)
 
 
 def main(args):

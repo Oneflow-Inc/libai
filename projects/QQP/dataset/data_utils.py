@@ -1,6 +1,7 @@
 import re
 import numpy as np
-
+import oneflow as flow
+from libai.data.structures import DistTensorData, Instance
 
 def clean_text(text):
     """Remove new lines and multiple spaces and adjust end of sentence dot."""
@@ -19,11 +20,18 @@ def build_sample(ids, types, paddings, label, unique_id):
     ids_np = np.array(ids, dtype=np.int64)
     types_np = np.array(types, dtype=np.int64)
     paddings_np = np.array(paddings, dtype=np.int64)
-    sample = {'text': ids_np,
-              'types': types_np,
-              'padding_mask': paddings_np,
-              'label': int(label),
-              'uid': int(unique_id)}
+    sample = Instance(
+        text=DistTensorData(flow.tensor(ids_np, dtype=flow.long), placement_idx=0),
+        padding_mask=DistTensorData(flow.tensor(paddings_np, dtype=flow.long), placement_idx=0),
+        types=DistTensorData(flow.tensor(types_np, dtype=flow.long), placement_idx=0),
+        label=DistTensorData(flow.tensor(label, dtype=flow.long), placement_idx=-1),
+    )
+    
+    # sample = {'text': ids_np,
+    #           'types': types_np,
+    #           'padding_mask': paddings_np,
+    #           'label': int(label),
+    #           'uid': int(unique_id)}
 
     return sample
 

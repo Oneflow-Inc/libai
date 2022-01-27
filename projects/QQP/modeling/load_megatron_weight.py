@@ -38,7 +38,7 @@ def change_megatron_key(state_dict):
     encoder = language_model["encoder"]
     for key, value in encoder.items():
         # Change layers.0.input_layernorm.weight -> encoder.layers_0.input_layernorm.weight
-        key = "encoder." + key.replace("layers.", "layers_")
+        key = "encoders." + key.replace("layers.", "")
         of_state_dict[key] = convert_tensor(value)
 
     # Pooler.

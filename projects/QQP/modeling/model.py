@@ -1,5 +1,5 @@
-from libai.models.utils import init_method_normal
-from libai.models.bert_model import BertModel, BertForPretrainingGraph
+from libai.models.utils import init_method_normal, GraphBase
+from libai.models.bert_model import BertModel
 from libai.layers import Linear
 from oneflow import nn
 import oneflow as flow
@@ -61,9 +61,9 @@ class Classification(nn.Module):
         return classification_logits
     
     
-class ClassificationGraph(BertForPretrainingGraph):
+class ClassificationGraph(GraphBase):
     def build(self, tokens, padding_mask, tokentype_ids, label=None):
-        if self.is_eval:
+        if not self.is_train:
             return self.model(tokens, padding_mask, tokentype_ids)
         else:
             losses = self.model(

@@ -1,10 +1,10 @@
 import oneflow as flow
-from libai.data.data_samplers import MegatronPretrainingSampler, MegatronPretrainingRandomSampler
-from libai.data.build import cyclic_iter
+# from libai.data.data_samplers import MegatronPretrainingSampler, MegatronPretrainingRandomSampler
+# from libai.data.build import cyclic_iter
 from libai.utils import distributed as dist
 from .data_utils import clean_text
 from .data import GLUEAbstractDataset
-from libai.tokenizer import get_tokenizer
+# from libai.tokenizer import get_tokenizer
 import logging
 
 logger = logging.getLogger("libai."+__name__)

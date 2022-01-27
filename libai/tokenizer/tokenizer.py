@@ -21,7 +21,8 @@ import re
 from libai.utils import distributed as dist
 
 from .bert_tokenization import FullTokenizer as FullBertTokenizer
-from .gpt2_tokenization import GPT2Tokenizer
+from .tokenization_gpt2 import GPT2Tokenizer
+from .tokenization_base import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -291,7 +292,7 @@ class _BertWordPieceTokenizer(AbstractTokenizer):
         self._additional_special_tokens = value
 
 
-class _BertCNWWMTokenizer(AbstractTokenizer):
+class _BertCNWWMTokenizer(PreTrainedTokenizer):
     """Chinese whole word BERT tokenizer."""
 
     def __init__(self, vocab_file, lower_case=True, vocab_extra_ids=0):

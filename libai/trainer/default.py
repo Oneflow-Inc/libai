@@ -233,7 +233,7 @@ class DefaultTrainer(TrainerBase):
         if test_loader is not None:
             self.test_loader.append(test_loader)
 
-        self.test_loader.extend(self.build_test_loader(cfg))
+        self.test_loader.extend(self.build_test_loader(cfg, self.tokenizer))
 
         # Automatically scale the hyperparams
         self.auto_scale_hyperparams(cfg, self.train_loader)
@@ -463,7 +463,7 @@ class DefaultTrainer(TrainerBase):
         return train_loader, valid_loader, test_loader
 
     @classmethod
-    def build_test_loader(cls, cfg):
+    def build_test_loader(cls, cfg, tokenizer=None):
         # TODO: add doc string
         # If there is no test_loader, just return []
         if not try_get_key(cfg, "dataloader.test", default=False):
@@ -475,6 +475,8 @@ class DefaultTrainer(TrainerBase):
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+            if tokenizer:
+                cfg.dataloader.test[i].dataset.tokenizer = tokenizer
         # list[dataloader1, dataloader2, ...]
         test_loader = instantiate(cfg.dataloader.test)
         return test_loader
