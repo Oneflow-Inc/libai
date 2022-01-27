@@ -405,10 +405,10 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
         assert try_get_key(cfg, "graph") is not None, "cfg must contain `graph` namespace"
-        graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
-        logger = logging.getLogger(__name__)
+        graph = build_graph(cfg, model, optimizer, lr_scheduler, is_train)
         debug_graph = try_get_key(cfg, "graph.debug", default=-1)
         if debug_graph >= 0:
+            logger = logging.getLogger(__name__)
             logger.info("Graph debug mode on, automatically output debug info.")
             graph.debug(cfg.graph.debug)
         return graph
@@ -500,7 +500,7 @@ class DefaultTrainer(TrainerBase):
         )
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
         log_info += "Auto-scaling the config to train.train_iter={}, train.warmup_iter={}".format(
-            cfg.train.warmup_iter, cfg.train.train_iter
+            cfg.train.train_iter, cfg.train.warmup_iter
         )
 
         # Automatically scale the milestones
