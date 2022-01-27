@@ -29,18 +29,16 @@ train.scheduler.alpha = 0.01
 train.scheduler.warmup_method = "linear"
 
 # Set fp16 ON
-train.amp.enabled = False
+train.amp.enabled = True
 
 # fmt: off
 graph = dict(
     # options for graph or eager mode
     enabled=True,
     train_graph=LazyCall(VisionTransformerGraph)(
-        fp16=train.amp.enabled,
         is_train=True,
     ),
     eval_graph=LazyCall(VisionTransformerGraph)(
-        fp16=train.amp.enabled,
         is_train=False,),
     debug=-1,
 )
