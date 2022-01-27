@@ -27,6 +27,7 @@ class GraphBase(nn.Graph):
         lr_scheduler: flow.optim.lr_scheduler = None,
         fp16=False,
         recompute_grad=False,
+        grad_acc_steps=1,
         is_train=True,
     ):
         super().__init__()
@@ -38,7 +39,8 @@ class GraphBase(nn.Graph):
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
             if recompute_grad:
                 self.set_activation_checkpoint()
-            self.set_pipeline_stage_id()
+            if grad_acc_steps > 1:
+                self.config.set_gradient_accumulation_steps(grad_acc_steps)
             if fp16:
                 self.config.enable_amp(True)
                 grad_scaler = flow.amp.GradScaler(
@@ -48,7 +50,7 @@ class GraphBase(nn.Graph):
                     growth_interval=2000,
                 )
                 self.set_grad_scaler(grad_scaler)
-
+            self.set_pipeline_stage_id()
         self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)

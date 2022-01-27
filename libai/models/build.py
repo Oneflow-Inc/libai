@@ -58,6 +58,7 @@ def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
             graph.lr_scheduler = lr_scheduler
             graph.fp16 = try_get_key(cfg, "train.amp.enabled", default=False)
             graph.recompute_grad = try_get_key(cfg, "train.recompute_grad.enabled", default=False)
+            graph.grad_acc_steps = try_get_key(cfg, "train.num_accumulation_steps", default=1)
             return instantiate(graph)
         else:
             graph_name = cfg.train_graph.graph_name

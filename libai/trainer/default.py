@@ -266,7 +266,9 @@ class DefaultTrainer(TrainerBase):
             self.graph_eval = self.build_graph(cfg, self.model, is_train=False)
             self._trainer = GraphTrainer(self.graph_train, self.train_loader)
         else:
-            self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)
+            self._trainer = EagerTrainer(
+                self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
+            )
 
         self.global_batch_size = cfg.train.global_batch_size
         self.max_iter = cfg.train.train_iter
@@ -448,7 +450,9 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training, validating, testing set")
-        cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
+        cfg.dataloader.train.train_batch_size = (
+            cfg.train.train_micro_batch_size * cfg.train.num_accumulation_steps
+        )
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
 
         # Set tokenizer for each dataset

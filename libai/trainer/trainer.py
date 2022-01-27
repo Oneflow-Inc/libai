@@ -232,7 +232,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader_iter, optimizer):
+    def __init__(self, model, data_loader_iter, optimizer, grad_acc_steps=1):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -252,6 +252,7 @@ class EagerTrainer(TrainerBase):
         self.model = model
         self._data_loader_iter = iter(data_loader_iter)
         self.optimizer = optimizer
+        self.grad_acc_steps = grad_acc_steps
 
     def run_step(self, get_batch: Callable):
         """
@@ -265,24 +266,27 @@ class EagerTrainer(TrainerBase):
         data = get_batch(data)
         data_time = time.perf_counter() - start
 
+        unpacked_data = []
+        start_idx = 0
+        # This is logical shape
+        micro_size = data[0].shape[0] // dist.get_data_parallel_size() // self.grad_acc_steps
+        for i in range(self.grad_acc_steps):
+            unpacked_data.append([d[start_idx : start_idx + micro_size] for d in data])
+            start_idx += micro_size
+
+        total_losses = 0
         # If you want to do something with the losses, you can wrap the model.
+        for i in range(self.grad_acc_steps):
+            losses = self.model(*unpacked_data[i]) / self.grad_acc_steps
 
-        losses = self.model(*data)
-        loss_dict = {"total_loss": losses}
+            losses.backward()
+            total_losses += losses
 
-        # If you need to accumulate gradients or do something similar, you can
-        # wrap the optimizer with your custom `zero_grad()` method.
-
-        self.optimizer.zero_grad()
-        losses.backward()
-
+        loss_dict = {"total_loss": total_losses}
         self.write_metrics(loss_dict, data_time)
 
-        # If you need gradient clipping/scaling or other processing, you can
-        # wrap the optimizer with your custom `step()` method. But it is
-        # suboptimal as explained in https://arxiv.org/abs/2006.15704 Sec 3.2.4
-
         self.optimizer.step()
+        self.optimizer.zero_grad()
 
 
 class GraphTrainer(TrainerBase):
