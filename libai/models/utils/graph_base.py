@@ -26,6 +26,7 @@ class GraphBase(nn.Graph):
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
         fp16=False,
+        recompute_grad=False,
         is_train=True,
     ):
         super().__init__()
@@ -35,7 +36,8 @@ class GraphBase(nn.Graph):
 
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
-            self.set_activation_checkpoint()
+            if recompute_grad:
+                self.set_activation_checkpoint()
             self.set_pipeline_stage_id()
             if fp16:
                 self.config.enable_amp(True)
