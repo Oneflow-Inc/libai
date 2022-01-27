@@ -12,9 +12,6 @@ optim.lr = 5e-4
 optim.eps = 1e-8
 optim.weight_decay = 0.05
 
-# Set pipeline layers for paralleleism
-train.dist.pipeline_num_layers = model.cfg.depth
-
 # Refine train cfg for vit model
 train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128

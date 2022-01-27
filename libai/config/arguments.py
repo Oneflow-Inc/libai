@@ -64,7 +64,7 @@ Run on multiple machines:
     )
     parser.add_argument("--eval-only", action="store_true", help="perform evaluation only")
     # TODO: Add fast debug mode
-    parser.add_argument("--fast_debug", action="store_true", help="quickly debug")
+    parser.add_argument("--fast-debug", action="store_true", help="quickly debug")
     parser.add_argument(
         "opts",
         help="""
