@@ -63,6 +63,8 @@ Run on multiple machines:
         "See documentation of `DefaultTrainer.resume_or_load()` for what it means.",
     )
     parser.add_argument("--eval-only", action="store_true", help="perform evaluation only")
+    # TODO: Add fast debug mode
+    parser.add_argument("--fast-debug", action="store_true", help="quickly debug")
     parser.add_argument(
         "opts",
         help="""
