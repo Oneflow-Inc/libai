@@ -1,7 +1,7 @@
+from omegaconf import OmegaConf
 from flowvision import transforms
 from flowvision.transforms import InterpolationMode
 from flowvision.transforms.functional import str_to_interp_mode
-
 from flowvision.data.constants import (
     IMAGENET_DEFAULT_MEAN,
     IMAGENET_DEFAULT_STD,
@@ -10,9 +10,10 @@ from flowvision.data.auto_augment import rand_augment_transform
 from flowvision.data.random_erasing import RandomErasing
 
 from libai.config import LazyCall
+from libai.data.datasets import ImageNetDataset
+from libai.data.build import build_image_train_loader, build_image_test_loader
 
-
-default_train_transform = LazyCall(transforms.Compose)(
+train_aug = LazyCall(transforms.Compose)(
     transforms=[
         LazyCall(transforms.RandomResizedCrop)(
             size=224,
@@ -45,7 +46,7 @@ default_train_transform = LazyCall(transforms.Compose)(
 )
 
 
-default_test_transform = LazyCall(transforms.Compose)(
+test_aug = LazyCall(transforms.Compose)(
     transforms=[
         LazyCall(transforms.Resize)(
             size=256,
@@ -61,3 +62,18 @@ default_test_transform = LazyCall(transforms.Compose)(
         ),
     ]
 )
+
+
+dataloader = OmegaConf.create()
+dataloader.train = LazyCall(build_image_train_loader)(
+    dataset=[
+        LazyCall(ImageNetDataset)(root="./dataset", train=True, transform=train_aug),
+    ],
+)
+
+
+dataloader.test = [
+    LazyCall(build_image_test_loader)(
+        dataset=LazyCall(ImageNetDataset)(root="./dataset", train=False, transform=test_aug),
+    )
+]
