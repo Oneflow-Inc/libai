@@ -156,6 +156,7 @@ class VisionTransformer(nn.Module):
         norm_layer=None,
         act_layer=None,
         weight_init="",
+        loss_func=None,
     ):
         """
         Args:
@@ -244,7 +245,7 @@ class VisionTransformer(nn.Module):
             )
 
         # Loss func
-        self.loss_func = nn.CrossEntropyLoss()
+        self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
         self.init_weights(weight_init)
 

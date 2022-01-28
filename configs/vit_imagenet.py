@@ -4,8 +4,12 @@ from .common.train import train
 from .common.optim import optim
 from .common.data.cifar import dataloader
 
-
 from libai.models import VisionTransformerGraph
+from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
+
+model.num_classes = 100
+model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+
 
 # Refine optimizer cfg for vit model
 optim.lr = 5e-4
