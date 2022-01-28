@@ -41,7 +41,6 @@ def build_nlp_train_val_test_loader(
     """
     Build nlp train_val_test dataloader
     """
-    # TODO: add input type, add dataset_weights sampler
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
@@ -127,7 +126,6 @@ def build_nlp_test_loader(
     """
     Build nlp test dataloader
     """
-    # TODO: add input type
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
     if sampler is None:
         sampler = SingleRoundSampler(
