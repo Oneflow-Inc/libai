@@ -45,12 +45,6 @@ def build_sample(ids, types, paddings, label, unique_id):
         label=DistTensorData(flow.tensor(label, dtype=flow.long), placement_idx=-1),
     )
 
-    # sample = {'text': ids_np,
-    #           'types': types_np,
-    #           'padding_mask': paddings_np,
-    #           'label': int(label),
-    #           'uid': int(unique_id)}
-
     return sample
 
 
