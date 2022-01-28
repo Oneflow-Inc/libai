@@ -41,12 +41,13 @@ class CasualMask(nn.Module):
         When in T5 decoder, the argument `layer_idx` should be set to first decoder layer index.
     """
     def __init__(self, max_positions=1024, *, layer_idx=0):
+        super().__init__()
         self.mask = flow.tril(
             flow.ones(
                 (max_positions, max_positions), 
                 dtype=flow.int8, 
                 placement=dist.get_layer_placement(layer_idx),
-                sbp=[flow.sbp.broadcast, flow.sbp.broadcast]
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )
     

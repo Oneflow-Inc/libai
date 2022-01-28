@@ -36,8 +36,8 @@ def get_sample(mode: str):
         'numpy': lambda x: x,
     }
     if mode == 'flow':
-        enc_mask = map(lambda x: ~x, [enc_mask])
-    
+        enc_mask = ~enc_mask
+    import ipdb; ipdb.set_trace()
     tokens_enc, enc_mask, position_ids = map(
         func[mode], [tokens_enc, enc_mask, position_ids])
     return tokens_enc, position_ids, enc_mask
@@ -183,12 +183,18 @@ def load_megatron_weight(flow_model: flow.nn.Module, torch_model: torch.nn.Modul
 
     for torch_k, v in torch_state.items():
         k = torch_k
-        if 'weight'in k and len(v.shape) == 2 and 'embedding.' not in k:
+        if 'embedding' not in k and '.weight'in k and len(v.shape) == 2 and 'embedding.' not in k:
             v = v.transpose(0, 1)
-        if 'inter' in k:
-            k = k.replace('inter', 'cross')
-        if k.startswith('language_model.'):
-            k = k[len('language_model.'): ]
+        if k == 'language_model.embedding.word_embeddings.weight':
+            k = 'embeddings.token_embeddings.weight'
+        elif k == 'language_model.embedding.position_embeddings.weight':
+            k = 'embeddings.position_embeddings.weight'
+        elif k.startswith('language_model.encoder.final_layernorm.'):
+            k = k.replace('language_model.encoder.final_layernorm', 'transformer.layernorm_f')
+        elif k.startswith('language_model.encoder'):
+            k = k.replace('language_model.encoder', 'transformer')
+
+        print(k, flow_state[k].shape, v.shape)
         convert_and_copy_tensor(flow_state[k], v)
         used_flow_keys.add(k)
         used_torch_keys.add(torch_k)

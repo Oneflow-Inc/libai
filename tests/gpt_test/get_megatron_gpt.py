@@ -32,12 +32,12 @@ os.environ['CHECKPOINT_PATH']="checkpoints/gpt_base"
 os.environ['DATA_PATH']="/workspace/data/libai_dataset/loss_compara_content_sentence"
 sys.argv.extend([
        "--num-layers", " 6"         ,
-       "--hidden-size", " 1024"     ,
+       "--hidden-size", " 384"     ,
        "--num-attention-heads", " 16",
        "--micro-batch-size", " 4"   ,
        "--global-batch-size", " 8"  ,
-       "--seq-length", " 1024"      ,
-       "--max-position-embeddings", " 1024",
+       "--seq-length", "128"      ,
+       "--max-position-embeddings", "128",
        "--train-iters", " 500000"   ,
        "--lr-decay-iters", " 320000",
        "--save", " $CHECKPOINT_PATH",

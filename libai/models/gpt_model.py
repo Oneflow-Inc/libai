@@ -73,7 +73,8 @@ class GPTModel(nn.Module):
         apply_query_key_layer_scaling=False,
     ):
         super().__init__()
-        init_method = init_method_normal(std=initializer_range)
+        # init_method = init_method_normal(std=initializer_range)
+        init_method = init_method_normal(sigma=initializer_range)
         if use_scaled_init_for_output_weights:
             output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
         else:
@@ -106,6 +107,7 @@ class GPTModel(nn.Module):
         )
 
         self.lm_head = LMLogits(vocab_size, bias=True)
+        import ipdb; ipdb.set_trace()
 
     def forward(self, input_ids, past_key_values, use_cache):
         input_ids_shape = input_ids.size()
