@@ -17,6 +17,7 @@ import logging
 import math
 import os
 from collections import OrderedDict
+from typing import Callable, Optional
 
 import omegaconf
 import oneflow as flow
@@ -365,7 +366,7 @@ class DefaultTrainer(TrainerBase):
         self._trainer.run_step(self.get_batch)
 
     @classmethod
-    def get_batch(cls, data: Instance):
+    def get_batch(cls, data: Instance, mixup_func: Optional[Callable] = None):
         """
         Convert batched local tensor to distributed tensor for model step running.
 
@@ -374,6 +375,11 @@ class DefaultTrainer(TrainerBase):
         """
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
+
+        if mixup_func is not None:
+            images, targets = mixup_func(data.get("images").tensor, data.get("targets").tensor)
+            data.get("images").tensor = images
+            data.get("targets").tensor = targets
 
         ret_dict = {}
         ret_list = []
