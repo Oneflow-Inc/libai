@@ -21,6 +21,7 @@ import oneflow as flow
 import oneflow.nn as nn
 from flowvision.layers.blocks import Mlp, PatchEmbed
 from flowvision.layers.weight_init import lecun_normal_, trunc_normal_
+from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 from flowvision.models.helpers import named_apply
 
 from libai.config.config import configurable
@@ -244,7 +245,7 @@ class VisionTransformer(nn.Module):
             )
 
         # Loss func
-        self.loss_func = nn.CrossEntropyLoss()
+        self.loss_func = SoftTargetCrossEntropy()
 
         self.init_weights(weight_init)
 
