@@ -13,19 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC
-from abc import abstractmethod
-
 import logging
-import jieba
 import re
 
-from libai.utils import distributed as dist
+import jieba
 
-from .bert_tokenization import FullTokenizer as FullBertTokenizer
 from libai.tokenizer.tokenization_base import PreTrainedTokenizer
 
-logger = logging.getLogger("libai."+__name__)
+from .bert_tokenization import FullTokenizer as FullBertTokenizer
+
+logger = logging.getLogger("libai." + __name__)
 
 
 class _BertCNWWMTokenizer(PreTrainedTokenizer):
@@ -46,7 +43,7 @@ class _BertCNWWMTokenizer(PreTrainedTokenizer):
         self._additional_special_tokens = []
 
         # (dsachan) Add BOS and EOS tokens
-        SPECIAL_TOKENS = {"eos_token": "[EOS]", "bos_token": "[BOS]"}
+        # SPECIAL_TOKENS = {"eos_token": "[EOS]", "bos_token": "[BOS]"}
         self._bos_token = "[BOS]"
         self.add_token(self._bos_token)
         self._bos_token_id = self.vocab.get(self._bos_token)
@@ -129,37 +126,38 @@ class _BertCNWWMTokenizer(PreTrainedTokenizer):
 
     @property
     def bos_token(self):
-        """ Beginning of sentence token id """
+        """Beginning of sentence token id"""
         return self._bos_token
 
     @property
     def eos_token(self):
-        """ End of sentence token id """
+        """End of sentence token id"""
         return self._eos_token
 
     @property
     def additional_special_tokens(self):
-        """ All the additional special tokens you may want to use (list of strings)."""
+        """All the additional special tokens you may want to use (list of strings)."""
         return self._additional_special_tokens
 
     @property
     def bos_token_id(self):
-        """ Id of the beginning of sentence token in the vocabulary."""
+        """Id of the beginning of sentence token in the vocabulary."""
         return self._bos_token_id
 
     @property
     def eos_token_id(self):
-        """ Id of the end of sentence token in the vocabulary."""
+        """Id of the end of sentence token in the vocabulary."""
         return self._eos_token_id
 
     @property
     def additional_special_tokens_ids(self):
-        """ Ids of all the additional special tokens in the vocabulary (list of integers)."""
+        """Ids of all the additional special tokens in the vocabulary (list of integers)."""
         return [self.vocab.get(token) for token in self._additional_special_tokens]
 
     @additional_special_tokens.setter
     def additional_special_tokens(self, value):
         self._additional_special_tokens = value
+
 
 def get_new_segment(segment):
     seq_cws = jieba.cut("".join(segment) if isinstance(segment, list) else segment)
@@ -167,7 +165,7 @@ def get_new_segment(segment):
     new_segment = []
     i = 0
     while i < len(segment):
-        if len(re.findall('[\u4E00-\u9FA5]', segment[i])) == 0:
+        if len(re.findall("[\u4E00-\u9FA5]", segment[i])) == 0:
             new_segment.append(segment[i])
             i += 1
             continue
@@ -176,10 +174,10 @@ def get_new_segment(segment):
         for length in range(3, 0, -1):
             if i + length > len(segment):
                 continue
-            if ''.join(segment[i:i + length]) in seq_cws_dict:
+            if "".join(segment[i : i + length]) in seq_cws_dict:
                 new_segment.append(segment[i])
                 for l in range(1, length):
-                    new_segment.append('##' + segment[i + l])
+                    new_segment.append("##" + segment[i + l])
                 i += length
                 has_add = True
                 break

@@ -1,15 +1,14 @@
-from libai.config import LazyCall
 from omegaconf import OmegaConf
-from configs.common.train import train
-from configs.common.optim import optim
+
 from configs.common.data.bert_dataset import tokenization
+from configs.common.models.bert import cfg as qqp_cfg
+from configs.common.optim import optim
+from configs.common.train import train
+from libai.config import LazyCall
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from projects.QQP.dataset.qqp_dataset import QQPDataset
+from projects.QQP.modeling.model import Classification, ClassificationGraph
 from projects.QQP.tokenizer.tokenizer import _BertCNWWMTokenizer
-from configs.common.models.bert import cfg as qqp_cfg
-from projects.QQP.modeling.model import Classification
-from projects.QQP.modeling.model import ClassificationGraph
-
 
 tokenization.tokenizer = LazyCall(_BertCNWWMTokenizer)(
     vocab_file="/home/chengpeng/data/PrimeLM/data/bert-base-chinese-vocab.txt",
@@ -23,7 +22,9 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(QQPDataset)(
             name="QQP_TRAIN",
-            datapaths=["/home/chengpeng/train.tsv",],
+            datapaths=[
+                "/home/chengpeng/train.tsv",
+            ],
             max_seq_length=512,
         ),
     ],
@@ -33,7 +34,9 @@ dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(QQPDataset)(
             name="QQP_TEST",
-            datapaths=["/home/chengpeng/dev.tsv",],
+            datapaths=[
+                "/home/chengpeng/dev.tsv",
+            ],
             max_seq_length=512,
         ),
         num_workers=4,
@@ -49,7 +52,7 @@ qqp_cfg.update(
         num_attention_heads=16,
         # new key
         num_classes=2,
-        pretrain_megatron_weight="/home/chengpeng/model_optim_rng.pt"
+        pretrain_megatron_weight="/home/chengpeng/model_optim_rng.pt",
     )
 )
 model = LazyCall(Classification)(cfg=qqp_cfg)
@@ -79,8 +82,5 @@ graph = dict(
         recompute_grad=True,
         fp16=True,
     ),
-    eval_graph=LazyCall(ClassificationGraph)(
-        is_train=False,
-        fp16=True
-    )
+    eval_graph=LazyCall(ClassificationGraph)(is_train=False, fp16=True),
 )

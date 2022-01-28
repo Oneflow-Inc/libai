@@ -35,7 +35,7 @@ def main(args):
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=args.resume
         )
-        graph = DefaultTrainer.build_graph(cfg, model, is_train=False)     
+        graph = DefaultTrainer.build_graph(cfg, model, is_train=False)
         test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
         res = DefaultTrainer.test(cfg, test_loader, graph)  # noqa
         return

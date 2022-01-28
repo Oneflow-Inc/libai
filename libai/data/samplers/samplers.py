@@ -173,7 +173,7 @@ class SingleRoundSampler(Sampler):
 
         if len(batch) > 0 and not self.drop_last:
             # TODO fix sampler unbalanced bug
-            for i in range(self.micro_batch_size-len(batch)):
+            for i in range(self.micro_batch_size - len(batch)):
                 batch.append(indices[i])
             yield batch
 

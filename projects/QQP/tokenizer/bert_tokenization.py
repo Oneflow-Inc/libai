@@ -18,9 +18,14 @@
 
 import collections
 import re
+import sys
 import unicodedata
+
 import six
-import re
+
+is_python3 = sys.version_info.major == 3
+if is_python3:
+    unicode = str
 
 
 def validate_case_matches_checkpoint(do_lower_case, init_checkpoint):
@@ -136,8 +141,7 @@ def load_vocab(vocab_file):
 
 
 def convert_by_vocab(vocab, items, inv=False):
-    """Converts a sequence of [tokens|ids] using the vocab.。
-    """
+    """Converts a sequence of [tokens|ids] using the vocab.。"""
     output = []
     for item in items:
         if not inv:
@@ -198,10 +202,10 @@ class FullTokenizer(object):
 
     @staticmethod
     def convert_tokens_to_string(tokens, clean_up_tokenization_spaces=True):
-        """ Converts a sequence of tokens (string) in a single string. """
+        """Converts a sequence of tokens (string) in a single string."""
 
         def clean_up_tokenization(out_string):
-            """ Clean up a list of simple English tokenization artifacts
+            """Clean up a list of simple English tokenization artifacts
             like spaces before punctuations and abreviated forms.
             """
             out_string = (
@@ -477,7 +481,7 @@ def _is_punctuation(char):
 
 class BasicTokenizerWithChineseWWM(object):
     """Runs basic tokenization (punctuation splitting, lower casing, etc.).
-       (nickpan)对中英混杂做了特殊处理，见_tokenize_chinese_chars
+    (nickpan)对中英混杂做了特殊处理，见_tokenize_chinese_chars
     """
 
     def __init__(self, do_lower_case=True):
@@ -551,8 +555,8 @@ class BasicTokenizerWithChineseWWM(object):
 
     def _tokenize_chinese_chars(self, text):
         """Adds whitespace around any CJK character.
-           (nickpan)并且如果是纯中文片段，则用jieba分词，否则则保留
-           两边加空格的操作。       
+        (nickpan)并且如果是纯中文片段，则用jieba分词，否则则保留
+        两边加空格的操作。
         """
         output = []
         piece = ""
