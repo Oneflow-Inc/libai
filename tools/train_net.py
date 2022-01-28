@@ -17,7 +17,7 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from libai.config import LazyConfig, default_argument_parser
+from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 
@@ -28,12 +28,15 @@ def main(args):
     default_setup(cfg, args)
 
     if args.eval_only:
+        tokenizer = None
+        if try_get_key(cfg, "tokenization.setup", default=False):
+            tokenizer = DefaultTrainer.build_tokenizer(cfg)
         model = DefaultTrainer.build_model(cfg)
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=args.resume
         )
-        graph = DefaultTrainer.build_graph(cfg, model, is_train=False)
-        test_loader = DefaultTrainer.build_test_loader(cfg)
+        graph = DefaultTrainer.build_graph(cfg, model, is_train=False)     
+        test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
         res = DefaultTrainer.test(cfg, test_loader, graph)  # noqa
         return
 

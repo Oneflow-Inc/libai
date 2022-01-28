@@ -136,9 +136,7 @@ def load_vocab(vocab_file):
 
 
 def convert_by_vocab(vocab, items, inv=False):
-    """Converts a sequence of [tokens|ids] using the vocab.
-       这里统一的处理方式是将中文substr的id设置为vocab_size+id(substr.remove(##))，
-       然后在构建样本mask的时候再考虑。
+    """Converts a sequence of [tokens|ids] using the vocab.。
     """
     output = []
     for item in items:
