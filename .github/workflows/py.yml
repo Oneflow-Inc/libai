@@ -39,6 +39,10 @@ jobs:
           isort --check .
           black -l 100 --check .
           flake8 .
+      
+      - name: Run unittest
+        run: |
+          cd dev && bash run_unittest.sh
 
       - name: Please request CI again
         if: ${{ failure() }}
