@@ -15,3 +15,4 @@ per-file-ignores =
   tests/config/**.py:F401,E402
   tests/**.py: E402
   tools/**.py: E402
+  projects/**/configs/**.py:F401
