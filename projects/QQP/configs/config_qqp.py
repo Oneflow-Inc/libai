@@ -2,7 +2,7 @@ from omegaconf import OmegaConf
 
 from configs.common.data.bert_dataset import tokenization
 from configs.common.models.bert import cfg as qqp_cfg
-from configs.common.optim import optim as optim
+from configs.common.optim import optim
 from configs.common.train import train
 from libai.config import LazyCall
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader

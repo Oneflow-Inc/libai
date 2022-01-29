@@ -23,7 +23,7 @@ from omegaconf import OmegaConf
 from libai.config import LazyCall, default_argument_parser
 from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
 from libai.optim import get_default_optimizer_params
-from libai.scheduler import WarmupCosineLR
+from libai.scheduler import WarmupMultiStepLR
 from libai.trainer import DefaultTrainer, default_setup
 from tests.data.datasets.demo_dataset import DemoNlpDataset
 from tests.layers.test_evaluator_model import GraphModel, build_model
@@ -38,6 +38,7 @@ def setup(args):
 
     cfg.train = dict(
         output_dir="./demo_output",
+        warmup_ratio=0,
         train_micro_batch_size=32,
         test_micro_batch_size=16,
         eval_period=500,
@@ -55,6 +56,11 @@ def setup(args):
         checkpointer=dict(period=10000),
         nccl_fusion_threshold_mb=16,
         nccl_fusion_max_ops=24,
+        scheduler=LazyCall(WarmupMultiStepLR)(
+            warmup_factor=0.001,
+            warmup_method="linear",
+            milestones=[0.1, 0.2],
+        ),
     )
 
     cfg.optim = LazyCall(flow.optim.AdamW)(
@@ -68,14 +74,6 @@ def setup(args):
         weight_decay=0.01,
         betas=(0.9, 0.999),
         do_bias_correction=True,
-    )
-
-    cfg.scheduler = LazyCall(WarmupCosineLR)(
-        max_iters=2000,
-        alpha=0.001,
-        warmup_factor=0.001,
-        warmup_iters=1000,
-        warmup_method="linear",
     )
 
     cfg.dataloader = OmegaConf.create()

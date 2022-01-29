@@ -63,53 +63,33 @@ def build_nlp_train_val_test_loader(
     test_dataset = dataset_mixer(test_datasets)
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
-    if sampler is None:
-        train_sampler = CyclicSampler(
-            dataset=train_dataset,
-            micro_batch_size=train_batch_size,
-            shuffle=True,
-            consumed_samples=consumed_samples,
-            data_parallel_rank=dist.get_data_parallel_rank(),
-            data_parallel_size=dist.get_data_parallel_size(),
-            seed=seed,
-        )
-    valid_sampler = SingleRoundSampler(
+
+    train_loader, _, _ = build_nlp_train_loader(
+        dataset=train_dataset,
+        train_batch_size=train_batch_size,
+        test_batch_size=None,
+        sampler=sampler,
+        num_workers=num_workers,
+        consumed_samples=consumed_samples,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    valid_loader = build_nlp_test_loader(
         dataset=val_dataset,
-        micro_batch_size=test_batch_size,
-        shuffle=False,
-        data_parallel_rank=dist.get_data_parallel_rank(),
-        data_parallel_size=dist.get_data_parallel_size(),
+        test_batch_size=test_batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
         seed=seed,
-        drop_last=False,
+        collate_fn=collate_fn,
     )
-    test_sampler = SingleRoundSampler(
+
+    test_loader = build_nlp_test_loader(
         dataset=test_dataset,
-        micro_batch_size=test_batch_size,
-        shuffle=False,
-        data_parallel_rank=dist.get_data_parallel_rank(),
-        data_parallel_size=dist.get_data_parallel_size(),
+        test_batch_size=test_batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
         seed=seed,
-        drop_last=False,
-    )
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_sampler=train_sampler,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-    )
-
-    valid_loader = DataLoader(
-        val_dataset,
-        batch_sampler=valid_sampler,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-    )
-
-    test_loader = DataLoader(
-        test_dataset,
-        batch_sampler=test_sampler,
-        num_workers=num_workers,
         collate_fn=collate_fn,
     )
 
