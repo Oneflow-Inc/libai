@@ -22,6 +22,47 @@ from oneflow.utils.data import DataLoader, TensorDataset
 from libai.data.samplers import CyclicSampler, SingleRoundSampler
 
 
+class TestBatchSampler(unittest.TestCase):
+    pass
+
+
+class TestCyclicSampler(unittest.TestCase):
+    def test_init_cyclic_sampler(self):
+        sampler = CyclicSampler(
+            self.dataset,
+            micro_batch_size=4,
+            shuffle=True,
+            consumed_samples=0,
+            seed=123,
+        )
+        offset = 50
+        data = self.data.repeat(10, 1, 1, 1)
+        for i, (input, _target) in enumerate(dl):
+            self.assertEqual(len(input), 4)
+            self.assertTrue(
+                np.allclose(
+                    input.numpy(),
+                    data[i * 4 + offset : i * 4 + 4 + offset, :, :, :].numpy(),
+                    atol=1e-4,
+                    rtol=1e-4,
+                )
+            )
+            if i > 50:
+                break
+    
+    def test_training_sampler_seed(self):
+        seed_all_rng(42)
+        sampler = TrainingSampler(30)
+        data = list(itertools.islice(sampler, 65))
+
+        seed_all_rng(42)
+        sampler = TrainingSampler(30)
+        seed_all_rng(999)  # should be ineffective
+        data2 = list(itertools.islice(sampler, 65))
+        self.assertEqual(data, data2)
+
+
+
 class TestDataLoader(unittest.TestCase):
     def setUp(self):
         super(TestDataLoader, self).setUp()
