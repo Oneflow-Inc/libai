@@ -9,6 +9,7 @@ omegaconf
 oneflow>=0.6.0
 Pygments
 PyYAML
+jieba
 regex
 requests
 sentencepiece>=0.1

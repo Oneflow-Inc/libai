@@ -161,9 +161,6 @@ def default_setup(cfg, args):
     flow.boxing.nccl.set_fusion_max_ops_num(
         try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
-    flow.boxing.nccl.enable_use_compute_stream(
-        try_get_key(cfg, "train.enable_use_compute_stream", default=True)
-    )
 
 
 class DefaultTrainer(TrainerBase):
@@ -213,9 +210,7 @@ class DefaultTrainer(TrainerBase):
             setup_logger()
 
         # Initialize tokenizer
-        self.tokenizer = None
-        if try_get_key(cfg, "tokenization.setup", default=False):
-            self.tokenizer = self.build_tokenizer(cfg)
+        self.tokenizer = self.build_tokenizer(cfg)
 
         # Create dataloader defined by the given config
         # Resume dataloader or not
@@ -388,10 +383,22 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_tokenizer(cls, cfg):
-        assert (
-            try_get_key(cfg, "tokenization") is not None
-        ), "cfg must contain `tokenization` namespace"
-        return build_tokenizer(cfg)
+        """
+        Returns:
+            libai.tokenizer.PreTrainedTokenizer:
+        It now calls :func:`libai.tokenizer.build_tokenizer`.
+        """
+        tokenizer = None
+        if try_get_key(cfg, "tokenization") is not None:
+            tokenizer = build_tokenizer(cfg.tokenization)
+            if try_get_key(cfg, "model.cfg.vocab_size", default=None) is not None:
+                # In case the model does not need vocab_size as argument
+                multiple = (
+                    cfg.tokenization.make_vocab_size_divisible_by
+                    * cfg.train.dist.tensor_parallel_size
+                )
+                cfg.model.cfg.vocab_size = tokenizer.padded_vocab_size(multiple)
+        return tokenizer
 
     @classmethod
     def build_model(cls, cfg):

@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.data import T5Dataset
 from libai.data.data_utils import get_indexed_dataset
+from libai.data.datasets import T5Dataset
 from libai.tokenizer import T5Tokenizer
 
 datat_prefix = "t5_samples_lazy_text_sentence"
-tokenizer = T5Tokenizer(vocab_file="spiece.model", bos_token="<s/>")
+tokenizer = T5Tokenizer(vocab_file="spiece.model", bos_token="<s>")
 indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="lazy", skip_warmup=False)
 
 dataset = T5Dataset(
