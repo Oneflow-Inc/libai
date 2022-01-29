@@ -161,9 +161,6 @@ def default_setup(cfg, args):
     flow.boxing.nccl.set_fusion_max_ops_num(
         try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
-    flow.boxing.nccl.enable_use_compute_stream(
-        try_get_key(cfg, "train.enable_use_compute_stream", default=True)
-    )
 
 
 class DefaultTrainer(TrainerBase):
