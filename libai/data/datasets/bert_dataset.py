@@ -215,7 +215,7 @@ class BertDataset(flow.utils.data.Dataset):
         new_tokens = []
 
         for (i, token) in enumerate(tokens):
-            new_tokens.append(token % self.tokenizer.vocab_size)
+            new_tokens.append(token % len(self.tokenizer))
 
             if token == self.cls_id or token == self.sep_id:
                 token_boundary[i] = 1

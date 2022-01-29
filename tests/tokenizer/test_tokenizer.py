@@ -28,6 +28,8 @@ default_cfg = dict(
         name="BertTokenizer",
         vocab_file="bert-base-chinese-vocab.txt",
         do_lower_case=True,
+        additional_special_tokens=['<special_id_0>', '<special_id_1>', '<special_id_2>', '<special_id_3>'],
+        # do_chinese_wwm=True,
     ),
     append_eod=False,
     make_vocab_size_divisible_by=128,
@@ -42,8 +44,23 @@ lazy_cfg = OmegaConf.create()
 lazy_cfg.tokenizer = LazyCall(BertTokenizer)(
     vocab_file="bert-base-chinese-vocab.txt",
     do_lower_case=True,
+    # do_chinese_wwm=True,
 )
 lazy_cfg.append_eod = False
 lazy_cfg.make_vocab_size_divisible_by = 1
 
 lazy_tokenizer = build_tokenizer(lazy_cfg)
+
+tokenizer = build_tokenizer(reg_cfg)
+inputs = "今天天气真不错。"
+print(tokenizer.tokenize(inputs))
+
+tokens = tokenizer.encode(inputs)
+print(tokens)
+
+print(tokenizer.decode(tokens))
+
+print(tokenizer.vocab_size)
+print(len(tokenizer))
+print(tokenizer.additional_special_tokens)
+print(tokenizer.added_tokens_encoder)
