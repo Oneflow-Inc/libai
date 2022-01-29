@@ -1,5 +1,6 @@
 from omegaconf import OmegaConf
 from flowvision import transforms
+from flowvision.data.mixup import Mixup
 from flowvision.transforms import InterpolationMode
 from flowvision.transforms.functional import str_to_interp_mode
 
@@ -47,8 +48,21 @@ test_aug = LazyCall(transforms.Compose)(
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
-        LazyCall(CIFAR100Dataset)(root="./", train=True, download=True, transform=train_aug),
+        LazyCall(CIFAR100Dataset)(
+            root="./",
+            train=True,
+            download=True,
+            transform=train_aug,
+        ),
     ],
+    mixup_func=LazyCall(Mixup)(
+        mixup_alpha=0.8,
+        cutmix_alpha=1.0,
+        prob=1.0,
+        switch_prob=0.5,
+        mode="batch",
+        num_classes=100,
+    ),
 )
 
 dataloader.test = [

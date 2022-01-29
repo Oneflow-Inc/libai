@@ -14,7 +14,10 @@ model.cfg.hidden_layers = 8
 train.train_micro_batch_size = 16
 
 train.amp.enabled = False
-train.recompute_grad.enabled = False
+train.recompute_grad.enabled = True
+
+train.zero_optimization.enabled = True
+train.zero_optimization.stage = 3
 
 # LazyCall
 graph = dict(
