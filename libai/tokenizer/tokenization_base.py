@@ -172,7 +172,7 @@ class PreTrainedTokenizer(object):
                     assert all(
                         isinstance(t, str) for t in value
                     ), "One of the tokens is not a string"
-                    setattr(self, key, value)
+                    setattr(self, key, list(value))
                 elif isinstance(value, str):
                     setattr(self, key, value)
                 else:
@@ -465,6 +465,13 @@ class PreTrainedTokenizer(object):
     def vocab_size(self) -> int:
         """Size of the base vocabulary (without the added tokens)."""
         raise NotImplementedError
+
+    def padded_vocab_size(self, multiple=1) -> int:
+        """Padded the vocabulary with dummy tokens and return the new size."""
+        vocab_size = len(self)
+        while vocab_size % multiple != 0:
+            vocab_size += 1
+        return vocab_size
 
     def __len__(self):
         """Size of the full vocabulary with the added tokens."""

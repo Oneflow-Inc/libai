@@ -113,8 +113,8 @@ class SingleRoundSampler(Sampler):
 
     Arguments:
         dataset: dataset to be sampled.
-        micro_batch_size: batch size for per model instance.
-        global_batch_size is micro_batch_size times data_parallel_size.
+        micro_batch_size: batch size for per model instance, global_batch_size
+                          is micro_batch_size times data_parallel_size.
         shuffle: whether to shuffle the dataset.
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
@@ -172,7 +172,10 @@ class SingleRoundSampler(Sampler):
                 batch = []
 
         if len(batch) > 0 and not self.drop_last:
+            # TODO fix sampler unbalanced bug
+            for i in range(self.micro_batch_size - len(batch)):
+                batch.append(indices[i])
             yield batch
 
     def __len__(self):
-        return self.data_size
+        return self.data_size // (self.micro_batch_size * self.data_parallel_size)

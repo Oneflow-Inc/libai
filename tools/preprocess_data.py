@@ -140,6 +140,9 @@ def get_args():
         action="store_true",
         help="Append an <eod> token to the end of a document.",
     )
+    group.add_argument(
+        "--do-chinese-wwm", action="store_true", help="Whether to do whole word mask for Chinese."
+    )
 
     group = parser.add_argument_group(title="output data")
     group.add_argument(
@@ -174,30 +177,22 @@ def get_args():
 def parse_args_to_config(args):
     default_cfg = dict(
         tokenizer=dict(
-            tokenizer_name="",
-            tokenizer_cfg=dict(
-                vocab_file=None,
-                merges_file=None,
-                do_lower_case=False,
-                extra_ids=0,
-            ),
-            append_eod=False,
+            name="BertTokenizer",
+            vocab_file="bert-base-chinese-vocab.txt",
+            do_lower_case=True,
         ),
-        data=dict(
-            make_vocab_size_divisible_by=128,
-        ),
-        dist=dict(
-            tensor_parallel_size=1,
-        ),
+        append_eod=False,
+        make_vocab_size_divisible_by=1,
     )
 
     cfg = DictConfig(default_cfg)
-    cfg.tokenizer.tokenizer_name = args.tokenizer_name
-    cfg.tokenizer.tokenizer_cfg.vocab_file = args.vocab_file
-    cfg.tokenizer.tokenizer_cfg.merges_file = args.merges_file
-    cfg.tokenizer.tokenizer_cfg.do_lower_case = args.do_lower_case
-    cfg.tokenizer.tokenizer_cfg.extra_id = args.extra_ids
-    cfg.tokenizer.append_eod = args.append_eod
+    cfg.tokenizer.name = args.tokenizer_name
+    cfg.tokenizer.vocab_file = args.vocab_file
+    cfg.tokenizer.merges_file = args.merges_file
+    cfg.tokenizer.do_lower_case = args.do_lower_case
+    cfg.tokenizer.extra_id = args.extra_ids
+    cfg.tokenizer.do_chinese_wwm = args.do_chinese_wwm
+    cfg.append_eod = args.append_eod
 
     return cfg
 
