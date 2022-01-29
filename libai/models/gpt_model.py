@@ -107,7 +107,6 @@ class GPTModel(nn.Module):
         )
 
         self.lm_head = LMLogits(vocab_size, bias=True)
-        import ipdb; ipdb.set_trace()
 
     def forward(self, input_ids, past_key_values, use_cache):
         input_ids_shape = input_ids.size()
@@ -118,7 +117,6 @@ class GPTModel(nn.Module):
         attention_mask = self.casual_mask(input_ids, past_length=past_length)
 
         transformer_output = self.transformer(input_embeds, attention_mask, past_key_values, use_cache)
-
         if use_cache:
             transformer_output, presents = transformer_output
         
@@ -210,7 +208,7 @@ class Transformer(nn.Module):
         # sbp: [S(0), B]
         presents = []
         if past_key_values is None:
-            past_key_values = tuple([None] * len(self.num_layers))
+            past_key_values = tuple([None] * len(self.layers))
 
         for i, (layer, past) in enumerate(zip(self.layers, past_key_values)):
             if self.training:

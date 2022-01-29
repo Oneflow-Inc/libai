@@ -16,10 +16,6 @@
 """Pretrain T5"""
 import oneflow
 import os
-os.environ['MASTER_ADDR']='localhost'
-os.environ['MASTER_PORT']='12346'
-os.environ['RANK']='0'
-os.environ['WORLD_SIZE']='1'
 # os.environ['DATA_PATH']='/home/wang/workspace/Megatron-LM/examples'
 # os.environ['VOCAB_FILE']='/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
 # os.environ['CHECKPOINT_PATH']='/home/wang/workspace/Megatron-LM/examples'
@@ -36,8 +32,8 @@ sys.argv.extend([
        "--num-attention-heads", " 16",
        "--micro-batch-size", " 4"   ,
        "--global-batch-size", " 8"  ,
-       "--seq-length", "128"      ,
-       "--max-position-embeddings", "128",
+       "--seq-length", "1024"      ,
+       "--max-position-embeddings", "1024",
        "--train-iters", " 500000"   ,
        "--lr-decay-iters", " 320000",
        "--save", " $CHECKPOINT_PATH",
@@ -54,12 +50,12 @@ sys.argv.extend([
        "--weight-decay", "1e-2"    ,
        "--clip-grad", " 1.0"        ,
        "--lr-warmup-fraction", ".01",
-       "--activations-checkpoint-method", "uniform",
        "--log-interval", " 100"     ,
        "--save-interval", " 10000"  ,
        "--eval-interval", " 1000"   ,
        "--eval-iters", " 10"        ,
        "--no-bias-dropout-fusion" ,
+       # "--activations-checkpoint-method", "uniform",
        # --fp16
 ])
 

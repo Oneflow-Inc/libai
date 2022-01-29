@@ -7,10 +7,10 @@ import torch
 if __name__ == '__main__':
     HIDDEN_SIZE=384
     VOCAB_SIZE=50304
-    NUM_ATTENTION_HEADS=12
+    NUM_ATTENTION_HEADS=16
     FFN_HIDDEN_SIZE=1536
     ENCODER_SEQ_LENGTH=512
-    DECODER_SEQ_LENGTH=128
+    DECODER_SEQ_LENGTH=1024
 
     flow_gpt = GPTModel(
         num_layers=6,
@@ -61,7 +61,8 @@ if __name__ == '__main__':
     with flow.no_grad():
         flow_output = flow_gpt(
             tokens_enc,
-            enc_mask,
+            None,
+            False,
         )
         
     

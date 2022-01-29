@@ -37,7 +37,6 @@ def get_sample(mode: str):
     }
     if mode == 'flow':
         enc_mask = ~enc_mask
-    import ipdb; ipdb.set_trace()
     tokens_enc, enc_mask, position_ids = map(
         func[mode], [tokens_enc, enc_mask, position_ids])
     return tokens_enc, position_ids, enc_mask
