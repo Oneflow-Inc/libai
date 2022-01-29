@@ -63,9 +63,69 @@ def build_nlp_train_val_test_loader(
     test_dataset = dataset_mixer(test_datasets)
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+
+    train_loader, _, _ = build_nlp_train_loader(
+        dataset=train_dataset,
+        train_batch_size=train_batch_size,
+        test_batch_size=None,
+        sampler=sampler,
+        num_workers=num_workers,
+        consumed_samples=consumed_samples,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    valid_loader = build_nlp_test_loader(
+        dataset=val_dataset,
+        test_batch_size=test_batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    test_loader = build_nlp_test_loader(
+        dataset=test_dataset,
+        test_batch_size=test_batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    return train_loader, valid_loader, test_loader
+
+
+def build_nlp_train_loader(
+    dataset,
+    train_batch_size,
+    test_batch_size=None,
+    sampler=None,
+    num_workers=4,
+    consumed_samples=0,
+    seed=42,
+    collate_fn=None,
+    dataset_mixer=ConcatDataset,
+    **kwargs
+):
+    """
+    Args:
+        dataset: Dataset list or single dataset.
+        batch_size: Batch-size for each GPU.
+    """
+    if isinstance(dataset, omegaconf.listconfig.ListConfig):
+        dataset = list(dataset)
+    elif not isinstance(dataset, list):
+        dataset = [dataset]
+
+    if len(dataset) > 1:
+        dataset = dataset_mixer(dataset)
+    else:
+        dataset = dataset[0]
+
     if sampler is None:
-        train_sampler = CyclicSampler(
-            dataset=train_dataset,
+        sampler = CyclicSampler(
+            dataset=dataset,
             micro_batch_size=train_batch_size,
             shuffle=True,
             consumed_samples=consumed_samples,
@@ -73,47 +133,16 @@ def build_nlp_train_val_test_loader(
             data_parallel_size=dist.get_data_parallel_size(),
             seed=seed,
         )
-    valid_sampler = SingleRoundSampler(
-        dataset=val_dataset,
-        micro_batch_size=test_batch_size,
-        shuffle=False,
-        data_parallel_rank=dist.get_data_parallel_rank(),
-        data_parallel_size=dist.get_data_parallel_size(),
-        seed=seed,
-        drop_last=False,
-    )
-    test_sampler = SingleRoundSampler(
-        dataset=test_dataset,
-        micro_batch_size=test_batch_size,
-        shuffle=False,
-        data_parallel_rank=dist.get_data_parallel_rank(),
-        data_parallel_size=dist.get_data_parallel_size(),
-        seed=seed,
-        drop_last=False,
-    )
 
-    train_loader = DataLoader(
-        train_dataset,
-        batch_sampler=train_sampler,
+    dataloader = DataLoader(
+        dataset,
+        batch_sampler=sampler,
         num_workers=num_workers,
-        collate_fn=collate_fn,
+        collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
+        **kwargs,
     )
 
-    valid_loader = DataLoader(
-        val_dataset,
-        batch_sampler=valid_sampler,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-    )
-
-    test_loader = DataLoader(
-        test_dataset,
-        batch_sampler=test_sampler,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-    )
-
-    return train_loader, valid_loader, test_loader
+    return dataloader, None, None
 
 
 def build_nlp_test_loader(

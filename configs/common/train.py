@@ -25,7 +25,12 @@ train = dict(
     nccl_fusion_threshold_mb=16,
     # Maximum number of ops of NCCL fusion, set to 0 to compatible with previous version of OneFlow
     nccl_fusion_max_ops=24,
-    enable_use_compute_stream=True,
+
+    # ZeRO Optimization
+    zero_optimization=dict(
+        enabled=False,
+        stage=1,
+    ),
 
     checkpointer=dict(period=5000, max_to_keep=100),  # options for PeriodicCheckpointer
 

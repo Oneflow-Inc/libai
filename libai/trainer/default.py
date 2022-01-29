@@ -161,9 +161,6 @@ def default_setup(cfg, args):
     flow.boxing.nccl.set_fusion_max_ops_num(
         try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
-    flow.boxing.nccl.enable_use_compute_stream(
-        try_get_key(cfg, "train.enable_use_compute_stream", default=True)
-    )
 
 
 class DefaultTrainer(TrainerBase):
@@ -213,9 +210,7 @@ class DefaultTrainer(TrainerBase):
             setup_logger()
 
         # Initialize tokenizer
-        self.tokenizer = None
-        if try_get_key(cfg, "tokenization.setup", default=False):
-            self.tokenizer = self.build_tokenizer(cfg)
+        self.tokenizer = self.build_tokenizer(cfg)
 
         self.start_iter = 0
         if cfg.train.resume:
@@ -241,7 +236,7 @@ class DefaultTrainer(TrainerBase):
         if test_loader is not None:
             self.test_loader.append(test_loader)
 
-        self.test_loader.extend(self.build_test_loader(cfg))
+        self.test_loader.extend(self.build_test_loader(cfg, self.tokenizer))
 
         # Automatically scale the hyperparams
         self.auto_scale_hyperparams(cfg, self.train_loader)
@@ -393,10 +388,22 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_tokenizer(cls, cfg):
-        assert (
-            try_get_key(cfg, "tokenization") is not None
-        ), "cfg must contain `tokenization` namespace"
-        return build_tokenizer(cfg)
+        """
+        Returns:
+            libai.tokenizer.PreTrainedTokenizer:
+        It now calls :func:`libai.tokenizer.build_tokenizer`.
+        """
+        tokenizer = None
+        if try_get_key(cfg, "tokenization") is not None:
+            tokenizer = build_tokenizer(cfg.tokenization)
+            if try_get_key(cfg, "model.cfg.vocab_size", default=None) is not None:
+                # In case the model does not need vocab_size as argument
+                multiple = (
+                    cfg.tokenization.make_vocab_size_divisible_by
+                    * cfg.train.dist.tensor_parallel_size
+                )
+                cfg.model.cfg.vocab_size = tokenizer.padded_vocab_size(multiple)
+        return tokenizer
 
     @classmethod
     def build_model(cls, cfg):
@@ -474,7 +481,7 @@ class DefaultTrainer(TrainerBase):
         return train_loader, valid_loader, test_loader
 
     @classmethod
-    def build_test_loader(cls, cfg):
+    def build_test_loader(cls, cfg, tokenizer=None):
         # TODO: add doc string
         # If there is no test_loader, just return []
         if not try_get_key(cfg, "dataloader.test", default=False):
@@ -486,6 +493,8 @@ class DefaultTrainer(TrainerBase):
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+            if tokenizer:
+                cfg.dataloader.test[i].dataset.tokenizer = tokenizer
         # list[dataloader1, dataloader2, ...]
         test_loader = instantiate(cfg.dataloader.test)
         return test_loader
