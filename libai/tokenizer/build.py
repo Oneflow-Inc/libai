@@ -15,7 +15,7 @@
 
 import logging
 
-from libai.config import instantiate, try_get_key
+from libai.config import instantiate
 from libai.utils.registry import Registry
 
 logger = logging.getLogger(__name__)

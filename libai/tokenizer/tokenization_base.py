@@ -446,7 +446,7 @@ class PreTrainedTokenizer(object):
     def vocab_size(self) -> int:
         """Size of the base vocabulary (without the added tokens)."""
         raise NotImplementedError
-    
+
     def padded_vocab_size(self, multiple=1) -> int:
         """Padded the vocabulary with dummy tokens and return the new size."""
         vocab_size = len(self)

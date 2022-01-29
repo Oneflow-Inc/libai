@@ -390,7 +390,10 @@ class DefaultTrainer(TrainerBase):
             tokenizer = build_tokenizer(cfg.tokenization)
             if try_get_key(cfg, "model.cfg.vocab_size", default=None) is not None:
                 # In case the model does not need vocab_size as argument
-                multiple = cfg.tokenization.make_vocab_size_divisible_by * cfg.train.dist.tensor_parallel_size
+                multiple = (
+                    cfg.tokenization.make_vocab_size_divisible_by
+                    * cfg.train.dist.tensor_parallel_size
+                )
                 cfg.model.cfg.vocab_size = tokenizer.padded_vocab_size(multiple)
         return tokenizer
 

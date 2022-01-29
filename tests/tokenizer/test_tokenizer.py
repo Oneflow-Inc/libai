@@ -20,7 +20,7 @@ from omegaconf import DictConfig, OmegaConf
 sys.path.append(".")
 
 from libai.config import LazyCall
-from libai.tokenizer import build_tokenizer, BertTokenizer
+from libai.tokenizer import BertTokenizer, build_tokenizer
 
 # build_tokenizer for register
 default_cfg = dict(
@@ -28,7 +28,12 @@ default_cfg = dict(
         name="BertTokenizer",
         vocab_file="bert-base-chinese-vocab.txt",
         do_lower_case=True,
-        additional_special_tokens=['<special_id_0>', '<special_id_1>', '<special_id_2>', '<special_id_3>'],
+        additional_special_tokens=[
+            "<special_id_0>",
+            "<special_id_1>",
+            "<special_id_2>",
+            "<special_id_3>",
+        ],
         # do_chinese_wwm=True,
     ),
     append_eod=False,
