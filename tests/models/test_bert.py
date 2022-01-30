@@ -13,11 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 
 from omegaconf import DictConfig
-
-sys.path.append(".")
 
 from libai.config import LazyCall
 from libai.models import build_model

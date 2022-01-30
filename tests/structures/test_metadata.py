@@ -27,7 +27,8 @@ class TestMetadata(unittest.TestCase):
         x_meta = DistTensorData(x)
         x_meta.to_consistent()
         x_consistent = x.to_consistent(
-            sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: [0]})
+            sbp=flow.sbp.broadcast,
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
         )
 
         self.assertEqual(x_meta.tensor.sbp, x_consistent.sbp)

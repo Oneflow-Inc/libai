@@ -91,6 +91,7 @@ class TestScheduler(TestCase):
 
         sched = WarmupExponentialLR(
             optimizer=opt,
+            max_iter=10,
             gamma=0.1,
             warmup_factor=0.001,
             warmup_iter=5,
