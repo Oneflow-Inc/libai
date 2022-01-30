@@ -40,16 +40,11 @@ jobs:
           black -l 100 --check .
           flake8 .
       
-      - name: Run unittest
-        run: |
-          cd dev && bash run_unittest.sh
-
       - name: Please request CI again
         if: ${{ failure() }}
         run: |
           exit 1
 
-jobs:
   run_unittest:
     name: tests
     runs-on: ubuntu-18.04
