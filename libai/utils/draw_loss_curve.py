@@ -34,3 +34,7 @@ if __name__ == "__main__":
         "loss",
         {"oneflow": flow_total_loss, "megatron": megatron_total_loss,},
     )
+    
+    diff = [flow_total_loss[i] - megatron_total_loss[i] for i in range(len(flow_total_loss))]
+    
+    draw_result("./", "of_meg_diff", "steps", "diff", {"diff": diff})
