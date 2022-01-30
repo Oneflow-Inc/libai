@@ -221,7 +221,7 @@ class DefaultTrainer(TrainerBase):
                 self.start_iter = int(last_saved.split("_")[-1]) + 1
             except IOError:
                 # If file doesn't exist, maybe because it has just been deleted.
-                # We just set iter to 0.
+                # We just set start_iter to 0.
                 self.start_iter = 0
         cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size
 
