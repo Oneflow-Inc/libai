@@ -218,6 +218,8 @@ def get_dist_util():
 
 def get_layer_placement(layer_idx, device_type="cuda"):
     dist_util = get_dist_util()
+    if not flow.cuda.is_available() and device_type == "cuda":
+        device_type = "cpu"
     return flow.placement(
         device_type,
         dist_util.get_layer_devices(layer_idx),
@@ -227,7 +229,8 @@ def get_layer_placement(layer_idx, device_type="cuda"):
 
 def get_all_placement(device_type="cuda"):
     dist_util = get_dist_util()
-
+    if not flow.cuda.is_available() and device_type == "cuda":
+        device_type = "cpu"
     return flow.placement(
         device_type,
         {i: range(dist_util.num_gpus_per_node) for i in range(dist_util.num_nodes)},
