@@ -13,133 +13,180 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
-import numpy as np
-import oneflow as flow
-from oneflow.utils.data import DataLoader, TensorDataset
+import oneflow.utils.data as flowdata
 
 from libai.data.samplers import CyclicSampler, SingleRoundSampler
 
 
-class TestDataLoader(unittest.TestCase):
-    def setUp(self):
-        super(TestDataLoader, self).setUp()
-        self.data = flow.randn(100, 2, 3, 5)
-        self.labels = flow.randperm(50).repeat(2)
-        self.dataset = TensorDataset(self.data, self.labels)
-        self.persistent_workers = False
-
-    def _get_data_loader(self, dataset, **kwargs):
-        persistent_workers = kwargs.get("persistent_workers", self.persistent_workers)
-        if persistent_workers and kwargs.get("num_workers", 0) == 0:
-            persistent_workers = False
-        kwargs["persistent_workers"] = persistent_workers
-        return DataLoader(dataset, **kwargs)
-
-    def _test_sampler(self, **kwargs):
-        indices = range(2, 12)  # using a regular iterable
-        dl = self._get_data_loader(self.dataset, sampler=indices, batch_size=2, **kwargs)
-        self.assertEqual(len(dl), 5)
-        for i, (input, _target) in enumerate(dl):
-            self.assertEqual(len(input), 2)
-            self.assertTrue(
-                np.allclose(
-                    input.numpy(),
-                    self.data[i * 2 + 2 : i * 2 + 4, :, :, :].numpy(),
-                    atol=1e-4,
-                    rtol=1e-4,
-                )
-            )
-
-    def _test_batch_sampler(self, **kwargs):
-        # [(0, 1), (2, 3, 4), (5, 6), (7, 8, 9), ...]
-        batches = []  # using a regular iterable
-        for i in range(0, 20, 5):
-            batches.append(tuple(range(i, i + 2)))
-            batches.append(tuple(range(i + 2, i + 5)))
-
-        dl = self._get_data_loader(self.dataset, batch_sampler=batches, **kwargs)
-        self.assertEqual(len(dl), 8)
-        for i, (input, _target) in enumerate(dl):
-            if i % 2 == 0:
-                offset = i * 5 // 2
-                self.assertEqual(len(input), 2)
-                self.assertTrue(
-                    np.allclose(
-                        input.numpy(),
-                        self.data[offset : offset + 2, :, :, :].numpy(),
-                        atol=1e-4,
-                        rtol=1e-4,
-                    )
-                )
-            else:
-                offset = i * 5 // 2
-                self.assertEqual(len(input), 3)
-                self.assertTrue(
-                    np.allclose(
-                        input.numpy(),
-                        self.data[offset : offset + 3, :, :, :].numpy(),
-                        atol=1e-4,
-                        rtol=1e-4,
-                    )
-                )
-
-    def _test_cyclic_sampler(self, **kwargs):
+class TestCyclicSampler(unittest.TestCase):
+    def test_cyclic_sampler_iterable(self):
         sampler = CyclicSampler(
-            self.dataset,
+            list(range(100)),
             micro_batch_size=4,
-            shuffle=False,
-            consumed_samples=50,
-            data_parallel_size=1,
-            data_parallel_rank=0,
+            shuffle=True,
+            consumed_samples=0,
+            seed=123,
         )
-        dl = self._get_data_loader(self.dataset, batch_sampler=sampler, **kwargs)
-        offset = 50
-        data = self.data.repeat(10, 1, 1, 1)
-        for i, (input, _target) in enumerate(dl):
-            self.assertEqual(len(input), 4)
-            self.assertTrue(
-                np.allclose(
-                    input.numpy(),
-                    data[i * 4 + offset : i * 4 + 4 + offset, :, :, :].numpy(),
-                    atol=1e-4,
-                    rtol=1e-4,
-                )
-            )
-            if i > 50:
-                break
+        output_iter = itertools.islice(sampler, 25)  # iteration=100/4=25
+        sample_output = list()
+        for batch in output_iter:
+            sample_output.extend(batch)
+        self.assertEqual(set(sample_output), set(range(100)))
 
-    def _test_single_round_sampler(self, **kwargs):
+        data_sampler = CyclicSampler(
+            list(range(100)),
+            micro_batch_size=4,
+            shuffle=True,
+            consumed_samples=0,
+            seed=123,
+        )
+
+        data_loader = flowdata.DataLoader(
+            list(range(100)), batch_sampler=data_sampler, num_workers=0, collate_fn=lambda x: x
+        )
+
+        data_loader_iter = itertools.islice(data_loader, 25)
+        output = list()
+        for data in data_loader_iter:
+            output.extend(data)
+        self.assertEqual(output, sample_output)
+
+    def test_cyclic_sampler_seed(self):
+        sampler = CyclicSampler(
+            list(range(100)),
+            micro_batch_size=4,
+            shuffle=True,
+            seed=123,
+        )
+
+        data = list(itertools.islice(sampler, 65))
+
+        sampler = CyclicSampler(
+            list(range(100)),
+            micro_batch_size=4,
+            shuffle=True,
+            seed=123,
+        )
+
+        data2 = list(itertools.islice(sampler, 65))
+        self.assertEqual(data, data2)
+
+    def test_cyclic_sampler_resume(self):
+        # Single rank
+        sampler = CyclicSampler(
+            list(range(10)),
+            micro_batch_size=4,
+            shuffle=True,
+            seed=123,
+        )
+
+        all_output = list(itertools.islice(sampler, 50))  # iteration 50 times
+
+        sampler = CyclicSampler(
+            list(range(10)),
+            micro_batch_size=4,
+            shuffle=True,
+            seed=123,
+            consumed_samples=4 * 11,  # consumed 11 iters
+        )
+
+        resume_output = list(itertools.islice(sampler, 39))
+        self.assertEqual(all_output[11:], resume_output)
+
+    def test_cyclic_sampler_resume_multi_rank(self):
+        # Multiple ranks
+        sampler_rank0 = CyclicSampler(
+            list(range(10)),
+            micro_batch_size=4,
+            shuffle=True,
+            seed=123,
+            data_parallel_rank=0,
+            data_parallel_size=2,
+        )
+        sampler_rank1 = CyclicSampler(
+            list(range(10)),
+            micro_batch_size=4,
+            shuffle=True,
+            seed=123,
+            data_parallel_rank=1,
+            data_parallel_size=2,
+        )
+
+        all_output_rank0 = list(itertools.islice(sampler_rank0, 50))  # iteration 50 times
+        all_output_rank1 = list(itertools.islice(sampler_rank1, 50))  # iteration 50 times
+
+        sampler_rank0 = CyclicSampler(
+            list(range(10)),
+            micro_batch_size=4,
+            shuffle=True,
+            seed=123,
+            data_parallel_rank=0,
+            data_parallel_size=2,
+            consumed_samples=4 * 11,  # consumed 11 iters
+        )
+        sampler_rank1 = CyclicSampler(
+            list(range(10)),
+            micro_batch_size=4,
+            shuffle=True,
+            seed=123,
+            data_parallel_rank=1,
+            data_parallel_size=2,
+            consumed_samples=4 * 11,  # consumed 11 iters
+        )
+
+        resume_output_rank0 = list(itertools.islice(sampler_rank0, 39))
+        resume_output_rank1 = list(itertools.islice(sampler_rank1, 39))
+
+        self.assertEqual(all_output_rank0[11:], resume_output_rank0)
+        self.assertEqual(all_output_rank1[11:], resume_output_rank1)
+
+
+class TestSingleRoundSampler(unittest.TestCase):
+    def test_single_sampler_iterable(self):
         sampler = SingleRoundSampler(
-            self.dataset,
+            list(range(100)),
             micro_batch_size=4,
             shuffle=False,
-            data_parallel_size=1,
-            data_parallel_rank=0,
-            drop_last=False,
         )
-        dl = self._get_data_loader(self.dataset, batch_sampler=sampler, **kwargs)
-        for i, (input, _target) in enumerate(dl):
-            self.assertEqual(len(input), 4)
-            self.assertTrue(
-                np.allclose(
-                    input.numpy(),
-                    self.data[i * 4 : i * 4 + 4, :, :, :].numpy(),
-                    atol=1e-4,
-                    rtol=1e-4,
-                )
-            )
+        output_iter = itertools.islice(sampler, 30)  # exceed iteration number
+        sample_output = list()
+        for batch in output_iter:
+            sample_output.extend(batch)
+        self.assertEqual(sample_output, list(range(100)))
 
-    def test_sampler(self):
-        self._test_sampler()
-        self._test_sampler(num_workers=4)
-        self._test_batch_sampler()
-        self._test_batch_sampler(num_workers=4)
-        self._test_cyclic_sampler()
-        self._test_cyclic_sampler(num_workers=4)
-        self._test_single_round_sampler()
-        self._test_single_round_sampler(num_workers=4)
+    def test_single_sampler_multi_rank(self):
+        sampler_rank0 = SingleRoundSampler(
+            list(range(100)),
+            micro_batch_size=4,
+            shuffle=False,
+            data_parallel_rank=0,
+            data_parallel_size=2,
+        )
+        sampler_rank1 = SingleRoundSampler(
+            list(range(100)),
+            micro_batch_size=4,
+            shuffle=False,
+            data_parallel_rank=1,
+            data_parallel_size=2,
+        )
+
+        output_iter_rank0 = itertools.islice(sampler_rank0, 30)
+        sample_output_rank0 = list()
+        for batch in output_iter_rank0:
+            sample_output_rank0.extend(batch)
+
+        output_iter_rank1 = itertools.islice(sampler_rank1, 30)
+        sample_output_rank1 = list()
+        for batch in output_iter_rank1:
+            sample_output_rank1.extend(batch)
+
+        # Padding 0 if it's not enough for a batch, otherwise `to_consistent`
+        # will raise errors for imbalanced data shape in different ranks
+        self.assertEqual(sample_output_rank0, list(range(50)) + [0, 0])
+        self.assertEqual(sample_output_rank1, list(range(50, 100)) + [0, 0])
 
 
 if __name__ == "__main__":
