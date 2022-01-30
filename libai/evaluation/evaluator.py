@@ -164,6 +164,7 @@ def inference_on_dataset(
             data = get_batch(inputs)
             paded_data, valid_sample = pad_batch(data, batch_size)
             outputs = model(*paded_data)
+            # TODO(chengpeng): Slice valid_samples
             valid_data = [d[:valid_sample] for d in data]
             if isinstance(outputs, (list, tuple)):
                 valid_outputs = [op[:valid_sample] for op in outputs]
