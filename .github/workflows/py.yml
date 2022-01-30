@@ -46,7 +46,7 @@ jobs:
           exit 1
 
   run_unittest:
-    name: tests
+    name: unit tests
     runs-on: ubuntu-18.04
     if: github.event.pull_request.draft == false && contains(github.event.pull_request.requested_reviewers.*.login, 'oneflow-ci-bot')
     steps:
@@ -66,7 +66,7 @@ jobs:
       - name: Build and install
         run: |
           python -m pip install -e .
-          python -m pip install flowvision=0.0.6
+          python -m pip install flowvision==0.0.6
 
       - name: Run unittest
         run: |
