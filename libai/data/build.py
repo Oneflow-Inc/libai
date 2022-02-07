@@ -17,7 +17,8 @@ import logging
 
 import oneflow as flow
 from libai.data.data_samplers import build_pretraining_data_loader
-from libai.data.dataset_utils import train_valid_test_dataset_provider
+# from libai.data.dataset_utils import train_valid_test_dataset_provider
+from libai.data.datasets.gpt_dataset import train_valid_test_dataset_provider
 
 logger = logging.getLogger(__name__)
 

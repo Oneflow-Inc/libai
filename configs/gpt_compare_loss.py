@@ -13,16 +13,17 @@ model.cfg.bias_dropout_fusion = False
 model.cfg.bias_gelu_fusion=False
 
 # Set matched model arguments
-model.cfg.hidden_layers = 6
-model.cfg.hidden_size = 384
-model.cfg.intermediate_size = 1536
-model.cfg.num_attention_heads = 12
-model.cfg.max_position_embeddings = 512
-model.cfg.embedding_dropout_prob = 0.1
-model.cfg.attention_probs_dropout_prob = 0.1
+model.cfg.num_layers=6
+model.cfg.vocab_size=50304
+model.cfg.hidden_size=384
+model.cfg.ffn_hidden_size=1536
+model.cfg.num_attention_heads=16
+model.cfg.max_seq_length=512
+model.cfg.embedding_dropout_prob=0.1
+model.cfg.attention_dropout_prob=0.1
+model.cfg.apply_query_key_layer_scaling=False
 
-train.dist.pipeline_num_layers = model.cfg.hidden_layers
-
+train.dist.pipeline_num_layers = model.cfg.num_layers
 train.train_iter = 1000
 train.micro_batch_size = 16
 train.log_period = 1
@@ -41,11 +42,9 @@ data.max_seq_length_dec = 128
 # data.dataset_type = "standard_bert"
 data.dataset_type = "t5"
 # data.tokenizer_type = "BertCNWWMTokenizer"
-data.tokenizer_type = "BertWordPieceLowerCase"
-# data.data_path = ['/home/wang/data/t5/dataset/loss_compara_content_sentence']
-# data.vocab_file = '/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
+data.tokenizer_type = "GPT2BPETokenizer"
 data.data_path = ['/workspace/data/libai_dataset/loss_compara_content_sentence']
-data.vocab_file = '/workspace/data/libai_dataset/bert-base-chinese-vocab.txt'
+data.vocab_file = '/workspace/data/gpt_dataset/vocab_file.txt'
 data.num_workers = 1
 data.vocab_extra_ids = 100
 data.mmap_warmup = False
