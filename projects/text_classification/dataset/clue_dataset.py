@@ -23,9 +23,12 @@ import oneflow as flow
 from filelock import FileLock
 from oneflow.utils.data import Dataset
 
-from .glue_utils import glue_convert_examples_to_features, glue_output_modes, glue_processors
+from libai.data.structures import DistTensorData, Instance
 
-logger = logging.get_logger(__name__)
+from .utils_clue import clue_convert_examples_to_features, clue_output_modes, clue_processors
+from .utils import EncodePattern
+
+logger = logging.getLogger(__name__)
 
 
 class Split(Enum):
@@ -34,7 +37,7 @@ class Split(Enum):
     test = "test"
 
 
-class GlueDataset(Dataset):
+class ClueDataset(Dataset):
     def __init__(
         self,
         task_name,
@@ -42,12 +45,12 @@ class GlueDataset(Dataset):
         tokenizer,
         max_seq_length: int = 128,
         mode: Union[str, Split] = Split.train,
-        pattern: EncodePattern = EncodePattern.bert_pattern,
+        pattern: Union[str, EncodePattern] = EncodePattern.bert_pattern,
         cache_dir: Optional[str] = None,
-        overwrite_cache: bool = False,
+        overwrite_cache: bool = True,
     ):
-        self.processor = glue_processors[task_name]()
-        self.output_mode = glue_output_modes[task_name]
+        self.processor = clue_processors[task_name]()
+        self.output_mode = clue_output_modes[task_name]
         if isinstance(mode, str):
             try:
                 mode = Split[mode]
@@ -83,7 +86,7 @@ class GlueDataset(Dataset):
                 else:
                     examples = self.processor.get_train_examples(data_dir)
 
-                self.features = glue_convert_examples_to_features(
+                self.features = clue_convert_examples_to_features(
                     examples,
                     tokenizer,
                     max_length=max_seq_length,
@@ -104,7 +107,7 @@ class GlueDataset(Dataset):
     def __getitem__(self, i):
         feature = self.features[i]
         tensors = {}
-        for k, v in feature.items():
+        for k, v in feature.__dict__.items():
             if v is not None:
                 if k == "label":
                     dtype = flow.long if isinstance(v, int) else flow.float

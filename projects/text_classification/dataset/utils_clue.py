@@ -18,10 +18,10 @@ import os
 
 from .utils import DataProcessor, EncodePattern, InputExample, InputFeatures
 
-logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
-def glue_convert_examples_to_features(
+def clue_convert_examples_to_features(
     examples,
     tokenizer,
     max_length,
@@ -31,12 +31,12 @@ def glue_convert_examples_to_features(
     output_mode=None,
 ):
     if task is not None:
-        processor = glue_processors[task]()
+        processor = clue_processors[task]()
         if label_list is None:
             label_list = processor.get_labels()
             logger.info(f"Using label list {label_list} for task {task}")
         if output_mode is None:
-            output_mode = glue_output_modes[task]
+            output_mode = clue_output_modes[task]
             logger.info(f"Using output mode {output_mode} for task {task}")
 
     label_map = {label: i for i, label in enumerate(label_list)}
@@ -72,13 +72,13 @@ def glue_convert_examples_to_features(
             token_type_ids = [0] * len(tokens)
             if tokens_b:
                 tokens += tokens_b + end_token
-                token_type_ids = [1] * (len(tokens) - len(token_type_ids))
+                token_type_ids += [1] * (len(tokens) - len(token_type_ids))
         elif pattern is EncodePattern.roberta_pattern:
             tokens = start_token + tokens_a + end_token
             token_type_ids = [0] * len(tokens)
             if tokens_b:
                 tokens += end_token + tokens_b + end_token
-                token_type_ids = [1] * (len(tokens) - len(token_type_ids))
+                token_type_ids += [1] * (len(tokens) - len(token_type_ids))
         else:
             raise KeyError("pattern is not a valid EncodePattern")
 
@@ -128,28 +128,118 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
             tokens_b.pop()
 
 
-class MrpcProcessor(DataProcessor):
-    """Processor for the MRPC data set (GLUE version).
-    Sentence pair classification task.
-    Determine whether the two sentences have the same meaning.
+class TnewsProcessor(DataProcessor):
+    """Processor for the TNEWS data set (CLUE version).
+    Single sentence classification task.
+    The task is to predict which category the title belongs to.
     """
 
     def get_train_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
+            self._read_json(os.path.join(data_dir, "train.json")), "train"
         )
 
     def get_dev_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev"
+            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
         )
 
     def get_test_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test"
+            self._read_json(os.path.join(data_dir, "test.json")), "test"
+        )
+
+    def get_labels(self):
+        """See base class."""
+        labels = []
+        for i in range(17):
+            if i == 5 or i == 11:
+                continue
+            labels.append(str(100 + i))
+        return labels
+
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = f"{set_type}-{i}"
+            text_a = line["sentence"]
+            label = None if set_type == "test" else str(line["label"])
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=None, label=label)
+            )
+        return examples
+
+
+class IflytekProcessor(DataProcessor):
+    """Processor for the IFLYTEK data set (CLUE version).
+    Single sentence classification task.
+    The task is to predict the categories according to discription.
+    """
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "train.json")), "train"
+        )
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
+        )
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "test.json")), "test"
+        )
+
+    def get_labels(self):
+        """See base class."""
+        labels = []
+        for i in range(119):
+            labels.append(str(i))
+        return labels
+
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = f"{set_type}-{i}"
+            text_a = line["sentence"]
+            label = None if set_type == "test" else str(line["label"])
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=None, label=label)
+            )
+        return examples
+
+
+class AfqmcProcessor(DataProcessor):
+    """Processor for the AFQMC data set (CLUE version).
+    Sentence pair classification task.
+    This task is to predict whether two sentences are semantically similar.
+    """
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "train.json")), "train"
+        )
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
+        )
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "test.json")), "test"
         )
 
     def get_labels(self):
@@ -157,23 +247,21 @@ class MrpcProcessor(DataProcessor):
         return ["0", "1"]
 
     def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
+        """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
             guid = f"{set_type}-{i}"
-            text_a = line[3]
-            text_b = line[4]
-            label = None if set_type == "test" else line[0]
+            text_a = line["sentence1"]
+            text_b = line["sentence2"]
+            label = None if set_type == "test" else str(line["label"])
             examples.append(
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
             )
         return examples
 
 
-class MnliProcessor(DataProcessor):
-    """Processor for the MultiNLI data set (GLUE version).
+class OcnliProcessor(DataProcessor):
+    """Processor for the OCNLI data set (CLUE version).
     Sentence pair classification task.
     Given a premise sentence and a hypothesis sentence,
     the task is to predict whether the premise entails the hypothesis (entailment),
@@ -183,19 +271,19 @@ class MnliProcessor(DataProcessor):
     def get_train_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
+            self._read_json(os.path.join(data_dir, "train.json")), "train"
         )
 
     def get_dev_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev_matched.tsv")), "dev_matched"
+            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
         )
 
     def get_test_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test_matched.tsv")), "test_matched"
+            self._read_json(os.path.join(data_dir, "test.json")), "test"
         )
 
     def get_labels(self):
@@ -203,61 +291,86 @@ class MnliProcessor(DataProcessor):
         return ["contradiction", "entailment", "neutral"]
 
     def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
+        """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
-            if i == 0:
+            guid = f"{set_type}-{i}"
+            text_a = line["sentence1"]
+            text_b = line["sentence2"]
+            label = None if set_type == "test" else str(line["label"])
+            if label.strip() == "-":
                 continue
-            guid = f"{set_type}-{line[0]}"
-            text_a = line[8]
-            text_b = line[9]
-            label = None if set_type.startswith("test") else line[-1]
             examples.append(
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
             )
         return examples
 
 
-class MnliMismatchedProcessor(MnliProcessor):
-    """Processor for the MultiNLI Mismatched data set (GLUE version)."""
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev_mismatched.tsv")),
-            "dev_mismatched",
-        )
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test_mismatched.tsv")),
-            "test_mismatched",
-        )
-
-
-class ColaProcessor(DataProcessor):
-    """Processor for the CoLA data set (GLUE version).
-    Single sentence classification task.
-    Each example is a sequence of words annotated with whether it is a grammatical English sentence.
+class CmnliProcessor(DataProcessor):
+    """Processor for the CMNLI data set (CLUE version).
+    Sentence pair classification task.
+    Given a premise sentence and a hypothesis sentence,
+    the task is to predict whether the premise entails the hypothesis (entailment),
+    contradicts the hypothesis (contradiction), or neither (neutral).
     """
 
     def get_train_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
+            self._read_json(os.path.join(data_dir, "train.json")), "train"
         )
 
     def get_dev_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev"
+            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
         )
 
     def get_test_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test"
+            self._read_json(os.path.join(data_dir, "test.json")), "test"
+        )
+
+    def get_labels(self):
+        """See base class."""
+        return ["contradiction", "entailment", "neutral"]
+
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = f"{set_type}-{i}"
+            text_a = line["sentence1"]
+            text_b = line["sentence2"]
+            label = None if set_type == "test" else str(line["label"])
+            if label.strip() == "-":
+                continue
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
+            )
+        return examples
+
+
+class CslProcessor(DataProcessor):
+    """Processor for the CSL data set (CLUE version)."""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "train.json")), "train"
+        )
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
+        )
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "test.json")), "test"
         )
 
     def get_labels(self):
@@ -265,45 +378,99 @@ class ColaProcessor(DataProcessor):
         return ["0", "1"]
 
     def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
-        test_mode = set_type == "test"
-        if test_mode:
-            lines = lines[1:]
-        text_index = 1 if test_mode else 3
+        """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
             guid = f"{set_type}-{i}"
-            text_a = line[text_index]
-            label = None if test_mode else line[1]
+            text_a = " ".join(line["keyword"])
+            text_b = line["abst"]
+            label = None if set_type == "test" else str(line["label"])
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
+            )
+        return examples
+
+
+class WscProcessor(DataProcessor):
+    """Processor for the WSC data set (CLUE version)."""
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "train.json")), "train"
+        )
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
+        )
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_json(os.path.join(data_dir, "test.json")), "test"
+        )
+
+    def get_labels(self):
+        """See base class."""
+        return ["true", "false"]
+
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = f"{set_type}-{i}"
+            text_a = line["text"]
+            text_a_list = list(text_a)
+            target = line["target"]
+            query = target["span1_text"]
+            query_idx = target["span1_index"]
+            pronoun = target["span2_text"]
+            pronoun_idx = target["span2_index"]
+            assert (
+                text_a[pronoun_idx : (pronoun_idx + len(pronoun))] == pronoun
+            ), "pronoun: {}".format(pronoun)
+            assert (
+                text_a[query_idx : (query_idx + len(query))] == query
+            ), "query: {}".format(query)
+            if pronoun_idx > query_idx:
+                text_a_list.insert(query_idx, "_")
+                text_a_list.insert(query_idx + len(query) + 1, "_")
+                text_a_list.insert(pronoun_idx + 2, "[")
+                text_a_list.insert(pronoun_idx + len(pronoun) + 2 + 1, "]")
+            else:
+                text_a_list.insert(pronoun_idx, "[")
+                text_a_list.insert(pronoun_idx + len(pronoun) + 1, "]")
+                text_a_list.insert(query_idx + 2, "_")
+                text_a_list.insert(query_idx + len(query) + 2 + 1, "_")
+            text_a = "".join(text_a_list)
+            label = None if set_type == "test" else str(line["label"])
             examples.append(
                 InputExample(guid=guid, text_a=text_a, text_b=None, label=label)
             )
         return examples
 
 
-class Sst2Processor(DataProcessor):
-    """Processor for the SST-2 data set (GLUE version).
-    Single sentence classification task.
-    The task is to predict the sentiment of a given sentence.
-    We use the two-way (positive/negative) class split, and use only sentence-level labels.
-    """
+class CopaProcessor(DataProcessor):
+    """Processor for the COPA data set (CLUE version)."""
 
     def get_train_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
+            self._read_json(os.path.join(data_dir, "train.json")), "train"
         )
 
     def get_dev_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev"
+            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
         )
 
     def get_test_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test"
+            self._read_json(os.path.join(data_dir, "test.json")), "test"
         )
 
     def get_labels(self):
@@ -311,283 +478,83 @@ class Sst2Processor(DataProcessor):
         return ["0", "1"]
 
     def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
         examples = []
-        text_index = 1 if set_type == "test" else 0
         for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
+            i = 2 * i
+            guid1 = f"{set_type}-{i}"
+            guid2 = "%s-%s" % (set_type, i + 1)
+            premise = line["premise"]
+            choice0 = line["choice0"]
+            label = None if set_type == "test" else str(1 if line["label"] == 0 else 0)
+            choice1 = line["choice1"]
+            label2 = None if set_type == "test" else str(1 if line["label"] == 0 else 0)
+            if line["question"] == "effect":
+                text_a = premise
+                text_b = choice0
+                text_a2 = premise
+                text_b2 = choice1
+            elif line["question"] == "cause":
+                text_a = choice0
+                text_b = premise
+                text_a2 = choice1
+                text_b2 = premise
+            else:
+                raise ValueError(f'unknowed {line["question"]} type')
+            examples.append(
+                InputExample(guid=guid1, text_a=text_a, text_b=text_b, label=label)
+            )
+            examples.append(
+                InputExample(guid=guid2, text_a=text_a2, text_b=text_b2, label=label2)
+            )
+        return examples
+
+    def _create_examples_version2(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
             guid = f"{set_type}-{i}"
-            text_a = line[text_index]
-            label = None if set_type == "test" else line[1]
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=None, label=label)
-            )
-        return examples
-
-
-class StsbProcessor(DataProcessor):
-    """Processor for the STS-B data set (GLUE version).
-    Sentence pair task but it is a regression task.
-    This task is to predict the similarity score of two sentences.
-    """
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
-        )
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev"
-        )
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test"
-        )
-
-    def get_labels(self):
-        """See base class."""
-        return [None]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = f"{set_type}-{line[0]}"
-            text_a = line[7]
-            text_b = line[8]
-            label = None if set_type == "test" else line[-1]
+            if line["question"] == "cause":
+                text_a = line["premise"] + "这是什么原因造成的？" + line["choice0"]
+                text_b = line["premise"] + "这是什么原因造成的？" + line["choice1"]
+            else:
+                text_a = line["premise"] + "这造成了什么影响？" + line["choice0"]
+                text_b = line["premise"] + "这造成了什么影响？" + line["choice1"]
+            label = None if set_type == "test" else str(1 if line["label"] == 0 else 0)
             examples.append(
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
             )
         return examples
 
 
-class QqpProcessor(DataProcessor):
-    """Processor for the QQP data set (GLUE version).
-    Sentence pair classification task.
-    The task is to determine whether a pair of questions are semantically equivalent.
-    """
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
-        )
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev"
-        )
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test"
-        )
-
-    def get_labels(self):
-        """See base class."""
-        return ["0", "1"]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
-        test_mode = set_type == "test"
-        q1_index = 1 if test_mode else 3
-        q2_index = 2 if test_mode else 4
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = f"{set_type}-{line[0]}"
-            try:
-                text_a = line[q1_index]
-                text_b = line[q2_index]
-                label = None if test_mode else line[5]
-            except IndexError:
-                continue
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
-        return examples
-
-
-class QnliProcessor(DataProcessor):
-    """Processor for the QNLI data set (GLUE version).
-    Sentence pair classification task.
-    The task is to determine whether the context sentence contains the answer to the question.
-    """
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
-        )
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev"
-        )
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test"
-        )
-
-    def get_labels(self):
-        """See base class."""
-        return ["entailment", "not_entailment"]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = f"{set_type}-{line[0]}"
-            text_a = line[1]
-            text_b = line[2]
-            label = None if set_type == "test" else line[-1]
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
-        return examples
-
-
-class RteProcessor(DataProcessor):
-    """Processor for the RTE data set (GLUE version).
-    Sentence pair classification task.
-    Recognizing Textual Entailment.
-    Predict whether the two sentences is entailment or not entailment (neutral and contradiction).
-    """
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
-        )
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev"
-        )
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test"
-        )
-
-    def get_labels(self):
-        """See base class."""
-        return ["entailment", "not_entailment"]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = f"{set_type}-{line[0]}"
-            text_a = line[1]
-            text_b = line[2]
-            label = None if set_type == "test" else line[-1]
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
-        return examples
-
-
-class WnliProcessor(DataProcessor):
-    """Processor for the WNLI data set (GLUE version).
-    Sentence pair classification task.
-    The task is to predict if the sentence with the pronoun substituted is entailed
-    by the original sentence.
-    """
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train"
-        )
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev"
-        )
-
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test"
-        )
-
-    def get_labels(self):
-        """See base class."""
-        return ["0", "1"]
-
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training, dev and test sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
-            guid = f"{set_type}-{line[0]}"
-            text_a = line[1]
-            text_b = line[2]
-            label = None if set_type == "test" else line[-1]
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
-        return examples
-
-
-glue_tasks_num_labels = {
-    "cola": 2,
-    "mnli": 3,
-    "mrpc": 2,
-    "sst-2": 2,
-    "sts-b": 1,
-    "qqp": 2,
-    "qnli": 2,
-    "rte": 2,
-    "wnli": 2,
+clue_tasks_num_labels = {
+    "iflytek": 119,
+    "cmnli": 3,
+    "ocnli": 3,
+    "afqmc": 2,
+    "csl": 2,
+    "wsc": 2,
+    "copa": 2,
+    "tnews": 15,
 }
 
-glue_processors = {
-    "cola": ColaProcessor,
-    "mnli": MnliProcessor,
-    "mnli-mm": MnliMismatchedProcessor,
-    "mrpc": MrpcProcessor,
-    "sst-2": Sst2Processor,
-    "sts-b": StsbProcessor,
-    "qqp": QqpProcessor,
-    "qnli": QnliProcessor,
-    "rte": RteProcessor,
-    "wnli": WnliProcessor,
+clue_processors = {
+    "tnews": TnewsProcessor,
+    "iflytek": IflytekProcessor,
+    "cmnli": CmnliProcessor,
+    "ocnli": OcnliProcessor,
+    "afqmc": AfqmcProcessor,
+    "csl": CslProcessor,
+    "wsc": WscProcessor,
+    "copa": CopaProcessor,
 }
 
-glue_output_modes = {
-    "cola": "classification",
-    "mnli": "classification",
-    "mnli-mm": "classification",
-    "mrpc": "classification",
-    "sst-2": "classification",
-    "sts-b": "regression",
-    "qqp": "classification",
-    "qnli": "classification",
-    "rte": "classification",
-    "wnli": "classification",
+clue_output_modes = {
+    "tnews": "classification",
+    "iflytek": "classification",
+    "cmnli": "classification",
+    "ocnli": "classification",
+    "afqmc": "classification",
+    "csl": "classification",
+    "wsc": "classification",
+    "copa": "classification",
 }
