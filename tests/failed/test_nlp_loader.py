@@ -13,12 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 
 import oneflow as flow
 from omegaconf import OmegaConf
 
-sys.path.append(".")
 from libai.config import LazyCall, default_argument_parser
 from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
 from libai.data.structures import Instance

@@ -12,14 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 
-sys.path.append(".")
 from libai.config import LazyConfig
 from libai.config.instantiate import instantiate
 from libai.data.structures import Instance
 
-cfg = LazyConfig.load("./configs/common/data/cv_data.py")
+cfg = LazyConfig.load("configs/common/data/cifar.py")
 
 train_loader, val_loader, test_loader = instantiate(cfg.dataloader.train)
 assert len(train_loader) == 80073

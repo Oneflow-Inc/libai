@@ -212,11 +212,18 @@ class DefaultTrainer(TrainerBase):
         # Initialize tokenizer
         self.tokenizer = self.build_tokenizer(cfg)
 
-        # Create dataloader defined by the given config
-        # Resume dataloader or not
-        # TODO: Add dataloader resume
-        # if cfg.train.resume:
-        #     cfg.dataloader.cousumed_samples = ...
+        self.start_iter = 0
+        if cfg.train.resume:
+            save_file = os.path.join(cfg.train.output_dir, "last_checkpoint")
+            try:
+                with open(save_file, "r") as f:
+                    last_saved = f.read().strip()
+                self.start_iter = int(last_saved.split("_")[-1]) + 1
+            except IOError:
+                # If file doesn't exist, maybe because it has just been deleted.
+                # We just set start_iter to 0.
+                self.start_iter = 0
+        cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size
 
         self.train_loader = None
         self.test_loader = []
@@ -285,14 +292,12 @@ class DefaultTrainer(TrainerBase):
             if self.checkpointer.has_checkpoint():
                 # The checkpoint stores the training iteration that just finished, thus we start
                 # at the next iteration (or iter zero if there's no checkpoint).
-                self.start_iter = (
+                assert self.start_iter == (
                     self.checkpointer.resume_or_load(None, resume=True).get("iter", -1) + 1
                 )
             else:
                 # This is considered as an independent training.
                 self.checkpointer.load(self.cfg.train.load_weight, checkpointables=[])
-        else:
-            self.start_iter = 0
 
     def build_hooks(self):
         """
