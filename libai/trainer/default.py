@@ -14,8 +14,10 @@
 # limitations under the License.
 
 import logging
+import math
 import os
 from collections import OrderedDict
+from typing import Callable, Optional
 
 import omegaconf
 import oneflow as flow
@@ -159,9 +161,6 @@ def default_setup(cfg, args):
     flow.boxing.nccl.set_fusion_max_ops_num(
         try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
-    flow.boxing.nccl.enable_use_compute_stream(
-        try_get_key(cfg, "train.enable_use_compute_stream", default=True)
-    )
 
 
 class DefaultTrainer(TrainerBase):
@@ -211,9 +210,36 @@ class DefaultTrainer(TrainerBase):
             setup_logger()
 
         # Initialize tokenizer
-        self.tokenizer = None
-        if try_get_key(cfg, "tokenization.setup", default=False):
-            self.tokenizer = self.build_tokenizer(cfg)
+        self.tokenizer = self.build_tokenizer(cfg)
+
+        self.start_iter = 0
+        if cfg.train.resume:
+            save_file = os.path.join(cfg.train.output_dir, "last_checkpoint")
+            try:
+                with open(save_file, "r") as f:
+                    last_saved = f.read().strip()
+                self.start_iter = int(last_saved.split("_")[-1]) + 1
+            except IOError:
+                # If file doesn't exist, maybe because it has just been deleted.
+                # We just set start_iter to 0.
+                self.start_iter = 0
+        cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size
+
+        self.train_loader = None
+        self.test_loader = []
+
+        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
+        self.train_loader = train_loader
+
+        if val_loader is not None:
+            self.test_loader.append(val_loader)
+        if test_loader is not None:
+            self.test_loader.append(test_loader)
+
+        self.test_loader.extend(self.build_test_loader(cfg, self.tokenizer))
+
+        # Automatically scale the hyperparams
+        self.auto_scale_hyperparams(cfg, self.train_loader)
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
@@ -235,19 +261,6 @@ class DefaultTrainer(TrainerBase):
         # the last breakpoint.
         self.resume_or_load(cfg.train.resume)
         cfg.train.start_iter = self.start_iter
-
-        self.train_loader = None
-        self.test_loader = []
-
-        train_loader, val_loader, test_loader = self.build_train_loader(cfg, self.tokenizer)
-        self.train_loader = train_loader
-
-        if val_loader is not None:
-            self.test_loader.append(val_loader)
-        if test_loader is not None:
-            self.test_loader.append(test_loader)
-
-        self.test_loader.extend(self.build_test_loader(cfg))
 
         if cfg.graph.enabled:
             self.graph_train = self.build_graph(
@@ -279,14 +292,12 @@ class DefaultTrainer(TrainerBase):
             if self.checkpointer.has_checkpoint():
                 # The checkpoint stores the training iteration that just finished, thus we start
                 # at the next iteration (or iter zero if there's no checkpoint).
-                self.start_iter = (
+                assert self.start_iter == (
                     self.checkpointer.resume_or_load(None, resume=True).get("iter", -1) + 1
                 )
             else:
                 # This is considered as an independent training.
                 self.checkpointer.load(self.cfg.train.load_weight, checkpointables=[])
-        else:
-            self.start_iter = 0
 
     def build_hooks(self):
         """
@@ -350,7 +361,7 @@ class DefaultTrainer(TrainerBase):
         self._trainer.run_step(self.get_batch)
 
     @classmethod
-    def get_batch(cls, data: Instance):
+    def get_batch(cls, data: Instance, mixup_func: Optional[Callable] = None):
         """
         Convert batched local tensor to distributed tensor for model step running.
 
@@ -359,6 +370,11 @@ class DefaultTrainer(TrainerBase):
         """
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
+
+        if mixup_func is not None:
+            images, targets = mixup_func(data.get("images").tensor, data.get("targets").tensor)
+            data.get("images").tensor = images
+            data.get("targets").tensor = targets
 
         ret_dict = {}
         ret_list = []
@@ -372,10 +388,22 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_tokenizer(cls, cfg):
-        assert (
-            try_get_key(cfg, "tokenization") is not None
-        ), "cfg must contain `tokenization` namespace"
-        return build_tokenizer(cfg)
+        """
+        Returns:
+            libai.tokenizer.PreTrainedTokenizer:
+        It now calls :func:`libai.tokenizer.build_tokenizer`.
+        """
+        tokenizer = None
+        if try_get_key(cfg, "tokenization") is not None:
+            tokenizer = build_tokenizer(cfg.tokenization)
+            if try_get_key(cfg, "model.cfg.vocab_size", default=None) is not None:
+                # In case the model does not need vocab_size as argument
+                multiple = (
+                    cfg.tokenization.make_vocab_size_divisible_by
+                    * cfg.train.dist.tensor_parallel_size
+                )
+                cfg.model.cfg.vocab_size = tokenizer.padded_vocab_size(multiple)
+        return tokenizer
 
     @classmethod
     def build_model(cls, cfg):
@@ -395,10 +423,10 @@ class DefaultTrainer(TrainerBase):
     @classmethod
     def build_graph(cls, cfg, model, optimizer=None, lr_scheduler=None, is_train=True):
         assert try_get_key(cfg, "graph") is not None, "cfg must contain `graph` namespace"
-        graph = build_graph(cfg.graph, model, optimizer, lr_scheduler, is_train)
-        logger = logging.getLogger(__name__)
+        graph = build_graph(cfg, model, optimizer, lr_scheduler, is_train)
         debug_graph = try_get_key(cfg, "graph.debug", default=-1)
         if debug_graph >= 0:
+            logger = logging.getLogger(__name__)
             logger.info("Graph debug mode on, automatically output debug info.")
             graph.debug(cfg.graph.debug)
         return graph
@@ -420,8 +448,10 @@ class DefaultTrainer(TrainerBase):
         It now calls :func:`libai.scheduler.build_lr_scheduler`.
         Overwrite it if you'd like a different scheduler.
         """
-        assert try_get_key(cfg, "scheduler") is not None, "cfg must contain `scheduler` namespace"
-        return build_lr_scheduler(cfg.scheduler, optimizer)
+        assert (
+            try_get_key(cfg, "train.scheduler") is not None
+        ), "cfg.train must contain `scheduler` namespace"
+        return build_lr_scheduler(cfg.train.scheduler, optimizer)
 
     @classmethod
     def build_train_loader(cls, cfg, tokenizer=None):
@@ -451,7 +481,7 @@ class DefaultTrainer(TrainerBase):
         return train_loader, valid_loader, test_loader
 
     @classmethod
-    def build_test_loader(cls, cfg):
+    def build_test_loader(cls, cfg, tokenizer=None):
         # TODO: add doc string
         # If there is no test_loader, just return []
         if not try_get_key(cfg, "dataloader.test", default=False):
@@ -463,9 +493,60 @@ class DefaultTrainer(TrainerBase):
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+            if tokenizer:
+                cfg.dataloader.test[i].dataset.tokenizer = tokenizer
         # list[dataloader1, dataloader2, ...]
         test_loader = instantiate(cfg.dataloader.test)
         return test_loader
+
+    @classmethod
+    def auto_scale_hyperparams(cls, cfg, data_loader):
+        logger = logging.getLogger(__name__)
+        log_info = ""
+
+        # Get or set default iteration cfg
+        train_iter = try_get_key(cfg, "train.train_iter", default=0)
+        train_epoch = try_get_key(cfg, "train.train_epoch", default=0)
+        warmup_ratio = try_get_key(cfg, "train.warmup_ratio", default=0)
+        assert (
+            warmup_ratio < 1 and warmup_ratio >= 0
+        ), "warmup_ratio must be in [0, 1) that presents the ratio of warmup iter to the train iter"
+
+        # Automatically scale iteration num depend on the settings
+        # The total iters in one epoch is `len(dataset) / global_batch_size`
+        cfg.train.train_iter = max(
+            math.ceil(len(data_loader.dataset) * train_epoch / cfg.train.global_batch_size),
+            train_iter,
+        )
+        cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
+        log_info += "Auto-scaling the config to train.train_iter={}, train.warmup_iter={}".format(
+            cfg.train.train_iter, cfg.train.warmup_iter
+        )
+
+        # Automatically scale the milestones
+        if try_get_key(cfg, "train.scheduler.milestones"):
+            if len(
+                [
+                    milestone
+                    for milestone in cfg.train.scheduler.milestones
+                    if milestone < 0 or milestone >= 1
+                ]
+            ):
+                raise ValueError(
+                    "milestones should be a list of increasing ratio in [0, 1), but got {}".format(
+                        cfg.train.scheduler.milestones
+                    )
+                )
+            cfg.train.scheduler.milestones = [
+                int(milestone * cfg.train.train_iter)
+                for milestone in cfg.train.scheduler.milestones
+            ]
+            log_info += f", scheduler milestones={cfg.train.scheduler.milestones}"
+        logger.info(log_info)
+
+        # Consistent scheduler cfg
+        cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
+        cfg.train.scheduler.max_iter = cfg.train.train_iter
 
     @classmethod
     def build_evaluator(cls, cfg):

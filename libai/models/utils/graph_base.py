@@ -26,6 +26,9 @@ class GraphBase(nn.Graph):
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
         fp16=False,
+        recompute_grad=False,
+        zero_optim=False,
+        zero_stage=0,
         is_train=True,
     ):
         super().__init__()
@@ -35,8 +38,6 @@ class GraphBase(nn.Graph):
 
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
-            self.set_activation_checkpoint()
-            self.set_pipeline_stage_id()
             if fp16:
                 self.config.enable_amp(True)
                 grad_scaler = flow.amp.GradScaler(
@@ -46,6 +47,18 @@ class GraphBase(nn.Graph):
                     growth_interval=2000,
                 )
                 self.set_grad_scaler(grad_scaler)
+            if recompute_grad:
+                self.set_activation_checkpoint()
+            if zero_optim:
+                self.config.set_zero_redundancy_optimizer_mode("distributed_split")
+                self.config.set_zero_redundancy_optimizer_min_size_after_split(1)
+                if zero_stage > 1:
+                    # stage 2
+                    flow.boxing.nccl.enable_use_compute_stream(True)
+                if zero_stage > 2:
+                    # stage 3
+                    flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)
+            self.set_pipeline_stage_id()
 
         self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)

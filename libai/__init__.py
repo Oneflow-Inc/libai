@@ -12,24 +12,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 
-sys.path.append(".")
-from libai.config import LazyConfig
-from libai.config.instantiate import instantiate
-from libai.data.structures import Instance
 
-cfg = LazyConfig.load("./configs/common/data/cv_data.py")
+# This line will be programatically read/write by setup.py.
+# Leave them at the bottom of this file and don't touch them.
 
-train_loader, val_loader, test_loader = instantiate(cfg.dataloader.train)
-assert len(train_loader) == 80073
-for sample in train_loader:
-    assert isinstance(sample, Instance)
-    break
+from libai import data
+from libai import evaluation
+from libai import layers
+from libai import models
+from libai import optim
+from libai import scheduler
+from libai import tokenizer
+from libai import trainer
+from libai import utils
 
-test_loader = instantiate(cfg.dataloader.test)
-assert len(test_loader[0]) == 3125
-for loader in test_loader:
-    for sample in loader:
-        assert isinstance(sample, Instance)
-        break
+try:
+    from .version import __version__  # noqa: F401
+except ImportError:
+    pass

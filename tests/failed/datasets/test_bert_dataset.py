@@ -13,18 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.data import T5Dataset
 from libai.data.data_utils import get_indexed_dataset
-from libai.tokenizer import T5Tokenizer
+from libai.data.datasets import BertDataset
+from libai.tokenizer import BertTokenizer
 
-datat_prefix = "t5_samples_lazy_text_sentence"
-tokenizer = T5Tokenizer(vocab_file="spiece.model", bos_token="<s/>")
+datat_prefix = "cn_samples_lazy_text_sentence"
+tokenizer = BertTokenizer(
+    vocab_file="bert-base-chinese-vocab.txt", do_lower_case=True, do_chinese_wwm=True
+)
 indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="lazy", skip_warmup=False)
 
-dataset = T5Dataset(
+dataset = BertDataset(
     tokenizer,
     data_prefix=datat_prefix,
     indexed_dataset=indexed_dataset,
+    mask_lm_prob=0.3,
+    binary_head=False,
 )
 
 print(len(indexed_dataset))
