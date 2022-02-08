@@ -19,9 +19,9 @@ from collections import OrderedDict
 
 import numpy as np
 import oneflow as flow
+from scipy.stats import pearsonr, spearmanr
 
 from libai.utils import distributed as dist
-from scipy.stats import pearsonr, spearmanr
 
 from .evaluator import DatasetEvaluator
 
