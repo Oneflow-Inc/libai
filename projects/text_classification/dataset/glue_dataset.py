@@ -23,6 +23,8 @@ import oneflow as flow
 from filelock import FileLock
 from oneflow.utils.data import Dataset
 
+from libai.data.structures import DistTensorData, Instance
+
 from .utils_glue import glue_convert_examples_to_features, glue_output_modes, glue_processors
 from .utils import EncodePattern
 
