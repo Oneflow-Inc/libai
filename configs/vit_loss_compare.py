@@ -36,7 +36,7 @@ dataloader.train.dataset[0].root = "/DATA/disk1/ImageNet/extract/"
 dataloader.test[0].dataset.root = "/DATA/disk1/ImageNet/extract/"
 
 
-# 模型设置
+# 模型设置: 关闭dropout等任何随机性的部分
 model.num_classes = 1000
 model.loss_func = LazyCall(CrossEntropyLoss)()  # 使用最简单的Loss
 model.embed_dim = 192
@@ -64,7 +64,7 @@ optim = LazyCall(flow.optim.AdamW)(
 # 对齐batchsize, 总的train_iter等数据
 train.train_micro_batch_size = 32
 train.test_micro_batch_size = 128
-train.train_iter = 500
+train.train_iter = 50
 train.log_period = 1
 
 # 将scheduler的milestones设大, 以达到constant LR的目的

@@ -287,6 +287,9 @@ class GraphTrainer(TrainerBase):
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
 
+        # add loss save list
+        self.all_losses = []
+
     def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.
@@ -304,3 +307,5 @@ class GraphTrainer(TrainerBase):
         loss_dict = {"total_loss": losses}
 
         self.write_metrics(loss_dict, data_time)
+        # 每个iter结束后，将这个值存入到之前定义好的存放loss的一个list中
+        self.all_losses.append(dist.tton(losses).item())
