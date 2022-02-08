@@ -136,21 +136,15 @@ class TnewsProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "test.json")), "test"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test.json")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -168,9 +162,7 @@ class TnewsProcessor(DataProcessor):
             guid = f"{set_type}-{i}"
             text_a = line["sentence"]
             label = None if set_type == "test" else str(line["label"])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=None, label=label)
-            )
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
         return examples
 
 
@@ -182,21 +174,15 @@ class IflytekProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "test.json")), "test"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test.json")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -212,9 +198,7 @@ class IflytekProcessor(DataProcessor):
             guid = f"{set_type}-{i}"
             text_a = line["sentence"]
             label = None if set_type == "test" else str(line["label"])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=None, label=label)
-            )
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
         return examples
 
 
@@ -226,21 +210,15 @@ class AfqmcProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "test.json")), "test"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test.json")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -254,9 +232,7 @@ class AfqmcProcessor(DataProcessor):
             text_a = line["sentence1"]
             text_b = line["sentence2"]
             label = None if set_type == "test" else str(line["label"])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
 
@@ -270,21 +246,15 @@ class OcnliProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "test.json")), "test"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test.json")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -300,9 +270,7 @@ class OcnliProcessor(DataProcessor):
             label = None if set_type == "test" else str(line["label"])
             if label.strip() == "-":
                 continue
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
 
@@ -316,21 +284,15 @@ class CmnliProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "test.json")), "test"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test.json")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -346,9 +308,7 @@ class CmnliProcessor(DataProcessor):
             label = None if set_type == "test" else str(line["label"])
             if label.strip() == "-":
                 continue
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
 
@@ -357,21 +317,15 @@ class CslProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "test.json")), "test"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test.json")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -385,9 +339,7 @@ class CslProcessor(DataProcessor):
             text_a = " ".join(line["keyword"])
             text_b = line["abst"]
             label = None if set_type == "test" else str(line["label"])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
 
@@ -396,21 +348,15 @@ class WscProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "test.json")), "test"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test.json")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -431,9 +377,7 @@ class WscProcessor(DataProcessor):
             assert (
                 text_a[pronoun_idx : (pronoun_idx + len(pronoun))] == pronoun
             ), "pronoun: {}".format(pronoun)
-            assert (
-                text_a[query_idx : (query_idx + len(query))] == query
-            ), "query: {}".format(query)
+            assert text_a[query_idx : (query_idx + len(query))] == query, "query: {}".format(query)
             if pronoun_idx > query_idx:
                 text_a_list.insert(query_idx, "_")
                 text_a_list.insert(query_idx + len(query) + 1, "_")
@@ -446,9 +390,7 @@ class WscProcessor(DataProcessor):
                 text_a_list.insert(query_idx + len(query) + 2 + 1, "_")
             text_a = "".join(text_a_list)
             label = None if set_type == "test" else str(line["label"])
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=None, label=label)
-            )
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
         return examples
 
 
@@ -457,21 +399,15 @@ class CopaProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "train.json")), "train"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "train.json")), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "dev.json")), "dev"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "dev.json")), "dev")
 
     def get_test_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_json(os.path.join(data_dir, "test.json")), "test"
-        )
+        return self._create_examples(self._read_json(os.path.join(data_dir, "test.json")), "test")
 
     def get_labels(self):
         """See base class."""
@@ -500,12 +436,8 @@ class CopaProcessor(DataProcessor):
                 text_b2 = premise
             else:
                 raise ValueError(f'unknowed {line["question"]} type')
-            examples.append(
-                InputExample(guid=guid1, text_a=text_a, text_b=text_b, label=label)
-            )
-            examples.append(
-                InputExample(guid=guid2, text_a=text_a2, text_b=text_b2, label=label2)
-            )
+            examples.append(InputExample(guid=guid1, text_a=text_a, text_b=text_b, label=label))
+            examples.append(InputExample(guid=guid2, text_a=text_a2, text_b=text_b2, label=label2))
         return examples
 
     def _create_examples_version2(self, lines, set_type):
@@ -520,9 +452,7 @@ class CopaProcessor(DataProcessor):
                 text_a = line["premise"] + "这造成了什么影响？" + line["choice0"]
                 text_b = line["premise"] + "这造成了什么影响？" + line["choice1"]
             label = None if set_type == "test" else str(1 if line["label"] == 0 else 0)
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
-            )
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
 

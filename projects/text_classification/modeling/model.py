@@ -49,7 +49,7 @@ class ModelForSequenceClassification(nn.Module):
             logger.info(f"loading pretraining: {cfg.pretrain_megatron_weight}")
             load_megatron_bert(self.model, cfg.pretrain_megatron_weight)
             logger.info("load succeed")
-        
+
         init_method = init_method_normal(cfg.initializer_range)
         self.dropout = nn.Dropout(cfg.hidden_dropout_prob)
 
@@ -62,7 +62,7 @@ class ModelForSequenceClassification(nn.Module):
             layer_idx=-1,
         )
         self.loss_fct = ClassificationLoss()
-    
+
     def forward(self, input_ids, attention_mask, tokentype_ids=None, label=None):
 
         encoder_output, pooled_output = self.model(input_ids, attention_mask, tokentype_ids)

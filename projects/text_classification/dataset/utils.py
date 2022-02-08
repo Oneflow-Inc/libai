@@ -21,14 +21,15 @@ from typing import List, Optional, Union
 
 
 class EncodePattern(Enum):
-    """ encode pattern
-    bert pattern: 
+    """encode pattern
+    bert pattern:
         single sentence: [CLS] A [SEP]
         pair of sentences: [CLS] A [SEP] B [SEP]
     roberta/bart pattern:
         single sentence: <s> A </s>
         pair of sentences: <s> A </s> </s> B </s>
     """
+
     bert_pattern = "S*E*E"
     roberta_pattern = "S*EE*E"
 
@@ -63,7 +64,7 @@ class InputFeatures:
     Args:
         input_ids: Indices of input sequence tokens in the vocabulary.
         attention_mask: Mask to avoid performing attention on padding token indices.
-            Mask values selected in `[0, 1]`: Usually `1` for tokens that are NOT MASKED, 
+            Mask values selected in `[0, 1]`: Usually `1` for tokens that are NOT MASKED,
             `0` for MASKED (padded) tokens.
         token_type_ids: (Optional) Segment token indices to indicate first and second
             portions of the inputs. Only some models use them.
@@ -115,4 +116,3 @@ class DataProcessor:
             for line in reader:
                 lines.append(json.loads(line.strip()))
             return lines
-

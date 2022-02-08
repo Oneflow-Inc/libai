@@ -7,7 +7,10 @@ from configs.common.train import train
 from libai.config import LazyCall
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from libai.tokenizer import BertTokenizer
-from projects.text_classification.modeling.model import ModelForSequenceClassification, GraphForSequenceClassification
+from projects.text_classification.modeling.model import (
+    ModelForSequenceClassification,
+    GraphForSequenceClassification,
+)
 from projects.text_classification.dataset import ClueDataset
 
 tokenization.tokenizer = LazyCall(BertTokenizer)(

@@ -25,8 +25,8 @@ from oneflow.utils.data import Dataset
 
 from libai.data.structures import DistTensorData, Instance
 
-from .utils_clue import clue_convert_examples_to_features, clue_output_modes, clue_processors
 from .utils import EncodePattern
+from .utils_clue import clue_convert_examples_to_features, clue_output_modes, clue_processors
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +96,9 @@ class ClueDataset(Dataset):
                 )
                 start = time.time()
                 flow.save(self.features, cached_features_file)
-                # This seems to take a lot of time so I want to investigate why and how we can improve.
                 logger.info(
-                    f"Saving features into cached file {cached_features_file} [took {time.time() - start:.3f} s]"
+                    f"Saving features into cached file {cached_features_file} "
+                    f"[took {time.time() - start:.3f} s]"
                 )
 
     def __len__(self):
