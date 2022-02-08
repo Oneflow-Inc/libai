@@ -468,6 +468,7 @@ class DefaultTrainer(TrainerBase):
         logger.info("Prepare training, validating, testing set")
         cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
+        cfg.dataloader.train.seed = cfg.train.seed
 
         # Set tokenizer for each dataset
         if tokenizer:
@@ -493,6 +494,7 @@ class DefaultTrainer(TrainerBase):
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+            cfg.dataloader.test[i].seed = cfg.train.seed  # set seed
             if tokenizer:
                 cfg.dataloader.test[i].dataset.tokenizer = tokenizer
         # list[dataloader1, dataloader2, ...]
