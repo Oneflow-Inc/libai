@@ -15,8 +15,11 @@ Global Config
 """
 BATCH_SIZE=32
 LR = 0.0001
+BETAS = (0.9, 0.999)
+WEIGHT_DECAY = 1e-8
 TOTAL_STEPS = 50
 SAVA_FILE_PATH = "./torch_vit_tiny_loss.txt"
+
 
 """
 Dataset, Sampler and Transforms Settings
@@ -125,7 +128,7 @@ model.cuda()
 
 model.load_state_dict(torch.load("./torch_vit_tiny_weight.pth"))
 print("Successfully load model weights")
-optimizer = torch.optim.AdamW(model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-8)
+optimizer = torch.optim.AdamW(model.parameters(), lr=LR, betas=BETAS, weight_decay=WEIGHT_DECAY)
 loss_func = nn.CrossEntropyLoss()
 
 

@@ -1,0 +1,93 @@
+from libai.config import LazyCall
+from libai.scheduler.lr_scheduler import WarmupMultiStepLR
+from libai.models import VisionTransformerGraph
+from libai.optim import get_default_optimizer_params
+from .common.models.vit import vit_model as model
+from .common.train import train
+from .common.data.imagenet import dataloader
+
+import oneflow as flow
+from oneflow.nn import CrossEntropyLoss
+from flowvision.transforms import transforms
+from flowvision.transforms import InterpolationMode
+from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+
+# 数据相关的设置
+no_augmentation_transform = LazyCall(transforms.Compose)(
+    transforms=[
+        LazyCall(transforms.Resize)(
+            size=(224, 224),
+            interpolation=InterpolationMode.BILINEAR,
+        ),
+        LazyCall(transforms.CenterCrop)(
+            size=(224, 224),
+        ),
+        LazyCall(transforms.ToTensor)(),
+        LazyCall(transforms.Normalize)(
+            mean=IMAGENET_DEFAULT_MEAN,
+            std=IMAGENET_DEFAULT_STD,
+        )
+    ]
+)
+dataloader.train.dataset[0].transform = no_augmentation_transform
+dataloader.test[0].dataset.transform = no_augmentation_transform
+
+dataloader.train.dataset[0].root = "/DATA/disk1/ImageNet/extract/"
+dataloader.test[0].dataset.root = "/DATA/disk1/ImageNet/extract/"
+
+
+# 模型设置
+model.num_classes = 1000
+model.loss_func = LazyCall(CrossEntropyLoss)()  # 使用最简单的Loss
+model.embed_dim = 192
+model.num_heads = 3
+model.drop_rate = 0.0
+model.attn_drop_rate = 0.0
+model.drop_path_rate = 0.0
+
+# 将clip grad相关的参数设置为None
+optim = LazyCall(flow.optim.AdamW)(
+    parameters=LazyCall(get_default_optimizer_params)(
+        # parameters.model is meant to be set to the model object,
+        # before instantiating the optimizer.
+        clip_grad_max_norm=None,
+        clip_grad_norm_type=None,
+        weight_decay_norm=None,
+        weight_decay_bias=None,
+    ),
+    lr=1e-4,
+    weight_decay=1e-8,
+    betas=(0.9, 0.999),
+    do_bias_correction=True,
+)
+
+# 对齐batchsize, 总的train_iter等数据
+train.train_micro_batch_size = 32
+train.test_micro_batch_size = 128
+train.train_iter = 500
+train.log_period = 1
+
+# 将scheduler的milestones设大, 以达到constant LR的目的
+scheduler = LazyCall(WarmupMultiStepLR)(
+    max_iters=1000,
+    warmup_iters=0,
+    warmup_factor = 0.0001,
+    alpha = 0.01,
+    milestones=[2000]
+)
+
+# Set fp16 ON
+train.amp.enabled = False
+
+# fmt: off
+graph = dict(
+    # options for graph or eager mode
+    enabled=True,
+    train_graph=LazyCall(VisionTransformerGraph)(
+        is_train=True,
+    ),
+    eval_graph=LazyCall(VisionTransformerGraph)(
+        is_train=False,),
+    debug=-1,
+)
+# fmt: on
