@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 
-OF_LOSS_FILE = "./of_vit_loss.txt"
+OF_LOSS_FILE = "./oneflow_vit_tiny_loss.txt"
 TORCH_LOSS_FILE = "./torch_vit_tiny_loss.txt"
 
 def draw(

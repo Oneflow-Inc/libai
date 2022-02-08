@@ -68,12 +68,11 @@ train.train_iter = 50
 train.log_period = 1
 
 # 将scheduler的milestones设大, 以达到constant LR的目的
-scheduler = LazyCall(WarmupMultiStepLR)(
-    max_iters=1000,
-    warmup_iters=0,
+train.scheduler = LazyCall(WarmupMultiStepLR)(
+    max_iter=1000,
+    warmup_iter=0,
     warmup_factor = 0.0001,
-    alpha = 0.01,
-    milestones=[2000]
+    milestones=[0.99]
 )
 
 # Set fp16 ON

@@ -25,6 +25,21 @@ SAVA_FILE_PATH = "./torch_vit_tiny_loss.txt"
 Dataset, Sampler and Transforms Settings
 """
 class CyclicSampler(Sampler):
+    """This sampler supports cyclic sampling, and it is also compatible with
+    non data parallelism and data parallelism.
+
+    Arguments:
+        dataset: dataset to be sampled.
+        micro_batch_size: batch size for per model instance.
+        global_batch_size is micro_batch_size times data_parallel_size.
+        shuffle: whether to shuffle the dataset.
+        consumed_samples: the number of samples that have been trained at the current time,
+        used for resuming training.
+        data_parallel_rank: local rank for data parallelism.
+        data_parallel_size: the size of data parallelism.
+        seed: random seed, used for reproducing experiments.
+    """
+
     def __init__(
         self,
         dataset,
@@ -43,8 +58,7 @@ class CyclicSampler(Sampler):
         self.data_parallel_size = data_parallel_size
         self.micro_batch_size = micro_batch_size
         self.actual_batch_size = self.micro_batch_size * self.data_parallel_size
-        self.remain_data_size = self.data_size % self.actual_batch_size
-        self.active_data_size = self.data_size - self.remain_data_size
+        self.data_size_per_epoch = self.data_size // self.actual_batch_size * self.micro_batch_size
         self.consumed_samples = consumed_samples
 
         self.seed = seed
@@ -55,21 +69,20 @@ class CyclicSampler(Sampler):
         Each processor samples from its own buckets and data_loader
         will load the corresponding data.
         """
-        epoch = self.consumed_samples // self.data_size
+        epoch = self.consumed_samples // self.data_size_per_epoch
+        current_epoch_samples = self.consumed_samples % self.data_size_per_epoch
         batch = []
-        while True:
-            current_epoch_samples = self.consumed_samples % self.data_size
 
-            bucket_size = self.data_size // self.actual_batch_size * self.micro_batch_size
+        while True:
             bucket_offset = current_epoch_samples // self.data_parallel_size
-            start_idx = self.data_parallel_rank * bucket_size
+            start_idx = self.data_parallel_rank * self.data_size_per_epoch
 
             if self.shuffle:
                 np.random.seed(self.seed)
-                random_idx = np.random.permutation(bucket_size).tolist()
+                random_idx = np.random.permutation(self.data_size_per_epoch,).tolist()
                 indices = [start_idx + x for x in random_idx[bucket_offset:]]
             else:
-                seq_idx = torch.arange(bucket_size).tolist()
+                seq_idx = torch.arange(self.data_size_per_epoch).tolist()
                 indices = [start_idx + x for x in seq_idx[bucket_offset:]]
 
             epoch += 1
@@ -84,11 +97,13 @@ class CyclicSampler(Sampler):
                     yield batch
                     batch = []
 
+            current_epoch_samples = 0
+
     def __len__(self):
         return self.data_size
 
     def set_consumed_samples(self, consumed_samples):
-        """you can recover the training iteration by setting `consumed_samplers`."""
+        """you can recover the training iteration by setting `consumed_samples`."""
         self.consumed_samples = consumed_samples
 
     def set_epoch(self, epoch):
@@ -122,7 +137,7 @@ Training and Write Loss
 """
 model = vit_tiny_patch16_224()
 # 第一次执行需要保存一下权重, 之后可以把这个注释了只用一个权重
-torch.save(model.state_dict(), "./torch_vit_tiny_weight.pth")
+# torch.save(model.state_dict(), "./torch_vit_tiny_weight.pth")
 model.eval()
 model.cuda()
 

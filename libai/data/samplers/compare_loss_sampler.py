@@ -73,7 +73,7 @@ class CyclicSampler(Sampler):
             start_idx = self.data_parallel_rank * self.data_size_per_epoch
 
             if self.shuffle:
-                np.random.seed(self.seed)
+                np.random.seed(0)
                 random_idx = np.random.permutation(self.data_size_per_epoch,).tolist()
                 indices = [start_idx + x for x in random_idx[bucket_offset:]]
             else:

@@ -378,7 +378,7 @@ class DefaultTrainer(TrainerBase):
         # write loss
         all_losses = self._trainer.all_losses
         # 将存储好的Loss保存到一个文件中
-        with open("of_vit_loss.txt", "w") as f:
+        with open("oneflow_vit_tiny_loss.txt", "w") as f:
             for loss in all_losses:
                 f.write(str(loss) + "\n")
 
@@ -594,6 +594,10 @@ class DefaultTrainer(TrainerBase):
         Returns:
             dict: a dict of result metrics
         """
+
+        # 直接return, 不作任何test
+        return 
+
         logger = logging.getLogger(__name__)
         # TODO: support multi evaluator
         # if isinstance(evaluators, DatasetEvaluator):
