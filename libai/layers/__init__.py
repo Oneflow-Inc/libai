@@ -13,16 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .embedding import Embedding, VocabEmbedding, SinePositionalEmbedding
 from .activation import build_activation
-from .linear import Linear, Linear1D
-from .checkpointing import ActivationCheckpointing
-from .mlp import MLP
-from .layer_norm import LayerNorm
-from .transformer_layer import TransformerLayer
 from .cross_entropy import ParallelCrossEntropyLoss
+from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding
+from .layer_norm import LayerNorm
+from .linear import Linear, Linear1D
 from .lm_logits import LMLogits
-from .mask_helpers import ExtendedMask, CasualMask
+from .mlp import MLP
+from .transformer_layer import TransformerLayer
 
 __all__ = [
     "Embedding",
@@ -31,7 +29,6 @@ __all__ = [
     "build_activation",
     "Linear",
     "Linear1D",
-    "ActivationCheckpointing",
     "MLP",
     "LayerNorm",
     "TransformerLayer",

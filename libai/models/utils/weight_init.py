@@ -13,17 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 
-import oneflow as flow
-from oneflow import nn
-from libai.utils import distributed as dist
+import oneflow.nn as nn
 
 
-class ActivationCheckpointing(nn.Module):
-    def __init__(self, *, layer_idx):
-        super().__init__()
-        self.layer_idx = layer_idx
+def init_method_normal(sigma):
+    """Init method based on N(0, sigma)."""
 
-    def forward(self, x):
-        x = x.to_consistent(dist.get_layer_placement(self.layer_idx))
-        return flow._C.identity(x)
+    def init_(tensor):
+        return nn.init.normal_(tensor, mean=0.0, std=sigma)
+
+    return init_
+
+
+def scaled_init_method_normal(sigma, num_layers):
+    """Init method based on N(0, sigma/sqrt(2*num_layers)."""
+    std = sigma / math.sqrt(2.0 * num_layers)
+
+    def init_(tensor):
+        return nn.init.normal_(tensor, mean=0.0, std=std)
+
+    return init_

@@ -13,15 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
-import time
-from typing import Mapping
-import numpy as np
 import logging
+import time
 import weakref
+from typing import Callable, List, Mapping
+
+import numpy as np
+import oneflow as flow
+
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
-from typing import Callable, List
 
 
 class HookBase:
@@ -60,25 +61,21 @@ class HookBase:
         """
         Called before the first iteration.
         """
-        pass
 
     def after_train(self):
         """
         Called after the last iteration.
         """
-        pass
 
     def before_step(self):
         """
         Called before each iteration.
         """
-        pass
 
     def after_step(self):
         """
         Called after each iteration.
         """
-        pass
 
 
 class TrainerBase:
@@ -91,7 +88,7 @@ class TrainerBase:
         iter(int): the current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
-        
+
         max_iter(int): The iteration to end training.
         storage(EventStorage): An EventStorage that's opened during the course of training.
     """
@@ -162,11 +159,7 @@ class TrainerBase:
 
     def after_step(self):
         self.storage.iter = self.iter + 1
-        self.storage.samples = (
-            (self.iter - self.start_iter + 1)
-            * self.cfg.data_parallel_size
-            * self.cfg.micro_batch_size
-        )
+        self.storage.samples = (self.iter + 1) * self.cfg.train.global_batch_size
 
         for h in self._hooks:
             h.after_step()
@@ -176,7 +169,9 @@ class TrainerBase:
 
     @staticmethod
     def write_metrics(
-        loss_dict: Mapping[str, flow.Tensor], data_time: float, prefix: str = "",
+        loss_dict: Mapping[str, flow.Tensor],
+        data_time: float,
+        prefix: str = "",
     ) -> None:
         """
         Args:
@@ -184,8 +179,7 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        # TODO: local_only should be False, distributed.py should be fully functional
-        metrics_dict = {k: dist.tton(v, local_only=True) for k, v in loss_dict.items()}
+        metrics_dict = {k: dist.tton(v, local_only=False) for k, v in loss_dict.items()}
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
@@ -238,7 +232,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader_iter, optimizer, lr_scheduler):
+    def __init__(self, model, data_loader, optimizer):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -255,11 +249,10 @@ class EagerTrainer(TrainerBase):
 
         model.train()
 
-        self.model = model.to("cuda")
-        self._data_loader_iter = iter(data_loader_iter)
+        self.model = model
+        self.data_loader = data_loader
+        self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
-        self.mode = "eager"
 
     def run_step(self, get_batch: Callable):
         """
@@ -269,53 +262,44 @@ class EagerTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter, self.mode)
+        data = next(self._data_loader_iter)
+        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
-
         losses = self.model(*data)
         loss_dict = {"total_loss": losses}
-
-        # If you need to accumulate gradients or do something similar, you can
-        # wrap the optimizer with your custom `zero_grad()` method.
 
         self.optimizer.zero_grad()
         losses.backward()
 
         self.write_metrics(loss_dict, data_time)
 
-        # If you need gradient clipping/scaling or other processing, you can
-        # wrap the optimizer with your custom `step()` method. But it is
-        # suboptimal as explained in https://arxiv.org/abs/2006.15704 Sec 3.2.4
-
         self.optimizer.step()
 
 
 class GraphTrainer(TrainerBase):
-    def __init__(self, graph, data_loader_iter):
+    def __init__(self, graph, data_loader):
         super().__init__()
 
         graph.model.train()
-        self._data_loader_iter = iter(data_loader_iter)
+        self.data_loader = data_loader
+        self._data_loader_iter = iter(data_loader)
         self.graph = graph
-        self.mode = "graph"
 
     def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.
         """
-        assert (
-            self.graph.model.training
-        ), "[SimpleTrainer] model was changed to eval mode!"
+        assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = get_batch(self._data_loader_iter, self.mode)
+        data = next(self._data_loader_iter)
+        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
-
         losses = self.graph(*data)
         loss_dict = {"total_loss": losses}
 

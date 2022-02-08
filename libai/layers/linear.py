@@ -24,9 +24,11 @@ class Linear1D(nn.Module):
     """Linear layer with 1D parallelism which includes column parallelism and row parallelism.
     The linear layer is defined as :math:`Y = XA + b`.
 
-    In column parallelism, A is parallelized along the second dimension as :math:`A = [A_1, ..., A_p]`.
-    
-    In row parallelism, A is parallelized along the first dimension and X along its second dimension as:
+    In column parallelism, A is parallelized along the second dimension
+    as :math:`A = [A_1, ..., A_p]`.
+
+    In row parallelism, A is parallelized along the first dimension and X along its second
+    dimension as:
                 | A_1 |
                 |  .  |
             A = |  .  |         X = [X_1, ..., X_p]
@@ -39,8 +41,10 @@ class Linear1D(nn.Module):
         bias: If set to ``False``, the layer will not learn an additive bias. Defaults to ``True``.
         parallel: . Defaults to "data".
         init_method: method to initialize weight. Defaults to nn.init.xavier_normal_.
-        skip_bias_add: skip adding bias but instead return it, so that adding bias can be fused with other elementwise operations. Defaults to ``False``.
-        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline parallelism. Defaults to 0.
+        skip_bias_add: skip adding bias but instead return it, so that adding bias can be fused with
+        other elementwise operations. Defaults to ``False``.
+        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
+        parallelism. Defaults to 0.
     """
 
     def __init__(
@@ -72,17 +76,13 @@ class Linear1D(nn.Module):
             weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         else:
-            raise KeyError(
-                f"{parallel} is not supported! Only support ('data', 'row' and 'col')"
-            )
+            raise KeyError(f"{parallel} is not supported! Only support ('data', 'row' and 'col')")
 
         self.weight = flow.nn.Parameter(
             flow.empty(
                 (in_features, out_features),
                 dtype=flow.float32,
-                placement=dist.get_layer_placement(
-                    layer_idx
-                ),  # for pipeline parallelism placement
+                placement=dist.get_layer_placement(layer_idx),  # for pipeline parallelism placement
                 sbp=weight_sbp,
             )
         )
@@ -102,9 +102,7 @@ class Linear1D(nn.Module):
         )
 
     def forward(self, x):
-        if dist.same_sbp(
-            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
-        ):
+        if dist.same_sbp(self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])):
             # if the last dim of weight sbp sign is S(1), the last dim of x sbp sign must be B.
             if self.weight.sbp[-1] == flow.sbp.split(1):
                 x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
@@ -117,7 +115,8 @@ class Linear1D(nn.Module):
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
         ):
-            # if the last dim of weight sbp sign is S(0), the last dim of x sbp sign must be S(ndim-1).
+            # if the last dim of weight sbp sign is S(0), the last dim of x sbp
+            # sign must be S(ndim-1).
             if self.weight.sbp[-1] == flow.sbp.split(0):
                 x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
                 x = x.to_consistent(sbp=x_sbp)
@@ -135,9 +134,7 @@ class Linear1D(nn.Module):
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
             x = x.to_consistent(grad_sbp=x.sbp)
             # Change x.sbp to [S(0), S(0)] if weight is [B, B]
-            x = x.to_consistent(
-                sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)])
-            )
+            x = x.to_consistent(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
             x = flow.matmul(x, self.weight)
         else:
             raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")
@@ -152,7 +149,10 @@ class Linear1D(nn.Module):
 
     def extra_repr(self) -> str:
         return "in_features={}, out_features={}, bias={}, parallel={}".format(
-            self.in_features, self.out_features, self.bias is not None, self.parallel,
+            self.in_features,
+            self.out_features,
+            self.bias is not None,
+            self.parallel,
         )
 
 

@@ -13,24 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-import oneflow as flow
 
+# This line will be programatically read/write by setup.py.
+# Leave them at the bottom of this file and don't touch them.
 
-def init_method_normal(sigma):
-    """Init method based on N(0, sigma)."""
+from libai import data
+from libai import evaluation
+from libai import layers
+from libai import models
+from libai import optim
+from libai import scheduler
+from libai import tokenizer
+from libai import trainer
+from libai import utils
 
-    def init_(tensor):
-        return flow.nn.init.normal_(tensor, mean=0.0, std=sigma)
-
-    return init_
-
-
-def scaled_init_method_normal(sigma, num_layers):
-    """Init method based on N(0, sigma/sqrt(2*num_layers)."""
-    std = sigma / math.sqrt(2.0 * num_layers)
-
-    def init_(tensor):
-        return flow.nn.init.normal_(tensor, mean=0.0, std=std)
-
-    return init_
+try:
+    from .version import __version__  # noqa: F401
+except ImportError:
+    pass
