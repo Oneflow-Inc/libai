@@ -2,6 +2,7 @@ boto3
 botocore
 cloudpickle
 flowvision
+filelock
 hydra-core
 nltk
 numpy
@@ -13,6 +14,7 @@ jieba
 regex
 requests
 sentencepiece>=0.1
+scikit-learn
 tabulate
 termcolor
 tqdm
