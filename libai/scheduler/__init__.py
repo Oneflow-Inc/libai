@@ -18,7 +18,6 @@ from .lr_scheduler import (
     WarmupCosineAnnealingLR,
     WarmupCosineLR,
     WarmupExponentialLR,
-    WarmupFixedStepLR,
     WarmupMultiStepLR,
     WarmupPolynomailLR,
 )

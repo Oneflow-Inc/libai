@@ -15,10 +15,12 @@
 
 from .bert_model import BertForPreTraining, BertModel
 from .build import build_graph, build_model
+from .vision_transformer import VisionTransformer
 
 __all__ = [
     "build_model",
     "build_graph",
     "BertModel",
     "BertForPreTraining",
+    "VisionTransformer",
 ]

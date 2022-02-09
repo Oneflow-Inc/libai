@@ -232,7 +232,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader_iter, optimizer):
+    def __init__(self, model, data_loader, optimizer):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -250,7 +250,8 @@ class EagerTrainer(TrainerBase):
         model.train()
 
         self.model = model
-        self._data_loader_iter = iter(data_loader_iter)
+        self.data_loader = data_loader
+        self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
 
     def run_step(self, get_batch: Callable):
@@ -262,7 +263,7 @@ class EagerTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data)
+        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
@@ -270,27 +271,21 @@ class EagerTrainer(TrainerBase):
         loss_dict = self.model(**data)
         losses = sum(loss_dict.values())
 
-        # If you need to accumulate gradients or do something similar, you can
-        # wrap the optimizer with your custom `zero_grad()` method.
-
         self.optimizer.zero_grad()
         losses.backward()
 
         self.write_metrics(loss_dict, data_time)
 
-        # If you need gradient clipping/scaling or other processing, you can
-        # wrap the optimizer with your custom `step()` method. But it is
-        # suboptimal as explained in https://arxiv.org/abs/2006.15704 Sec 3.2.4
-
         self.optimizer.step()
 
 
 class GraphTrainer(TrainerBase):
-    def __init__(self, graph, data_loader_iter):
+    def __init__(self, graph, data_loader):
         super().__init__()
 
         graph.model.train()
-        self._data_loader_iter = iter(data_loader_iter)
+        self.data_loader = data_loader
+        self._data_loader_iter = iter(data_loader)
         self.graph = graph
 
     def run_step(self, get_batch: Callable):
@@ -302,7 +297,7 @@ class GraphTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data)
+        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.

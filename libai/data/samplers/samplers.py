@@ -51,8 +51,7 @@ class CyclicSampler(Sampler):
         self.data_parallel_size = data_parallel_size
         self.micro_batch_size = micro_batch_size
         self.actual_batch_size = self.micro_batch_size * self.data_parallel_size
-        self.remain_data_size = self.data_size % self.actual_batch_size
-        self.active_data_size = self.data_size - self.remain_data_size
+        self.data_size_per_epoch = self.data_size // self.actual_batch_size * self.micro_batch_size
         self.consumed_samples = consumed_samples
 
         self.seed = seed
@@ -63,22 +62,21 @@ class CyclicSampler(Sampler):
         Each processor samples from its own buckets and data_loader
         will load the corresponding data.
         """
-        epoch = self.consumed_samples // self.data_size
-        current_epoch_samples = self.consumed_samples % self.data_size
+        epoch = self.consumed_samples // self.data_size_per_epoch
+        current_epoch_samples = self.consumed_samples % self.data_size_per_epoch
         batch = []
 
         while True:
-            bucket_size = self.data_size // self.actual_batch_size * self.micro_batch_size
             bucket_offset = current_epoch_samples // self.data_parallel_size
-            start_idx = self.data_parallel_rank * bucket_size
+            start_idx = self.data_parallel_rank * self.data_size_per_epoch
 
             if self.shuffle:
                 generator = flow.Generator()
                 generator.manual_seed(self.seed + epoch)
-                random_idx = flow.randperm(bucket_size, generator=generator).tolist()
+                random_idx = flow.randperm(self.data_size_per_epoch, generator=generator).tolist()
                 indices = [start_idx + x for x in random_idx[bucket_offset:]]
             else:
-                seq_idx = flow.arange(bucket_size).tolist()
+                seq_idx = flow.arange(self.data_size_per_epoch).tolist()
                 indices = [start_idx + x for x in seq_idx[bucket_offset:]]
 
             epoch += 1
@@ -113,8 +111,8 @@ class SingleRoundSampler(Sampler):
 
     Arguments:
         dataset: dataset to be sampled.
-        micro_batch_size: batch size for per model instance.
-        global_batch_size is micro_batch_size times data_parallel_size.
+        micro_batch_size: batch size for per model instance, global_batch_size
+                          is micro_batch_size times data_parallel_size.
         shuffle: whether to shuffle the dataset.
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
@@ -172,7 +170,10 @@ class SingleRoundSampler(Sampler):
                 batch = []
 
         if len(batch) > 0 and not self.drop_last:
+            # TODO: fix sampler bug when batch_size=1
+            for _ in range(self.micro_batch_size - len(batch)):
+                batch.append(0)
             yield batch
 
     def __len__(self):
-        return self.data_size
+        return self.data_size // (self.micro_batch_size * self.data_parallel_size)

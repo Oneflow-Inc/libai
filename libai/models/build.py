@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.config import instantiate
+from libai.config import instantiate, try_get_key
 from libai.utils.registry import Registry
 
 MODEL_ARCH_REGISTRY = Registry("model_arch")
@@ -43,14 +43,17 @@ def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
         # Set train graph
         assert optimizer is not None, "optimizer must be set for train graph"
         assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
-        train_graph = cfg.graph.train_graph
-        train_graph.model = model
-        train_graph.optimizer = optimizer
-        train_graph.lr_scheduler = lr_scheduler
-        train_graph.fp16 = cfg.train.amp.enabled
-        return instantiate(train_graph)
+        graph = cfg.graph.train_graph
+        graph.model = model
+        graph.optimizer = optimizer
+        graph.lr_scheduler = lr_scheduler
+        graph.fp16 = try_get_key(cfg, "train.amp.enabled", default=False)
+        graph.recompute_grad = try_get_key(cfg, "train.recompute_grad.enabled", default=False)
+        graph.zero_optim = try_get_key(cfg, "train.zero_optimization.enabled", default=False)
+        graph.zero_stage = try_get_key(cfg, "train.zero_optimization.stage", default=1)
+        return instantiate(graph)
     else:
         # Set eval graph
-        eval_graph = cfg.graph.eval_graph
-        eval_graph.model = model
-        return instantiate(eval_graph)
+        graph = cfg.graph.eval_graph
+        graph.model = model
+        return instantiate(graph)

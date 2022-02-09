@@ -13,20 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.data import GPT2Dataset
-from libai.data.data_utils import get_indexed_dataset
-from libai.tokenizer import GPT2Tokenizer
+from libai.config import LazyConfig
+from libai.config.instantiate import instantiate
+from libai.data.structures import Instance
 
-datat_prefix = "gpt_samples_mmap_text_sentence"
-tokenizer = GPT2Tokenizer(vocab_file="vocab.json", merges_file="merges.txt")
-indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="mmap", skip_warmup=False)
+cfg = LazyConfig.load("configs/common/data/cifar.py")
 
-dataset = GPT2Dataset(
-    tokenizer,
-    data_prefix=datat_prefix,
-    indexed_dataset=indexed_dataset,
-)
+train_loader, val_loader, test_loader = instantiate(cfg.dataloader.train)
+assert len(train_loader) == 80073
+for sample in train_loader:
+    assert isinstance(sample, Instance)
+    break
 
-print(len(indexed_dataset))
-print(len(dataset))
-print(dataset[0])
+test_loader = instantiate(cfg.dataloader.test)
+assert len(test_loader[0]) == 3125
+for loader in test_loader:
+    for sample in loader:
+        assert isinstance(sample, Instance)
+        break

@@ -117,7 +117,7 @@ class TransformerLayer(nn.Module):
     def forward(
         self,
         hidden_states,
-        attention_mask,
+        attention_mask=None,
         encoder_states=None,
         encoder_attention_mask=None,
         past_key_value=None,
@@ -125,15 +125,15 @@ class TransformerLayer(nn.Module):
     ):
         """
         hidden_states: [bsz, seq_length, hidden_size], (S(0), B),
-        attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B), the combination of key
-        padding mask and casual mask of hidden states.
-        encoder_states: [bsz, seq_length, hidden_size], (S(0), B), encoder output, this will be
-        used in cross attention.
-        encoder_attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B) key padding mask of
-        encoder states.
+        attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B),
+        the combination of key padding mask and casual mask of hidden states.
+        encoder_states: [bsz, seq_length, hidden_size], (S(0), B), encoder output,
+        this will be used in cross attention.
+        encoder_attention_mask: [bsz, 1, seq_length, seq_length],
+        (S(0), B) key padding mask of encoder states.
         past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size].
-        For decoder layer, the past_key_value contains the states both from self attention
-        and cross attention.
+        For decoder layer, the past_key_value contains the states both
+        from self attention and cross attention.
         use_cache: it will be set to `True`, when the model is in the inference phase and
         used for incremental decoding.
         """
@@ -143,9 +143,10 @@ class TransformerLayer(nn.Module):
         )
 
         # hidden_states shape: (batch_size, seq_length, hidden_size)
-        attention_mask = attention_mask.to_consistent(
-            placement=dist.get_layer_placement(self.layer_idx)
-        )
+        if attention_mask is not None:
+            attention_mask = attention_mask.to_consistent(
+                placement=dist.get_layer_placement(self.layer_idx)
+            )
 
         if past_key_value is not None:
             if self.is_decoder:
