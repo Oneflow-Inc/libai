@@ -300,9 +300,9 @@ class VisionTransformer(nn.Module):
                 ),
                 dim=1,
             )
-        self.pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
-        self.pos_embed = self.pos_embed.to_consistent(
-            sbp=flow.sbp.split(0), placement=self.pos_embed.placement
+        pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
+        pos_embed = pos_embed.to_consistent(
+            sbp=flow.sbp.split(0), placement=pos_embed.placement
         )
         x = self.pos_drop(x + self.pos_embed)
         # transformer encoder
