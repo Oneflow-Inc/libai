@@ -10,7 +10,6 @@ train = dict(
     test_micro_batch_size=32,
     global_batch_size=None,
     num_accumulation_steps=None,
-
     start_iter=0,
     train_iter=10000,
     train_epoch=0,  # default train epoch is set to 0
@@ -56,4 +55,3 @@ train = dict(
     ),
     seed=1234,
 )
-# fmt: on

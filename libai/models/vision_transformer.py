@@ -25,8 +25,7 @@ from flowvision.models.helpers import named_apply
 
 from libai.config.config import configurable
 
-from .build import GRAPH_REGISTRY, MODEL_ARCH_REGISTRY
-from .utils import GraphBase
+from .build import MODEL_ARCH_REGISTRY
 
 
 def drop_path(x, drop_prob: float = 0.5, training: bool = False):
@@ -366,20 +365,3 @@ def _init_vit_weights(
     elif isinstance(module, (nn.LayerNorm, nn.GroupNorm, nn.BatchNorm2d)):
         nn.init.zeros_(module.bias)
         nn.init.ones_(module.weight)
-
-
-@GRAPH_REGISTRY.register()
-class VisionTransformerGraph(GraphBase):
-    def build(
-        self,
-        images,
-        targets,
-    ):
-
-        # Forward pass through the model
-        if self.is_train:
-            losses = self.model(images, targets)
-            losses.backward()
-            return losses
-        else:
-            return self.model(images)
