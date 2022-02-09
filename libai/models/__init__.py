@@ -15,7 +15,8 @@
 
 from .bert_model import BertForPreTraining, BertForPretrainingGraph, BertModel
 from .build import build_graph, build_model
-from .vision_transformer import VisionTransformer, VisionTransformerGraph
+# from .vision_transformer import VisionTransformer, VisionTransformerGraph
+from .t5_model import T5ForPreTraining, T5ForPretrainingGraph, T5Model
 
 __all__ = [
     "build_model",
@@ -23,6 +24,9 @@ __all__ = [
     "BertModel",
     "BertForPreTraining",
     "BertForPretrainingGraph",
-    "VisionTransformer",
-    "VisionTransformerGraph",
+    # "VisionTransformer",
+    # "VisionTransformerGraph",
+    "T5Model",
+    "T5ForPreTraining",
+    "T5ForPretrainingGraph",
 ]

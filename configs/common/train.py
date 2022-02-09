@@ -20,7 +20,7 @@ train = dict(
 
     # Performance related
     amp=dict(enabled=False),  # options for Automatic Mixed Precision
-    recompute_grad=dict(enabled=False),  # options for recompute gradient
+    recompute_grad=dict(enabled=True),  # options for recompute gradient
     # NCCL fusion threshold megabytes, set to 0 to compatible with previous version of OneFlow
     nccl_fusion_threshold_mb=16,
     # Maximum number of ops of NCCL fusion, set to 0 to compatible with previous version of OneFlow
