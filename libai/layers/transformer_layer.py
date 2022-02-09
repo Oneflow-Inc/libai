@@ -160,13 +160,12 @@ class TransformerLayer(nn.Module):
             self_attn_past_key_value, cross_attn_past_key_value = None, None
 
         layernorm_output = self.input_layernorm(hidden_states)
-        # todo: use key-value to pass the arguments
         attention_output = self.self_attention(
-            layernorm_output, None, attention_mask, self_attn_past_key_value, use_cache
+            layernorm_output,
+            attention_mask=attention_mask,
+            past_key_value=self_attn_past_key_value,
+            use_cache=use_cache,
         )
-        #    attention_mask=attention_mask,
-        #    past_key_value=self_attn_past_key_value,
-        #    use_cache=use_cache)
 
         if use_cache:
             attention_output, presents = attention_output
@@ -179,13 +178,10 @@ class TransformerLayer(nn.Module):
             attention_output = self.cross_attention(
                 layernorm_output,
                 encoder_states,
-                encoder_attention_mask,
-                cross_attn_past_key_value,
-                use_cache,
+                attention_mask=encoder_attention_mask,
+                past_key_value=cross_attn_past_key_value,
+                use_cache=use_cache,
             )
-            # attention_mask=encoder_attention_mask,
-            # past_key_value=cross_attn_past_key_value,
-            # use_cache=use_cache)
 
             if use_cache:
                 attention_output, decoder_presents = attention_output
