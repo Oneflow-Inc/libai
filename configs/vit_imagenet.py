@@ -49,4 +49,3 @@ train.scheduler.warmup_method = "linear"
 
 # Set fp16 ON
 train.amp.enabled = True
-
