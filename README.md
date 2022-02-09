@@ -51,18 +51,41 @@ Libai is an open source large pretraining toolbox based on OneFlow. The main bra
 
 - **High Efficience**
 
-
 </details>
 
-<details open>
+<!-- <details open>
 <summary> <b> Libai supported projects </b> </summary>
 
-- **BERT**:[BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding](https://arxiv.org/abs/1810.04805)
-- **Vision Transformer**: [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)
-- **DeiT**: [Training data-efficient image transformers & distillation through attention](https://arxiv.org/abs/2012.12877)
+- Masked word completion with [BERT](https://arxiv.org/abs/1810.04805)
 
-</details>
+- Image classification with [ViT](https://arxiv.org/abs/2010.11929)
 
+</details> -->
+
+
+## Documentation
+Please refer to [docs]() for full API documentation and tutorials.
 
 ## License
 This project is released under the [Apache 2.0 license](LICENSE).
+
+
+## ChangeLog
+
+**Beta 0.1.0** was released in 15/2/2022:
+- support deit training on imagenet
+- ...
+
+Please refer to [changelog.md]() for details and release history.
+
+## Supported Projects
+- [x] 3D Parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
+- [x] 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for Image Classification.
+
+## Installation
+
+## Getting Started
+
+## Contributing
+
+## Acknowledgement
