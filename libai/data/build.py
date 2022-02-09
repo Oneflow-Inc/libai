@@ -105,7 +105,7 @@ def build_nlp_train_loader(
     sampler=None,
     num_workers=4,
     consumed_samples=0,
-    seed=42,
+    seed=0,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
     **kwargs
@@ -183,7 +183,7 @@ def build_image_train_loader(
     sampler=None,
     num_workers=4,
     consumed_samples=0,
-    seed=42,
+    seed=0,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
     mixup_func=None,
@@ -229,9 +229,8 @@ def build_image_train_loader(
 
 
 def build_image_test_loader(
-    dataset, test_batch_size, sampler=None, num_workers=4, seed=42, collate_fn=None, **kwargs
+    dataset, test_batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None, **kwargs
 ):
-
     if sampler is None:
         sampler = SingleRoundSampler(
             dataset=dataset,
