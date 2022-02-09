@@ -25,7 +25,7 @@ from libai.scheduler import (
     WarmupCosineLR,
     WarmupExponentialLR,
     WarmupMultiStepLR,
-    WarmupPolynomailLR,
+    WarmupPolynomialLR,
 )
 
 
@@ -122,7 +122,7 @@ class TestScheduler(TestCase):
         p = nn.Parameter(flow.zeros(0))
         opt = flow.optim.SGD([p], lr=5.0)
 
-        sched = WarmupPolynomailLR(
+        sched = WarmupPolynomialLR(
             optimizer=opt,
             max_iter=30,
             warmup_factor=0.001,
