@@ -56,9 +56,8 @@ class ClsEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        # FIX ME: support dict args, not implement in graph right now
-        pred_logits = outputs[-1]  # decide by your model output
-        labels = inputs[-1]  # decide by your dataloder output
+        pred_logits = outputs["prediction_scores"]
+        labels = inputs["label"]
 
         # measure accuracy
         acc1 = accuracy(pred_logits, labels, topk=1)

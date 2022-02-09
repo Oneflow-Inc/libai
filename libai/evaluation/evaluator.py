@@ -163,16 +163,16 @@ def inference_on_dataset(
             start_compute_time = time.perf_counter()
             # model forward
             data = get_batch(inputs)
-            is_last_batch = idx==len(data_loader)-1
+            is_last_batch = idx == len(data_loader) - 1
             paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
-            outputs = model(*paded_data)
-            valid_data = [d[:valid_sample] for d in data]
-            if isinstance(outputs, (list, tuple)):
-                valid_outputs = [op[:valid_sample] for op in outputs]
-            elif isinstance(outputs, flow.Tensor):
-                valid_outputs = [outputs[:valid_sample]]
-            else:
-                raise NotImplementedError(f"model output type {type(outputs)} is not supported")
+            outputs = model(**paded_data)
+
+            # get valid sample
+            valid_data, valid_outputs = {}, {}
+            for key, value in data.items():
+                valid_data[key] = value[:valid_sample]
+            for key, value in outputs.items():
+                valid_outputs[key] = value[:valid_sample]
 
             if flow.cuda.is_available():
                 dist.synchronize()

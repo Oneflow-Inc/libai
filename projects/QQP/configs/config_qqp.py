@@ -5,10 +5,11 @@ from configs.common.models.bert import cfg as qqp_cfg
 from configs.common.optim import optim
 from configs.common.train import train
 from libai.config import LazyCall
+from libai.models.utils import GraphBase
 from libai.scheduler import WarmupCosineLR
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from projects.QQP.dataset.qqp_dataset import QQPDataset
-from projects.QQP.modeling.model import Classification, ClassificationGraph
+from projects.QQP.modeling.model import Classification  # , ClassificationGraph
 from projects.QQP.tokenizer.tokenizer import _BertCNWWMTokenizer
 
 tokenization.tokenizer = LazyCall(_BertCNWWMTokenizer)(
@@ -59,8 +60,8 @@ qqp_cfg.update(
 )
 model = LazyCall(Classification)(cfg=qqp_cfg)
 
-optim.lr=1e-6
-optim.weight_decay=0.1
+optim.lr = 1e-6
+optim.weight_decay = 0.1
 
 train.update(
     dict(
@@ -87,10 +88,10 @@ train.update(
 
 graph = dict(
     enabled=True,
-    train_graph=LazyCall(ClassificationGraph)(
+    train_graph=LazyCall(GraphBase)(
         is_train=True,
         recompute_grad=True,
         fp16=True,
     ),
-    eval_graph=LazyCall(ClassificationGraph)(is_train=False, fp16=True),
+    eval_graph=LazyCall(GraphBase)(is_train=False, fp16=True),
 )

@@ -59,6 +59,8 @@ class GraphBase(nn.Graph):
                     # stage 3
                     flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)
             self.set_pipeline_stage_id()
+        else:
+            self.model.training = False
 
         self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
