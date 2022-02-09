@@ -75,12 +75,12 @@ class ClsEvaluator(DatasetEvaluator):
         total_correct_num = 0
         total_samples = 0
         for prediction in predictions:
-            total_correct_num += prediction["num_correct"]
-            total_samples += prediction["num_samples"]
+            total_correct_num += int(prediction["num_correct"])
+            total_samples += int(prediction["num_samples"])
 
         acc1 = total_correct_num / total_samples * 100
 
         self._results = OrderedDict()
-        self._results["Acc@1"] = acc1
+        self._results["Acc@1"] = f"{acc1}, {total_correct_num}/{total_samples}"
 
         return copy.deepcopy(self._results)

@@ -143,12 +143,12 @@ class SingleRoundSampler(Sampler):
 
     def __iter__(self):
         bucket_size = self.data_size // self.data_parallel_size
-        remain = self.data_size % self.data_parallel_size
-        start_idx = self.data_parallel_rank * bucket_size
+        remain = self.data_size % self.data_parallel_size # 2
+        start_idx = self.data_parallel_rank * bucket_size # n * 128
 
         if self.data_parallel_rank < remain:
             bucket_size += 1
-        start_idx += min(self.data_parallel_rank, remain)
+        start_idx += min(self.data_parallel_rank, remain) 
 
         if self.shuffle:
             generator = flow.Generator()
@@ -169,11 +169,16 @@ class SingleRoundSampler(Sampler):
                 yield batch
                 batch = []
 
-        if len(batch) > 0 and not self.drop_last:
-            # TODO: fix sampler bug when batch_size=1
-            for _ in range(self.micro_batch_size - len(batch)):
+        if not self.drop_last:
+            if self.data_parallel_rank >= remain:
                 batch.append(0)
-            yield batch
+            if len(batch) > 0:
+                yield batch
 
     def __len__(self):
-        return self.data_size // (self.micro_batch_size * self.data_parallel_size)
+        global_batch_size = self.micro_batch_size * self.data_parallel_size
+        if self.drop_last:
+            return self.data_size // global_batch_size
+        else:
+            return (self.data_size + global_batch_size - 1) // global_batch_size
+        

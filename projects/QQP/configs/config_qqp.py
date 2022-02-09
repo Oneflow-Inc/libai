@@ -5,6 +5,7 @@ from configs.common.models.bert import cfg as qqp_cfg
 from configs.common.optim import optim
 from configs.common.train import train
 from libai.config import LazyCall
+from libai.scheduler import WarmupCosineLR
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from projects.QQP.dataset.qqp_dataset import QQPDataset
 from projects.QQP.modeling.model import Classification, ClassificationGraph
@@ -14,6 +15,7 @@ tokenization.tokenizer = LazyCall(_BertCNWWMTokenizer)(
     vocab_file="/home/chengpeng/data/PrimeLM/data/bert-base-chinese-vocab.txt",
     lower_case=True,
 )
+tokenization.setup = True
 tokenization.append_eod = False
 tokenization.make_vocab_size_divisible_by = 128
 
@@ -21,7 +23,7 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(QQPDataset)(
-            name="QQP_TRAIN",
+            datasetname="QQP_TRAIN",
             datapaths=[
                 "/home/chengpeng/train.tsv",
             ],
@@ -33,7 +35,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
 dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(QQPDataset)(
-            name="QQP_TEST",
+            datasetname="QQP_TEST",
             datapaths=[
                 "/home/chengpeng/dev.tsv",
             ],
@@ -57,12 +59,15 @@ qqp_cfg.update(
 )
 model = LazyCall(Classification)(cfg=qqp_cfg)
 
+optim.lr=1e-6
+optim.weight_decay=0.1
+
 train.update(
     dict(
         recompute_grad=dict(enabled=True),
         output_dir="output/finetune_qqp/",
         train_micro_batch_size=16,
-        test_micro_batch_size=2,
+        test_micro_batch_size=4,
         train_epoch=1,
         train_iter=0,
         eval_period=100,
@@ -71,6 +76,11 @@ train.update(
             data_parallel_size=1,
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
+        ),
+        scheduler=LazyCall(WarmupCosineLR)(
+            warmup_factor=0.01,
+            alpha=0.01,
+            warmup_method="linear",
         ),
     )
 )

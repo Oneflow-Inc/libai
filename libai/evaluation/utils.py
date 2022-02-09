@@ -17,24 +17,33 @@ import logging
 from collections.abc import Mapping
 
 import oneflow as flow
+from libai.utils import distributed as dist
 
-
-def pad_batch(x_list, batch_size):
+def pad_batch(x_list, batch_size, last_batch_lack, ls_last_batch):
     x = x_list[0]
-    valid_sample = x.shape[0]
-    assert valid_sample <= batch_size
+    tensor_batch = x.shape[0]
+    assert tensor_batch <= batch_size
     # check all batch size is equal
     for xi in x_list[1:]:
-        assert xi.shape[0] == valid_sample
+        assert xi.shape[0] == tensor_batch
 
-    if valid_sample == batch_size:
+    if tensor_batch == batch_size and not ls_last_batch:
         return x_list, batch_size
     # pad all data
+    valid_sample = tensor_batch - last_batch_lack
+    data_parallel_size = dist.get_data_parallel_size()
+    assert tensor_batch %  data_parallel_size == 0
+    tensor_micro_batch_size = tensor_batch // data_parallel_size
     padded_list = []
     for xi in x_list:
         pad_shape = (batch_size, *xi.shape[1:])
         padded_xi = flow.zeros(pad_shape, sbp=xi.sbp, placement=xi.placement, dtype=xi.dtype)
-        padded_xi[:valid_sample, ...] = padded_xi[:valid_sample, ...] + xi
+        padded_xi[:tensor_batch, ...] = padded_xi[:tensor_batch, ...] + xi
+        padded_xi = padded_xi.to_consistent(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+        for i in range(last_batch_lack-1):
+            start_idx = tensor_micro_batch_size * (data_parallel_size - i - 1)  - 1
+            padded_xi[start_idx:-1] = padded_xi[start_idx+1:]
+        padded_xi = padded_xi.to_consistent(sbp=xi.sbp)        
         padded_list.append(padded_xi)
     return padded_list, valid_sample
 

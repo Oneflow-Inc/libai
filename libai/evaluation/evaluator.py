@@ -148,6 +148,7 @@ def inference_on_dataset(
     total_compute_time = 0
     total_eval_time = 0
     consumed_samples = 0
+    last_batch_lack = dist.get_data_parallel_size() - (total % dist.get_data_parallel_size())
     with flow.no_grad():
 
         start_data_time = time.perf_counter()
@@ -162,9 +163,9 @@ def inference_on_dataset(
             start_compute_time = time.perf_counter()
             # model forward
             data = get_batch(inputs)
-            paded_data, valid_sample = pad_batch(data, batch_size)
+            is_last_batch = idx==len(data_loader)-1
+            paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
             outputs = model(*paded_data)
-            # TODO(chengpeng): Slice valid_samples
             valid_data = [d[:valid_sample] for d in data]
             if isinstance(outputs, (list, tuple)):
                 valid_outputs = [op[:valid_sample] for op in outputs]
