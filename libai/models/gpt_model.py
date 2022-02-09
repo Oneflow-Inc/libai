@@ -132,8 +132,9 @@ class GPTEmbedding(nn.Module):
         vocab_size, 
         hidden_size, 
         max_seq_length, 
-        init_method=init.xavier_normal_, 
-        embedding_dropout_prob=0.):
+        init_method=nn.init.xavier_normal_, 
+        embedding_dropout_prob=0.
+    ):
         super().__init__()
         self.token_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
         self.position_embeddings = Embedding(max_seq_length, hidden_size, init_method=init_method)
@@ -169,7 +170,7 @@ class Transformer(nn.Module):
         attention_dropout_prob=0., 
         output_dropout_prob=0., 
         layernorm_epsilon=1e-5, 
-        init_method=init.xavier_normal_,
+        init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
         bias_gelu_fusion=False,
         bias_dropout_fusion=False,
@@ -207,7 +208,7 @@ class Transformer(nn.Module):
         # sbp: [S(0), B]
         presents = []
         if past_key_values is None:
-            past_key_values = tuple([None] * len(self.num_layers))
+            past_key_values = tuple([None] * self.num_layers)
 
         for i, (layer, past) in enumerate(zip(self.layers, past_key_values)):
             if self.training:
