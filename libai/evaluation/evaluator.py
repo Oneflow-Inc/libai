@@ -148,7 +148,8 @@ def inference_on_dataset(
     total_compute_time = 0
     total_eval_time = 0
     consumed_samples = 0
-    last_batch_lack = dist.get_data_parallel_size() - (total % dist.get_data_parallel_size())
+    dps = dist.get_data_parallel_size()
+    last_batch_lack = (dps - (total % dps)) % dps
     with flow.no_grad():
 
         start_data_time = time.perf_counter()

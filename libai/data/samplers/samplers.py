@@ -143,8 +143,8 @@ class SingleRoundSampler(Sampler):
 
     def __iter__(self):
         bucket_size = self.data_size // self.data_parallel_size
-        remain = self.data_size % self.data_parallel_size  # 2
-        start_idx = self.data_parallel_rank * bucket_size  # n * 128
+        remain = self.data_size % self.data_parallel_size
+        start_idx = self.data_parallel_rank * bucket_size
 
         if self.data_parallel_rank < remain:
             bucket_size += 1
@@ -170,7 +170,7 @@ class SingleRoundSampler(Sampler):
                 batch = []
 
         if not self.drop_last:
-            if self.data_parallel_rank >= remain:
+            if self.data_parallel_rank >= remain and remain > 0:
                 batch.append(0)
             if len(batch) > 0:
                 yield batch
