@@ -3,7 +3,7 @@ from libai.scheduler import WarmupCosineLR
 
 # fmt: off
 train = dict(
-    output_dir="./output/default",
+    output_dir="./output",
 
     # Batch size and gradient accumulation
     train_micro_batch_size=32,
