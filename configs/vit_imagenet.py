@@ -1,16 +1,19 @@
 from libai.config import LazyCall
 from .common.models.vit.vit_tiny_patch16_224 import model
+from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
 from .common.data.imagenet import dataloader
 
-from libai.models import VisionTransformerGraph
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
+
+dataloader.train.dataset[0].root = "/dataset/imagenet/extract"
+dataloader.test[0].dataset.root = "/dataset/imagenet/extract"
 
 # Add MixupFunc
 dataloader.train.mixup_func = LazyCall(Mixup)(
@@ -47,15 +50,3 @@ train.scheduler.warmup_method = "linear"
 # Set fp16 ON
 train.amp.enabled = True
 
-# fmt: off
-graph = dict(
-    # options for graph or eager mode
-    enabled=True,
-    train_graph=LazyCall(VisionTransformerGraph)(
-        is_train=True,
-    ),
-    eval_graph=LazyCall(VisionTransformerGraph)(
-        is_train=False,),
-    debug=-1,
-)
-# fmt: on
