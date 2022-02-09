@@ -377,14 +377,10 @@ class DefaultTrainer(TrainerBase):
             data.get("targets").tensor = targets
 
         ret_dict = {}
-        ret_list = []
         for key, value in data.get_fields().items():
             value.to_consistent()
             ret_dict[key] = value.tensor
-            ret_list.append(value.tensor)
-        # FIXME(l1aoxingyu): `nn.Graph` cannot accpet key-value arguments right now,
-        # just pass list instead.
-        return ret_list
+        return ret_dict
 
     @classmethod
     def build_tokenizer(cls, cfg):
