@@ -19,8 +19,9 @@ cfg = dict(
     bias_dropout_fusion=True,
     scale_mask_softmax_fusion=False,
     apply_query_key_layer_scaling=True,
+    add_binary_head=True,
 )
 
 bert_model = LazyCall(BertModel)(cfg=cfg)
 
-pretrain_model = LazyCall(BertForPreTraining)(cfg=cfg, add_binary_head=True)
+pretrain_model = LazyCall(BertForPreTraining)(cfg=cfg)

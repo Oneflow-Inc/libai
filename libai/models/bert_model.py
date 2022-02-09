@@ -355,14 +355,14 @@ class BertPreTrainingHeads(nn.Module):
 
 @MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
-    def __init__(self, cfg, add_binary_head):
+    def __init__(self, cfg):
         super().__init__()
         self.bert = BertModel(cfg)
         self.cls_head = BertPreTrainingHeads(
             cfg.vocab_size,
             cfg.hidden_size,
             init_method_normal(cfg.initializer_range),
-            add_binary_head,
+            cfg.add_binary_head,
         )
 
     def forward(
