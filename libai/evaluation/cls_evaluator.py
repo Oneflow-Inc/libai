@@ -80,6 +80,6 @@ class ClsEvaluator(DatasetEvaluator):
         acc1 = total_correct_num / total_samples * 100
 
         self._results = OrderedDict()
-        self._results["Acc@1"] = f"{acc1}, {total_correct_num}/{total_samples}"
+        self._results["Acc@1"] = acc1
 
         return copy.deepcopy(self._results)

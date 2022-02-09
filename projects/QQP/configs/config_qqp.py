@@ -9,7 +9,7 @@ from libai.models.utils import GraphBase
 from libai.scheduler import WarmupCosineLR
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from projects.QQP.dataset.qqp_dataset import QQPDataset
-from projects.QQP.modeling.model import Classification  # , ClassificationGraph
+from projects.QQP.modeling.model import Classification
 from projects.QQP.tokenizer.tokenizer import _BertCNWWMTokenizer
 
 tokenization.tokenizer = LazyCall(_BertCNWWMTokenizer)(
@@ -73,15 +73,11 @@ train.update(
         train_iter=0,
         eval_period=100,
         log_period=10,
+        warmup_ratio=0.01,
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
-        ),
-        scheduler=LazyCall(WarmupCosineLR)(
-            warmup_factor=0.01,
-            alpha=0.01,
-            warmup_method="linear",
         ),
     )
 )

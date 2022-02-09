@@ -211,6 +211,7 @@ def inference_on_dataset(
     total_time = time.perf_counter() - start_time
     total_time_str = str(datetime.timedelta(seconds=total_time))
     # NOTE this format is parsed by grep
+    logger.info("Total valid samples: {}".format(consumed_samples))
     logger.info(
         "Total inference time: {} ({:.6f} s / iter per device, on {} devices)".format(
             total_time_str, total_time / (total - num_warmup), num_devices
