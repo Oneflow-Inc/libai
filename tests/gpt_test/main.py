@@ -39,7 +39,7 @@ if __name__ == '__main__':
     else:
         flow_gpt.load_state_dict(flow.load('flow_gpt.f', 0))
 
-    flow.save(flow_gpt.state_dict(), "flow_gpt.f", consistent_dst_rank=0)
+    flow.save(flow_gpt.state_dict(), "flow_gpt.f", global_dst_rank=0)
     torch.save(megatron_gpt.state_dict(), "megatron_gpt.pth")
 
     

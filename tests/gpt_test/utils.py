@@ -13,7 +13,7 @@ def convert_and_copy_tensor(tensor_lhs: flow.Tensor, tensor_rhs: torch.Tensor):
         tensor_rhs (torch.Tensor)
     """
     tensor_rhs = flow.Tensor(tensor_rhs.cpu().float().numpy())
-    tensor_rhs = flow.to_consistent(tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp)
+    tensor_rhs = flow.to_global(tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp)
     tensor_lhs.copy_(tensor_rhs)
 
 
@@ -21,7 +21,7 @@ def numpy_to_flow(tensor: np.ndarray) -> flow.Tensor:
     if tensor.dtype == np.bool:
         tensor = tensor.astype('int64')
     tensor = flow.from_numpy(tensor)
-    tensor = tensor.to_consistent(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
+    tensor = tensor.to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
     return tensor
 
 def get_sample(mode: str):
