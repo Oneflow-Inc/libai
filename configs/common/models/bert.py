@@ -5,7 +5,7 @@ from libai.models import BertModel, BertForPreTraining
 cfg = dict(
     vocab_size=30522,
     hidden_size=768,
-    hidden_layers=24,
+    num_layers=24,
     num_attention_heads=12,
     intermediate_size=4096,
     hidden_dropout_prob=0.1,

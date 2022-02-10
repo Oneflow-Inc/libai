@@ -26,6 +26,7 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
     build_activation,
+    ExtendedMask,
 )
 from libai.utils import distributed as dist
 
@@ -33,44 +34,27 @@ from .build import MODEL_ARCH_REGISTRY
 from .utils import init_method_normal, scaled_init_method_normal
 
 
-class BertExtendedAttnMask(nn.Module):
-    def forward(self, attention_mask):
-        # We create a 3D attention mask from a 2D tensor mask.
-        # [b, 1, s]
-        attention_mask_b1s = attention_mask.unsqueeze(1)
-        # [b, s, 1]
-        attention_mask_bs1 = attention_mask.unsqueeze(2)
-        # [b, s, s]
-        attention_mask_bss = attention_mask_b1s * attention_mask_bs1
-        # [b, 1, s, s]
-        extended_attention_mask = attention_mask_bss.unsqueeze(1)
-
-        # Convert attention mask to binary.
-        extended_attention_mask = extended_attention_mask > 0.5
-        return extended_attention_mask
-
-
-class BertEmbeddings(nn.Module):
+class BertEmbedding(nn.Module):
     def __init__(
         self,
         vocab_size,
         hidden_size,
-        max_sequence_length,
-        embedding_dropout_prob,
+        max_seq_length,
         num_tokentypes=0,
+        embedding_dropout_prob=0.,
         init_method=nn.init.xavier_normal_,
     ):
         super().__init__()
         self.vocab_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
         self.position_embeddings = Embedding(
-            max_sequence_length, hidden_size, init_method=init_method
+            max_seq_length, hidden_size, init_method=init_method
         )
 
         # NOTE(l1aoxingyu): Set position_ids sbp sign to [B, B] initially, because position_ids is a
         # 1D-tensor from 0 to seq_length, if set to [S(0), B] at first, then position_ids
         # will split at the first dim of hierarchy.
         self.position_ids = flow.arange(
-            max_sequence_length,
+            max_seq_length,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
@@ -218,18 +202,19 @@ class BertModel(nn.Module):
     @configurable
     def __init__(
         self,
+        num_layers,
         vocab_size,
         hidden_size,
-        hidden_layers,
-        num_attention_heads,
         intermediate_size,
-        hidden_dropout_prob,
-        attention_probs_dropout_prob,
-        max_position_embeddings,
+        num_attention_heads,
+        max_seq_length=1024, 
+        embedding_dropout_prob=0., 
+        attention_dropout_prob=0., 
+        output_dropout_prob=0., 
         num_tokentypes=2,
         add_pooling_layer=True,
+        layernorm_epsilon=1e-6,
         initializer_range=0.02,
-        layernorm_eps=1e-12,
         bias_gelu_fusion=True,
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
@@ -240,17 +225,17 @@ class BertModel(nn.Module):
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
 
         # Embeddings
-        self.embeddings = BertEmbeddings(
+        self.embeddings = BertEmbedding(
             vocab_size,
             hidden_size,
-            max_position_embeddings,
-            hidden_dropout_prob,
+            max_seq_length,
             num_tokentypes,
-            init_method,
+            embedding_dropout_prob=embedding_dropout_prob,
+            init_method=init_method,
         )
 
         # Mask generation
-        self.extended_attn_mask = BertExtendedAttnMask()
+        self.extended_attn_mask = ExtendedMask()
 
         # Encoders
         self.encoders = nn.ModuleList(
@@ -259,9 +244,9 @@ class BertModel(nn.Module):
                     hidden_size,
                     intermediate_size,
                     num_attention_heads,
-                    attention_dropout_prob=attention_probs_dropout_prob,
-                    output_dropout_prob=hidden_dropout_prob,
-                    layernorm_epsilon=layernorm_eps,
+                    attention_dropout_prob=attention_dropout_prob,
+                    output_dropout_prob=output_dropout_prob,
+                    layernorm_epsilon=layernorm_epsilon,
                     bias_gelu_fusion=bias_gelu_fusion,
                     bias_dropout_fusion=bias_dropout_fusion,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
@@ -270,28 +255,29 @@ class BertModel(nn.Module):
                     output_layer_init_method=scaled_init_method,
                     layer_idx=i,
                 )
-                for i in range(hidden_layers)
+                for i in range(num_layers)
             ]
         )
-        self.final_layernorm = LayerNorm((hidden_size,), eps=layernorm_eps, layer_idx=-1)
+        self.final_layernorm = LayerNorm((hidden_size,), eps=layernorm_epsilon, layer_idx=-1)
 
         self.pooler = BertPooler(hidden_size, init_method) if add_pooling_layer else None
 
     @classmethod
     def from_config(cls, cfg):
         return {
+            "num_layers": cfg.num_layers,
             "vocab_size": cfg.vocab_size,
             "hidden_size": cfg.hidden_size,
-            "hidden_layers": cfg.hidden_layers,
-            "num_attention_heads": cfg.num_attention_heads,
             "intermediate_size": cfg.intermediate_size,
-            "hidden_dropout_prob": cfg.hidden_dropout_prob,
-            "attention_probs_dropout_prob": cfg.attention_probs_dropout_prob,
-            "max_position_embeddings": cfg.max_position_embeddings,
+            "num_attention_heads": cfg.num_attention_heads,
+            "max_seq_length": cfg.max_position_embeddings,
+            "embedding_dropout_prob": cfg.embedding_dropout_prob,
+            "attention_dropout_prob": cfg.attention_probs_dropout_prob,
+            "output_dropout_prob": cfg.hidden_dropout_prob,
             "num_tokentypes": cfg.num_tokentypes,
             "add_pooling_layer": cfg.add_pooling_layer,
+            "layernorm_epsilon": cfg.layernorm_epsilon,
             "initializer_range": cfg.initializer_range,
-            "layernorm_eps": cfg.layernorm_eps,
             "bias_gelu_fusion": cfg.bias_gelu_fusion,
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
@@ -304,7 +290,7 @@ class BertModel(nn.Module):
 
         hidden_states = embedding_output
         for layer in self.encoders:
-            hidden_states = layer(hidden_states, extended_attention_mask)
+            hidden_states = layer(hidden_states, attention_mask=extended_attention_mask)
         encoder_output = self.final_layernorm(hidden_states)
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output
@@ -391,9 +377,9 @@ class BertForPreTraining(nn.Module):
         # Set pipeline parallelism stage_id
         for module_block in model.modules():
             # module.origin can get the original module
-            if isinstance(module_block.origin, BertEmbeddings):
+            if isinstance(module_block.origin, BertEmbedding):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
-            elif isinstance(module_block.origin, BertExtendedAttnMask):
+            elif isinstance(module_block.origin, ExtendedMask):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
             elif isinstance(module_block.origin, TransformerLayer):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)

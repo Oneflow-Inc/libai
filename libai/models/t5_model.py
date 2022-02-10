@@ -15,6 +15,8 @@
 
 import oneflow as flow
 from oneflow import nn
+
+from libai.config import configurable
 from libai.layers import (
     VocabEmbedding,
     Embedding,
@@ -27,107 +29,9 @@ from libai.layers import (
     CasualMask,
 )
 from libai.utils import distributed as dist
-from libai.config import configurable
 
+from .build import MODEL_ARCH_REGISTRY
 from .utils import init_method_normal, scaled_init_method_normal
-
-
-class T5Model(nn.Module):
-    def __init__(
-        self,
-        num_encoder_layers, 
-        num_decoder_layers,
-        vocab_size,
-        hidden_size, 
-        ffn_hidden_size, 
-        num_attention_heads, 
-        max_seq_length=1024,
-        embedding_dropout_prob=0.,
-        attention_dropout_prob=0., 
-        output_dropout_prob=0., 
-        layernorm_epsilon=1e-5, 
-        initializer_range=0.02,
-        use_scaled_init_for_output_weights=True,
-        bias_gelu_fusion=False,
-        bias_dropout_fusion=False,
-        scale_mask_softmax_fusion=False,
-        apply_query_key_layer_scaling=False
-    ):
-        super().__init__()
-        self.is_encoder_decoder = True
-
-        self.embeddings = T5Embedding(
-            vocab_size, 
-            hidden_size, 
-            max_seq_length, 
-            init_method=init_method_normal(std=initializer_range), 
-            embedding_dropout_prob=embedding_dropout_prob,
-        )
-
-        self.encoder = T5Encoder(
-            self.embeddings,
-            num_encoder_layers, 
-            hidden_size, 
-            ffn_hidden_size,
-            num_attention_heads, 
-            attention_dropout_prob=attention_dropout_prob,
-            output_dropout_prob=output_dropout_prob,
-            layernorm_epsilon=layernorm_epsilon,
-            initializer_range=initializer_range,
-            use_scaled_init_for_output_weights=use_scaled_init_for_output_weights,
-            bias_gelu_fusion=bias_gelu_fusion,
-            bias_dropout_fusion=bias_dropout_fusion,
-            scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-            apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-        )
-
-        self.decoder = T5Decoder(
-            self.embeddings,
-            num_decoder_layers, 
-            hidden_size, 
-            ffn_hidden_size,
-            num_attention_heads, 
-            num_encoder_layers=num_encoder_layers,
-            attention_dropout_prob=attention_dropout_prob,
-            output_dropout_prob=output_dropout_prob,
-            layernorm_epsilon=layernorm_epsilon,
-            initializer_range=initializer_range,
-            use_scaled_init_for_output_weights=use_scaled_init_for_output_weights,
-            bias_gelu_fusion=bias_gelu_fusion,
-            bias_dropout_fusion=bias_dropout_fusion,
-            scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-            apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-        )
-    
-    def forward(self, input_ids, attention_mask, decoder_input_ids, decoder_attention_mask, label_ids, past_key_values, use_cache):
-        encoder_states = self.encoder(input_ids, attention_mask)
-        output = self.decoder(
-            input_ids, 
-            encoder_states, 
-            attention_mask, 
-            encoder_attention_mask, 
-            label_ids=label_ids,
-            past_key_values=past_key_values, 
-            use_cache=use_cache
-        )
-        hidden_states = output[0]
-        return output
-    
-    def forward_encoder(self, input_ids, attention_mask):
-        encoder_states = self.encoder(input_ids, attention_mask)
-        return encoder_states
-    
-    def forward_decoder(self, input_ids, encoder_states, attention_mask, encoder_attention_mask, label_ids, past_key_values, use_cache):
-        output = self.decoder(
-            input_ids, 
-            encoder_states, 
-            attention_mask, 
-            encoder_attention_mask, 
-            label_ids=label_ids,
-            past_key_values=past_key_values, 
-            use_cache=use_cache
-        )
-        return output
 
 
 class T5Embedding(nn.Module):
@@ -136,13 +40,14 @@ class T5Embedding(nn.Module):
         vocab_size, 
         hidden_size, 
         max_seq_length, 
-        init_method=nn.init.xavier_normal_, 
         embedding_dropout_prob=0.,
-        layer_idx=0):
+        init_method=nn.init.xavier_normal_, 
+        layer_idx=0,
+    ):
         super().__init__()
         self.token_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method, layer_idx=layer_idx)
         self.position_embeddings = Embedding(max_seq_length, hidden_size, init_method=init_method, layer_idx=layer_idx)
-        self.dropout = flow.nn.Dropout(embedding_dropout_prob)
+        self.dropout = nn.Dropout(embedding_dropout_prob)
 
         self.position_ids = flow.arange(
             max_seq_length,
@@ -155,13 +60,16 @@ class T5Embedding(nn.Module):
         bsz, seq_length = input_ids.size()
 
         position_ids = self.position_ids[:, past_length: past_length + seq_length]
-        position_ids = position_ids.expand_as(input_ids).to_consistent(sbp=input_ids.sbp)
+        position_ids = position_ids.expand_as(input_ids).to_global(sbp=input_ids.sbp)
 
         token_embeds = self.token_embeddings(input_ids)
         position_embeds = self.position_embeddings(position_ids)
         input_embeds = token_embeds + position_embeds
         input_embeds = self.dropout(input_embeds)
         return input_embeds
+    
+    def word_embeddings(self):
+        return self.token_embeddings.weight
 
 
 class T5Encoder(nn.Module):
@@ -170,13 +78,12 @@ class T5Encoder(nn.Module):
         embeddings,
         num_layers, 
         hidden_size, 
-        ffn_hidden_size, 
+        intermediate_size, 
         num_attention_heads, 
         attention_dropout_prob=0., 
         output_dropout_prob=0., 
         layernorm_epsilon=1e-5, 
         initializer_range=0.02,
-        use_scaled_init_for_output_weights=True,
         bias_gelu_fusion=False,
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
@@ -186,15 +93,12 @@ class T5Encoder(nn.Module):
         self.num_layers = num_layers
 
         init_method = init_method_normal(std=initializer_range)
-        if use_scaled_init_for_output_weights:
-            output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
-        else:
-            output_layer_init_method = init_method
+        output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
 
         def build_layer(layer_number):
             return TransformerLayer(
                 hidden_size,
-                ffn_hidden_size,
+                intermediate_size,
                 num_attention_heads,
                 attention_dropout_prob=attention_dropout_prob,
                 output_dropout_prob=output_dropout_prob,
@@ -221,7 +125,7 @@ class T5Encoder(nn.Module):
         extended_attention_mask = self.extend_mask(attention_mask)
         
         for i, layer in enumerate(self.layers):
-            hidden_states = layer(hidden_states, extended_attention_mask)
+            hidden_states = layer(hidden_states, attention_mask=extended_attention_mask)
 
         output = self.layernorm_f(hidden_states)
         return output
@@ -233,14 +137,13 @@ class T5Decoder(nn.Module):
         embeddings,
         num_layers,
         hidden_size, 
-        ffn_hidden_size, 
+        intermediate_size, 
         num_attention_heads, 
         num_encoder_layers,
         attention_dropout_prob=0., 
         output_dropout_prob=0., 
         layernorm_epsilon=1e-5, 
         initializer_range=0.02,
-        use_scaled_init_for_output_weights=True,
         bias_gelu_fusion=False,
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
@@ -250,15 +153,12 @@ class T5Decoder(nn.Module):
         self.num_layers = num_layers
 
         init_method = init_method_normal(std=initializer_range)
-        if use_scaled_init_for_output_weights:
-            output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
-        else:
-            output_layer_init_method = init_method
-
+        output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
+        
         def build_layer(layer_number):
             return TransformerLayer(
                 hidden_size,
-                ffn_hidden_size,
+                intermediate_size,
                 num_attention_heads,
                 is_decoder=True,
                 attention_dropout_prob=attention_dropout_prob,
@@ -289,10 +189,9 @@ class T5Decoder(nn.Module):
         input_ids, 
         encoder_states, 
         attention_mask, 
-        encoder_attention_mask=None, 
-        label_ids=None,
+        encoder_attention_mask, 
         past_key_values=None, 
-        use_cache=False
+        use_cache=False,
     ):
         hidden_states = self.embeddings(input_ids)
 
@@ -309,16 +208,16 @@ class T5Decoder(nn.Module):
             if self.training:
                 hidden_states = layer(
                     hidden_states, 
-                    extended_attention_mask, 
-                    encoder_states, 
-                    extended_encoder_attention_mask
+                    attention_mask=extended_attention_mask, 
+                    encoder_states=encoder_states, 
+                    encoder_attention_mask=extended_encoder_attention_mask
                 )
             else:
                 hidden_states = layer(
                     hidden_states, 
-                    extended_attention_mask, 
-                    encoder_states, 
-                    extended_encoder_attention_mask, 
+                    attention_mask=extended_attention_mask, 
+                    encoder_states=encoder_states, 
+                    encoder_attention_mask=extended_encoder_attention_mask, 
                     past_key_value=past, 
                     use_cache=use_cache
                 )
@@ -327,13 +226,195 @@ class T5Decoder(nn.Module):
                     presents.append(present)
         
         output = self.layernorm_f(hidden_states)
-        logits = self.lm_head(output, self.embeddings.token_embeddings.weight)
-
-        if label_ids is not None:
-            loss_fct = ParallelCrossEntropyLoss(ignore_index=-100)  # todo: fix cross entropy loss
-            loss = loss_fct(logits.view(-1, logits.size(-1)), label_ids.view(-1))
-            return loss
+        output = self.lm_head(output, self.embeddings.token_embeddings.weight)
 
         if use_cache:
-            output = (logits, presents)     # todo: unify return format
+            output = (output, presents)     # todo: unify return format
         return output
+
+
+class T5Model(nn.Module):
+
+    @configurable
+    def __init__(
+        self,
+        num_encoder_layers, 
+        num_decoder_layers,
+        vocab_size,
+        hidden_size, 
+        intermediate_size, 
+        num_attention_heads, 
+        max_seq_length=1024,
+        embedding_dropout_prob=0.,
+        attention_dropout_prob=0., 
+        output_dropout_prob=0., 
+        layernorm_epsilon=1e-6, 
+        initializer_range=0.02,
+        bias_gelu_fusion=False,
+        bias_dropout_fusion=False,
+        scale_mask_softmax_fusion=False,
+        apply_query_key_layer_scaling=False
+    ):
+        super().__init__()
+        self.is_encoder_decoder = True
+
+        self.embeddings = T5Embedding(
+            vocab_size, 
+            hidden_size, 
+            max_seq_length, 
+            embedding_dropout_prob=embedding_dropout_prob,
+            init_method=init_method_normal(std=initializer_range), 
+        )
+
+        self.encoder = T5Encoder(
+            self.embeddings,
+            num_encoder_layers, 
+            hidden_size, 
+            intermediate_size,
+            num_attention_heads, 
+            attention_dropout_prob=attention_dropout_prob,
+            output_dropout_prob=output_dropout_prob,
+            layernorm_epsilon=layernorm_epsilon,
+            initializer_range=initializer_range,
+            bias_gelu_fusion=bias_gelu_fusion,
+            bias_dropout_fusion=bias_dropout_fusion,
+            scale_mask_softmax_fusion=scale_mask_softmax_fusion,
+            apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+        )
+
+        self.decoder = T5Decoder(
+            self.embeddings,
+            num_decoder_layers, 
+            hidden_size, 
+            intermediate_size,
+            num_attention_heads, 
+            num_encoder_layers=num_encoder_layers,
+            attention_dropout_prob=attention_dropout_prob,
+            output_dropout_prob=output_dropout_prob,
+            layernorm_epsilon=layernorm_epsilon,
+            initializer_range=initializer_range,
+            bias_gelu_fusion=bias_gelu_fusion,
+            bias_dropout_fusion=bias_dropout_fusion,
+            scale_mask_softmax_fusion=scale_mask_softmax_fusion,
+            apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+        )
+    
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "num_encoder_layers": cfg.num_encoder_layers,
+            "num_decoder_layers": cfg.num_decoder_layers,
+            "vocab_size": cfg.vocab_size,
+            "hidden_size": cfg.hidden_size, 
+            "intermediate_size": cfg.intermediate_size,
+            "num_attention_heads": cfg.num_attention_heads,
+            "max_seq_length": cfg.max_position_embeddings,
+            "embedding_dropout_prob": cfg.embedding_dropout_prob,
+            "attention_dropout_prob": cfg.attention_probs_dropout_prob,
+            "output_dropout_prob": cfg.hidden_dropout_prob,
+            "layernorm_epsilon": cfg.layernorm_epsilon,
+            "initializer_range": cfg.initializer_range,
+            "bias_gelu_fusion": cfg.bias_gelu_fusion,
+            "bias_dropout_fusion": cfg.bias_dropout_fusion,
+            "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
+            "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+        }
+
+    def forward(
+        self, 
+        input_ids, 
+        attention_mask, 
+        decoder_input_ids, 
+        decoder_attention_mask, 
+        past_key_values=None, 
+        use_cache=False,
+    ):
+        encoder_states = self.encoder(input_ids, attention_mask)
+        output = self.decoder(
+            input_ids, 
+            encoder_states, 
+            attention_mask, 
+            encoder_attention_mask, 
+            past_key_values=past_key_values, 
+            use_cache=use_cache
+        )
+        
+        return output
+    
+    def forward_encoder(self, input_ids, attention_mask):
+        encoder_states = self.encoder(input_ids, attention_mask)
+        return encoder_states
+    
+    def forward_decoder(
+        self, 
+        input_ids, 
+        encoder_states, 
+        attention_mask, 
+        encoder_attention_mask, 
+        past_key_values=None, 
+        use_cache=False,
+    ):
+        output = self.decoder(
+            input_ids, 
+            encoder_states, 
+            attention_mask, 
+            encoder_attention_mask, 
+            past_key_values=past_key_values, 
+            use_cache=use_cache
+        )
+        return output
+
+
+@MODEL_ARCH_REGISTRY.register()
+class T5ForPretraining(nn.Module):
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.t5_model = T5Model(cfg)
+        self.loss_func = ParallelCrossEntropyLoss()
+
+    def forward(
+        self, 
+        input_ids, 
+        attention_mask, 
+        decoder_input_ids, 
+        decoder_attention_mask, 
+        label_ids=None,
+        past_key_values=None, 
+        use_cache=False,
+    ):
+        outputs = self.t5_model(
+            input_ids, 
+            attention_mask, 
+            decoder_input_ids, 
+            decoder_attention_mask, 
+            past_key_values=past_key_values, 
+            use_cache=use_cache,
+        )
+        
+        if label_ids is not None:
+            logits = outputs[0]
+            loss = self.loss_func(logits, label_ids)
+            return {"loss": loss}
+        
+        return outputs
+
+    @staticmethod
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, T5Embedding):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, (ExtendedMask, CasualMask)):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+            elif isinstance(module_block.origin, LMLogits):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            elif isinstance(module_block.origin, ParallelCrossEntropyLoss):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+        model.t5_model.encoder.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(model.encoder.num_layers - 1)
+        model.t5_model.decoder.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(-1)
