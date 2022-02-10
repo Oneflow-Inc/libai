@@ -6,7 +6,6 @@ from configs.common.optim import optim
 from configs.common.train import train
 from configs.common.models.graph import graph
 from libai.config import LazyCall
-from libai.scheduler import WarmupCosineLR
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from projects.QQP.dataset.qqp_dataset import QQPDataset
 from projects.QQP.modeling.model import Classification

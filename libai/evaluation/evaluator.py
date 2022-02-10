@@ -15,7 +15,6 @@
 
 import datetime
 import logging
-from statistics import mode
 import time
 from collections import OrderedDict, abc
 from typing import Callable, List, Union
@@ -152,13 +151,13 @@ def inference_on_dataset(
     dps = dist.get_data_parallel_size()
     last_batch_lack = (dps - (total % dps)) % dps
     with flow.no_grad():
-        
+
         # set model to eval
         if isinstance(model, flow.nn.Graph):
             model.model.eval()
         elif isinstance(model, flow.nn.Module):
             model.eval()
-        
+
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
             total_data_time += time.perf_counter() - start_data_time
@@ -210,7 +209,7 @@ def inference_on_dataset(
                     n=5,
                 )
             start_data_time = time.perf_counter()
-       
+
     # Measure the time only for this worker (before the synchronization barrier)
     total_time = time.perf_counter() - start_time
     total_time_str = str(datetime.timedelta(seconds=total_time))
@@ -230,12 +229,12 @@ def inference_on_dataset(
         )
     )
 
-     # set model to train
+    # set model to train
     if isinstance(model, flow.nn.Graph):
         model.model.train()
     elif isinstance(model, flow.nn.Module):
         model.train()
-        
+
     results = evaluator.evaluate()
     # An evaluator may return None when not in main process.
     # Replace it by an empty dict instead to make it easier for downstream code to handle
