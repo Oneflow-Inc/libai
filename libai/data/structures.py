@@ -29,7 +29,7 @@ class DistTensorData:
     placement_idx: int = 0
 
     # Tensor-like methods
-    def to_consistent(self, sbp=None, placement=None):
+    def to_global(self, sbp=None, placement=None):
         if sbp is not None:
             self.sbp = sbp
         else:
@@ -51,7 +51,7 @@ class DistTensorData:
         else:
             self.placement = dist.get_layer_placement(self.placement_idx)
 
-        self.tensor = self.tensor.to_consistent(sbp=self.sbp, placement=self.placement)
+        self.tensor = self.tensor.to_global(sbp=self.sbp, placement=self.placement)
 
     @staticmethod
     def stack(distTensor_lists: List["DistTensorData"]) -> "DistTensorData":
