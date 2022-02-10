@@ -5,7 +5,7 @@
 环境准备：
 
 1. git clone libai，并切换到相应commit
-2. git clone Megatron-LM，并切换到相应commit
+2. git clone [Megatron-LM（我的fork）](https://github.com/marigoold/Megatron-LM)，并切换到相应commit
 3. 安装apex
 
 
