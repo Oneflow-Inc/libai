@@ -25,8 +25,7 @@ from flowvision.models.helpers import named_apply
 
 from libai.config.config import configurable
 
-from .build import GRAPH_REGISTRY, MODEL_ARCH_REGISTRY
-from .utils import GraphBase
+from .build import MODEL_ARCH_REGISTRY
 
 
 def drop_path(x, drop_prob: float = 0.5, training: bool = False):
@@ -35,9 +34,9 @@ def drop_path(x, drop_prob: float = 0.5, training: bool = False):
     keep_prob = 1 - drop_prob
     shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
     random_tensor = (
-        flow.rand(
-            *shape, dtype=x.dtype, sbp=flow.sbp.broadcast, placement=x.placement
-        ).to_consistent(sbp=x.sbp)
+        flow.rand(*shape, dtype=x.dtype, sbp=flow.sbp.broadcast, placement=x.placement).to_global(
+            sbp=x.sbp
+        )
         + keep_prob
     )
     random_tensor = random_tensor.floor()  # binarize
@@ -290,18 +289,18 @@ class VisionTransformer(nn.Module):
         cls_token = self.cls_token.expand(
             x.shape[0], -1, -1
         )  # stole cls_tokens impl from Phil Wang, thanks
-        cls_token = cls_token.to_consistent(sbp=flow.sbp.split(0), placement=cls_token.placement)
+        cls_token = cls_token.to_global(sbp=flow.sbp.split(0), placement=cls_token.placement)
         if self.dist_token is None:
             x = flow.cat((cls_token, x), dim=1)
         else:
             x = flow.cat(
-                (cls_token, self.dist_token.expand(x.shape[0], -1, -1), x).to_consistent(
+                (cls_token, self.dist_token.expand(x.shape[0], -1, -1), x).to_global(
                     sbp=flow.sbp.split(0), placement=self.dist_token.placement
                 ),
                 dim=1,
             )
         self.pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
-        self.pos_embed = self.pos_embed.to_consistent(
+        self.pos_embed = self.pos_embed.to_global(
             sbp=flow.sbp.split(0), placement=self.pos_embed.placement
         )
         x = self.pos_drop(x + self.pos_embed)
@@ -368,20 +367,3 @@ def _init_vit_weights(
     elif isinstance(module, (nn.LayerNorm, nn.GroupNorm, nn.BatchNorm2d)):
         nn.init.zeros_(module.bias)
         nn.init.ones_(module.weight)
-
-
-@GRAPH_REGISTRY.register()
-class VisionTransformerGraph(GraphBase):
-    def build(
-        self,
-        images,
-        targets,
-    ):
-
-        # Forward pass through the model
-        if self.is_train:
-            losses = self.model(images, targets)
-            losses.backward()
-            return losses
-        else:
-            return self.model(images)

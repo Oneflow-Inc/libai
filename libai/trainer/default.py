@@ -377,14 +377,10 @@ class DefaultTrainer(TrainerBase):
             data.get("targets").tensor = targets
 
         ret_dict = {}
-        ret_list = []
         for key, value in data.get_fields().items():
-            value.to_consistent()
+            value.to_global()
             ret_dict[key] = value.tensor
-            ret_list.append(value.tensor)
-        # FIXME(l1aoxingyu): `nn.Graph` cannot accpet key-value arguments right now,
-        # just pass list instead.
-        return ret_list
+        return ret_dict
 
     @classmethod
     def build_tokenizer(cls, cfg):
@@ -468,6 +464,7 @@ class DefaultTrainer(TrainerBase):
         logger.info("Prepare training, validating, testing set")
         cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
+        cfg.dataloader.train.seed = cfg.train.seed
 
         # Set tokenizer for each dataset
         if tokenizer:
@@ -493,6 +490,7 @@ class DefaultTrainer(TrainerBase):
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
+            cfg.dataloader.test[i].seed = cfg.train.seed  # set seed
             if tokenizer:
                 cfg.dataloader.test[i].dataset.tokenizer = tokenizer
         # list[dataloader1, dataloader2, ...]
