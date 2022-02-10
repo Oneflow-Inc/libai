@@ -79,7 +79,7 @@ def change_megatron_key(state_dict):
 
 
 def load_tensor(tensor_lhs, tensor_rhs):
-    tensor_rhs = flow.to_consistent(tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp)
+    tensor_rhs = flow.to_global(tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp)
     tensor_lhs.copy_(tensor_rhs)
 
 

@@ -138,13 +138,11 @@ class TransformerLayer(nn.Module):
         used for incremental decoding.
         """
         # Change placement for pipeline parallelsim
-        hidden_states = hidden_states.to_consistent(
-            placement=dist.get_layer_placement(self.layer_idx)
-        )
+        hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
 
         # hidden_states shape: (batch_size, seq_length, hidden_size)
         if attention_mask is not None:
-            attention_mask = attention_mask.to_consistent(
+            attention_mask = attention_mask.to_global(
                 placement=dist.get_layer_placement(self.layer_idx)
             )
 

@@ -402,7 +402,7 @@ class DefaultTrainer(TrainerBase):
 
         ret_dict = {}
         for key, value in data.get_fields().items():
-            value.to_consistent()
+            value.to_global()
             ret_dict[key] = value.tensor
         return ret_dict
 
