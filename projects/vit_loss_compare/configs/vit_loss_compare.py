@@ -31,11 +31,11 @@ no_augmentation_transform = LazyCall(transforms.Compose)(
         LazyCall(transforms.CenterCrop)(
             size=(224, 224),
         ),
-        LazyCall(transforms.ToTensor)(),
         LazyCall(transforms.Normalize)(
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD,
         ),
+        LazyCall(transforms.ToTensor)(),
     ]
 )
 dataloader.train.dataset[0].transform = no_augmentation_transform
