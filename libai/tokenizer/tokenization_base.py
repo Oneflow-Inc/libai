@@ -393,13 +393,15 @@ class PreTrainedTokenizer(object):
                 )
                 tokenizer.add_tokens(token, special_tokens=bool(token in special_tokens))
 
-        # Check all our special tokens are registered as "no split" token (we don't cut them) and are in the vocab
+        # Check all our special tokens are registered as "no split" token
+        # (we don't cut them) and are in the vocab
         added_tokens = tokenizer.sanitize_special_tokens()
         if added_tokens:
             logger.warning(
-                "Special tokens have been added in the vocabulary, make sure the associated word embedding are fine-tuned or trained."
+                "Special tokens have been added in the vocabulary,"
+                "make sure the associated word embedding are fine-tuned or trained."
             )
-        
+
         return tokenizer
 
     def save_pretrained(self, save_directory):
@@ -438,7 +440,7 @@ class PreTrainedTokenizer(object):
         added_vocab = self.get_added_vocab()
         if added_vocab:
             with open(added_tokens_file, "w", encoding="utf-8") as f:
-                out_str = json.dumps(added_vocab, ensure_ascii=False) 
+                out_str = json.dumps(added_vocab, ensure_ascii=False)
                 f.write(out_str)
 
         vocab_files = self.save_vocabulary(save_directory)
@@ -546,16 +548,21 @@ class PreTrainedTokenizer(object):
         self.added_tokens_decoder.update(added_tok_decoder)
 
         if special_tokens:
-            self.unique_no_split_tokens = sorted(set(self.unique_no_split_tokens).union(set(new_tokens)))
+            self.unique_no_split_tokens = sorted(
+                set(self.unique_no_split_tokens).union(set(new_tokens))
+            )
         else:
-            self.unique_no_split_tokens = sorted(set(self.unique_no_split_tokens).union(set(tokens_to_add)))
+            self.unique_no_split_tokens = sorted(
+                set(self.unique_no_split_tokens).union(set(tokens_to_add))
+            )
 
         return len(tokens_to_add)
-    
+
     def sanitize_special_tokens(self) -> int:
         """
-        Make sure that all the special tokens attributes of the tokenizer (:obj:`tokenizer.mask_token`,
-        :obj:`tokenizer.cls_token`, etc.) are in the vocabulary.
+        Make sure that all the special tokens attributes of the tokenizer
+        (:obj:`tokenizer.mask_token`, :obj:`tokenizer.cls_token`, etc.)
+        are in the vocabulary.
 
         Add the missing ones to the vocabulary if needed.
 
@@ -678,7 +685,9 @@ class PreTrainedTokenizer(object):
             return list(
                 itertools.chain.from_iterable(
                     (
-                        self._tokenize(token) if token not in self.unique_no_split_tokens else [token]
+                        self._tokenize(token)
+                        if token not in self.unique_no_split_tokens
+                        else [token]
                         for token in tokenized_text
                     )
                 )

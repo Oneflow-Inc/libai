@@ -20,12 +20,14 @@ import tempfile
 import unittest
 
 from libai.tokenizer.tokenization_t5 import GoogleT5Tokenizer
-
 from tests.tokenizer.test_tokenization_common import TokenizerTesterMixin
 
 SPIECE_UNDERLINE = "▁"
 
-SAMPLE_VOCAB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../fixtures/test_sentencepiece.model")
+SAMPLE_VOCAB = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "../fixtures/test_sentencepiece.model"
+)
+
 
 class GoogleT5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
@@ -74,7 +76,9 @@ class GoogleT5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
             ],
         )
         ids = tokenizer.convert_tokens_to_ids(tokens)
-        self.assertListEqual(ids, [8, 21, 84, 55, 24, 19, 7, 0, 602, 347, 347, 347, 3, 12, 66, 46, 72, 80, 6, 0, 4])
+        self.assertListEqual(
+            ids, [8, 21, 84, 55, 24, 19, 7, 0, 602, 347, 347, 347, 3, 12, 66, 46, 72, 80, 6, 0, 4]
+        )
 
         back_tokens = tokenizer.convert_ids_to_tokens(ids)
         self.assertListEqual(
@@ -103,7 +107,7 @@ class GoogleT5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
                 ".",
             ],
         )
-    
+
     def test_save_and_load_tokenizer(self):
         # Now let's start the test
         tokenizers = self.get_tokenizers()
@@ -123,9 +127,8 @@ class GoogleT5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
                 self.assertListEqual(before_tokens, after_tokens)
                 self.assertDictEqual(before_vocab, after_vocab)
 
-                shutil.rmtree(tmpdirname)    
+                shutil.rmtree(tmpdirname)
 
 
 if __name__ == "__main__":
     unittest.main()
-

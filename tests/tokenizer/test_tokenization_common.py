@@ -19,8 +19,7 @@ import pickle
 import re
 import shutil
 import tempfile
-from collections import OrderedDict
-from typing import Dict, List, Tuple, Union
+from typing import Tuple
 
 from libai.tokenizer import PreTrainedTokenizer
 
@@ -31,8 +30,8 @@ def get_tests_dir(append_path=None):
         append_path: optional path to append to the tests dir path
 
     Return:
-        The full path to the `tests` dir, so that the tests can be invoked from anywhere. Optionally `append_path` is
-        joined after the `tests` dir the former is provided.
+        The full path to the `tests` dir, so that the tests can be invoked from anywhere.
+        Optionally `append_path` is joined after the `tests` dir the former is provided.
 
     """
     # this function caller's __file__
@@ -52,18 +51,23 @@ class TokenizerTesterMixin:
         self.tokenizers_list = []
         with open(f"{get_tests_dir()}/../fixtures/sample_text.txt", encoding="utf-8") as f_data:
             self._data = f_data.read().replace("\n\n", "\n").strip()
-        
+
         self.tmpdirname = tempfile.mkdtemp()
 
     def tearDown(self):
         shutil.rmtree(self.tmpdirname)
-    
+
     def get_input_output_texts(self, tokenizer):
         input_txt = self.get_clean_sequence(tokenizer)[0]
         return input_txt, input_txt
-    
-    def get_clean_sequence(self, tokenizer, with_prefix_space=False, max_length=20) -> Tuple[str, list]:
-        toks = [(i, tokenizer.decode([i], clean_up_tokenization_spaces=False)) for i in range(len(tokenizer))]
+
+    def get_clean_sequence(
+        self, tokenizer, with_prefix_space=False, max_length=20
+    ) -> Tuple[str, list]:
+        toks = [
+            (i, tokenizer.decode([i], clean_up_tokenization_spaces=False))
+            for i in range(len(tokenizer))
+        ]
         toks = list(filter(lambda t: re.match(r"^[ a-zA-Z]+$", t[1]), toks))
         toks = list(filter(lambda t: [t[0]] == tokenizer.encode(t[1]), toks))
         if max_length is not None and len(toks) > max_length:
@@ -151,7 +155,9 @@ class TokenizerTesterMixin:
                 tokenizer.add_tokens(["bim", "bambam"])
                 additional_special_tokens = tokenizer.additional_special_tokens
                 additional_special_tokens.append("new_additional_special_token")
-                tokenizer.add_special_tokens({"additional_special_tokens": additional_special_tokens})
+                tokenizer.add_special_tokens(
+                    {"additional_special_tokens": additional_special_tokens}
+                )
                 before_tokens = tokenizer.encode(sample_text)
                 before_vocab = tokenizer.get_vocab()
                 tokenizer.save_pretrained(tmpdirname)
@@ -163,10 +169,12 @@ class TokenizerTesterMixin:
                 self.assertDictEqual(before_vocab, after_vocab)
                 self.assertIn("bim", after_vocab)
                 self.assertIn("bambam", after_vocab)
-                self.assertIn("new_additional_special_token", after_tokenizer.additional_special_tokens)
+                self.assertIn(
+                    "new_additional_special_token", after_tokenizer.additional_special_tokens
+                )
 
                 shutil.rmtree(tmpdirname)
-    
+
     def test_pickle_tokenizer(self):
         """Google pickle __getstate__ __setstate__ if you are struggling with this."""
         tokenizers = self.get_tokenizers()
@@ -194,7 +202,7 @@ class TokenizerTesterMixin:
             with self.subTest(f"{tokenizer.__class__.__name__}"):
                 if not hasattr(tokenizer, "do_lower_case") or not tokenizer.do_lower_case:
                     continue
-                
+
                 special_token = tokenizer.all_special_tokens[0]
 
                 text = special_token + " aaaaa bbbbbb low cccccccccdddddddd l " + special_token
@@ -202,7 +210,12 @@ class TokenizerTesterMixin:
 
                 toks0 = tokenizer.tokenize(text)  # toks before adding new_toks
 
-                new_toks = ["aaaaa bbbbbb", "cccccccccdddddddd", "AAAAA BBBBBB", "CCCCCCCCCDDDDDDDD"]
+                new_toks = [
+                    "aaaaa bbbbbb",
+                    "cccccccccdddddddd",
+                    "AAAAA BBBBBB",
+                    "CCCCCCCCCDDDDDDDD",
+                ]
                 added = tokenizer.add_tokens(new_toks)
                 self.assertEqual(added, 2)
 
@@ -214,7 +227,9 @@ class TokenizerTesterMixin:
                 self.assertNotEqual(len(toks), len(toks0))  # toks0 should be longer
 
                 # Check that none of the special tokens are lowercased
-                sequence_with_special_tokens = "A " + " yEs ".join(tokenizer.all_special_tokens) + " B"
+                sequence_with_special_tokens = (
+                    "A " + " yEs ".join(tokenizer.all_special_tokens) + " B"
+                )
                 tokenized_sequence = tokenizer.tokenize(sequence_with_special_tokens)
 
                 for special_token in tokenizer.all_special_tokens:
@@ -228,7 +243,12 @@ class TokenizerTesterMixin:
                 text = special_token + " aaaaa bbbbbb low cccccccccdddddddd l " + special_token
                 text2 = special_token + " AAAAA BBBBBB low CCCCCCCCCDDDDDDDD l " + special_token
 
-                new_toks = ["aaaaa bbbbbb", "cccccccccdddddddd", "AAAAA BBBBBB", "CCCCCCCCCDDDDDDDD"]
+                new_toks = [
+                    "aaaaa bbbbbb",
+                    "cccccccccdddddddd",
+                    "AAAAA BBBBBB",
+                    "CCCCCCCCCDDDDDDDD",
+                ]
 
                 toks0 = tokenizer.tokenize(text)  # toks before adding new_toks
 
@@ -239,10 +259,12 @@ class TokenizerTesterMixin:
                 toks2 = tokenizer.tokenize(text2)
 
                 self.assertEqual(len(toks), len(toks2))  # Length should still be the same
-                self.assertNotEqual(toks[1], toks2[1])  # But at least the first non-special tokens should differ
-                
+                self.assertNotEqual(
+                    toks[1], toks2[1]
+                )  # But at least the first non-special tokens should differ
+
                 self.assertNotEqual(len(toks), len(toks0))  # toks0 should be longer
-    
+
     def test_add_tokens_tokenizer(self):
         tokenizers = self.get_tokenizers(do_lower_case=False)
         for tokenizer in tokenizers:
@@ -252,9 +274,9 @@ class TokenizerTesterMixin:
 
                 self.assertNotEqual(vocab_size, 0)
 
-                # We usually have added tokens from the start in tests because our vocab fixtures are
-                # smaller than the original vocabs - let's not assert this
-                # self.assertEqual(vocab_size, all_size)
+                # We usually have added tokens from the start in tests
+                # because our vocab fixtures are smaller than the original vocabs
+                # let's not assert this self.assertEqual(vocab_size, all_size)
 
                 new_toks = ["aaaaa bbbbbb", "cccccccccdddddddd"]
                 added_toks = tokenizer.add_tokens(new_toks)
@@ -306,7 +328,9 @@ class TokenizerTesterMixin:
                 encoded_special_token = tokenizer.encode(special_token)
                 self.assertEqual(len(encoded_special_token), 1)
 
-                text = tokenizer.decode(ids + encoded_special_token, clean_up_tokenization_spaces=False)
+                text = tokenizer.decode(
+                    ids + encoded_special_token, clean_up_tokenization_spaces=False
+                )
                 encoded = tokenizer.encode(text)
 
                 input_encoded = tokenizer.encode(input_text)
@@ -315,7 +339,7 @@ class TokenizerTesterMixin:
 
                 decoded = tokenizer.decode(encoded, skip_special_tokens=True)
                 self.assertTrue(special_token not in decoded)
-    
+
     def test_internal_consistency(self):
         tokenizers = self.get_tokenizers()
         for tokenizer in tokenizers:
@@ -333,7 +357,7 @@ class TokenizerTesterMixin:
                 self.assertIsInstance(text_2, str)
 
                 self.assertEqual(text_2, output_text)
-    
+
     def test_encode_decode_with_spaces(self):
         tokenizers = self.get_tokenizers(do_lower_case=False)
         for tokenizer in tokenizers:
@@ -345,7 +369,7 @@ class TokenizerTesterMixin:
                 encoded = tokenizer.encode(input)
                 decoded = tokenizer.decode(encoded)
                 self.assertEqual(decoded, input)
-    
+
     def test_pretrained_model_lists(self):
         weights_list = list(self.tokenizer_class.max_model_input_sizes.keys())
         weights_lists_2 = []
@@ -354,7 +378,7 @@ class TokenizerTesterMixin:
 
         for weights_list_2 in weights_lists_2:
             self.assertListEqual(weights_list, weights_list_2)
-    
+
     def test_get_vocab(self):
         tokenizers = self.get_tokenizers(do_lower_case=False)
         for tokenizer in tokenizers:
@@ -372,5 +396,3 @@ class TokenizerTesterMixin:
                 vocab = tokenizer.get_vocab()
                 self.assertIsInstance(vocab, dict)
                 self.assertEqual(len(vocab), len(tokenizer))
-
-    

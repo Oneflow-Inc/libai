@@ -19,7 +19,6 @@ import os
 import unittest
 
 from libai.tokenizer.tokenization_gpt2 import VOCAB_FILES_NAMES, GPT2Tokenizer
-
 from tests.tokenizer.test_tokenization_common import TokenizerTesterMixin
 
 
