@@ -212,16 +212,6 @@ def build_image_train_loader(
             data_parallel_size=dist.get_data_parallel_size(),
             seed=seed,
         )
-    else:
-        sampler = sampler(
-            dataset=dataset,
-            micro_batch_size=train_batch_size,
-            shuffle=True,
-            consumed_samples=consumed_samples,
-            data_parallel_rank=dist.get_data_parallel_rank(),
-            data_parallel_size=dist.get_data_parallel_size(),
-            seed=seed,
-        )
 
     dataloader = DataLoader(
         dataset,
