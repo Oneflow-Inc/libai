@@ -285,7 +285,7 @@ class Checkpointer(object):
             if not v.is_consistent:
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
-                    state_dict[k] = v.to_consistent(sbp=model_v.sbp, placement=model_v.placement)
+                    state_dict[k] = v.to_global(sbp=model_v.sbp, placement=model_v.placement)
             # if not isinstance(v, flow.Tensor):
             #     state_dict[k] = flow.tensor(v)
 

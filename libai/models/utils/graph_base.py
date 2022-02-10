@@ -64,10 +64,20 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
 
+    def build(self, **kwargs):
+        if self.is_train:
+            loss_dict = self.model(**kwargs)
+            losses = sum(loss_dict.values())
+            losses.backward()
+            return loss_dict
+        else:
+            return self.model(**kwargs)
+
     def set_activation_checkpoint(self):
         for module_block in self.model.modules():
             if isinstance(module_block.origin, TransformerLayer):
                 module_block.config.activation_checkpointing = True
 
     def set_pipeline_stage_id(self):
-        pass
+        if hasattr(type(self.model.origin), "set_pipeline_stage_id"):
+            type(self.model.origin).set_pipeline_stage_id(self.model)
