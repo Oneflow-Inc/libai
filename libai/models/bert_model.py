@@ -98,9 +98,7 @@ class BertEmbeddings(nn.Module):
         if position_ids is None:
             # Change position_ids sbp sign: [B, B] -> [S(0), B]
             position_ids = (
-                self.position_ids[:, :seq_length]
-                .expand_as(input_ids)
-                .to_consistent(sbp=input_ids.sbp)
+                self.position_ids[:, :seq_length].expand_as(input_ids).to_global(sbp=input_ids.sbp)
             )
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = word_embeddings + position_embeddings
@@ -110,7 +108,7 @@ class BertEmbeddings(nn.Module):
                 tokentype_ids = (
                     self.tokentype_ids[:, :seq_length]
                     .expand_as(input_ids)
-                    .to_consistent(sbp=input_ids.sbp)
+                    .to_global(sbp=input_ids.sbp)
                 )
             embeddings = embeddings + self.tokentype_embeddings(tokentype_ids)
 
@@ -138,13 +136,13 @@ class BertLMPredictionHead(nn.Module):
     def forward(self, hidden_states):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.activation_func(hidden_states)
-        hidden_states = hidden_states.to_consistent(
+        hidden_states = hidden_states.to_global(
             grad_sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(2)])
         )
 
         # NOTE(l1aoxingyu): hidden_states shape is [B, S, H] whose sbp sign: [S(0), S(2)]
         # Change from [S(0), S(2)] -> [S(0), B] because layernorm cannot get inputs with sbp S(2)
-        hidden_states = hidden_states.to_consistent(
+        hidden_states = hidden_states.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
         )
         hidden_states = self.layernorm(hidden_states)
@@ -194,13 +192,13 @@ class BertLoss(nn.Module):
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
         # because (lm_loss * loss_mask) / loss_mask.sum() cannot accept P / P
-        denominator = loss_mask.sum().to_consistent(
+        denominator = loss_mask.sum().to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
         # NOTE(l1aoxingyu): Change lm loss sbp sign [P, P] -> [P, B] to add with sop loss
         # whose sbp sign: [P, B]
-        masked_lm_loss = masked_lm_loss.to_consistent(
+        masked_lm_loss = masked_lm_loss.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
         )
 
