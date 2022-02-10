@@ -56,9 +56,10 @@ class TransformerLayer(nn.Module):
           this will be used in cross attention.
         * **encoder_attention_mask**: [bsz, 1, seq_length, seq_length],
           (S(0), B) key padding mask of encoder states.
-        * **past_key_value**: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size],
-          For decoder layer, the past_key_value contains the states both
-          from self attention and cross attention.
+        * **past_key_value**: tuple of key and value, each shape is
+          [src_len, bsz, num_heads, head_size], For decoder layer,
+          the past_key_value contains the states both from
+          self attention and cross attention.
         * **use_cache**: it will be set to `True`, when the model is in the inference phase and
           used for incremental decoding.
     """
