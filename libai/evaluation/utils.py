@@ -38,13 +38,13 @@ def pad_batch(x_dict, batch_size, last_batch_lack, ls_last_batch):
         pad_shape = (batch_size, *xi.shape[1:])
         padded_xi = flow.zeros(pad_shape, sbp=xi.sbp, placement=xi.placement, dtype=xi.dtype)
         padded_xi[:tensor_batch, ...] = padded_xi[:tensor_batch, ...] + xi
-        padded_xi = padded_xi.to_consistent(
+        padded_xi = padded_xi.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         )
         for i in range(last_batch_lack - 1):
             start_idx = tensor_micro_batch_size * (data_parallel_size - i - 1) - 1
             padded_xi[start_idx:-1] = padded_xi[start_idx + 1 :]
-        padded_xi = padded_xi.to_consistent(sbp=xi.sbp)
+        padded_xi = padded_xi.to_global(sbp=xi.sbp)
         padded_dict[key] = padded_xi
     return padded_dict, valid_sample
 

@@ -542,7 +542,7 @@ class DefaultTrainer(TrainerBase):
             log_info += f", scheduler milestones={cfg.train.scheduler.milestones}"
         logger.info(log_info)
 
-        # Consistent scheduler cfg
+        # Global scheduler cfg
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
         cfg.train.scheduler.max_iter = cfg.train.train_iter
 
