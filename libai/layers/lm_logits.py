@@ -41,7 +41,7 @@ class LMLogits(nn.Module):
 
         # NOTE(l1aoxingyu): This is for pipeline parallelism
         # change word embedding placement from stage(0) to stage(-1)
-        w = word_embeddings.to_consistent(placement=input.placement)
+        w = word_embeddings.to_global(placement=input.placement)
 
         # NOTE(l1aoxingyu): input x embed^T = logits with sbp sign
         # [S(0), B] x [B, S(1)] --> [S(0), S(1)]
@@ -53,7 +53,7 @@ class LMLogits(nn.Module):
         #  logits.grad    embed        input.grad
         # When use input.grad as head node for backward pass, need to convert
         # its sbp sign fromm [S(0), P] --> [S(0), B]
-        input = input.to_consistent(grad_sbp=input.sbp)
+        input = input.to_global(grad_sbp=input.sbp)
 
         logits = flow._C.matmul(input, w, transpose_b=True)
         if self.bias is not None:
