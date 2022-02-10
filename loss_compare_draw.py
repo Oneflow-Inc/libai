@@ -1,13 +1,10 @@
 import matplotlib.pyplot as plt
 
-
 OF_LOSS_FILE = "./oneflow_vit_tiny_loss.txt"
 TORCH_LOSS_FILE = "./torch_vit_tiny_loss.txt"
 
-def draw(
-    of_file,
-    torch_file
-):
+
+def draw(of_file, torch_file):
     of_loss = []
     torch_loss = []
     with open(of_file, "r") as f:

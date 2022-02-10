@@ -1,19 +1,16 @@
 import numpy as np
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.utils.data as torch_data
-from torch.utils.data import Sampler
-from torchvision import datasets, transforms
-
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.vision_transformer import vit_tiny_patch16_224
+from torch.utils.data import Sampler
+from torchvision import datasets, transforms
 
 """
 Global Config
 """
-BATCH_SIZE=32
+BATCH_SIZE = 32
 LR = 0.0001
 BETAS = (0.9, 0.999)
 WEIGHT_DECAY = 1e-8
@@ -24,6 +21,8 @@ SAVA_FILE_PATH = "./torch_vit_tiny_loss.txt"
 """
 Dataset, Sampler and Transforms Settings
 """
+
+
 class CyclicSampler(Sampler):
     """This sampler supports cyclic sampling, and it is also compatible with
     non data parallelism and data parallelism.
@@ -79,7 +78,9 @@ class CyclicSampler(Sampler):
 
             if self.shuffle:
                 np.random.seed(self.seed)
-                random_idx = np.random.permutation(self.data_size_per_epoch,).tolist()
+                random_idx = np.random.permutation(
+                    self.data_size_per_epoch,
+                ).tolist()
                 indices = [start_idx + x for x in random_idx[bucket_offset:]]
             else:
                 seq_idx = torch.arange(self.data_size_per_epoch).tolist()
@@ -128,7 +129,9 @@ imagenet_dataset = datasets.ImageFolder(
 
 train_loader = torch_data.DataLoader(
     imagenet_dataset,
-    batch_sampler=CyclicSampler(dataset=imagenet_dataset, micro_batch_size=BATCH_SIZE, shuffle=True),
+    batch_sampler=CyclicSampler(
+        dataset=imagenet_dataset, micro_batch_size=BATCH_SIZE, shuffle=True
+    ),
 )
 
 

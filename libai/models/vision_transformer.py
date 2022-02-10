@@ -300,9 +300,7 @@ class VisionTransformer(nn.Module):
                 dim=1,
             )
         pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
-        pos_embed = pos_embed.to_consistent(
-            sbp=flow.sbp.split(0), placement=pos_embed.placement
-        )
+        pos_embed = pos_embed.to_consistent(sbp=flow.sbp.split(0), placement=pos_embed.placement)
         x = self.pos_drop(x + self.pos_embed)
         # transformer encoder
         x = self.blocks(x)
@@ -313,8 +311,8 @@ class VisionTransformer(nn.Module):
         else:
             return x[:, 0], x[:, 1]
 
-    def forward(self, x, targets=None):
-        x = self.forward_features(x)
+    def forward(self, images, targets=None):
+        x = self.forward_features(images)
         # classification head
         if self.head_dist is not None:
             x, x_dist = self.head(x[0]), self.head_dist(x[1])  # x must be a tuple
@@ -328,9 +326,9 @@ class VisionTransformer(nn.Module):
 
         if targets is not None:
             losses = self.loss_func(x, targets)
-            return losses
+            return {"ce_loss": losses}
         else:
-            return x
+            return {"logits": x}
 
 
 def _init_vit_weights(

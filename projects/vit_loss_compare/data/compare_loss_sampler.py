@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import numpy as np
-
 import oneflow as flow
 from oneflow.utils.data import Sampler
 
@@ -74,7 +73,9 @@ class CyclicSampler(Sampler):
 
             if self.shuffle:
                 np.random.seed(0)
-                random_idx = np.random.permutation(self.data_size_per_epoch,).tolist()
+                random_idx = np.random.permutation(
+                    self.data_size_per_epoch,
+                ).tolist()
                 indices = [start_idx + x for x in random_idx[bucket_offset:]]
             else:
                 seq_idx = flow.arange(self.data_size_per_epoch).tolist()

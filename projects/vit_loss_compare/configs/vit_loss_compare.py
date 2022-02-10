@@ -1,16 +1,20 @@
-from libai.config import LazyCall
+from libai.config import LazyCall, get_config
 from libai.scheduler.lr_scheduler import WarmupMultiStepLR
-from libai.models import VisionTransformerGraph
 from libai.optim import get_default_optimizer_params
-from .common.models.vit import vit_model as model
-from .common.train import train
-from .common.data.imagenet import dataloader
+from data.compare_loss_sampler import CyclicSampler
 
 import oneflow as flow
 from oneflow.nn import CrossEntropyLoss
 from flowvision.transforms import transforms
 from flowvision.transforms import InterpolationMode
 from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+
+model = get_config("common/models/vit.py").vit_model
+graph = get_config("common/models/graph.py").graph
+train = get_config("common/train.py").train
+dataloader = get_config("common/data/imagenet.py").dataloader
+
+graph.enabled = False
 
 # 数据相关的设置
 no_augmentation_transform = LazyCall(transforms.Compose)(
@@ -26,14 +30,14 @@ no_augmentation_transform = LazyCall(transforms.Compose)(
         LazyCall(transforms.Normalize)(
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD,
-        )
+        ),
     ]
 )
 dataloader.train.dataset[0].transform = no_augmentation_transform
 dataloader.test[0].dataset.transform = no_augmentation_transform
 
-dataloader.train.dataset[0].root = "/DATA/disk1/ImageNet/extract/"
-dataloader.test[0].dataset.root = "/DATA/disk1/ImageNet/extract/"
+dataloader.train.dataset[0].root = "/dataset/imagenet/extract"
+dataloader.test[0].dataset.root = "/dataset/imagenet/extract"
 
 
 # 模型设置: 关闭dropout等任何随机性的部分
@@ -69,24 +73,8 @@ train.log_period = 1
 
 # 将scheduler的milestones设大, 以达到constant LR的目的
 train.scheduler = LazyCall(WarmupMultiStepLR)(
-    max_iter=1000,
-    warmup_iter=0,
-    warmup_factor = 0.0001,
-    milestones=[0.99]
+    max_iter=1000, warmup_iter=0, warmup_factor=0.0001, milestones=[0.99]
 )
 
 # Set fp16 ON
 train.amp.enabled = False
-
-# fmt: off
-graph = dict(
-    # options for graph or eager mode
-    enabled=True,
-    train_graph=LazyCall(VisionTransformerGraph)(
-        is_train=True,
-    ),
-    eval_graph=LazyCall(VisionTransformerGraph)(
-        is_train=False,),
-    debug=-1,
-)
-# fmt: on

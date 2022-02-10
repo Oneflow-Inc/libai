@@ -21,6 +21,7 @@ from typing import Callable, Optional
 
 import omegaconf
 import oneflow as flow
+import torch
 from termcolor import colored
 
 from libai.config import LazyConfig, try_get_key
@@ -39,17 +40,17 @@ from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
 
 
-import torch
-import numpy as np
 def load_from_torch(model, path="./torch_vit_tiny_weight.pth"):
     torch_dict = torch.load(path)
     parameters = torch_dict
     new_parameters = dict()
     for key, value in parameters.items():
         if "num_batches_tracked" not in key:
-          val = value.detach().cpu().numpy()
-          val = flow.tensor(val).to_consistent(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
-          new_parameters[key] = val
+            val = value.detach().cpu().numpy()
+            val = flow.tensor(val).to_consistent(
+                sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)})
+            )
+            new_parameters[key] = val
     model.load_state_dict(new_parameters)
     return model
 
@@ -258,9 +259,6 @@ class DefaultTrainer(TrainerBase):
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
-        # 加载一样的权重
-        self.model = load_from_torch(self.model)
-        print("successfully load torch weight")
 
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
@@ -381,7 +379,6 @@ class DefaultTrainer(TrainerBase):
         with open("oneflow_vit_tiny_loss.txt", "w") as f:
             for loss in all_losses:
                 f.write(str(loss) + "\n")
-
 
     def run_step(self):
         self._trainer.iter = self.iter
@@ -594,7 +591,7 @@ class DefaultTrainer(TrainerBase):
         """
 
         # 直接return, 不作任何test
-        return 
+        return
 
         logger = logging.getLogger(__name__)
         # TODO: support multi evaluator

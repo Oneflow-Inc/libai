@@ -24,8 +24,6 @@ from .data_utils import split_ds
 from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
-from .samplers.compare_loss_sampler import CyclicSampler as CompareLossSampler
-
 
 def build_nlp_train_val_test_loader(
     dataset,
@@ -205,7 +203,17 @@ def build_image_train_loader(
         dataset = dataset[0]
 
     if sampler is None:
-        sampler = CompareLossSampler(
+        sampler = CyclicSampler(
+            dataset=dataset,
+            micro_batch_size=train_batch_size,
+            shuffle=True,
+            consumed_samples=consumed_samples,
+            data_parallel_rank=dist.get_data_parallel_rank(),
+            data_parallel_size=dist.get_data_parallel_size(),
+            seed=seed,
+        )
+    else:
+        sampler = sampler(
             dataset=dataset,
             micro_batch_size=train_batch_size,
             shuffle=True,

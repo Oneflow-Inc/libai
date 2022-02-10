@@ -307,5 +307,3 @@ class GraphTrainer(TrainerBase):
         loss_dict = self.graph(**data)
 
         self.write_metrics(loss_dict, data_time)
-        # 每个iter结束后，将这个值存入到之前定义好的存放loss的一个list中
-        self.all_losses.append(dist.tton(losses).item())
