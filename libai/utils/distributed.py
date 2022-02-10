@@ -310,7 +310,7 @@ def convert_to_distributed_default_setting(module):
     """
     for param in module.parameters():
         if not param.is_consistent:
-            module.to_consistent(
+            module.to_global(
                 sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=get_layer_placement(0),
             )
@@ -327,7 +327,7 @@ def ttol(tensor, pure_local=False):
         if pure_local:
             tensor = tensor.to_local()
         else:
-            tensor = tensor.to_consistent(
+            tensor = tensor.to_global(
                 sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             ).to_local()
 
