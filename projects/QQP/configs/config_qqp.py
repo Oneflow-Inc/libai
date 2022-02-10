@@ -23,8 +23,8 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(QQPDataset)(
-            datasetname="QQP_TRAIN",
-            datapaths=[
+            dataset_name="QQP_TRAIN",
+            data_paths=[
                 "/home/chengpeng/train.tsv",
             ],
             max_seq_length=512,
@@ -35,8 +35,8 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
 dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(QQPDataset)(
-            datasetname="QQP_TEST",
-            datapaths=[
+            dataset_name="QQP_TEST",
+            data_paths=[
                 "/home/chengpeng/dev.tsv",
             ],
             max_seq_length=512,

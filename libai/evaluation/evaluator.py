@@ -17,6 +17,7 @@ import datetime
 import logging
 import time
 from collections import OrderedDict, abc
+from contextlib import ExitStack, contextmanager
 from typing import Callable, List, Union
 
 import oneflow as flow
@@ -150,13 +151,10 @@ def inference_on_dataset(
     consumed_samples = 0
     dps = dist.get_data_parallel_size()
     last_batch_lack = (dps - (total % dps)) % dps
-    with flow.no_grad():
-
-        # set model to eval
-        if isinstance(model, flow.nn.Graph):
-            model.model.eval()
-        elif isinstance(model, flow.nn.Module):
-            model.eval()
+    with ExitStack() as stack:
+        if isinstance(model, (flow.nn.Module, flow.nn.Graph)):
+            stack.enter_context(inference_context(model))
+        stack.enter_context(flow.no_grad())
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
@@ -229,15 +227,29 @@ def inference_on_dataset(
         )
     )
 
-    # set model to train
-    if isinstance(model, flow.nn.Graph):
-        model.model.train()
-    elif isinstance(model, flow.nn.Module):
-        model.train()
-
     results = evaluator.evaluate()
     # An evaluator may return None when not in main process.
     # Replace it by an empty dict instead to make it easier for downstream code to handle
     if results is None:
         results = {}
     return results
+
+
+@contextmanager
+def inference_context(model):
+    """
+    A context where the model is temporarily changed to eval mode,
+    and restored to previous mode afterwards.
+    Args:
+        model: eager or graph mode in oneflow
+    """
+    training_mode = model.model.training if isinstance(model, flow.nn.Graph) else model.training
+    if isinstance(model, flow.nn.Graph):
+        model.model.eval()
+    else:
+        model.eval()
+    yield
+    if isinstance(model, flow.nn.Graph):
+        model.model.train(training_mode)
+    else:
+        model.train(training_mode)

@@ -576,7 +576,7 @@ class DefaultTrainer(TrainerBase):
         for idx, data_loader in enumerate(test_loaders):
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
-            dataset_name = getattr(data_loader.dataset, "datasetname", "UndefinedDataset")
+            dataset_name = getattr(data_loader.dataset, "dataset_name", "UndefinedDataset")
             # TODO: support multi evaluator
             # if evaluators is not None:
             #     evaluator = evaluators[idx]

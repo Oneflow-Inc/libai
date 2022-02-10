@@ -24,10 +24,10 @@ LABELS = [0, 1]
 
 
 class QQPDataset(GLUEAbstractDataset):
-    def __init__(self, datasetname, datapaths, tokenizer, max_seq_length, test_label=0):
+    def __init__(self, dataset_name, data_paths, tokenizer, max_seq_length, test_label=0):
         self.test_label = test_label
-        self.datasetname = datasetname
-        super().__init__("QQP", datasetname, datapaths, tokenizer, max_seq_length)
+        self.dataset_name = dataset_name
+        super().__init__("QQP", dataset_name, data_paths, tokenizer, max_seq_length)
 
     def process_samples_from_single_path(self, filename):
         """ "Implement abstract method."""
