@@ -23,8 +23,8 @@ from libai.layers import (
     TransformerLayer,
     ParallelCrossEntropyLoss,
 )
-from libai.models.build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
-from libai.models.utils import init_method_normal, scaled_init_method_normal, GraphBase
+from libai.models.build import MODEL_ARCH_REGISTRY
+from libai.models.utils import init_method_normal, scaled_init_method_normal
 
 from libai.utils import distributed as dist
 
@@ -75,7 +75,7 @@ class T5Embedding(flow.nn.Module):
             position_ids = (
                 self.position_ids[:, :seq_length]
                 .expand_as(input_ids)
-                .to_consistent(sbp=input_ids.sbp)
+                .to_global(sbp=input_ids.sbp)
             )
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = word_embeddings + position_embeddings
@@ -139,7 +139,7 @@ class T5Model(flow.nn.Module):
         )
 
         encoder_final_layernorm = LayerNorm(
-            (hidden_size, ), eps=layernorm_eps, layer_idx=-1
+            (hidden_size, ), eps=layernorm_eps, layer_idx=hidden_layers-1,
         )
 
         self.encoder = flow.nn.Sequential()
@@ -170,7 +170,7 @@ class T5Model(flow.nn.Module):
         )
 
         decoder_final_layernorm = LayerNorm(
-            (hidden_size, ), eps=layernorm_eps, layer_idx=-1
+            (hidden_size, ), eps=layernorm_eps, layer_idx=hidden_layers-1,
         )
 
         self.decoder = flow.nn.Sequential()
@@ -238,11 +238,15 @@ class T5Loss(flow.nn.Module):
     def forward(self, logits, lm_labels, loss_mask):
         lm_loss = self.lm_loss(logits, lm_labels)
         loss_mask = loss_mask.float()
-        denominator = loss_mask.sum().to_consistent(
+        denominator = loss_mask.sum().to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
-        return masked_lm_loss
+        masked_lm_loss = masked_lm_loss.to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
+        )
+        return {'masked_lm_loss': masked_lm_loss}
+        # return masked_lm_loss
 
 
 
@@ -273,30 +277,3 @@ class T5ForPreTraining(flow.nn.Module):
 
         lm_loss = self.loss_func(logits, lm_labels, loss_mask)
         return lm_loss
-
-@GRAPH_REGISTRY.register()
-class T5ForPretrainingGraph(GraphBase):
-    def build(
-        self,
-        encoder_input_ids,
-        decoder_input_ids,
-        encoder_attn_mask,
-        decoder_attn_mask,
-        encoder_decoder_attn_mask,
-        lm_labels=None,
-        loss_mask=None,
-    ):
-
-        # Forward pass through the model
-        if self.is_train:
-            losses = self.model(
-                encoder_input_ids,
-                decoder_input_ids,
-                encoder_attn_mask,
-                decoder_attn_mask,
-                encoder_decoder_attn_mask,
-                lm_labels,
-                loss_mask,
-            )
-            losses.backward()
-            return losses

@@ -15,14 +15,12 @@
 """dataset for t5."""
 
 import collections
-from lib2to3.pgen2 import token
 import math
 
 import numpy as np
 import oneflow as flow
 
 from libai.data.data_utils import SentenceIndexedDataset
-from libai.data.data_utils.reindexed_dataset import get_samples_mapping
 from libai.data.structures import DistTensorData, Instance
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
@@ -109,12 +107,12 @@ class T5Dataset(flow.utils.data.Dataset):
         ) = self.pad_and_convert_to_numpy(tokens, masked_spans)
 
         sample = Instance(
-            encoder_input=DistTensorData(encoder_input),
-            decoder_input=DistTensorData(decoder_input),
-            encoder_padding_mask=DistTensorData(encoder_padding_mask),
-            decoder_padding_mask=DistTensorData(decoder_padding_mask),
-            encoder_decoder_padding_mask=DistTensorData(encoder_decoder_padding_mask),
-            labels=DistTensorData(labels, placement_idx=-1),
+            encoder_input_ids=DistTensorData(encoder_input),
+            decoder_input_ids=DistTensorData(decoder_input),
+            encoder_attn_mask=DistTensorData(encoder_padding_mask),
+            decoder_attn_mask=DistTensorData(decoder_padding_mask),
+            encoder_decoder_attn_mask=DistTensorData(encoder_decoder_padding_mask),
+            lm_labels=DistTensorData(labels, placement_idx=-1),
             loss_mask=DistTensorData(loss_mask, placement_idx=-1),
         )
         return sample
