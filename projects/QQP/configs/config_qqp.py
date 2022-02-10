@@ -4,8 +4,8 @@ from configs.common.data.bert_dataset import tokenization
 from configs.common.models.bert import cfg as qqp_cfg
 from configs.common.optim import optim
 from configs.common.train import train
+from configs.common.models.graph import graph
 from libai.config import LazyCall
-from libai.models.utils import GraphBase
 from libai.scheduler import WarmupCosineLR
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from projects.QQP.dataset.qqp_dataset import QQPDataset
@@ -66,6 +66,7 @@ optim.weight_decay = 0.1
 train.update(
     dict(
         recompute_grad=dict(enabled=True),
+        amp=dict(enabled=True),
         output_dir="output/finetune_qqp/",
         train_micro_batch_size=16,
         test_micro_batch_size=4,
@@ -80,14 +81,4 @@ train.update(
             pipeline_parallel_size=1,
         ),
     )
-)
-
-graph = dict(
-    enabled=True,
-    train_graph=LazyCall(GraphBase)(
-        is_train=True,
-        recompute_grad=True,
-        fp16=True,
-    ),
-    eval_graph=LazyCall(GraphBase)(is_train=False, fp16=True),
 )
