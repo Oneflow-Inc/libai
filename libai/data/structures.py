@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass, field
 from collections import OrderedDict
-from typing import List, Any
+from dataclasses import dataclass, field
+from typing import Any, List
+
 import oneflow as flow
 
 from libai.utils import distributed as dist
@@ -28,7 +29,7 @@ class DistTensorData:
     placement_idx: int = 0
 
     # Tensor-like methods
-    def to_consistent(self, sbp=None, placement=None):
+    def to_global(self, sbp=None, placement=None):
         if sbp is not None:
             self.sbp = sbp
         else:
@@ -50,7 +51,7 @@ class DistTensorData:
         else:
             self.placement = dist.get_layer_placement(self.placement_idx)
 
-        self.tensor = self.tensor.to_consistent(sbp=self.sbp, placement=self.placement)
+        self.tensor = self.tensor.to_global(sbp=self.sbp, placement=self.placement)
 
     @staticmethod
     def stack(distTensor_lists: List["DistTensorData"]) -> "DistTensorData":
@@ -66,9 +67,7 @@ class DistTensorData:
         if len(distTensor_lists) == 1:
             # TODO(l1aoxingyu): add inplace unsqueeze
             # distTensor_lists[0].tensor.unsqueeze_(0)  # add batch dim
-            distTensor_lists[0].tensor = distTensor_lists[0].tensor.unsqueeze(
-                0
-            )  # add batch dim
+            distTensor_lists[0].tensor = distTensor_lists[0].tensor.unsqueeze(0)  # add batch dim
             return distTensor_lists[0]
 
         tensor_size = distTensor_lists[0].tensor.size()
@@ -92,17 +91,17 @@ class DistTensorData:
 
 
 class Instance:
-    """ 
+    """
     This class represents a instance with metadata as attributes.
     It stores the attributes of an instance (e.g., image, tokens) as "fields".
 
     all other (non-filed) attributes of this class are considered private:
     they must start with '_' and are not modifiable by a user.
-    
+
     Some basic usage:
-    
+
     1. Set/get/check a field:
-    
+
         .. code-block:: python
 
             instance.tokens = Metadata(...)
@@ -131,7 +130,7 @@ class Instance:
         return self._fields[name]
 
     def set(self, name: str, value: Any):
-        """ 
+        """
         Set the field named `name` to `value`.
         """
         self._fields[name] = value
@@ -176,9 +175,7 @@ class Instance:
 
     def __str__(self):
         s = self.__class__.__name__ + "("
-        s += "fields=[{}]".format(
-            ", ".join((f"{k}: {v}" for k, v in self._fields.items()))
-        )
+        s += "fields=[{}]".format(", ".join((f"{k}: {v}" for k, v in self._fields.items())))
         return s
 
     __repr__ = __str__

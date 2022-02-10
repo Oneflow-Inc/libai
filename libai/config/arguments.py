@@ -14,8 +14,8 @@
 # limitations under the License.
 
 
-import sys
 import argparse
+import sys
 
 
 def default_argument_parser(epilog=None):
@@ -35,34 +35,36 @@ Examples:
 
 Run on single machine:
     $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} --config-file cfg.yaml
+    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
+    --config-file cfg.yaml
 
 Change some config options:
     $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} --config-file cfg.yaml train.load_weight=/path/to/weight.pth optim.lr=0.001
+    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
+    --config-file cfg.yaml train.load_weight=/path/to/weight.pth optim.lr=0.001
 
 Run on multiple machines:
     (machine0)$ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 2 --node_rank 0 --master_addr <URL> {sys.argv[0]} --config-file cfg.yaml
-    
+    --nproc_per_node 8 --nnodes 2 --node_rank 0 --master_addr <URL> {sys.argv[0]} \
+    --config-file cfg.yaml
+
     $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 2 --node_rank 1 --master_addr <URL> {sys.argv[0]} --config-file cfg.yaml 
+    --nproc_per_node 8 --nnodes 2 --node_rank 1 --master_addr <URL> {sys.argv[0]} \
+    --config-file cfg.yaml
 
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "--config-file", default="", metavar="FILE", help="path to config file"
-    )
+    parser.add_argument("--config-file", default="", metavar="FILE", help="path to config file")
     parser.add_argument(
         "--resume",
         action="store_true",
         help="Whether to attempt to resume from the checkpoint directory. "
         "See documentation of `DefaultTrainer.resume_or_load()` for what it means.",
     )
-    parser.add_argument(
-        "--eval-only", action="store_true", help="perform evaluation only"
-    )
+    parser.add_argument("--eval-only", action="store_true", help="perform evaluation only")
+    # TODO: Add fast debug mode
+    parser.add_argument("--fast-debug", action="store_true", help="quickly debug")
     parser.add_argument(
         "opts",
         help="""

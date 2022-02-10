@@ -17,8 +17,7 @@ import copy
 import logging
 import os
 from collections import defaultdict
-from typing import Any
-from typing import Optional, List, Dict, NamedTuple, Tuple, Iterable
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 import oneflow as flow
@@ -139,9 +138,7 @@ class Checkpointer(object):
 
         checkpoint = self._load_file(path)
         incompatible = self._load_model(checkpoint)
-        if (
-            incompatible is not None
-        ):  # handle some existing subclasses that returns None
+        if incompatible is not None:  # handle some existing subclasses that returns None
             self._log_incompatible_keys(incompatible)
 
         for key in self.checkpointables if checkpointables is None else checkpointables:
@@ -265,15 +262,11 @@ class Checkpointer(object):
                 )
             )
         if incompatible.missing_keys:
-            missing_keys = _filter_reused_missing_keys(
-                self.model, incompatible.missing_keys
-            )
+            missing_keys = _filter_reused_missing_keys(self.model, incompatible.missing_keys)
             if missing_keys:
                 self.logger.info(get_missing_parameters_message(missing_keys))
         if incompatible.unexpected_keys:
-            self.logger.info(
-                get_unexpected_parameters_message(incompatible.unexpected_keys)
-            )
+            self.logger.info(get_unexpected_parameters_message(incompatible.unexpected_keys))
 
     def _convert_ndarray_to_tensor(self, state_dict: dict):
         """
@@ -287,16 +280,12 @@ class Checkpointer(object):
         for k in list(state_dict.keys()):
             v = state_dict[k]
             if not isinstance(v, np.ndarray) and not isinstance(v, flow.Tensor):
-                raise ValueError(
-                    "Unsupported type found in checkpoint! {}: {}".format(k, type(v))
-                )
+                raise ValueError("Unsupported type found in checkpoint! {}: {}".format(k, type(v)))
             # If it's local tensor, convert it to consistent tensor.
             if not v.is_consistent:
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
-                    state_dict[k] = v.to_consistent(
-                        sbp=model_v.sbp, placement=model_v.placement
-                    )
+                    state_dict[k] = v.to_global(sbp=model_v.sbp, placement=model_v.placement)
             # if not isinstance(v, flow.Tensor):
             #     state_dict[k] = flow.tensor(v)
 
@@ -355,9 +344,7 @@ class PeriodicCheckpointer:
                 self.recent_checkpoints.append(self.checkpointer.get_checkpoint_file())
                 if len(self.recent_checkpoints) > self.max_to_keep:
                     file_to_delete = self.recent_checkpoints.pop(0)
-                    if self.path_manager.exists(
-                        file_to_delete
-                    ) and not file_to_delete.endswith(
+                    if self.path_manager.exists(file_to_delete) and not file_to_delete.endswith(
                         "{}_{:07d}".format(self.file_prefix, iteration)
                     ):
                         self.path_manager.rm(file_to_delete)
@@ -409,9 +396,7 @@ def get_missing_parameters_message(keys: List[str]) -> str:
     """
     groups = _group_checkpoint_keys(keys)
     msg = "Some model parameters or buffers are not found in the checkpoint:\n"
-    msg += "\n".join(
-        "  " + colored(k + _group_to_str(v), "blue") for k, v in groups.items()
-    )
+    msg += "\n".join("  " + colored(k + _group_to_str(v), "blue") for k, v in groups.items())
     return msg
 
 
@@ -426,9 +411,7 @@ def get_unexpected_parameters_message(keys: List[str]) -> str:
     """
     groups = _group_checkpoint_keys(keys)
     msg = "The checkpoint state_dict contains keys that are not used by the model:\n"
-    msg += "\n".join(
-        "  " + colored(k + _group_to_str(v), "magenta") for k, v in groups.items()
-    )
+    msg += "\n".join("  " + colored(k + _group_to_str(v), "magenta") for k, v in groups.items())
     return msg
 
 
@@ -503,9 +486,7 @@ def _group_to_str(group: List[str]) -> str:
     return ".{" + ", ".join(group) + "}"
 
 
-def _named_modules_with_dup(
-    model: nn.Module, prefix: str = ""
-) -> Iterable[Tuple[str, nn.Module]]:
+def _named_modules_with_dup(model: nn.Module, prefix: str = "") -> Iterable[Tuple[str, nn.Module]]:
     """
     The same as `model.named_modules()`, except that it includes
     duplicated modules that have more than one name.

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+
 import oneflow as flow
 
 from libai.config import try_get_key
@@ -48,19 +49,19 @@ class _DistributeUtil(object):
         num_nodes = get_num_nodes()
         num_gpus_per_node = get_world_size() // num_nodes
 
-        if (
-            try_get_key(cfg, "num_gpus_per_node", default=num_gpus_per_node)
-            != num_gpus_per_node
-        ):
-            # This means key(num_gpus_per_node) saved in config is not equal to environment variable.
+        if try_get_key(cfg, "num_gpus_per_node", default=num_gpus_per_node) != num_gpus_per_node:
+            # This means key(num_gpus_per_node) saved in config is not equal
+            # to environment variable.
             # Give user a warning about inconsistent reproduce environment.
             logger.warning(
-                f"'train.dist.num_gpus_per_node' are not equal to environment variable. {cfg.num_gpus_per_node} != {num_gpus_per_node}"
+                "'train.dist.num_gpus_per_node' are not equal to environment variable. "
+                f"{cfg.num_gpus_per_node} != {num_gpus_per_node}"
             )
 
         if try_get_key(cfg, "num_nodes", default=num_nodes) != num_nodes:
             logger.warning(
-                f"'train.dist.num_nodes' are not equal to environment variable. {cfg.num_nodes} != {num_nodes}"
+                "'train.dist.num_nodes' are not equal to"
+                f"environment variable. {cfg.num_nodes} != {num_nodes}"
             )
 
         if try_get_key(cfg, "pipeline_num_layers") is None:
@@ -96,9 +97,7 @@ class _DistributeUtil(object):
         # Set the actual pipeline parallel size to cfg
         cfg.pipeline_parallel_size = self._pipeline_parallel_size
 
-        self._model_parallel_size = (
-            self._pipeline_parallel_size * self._tensor_parallel_size
-        )
+        self._model_parallel_size = self._pipeline_parallel_size * self._tensor_parallel_size
 
         assert self.world_size % self._model_parallel_size == 0, (
             f"world size ({self.world_size}) is not divisible by"
@@ -129,12 +128,8 @@ class _DistributeUtil(object):
         )
         num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
 
-        self._layers_stage_ids = [
-            i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)
-        ]
-        self._layers_devices = [
-            stages_devices[stage_id] for stage_id in self._layers_stage_ids
-        ]
+        self._layers_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
+        self._layers_devices = [stages_devices[stage_id] for stage_id in self._layers_stage_ids]
 
     def _init_parallel_hierarchy(self):
         if self.is_data_model_parallel():
@@ -223,6 +218,8 @@ def get_dist_util():
 
 def get_layer_placement(layer_idx, device_type="cuda"):
     dist_util = get_dist_util()
+    if not flow.cuda.is_available() and device_type == "cuda":
+        device_type = "cpu"
     return flow.placement(
         device_type,
         dist_util.get_layer_devices(layer_idx),
@@ -232,7 +229,8 @@ def get_layer_placement(layer_idx, device_type="cuda"):
 
 def get_all_placement(device_type="cuda"):
     dist_util = get_dist_util()
-
+    if not flow.cuda.is_available() and device_type == "cuda":
+        device_type = "cpu"
     return flow.placement(
         device_type,
         {i: range(dist_util.num_gpus_per_node) for i in range(dist_util.num_nodes)},
@@ -257,8 +255,7 @@ def get_nd_sbp(sbp_list):
 
 
 def get_hidden_sbp():
-    """ hidden states sbp.
-    """
+    """hidden states sbp."""
     return get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
 
 
@@ -313,7 +310,7 @@ def convert_to_distributed_default_setting(module):
     """
     for param in module.parameters():
         if not param.is_consistent:
-            module.to_consistent(
+            module.to_global(
                 sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=get_layer_placement(0),
             )
@@ -325,12 +322,12 @@ def get_num_nodes():
 
 
 def ttol(tensor, pure_local=False):
-    """ consistent tensor to local tensor"""
+    """consistent tensor to local tensor"""
     if tensor.is_consistent:
         if pure_local:
             tensor = tensor.to_local()
         else:
-            tensor = tensor.to_consistent(
+            tensor = tensor.to_global(
                 sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             ).to_local()
 
@@ -338,7 +335,7 @@ def ttol(tensor, pure_local=False):
 
 
 def tton(tensor, local_only=False):
-    """ consistent tensor to numpy """
+    """consistent tensor to numpy"""
     if tensor.is_consistent:
         tensor = ttol(tensor, local_only)
 

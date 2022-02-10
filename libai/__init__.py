@@ -13,11 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from libai.config import LazyConfig
-from libai.data.datasets.imagenet import ImageNetDataset
 
-train_set = ImageNetDataset("/DATA/disk1/ImageNet/extract", train=True)
-assert len(train_set) == 1281167
+# This line will be programatically read/write by setup.py.
+# Leave them at the bottom of this file and don't touch them.
 
-test_set = ImageNetDataset("/DATA/disk1/ImageNet/extract", train=False)
-assert len(test_set) == 50000
+from libai import data
+from libai import evaluation
+from libai import layers
+from libai import models
+from libai import optim
+from libai import scheduler
+from libai import tokenizer
+from libai import trainer
+from libai import utils
+
+try:
+    from .version import __version__  # noqa: F401
+except ImportError:
+    pass

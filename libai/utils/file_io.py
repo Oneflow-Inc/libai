@@ -28,25 +28,14 @@ import os
 import shutil
 import tempfile
 import traceback
-import uuid
 from collections import OrderedDict
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    MutableMapping,
-    Optional,
-    Set,
-    Union,
-)
+from typing import IO, Any, Callable, Dict, Iterable, List, MutableMapping, Optional, Set, Union
 from urllib.parse import urlparse
+
+import portalocker
 
 from libai.utils.download import download
 from libai.utils.non_blocking_io import NonBlockingIOManager
-
 
 __all__ = ["LazyPath", "PathManager", "get_cache_dir", "file_lock"]
 
@@ -64,9 +53,7 @@ def get_cache_dir(cache_dir: Optional[str] = None) -> str:
         2) otherwise ~/.oneflow/iopath_cache
     """
     if cache_dir is None:
-        cache_dir = os.path.expanduser(
-            os.getenv("LIBAI_CACHE", "~/.oneflow/iopath_cache")
-        )
+        cache_dir = os.path.expanduser(os.getenv("LIBAI_CACHE", "~/.oneflow/iopath_cache"))
     try:
         g_pathmgr.mkdirs(cache_dir)
         assert os.access(cache_dir, os.W_OK)
@@ -163,7 +150,8 @@ class PathHandler:
     _strict_kwargs_check = True
 
     def __init__(
-        self, async_executor: Optional[concurrent.futures.Executor] = None,
+        self,
+        async_executor: Optional[concurrent.futures.Executor] = None,
     ) -> None:
         """
         When registering a `PathHandler`, the user can optionally pass in a
@@ -319,7 +307,8 @@ class PathHandler:
         # buffering for any storage backend.
         if not self._non_blocking_io_manager:
             self._non_blocking_io_manager = NonBlockingIOManager(
-                buffered=False, executor=self._non_blocking_io_executor,
+                buffered=False,
+                executor=self._non_blocking_io_executor,
             )
 
         try:
@@ -357,13 +346,10 @@ class PathHandler:
         if not self._non_blocking_io_manager:
             logger = logging.getLogger(__name__)
             logger.warning(
-                "This is an async feature. No threads to join because "
-                "`opena` was not used."
+                "This is an async feature. No threads to join because " "`opena` was not used."
             )
         self._check_kwargs(kwargs)
-        return self._non_blocking_io_manager._join(
-            self._get_path_with_cwd(path) if path else None
-        )
+        return self._non_blocking_io_manager._join(self._get_path_with_cwd(path) if path else None)
 
     def _async_close(self, **kwargs: Any) -> bool:
         """
@@ -375,15 +361,12 @@ class PathHandler:
         if not self._non_blocking_io_manager:
             logger = logging.getLogger(__name__)
             logger.warning(
-                "This is an async feature. No threadpool to close because "
-                "`opena` was not used."
+                "This is an async feature. No threadpool to close because " "`opena` was not used."
             )
         self._check_kwargs(kwargs)
         return self._non_blocking_io_manager._close_thread_pool()
 
-    def _copy(
-        self, src_path: str, dst_path: str, overwrite: bool = False, **kwargs: Any
-    ) -> bool:
+    def _copy(self, src_path: str, dst_path: str, overwrite: bool = False, **kwargs: Any) -> bool:
         """
         Copies a source path to a destination path.
 
@@ -534,9 +517,7 @@ class NativePathHandler(PathHandler):
         self._check_kwargs(kwargs)
         local_path = self._get_path_with_cwd(local_path)
         dst_path = self._get_path_with_cwd(dst_path)
-        assert self._copy(
-            src_path=local_path, dst_path=dst_path, overwrite=overwrite, **kwargs
-        )
+        assert self._copy(src_path=local_path, dst_path=dst_path, overwrite=overwrite, **kwargs)
 
     def _open(
         self,
@@ -600,9 +581,7 @@ class NativePathHandler(PathHandler):
             opener=opener,
         )
 
-    def _copy(
-        self, src_path: str, dst_path: str, overwrite: bool = False, **kwargs: Any
-    ) -> bool:
+    def _copy(self, src_path: str, dst_path: str, overwrite: bool = False, **kwargs: Any) -> bool:
         """
         Copies a source path to a destination path.
 
@@ -731,9 +710,7 @@ class NativePathHandler(PathHandler):
         return True
 
     def _get_path_with_cwd(self, path: str) -> str:
-        return os.path.normpath(
-            path if not self._cwd else os.path.join(self._cwd, path)
-        )
+        return os.path.normpath(path if not self._cwd else os.path.join(self._cwd, path))
 
 
 class HTTPURLHandler(PathHandler):
@@ -753,16 +730,10 @@ class HTTPURLHandler(PathHandler):
         The resource will only be downloaded if not previously requested.
         """
         self._check_kwargs(kwargs)
-        if (
-            force
-            or path not in self.cache_map
-            or not os.path.exists(self.cache_map[path])
-        ):
+        if force or path not in self.cache_map or not os.path.exists(self.cache_map[path]):
             logger = logging.getLogger(__name__)
             parsed_url = urlparse(path)
-            dirname = os.path.join(
-                get_cache_dir(), os.path.dirname(parsed_url.path.lstrip("/"))
-            )
+            dirname = os.path.join(get_cache_dir(), os.path.dirname(parsed_url.path.lstrip("/")))
             filename = path.split("/")[-1]
             cached = os.path.join(dirname, filename)
             with file_lock(cached):
@@ -818,12 +789,8 @@ class OneDrivePathHandler(HTTPURLHandler):
             result_url (str): A direct download URI for the file
         """
         data_b64 = base64.b64encode(bytes(one_drive_url, "utf-8"))
-        data_b64_string = (
-            data_b64.decode("utf-8").replace("/", "_").replace("+", "-").rstrip("=")
-        )
-        result_url = (
-            f"https://api.onedrive.com/v1.0/shares/u!{data_b64_string}/root/content"
-        )
+        data_b64_string = data_b64.decode("utf-8").replace("/", "_").replace("+", "-").rstrip("=")
+        result_url = f"https://api.onedrive.com/v1.0/shares/u!{data_b64_string}/root/content"
         return result_url
 
     def _get_supported_prefixes(self) -> List[str]:
@@ -897,7 +864,8 @@ class PathManagerBase:
     ) -> Iterable[Any]:
         """
         Open a tabular data source. Only reading is supported.
-        The opent() returns a Python iterable collection object, compared to bytes/text data with open()
+        The opent() returns a Python iterable collection object, compared to
+        bytes/text data with open()
 
         Args:
             path (str): A URI supported by this PathHandler
@@ -1020,10 +988,7 @@ class PathManagerBase:
                 success = handler._async_join(**kwargs) and success
         else:  # Join specific paths.
             for path in paths:
-                success = (
-                    self.__get_path_handler(path)._async_join(path, **kwargs)
-                    and success
-                )
+                success = self.__get_path_handler(path)._async_join(path, **kwargs) and success
         return success
 
     def async_close(self, **kwargs: Any) -> bool:
@@ -1041,12 +1006,10 @@ class PathManagerBase:
         self._async_handlers.clear()
         return success
 
-    def copy(
-        self, src_path: str, dst_path: str, overwrite: bool = False, **kwargs: Any
-    ) -> bool:
+    def copy(self, src_path: str, dst_path: str, overwrite: bool = False, **kwargs: Any) -> bool:
         """
         Copies a source path to a destination path.
-        
+
         Args:
             src_path (str): A URI supported by this PathHandler
             dst_path (str): A URI supported by this PathHandler
@@ -1057,12 +1020,10 @@ class PathManagerBase:
         """
 
         # Copying across handlers is not supported.
-        assert self.__get_path_handler(  # type: ignore
-            src_path
-        ) == self.__get_path_handler(dst_path)
-        return self.__get_path_handler(src_path)._copy(
-            src_path, dst_path, overwrite, **kwargs
+        assert self.__get_path_handler(src_path) == self.__get_path_handler(  # type: ignore
+            dst_path
         )
+        return self.__get_path_handler(src_path)._copy(src_path, dst_path, overwrite, **kwargs)
 
     def mv(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
         """
@@ -1082,9 +1043,7 @@ class PathManagerBase:
         """
 
         # Moving across handlers is not supported.
-        assert self.__get_path_handler(  # type: ignore
-            src_path
-        ) == self.__get_path_handler(
+        assert self.__get_path_handler(src_path) == self.__get_path_handler(  # type: ignore
             dst_path
         ), "Src and dest paths must be supported by the same path handler."
         return self.__get_path_handler(src_path)._mv(src_path, dst_path, **kwargs)
@@ -1104,9 +1063,7 @@ class PathManagerBase:
             local_path (str): a file path which exists on the local file system
         """
         path = os.fspath(path)
-        return self.__get_path_handler(  # type: ignore
-            path
-        )._get_local_path(
+        return self.__get_path_handler(path)._get_local_path(  # type: ignore
             path, force=force, **kwargs
         )
 
@@ -1141,9 +1098,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path exists
         """
-        return self.__get_path_handler(path)._exists(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._exists(path, **kwargs)  # type: ignore
 
     def isfile(self, path: str, **kwargs: Any) -> bool:
         """
@@ -1155,9 +1110,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path is a file
         """
-        return self.__get_path_handler(path)._isfile(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._isfile(path, **kwargs)  # type: ignore
 
     def isdir(self, path: str, **kwargs: Any) -> bool:
         """
@@ -1169,9 +1122,7 @@ class PathManagerBase:
         Returns:
             bool: true if the path is a directory
         """
-        return self.__get_path_handler(path)._isdir(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._isdir(path, **kwargs)  # type: ignore
 
     def ls(self, path: str, **kwargs: Any) -> List[str]:
         """
@@ -1194,9 +1145,7 @@ class PathManagerBase:
         Args:
             path (str): A URI supported by this PathHandler
         """
-        return self.__get_path_handler(path)._mkdirs(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._mkdirs(path, **kwargs)  # type: ignore
 
     def rm(self, path: str, **kwargs: Any) -> None:
         """
@@ -1205,9 +1154,7 @@ class PathManagerBase:
         Args:
             path (str): A URI supported by this PathHandler
         """
-        return self.__get_path_handler(path)._rm(  # type: ignore
-            path, **kwargs
-        )
+        return self.__get_path_handler(path)._rm(path, **kwargs)  # type: ignore
 
     def symlink(self, src_path: str, dst_path: str, **kwargs: Any) -> bool:
         """Symlink the src_path to the dst_path
@@ -1217,9 +1164,9 @@ class PathManagerBase:
             dst_path (str): A URI supported by this PathHandler to symlink to
         """
         # Copying across handlers is not supported.
-        assert self.__get_path_handler(  # type: ignore
-            src_path
-        ) == self.__get_path_handler(dst_path)
+        assert self.__get_path_handler(src_path) == self.__get_path_handler(  # type: ignore
+            dst_path
+        )
         return self.__get_path_handler(src_path)._symlink(src_path, dst_path, **kwargs)
 
     def set_cwd(self, path: Union[str, None], **kwargs: Any) -> bool:
@@ -1241,9 +1188,7 @@ class PathManagerBase:
             return True
         return False
 
-    def register_handler(
-        self, handler: PathHandler, allow_override: bool = False
-    ) -> None:
+    def register_handler(self, handler: PathHandler, allow_override: bool = False) -> None:
         """
         Register a path handler associated with `handler._get_supported_prefixes`
         URI prefixes.
@@ -1279,8 +1224,7 @@ class PathManagerBase:
                 if self == g_pathmgr:
                     logger.warning(
                         f"[PathManager] Attempting to register prefix '{prefix}' from "
-                        "the following call stack:\n"
-                        + "".join(traceback.format_stack(limit=5))
+                        "the following call stack:\n" + "".join(traceback.format_stack(limit=5))
                         # show the most recent callstack
                     )
                     logger.warning(
@@ -1345,7 +1289,7 @@ class PathManagerFactory:
         Get the path manager instance associated with a key.
         A new instance will be created if there is no existing
         instance associated with the key passed in.
-        
+
         Args:
             key (str):
         """
@@ -1362,7 +1306,7 @@ class PathManagerFactory:
             key (str):
         """
         if key in PathManagerFactory.pm_list:
-            _pm = PathManagerFactory.pm_list.pop(key)
+            _pm = PathManagerFactory.pm_list.pop(key)  # noqa
             del _pm
 
 

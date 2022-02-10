@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 import oneflow as flow
 from flowvision import datasets
@@ -23,15 +23,10 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class ImageNetDataset(datasets.ImageFolder):
-    """ImageNet Dataset
-    """
+    """ImageNet Dataset"""
 
     def __init__(
-        self,
-        root: str,
-        train: bool = True,
-        transform: Optional[Callable] = None,
-        **kwargs
+        self, root: str, train: bool = True, transform: Optional[Callable] = None, **kwargs
     ):
         prefix = "train" if train else "val"
         root = os.path.join(root, prefix)
@@ -41,8 +36,6 @@ class ImageNetDataset(datasets.ImageFolder):
         sample, target = super().__getitem__(index)
         data_sample = Instance(
             images=DistTensorData(sample, placement_idx=0),
-            targets=DistTensorData(
-                flow.tensor(target, dtype=flow.long), placement_idx=-1
-            ),
+            targets=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample

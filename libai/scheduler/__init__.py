@@ -15,9 +15,9 @@
 
 from .build import build_lr_scheduler
 from .lr_scheduler import (
-    WarmupCosineLR,
-    WarmupMultiStepLR,
     WarmupCosineAnnealingLR,
+    WarmupCosineLR,
     WarmupExponentialLR,
-    WarmupFixedStepLR,
+    WarmupMultiStepLR,
+    WarmupPolynomailLR,
 )

@@ -145,14 +145,10 @@ class MultiheadAttention(nn.Module):
         # attention_mask: [S(0), B]
 
         if encoder_states is not None:
-            encoder_states = encoder_states.to_consistent(
-                placement=hidden_states.placement
-            )
+            encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
         if attention_mask is not None:
-            attention_mask = attention_mask.to_consistent(
-                placement=hidden_states.placement
-            )
+            attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
         bsz, tgt_len = hidden_states.size()[:2]
 
@@ -179,9 +175,7 @@ class MultiheadAttention(nn.Module):
             # hidden_states is the last-added state,
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
-            query_key_value = query_key_value.view(
-                bsz, -1, self.num_heads, 3 * self.head_size
-            )
+            query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
             query_key_value = query_key_value.permute(
                 0, 2, 1, 3
             )  # [bsz, num_heads, src_len, 3 * head_size]
@@ -196,9 +190,7 @@ class MultiheadAttention(nn.Module):
             past_key_value = (key, value)
 
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        attention_scores = flow.matmul(
-            query, key, transpose_b=True, alpha=self.norm_factor
-        )
+        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
 
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:

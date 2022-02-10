@@ -13,19 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertModel, BertForPreTraining, BertForPretrainingGraph
-from .gpt_model import GPTModel
-from .t5_model import T5Model, T5ForPreTraining, T5ForPretrainingGraph
-from .build import build_model, build_graph
+from .bert_model import BertForPreTraining, BertModel
+from .build import build_graph, build_model
+from .vision_transformer import VisionTransformer
 
 __all__ = [
     "build_model",
     "build_graph",
     "BertModel",
     "BertForPreTraining",
-    "BertForPretrainingGraph",
-    "T5Model",
-    "T5ForPreTraining",
-    "T5ForPretrainingGraph",
-    "GPTModel",
+    "VisionTransformer",
 ]

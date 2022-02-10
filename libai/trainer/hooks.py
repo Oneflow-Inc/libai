@@ -14,20 +14,18 @@
 # limitations under the License.
 
 import datetime
-import itertools
 import logging
-import os
-import tempfile
 import time
 from collections import Counter
+
 import oneflow as flow
 
+from libai.evaluation import flatten_results_dict
 from libai.trainer.trainer import HookBase
-from libai.utils.timer import Timer
-from libai.utils.events import EventWriter, get_event_storage
-from libai.utils.checkpoint import PeriodicCheckpointer as _PeriodicCheckpointer
 from libai.utils import distributed as dist
-
+from libai.utils.checkpoint import PeriodicCheckpointer as _PeriodicCheckpointer
+from libai.utils.events import EventWriter
+from libai.utils.timer import Timer
 
 """
 Implement some common hooks.
@@ -40,9 +38,7 @@ class CallbackHook(HookBase):
     Create a hook using callback functions provided by the user.
     """
 
-    def __init__(
-        self, *, before_train=None, after_train=None, before_step=None, after_step=None
-    ):
+    def __init__(self, *, before_train=None, after_train=None, before_step=None, after_step=None):
         """
         Each argument is a function that takes one argument: the trainer.
         """
@@ -206,9 +202,6 @@ class EvalHook(HookBase):
 
     def _do_eval(self):
 
-        return
-
-        # TODO: NotImplemented
         results = self._func()
 
         if results:
@@ -232,15 +225,16 @@ class EvalHook(HookBase):
         # A barrier make them start the next iteration together.
         dist.synchronize()
 
-    def after_epoch(self):
-        next_epoch = self.trainer.epoch + 1
-        if self._period > 0 and next_epoch % self._period == 0:
-            self._do_eval()
+    def after_step(self):
+        next_iter = self.trainer.iter + 1
+        if self._period > 0 and next_iter % self._period == 0:
+            # do the last eval in after_train
+            if next_iter != self.trainer.max_iter:
+                self._do_eval()
 
     def after_train(self):
-        next_epoch = self.trainer.epoch + 1
         # This condition is to prevent the eval from running after a failed training
-        if next_epoch % self._period != 0 and next_epoch >= self.trainer.max_epoch:
+        if self.trainer.iter + 1 >= self.trainer.max_iter:
             self._do_eval()
         # func is likely a closure that holds reference to the trainer
         # therefore we clean it to avoid circular reference in the end
@@ -273,9 +267,7 @@ class LRScheduler(HookBase):
     def get_best_param_group_id(optimizer):
         # NOTE: some heuristics on what LR to summarize
         # summarize the param group with most parameters
-        largest_group = max(
-            len(g["params"]) for g in optimizer.state_dict()["param_groups"]
-        )
+        largest_group = max(len(g["params"]) for g in optimizer.state_dict()["param_groups"])
 
         if largest_group == 1:
             # If all groups have one parameter,

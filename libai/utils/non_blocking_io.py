@@ -25,8 +25,7 @@ import logging
 from dataclasses import dataclass
 from queue import Queue
 from threading import Thread
-from typing import Callable, IO, Optional, Union
-
+from typing import IO, Callable, Optional, Union
 
 """
 This file is used for asynchronous file operations.

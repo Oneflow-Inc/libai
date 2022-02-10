@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_dataset import BertDataset
 from .cifar import CIFAR10Dataset, CIFAR100Dataset
 from .imagenet import ImageNetDataset
 from .mnist import MNISTDataset
-from .roformer_dataset import RoformerDataset
+from .bert_dataset import BertDataset
+from .gpt_dataset import GPT2Dataset
 from .t5_dataset import T5Dataset

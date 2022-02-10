@@ -5,23 +5,22 @@ Copyright by the AllenNLP authors.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import sys
+import fnmatch
 import json
 import logging
 import os
-import six
 import shutil
+import sys
 import tempfile
-import fnmatch
 from functools import wraps
 from hashlib import sha256
 from io import open
 from pathlib import Path
 
 import boto3
+import requests
 from botocore.config import Config
 from botocore.exceptions import ClientError
-import requests
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -43,7 +42,8 @@ def url_to_filename(url, etag=None):
     by a period.
     If the url ends with .h5 (Keras HDF5 weights) ands '.h5' to the name
     so that TF 2.0 can identify it as a HDF5 file
-    (see https://github.com/tensorflow/tensorflow/blob/00fad90125b18b80fe054de1055770cfb8fe4ba3/tensorflow/python/keras/engine/network.py#L1380)
+    (see https://github.com/tensorflow/tensorflow/blob/00fad90125b18b80fe054de1055770cfb8fe4ba3
+    /tensorflow/python/keras/engine/network.py#L1380)
     """
     url_bytes = url.encode("utf-8")
     url_hash = sha256(url_bytes)
@@ -121,9 +121,7 @@ def cached_path(url_or_filename, cache_dir=None, force_download=False, proxies=N
         raise EnvironmentError("file {} not found".format(url_or_filename))
     else:
         # Something unknown
-        raise ValueError(
-            "unable to parse {} as a URL or as a local path".format(url_or_filename)
-        )
+        raise ValueError("unable to parse {} as a URL or as a local path".format(url_or_filename))
 
 
 def split_s3_path(url):
@@ -187,9 +185,7 @@ def http_get(url, temp_file, proxies=None):
     progress.close()
 
 
-def get_from_cache(
-    url, cache_dir=None, force_download=False, proxies=None, etag_timeout=10
-):
+def get_from_cache(url, cache_dir=None, force_download=False, proxies=None, etag_timeout=10):
     """
     Given a URL, look for the corresponding dataset in the local cache.
     If it's not there, download it. Then return the path to the cached file.
@@ -197,8 +193,6 @@ def get_from_cache(
     if cache_dir is None:
         cache_dir = default_cache_path
     if sys.version_info[0] == 3 and isinstance(cache_dir, Path):
-        cache_dir = str(cache_dir)
-    if sys.version_info[0] == 2 and not isinstance(cache_dir, str):
         cache_dir = str(cache_dir)
 
     if not os.path.exists(cache_dir):
@@ -219,8 +213,6 @@ def get_from_cache(
         except (EnvironmentError, requests.exceptions.Timeout):
             etag = None
 
-    if sys.version_info[0] == 2 and etag is not None:
-        etag = etag.decode("utf-8")
     filename = url_to_filename(url, etag)
 
     # get cache path to put the file
@@ -264,10 +256,6 @@ def get_from_cache(
             meta_path = cache_path + ".json"
             with open(meta_path, "w") as meta_file:
                 output_string = json.dumps(meta)
-                if sys.version_info[0] == 2 and isinstance(output_string, str):
-                    output_string = unicode(
-                        output_string, "utf-8"
-                    )  # The beauty of python 2
                 meta_file.write(output_string)
 
             logger.info("removing temp file %s", temp_file.name)

@@ -16,18 +16,14 @@
 """Processing data for pretraining."""
 
 import argparse
-from omegaconf import DictConfig
 import json
 import multiprocessing
 import os
 import sys
-
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
-)
 import time
 
 import oneflow as flow
+from omegaconf import DictConfig
 
 try:
     import nltk
@@ -36,8 +32,11 @@ try:
 except ImportError:
     nltk_available = False
 
-from libai.tokenizer import build_tokenizer
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+
 from libai.data.data_utils import indexed_dataset
+from libai.tokenizer import build_tokenizer
+
 
 # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
 class CustomLanguageVars(nltk.tokenize.punkt.PunktLanguageVars):
@@ -127,23 +126,22 @@ def get_args():
         choices=["BertTokenizer", "GPT2Tokenizer", "T5Tokenizer"],
         help="What type of tokenizer to use.",
     )
+    group.add_argument("--vocab-file", type=str, default=None, help="Path to the vocab file")
     group.add_argument(
-        "--vocab-file", type=str, default=None, help="Path to the vocab file"
-    )
-    group.add_argument(
-        "--merge-file",
+        "--merges-file",
         type=str,
         default=None,
         help="Path to the BPE merge file (if necessary).",
     )
-    group.add_argument(
-        "--do-lower-case", action="store_true", help="Whether to do lower case."
-    )
+    group.add_argument("--do-lower-case", action="store_true", help="Whether to do lower case.")
     group.add_argument("--extra-ids", type=int, default=0, help="Number of extra ids.")
     group.add_argument(
         "--append-eod",
         action="store_true",
         help="Append an <eod> token to the end of a document.",
+    )
+    group.add_argument(
+        "--do-chinese-wwm", action="store_true", help="Whether to do whole word mask for Chinese."
     )
 
     group = parser.add_argument_group(title="output data")
@@ -171,9 +169,7 @@ def get_args():
 
     if args.tokenizer_name.startswith("Bert"):
         if not args.split_sentences:
-            print(
-                "Bert tokenizer detected, are you sure you don't want to split sentences?"
-            )
+            print("Bert tokenizer detected, are you sure you don't want to split sentences?")
 
     return args
 
@@ -181,23 +177,22 @@ def get_args():
 def parse_args_to_config(args):
     default_cfg = dict(
         tokenizer=dict(
-            tokenizer_name="",
-            tokenizer_cfg=dict(
-                vocab_file=None, merge_file=None, do_lower_case=False, extra_ids=0,
-            ),
-            append_eod=False,
+            name="BertTokenizer",
+            vocab_file="bert-base-chinese-vocab.txt",
+            do_lower_case=True,
         ),
-        data=dict(make_vocab_size_divisible_by=128,),
-        dist=dict(tensor_parallel_size=1,),
+        append_eod=False,
+        make_vocab_size_divisible_by=1,
     )
 
     cfg = DictConfig(default_cfg)
-    cfg.tokenizer.tokenizer_name = args.tokenizer_name
-    cfg.tokenizer.tokenizer_cfg.vocab_file = args.vocab_file
-    cfg.tokenizer.tokenizer_cfg.merge_file = args.merge_file
-    cfg.tokenizer.tokenizer_cfg.do_lower_case = args.do_lower_case
-    cfg.tokenizer.tokenizer_cfg.extra_id = args.extra_ids
-    cfg.tokenizer.append_eod = args.append_eod
+    cfg.tokenizer.name = args.tokenizer_name
+    cfg.tokenizer.vocab_file = args.vocab_file
+    cfg.tokenizer.merges_file = args.merges_file
+    cfg.tokenizer.do_lower_case = args.do_lower_case
+    cfg.tokenizer.extra_id = args.extra_ids
+    cfg.tokenizer.do_chinese_wwm = args.do_chinese_wwm
+    cfg.append_eod = args.append_eod
 
     return cfg
 

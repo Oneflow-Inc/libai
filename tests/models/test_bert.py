@@ -13,11 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from omegaconf import DictConfig
-
-import sys
-
-sys.path.append(".")
 
 from libai.config import LazyCall
 from libai.models import build_model
@@ -40,6 +37,7 @@ model_cfg = dict(
     bias_dropout_fusion=True,
     scale_mask_softmax_fusion=True,
     apply_query_key_layer_scaling=True,
+    add_binary_head=True,
 )
 
 lazy_cfg = LazyCall(BertForPreTraining)(cfg=DictConfig(model_cfg))

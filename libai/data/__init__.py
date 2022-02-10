@@ -14,3 +14,9 @@
 # limitations under the License.
 
 from .structures import DistTensorData, Instance
+from .build import (
+    build_image_train_loader,
+    build_image_test_loader,
+    build_nlp_train_val_test_loader,
+    build_nlp_test_loader,
+)

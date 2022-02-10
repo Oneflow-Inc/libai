@@ -33,16 +33,19 @@ class TransformerLayer(nn.Module):
         hidden_size: size of hidden state.
         ffn_hidden_size: size of feed forword neural network.
         num_attention_heads: number of attention heads.
-        is_decoder: used to specify whether this is transformer encoder layer or transformer decoder layer. Default: ``False``.
+        is_decoder: used to specify whether this is transformer encoder layer or transformer
+        decoder layer. Default: ``False``.
         attention_dropout_prob: dropout probability of attention weights.
         output_dropout_prob: dropout probability of output.
         layernorm_epsilon: epsilon used in layernorm layer. Default: `1e-5`.
         init_method: method to initialize the input layer weights.
-        output_layer_init_method: method to initialize the output layer weights. If None, use `init_method`.
+        output_layer_init_method: method to initialize the output layer weights.
+        If None, use `init_method`.
         bias_gelu_fusion: whether fuse add bias and gelu. Default: ``False``.
         bias_dropout_fusion: whether fuse add bias and dropout. Default: ``False``.
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
-        apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index. Default: ``False``.
+        apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
+        Default: ``False``.
         layer_idx: the layer index, which determines the placement.
     """
 
@@ -114,29 +117,34 @@ class TransformerLayer(nn.Module):
     def forward(
         self,
         hidden_states,
-        attention_mask,
+        attention_mask=None,
         encoder_states=None,
         encoder_attention_mask=None,
         past_key_value=None,
         use_cache=False,
     ):
-        """ hidden_states: [bsz, seq_length, hidden_size], (S(0), B),
-            attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B), the combination of key padding mask and casual mask of hidden states.
-            encoder_states: [bsz, seq_length, hidden_size], (S(0), B), encoder output, this will be used in cross attention.
-            encoder_attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B) key padding mask of encoder states.
-            past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size]. For decoder layer,
-                            the past_key_value contains the states both from self attention and cross attention.
-            use_cache: it will be set to `True`, when the model is in the inference phase and used for incremental decoding.
+        """
+        hidden_states: [bsz, seq_length, hidden_size], (S(0), B),
+        attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B),
+        the combination of key padding mask and casual mask of hidden states.
+        encoder_states: [bsz, seq_length, hidden_size], (S(0), B), encoder output,
+        this will be used in cross attention.
+        encoder_attention_mask: [bsz, 1, seq_length, seq_length],
+        (S(0), B) key padding mask of encoder states.
+        past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size].
+        For decoder layer, the past_key_value contains the states both
+        from self attention and cross attention.
+        use_cache: it will be set to `True`, when the model is in the inference phase and
+        used for incremental decoding.
         """
         # Change placement for pipeline parallelsim
-        hidden_states = hidden_states.to_consistent(
-            placement=dist.get_layer_placement(self.layer_idx)
-        )
+        hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
 
         # hidden_states shape: (batch_size, seq_length, hidden_size)
-        attention_mask = attention_mask.to_consistent(
-            placement=dist.get_layer_placement(self.layer_idx)
-        )
+        if attention_mask is not None:
+            attention_mask = attention_mask.to_global(
+                placement=dist.get_layer_placement(self.layer_idx)
+            )
 
         if past_key_value is not None:
             if self.is_decoder:
@@ -150,13 +158,12 @@ class TransformerLayer(nn.Module):
             self_attn_past_key_value, cross_attn_past_key_value = None, None
 
         layernorm_output = self.input_layernorm(hidden_states)
-        # todo: use key-value to pass the arguments
         attention_output = self.self_attention(
-            layernorm_output, None, attention_mask, self_attn_past_key_value, use_cache
+            layernorm_output,
+            attention_mask=attention_mask,
+            past_key_value=self_attn_past_key_value,
+            use_cache=use_cache,
         )
-        #    attention_mask=attention_mask,
-        #    past_key_value=self_attn_past_key_value,
-        #    use_cache=use_cache)
 
         if use_cache:
             attention_output, presents = attention_output
@@ -169,13 +176,10 @@ class TransformerLayer(nn.Module):
             attention_output = self.cross_attention(
                 layernorm_output,
                 encoder_states,
-                encoder_attention_mask,
-                cross_attn_past_key_value,
-                use_cache,
+                attention_mask=encoder_attention_mask,
+                past_key_value=cross_attn_past_key_value,
+                use_cache=use_cache,
             )
-            # attention_mask=encoder_attention_mask,
-            # past_key_value=cross_attn_past_key_value,
-            # use_cache=use_cache)
 
             if use_cache:
                 attention_output, decoder_presents = attention_output
