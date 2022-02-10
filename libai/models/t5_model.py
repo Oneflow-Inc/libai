@@ -28,11 +28,11 @@ from libai.models.utils import init_method_normal, scaled_init_method_normal, Gr
 
 from libai.utils import distributed as dist
 
+
 class ExtendedMask(flow.nn.Module):
     def forward(self, x):
-        x = x.unsqueeze(1)
-        return x
-
+        return x.unsqueeze(1)
+        
 
 class T5Embedding(flow.nn.Module):
     def __init__(
@@ -263,7 +263,6 @@ class T5ForPreTraining(flow.nn.Module):
         lm_labels=None,
         loss_mask=None,
     ):
-
         logits = self.t5_model(
             encoder_input_ids,
             decoder_input_ids,
