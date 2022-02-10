@@ -1,7 +1,6 @@
 from libai.config import LazyCall, get_config
 from libai.scheduler.lr_scheduler import WarmupMultiStepLR
 from libai.optim import get_default_optimizer_params
-from data.compare_loss_sampler import CyclicSampler
 
 import oneflow as flow
 from oneflow.nn import CrossEntropyLoss
@@ -9,10 +8,16 @@ from flowvision.transforms import transforms
 from flowvision.transforms import InterpolationMode
 from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
+from data.build import build_image_train_loader
+
 model = get_config("common/models/vit.py").vit_model
 graph = get_config("common/models/graph.py").graph
 train = get_config("common/train.py").train
 dataloader = get_config("common/data/imagenet.py").dataloader
+
+dataloader.train._target_ = build_image_train_loader
+# Remove test dataset
+del dataloader.test
 
 graph.enabled = False
 
@@ -34,10 +39,8 @@ no_augmentation_transform = LazyCall(transforms.Compose)(
     ]
 )
 dataloader.train.dataset[0].transform = no_augmentation_transform
-dataloader.test[0].dataset.transform = no_augmentation_transform
 
 dataloader.train.dataset[0].root = "/dataset/imagenet/extract"
-dataloader.test[0].dataset.root = "/dataset/imagenet/extract"
 
 
 # 模型设置: 关闭dropout等任何随机性的部分

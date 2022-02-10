@@ -47,7 +47,7 @@ def load_from_torch(model, path="./torch_vit_tiny_weight.pth"):
     for key, value in parameters.items():
         if "num_batches_tracked" not in key:
             val = value.detach().cpu().numpy()
-            val = flow.tensor(val).to_consistent(
+            val = flow.tensor(val).to_global(
                 sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)})
             )
             new_parameters[key] = val
