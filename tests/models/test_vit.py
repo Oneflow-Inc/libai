@@ -23,6 +23,7 @@ from configs.common.models.vit.vit_tiny_patch16_224 import model as vit_tiny_pat
 from libai.config import instantiate
 
 
+@unittest.skip("Update CI Environments to run OneFlow on GPUs")
 class TestVisionTransformer(TestCase):
     def test_vit_tiny_patch16_224(self):
         random_input = flow.randn(1, 3, 224, 224).to_consistent(
