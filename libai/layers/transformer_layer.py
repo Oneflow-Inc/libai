@@ -34,21 +34,21 @@ class TransformerLayer(nn.Module):
         ffn_hidden_size: size of feed forword neural network.
         num_attention_heads: number of attention heads.
         is_decoder: used to specify whether this is transformer encoder layer or transformer
-        decoder layer. Default: ``False``.
+            decoder layer. Default: ``False``.
         attention_dropout_prob: dropout probability of attention weights.
         output_dropout_prob: dropout probability of output.
         layernorm_epsilon: epsilon used in layernorm layer. Default: `1e-5`.
         init_method: method to initialize the input layer weights.
         output_layer_init_method: method to initialize the output layer weights.
-        If None, use `init_method`.
+            If None, use `init_method`.
         bias_gelu_fusion: whether fuse add bias and gelu. Default: ``False``.
         bias_dropout_fusion: whether fuse add bias and dropout. Default: ``False``.
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
-        Default: ``False``.
+            Default: ``False``.
         layer_idx: the layer index, which determines the placement.
 
-    Inputs: hidden_states, attention_mask, encoder_states, encoder_attention_mask, past_key_value, use_cache
+    Inputs:
         * **hidden_states**: [bsz, seq_length, hidden_size], (S(0), B).
         * **attention_mask**: [bsz, 1, seq_length, seq_length], (S(0), B),
           the combination of key padding mask and casual mask of hidden states.

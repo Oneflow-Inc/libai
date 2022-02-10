@@ -87,19 +87,19 @@ class BertTokenizer(PreTrainedTokenizer):
 
     Args:
         vocab_file (:obj:`str`):
-            Path to a one-wordpiece-per-line vocabulary file
+            Path to a one-wordpiece-per-line vocabulary file.
         do_lower_case (:obj:`bool`, `optional`, defaults to :obj:`True`):
             Whether to lower case the input
-            Only has an effect when do_basic_tokenize=True
+            Only has an effect when do_basic_tokenize=True.
         do_basic_tokenize (:obj:`bool`, `optional`, defaults to :obj:`True`):
             Whether to do basic tokenization before wordpiece.
         never_split (:obj:`Iterable`, `optional`):
             List of tokens which will never be split during tokenization.
-            Only has an effect when do_basic_tokenize=True
+            Only has an effect when do_basic_tokenize=True.
         tokenize_chinese_chars (:obj:`bool`, `optional`, defaults to :obj:`True`):
             Whether to tokenize Chinese characters.
-            This should likely be deactivated for Japanese:
-            see: https://github.com/huggingface/pytorch-pretrained-BERT/issues/328
+            This should likely be deactivated for Japanese,
+            see: https://github.com/huggingface/pytorch-pretrained-BERT/issues/328.
         do_chinese_wwm (:obj:`bool`, `optional`, defaults to :obj:`False`):
             Whether to do whole word masking for Chinese.
             Chinese sentence will be segmented by a third-party tool first.

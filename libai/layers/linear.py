@@ -37,8 +37,8 @@ class Linear1D(nn.Module):
                  . \\
                  . \\
                  A\_p
-        \end{bmatrix}   
-        x = \begin{bmatrix} 
+        \end{bmatrix}
+        x = \begin{bmatrix}
                  x\_1 & ... & x\_p
         \end{bmatrix}
 
@@ -46,12 +46,12 @@ class Linear1D(nn.Module):
         in_features: size of each input sample.
         out_features: size of each output sample.
         bias: If set to ``False``, the layer will not learn an additive bias. Defaults to ``True``.
-        parallel: . Defaults to "data".
+        parallel: Parallel mode. Defaults to "data".
         init_method: method to initialize weight. Defaults to :func:`nn.init.xavier_normal_`.
         skip_bias_add: skip adding bias but instead return it, so that adding bias can be fused with
-        other elementwise operations. Defaults to ``False``.
+            other elementwise operations. Defaults to ``False``.
         layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
-        parallelism. Defaults to 0.
+            parallelism. Defaults to 0.
     """
 
     def __init__(

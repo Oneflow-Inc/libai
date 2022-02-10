@@ -99,8 +99,8 @@ class GPT2Tokenizer(PreTrainedTokenizer):
             Paradigm to follow when decoding bytes to UTF-8. See `bytes.decode
             <https://docs.python.org/3/library/stdtypes.html#bytes.decode>`__ for more information.
         unk_token (:obj:`str`, `optional`, defaults to :obj:`<|endoftext|>`):
-            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
-            token instead.
+            The unknown token. A token that is not in the vocabulary cannot be
+            converted to an ID and is set to be this token instead.
         bos_token (:obj:`str`, `optional`, defaults to :obj:`<|endoftext|>`):
             The beginning of sequence token.
         eos_token (:obj:`str`, `optional`, defaults to :obj:`<|endoftext|>`):
