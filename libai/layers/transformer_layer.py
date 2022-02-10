@@ -47,6 +47,20 @@ class TransformerLayer(nn.Module):
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
         Default: ``False``.
         layer_idx: the layer index, which determines the placement.
+
+    Inputs: hidden_states, attention_mask, encoder_states, encoder_attention_mask, past_key_value, use_cache
+        * **hidden_states**: [bsz, seq_length, hidden_size], (S(0), B).
+        * **attention_mask**: [bsz, 1, seq_length, seq_length], (S(0), B),
+          the combination of key padding mask and casual mask of hidden states.
+        * **encoder_states**: [bsz, seq_length, hidden_size], (S(0), B), encoder output,
+          this will be used in cross attention.
+        * **encoder_attention_mask**: [bsz, 1, seq_length, seq_length],
+          (S(0), B) key padding mask of encoder states.
+        * **past_key_value**: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size],
+          For decoder layer, the past_key_value contains the states both
+          from self attention and cross attention.
+        * **use_cache**: it will be set to `True`, when the model is in the inference phase and
+          used for incremental decoding.
     """
 
     def __init__(
@@ -123,20 +137,6 @@ class TransformerLayer(nn.Module):
         past_key_value=None,
         use_cache=False,
     ):
-        """
-        hidden_states: [bsz, seq_length, hidden_size], (S(0), B),
-        attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B),
-        the combination of key padding mask and casual mask of hidden states.
-        encoder_states: [bsz, seq_length, hidden_size], (S(0), B), encoder output,
-        this will be used in cross attention.
-        encoder_attention_mask: [bsz, 1, seq_length, seq_length],
-        (S(0), B) key padding mask of encoder states.
-        past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size].
-        For decoder layer, the past_key_value contains the states both
-        from self attention and cross attention.
-        use_cache: it will be set to `True`, when the model is in the inference phase and
-        used for incremental decoding.
-        """
         # Change placement for pipeline parallelsim
         hidden_states = hidden_states.to_consistent(
             placement=dist.get_layer_placement(self.layer_idx)
