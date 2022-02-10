@@ -89,6 +89,22 @@ def get_pairs(word):
 class GPT2Tokenizer(PreTrainedTokenizer):
     """
     Construct a GPT-2 tokenizer. Based on byte-level Byte-Pair-Encoding.
+
+    Args:
+        vocab_file (:obj:`str`):
+            Path to the vocabulary file.
+        merges_file (:obj:`str`):
+            Path to the merges file.
+        errors (:obj:`str`, `optional`, defaults to :obj:`"replace"`):
+            Paradigm to follow when decoding bytes to UTF-8. See `bytes.decode
+            <https://docs.python.org/3/library/stdtypes.html#bytes.decode>`__ for more information.
+        unk_token (:obj:`str`, `optional`, defaults to :obj:`<|endoftext|>`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        bos_token (:obj:`str`, `optional`, defaults to :obj:`<|endoftext|>`):
+            The beginning of sequence token.
+        eos_token (:obj:`str`, `optional`, defaults to :obj:`<|endoftext|>`):
+            The end of sequence token.
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
