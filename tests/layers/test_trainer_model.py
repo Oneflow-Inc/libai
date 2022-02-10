@@ -36,7 +36,7 @@ class demo_model(nn.Module):
 def build_model(cfg):
     model = demo_model()
     placement = flow.env.all_device_placement("cuda")
-    model = model.to_consistent(placement=placement, sbp=flow.sbp.broadcast)
+    model = model.to_global(placement=placement, sbp=flow.sbp.broadcast)
     return model
 
 

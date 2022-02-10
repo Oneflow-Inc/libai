@@ -113,10 +113,10 @@ class Linear1D(nn.Module):
             # if the last dim of weight sbp sign is S(1), the last dim of x sbp sign must be B.
             if self.weight.sbp[-1] == flow.sbp.split(1):
                 x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
-                x = x.to_consistent(sbp=x_sbp)
+                x = x.to_global(sbp=x_sbp)
 
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
-            x = x.to_consistent(grad_sbp=x.sbp)
+            x = x.to_global(grad_sbp=x.sbp)
             x = flow.matmul(x, self.weight)
 
         elif dist.same_sbp(
@@ -126,7 +126,7 @@ class Linear1D(nn.Module):
             # sign must be S(ndim-1).
             if self.weight.sbp[-1] == flow.sbp.split(0):
                 x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
-                x = x.to_consistent(sbp=x_sbp)
+                x = x.to_global(sbp=x_sbp)
                 out_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
             else:
                 out_sbp = x.sbp
@@ -134,14 +134,14 @@ class Linear1D(nn.Module):
             x = flow.matmul(x, self.weight)
             # Change x.sbp for followup forward pass.
             # This line can be removed when sbp can be auto inferred.
-            x = x.to_consistent(sbp=out_sbp)
+            x = x.to_global(sbp=out_sbp)
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         ):
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
-            x = x.to_consistent(grad_sbp=x.sbp)
+            x = x.to_global(grad_sbp=x.sbp)
             # Change x.sbp to [S(0), S(0)] if weight is [B, B]
-            x = x.to_consistent(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
+            x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
             x = flow.matmul(x, self.weight)
         else:
             raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")
