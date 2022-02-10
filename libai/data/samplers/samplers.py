@@ -169,11 +169,15 @@ class SingleRoundSampler(Sampler):
                 yield batch
                 batch = []
 
-        if len(batch) > 0 and not self.drop_last:
-            # TODO: fix sampler bug when batch_size=1
-            for _ in range(self.micro_batch_size - len(batch)):
+        if not self.drop_last:
+            if self.data_parallel_rank >= remain and remain > 0:
                 batch.append(0)
-            yield batch
+            if len(batch) > 0:
+                yield batch
 
     def __len__(self):
-        return self.data_size // (self.micro_batch_size * self.data_parallel_size)
+        global_batch_size = self.micro_batch_size * self.data_parallel_size
+        if self.drop_last:
+            return self.data_size // global_batch_size
+        else:
+            return (self.data_size + global_batch_size - 1) // global_batch_size
