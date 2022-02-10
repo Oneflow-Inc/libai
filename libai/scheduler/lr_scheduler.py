@@ -41,7 +41,7 @@ def WarmupCosineLR(
         warmup_factor (float): The warmup factor.
         warmup_iter (int): The number of warmup steps.
         alpha (float, optional): The learning rate scale factor (:math:`\\alpha`). Defaults to 0.0.
-        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant". 
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
             In linear mode, the multiplication factor starts with warmup_factor in the first epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
     cosine_decay_lr = flow.optim.lr_scheduler.CosineDecayLR(
@@ -80,7 +80,7 @@ def WarmupCosineAnnealingLR(
         warmup_factor (float): The warmup factor.
         warmup_iter (int): The number of warmup steps.
         eta_min (float, optional): Minimum learning rate. Defaults to 0.0.
-        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant". 
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
             In linear mode, the multiplication factor starts with warmup_factor in the first epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
     cosine_annealing_lr = flow.optim.lr_scheduler.CosineAnnealingLR(
@@ -117,9 +117,9 @@ def WarmupMultiStepLR(
         max_iter (int): Total training iters.
         warmup_factor (float): The warmup factor.
         warmup_iter (int): The number of warmup steps.
-        milestones (list): List of step indices. Must be increasing.   
+        milestones (list): List of step indices. Must be increasing.
         gamma (float, optional): Multiplicative factor of learning rate decay. Defaults to 0.1.
-        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant". 
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
             In linear mode, the multiplication factor starts with warmup_factor in the first epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
     multistep_lr = flow.optim.lr_scheduler.MultiStepLR(
@@ -156,7 +156,7 @@ def WarmupExponentialLR(
         gamma (float): Multiplicative factor of learning rate decay.
         warmup_factor (float): The warmup factor.
         warmup_iter (int): The number of warmup steps.
-        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant". 
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
             In linear mode, the multiplication factor starts with warmup_factor in the first epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
     exponential_lr = flow.optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
@@ -196,7 +196,7 @@ def WarmupPolynomialLR(
         end_learning_rate (float, optional): The final learning rate. Defaults to 0.0001.
         power (float, optional): The power of polynomial. Defaults to 1.0.
         cycle (bool, optional): If cycle is True, the scheduler will decay the learning rate every decay steps. Defaults to False.
-        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant". 
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
             In linear mode, the multiplication factor starts with warmup_factor in the first epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
     polynomial_lr = flow.optim.lr_scheduler.PolynomialLR(

@@ -86,7 +86,7 @@ class BertTokenizer(PreTrainedTokenizer):
     Construct a BERT tokenizer. Based on WordPiece.
 
     Args:
-        vocab_file (:obj:`str`): 
+        vocab_file (:obj:`str`):
             Path to a one-wordpiece-per-line vocabulary file
         do_lower_case (:obj:`bool`, `optional`, defaults to :obj:`True`):
             Whether to lower case the input
