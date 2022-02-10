@@ -150,7 +150,7 @@ class VocabEmbedding(nn.Module):
         #   embed  input_ids    input_embeds
         input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
         # Set the embeds sbp from [S(0), P] --> [S(0), B] to get complete embedding results.
-        input_embeds = input_embeds.to_consistent(sbp=dist.get_hidden_sbp())
+        input_embeds = input_embeds.to_global(sbp=dist.get_hidden_sbp())
 
         return input_embeds
 
@@ -191,14 +191,14 @@ class SinePositionalEmbedding(nn.Module):
             placement=dist.get_layer_placement(0),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
-        position = flow._C.consistent_arange(
+        position = flow._C.global_arange(
             start=0,
             end=num_embeddings,
             placement=dist.get_layer_placement(0),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             dtype=flow.float32,
         ).unsqueeze(1)
-        position_range = flow._C.consistent_arange(
+        position_range = flow._C.global_arange(
             start=0,
             end=embedding_dim,
             step=2,

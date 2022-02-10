@@ -183,7 +183,7 @@ class TestSingleRoundSampler(unittest.TestCase):
         for batch in output_iter_rank1:
             sample_output_rank1.extend(batch)
 
-        # Padding 0 if it's not enough for a batch, otherwise `to_consistent`
+        # Padding 0 if it's not enough for a batch, otherwise `to_global`
         # will raise errors for imbalanced data shape in different ranks
         self.assertEqual(sample_output_rank0, list(range(50)) + [0, 0])
         self.assertEqual(sample_output_rank1, list(range(50, 100)) + [0, 0])
