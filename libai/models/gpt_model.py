@@ -27,6 +27,7 @@ from libai.layers import (
 )
 from libai.utils import distributed as dist
 from libai.config import configurable
+from libai.models.build import MODEL_ARCH_REGISTRY
 
 from .utils import init_method_normal, scaled_init_method_normal
 
@@ -252,3 +253,49 @@ class Transformer(nn.Module):
         
         return output
 
+
+class GPTLoss(flow.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.lm_loss = ParallelCrossEntropyLoss()
+
+    def forward(self, logits, lm_labels, loss_mask):
+        lm_loss = self.lm_loss(logits, lm_labels)
+        loss_mask = loss_mask.float()
+        denominator = loss_mask.sum().to_consistent(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
+        masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
+        return masked_lm_loss
+
+
+
+@MODEL_ARCH_REGISTRY.register()
+class T5ForPreTraining(flow.nn.Module):
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.t5_model = GPTModel(cfg)
+        self.loss_func = GPTLoss()
+    
+    def forward(
+        self,
+        encoder_input_ids,
+        decoder_input_ids,
+        encoder_attn_mask,
+        decoder_attn_mask,
+        encoder_decoder_attn_mask,
+        lm_labels=None,
+        loss_mask=None,
+    ):
+        logits = self.t5_model(
+            encoder_input_ids,
+            decoder_input_ids,
+            encoder_attn_mask,
+            decoder_attn_mask,
+            encoder_decoder_attn_mask,
+            # tokentype_ids=None,
+            None,
+        )
+
+        lm_loss = self.loss_func(logits, lm_labels, loss_mask)
+        return lm_loss
