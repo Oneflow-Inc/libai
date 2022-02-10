@@ -226,4 +226,4 @@ class GPT2Tokenizer(PreTrainedTokenizer):
                 writer.write(" ".join(bpe_tokens) + "\n")
                 index += 1
 
-        return vocab_file, merge_file
+        return (vocab_file, merge_file)
