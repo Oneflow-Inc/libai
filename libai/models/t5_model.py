@@ -92,7 +92,7 @@ class T5Encoder(nn.Module):
         super().__init__()
         self.num_layers = num_layers
 
-        init_method = init_method_normal(std=initializer_range)
+        init_method = init_method_normal(initializer_range)
         output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
 
         def build_layer(layer_number):
@@ -152,7 +152,7 @@ class T5Decoder(nn.Module):
         super().__init__()
         self.num_layers = num_layers
 
-        init_method = init_method_normal(std=initializer_range)
+        init_method = init_method_normal(initializer_range)
         output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
         
         def build_layer(layer_number):
@@ -182,8 +182,6 @@ class T5Decoder(nn.Module):
         )
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
 
-        self.lm_head = LMLogits(vocab_size, bias=True)
-
     def forward(
         self, 
         input_ids, 
@@ -194,15 +192,18 @@ class T5Decoder(nn.Module):
         use_cache=False,
     ):
         hidden_states = self.embeddings(input_ids)
-
-        extended_attention_mask = self.extend_mask(attention_mask)
-        extended_attention_mask = self.casual_mask(extended_attention_mask)
-
-        extended_encoder_attention_mask = self.extend_mask(encoder_attention_mask)
         
         presents = []
         if past_key_values is None:
             past_key_values = tuple([None] * self.num_layers)
+            past_length = 0
+        else:
+            past_length = past_key_values[0][0].size[2]
+
+        extended_attention_mask = self.extend_mask(attention_mask)
+        extended_attention_mask = self.casual_mask(input_ids, past_length=past_length, attention_mask=extended_attention_mask)
+
+        extended_encoder_attention_mask = self.extend_mask(encoder_attention_mask)
 
         for i, (layer, past) in enumerate(zip(self.layers, past_key_values)):
             if self.training:
@@ -226,10 +227,12 @@ class T5Decoder(nn.Module):
                     presents.append(present)
         
         output = self.layernorm_f(hidden_states)
-        output = self.lm_head(output, self.embeddings.token_embeddings.weight)
 
+        output = (output,)
         if use_cache:
-            output = (output, presents)     # todo: unify return format
+            output = output + (presents,)     # todo: unify return format
+        print(output)
+        print(type(output))
         return output
 
 
@@ -263,7 +266,7 @@ class T5Model(nn.Module):
             hidden_size, 
             max_seq_length, 
             embedding_dropout_prob=embedding_dropout_prob,
-            init_method=init_method_normal(std=initializer_range), 
+            init_method=init_method_normal(initializer_range), 
         )
 
         self.encoder = T5Encoder(
@@ -298,7 +301,9 @@ class T5Model(nn.Module):
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
         )
-    
+        self.lm_head = LMLogits(vocab_size, bias=True)
+
+
     @classmethod
     def from_config(cls, cfg):
         return {
@@ -310,7 +315,7 @@ class T5Model(nn.Module):
             "num_attention_heads": cfg.num_attention_heads,
             "max_seq_length": cfg.max_position_embeddings,
             "embedding_dropout_prob": cfg.embedding_dropout_prob,
-            "attention_dropout_prob": cfg.attention_probs_dropout_prob,
+            "attention_dropout_prob": cfg.attention_dropout_prob,
             "output_dropout_prob": cfg.hidden_dropout_prob,
             "layernorm_epsilon": cfg.layernorm_epsilon,
             "initializer_range": cfg.initializer_range,
@@ -333,11 +338,16 @@ class T5Model(nn.Module):
         output = self.decoder(
             input_ids, 
             encoder_states, 
+            decoder_attention_mask,
             attention_mask, 
-            encoder_attention_mask, 
             past_key_values=past_key_values, 
             use_cache=use_cache
-        )    
+        )
+        
+        print(output)
+        print(type(output))
+        logits = self.lm_head(output[0], self.embeddings.token_embeddings.weight)
+        output = (logits,) + output[1:]
         return output
     
     def forward_encoder(self, input_ids, attention_mask):
@@ -361,6 +371,8 @@ class T5Model(nn.Module):
             past_key_values=past_key_values, 
             use_cache=use_cache
         )
+        logits = self.lm_head(output[0], self.embeddings.token_embeddings.weight)
+        output = (logits,) + output[1:]
         return output
 
 
@@ -377,7 +389,7 @@ class T5ForPretraining(nn.Module):
         attention_mask, 
         decoder_input_ids, 
         decoder_attention_mask, 
-        label_ids=None,
+        labels=None,
         past_key_values=None, 
         use_cache=False,
     ):
@@ -390,9 +402,9 @@ class T5ForPretraining(nn.Module):
             use_cache=use_cache,
         )
         
-        if label_ids is not None:
+        if labels is not None:
             logits = outputs[0]
-            loss = self.loss_func(logits, label_ids)
+            loss = self.loss_func(logits, labels)
             return {"loss": loss}
         
         ret_dict = {"logits": outputs[0]}
@@ -419,5 +431,5 @@ class T5ForPretraining(nn.Module):
             elif isinstance(module_block.origin, ParallelCrossEntropyLoss):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
 
-        model.t5_model.encoder.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(model.encoder.num_layers - 1)
+        model.t5_model.encoder.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(model.t5_model.encoder.num_layers - 1)
         model.t5_model.decoder.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(-1)

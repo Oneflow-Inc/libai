@@ -17,23 +17,46 @@
 import oneflow as flow
 from oneflow import nn
 
+from libai.utils import distributed as dist
+
 
 class ParallelCrossEntropyLoss(nn.Module):
+    def __init__(self, ignore_index=None, reduction="mean"):
+        super().__init__()
+        self.ignore_index = ignore_index
+        self.reduction = reduction
+
     def forward(self, logits, target):
-        """Function for the distributed cross entropy
-        vocab_parallel_logits with shape (batch_size, seq_length, vocab_size)
-        and sbp sign [S(0), S(2)].
-        target with shape (batch_size, seq_length) and sbp sign [S(0), B].
-        """
-        assert logits.ndim == 3
-        assert target.ndim == 2
-        assert logits.shape[0:2] == target.shape
-
         # Change -1 in target to 0 because sparse_softmax_cross_entropy don't accept -1
-        target = target * (target >= 0)
+        target = target.view(-1)
+        target_1 = target * (target >= 0)
 
-        lm_loss = flow._C.sparse_softmax_cross_entropy(
+        loss = flow._C.sparse_softmax_cross_entropy(
             logits.view(-1, logits.shape[-1]),
-            target.view(-1),
+            target_1,
         )
-        return lm_loss
+
+        if self.ignore_index is not None:
+            non_pad_mask = target.ne(self.ignore_index)
+            loss = loss * non_pad_mask.float()
+            nsamples = non_pad_mask.sum().to_global(
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+            )
+        else:
+            nsamples = target.numel()
+
+        if self.reduction == "none":
+            return loss
+        elif self.reduction == "sum":
+            loss = loss.sum()
+        elif self.reduction == "mean":
+            loss = loss.sum() / nsamples
+        else:
+            raise ValueError("Invalid reduction value.")
+
+        loss = loss.to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
+        )
+
+        return loss
+        

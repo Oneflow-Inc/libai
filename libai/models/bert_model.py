@@ -169,29 +169,15 @@ class BertLoss(nn.Module):
     def __init__(self, add_binary_head):
         super().__init__()
         self.add_binary_head = add_binary_head
-        self.lm_loss = ParallelCrossEntropyLoss()
+        self.lm_loss = ParallelCrossEntropyLoss(ignore_index=-1)
+        self.sop_loss = ParallelCrossEntropyLoss(ignore_index=-1)
 
-    def forward(self, lm_output, lm_labels, loss_mask, binary_logits, ns_labels):
+    def forward(self, lm_output, lm_labels, binary_logits, ns_labels):
         lm_loss = self.lm_loss(lm_output, lm_labels)
-        loss_mask = loss_mask.float()
-        # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
-        # because (lm_loss * loss_mask) / loss_mask.sum() cannot accept P / P
-        denominator = loss_mask.sum().to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        )
-        masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
-        # NOTE(l1aoxingyu): Change lm loss sbp sign [P, P] -> [P, B] to add with sop loss
-        # whose sbp sign: [P, B]
-        masked_lm_loss = masked_lm_loss.to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
-        )
-
-        loss_dict = {"lm_loss": masked_lm_loss}
+        loss_dict = {"lm_loss": lm_loss}
 
         if self.add_binary_head:
-            sop_loss = flow._C.cross_entropy(
-                binary_logits, ns_labels, ignore_index=-1, reduction="none"
-            ).mean()
+            sop_loss = self.sop_loss(binary_logits, ns_labels)
             loss_dict["sop_loss"] = sop_loss
         return loss_dict
 
@@ -222,7 +208,7 @@ class BertModel(nn.Module):
     ):
         super().__init__()
         init_method = init_method_normal(initializer_range)
-        scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
+        scaled_init_method = scaled_init_method_normal(initializer_range, num_layers)
 
         # Embeddings
         self.embeddings = BertEmbedding(
@@ -272,7 +258,7 @@ class BertModel(nn.Module):
             "num_attention_heads": cfg.num_attention_heads,
             "max_seq_length": cfg.max_position_embeddings,
             "embedding_dropout_prob": cfg.embedding_dropout_prob,
-            "attention_dropout_prob": cfg.attention_probs_dropout_prob,
+            "attention_dropout_prob": cfg.attention_dropout_prob,
             "output_dropout_prob": cfg.hidden_dropout_prob,
             "num_tokentypes": cfg.num_tokentypes,
             "add_pooling_layer": cfg.add_pooling_layer,
@@ -321,7 +307,6 @@ class BertPreTrainingHeads(nn.Module):
         word_embeddings_weight,
         ns_labels,
         lm_labels,
-        loss_mask,
     ):
         prediction_scores = self.predictions(sequence_output)
         seq_relationship_score = self.seq_relationship(pooled_output)
@@ -329,7 +314,7 @@ class BertPreTrainingHeads(nn.Module):
 
         if lm_labels is not None:
             return self.loss_func(
-                prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
+                prediction_scores, lm_labels, seq_relationship_score, ns_labels
             )
         return {
             "prediction_scores": prediction_scores,
@@ -356,7 +341,6 @@ class BertForPreTraining(nn.Module):
         tokentype_ids=None,
         ns_labels=None,
         lm_labels=None,
-        loss_mask=None,
     ):
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
@@ -367,7 +351,6 @@ class BertForPreTraining(nn.Module):
             self.bert.word_embeddings_weight(),
             ns_labels,
             lm_labels,
-            loss_mask,
         )
 
     @staticmethod

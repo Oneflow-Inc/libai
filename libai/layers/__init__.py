@@ -21,6 +21,7 @@ from .linear import Linear, Linear1D
 from .lm_logits import LMLogits
 from .mlp import MLP
 from .transformer_layer import TransformerLayer
+from .mask_helpers import ExtendedMask, CasualMask
 
 __all__ = [
     "Embedding",

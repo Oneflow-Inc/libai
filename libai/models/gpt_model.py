@@ -183,7 +183,7 @@ class GPT2Model(nn.Module):
         apply_query_key_layer_scaling=False,
     ):
         super().__init__()
-        init_method = init_method_normal(std=initializer_range)
+        init_method = init_method_normal(initializer_range)
         output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
 
         self.embeddings = GPTEmbedding(
@@ -236,9 +236,9 @@ class GPT2Model(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
         }
 
-    def forward(self, input_ids, label_ids=None, past_key_values=None, use_cache=False):
+    def forward(self, input_ids, past_key_values=None, use_cache=False):
         input_ids_shape = input_ids.size()
-        past_length = past_key_values[0].size(2) if past_key_values is not None else 0
+        past_length = past_key_values[0][0].size(2) if past_key_values is not None else 0
 
         input_embeds = self.embeddings(input_ids, past_length)
         attention_mask = self.casual_mask(input_ids, past_length=past_length)
@@ -255,9 +255,9 @@ class GPT2Model(nn.Module):
         
         output = self.lm_head(transformer_output, self.embeddings.word_embeddings)
 
+        output = (output,)
         if use_cache:
             output = (output, presents)
-        
         return output
 
 
@@ -271,15 +271,15 @@ class GPT2ForPretraining(nn.Module):
     def forward(
         self, 
         input_ids, 
-        label_ids=None,
+        labels=None,
         past_key_values=None, 
         use_cache=False,
     ):
         outputs = self.gpt_model(input_ids, past_key_values=past_key_values, use_cache=use_cache)
         
-        if label_ids is not None:
+        if labels is not None:
             logits = outputs[0]
-            loss = self.loss_func(logits, label_ids)
+            loss = self.loss_func(logits, labels)
             return {"loss": loss}
         
         ret_dict = {"logits": outputs[0]}

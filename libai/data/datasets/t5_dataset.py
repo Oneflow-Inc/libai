@@ -83,6 +83,7 @@ class T5Dataset(flow.utils.data.Dataset):
 
         sents = self.dataset[idx]
         tokens = [token for sent in sents for token in sent]
+        tokens = tokens[:self.max_seq_length - 2]
 
         (
             tokens,
@@ -97,16 +98,14 @@ class T5Dataset(flow.utils.data.Dataset):
             labels,
             encoder_padding_mask,
             decoder_padding_mask,
-            loss_mask,
         ) = self.pad_and_convert_to_numpy(tokens, masked_spans)
 
         sample = Instance(
-            encoder_input=DistTensorData(encoder_input),
-            decoder_input=DistTensorData(decoder_input),
-            encoder_padding_mask=DistTensorData(encoder_padding_mask),
-            decoder_padding_mask=DistTensorData(decoder_padding_mask),
+            input_ids=DistTensorData(encoder_input),
+            attention_mask=DistTensorData(encoder_padding_mask),
+            decoder_input_ids=DistTensorData(decoder_input),
+            decoder_attention_mask=DistTensorData(decoder_padding_mask),
             labels=DistTensorData(labels, placement_idx=-1),
-            loss_mask=DistTensorData(loss_mask, placement_idx=-1),
         )
         return sample
 
@@ -129,7 +128,7 @@ class T5Dataset(flow.utils.data.Dataset):
         for (i, token) in enumerate(tokens):
             new_tokens.append(token % len(self.tokenizer))
 
-            if token == self.cls_id or token == self.sep_id:
+            if token == self.bos_id or token == self.eos_id:
                 token_boundary[i] = 1
                 continue
             # Whole Word Masking means that if we mask all of the wordpieces
@@ -300,10 +299,7 @@ class T5Dataset(flow.utils.data.Dataset):
             [1] * num_tokens_dec + [0] * num_pad_dec, dtype=flow.long
         )
 
-        # labels and loss mask
         labels = flow.tensor(decoder_output + [-1] * num_pad_dec, dtype=flow.long)
-        loss_mask = [1] * num_tokens_dec + [0] * num_pad_dec
-        loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
         return (
             encoder_input,
@@ -311,7 +307,6 @@ class T5Dataset(flow.utils.data.Dataset):
             labels,
             encoder_padding_mask,
             decoder_padding_mask,
-            loss_mask,
         )
 
     @property

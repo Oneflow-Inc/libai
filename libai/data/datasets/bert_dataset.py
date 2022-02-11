@@ -110,7 +110,6 @@ class BertDataset(flow.utils.data.Dataset):
             token_types,
             labels,
             padding_mask,
-            loss_mask,
         ) = self.pad_and_convert_to_tensor(tokens, token_types, masked_positions, masked_labels)
 
         sample = Instance(
@@ -121,7 +120,6 @@ class BertDataset(flow.utils.data.Dataset):
                 flow.tensor(int(is_next_random), dtype=flow.long), placement_idx=-1
             ),
             lm_labels=DistTensorData(labels, placement_idx=-1),
-            loss_mask=DistTensorData(loss_mask, placement_idx=-1),
         )
         return sample
 
@@ -360,15 +358,12 @@ class BertDataset(flow.utils.data.Dataset):
 
         # labels and loss mask
         labels = [-1] * self.max_seq_length
-        loss_mask = [0] * self.max_seq_length
         for idx, label in zip(masked_positions, masked_labels):
             assert idx < num_tokens
             labels[idx] = label
-            loss_mask[idx] = 1
         labels = flow.tensor(labels, dtype=flow.long)
-        loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
-        return tokens, token_types, labels, padding_mask, loss_mask
+        return tokens, token_types, labels, padding_mask
 
     @property
     def supports_prefetch(self):
