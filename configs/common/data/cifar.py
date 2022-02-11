@@ -53,6 +53,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
             train=True,
             download=True,
             transform=train_aug,
+            dataset_name="cifar100 train set",
         ),
     ],
     mixup_func=LazyCall(Mixup)(
@@ -68,7 +69,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
 dataloader.test = [
     LazyCall(build_image_test_loader)(
         dataset=LazyCall(CIFAR100Dataset)(
-            root="./", train=False, download=True, transform=test_aug
+            root="./", train=False, download=True, transform=test_aug, dataset_name="cifar100 test set",
         ),
     )
 ]

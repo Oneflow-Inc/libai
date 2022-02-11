@@ -26,11 +26,17 @@ class ImageNetDataset(datasets.ImageFolder):
     """ImageNet Dataset"""
 
     def __init__(
-        self, root: str, train: bool = True, transform: Optional[Callable] = None, **kwargs
+        self, 
+        root: str, 
+        train: bool = True, 
+        transform: Optional[Callable] = None, 
+        dataset_name: str = "imagenet", 
+        **kwargs
     ):
         prefix = "train" if train else "val"
         root = os.path.join(root, prefix)
         super(ImageNetDataset, self).__init__(root=root, transform=transform, **kwargs)
+        self.dataset_name = dataset_name
 
     def __getitem__(self, index: int):
         sample, target = super().__getitem__(index)

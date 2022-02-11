@@ -67,7 +67,7 @@ test_aug = LazyCall(transforms.Compose)(
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
-        LazyCall(ImageNetDataset)(root="./dataset", train=True, transform=train_aug),
+        LazyCall(ImageNetDataset)(root="./dataset", train=True, transform=train_aug, dataset_name="imagenet train set"),
     ],
     mixup_func=None,
 )
@@ -75,6 +75,6 @@ dataloader.train = LazyCall(build_image_train_loader)(
 
 dataloader.test = [
     LazyCall(build_image_test_loader)(
-        dataset=LazyCall(ImageNetDataset)(root="./dataset", train=False, transform=test_aug),
+        dataset=LazyCall(ImageNetDataset)(root="./dataset", train=False, transform=test_aug, dataset_name="imagenet test set"),
     )
 ]

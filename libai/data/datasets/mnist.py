@@ -30,11 +30,13 @@ class MNISTDataset(datasets.MNIST):
         train: bool = True,
         transform: Optional[Callable] = None,
         download: bool = False,
+        dataset_name: str = "mnist",
         **kwargs
     ):
         super(MNISTDataset, self).__init__(
             root=root, train=train, transform=transform, download=download, **kwargs
         )
+        self.dataset_name = dataset_name
 
     def __getitem__(self, index: int):
         img, target = super().__getitem__(index)
