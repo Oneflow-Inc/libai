@@ -28,9 +28,7 @@ train.warmup_ratio = 0.01
 
 # Set a constant lr scheduler after warmup
 optim.lr = 0.0001
-train.scheduler = LazyCall(WarmupMultiStepLR)(
-    warmup_factor=0.1, milestones=[0.99]
-)
+train.scheduler = LazyCall(WarmupMultiStepLR)(warmup_factor=0.1, milestones=[0.99])
 
 tokenizer = dict(
     tokenizer_name="BertTokenizer",

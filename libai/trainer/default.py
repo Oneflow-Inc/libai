@@ -21,7 +21,6 @@ from typing import Callable, Optional
 
 import omegaconf
 import oneflow as flow
-import torch
 from termcolor import colored
 
 from libai.config import LazyConfig, try_get_key
@@ -38,21 +37,6 @@ from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
-
-
-def load_from_torch(model, path="./torch_vit_tiny_weight.pth"):
-    torch_dict = torch.load(path)
-    parameters = torch_dict
-    new_parameters = dict()
-    for key, value in parameters.items():
-        if "num_batches_tracked" not in key:
-            val = value.detach().cpu().numpy()
-            val = flow.tensor(val).to_global(
-                sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)})
-            )
-            new_parameters[key] = val
-    model.load_state_dict(new_parameters)
-    return model
 
 
 def _highlight(code, filename):
@@ -259,7 +243,6 @@ class DefaultTrainer(TrainerBase):
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
-
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
@@ -582,10 +565,6 @@ class DefaultTrainer(TrainerBase):
         Returns:
             dict: a dict of result metrics
         """
-
-        # 直接return, 不作任何test
-        return
-
         logger = logging.getLogger(__name__)
         # TODO: support multi evaluator
         # if isinstance(evaluators, DatasetEvaluator):

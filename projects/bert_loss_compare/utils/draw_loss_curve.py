@@ -1,11 +1,16 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import os
 from typing import Dict
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 def draw_result(
-    save_dir: str, name, xlabel: str, ylabel: str, data: Dict[str, np.ndarray],
+    save_dir: str,
+    name,
+    xlabel: str,
+    ylabel: str,
+    data: Dict[str, np.ndarray],
 ) -> None:
     # Setup matplotlib
     plt.rcParams["figure.dpi"] = 100
@@ -32,9 +37,12 @@ if __name__ == "__main__":
         "of_meg_loss",
         "steps",
         "loss",
-        {"oneflow": flow_total_loss, "megatron": megatron_total_loss,},
+        {
+            "oneflow": flow_total_loss,
+            "megatron": megatron_total_loss,
+        },
     )
-    
+
     diff = [flow_total_loss[i] - megatron_total_loss[i] for i in range(len(flow_total_loss))]
-    
+
     draw_result("./", "of_meg_diff", "steps", "diff", {"diff": diff})

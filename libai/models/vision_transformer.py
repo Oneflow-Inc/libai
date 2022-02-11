@@ -123,49 +123,6 @@ class Block(nn.Module):
         x = x + self.drop_path(self.attn(self.norm1(x)))
         x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
-def to_2tuple(x):
-    return (x, x)
-
-class PatchEmbed(nn.Module):
-    """ 2D Image to Patch Embedding
-    """
-
-    def __init__(
-        self,
-        img_size=224,
-        patch_size=16,
-        in_chans=3,
-        embed_dim=768,
-        norm_layer=None,
-        flatten=True,
-    ):
-        super().__init__()
-        img_size = to_2tuple(img_size)
-        patch_size = to_2tuple(patch_size)
-        self.img_size = img_size
-        self.patch_size = patch_size
-        self.grid_size = (img_size[0] // patch_size[0], img_size[1] // patch_size[1])
-        self.num_patches = self.grid_size[0] * self.grid_size[1]
-        self.flatten = flatten
-
-        self.proj = nn.Conv2d(
-            in_chans, embed_dim, kernel_size=patch_size, stride=patch_size
-        )
-        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
-
-    def forward(self, x):
-        B, C, H, W = x.shape
-        assert (
-            H == self.img_size[0]
-        ), f"Input image height ({H}) doesn't match model ({self.img_size[0]})."
-        assert (
-            W == self.img_size[1]
-        ), f"Input image width ({W}) doesn't match model ({self.img_size[1]})."
-        x = self.proj(x)
-        if self.flatten:
-            x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
-        x = self.norm(x)
-        return x
 
 
 @MODEL_ARCH_REGISTRY.register()
@@ -289,7 +246,7 @@ class VisionTransformer(nn.Module):
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
-        # self.init_weights(weight_init)
+        self.init_weights(weight_init)
 
     @classmethod
     def from_config(cls, cfg):
@@ -342,8 +299,10 @@ class VisionTransformer(nn.Module):
                 ),
                 dim=1,
             )
-        pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
-        pos_embed = pos_embed.to_global(sbp=flow.sbp.split(0), placement=pos_embed.placement)
+        self.pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
+        self.pos_embed = self.pos_embed.to_global(
+            sbp=flow.sbp.split(0), placement=self.pos_embed.placement
+        )
         x = self.pos_drop(x + self.pos_embed)
         # transformer encoder
         x = self.blocks(x)
@@ -354,8 +313,8 @@ class VisionTransformer(nn.Module):
         else:
             return x[:, 0], x[:, 1]
 
-    def forward(self, images, targets=None):
-        x = self.forward_features(images)
+    def forward(self, x, targets=None):
+        x = self.forward_features(x)
         # classification head
         if self.head_dist is not None:
             x, x_dist = self.head(x[0]), self.head_dist(x[1])  # x must be a tuple
@@ -369,9 +328,9 @@ class VisionTransformer(nn.Module):
 
         if targets is not None:
             losses = self.loss_func(x, targets)
-            return {"ce_loss": losses}
+            return losses
         else:
-            return {"logits": x}
+            return x
 
 
 def _init_vit_weights(
