@@ -337,8 +337,7 @@ class T5Model(nn.Module):
             encoder_attention_mask, 
             past_key_values=past_key_values, 
             use_cache=use_cache
-        )
-        
+        )    
         return output
     
     def forward_encoder(self, input_ids, attention_mask):
@@ -396,7 +395,11 @@ class T5ForPretraining(nn.Module):
             loss = self.loss_func(logits, label_ids)
             return {"loss": loss}
         
-        return outputs
+        ret_dict = {"logits": outputs[0]}
+        if len(outputs) > 1:
+            ret_dict["presents"] = outputs[1]
+
+        return ret_dict
 
     @staticmethod
     def set_pipeline_stage_id(model):

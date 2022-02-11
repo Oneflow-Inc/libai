@@ -258,11 +258,6 @@ class GPT2Model(nn.Module):
         if use_cache:
             output = (output, presents)
         
-        if label_ids is not None:
-            logits = output[0]
-            loss = self.loss_func(logits, label_ids)
-            return {"loss": loss}
-
         return output
 
 
@@ -287,7 +282,11 @@ class GPT2ForPretraining(nn.Module):
             loss = self.loss_func(logits, label_ids)
             return {"loss": loss}
         
-        return outputs
+        ret_dict = {"logits": outputs[0]}
+        if len(outputs) > 1:
+            ret_dict["presents"] = outputs[1]
+
+        return ret_dict
 
     @staticmethod
     def set_pipeline_stage_id(model):
