@@ -17,16 +17,15 @@ import unittest
 
 import oneflow as flow
 
+import libai.utils.distributed as dist
 from configs.common.models.vit.vit_tiny_patch16_224 import model
 from libai.models import build_model
-import libai.utils.distributed as dist
 
 
 class TestViTModel(unittest.TestCase):
     def test_build_vit(self):
         vit_model = build_model(model)
         self.assertTrue(isinstance(vit_model.patch_embed.proj.weight, flow.Tensor))
-
 
     @unittest.skip("No GPU in CI Environment")
     def test_vit_training_forward(self):
@@ -43,7 +42,6 @@ class TestViTModel(unittest.TestCase):
         output_dict = vit_model(input_tensor, targets)
 
         self.assertEqual(list(output_dict.keys()), ["losses"])
-
 
     @unittest.skip("No GPU in CI Environment")
     def test_vit_eval_forward(self):
@@ -63,7 +61,6 @@ class TestViTModel(unittest.TestCase):
         self.assertEqual(list(output_dict.keys()), ["prediction_scores"])
         self.assertEqual(list(output_dict["prediction_scores"].shape), [1, 1000])
 
-
     @unittest.skip("No GPU in CI Environment")
     def test_vit_backward(self):
         input_tensor = flow.randn(1, 3, 224, 224).to_global(
@@ -79,6 +76,7 @@ class TestViTModel(unittest.TestCase):
         output_dict = vit_model(input_tensor, targets)
         losses = output_dict["losses"]
         losses.backward()
+
 
 if __name__ == "__main__":
     unittest.main()
