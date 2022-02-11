@@ -26,11 +26,11 @@ class ImageNetDataset(datasets.ImageFolder):
     """ImageNet Dataset"""
 
     def __init__(
-        self, 
-        root: str, 
-        train: bool = True, 
-        transform: Optional[Callable] = None, 
-        dataset_name: str = "imagenet", 
+        self,
+        root: str,
+        train: bool = True,
+        transform: Optional[Callable] = None,
+        dataset_name: str = "imagenet",
         **kwargs
     ):
         prefix = "train" if train else "val"
