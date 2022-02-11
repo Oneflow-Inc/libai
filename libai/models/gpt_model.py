@@ -81,6 +81,7 @@ class GPTModel(nn.Module):
         bias_dropout_fusion: whether fuse add bias and dropout.
     """
 
+    @configurable
     def __init__(
         self, 
         num_layers, 
@@ -135,6 +136,28 @@ class GPTModel(nn.Module):
         )
 
         self.lm_head = LMLogits(vocab_size, bias=True)
+
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "num_layers": cfg.num_layers,
+            "vocab_size": cfg.vocab_size,
+            "hidden_size": cfg.hidden_size,
+            "ffn_hidden_size": cfg.ffn_hidden_size,
+            "num_attention_heads": cfg.num_attention_heads,
+            "max_seq_length": cfg.max_seq_length,
+            "embedding_dropout_prob": cfg.embedding_dropout_prob,
+            "attention_dropout_prob": cfg.attention_dropout_prob,
+            "output_dropout_prob": cfg.output_dropout_prob,
+            "layernorm_epsilon": cfg.layernorm_epsilon,
+            "initializer_range": cfg.initializer_range,
+            "use_scaled_init_for_output_weights": cfg.use_scaled_init_for_output_weights,
+            "bias_gelu_fusion": cfg.bias_gelu_fusion,
+            "bias_dropout_fusion": cfg.bias_dropout_fusion,
+            "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
+            "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+        }
+
 
     def forward(self, input_ids, past_key_values, use_cache):
         input_ids_shape = input_ids.size()
