@@ -27,7 +27,7 @@ class ParallelCrossEntropyLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, logits, target):
-        # Change -1 in target to 0 because sparse_softmax_cross_entropy don't accept -1
+        # Change -1 in target to 0 because sparse_softmax_cross_entropy don't accept -1        
         target = target.view(-1)
         target_1 = target * (target >= 0)
 

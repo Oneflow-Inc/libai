@@ -228,11 +228,8 @@ class T5Decoder(nn.Module):
         
         output = self.layernorm_f(hidden_states)
 
-        output = (output,)
         if use_cache:
             output = output + (presents,)     # todo: unify return format
-        print(output)
-        print(type(output))
         return output
 
 
@@ -344,8 +341,8 @@ class T5Model(nn.Module):
             use_cache=use_cache
         )
         
-        print(output)
-        print(type(output))
+        if not isinstance(output, (tuple, list)):
+            output = (output, )
         logits = self.lm_head(output[0], self.embeddings.token_embeddings.weight)
         output = (logits,) + output[1:]
         return output
@@ -371,6 +368,9 @@ class T5Model(nn.Module):
             past_key_values=past_key_values, 
             use_cache=use_cache
         )
+
+        if not isinstance(output, (tuple, list)):
+            output = (output, )
         logits = self.lm_head(output[0], self.embeddings.token_embeddings.weight)
         output = (logits,) + output[1:]
         return output
@@ -381,7 +381,7 @@ class T5ForPretraining(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
-        self.loss_func = ParallelCrossEntropyLoss()
+        self.loss_func = ParallelCrossEntropyLoss(ignore_index=0)
 
     def forward(
         self, 
@@ -401,6 +401,9 @@ class T5ForPretraining(nn.Module):
             past_key_values=past_key_values, 
             use_cache=use_cache,
         )
+        
+        if not isinstance(outputs, (tuple, list)):
+            outputs = (outputs, )
         
         if labels is not None:
             logits = outputs[0]

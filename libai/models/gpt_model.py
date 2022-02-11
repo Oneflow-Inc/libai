@@ -214,8 +214,6 @@ class GPT2Model(nn.Module):
 
         self.lm_head = LMLogits(vocab_size, bias=True)
         
-        self.loss_func = ParallelCrossEntropyLoss()
-
     @classmethod
     def from_config(cls, cfg):
         return {
@@ -226,7 +224,7 @@ class GPT2Model(nn.Module):
             "num_attention_heads": cfg.num_attention_heads,
             "max_seq_length": cfg.max_position_embeddings,
             "embedding_dropout_prob": cfg.embedding_dropout_prob,
-            "attention_dropout_prob": cfg.attention_probs_dropout_prob,
+            "attention_dropout_prob": cfg.attention_dropout_prob,
             "output_dropout_prob": cfg.hidden_dropout_prob,
             "layernorm_epsilon": cfg.layernorm_epsilon,
             "initializer_range": cfg.initializer_range,
@@ -253,9 +251,8 @@ class GPT2Model(nn.Module):
         if use_cache:
             transformer_output, presents = transformer_output
         
-        output = self.lm_head(transformer_output, self.embeddings.word_embeddings)
+        output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
 
-        output = (output,)
         if use_cache:
             output = (output, presents)
         return output
@@ -276,6 +273,8 @@ class GPT2ForPretraining(nn.Module):
         use_cache=False,
     ):
         outputs = self.gpt_model(input_ids, past_key_values=past_key_values, use_cache=use_cache)
+        if not isinstance(outputs, (tuple, list)):
+            outputs = (outputs, )
         
         if labels is not None:
             logits = outputs[0]
