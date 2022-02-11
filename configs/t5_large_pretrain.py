@@ -14,4 +14,3 @@ model.cfg.hidden_layers = 6
 train.train_micro_batch_size = 16
 train.recompute_grad.enabled = True
 train.output_dir = "./demo_output"
-

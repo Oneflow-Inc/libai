@@ -341,11 +341,9 @@ class T5Dataset(flow.utils.data.Dataset):
     def make_history_mask(self, block):
         length = block.shape[0]
         arange = flow.arange(length)
-        history_mask = (arange[None, ] <= arange[:, None])
+        history_mask = (arange[None,] <= arange[:, None])
         history_mask = history_mask.to(flow.long)
         return history_mask
-
-
 
     @property
     def supports_prefetch(self):
