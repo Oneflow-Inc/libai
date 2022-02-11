@@ -41,7 +41,7 @@ class CIFAR10Dataset(datasets.CIFAR10):
         print(img)
         data_sample = Instance(
             images=DistTensorData(img, placement_idx=0),
-            targets=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
+            label=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample
 
