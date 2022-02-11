@@ -13,39 +13,101 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
-from omegaconf import DictConfig
+import oneflow as flow
 
-from libai.config import LazyCall
+from configs.common.models.bert import pretrain_model as model
 from libai.models import build_model
-from libai.models.bert_model import BertForPreTraining
+from libai.utils import distributed as dist
 
-model_cfg = dict(
-    vocab_size=1000,
-    hidden_size=768,
-    hidden_layers=12,
-    num_attention_heads=8,
-    intermediate_size=3072,
-    hidden_dropout_prob=0.1,
-    attention_probs_dropout_prob=0.1,
-    max_position_embeddings=1024,
-    num_tokentypes=2,
-    add_pooling_layer=True,
-    initializer_range=0.02,
-    layernorm_eps=1e-12,
-    bias_gelu_fusion=True,
-    bias_dropout_fusion=True,
-    scale_mask_softmax_fusion=True,
-    apply_query_key_layer_scaling=True,
-    add_binary_head=True,
-)
 
-lazy_cfg = LazyCall(BertForPreTraining)(cfg=DictConfig(model_cfg))
+class TestBertModel(unittest.TestCase):
+    def test_bert_build(self):
+        bert_model = build_model(model)
+        self.assertTrue(isinstance(bert_model.bert.embeddings.vocab_embeddings.weight, flow.Tensor))
 
-reg_cfg = DictConfig(dict(model_name="BertForPreTraining", model_cfg=model_cfg))
+    # @unittest.skip("Update CI Environments to run OneFlow on GPUs")
+    def test_bert_forward(self):
+        input_ids = flow.ones(
+            2,
+            512,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
+        attention_mask = flow.zeros(
+            2,
+            512,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
+        tokentype_ids = flow.zeros(
+            2,
+            512,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
 
-# tests build_model for lazycall
-lazy_model = build_model(lazy_cfg)
+        bert_model = build_model(model)
+        output_dict = bert_model(input_ids, attention_mask, tokentype_ids)
 
-# test build_model for register
-reg_model = build_model(reg_cfg)
+        self.assertEqual(list(output_dict.keys()), ["prediction_scores", "seq_relationship_score"])
+        self.assertEqual(list(output_dict["prediction_scores"].shape), [2, 512, 30522])
+        self.assertEqual(list(output_dict["seq_relationship_score"].shape), [2, 2])
+
+    def test_bert_backward(self):
+        input_ids = flow.ones(
+            2,
+            512,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
+        attention_mask = flow.zeros(
+            2,
+            512,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
+        tokentype_ids = flow.zeros(
+            2,
+            512,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
+
+        ns_labels = flow.zeros(
+            2,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
+        lm_labels = flow.ones(
+            2,
+            512,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
+        loss_mask = flow.ones(
+            2,
+            512,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+        )
+        bert_model = build_model(model)
+        loss_dict = bert_model(
+            input_ids, attention_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
+        )
+        losses = sum(loss_dict.values())
+        losses.backward()
+
+
+if __name__ == "__main__":
+    unittest.main()
