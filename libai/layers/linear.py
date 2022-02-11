@@ -21,7 +21,7 @@ from libai.utils import distributed as dist
 
 
 class Linear1D(nn.Module):
-    """Linear layer with 1D parallelism which includes column parallelism and row parallelism.
+    r"""Linear layer with 1D parallelism which includes column parallelism and row parallelism.
     The linear layer is defined as :math:`Y = XA + b`.
 
     In column parallelism, A is parallelized along the second dimension
@@ -29,22 +29,29 @@ class Linear1D(nn.Module):
 
     In row parallelism, A is parallelized along the first dimension and X along its second
     dimension as:
-                | A_1 |
-                |  .  |
-            A = |  .  |         X = [X_1, ..., X_p]
-                |  .  |
-                | A_p |
+
+    .. math::
+        A = \begin{bmatrix}
+                 A\_1 \\
+                 . \\
+                 . \\
+                 . \\
+                 A\_p
+        \end{bmatrix}
+        x = \begin{bmatrix}
+                 x\_1 & ... & x\_p
+        \end{bmatrix}
 
     Arguments:
         in_features: size of each input sample.
         out_features: size of each output sample.
         bias: If set to ``False``, the layer will not learn an additive bias. Defaults to ``True``.
-        parallel: . Defaults to "data".
-        init_method: method to initialize weight. Defaults to nn.init.xavier_normal_.
+        parallel: Parallel mode. Defaults to "data".
+        init_method: method to initialize weight. Defaults to :func:`nn.init.xavier_normal_`.
         skip_bias_add: skip adding bias but instead return it, so that adding bias can be fused with
-        other elementwise operations. Defaults to ``False``.
+            other elementwise operations. Defaults to ``False``.
         layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
-        parallelism. Defaults to 0.
+            parallelism. Defaults to 0.
     """
 
     def __init__(
