@@ -10,7 +10,7 @@ from libai.tokenizer import BertTokenizer
 tokenization = OmegaConf.create()
 
 tokenization.tokenizer = LazyCall(BertTokenizer)(
-    vocab_file="/workspace/data/libai_dataset/bert-base-chinese-vocab.txt",
+    vocab_file="bert-base-chinese-vocab.txt",
     do_lower_case=True,
     do_chinese_wwm=True,
 )
@@ -24,8 +24,7 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
         LazyCall(BertDataset)(
             data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
             indexed_dataset=LazyCall(get_indexed_dataset)(
-                data_prefix="/workspace/data/libai_dataset"
-                "/loss_compara_content_sentence",
+                data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
                 data_impl="mmap",
                 skip_warmup=False,
             ),

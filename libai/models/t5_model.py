@@ -246,7 +246,6 @@ class T5Loss(flow.nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
         )
         return {'masked_lm_loss': masked_lm_loss}
-        # return masked_lm_loss
 
 
 
