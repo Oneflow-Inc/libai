@@ -373,13 +373,6 @@ class DefaultTrainer(TrainerBase):
         """
         super().train(self.start_iter, self.max_iter)
 
-        # write loss
-        all_losses = self._trainer.all_losses
-        # 将存储好的Loss保存到一个文件中
-        with open("oneflow_vit_tiny_loss.txt", "w") as f:
-            for loss in all_losses:
-                f.write(str(loss) + "\n")
-
     def run_step(self):
         self._trainer.iter = self.iter
         self._trainer.run_step(self.get_batch)
