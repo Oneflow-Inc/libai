@@ -278,5 +278,5 @@ class T5ForPreTraining(flow.nn.Module):
             return lm_loss
         else:
             return {
-                'prediction_scores': logits,
+                "prediction_scores": logits,
             }
