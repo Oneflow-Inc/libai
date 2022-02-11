@@ -27,7 +27,7 @@ class TestBertModel(unittest.TestCase):
         bert_model = build_model(model)
         self.assertTrue(isinstance(bert_model.bert.embeddings.vocab_embeddings.weight, flow.Tensor))
 
-    # @unittest.skip("Update CI Environments to run OneFlow on GPUs")
+    @unittest.skip("No GPU in CI Environment")
     def test_bert_forward(self):
         input_ids = flow.ones(
             2,
@@ -58,6 +58,7 @@ class TestBertModel(unittest.TestCase):
         self.assertEqual(list(output_dict["prediction_scores"].shape), [2, 512, 30522])
         self.assertEqual(list(output_dict["seq_relationship_score"].shape), [2, 2])
 
+    @unittest.skip("No GPU in CI Environment")
     def test_bert_backward(self):
         input_ids = flow.ones(
             2,
