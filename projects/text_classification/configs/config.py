@@ -63,7 +63,7 @@ train.update(
     dict(
         recompute_grad=dict(enabled=True),
         output_dir="output/benchmark/",
-        train_micro_batch_size=64,
+        train_micro_batch_size=32,
         test_micro_batch_size=32,
         train_epoch=1,
         train_iter=0,

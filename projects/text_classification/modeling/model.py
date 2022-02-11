@@ -69,9 +69,9 @@ class ModelForSequenceClassification(nn.Module):
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
 
-        if label is not None:
+        if self.training and label is not None:
             loss = self.loss_fct(logits.view(-1, self.num_classes), label.view(-1))
             loss_dict = {"loss": loss}
             return loss_dict
 
-        return logits
+        return {"prediction_scores": logits}
