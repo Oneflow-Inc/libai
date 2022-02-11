@@ -288,9 +288,6 @@ class GraphTrainer(TrainerBase):
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
 
-        # add loss save list
-        self.all_losses = []
-
     def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.
