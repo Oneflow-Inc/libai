@@ -1,6 +1,6 @@
 from libai.config import LazyCall
 
-from libai.models.t5_model import T5Model, T5ForPreTraining
+from libai.models.gpt_model import GPTModel, GPTForPreTraining
 
 cfg = dict(
     vocab_size=30522,
@@ -22,6 +22,6 @@ cfg = dict(
     fp16=False,
 )
 
-t5_model = LazyCall(T5Model)(cfg=cfg)
+gpt_model = LazyCall(GPTModel)(cfg=cfg)
 
-pretrain_model = LazyCall(T5ForPreTraining)(cfg=cfg)
+pretrain_model = LazyCall(GPTForPreTraining)(cfg=cfg)

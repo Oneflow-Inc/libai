@@ -271,10 +271,10 @@ class GPTLoss(flow.nn.Module):
 
 
 @MODEL_ARCH_REGISTRY.register()
-class T5ForPreTraining(flow.nn.Module):
+class GPTForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
-        self.t5_model = GPTModel(cfg)
+        self.GPT_model = GPTModel(cfg)
         self.loss_func = GPTLoss()
     
     def forward(
@@ -287,14 +287,10 @@ class T5ForPreTraining(flow.nn.Module):
         lm_labels=None,
         loss_mask=None,
     ):
-        logits = self.t5_model(
+        logits = self.GPT_model(
             encoder_input_ids,
-            decoder_input_ids,
-            encoder_attn_mask,
-            decoder_attn_mask,
-            encoder_decoder_attn_mask,
-            # tokentype_ids=None,
             None,
+            False,
         )
 
         lm_loss = self.loss_func(logits, lm_labels, loss_mask)

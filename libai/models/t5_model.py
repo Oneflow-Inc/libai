@@ -12,7 +12,7 @@ from libai.layers import (
     ParallelCrossEntropyLoss,
     lm_logits,
 )
-from libai.models.build import MODEL_ARCH_REGISTRY, GRAPH_REGISTRY
+from libai.models.build import MODEL_ARCH_REGISTRY
 from libai.models.utils import init_method_normal, scaled_init_method_normal, GraphBase
 
 from libai.utils import distributed as dist

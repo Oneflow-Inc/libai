@@ -24,6 +24,7 @@ from .data_utils import split_ds
 from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
+from libai.data.datasets.megatron_gpt_dataset import build_train_valid_test_datasets
 
 def build_nlp_train_val_test_loader(
     dataset,
@@ -61,6 +62,17 @@ def build_nlp_train_val_test_loader(
     train_dataset = dataset_mixer(train_datasets)
     val_dataset = dataset_mixer(val_datasets)
     test_dataset = dataset_mixer(test_datasets)
+    import ipdb; ipdb.set_trace()
+
+    # train_dataset, val_dataset, test_dataset = build_train_valid_test_datasets(
+    #     data_prefix=1,
+    #     data_impl=1,
+    #     splits_string=1,
+    #     train_valid_test_num_samples=1,
+    #     seq_length=1,
+    #     seed=1,
+    #     skip_warmup=1,
+    # )
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
