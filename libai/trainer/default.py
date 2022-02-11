@@ -372,9 +372,9 @@ class DefaultTrainer(TrainerBase):
             data.reraise()
 
         if mixup_func is not None:
-            images, targets = mixup_func(data.get("images").tensor, data.get("targets").tensor)
+            images, label = mixup_func(data.get("images").tensor, data.get("label").tensor)
             data.get("images").tensor = images
-            data.get("targets").tensor = targets
+            data.get("label").tensor = label
 
         ret_dict = {}
         for key, value in data.get_fields().items():
