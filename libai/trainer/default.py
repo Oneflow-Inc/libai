@@ -464,6 +464,7 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training, validating, testing set")
+        # Single GPU batch_size
         cfg.dataloader.train.train_batch_size = (
             cfg.train.train_micro_batch_size * cfg.train.num_accumulation_steps
         )
