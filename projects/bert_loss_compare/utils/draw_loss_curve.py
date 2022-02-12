@@ -29,7 +29,7 @@ def draw_result(
 if __name__ == "__main__":
     with open("of_bert_loss.txt", "r") as f:
         flow_total_loss = [float(line) for line in f.readlines()]
-    with open("/workspace/idea_model/idea_bert/megatron_bert_loss.txt", "r") as f:
+    with open("projects/bert_loss_compare/megatron_bert_loss.txt", "r") as f:
         megatron_total_loss = [float(line) for line in f.readlines()]
 
     draw_result(

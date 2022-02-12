@@ -25,6 +25,7 @@ train.micro_batch_size = 16
 train.log_period = 20
 train.warmup_ratio = 0.01
 
+train.output_dir = "output/bert_loss_compare"
 
 # Set a constant lr scheduler after warmup
 optim.lr = 0.0001
