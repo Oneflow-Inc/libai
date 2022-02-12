@@ -270,22 +270,28 @@ class EagerTrainer(TrainerBase):
         unpacked_data = list()
         start_idx = 0
         # Unpack input data by slice
-        micro_size = list(data.values())[0].shape[0] // dist.get_data_parallel_size() // self.grad_acc_steps
+        micro_size = (
+            list(data.values())[0].shape[0] // dist.get_data_parallel_size() // self.grad_acc_steps
+        )
         for i in range(self.grad_acc_steps):
-            unpacked_data.append({key: value[start_idx : start_idx + micro_size] for key, value in data.items()})
+            unpacked_data.append(
+                {key: value[start_idx : start_idx + micro_size] for key, value in data.items()}
+            )
             start_idx += micro_size
 
         loss_dict = dict()
         # If you want to do something with the losses, you can wrap the model.
         for i in range(self.grad_acc_steps):
-            micro_loss_dict = self.model(**unpacked_data[i]) 
+            micro_loss_dict = self.model(**unpacked_data[i])
             losses = sum(micro_loss_dict.values()) / self.grad_acc_steps
 
             losses.backward()
             # Update loss_dict for each micro_batch_size
             for name in micro_loss_dict:
-                loss_dict[name] = loss_dict.get(name, 0) + micro_loss_dict[name] / self.grad_acc_steps
-        
+                loss_dict[name] = (
+                    loss_dict.get(name, 0) + micro_loss_dict[name] / self.grad_acc_steps
+                )
+
         self.write_metrics(loss_dict, data_time)
 
         self.optimizer.step()
