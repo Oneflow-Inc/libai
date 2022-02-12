@@ -24,14 +24,6 @@ The registered object will be called with `obj(cfg)`
 and expected to return a `nn.Module` object.
 """
 
-GRAPH_REGISTRY = Registry("graph")
-GRAPH_REGISTRY.__doc__ = """
-Registry for Graph training mode.
-
-The registered object will be called with `obj(cfg)`
-and expected to return a `nn.Graph` object.
-"""
-
 
 def build_model(cfg):
     """Build the whole model architecture, defined by ``cfg.model.model_name``.
@@ -51,30 +43,17 @@ def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
         # Set train graph
         assert optimizer is not None, "optimizer must be set for train graph"
         assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
-        if "_target_" in cfg.graph.train_graph:  # LazyCall
-            graph = cfg.graph.train_graph
-            graph.model = model
-            graph.optimizer = optimizer
-            graph.lr_scheduler = lr_scheduler
-            graph.fp16 = try_get_key(cfg, "train.amp.enabled", default=False)
-            graph.recompute_grad = try_get_key(cfg, "train.recompute_grad.enabled", default=False)
-            graph.grad_acc_steps = try_get_key(cfg, "train.num_accumulation_steps", default=1)
-            return instantiate(graph)
-        else:
-            graph_name = cfg.train_graph.graph_name
-            graph_cfg = cfg.train_graph.graph_cfg
-            train_graph = GRAPH_REGISTRY.get(graph_name)(
-                model, optimizer, lr_scheduler, **graph_cfg
-            )
-            return train_graph
+        graph = cfg.graph.train_graph
+        graph.model = model
+        graph.optimizer = optimizer
+        graph.lr_scheduler = lr_scheduler
+        graph.fp16 = try_get_key(cfg, "train.amp.enabled", default=False)
+        graph.recompute_grad = try_get_key(cfg, "train.recompute_grad.enabled", default=False)
+        graph.zero_optim = try_get_key(cfg, "train.zero_optimization.enabled", default=False)
+        graph.zero_stage = try_get_key(cfg, "train.zero_optimization.stage", default=1)
+        return instantiate(graph)
     else:
         # Set eval graph
-        if "_target_" in cfg.graph.eval_graph:
-            graph = cfg.graph.eval_graph
-            graph.model = model
-            return instantiate(graph)
-        else:
-            graph_name = cfg.eval_graph.graph_name
-            graph_cfg = cfg.eval_graph.graph_cfg
-            eval_graph = GRAPH_REGISTRY.get(graph_name)(model, **graph_cfg)
-            return eval_graph
+        graph = cfg.graph.eval_graph
+        graph.model = model
+        return instantiate(graph)

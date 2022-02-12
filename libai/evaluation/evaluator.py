@@ -17,6 +17,7 @@ import datetime
 import logging
 import time
 from collections import OrderedDict, abc
+from contextlib import ExitStack, contextmanager
 from typing import Callable, List, Union
 
 import oneflow as flow
@@ -148,7 +149,12 @@ def inference_on_dataset(
     total_compute_time = 0
     total_eval_time = 0
     consumed_samples = 0
-    with flow.no_grad():
+    dps = dist.get_data_parallel_size()
+    last_batch_lack = (dps - (total % dps)) % dps
+    with ExitStack() as stack:
+        if isinstance(model, (flow.nn.Module, flow.nn.Graph)):
+            stack.enter_context(inference_context(model))
+        stack.enter_context(flow.no_grad())
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
@@ -162,15 +168,13 @@ def inference_on_dataset(
             start_compute_time = time.perf_counter()
             # model forward
             data = get_batch(inputs)
-            paded_data, valid_sample = pad_batch(data, batch_size)
-            outputs = model(*paded_data)
-            valid_data = [d[:valid_sample] for d in data]
-            if isinstance(outputs, (list, tuple)):
-                valid_outputs = [op[:valid_sample] for op in outputs]
-            elif isinstance(outputs, flow.Tensor):
-                valid_outputs = [outputs[:valid_sample]]
-            else:
-                raise NotImplementedError(f"model output type {type(outputs)} is not supported")
+            is_last_batch = idx == len(data_loader) - 1
+            paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
+            outputs = model(**paded_data)
+
+            # get valid sample
+            valid_data = {key: value[:valid_sample] for key, value in data.items()}
+            valid_outputs = {key: value[:valid_sample] for key, value in outputs.items()}
 
             if flow.cuda.is_available():
                 dist.synchronize()
@@ -208,6 +212,7 @@ def inference_on_dataset(
     total_time = time.perf_counter() - start_time
     total_time_str = str(datetime.timedelta(seconds=total_time))
     # NOTE this format is parsed by grep
+    logger.info("Total valid samples: {}".format(consumed_samples))
     logger.info(
         "Total inference time: {} ({:.6f} s / iter per device, on {} devices)".format(
             total_time_str, total_time / (total - num_warmup), num_devices
@@ -228,3 +233,23 @@ def inference_on_dataset(
     if results is None:
         results = {}
     return results
+
+
+@contextmanager
+def inference_context(model):
+    """
+    A context where the model is temporarily changed to eval mode,
+    and restored to previous mode afterwards.
+    Args:
+        model: eager or graph mode in oneflow
+    """
+    training_mode = model.model.training if isinstance(model, flow.nn.Graph) else model.training
+    if isinstance(model, flow.nn.Graph):
+        model.model.eval()
+    else:
+        model.eval()
+    yield
+    if isinstance(model, flow.nn.Graph):
+        model.model.train(training_mode)
+    else:
+        model.train(training_mode)

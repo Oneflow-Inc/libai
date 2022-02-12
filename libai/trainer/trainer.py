@@ -232,7 +232,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader_iter, optimizer, grad_acc_steps=1):
+    def __init__(self, model, data_loader, optimizer, grad_acc_steps=1):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -250,7 +250,8 @@ class EagerTrainer(TrainerBase):
         model.train()
 
         self.model = model
-        self._data_loader_iter = iter(data_loader_iter)
+        self.data_loader = data_loader
+        self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
         self.grad_acc_steps = grad_acc_steps
 
@@ -263,26 +264,28 @@ class EagerTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data)
+        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
-        unpacked_data = []
+        unpacked_data = list()
         start_idx = 0
-        # This is logical shape
-        micro_size = data[0].shape[0] // dist.get_data_parallel_size() // self.grad_acc_steps
+        # Unpack input data by slice
+        micro_size = list(data.values())[0].shape[0] // dist.get_data_parallel_size() // self.grad_acc_steps
         for i in range(self.grad_acc_steps):
-            unpacked_data.append([d[start_idx : start_idx + micro_size] for d in data])
+            unpacked_data.append({key: value[start_idx : start_idx + micro_size] for key, value in data.items()})
             start_idx += micro_size
 
-        total_losses = 0
+        loss_dict = dict()
         # If you want to do something with the losses, you can wrap the model.
         for i in range(self.grad_acc_steps):
-            losses = self.model(*unpacked_data[i]) / self.grad_acc_steps
+            micro_loss_dict = self.model(**unpacked_data[i]) 
+            losses = sum(micro_loss_dict.values()) / self.grad_acc_steps
 
             losses.backward()
-            total_losses += losses
-
-        loss_dict = {"total_loss": total_losses}
+            # Update loss_dict for each micro_batch_size
+            for name in micro_loss_dict:
+                loss_dict[name] = loss_dict.get(name, 0) + micro_loss_dict[name] / self.grad_acc_steps
+        
         self.write_metrics(loss_dict, data_time)
 
         self.optimizer.step()
@@ -290,11 +293,12 @@ class EagerTrainer(TrainerBase):
 
 
 class GraphTrainer(TrainerBase):
-    def __init__(self, graph, data_loader_iter):
+    def __init__(self, graph, data_loader):
         super().__init__()
 
         graph.model.train()
-        self._data_loader_iter = iter(data_loader_iter)
+        self.data_loader = data_loader
+        self._data_loader_iter = iter(data_loader)
         self.graph = graph
 
     def run_step(self, get_batch: Callable):
@@ -306,12 +310,10 @@ class GraphTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data)
+        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
-
-        losses = self.graph(*data)
-        loss_dict = {"total_loss": losses}
+        loss_dict = self.graph(**data)
 
         self.write_metrics(loss_dict, data_time)

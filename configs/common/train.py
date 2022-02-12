@@ -3,20 +3,17 @@ from libai.scheduler import WarmupCosineLR
 
 # fmt: off
 train = dict(
-    output_dir="./demo_output/test_config",
+    output_dir="./output",
 
     # Batch size and gradient accumulation
     train_micro_batch_size=32,
     test_micro_batch_size=32,
     global_batch_size=None,
     num_accumulation_steps=None,
-
     start_iter=0,
     train_iter=10000,
     train_epoch=0,  # default train epoch is set to 0
     warmup_ratio=0,  # default warmup ratio is set to 0
-    lr_decay_iter=None,
-    eval_iter=10000,
 
     # Performance related
     amp=dict(enabled=False),  # options for Automatic Mixed Precision
@@ -25,7 +22,12 @@ train = dict(
     nccl_fusion_threshold_mb=16,
     # Maximum number of ops of NCCL fusion, set to 0 to compatible with previous version of OneFlow
     nccl_fusion_max_ops=24,
-    enable_use_compute_stream=True,
+
+    # ZeRO Optimization
+    zero_optimization=dict(
+        enabled=False,
+        stage=1,
+    ),
 
     checkpointer=dict(period=5000, max_to_keep=100),  # options for PeriodicCheckpointer
 
@@ -53,4 +55,3 @@ train = dict(
     ),
     seed=1234,
 )
-# fmt: on

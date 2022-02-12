@@ -29,8 +29,8 @@ from libai.layers import (
 )
 from libai.utils import distributed as dist
 
-from .build import GRAPH_REGISTRY, MODEL_ARCH_REGISTRY
-from .utils import GraphBase, init_method_normal, scaled_init_method_normal
+from .build import MODEL_ARCH_REGISTRY
+from .utils import init_method_normal, scaled_init_method_normal
 
 
 class BertExtendedAttnMask(nn.Module):
@@ -98,9 +98,7 @@ class BertEmbeddings(nn.Module):
         if position_ids is None:
             # Change position_ids sbp sign: [B, B] -> [S(0), B]
             position_ids = (
-                self.position_ids[:, :seq_length]
-                .expand_as(input_ids)
-                .to_consistent(sbp=input_ids.sbp)
+                self.position_ids[:, :seq_length].expand_as(input_ids).to_global(sbp=input_ids.sbp)
             )
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = word_embeddings + position_embeddings
@@ -110,7 +108,7 @@ class BertEmbeddings(nn.Module):
                 tokentype_ids = (
                     self.tokentype_ids[:, :seq_length]
                     .expand_as(input_ids)
-                    .to_consistent(sbp=input_ids.sbp)
+                    .to_global(sbp=input_ids.sbp)
                 )
             embeddings = embeddings + self.tokentype_embeddings(tokentype_ids)
 
@@ -138,13 +136,13 @@ class BertLMPredictionHead(nn.Module):
     def forward(self, hidden_states):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.activation_func(hidden_states)
-        hidden_states = hidden_states.to_consistent(
+        hidden_states = hidden_states.to_global(
             grad_sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(2)])
         )
 
         # NOTE(l1aoxingyu): hidden_states shape is [B, S, H] whose sbp sign: [S(0), S(2)]
         # Change from [S(0), S(2)] -> [S(0), B] because layernorm cannot get inputs with sbp S(2)
-        hidden_states = hidden_states.to_consistent(
+        hidden_states = hidden_states.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
         )
         hidden_states = self.layernorm(hidden_states)
@@ -183,28 +181,10 @@ class BertPooler(nn.Module):
         return pooled_output
 
 
-class BertPreTrainingHeads(nn.Module):
-    def __init__(self, hidden_size, init_method):
-        super().__init__()
-        self.predictions = BertLMPredictionHead(hidden_size, init_method)
-        self.seq_relationship = Linear(
-            hidden_size,
-            2,
-            bias=True,
-            parallel="data",
-            init_method=init_method,
-            layer_idx=-1,
-        )
-
-    def forward(self, sequence_output, pooled_output):
-        prediction_scores = self.predictions(sequence_output)
-        seq_relationship_score = self.seq_relationship(pooled_output)
-        return prediction_scores, seq_relationship_score
-
-
 class BertLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, add_binary_head):
         super().__init__()
+        self.add_binary_head = add_binary_head
         self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask, binary_logits, ns_labels):
@@ -212,21 +192,24 @@ class BertLoss(nn.Module):
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
         # because (lm_loss * loss_mask) / loss_mask.sum() cannot accept P / P
-        denominator = loss_mask.sum().to_consistent(
+        denominator = loss_mask.sum().to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
         # NOTE(l1aoxingyu): Change lm loss sbp sign [P, P] -> [P, B] to add with sop loss
         # whose sbp sign: [P, B]
-        masked_lm_loss = masked_lm_loss.to_consistent(
+        masked_lm_loss = masked_lm_loss.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
         )
 
-        sop_loss = flow._C.cross_entropy(
-            binary_logits, ns_labels, ignore_index=-1, reduction="none"
-        ).mean()
-        losses = masked_lm_loss + sop_loss
-        return losses
+        loss_dict = {"lm_loss": masked_lm_loss}
+
+        if self.add_binary_head:
+            sop_loss = flow._C.cross_entropy(
+                binary_logits, ns_labels, ignore_index=-1, reduction="none"
+            ).mean()
+            loss_dict["sop_loss"] = sop_loss
+        return loss_dict
 
 
 class BertModel(nn.Module):
@@ -330,14 +313,55 @@ class BertModel(nn.Module):
         return self.embeddings.word_embeddings()
 
 
+class BertPreTrainingHeads(nn.Module):
+    def __init__(self, vocab_size, hidden_size, init_method, add_binary_head=True):
+        super().__init__()
+        self.predictions = BertLMPredictionHead(hidden_size, init_method)
+        self.seq_relationship = Linear(
+            hidden_size,
+            2,
+            bias=True,
+            parallel="data",
+            init_method=init_method,
+            layer_idx=-1,
+        )
+        self.lm_logits = LMLogits(vocab_size, bias=True)
+        self.loss_func = BertLoss(add_binary_head)
+
+    def forward(
+        self,
+        sequence_output,
+        pooled_output,
+        word_embeddings_weight,
+        ns_labels,
+        lm_labels,
+        loss_mask,
+    ):
+        prediction_scores = self.predictions(sequence_output)
+        seq_relationship_score = self.seq_relationship(pooled_output)
+        prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
+
+        if self.training and lm_labels is not None:
+            return self.loss_func(
+                prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
+            )
+        return {
+            "prediction_scores": prediction_scores,
+            "seq_relationship_score": seq_relationship_score,
+        }
+
+
 @MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.bert = BertModel(cfg)
-        self.cls = BertPreTrainingHeads(cfg.hidden_size, init_method_normal(cfg.initializer_range))
-        self.lm_logits = LMLogits(cfg.vocab_size, bias=True)
-        self.loss_func = BertLoss()
+        self.cls_head = BertPreTrainingHeads(
+            cfg.vocab_size,
+            cfg.hidden_size,
+            init_method_normal(cfg.initializer_range),
+            cfg.add_binary_head,
+        )
 
     def forward(
         self,
@@ -351,50 +375,21 @@ class BertForPreTraining(nn.Module):
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 
-        sequence_output, seq_relationship_score = self.cls(sequence_output, pooled_output)
+        return self.cls_head(
+            sequence_output,
+            pooled_output,
+            self.bert.word_embeddings_weight(),
+            ns_labels,
+            lm_labels,
+            loss_mask,
+        )
 
-        prediction_scores = self.lm_logits(sequence_output, self.bert.word_embeddings_weight())
-
-        if lm_labels is not None and ns_labels is not None:
-            total_loss = self.loss_func(
-                prediction_scores,
-                lm_labels,
-                loss_mask,
-                seq_relationship_score,
-                ns_labels,
-            )
-            return total_loss
-        else:
-            return prediction_scores, seq_relationship_score
-
-
-@GRAPH_REGISTRY.register()
-class BertForPretrainingGraph(GraphBase):
-    def build(
-        self,
-        tokens,
-        padding_mask,
-        tokentype_ids,
-        ns_labels=None,
-        lm_labels=None,
-        loss_mask=None,
-    ):
-
-        # Forward pass through the model
-        if self.is_train:
-            losses = self.model(
-                tokens, padding_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
-            )
-            losses.backward()
-            return losses
-        else:
-            return self.model(tokens, padding_mask, tokentype_ids)
-
-    def set_pipeline_stage_id(self):
+    @staticmethod
+    def set_pipeline_stage_id(model):
         dist_utils = dist.get_dist_util()
 
-        # 设置模型的 stage_id
-        for module_block in self.model.modules():
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, BertEmbeddings):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
@@ -404,13 +399,6 @@ class BertForPretrainingGraph(GraphBase):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
             elif isinstance(module_block.origin, BertPreTrainingHeads):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-            elif isinstance(module_block.origin, LMLogits):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-            elif isinstance(module_block.origin, BertLoss):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-            else:
-                pass
 
         # Set the last layernorm stage id
-        self.model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        self.model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)

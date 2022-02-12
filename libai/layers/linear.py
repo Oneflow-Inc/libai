@@ -21,7 +21,7 @@ from libai.utils import distributed as dist
 
 
 class Linear1D(nn.Module):
-    """Linear layer with 1D parallelism which includes column parallelism and row parallelism.
+    r"""Linear layer with 1D parallelism which includes column parallelism and row parallelism.
     The linear layer is defined as :math:`Y = XA + b`.
 
     In column parallelism, A is parallelized along the second dimension
@@ -29,22 +29,29 @@ class Linear1D(nn.Module):
 
     In row parallelism, A is parallelized along the first dimension and X along its second
     dimension as:
-                | A_1 |
-                |  .  |
-            A = |  .  |         X = [X_1, ..., X_p]
-                |  .  |
-                | A_p |
+
+    .. math::
+        A = \begin{bmatrix}
+                 A\_1 \\
+                 . \\
+                 . \\
+                 . \\
+                 A\_p
+        \end{bmatrix}
+        x = \begin{bmatrix}
+                 x\_1 & ... & x\_p
+        \end{bmatrix}
 
     Arguments:
         in_features: size of each input sample.
         out_features: size of each output sample.
         bias: If set to ``False``, the layer will not learn an additive bias. Defaults to ``True``.
-        parallel: . Defaults to "data".
-        init_method: method to initialize weight. Defaults to nn.init.xavier_normal_.
+        parallel: Parallel mode. Defaults to "data".
+        init_method: method to initialize weight. Defaults to :func:`nn.init.xavier_normal_`.
         skip_bias_add: skip adding bias but instead return it, so that adding bias can be fused with
-        other elementwise operations. Defaults to ``False``.
+            other elementwise operations. Defaults to ``False``.
         layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
-        parallelism. Defaults to 0.
+            parallelism. Defaults to 0.
     """
 
     def __init__(
@@ -106,10 +113,10 @@ class Linear1D(nn.Module):
             # if the last dim of weight sbp sign is S(1), the last dim of x sbp sign must be B.
             if self.weight.sbp[-1] == flow.sbp.split(1):
                 x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
-                x = x.to_consistent(sbp=x_sbp)
+                x = x.to_global(sbp=x_sbp)
 
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
-            x = x.to_consistent(grad_sbp=x.sbp)
+            x = x.to_global(grad_sbp=x.sbp)
             x = flow.matmul(x, self.weight)
 
         elif dist.same_sbp(
@@ -119,7 +126,7 @@ class Linear1D(nn.Module):
             # sign must be S(ndim-1).
             if self.weight.sbp[-1] == flow.sbp.split(0):
                 x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
-                x = x.to_consistent(sbp=x_sbp)
+                x = x.to_global(sbp=x_sbp)
                 out_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
             else:
                 out_sbp = x.sbp
@@ -127,14 +134,14 @@ class Linear1D(nn.Module):
             x = flow.matmul(x, self.weight)
             # Change x.sbp for followup forward pass.
             # This line can be removed when sbp can be auto inferred.
-            x = x.to_consistent(sbp=out_sbp)
+            x = x.to_global(sbp=out_sbp)
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         ):
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
-            x = x.to_consistent(grad_sbp=x.sbp)
+            x = x.to_global(grad_sbp=x.sbp)
             # Change x.sbp to [S(0), S(0)] if weight is [B, B]
-            x = x.to_consistent(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
+            x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
             x = flow.matmul(x, self.weight)
         else:
             raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")

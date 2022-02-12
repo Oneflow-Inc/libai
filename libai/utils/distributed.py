@@ -218,6 +218,8 @@ def get_dist_util():
 
 def get_layer_placement(layer_idx, device_type="cuda"):
     dist_util = get_dist_util()
+    if not flow.cuda.is_available() and device_type == "cuda":
+        device_type = "cpu"
     return flow.placement(
         device_type,
         dist_util.get_layer_devices(layer_idx),
@@ -227,7 +229,8 @@ def get_layer_placement(layer_idx, device_type="cuda"):
 
 def get_all_placement(device_type="cuda"):
     dist_util = get_dist_util()
-
+    if not flow.cuda.is_available() and device_type == "cuda":
+        device_type = "cpu"
     return flow.placement(
         device_type,
         {i: range(dist_util.num_gpus_per_node) for i in range(dist_util.num_nodes)},
@@ -303,11 +306,11 @@ def get_world_size():
 def convert_to_distributed_default_setting(module):
     """
     Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
-        consistent tensor with data parallelism as default.
+        global tensor with data parallelism as default.
     """
     for param in module.parameters():
-        if not param.is_consistent:
-            module.to_consistent(
+        if not param.is_global:
+            module.to_global(
                 sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=get_layer_placement(0),
             )
@@ -319,12 +322,12 @@ def get_num_nodes():
 
 
 def ttol(tensor, pure_local=False):
-    """consistent tensor to local tensor"""
-    if tensor.is_consistent:
+    """global tensor to local tensor"""
+    if tensor.is_global:
         if pure_local:
             tensor = tensor.to_local()
         else:
-            tensor = tensor.to_consistent(
+            tensor = tensor.to_global(
                 sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             ).to_local()
 
@@ -332,8 +335,8 @@ def ttol(tensor, pure_local=False):
 
 
 def tton(tensor, local_only=False):
-    """consistent tensor to numpy"""
-    if tensor.is_consistent:
+    """global tensor to numpy"""
+    if tensor.is_global:
         tensor = ttol(tensor, local_only)
 
     return tensor.numpy()

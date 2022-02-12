@@ -12,24 +12,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 
-sys.path.append(".")
-from libai.config import LazyConfig
-from libai.config.instantiate import instantiate
-from libai.data.structures import Instance
+from libai.data.data_utils import get_indexed_dataset
+from libai.data.datasets import BertDataset
+from libai.tokenizer import BertTokenizer
 
-cfg = LazyConfig.load("./configs/common/data/cv_data.py")
+datat_prefix = "cn_samples_lazy_text_sentence"
+tokenizer = BertTokenizer(
+    vocab_file="bert-base-chinese-vocab.txt", do_lower_case=True, do_chinese_wwm=True
+)
+indexed_dataset = get_indexed_dataset(datat_prefix, data_impl="lazy", skip_warmup=False)
 
-train_loader, val_loader, test_loader = instantiate(cfg.dataloader.train)
-assert len(train_loader) == 80073
-for sample in train_loader:
-    assert isinstance(sample, Instance)
-    break
+dataset = BertDataset(
+    tokenizer,
+    data_prefix=datat_prefix,
+    indexed_dataset=indexed_dataset,
+    mask_lm_prob=0.3,
+    binary_head=False,
+)
 
-test_loader = instantiate(cfg.dataloader.test)
-assert len(test_loader[0]) == 3125
-for loader in test_loader:
-    for sample in loader:
-        assert isinstance(sample, Instance)
-        break
+print(len(indexed_dataset))
+print(len(dataset))
+print(dataset[0])

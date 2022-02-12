@@ -111,7 +111,7 @@ class Checkpointer(object):
             if self.path_manager.exists(save_file):
                 self.path_manager.mkdirs(save_file)
 
-            flow.save(data[save_name], save_file, consistent_dst_rank=0)
+            flow.save(data[save_name], save_file, global_dst_rank=0)
 
         self.tag_last_checkpoint(basename)
 
@@ -281,11 +281,11 @@ class Checkpointer(object):
             v = state_dict[k]
             if not isinstance(v, np.ndarray) and not isinstance(v, flow.Tensor):
                 raise ValueError("Unsupported type found in checkpoint! {}: {}".format(k, type(v)))
-            # If it's local tensor, convert it to consistent tensor.
-            if not v.is_consistent:
+            # If it's local tensor, convert it to global tensor.
+            if not v.is_global:
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
-                    state_dict[k] = v.to_consistent(sbp=model_v.sbp, placement=model_v.placement)
+                    state_dict[k] = v.to_global(sbp=model_v.sbp, placement=model_v.placement)
             # if not isinstance(v, flow.Tensor):
             #     state_dict[k] = flow.tensor(v)
 

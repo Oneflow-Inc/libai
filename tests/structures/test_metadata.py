@@ -22,23 +22,24 @@ from libai.utils import distributed as dist
 
 
 class TestMetadata(unittest.TestCase):
-    def test_to_consistent(self):
+    def test_to_global(self):
         x = flow.rand(10, 10)
         x_meta = DistTensorData(x)
-        x_meta.to_consistent()
-        x_consistent = x.to_consistent(
-            sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: [0]})
+        x_meta.to_global()
+        x_consistent = x.to_global(
+            sbp=flow.sbp.broadcast,
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
         )
 
         self.assertEqual(x_meta.tensor.sbp, x_consistent.sbp)
         self.assertEqual(x_meta.tensor.placement, x_consistent.placement)
         self.assertTrue((flow.equal(x_meta.tensor, x_consistent)).sum().item() == 100)
 
-        x_meta.to_consistent(
+        x_meta.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
             placement=dist.get_layer_placement(5),
         )
-        x_consistent = x.to_consistent(
+        x_consistent = x.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
             placement=dist.get_layer_placement(5),
         )
