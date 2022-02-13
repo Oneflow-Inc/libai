@@ -83,7 +83,7 @@ class T5Dataset(flow.utils.data.Dataset):
 
         sents = self.dataset[idx]
         tokens = [token for sent in sents for token in sent]
-        tokens = tokens[:self.max_seq_length - 2]
+        tokens = tokens[: self.max_seq_length - 2]
 
         (
             tokens,

@@ -17,8 +17,8 @@ tokenization.tokenizer = LazyCall(BertTokenizer)(
     vocab_file="bert-base-chinese-vocab.txt",
     do_lower_case=True,
     do_chinese_wwm=True,
-    bos_token='[CLS]',
-    eos_token='[SEP]',
+    bos_token="[CLS]",
+    eos_token="[SEP]",
     additional_special_tokens=special_tokens,
 )
 tokenization.append_eod = False

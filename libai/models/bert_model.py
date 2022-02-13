@@ -19,6 +19,7 @@ from oneflow import nn
 from libai.config import configurable
 from libai.layers import (
     Embedding,
+    ExtendedMask,
     LayerNorm,
     Linear,
     LMLogits,
@@ -26,7 +27,6 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
     build_activation,
-    ExtendedMask,
 )
 from libai.utils import distributed as dist
 
@@ -41,14 +41,12 @@ class BertEmbedding(nn.Module):
         hidden_size,
         max_seq_length,
         num_tokentypes=0,
-        embedding_dropout_prob=0.,
+        embedding_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
     ):
         super().__init__()
         self.vocab_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
-        self.position_embeddings = Embedding(
-            max_seq_length, hidden_size, init_method=init_method
-        )
+        self.position_embeddings = Embedding(max_seq_length, hidden_size, init_method=init_method)
 
         # NOTE(l1aoxingyu): Set position_ids sbp sign to [B, B] initially, because position_ids is a
         # 1D-tensor from 0 to seq_length, if set to [S(0), B] at first, then position_ids
@@ -193,10 +191,10 @@ class BertModel(nn.Module):
         hidden_size,
         intermediate_size,
         num_attention_heads,
-        max_seq_length=1024, 
-        embedding_dropout_prob=0., 
-        attention_dropout_prob=0., 
-        output_dropout_prob=0., 
+        max_seq_length=1024,
+        embedding_dropout_prob=0.0,
+        attention_dropout_prob=0.0,
+        output_dropout_prob=0.0,
         num_tokentypes=2,
         add_pooling_layer=True,
         layernorm_epsilon=1e-6,
@@ -313,9 +311,7 @@ class BertPreTrainingHeads(nn.Module):
         prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
 
         if lm_labels is not None:
-            return self.loss_func(
-                prediction_scores, lm_labels, seq_relationship_score, ns_labels
-            )
+            return self.loss_func(prediction_scores, lm_labels, seq_relationship_score, ns_labels)
         return {
             "prediction_scores": prediction_scores,
             "seq_relationship_score": seq_relationship_score,

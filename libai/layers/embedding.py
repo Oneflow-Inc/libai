@@ -31,7 +31,7 @@ class Embedding(nn.Module):
         embedding_dim: dimension of embeddings.
         padding_idx: pad index.
         init_method: method to initialize weights.
-        layer_idx: A layer_idx sign which determines the placement. 
+        layer_idx: A layer_idx sign which determines the placement.
             It will be used in pipeline parallelism. Defaults to 0.
     """
 
@@ -106,7 +106,7 @@ class VocabEmbedding(nn.Module):
         embedding_dim: dimension of embeddings.
         padding_idx: pad index.
         init_method: method to initialize weights.
-        layer_idx: A layer_idx sign which determines the placement. 
+        layer_idx: A layer_idx sign which determines the placement.
             It will be used in pipeline parallelism. Defaults to 0.
     """
 
@@ -186,11 +186,17 @@ class SinePositionalEmbedding(nn.Module):
     Arguments:
         num_embeddings: size of vocabulary.
         embedding_dim: dimension of embeddings.
-        layer_idx: A layer_idx sign which determines the placement. 
+        layer_idx: A layer_idx sign which determines the placement.
             It will be used in pipeline parallelism. Defaults to 0.
     """
 
-    def __init__(self, num_embeddings, embedding_dim, *, layer_idx=0,):
+    def __init__(
+        self,
+        num_embeddings,
+        embedding_dim,
+        *,
+        layer_idx=0,
+    ):
         super().__init__()
         self.layer_idx = layer_idx
         self.embedding_dim = embedding_dim
