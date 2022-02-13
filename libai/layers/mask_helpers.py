@@ -23,7 +23,9 @@ class ExtendedMask(nn.Module):
     """Makes the attention mask broadcastable at the head dims."""
 
     def forward(self, attention_mask):
-        if attention_mask.dim() == 3:
+        if attention_mask.dim() == 4:
+            extended_attention_mask = attention_mask
+        elif attention_mask.dim() == 3:
             # When we get an attention mask of dimensions [batch_size, tgt_len, src_len]
             # we just need to make it broadcastable to all heads.
             extended_attention_mask = attention_mask.unsqueeze(1)

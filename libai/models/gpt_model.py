@@ -18,6 +18,7 @@ from oneflow import nn
 
 from libai.config import configurable
 from libai.layers import (
+    ExtendedMask,
     CasualMask,
     Embedding,
     LayerNorm,
@@ -187,6 +188,7 @@ class GPT2Model(nn.Module):
             init_method=init_method,
         )
 
+        self.extend_mask = ExtendedMask()
         self.casual_mask = CasualMask()
 
         self.transformer = Transformer(
@@ -227,11 +229,14 @@ class GPT2Model(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
         }
 
-    def forward(self, input_ids, past_key_values=None, use_cache=False):
+    def forward(self, input_ids, attention_mask=None, past_key_values=None, use_cache=False):
         past_length = past_key_values[0][0].size(2) if past_key_values is not None else 0
-
         input_embeds = self.embeddings(input_ids, past_length)
-        attention_mask = self.casual_mask(input_ids, past_length=past_length)
+        
+        if attention_mask is None:
+            attention_mask = self.casual_mask(input_ids, past_length=past_length)
+        else:
+            attention_mask = self.extend_mask(attention_mask)
 
         transformer_output = self.transformer(
             input_embeds,
