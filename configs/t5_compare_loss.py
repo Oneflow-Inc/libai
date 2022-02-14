@@ -10,7 +10,7 @@ from libai.scheduler import WarmupMultiStepLR
 # Set all dropout to 0.
 model.cfg.hidden_dropout_prob = 0.0
 model.cfg.bias_dropout_fusion = False
-model.cfg.bias_gelu_fusion=False
+model.cfg.bias_gelu_fusion = False
 
 # Set matched model arguments
 model.cfg.hidden_layers = 6
@@ -44,8 +44,8 @@ data.dataset_type = "t5"
 data.tokenizer_type = "BertWordPieceLowerCase"
 # data.data_path = ['/home/wang/data/t5/dataset/loss_compara_content_sentence']
 # data.vocab_file = '/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
-data.data_path = ['/workspace/data/libai_dataset/loss_compara_content_sentence']
-data.vocab_file = '/workspace/data/libai_dataset/bert-base-chinese-vocab.txt'
+data.data_path = ["/workspace/data/libai_dataset/loss_compara_content_sentence"]
+data.vocab_file = "/workspace/data/libai_dataset/bert-base-chinese-vocab.txt"
 data.num_workers = 1
 data.vocab_extra_ids = 100
 data.mmap_warmup = False

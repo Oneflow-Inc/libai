@@ -19,8 +19,8 @@
 import collections
 import re
 import unicodedata
+
 import six
-import re
 
 
 def validate_case_matches_checkpoint(do_lower_case, init_checkpoint):
@@ -165,7 +165,7 @@ class FullTokenizer(object):
     """Runs end-to-end tokenziation."""
 
     def __init__(self, vocab_file, do_lower_case=True):
-        self.vocab = load_vocab(vocab_file)  
+        self.vocab = load_vocab(vocab_file)
         self.inv_vocab = {v: k for k, v in self.vocab.items()}
         self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab)
@@ -186,10 +186,10 @@ class FullTokenizer(object):
 
     @staticmethod
     def convert_tokens_to_string(tokens, clean_up_tokenization_spaces=True):
-        """ Converts a sequence of tokens (string) in a single string. """
+        """Converts a sequence of tokens (string) in a single string."""
 
         def clean_up_tokenization(out_string):
-            """ Clean up a list of simple English tokenization artifacts
+            """Clean up a list of simple English tokenization artifacts
             like spaces before punctuations and abreviated forms.
             """
             out_string = (
@@ -306,14 +306,16 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if ((cp >= 0x4E00 and cp <= 0x9FFF)
+        if (
+            (cp >= 0x4E00 and cp <= 0x9FFF)
             or (cp >= 0x3400 and cp <= 0x4DBF)  #
             or (cp >= 0x20000 and cp <= 0x2A6DF)  #
             or (cp >= 0x2A700 and cp <= 0x2B73F)  #
             or (cp >= 0x2B740 and cp <= 0x2B81F)  #
             or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
             or (cp >= 0xF900 and cp <= 0xFAFF)
-            or (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+            or (cp >= 0x2F800 and cp <= 0x2FA1F)
+        ):  #
             return True
 
         return False

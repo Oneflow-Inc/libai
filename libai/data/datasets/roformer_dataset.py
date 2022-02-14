@@ -16,12 +16,13 @@ limitations under the License.
 主要参考 bert_dataset.py 以及 gpt_dataset.py
 """
 
-import oneflow as flow
 import collections
-import numpy as np
 
-from libai.tokenizer.tokenizer import get_tokenizer
+import numpy as np
+import oneflow as flow
+
 from libai.data.dataset_utils import get_samples_mapping, pad_and_convert_to_numpy
+from libai.tokenizer.tokenizer import get_tokenizer
 
 
 class RoformerDataset(flow.utils.data.Dataset):
@@ -330,8 +331,7 @@ def create_masked_lm_predictions_chinese(
         if not geometric_dist:
             n = np_rng.choice(
                 ngrams[: len(cand_index_set)],
-                p=pvals[: len(cand_index_set)]
-                / pvals[: len(cand_index_set)].sum(keepdims=True),
+                p=pvals[: len(cand_index_set)] / pvals[: len(cand_index_set)].sum(keepdims=True),
             )
         else:
             # Sampling "n" from the geometric distribution and clipping it to
@@ -373,9 +373,7 @@ def create_masked_lm_predictions_chinese(
                         masked_token = valid_tokens[index]
                     # 10% of the time, replace with random word
                     else:
-                        masked_token = vocab_id_list[
-                            np_rng.randint(0, len(vocab_id_list))
-                        ]
+                        masked_token = vocab_id_list[np_rng.randint(0, len(vocab_id_list))]
             elif masking_style == "t5":
                 masked_token = mask_id
             else:
@@ -385,9 +383,7 @@ def create_masked_lm_predictions_chinese(
             masked_lms.append(MaskedLmInstance(index=index, label=valid_tokens[index]))
 
         masked_spans.append(
-            MaskedLmInstance(
-                index=index_set, label=[valid_tokens[index] for index in index_set]
-            )
+            MaskedLmInstance(index=index_set, label=[valid_tokens[index] for index in index_set])
         )
 
     assert len(masked_lms) <= num_to_predict
@@ -409,8 +405,7 @@ def create_masked_lm_predictions_chinese(
 
             n = np.random.choice(
                 ngrams[: len(cand_index_set)],
-                p=pvals[: len(cand_index_set)]
-                / pvals[: len(cand_index_set)].sum(keepdims=True),
+                p=pvals[: len(cand_index_set)] / pvals[: len(cand_index_set)].sum(keepdims=True),
             )
             index_set = sum(cand_index_set[n - 1], [])
             n -= 1

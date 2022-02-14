@@ -2,20 +2,21 @@
 # from libai.layers.transformer_layer import TransformerLayer
 # from libai.layers.lm_logits import LMLogits
 import oneflow as flow
+
 from libai.config import configurable
 from libai.layers import (
+    Embedding,
     LayerNorm,
     LMLogits,
-    Embedding,
-    VocabEmbedding,
-    TransformerLayer,
     ParallelCrossEntropyLoss,
+    TransformerLayer,
+    VocabEmbedding,
     lm_logits,
 )
 from libai.models.build import MODEL_ARCH_REGISTRY
-from libai.models.utils import init_method_normal, scaled_init_method_normal, GraphBase
-
+from libai.models.utils import GraphBase, init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
+
 
 class T5ExtendedAttnMask(flow.nn.Module):
     def forward(self, attention_mask):
@@ -114,11 +115,9 @@ class T5Embedding(flow.nn.Module):
             embeddings = embeddings + self.tokentype_embedding(tokentype_ids)
         embeddings = self.embedding_dropout(embeddings)
         return embeddings
-        
 
 
 class T5Model(flow.nn.Module):
-
     @configurable
     def __init__(
         self,
@@ -138,7 +137,7 @@ class T5Model(flow.nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=True,
-        fp16=False
+        fp16=False,
     ) -> None:
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -176,15 +175,12 @@ class T5Model(flow.nn.Module):
             ]
         )
 
-        encoder_final_layernorm = LayerNorm(
-            (hidden_size, ), eps=layernorm_eps, layer_idx=-1
-        )
+        encoder_final_layernorm = LayerNorm((hidden_size,), eps=layernorm_eps, layer_idx=-1)
 
         # for loading weight of Megatron
         self.encoder = flow.nn.Sequential()
-        self.encoder.add_module('layers', encoder_layers)
-        self.encoder.add_module('final_layernorm', encoder_final_layernorm)
-
+        self.encoder.add_module("layers", encoder_layers)
+        self.encoder.add_module("final_layernorm", encoder_final_layernorm)
 
         decoder_layers = flow.nn.ModuleList(
             [
@@ -208,13 +204,11 @@ class T5Model(flow.nn.Module):
             ]
         )
 
-        decoder_final_layernorm = LayerNorm(
-            (hidden_size, ), eps=layernorm_eps, layer_idx=-1
-        )
+        decoder_final_layernorm = LayerNorm((hidden_size,), eps=layernorm_eps, layer_idx=-1)
 
         self.decoder = flow.nn.Sequential()
-        self.decoder.add_module('layers', decoder_layers)
-        self.decoder.add_module('final_layernorm', decoder_final_layernorm)
+        self.decoder.add_module("layers", decoder_layers)
+        self.decoder.add_module("final_layernorm", decoder_final_layernorm)
 
         self.lm_head = LMLogits(vocab_size, bias=True)
 
@@ -241,7 +235,7 @@ class T5Model(flow.nn.Module):
         }
 
     def forward(
-        self, 
+        self,
         encoder_input_ids,
         decoder_input_ids,
         encoder_attn_mask,
@@ -263,8 +257,8 @@ class T5Model(flow.nn.Module):
         dec_hidden_states = dec_embedding_output
         for layer in self.decoder.layers:
             dec_hidden_states = layer(
-                dec_hidden_states, 
-                decoder_attn_mask, 
+                dec_hidden_states,
+                decoder_attn_mask,
                 encoder_states,
                 encoder_decoder_attn_mask,
             )
@@ -288,14 +282,13 @@ class T5Loss(flow.nn.Module):
         return masked_lm_loss
 
 
-
 @MODEL_ARCH_REGISTRY.register()
 class T5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
         self.loss_func = T5Loss()
-    
+
     def forward(
         self,
         encoder_input_ids,
@@ -318,6 +311,7 @@ class T5ForPreTraining(flow.nn.Module):
 
         lm_loss = self.loss_func(logits, lm_labels, loss_mask)
         return lm_loss
+
 
 @GRAPH_REGISTRY.register()
 class T5ForPretrainingGraph(GraphBase):

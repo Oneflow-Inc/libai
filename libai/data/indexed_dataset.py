@@ -11,13 +11,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from functools import lru_cache
-import struct
+import logging
 import os
+import struct
+from functools import lru_cache
+from itertools import accumulate
+
 import numpy as np
 import oneflow as flow
-from itertools import accumulate
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -162,9 +163,7 @@ class IndexedDataset(flow.utils.data.Dataset):
 
     @staticmethod
     def exists(path):
-        return os.path.exists(index_file_path(path)) and os.path.exists(
-            data_file_path(path)
-        )
+        return os.path.exists(index_file_path(path)) and os.path.exists(data_file_path(path))
 
     @property
     def supports_prefetch(self):
@@ -368,9 +367,7 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
             logger.info("    warming up data mmap file...")
             _warmup_mmap_file(data_file_path(self._path))
         logger.info("    creating numpy buffer of mmap...")
-        self._bin_buffer_mmap = np.memmap(
-            data_file_path(self._path), mode="r", order="C"
-        )
+        self._bin_buffer_mmap = np.memmap(data_file_path(self._path), mode="r", order="C")
         logger.info("    creating memory view of numpy buffer...")
         self._bin_buffer = memoryview(self._bin_buffer_mmap)
 
@@ -405,7 +402,7 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
             return sents
 
     def get(self, idx, offset=0, length=None):
-        """ Retrieves a single item from the dataset with the option to only
+        """Retrieves a single item from the dataset with the option to only
         return a portion of the item.
 
         get(idx) is the same as [idx] but get() does not support slicing.
@@ -439,6 +436,4 @@ class MMapIndexedDataset(flow.utils.data.Dataset):
 
     @staticmethod
     def exists(path):
-        return os.path.exists(index_file_path(path)) and os.path.exists(
-            data_file_path(path)
-        )
+        return os.path.exists(index_file_path(path)) and os.path.exists(data_file_path(path))

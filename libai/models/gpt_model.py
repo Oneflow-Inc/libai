@@ -16,31 +16,34 @@
 import oneflow as flow
 from oneflow import nn
 from oneflow.nn import init
+
+from libai.config import configurable
 from libai.layers import (
-    VocabEmbedding,
     Embedding,
     LayerNorm,
     Linear,
-    TransformerLayer,
-    ParallelCrossEntropyLoss,
     LMLogits,
+    ParallelCrossEntropyLoss,
+    TransformerLayer,
+    VocabEmbedding,
 )
-from libai.utils import distributed as dist
-from libai.config import configurable
 from libai.models.build import MODEL_ARCH_REGISTRY
+from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
 
+
 class CasualMask(nn.Module):
-    """ Create a casual mask and combine it with the padding mask. It will be used in gpt model and T5 decoder.
-        When in T5 decoder, the argument `layer_idx` should be set to first decoder layer index.
+    """Create a casual mask and combine it with the padding mask. It will be used in gpt model and T5 decoder.
+    When in T5 decoder, the argument `layer_idx` should be set to first decoder layer index.
     """
+
     def __init__(self, max_positions=1024, *, layer_idx=0):
         super().__init__()
         self.mask = flow.tril(
             flow.ones(
-                (max_positions, max_positions), 
-                dtype=flow.int8, 
+                (max_positions, max_positions),
+                dtype=flow.int8,
                 placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 # sbp=[flow.sbp.broadcast, flow.sbp.broadcast]
@@ -52,17 +55,22 @@ class CasualMask(nn.Module):
         casual_mask = self.mask[:tgt_len, :tgt_len]
         if past_length > 0:
             # in case past_key_values are used, we need to add a prefix ones mask to casual mask
-            casual_mask = flow.cat([flow.ones(tgt_len, past_length, dtype=flow.int8), casual_mask], dim=-1)
-        casual_mask = casual_mask.unsqueeze(0).unsqueeze(1).expand(bsz, 1, tgt_len, tgt_len + past_length)
+            casual_mask = flow.cat(
+                [flow.ones(tgt_len, past_length, dtype=flow.int8), casual_mask], dim=-1
+            )
+        casual_mask = (
+            casual_mask.unsqueeze(0).unsqueeze(1).expand(bsz, 1, tgt_len, tgt_len + past_length)
+        )
         casual_mask = casual_mask.to_global(sbp=input_ids.sbp)
         if attention_mask is not None:
             assert attention_mask.dim() == 4, "please extend the attention mask first"
             casual_mask = casual_mask * attention_mask
         return casual_mask
 
+
 class GPTModel(nn.Module):
     """GPT-2 language model. The output of the forward method is logits.
-    
+
     Arguments:
         num_layers: number of layers.
         vocab_size: size of vocabulary.
@@ -83,20 +91,20 @@ class GPTModel(nn.Module):
 
     @configurable
     def __init__(
-        self, 
-        num_layers, 
-        vocab_size, 
-        hidden_size, 
-        ffn_hidden_size, 
-        num_attention_heads, 
-        max_seq_length=1024, 
-        embedding_dropout_prob=0., 
-        attention_dropout_prob=0., 
-        output_dropout_prob=0., 
-        layernorm_epsilon=1e-5, 
+        self,
+        num_layers,
+        vocab_size,
+        hidden_size,
+        ffn_hidden_size,
+        num_attention_heads,
+        max_seq_length=1024,
+        embedding_dropout_prob=0.0,
+        attention_dropout_prob=0.0,
+        output_dropout_prob=0.0,
+        layernorm_epsilon=1e-5,
         initializer_range=0.02,
         use_scaled_init_for_output_weights=True,
-        bias_gelu_fusion=False, 
+        bias_gelu_fusion=False,
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
@@ -110,20 +118,20 @@ class GPTModel(nn.Module):
             output_layer_init_method = init_method
 
         self.embeddings = GPTEmbedding(
-            vocab_size, 
-            hidden_size, 
-            max_seq_length, 
-            init_method=init_method, 
-            embedding_dropout_prob=embedding_dropout_prob
+            vocab_size,
+            hidden_size,
+            max_seq_length,
+            init_method=init_method,
+            embedding_dropout_prob=embedding_dropout_prob,
         )
-        
+
         self.casual_mask = CasualMask()
 
         self.transformer = Transformer(
-            num_layers, 
-            hidden_size, 
+            num_layers,
+            hidden_size,
             ffn_hidden_size,
-            num_attention_heads, 
+            num_attention_heads,
             attention_dropout_prob=attention_dropout_prob,
             output_dropout_prob=output_dropout_prob,
             layernorm_epsilon=layernorm_epsilon,
@@ -158,7 +166,6 @@ class GPTModel(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
         }
 
-
     def forward(self, input_ids, past_key_values, use_cache):
         input_ids_shape = input_ids.size()
         past_length = past_key_values[0].size(2) if past_key_values is not None else 0
@@ -167,10 +174,12 @@ class GPTModel(nn.Module):
 
         attention_mask = self.casual_mask(input_ids, past_length=past_length)
 
-        transformer_output = self.transformer(input_embeds, attention_mask, past_key_values, use_cache)
+        transformer_output = self.transformer(
+            input_embeds, attention_mask, past_key_values, use_cache
+        )
         if use_cache:
             transformer_output, presents = transformer_output
-        
+
         output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
 
         if use_cache:
@@ -180,12 +189,13 @@ class GPTModel(nn.Module):
 
 class GPTEmbedding(nn.Module):
     def __init__(
-        self, 
-        vocab_size, 
-        hidden_size, 
-        max_seq_length, 
-        init_method=init.xavier_normal_, 
-        embedding_dropout_prob=0.):
+        self,
+        vocab_size,
+        hidden_size,
+        max_seq_length,
+        init_method=init.xavier_normal_,
+        embedding_dropout_prob=0.0,
+    ):
         super().__init__()
         self.token_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
         self.position_embeddings = Embedding(max_seq_length, hidden_size, init_method=init_method)
@@ -197,11 +207,11 @@ class GPTEmbedding(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         ).unsqueeze(0)
-    
+
     def forward(self, input_ids, past_length=0):
         bsz, seq_length = input_ids.size()
 
-        position_ids = self.position_ids[:, past_length: past_length + seq_length]
+        position_ids = self.position_ids[:, past_length : past_length + seq_length]
         position_ids = position_ids.expand_as(input_ids).to_global(sbp=input_ids.sbp)
 
         token_embeds = self.token_embeddings(input_ids)
@@ -213,24 +223,24 @@ class GPTEmbedding(nn.Module):
 
 class Transformer(nn.Module):
     def __init__(
-        self, 
-        num_layers, 
-        hidden_size, 
-        ffn_hidden_size, 
-        num_attention_heads, 
-        attention_dropout_prob=0., 
-        output_dropout_prob=0., 
-        layernorm_epsilon=1e-5, 
+        self,
+        num_layers,
+        hidden_size,
+        ffn_hidden_size,
+        num_attention_heads,
+        attention_dropout_prob=0.0,
+        output_dropout_prob=0.0,
+        layernorm_epsilon=1e-5,
         init_method=init.xavier_normal_,
         output_layer_init_method=None,
         bias_gelu_fusion=False,
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
-        apply_query_key_layer_scaling=False
+        apply_query_key_layer_scaling=False,
     ):
         super().__init__()
         self.num_layers = num_layers
-     
+
         def build_layer(layer_number):
             return TransformerLayer(
                 hidden_size,
@@ -248,11 +258,8 @@ class Transformer(nn.Module):
                 layer_idx=layer_number,
             )
 
-        self.layers = nn.ModuleList(
-            [build_layer(i) for i in range(self.num_layers)]
-        )
+        self.layers = nn.ModuleList([build_layer(i) for i in range(self.num_layers)])
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
-
 
     def forward(self, hidden_states, attention_mask, past_key_values=None, use_cache=False):
         # hidden_states shape: (batch_size, seq_length, hidden_size)
@@ -263,17 +270,19 @@ class Transformer(nn.Module):
 
         for i, (layer, past) in enumerate(zip(self.layers, past_key_values)):
             if self.training:
-                hidden_states = layer(hidden_states, attention_mask)     
+                hidden_states = layer(hidden_states, attention_mask)
             else:
-                hidden_states = layer(hidden_states, attention_mask, past_key_value=past, use_cache=use_cache)
+                hidden_states = layer(
+                    hidden_states, attention_mask, past_key_value=past, use_cache=use_cache
+                )
                 if use_cache:
                     hidden_states, present = hidden_states
                     presents.append(present)
 
-        output = self.layernorm_f(hidden_states)    
+        output = self.layernorm_f(hidden_states)
         if use_cache:
             output = (output, presents)
-        
+
         return output
 
 
@@ -285,12 +294,11 @@ class GPTLoss(flow.nn.Module):
     def forward(self, logits, lm_labels, loss_mask):
         lm_loss = self.lm_loss(logits, lm_labels)
         loss_mask = loss_mask.float()
-        denominator = loss_mask.sum().to_consistent(
+        denominator = loss_mask.sum().to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
-        return masked_lm_loss
-
+        return {"masked_lm_loss": masked_lm_loss}
 
 
 @MODEL_ARCH_REGISTRY.register()
@@ -299,19 +307,18 @@ class GPTForPreTraining(flow.nn.Module):
         super().__init__()
         self.GPT_model = GPTModel(cfg)
         self.loss_func = GPTLoss()
-    
+
     def forward(
         self,
-        encoder_input_ids,
-        decoder_input_ids,
-        encoder_attn_mask,
-        decoder_attn_mask,
-        encoder_decoder_attn_mask,
+        input_ids,
         lm_labels=None,
         loss_mask=None,
     ):
+        import ipdb
+
+        ipdb.set_trace()
         logits = self.GPT_model(
-            encoder_input_ids,
+            input_ids,
             None,
             False,
         )

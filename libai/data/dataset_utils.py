@@ -13,16 +13,17 @@ limitations under the License.
 
 # copy from: https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/data/dataset_utils.py
 
-import re
 import collections
+import logging
 import os
+import re
 import time
 
-import logging
 import numpy as np
 import oneflow as flow
-from libai.tokenizer.tokenizer import get_tokenizer
+
 from libai.data.indexed_dataset import make_dataset as make_indexed_dataset
+from libai.tokenizer.tokenizer import get_tokenizer
 from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
@@ -127,9 +128,7 @@ def get_samples_mapping(
     logger.info(" > loading indexed mapping from {}".format(indexmap_filename))
     start_time = time.time()
     samples_mapping = np.load(indexmap_filename, allow_pickle=True, mmap_mode="r")
-    logger.info(
-        "    loaded indexed file in {:3.3f} seconds".format(time.time() - start_time)
-    )
+    logger.info("    loaded indexed file in {:3.3f} seconds".format(time.time() - start_time))
     logger.info("    total number of samples: {}".format(samples_mapping.shape[0]))
 
     return samples_mapping
@@ -241,9 +240,7 @@ def _build_train_valid_test_datasets(
         logger.info("    {}:".format(name))
         logger.info(
             "     document indices in [{}, {}) total of {} "
-            "documents".format(
-                splits[index], splits[index + 1], splits[index + 1] - splits[index]
-            )
+            "documents".format(splits[index], splits[index + 1], splits[index + 1] - splits[index])
         )
         start_index = indexed_dataset.doc_idx[splits[index]]
         end_index = indexed_dataset.doc_idx[splits[index + 1]]
@@ -302,9 +299,7 @@ def _build_train_valid_test_datasets(
                     masked_lm_prob=masked_lm_prob,
                     short_seq_prob=short_seq_prob,
                     binary_head=binary_head,
-                    masking_style="bert"
-                    if dataset_type == DSET_TYPE_BERT
-                    else "bert-cn-wwm",
+                    masking_style="bert" if dataset_type == DSET_TYPE_BERT else "bert-cn-wwm",
                     **kwargs,
                 )
             elif dataset_type == DSET_TYPE_ROFORMER:
@@ -320,7 +315,7 @@ def _build_train_valid_test_datasets(
                     masked_lm_prob=masked_lm_prob,
                     max_seq_length_dec=max_seq_length_dec,
                     short_seq_prob=short_seq_prob,
-                    **kwargs
+                    **kwargs,
                 )
             else:
                 raise NotImplementedError("Dataset type not fully implemented.")
@@ -347,21 +342,18 @@ def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
     indexed_dataset = make_indexed_dataset(data_prefix, data_impl, skip_warmup)
     assert indexed_dataset.sizes.shape[0] == indexed_dataset.doc_idx[-1]
     logger.info(
-        " > finished creating indexed dataset in {:4f} "
-        "seconds".format(time.time() - start_time)
+        " > finished creating indexed dataset in {:4f} " "seconds".format(time.time() - start_time)
     )
 
     logger.info(" > indexed dataset stats:")
-    logger.info(
-        "    number of documents: {}".format(indexed_dataset.doc_idx.shape[0] - 1)
-    )
+    logger.info("    number of documents: {}".format(indexed_dataset.doc_idx.shape[0] - 1))
     logger.info("    number of sentences: {}".format(indexed_dataset.sizes.shape[0]))
 
     return indexed_dataset
 
 
 def get_train_valid_test_split_(splits_string, size):
-    """ Get dataset splits from comma or '/' separated string list."""
+    """Get dataset splits from comma or '/' separated string list."""
 
     splits = []
     if splits_string.find(",") != -1:
@@ -570,9 +562,7 @@ def create_masked_lm_predictions(
     if masked_lm_prob == 0:
         return (output_tokens, masked_lm_positions, masked_lm_labels, token_boundary)
 
-    num_to_predict = min(
-        max_predictions_per_seq, max(1, int(round(len(tokens) * masked_lm_prob)))
-    )
+    num_to_predict = min(max_predictions_per_seq, max(1, int(round(len(tokens) * masked_lm_prob))))
 
     ngrams = np.arange(1, max_ngrams + 1, dtype=np.int64)
     if not geometric_dist:
@@ -609,8 +599,7 @@ def create_masked_lm_predictions(
         if not geometric_dist:
             n = np_rng.choice(
                 ngrams[: len(cand_index_set)],
-                p=pvals[: len(cand_index_set)]
-                / pvals[: len(cand_index_set)].sum(keepdims=True),
+                p=pvals[: len(cand_index_set)] / pvals[: len(cand_index_set)].sum(keepdims=True),
             )
         else:
             # Sampling "n" from the geometric distribution and clipping it to
@@ -652,9 +641,7 @@ def create_masked_lm_predictions(
                         masked_token = tokens[index]
                     # 10% of the time, replace with random word
                     else:
-                        masked_token = vocab_id_list[
-                            np_rng.randint(0, len(vocab_id_list))
-                        ]
+                        masked_token = vocab_id_list[np_rng.randint(0, len(vocab_id_list))]
             elif masking_style == "bert-cn-wwm":
                 # 80% of the time, replace with [MASK]
                 tokenizer = get_tokenizer()
@@ -668,15 +655,11 @@ def create_masked_lm_predictions(
                         token = tokenizer.tokenizer.convert_ids_to_tokens([token_id])[0]
                         if len(re.findall("##[\u4E00-\u9FA5]", token)) > 0:
                             token = token[2:]
-                        new_token_id = tokenizer.tokenizer.convert_tokens_to_ids(
-                            [token]
-                        )[0]
+                        new_token_id = tokenizer.tokenizer.convert_tokens_to_ids([token])[0]
                         masked_token = new_token_id
                     # 10% of the time, replace with random word
                     else:
-                        masked_token = vocab_id_list[
-                            np_rng.randint(0, len(vocab_id_list))
-                        ]
+                        masked_token = vocab_id_list[np_rng.randint(0, len(vocab_id_list))]
             elif masking_style == "t5":
                 masked_token = mask_id
             else:
@@ -686,9 +669,7 @@ def create_masked_lm_predictions(
             masked_lms.append(MaskedLmInstance(index=index, label=tokens[index]))
 
         masked_spans.append(
-            MaskedLmInstance(
-                index=index_set, label=[tokens[index] for index in index_set]
-            )
+            MaskedLmInstance(index=index_set, label=[tokens[index] for index in index_set])
         )
 
     assert len(masked_lms) <= num_to_predict
@@ -710,8 +691,7 @@ def create_masked_lm_predictions(
 
             n = np.random.choice(
                 ngrams[: len(cand_index_set)],
-                p=pvals[: len(cand_index_set)]
-                / pvals[: len(cand_index_set)].sum(keepdims=True),
+                p=pvals[: len(cand_index_set)] / pvals[: len(cand_index_set)].sum(keepdims=True),
             )
             index_set = sum(cand_index_set[n - 1], [])
             n -= 1

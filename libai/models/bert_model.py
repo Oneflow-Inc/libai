@@ -32,8 +32,6 @@ from libai.utils import distributed as dist
 from .build import MODEL_ARCH_REGISTRY
 from .utils import init_method_normal, scaled_init_method_normal
 
-from .build import MODEL_ARCH_REGISTRY
-
 
 class BertExtendedAttnMask(nn.Module):
     def forward(self, attention_mask):

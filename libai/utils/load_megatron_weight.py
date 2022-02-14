@@ -17,10 +17,8 @@ import logging
 
 import oneflow as flow
 import torch
-from libai.utils.checkpoint import (
-    get_missing_parameters_message,
-    get_unexpected_parameters_message,
-)
+
+from libai.utils.checkpoint import get_missing_parameters_message, get_unexpected_parameters_message
 
 logger = logging.getLogger(__name__)
 
@@ -62,17 +60,11 @@ def change_megatron_key(state_dict):
 
     # LM head.
     lm_head = state_dict["lm_head"]
-    of_state_dict["cls.predictions.dense.weight"] = convert_tensor(
-        lm_head["dense.weight"]
-    )
+    of_state_dict["cls.predictions.dense.weight"] = convert_tensor(lm_head["dense.weight"])
     of_state_dict["cls.predictions.dense.bias"] = convert_tensor(lm_head["dense.bias"])
 
-    of_state_dict["cls.predictions.layernorm.weight"] = convert_tensor(
-        lm_head["layernorm.weight"]
-    )
-    of_state_dict["cls.predictions.layernorm.bias"] = convert_tensor(
-        lm_head["layernorm.bias"]
-    )
+    of_state_dict["cls.predictions.layernorm.weight"] = convert_tensor(lm_head["layernorm.weight"])
+    of_state_dict["cls.predictions.layernorm.bias"] = convert_tensor(lm_head["layernorm.bias"])
 
     of_state_dict["lm_logits.bias"] = convert_tensor(lm_head["bias"])
 
@@ -85,9 +77,7 @@ def change_megatron_key(state_dict):
 
 
 def load_tensor(tensor_lhs, tensor_rhs):
-    tensor_rhs = flow.to_consistent(
-        tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp
-    )
+    tensor_rhs = flow.to_consistent(tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp)
     tensor_lhs.copy_(tensor_rhs)
 
 

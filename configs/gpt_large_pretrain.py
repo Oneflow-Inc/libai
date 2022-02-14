@@ -7,7 +7,7 @@ from .common.data.gpt_dataset import dataloader, tokenization
 from .common.models.graph import graph
 
 # Bert-large model config
-model.cfg.num_attention_heads = 12
+model.cfg.num_attention_heads = 16
 model.cfg.hidden_size = 384
 model.cfg.hidden_layers = 6
 
@@ -15,3 +15,4 @@ train.train_micro_batch_size = 16
 train.recompute_grad.enabled = True
 train.output_dir = "./demo_output"
 
+# graph.enabled=False

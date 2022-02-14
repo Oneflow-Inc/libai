@@ -4,7 +4,10 @@ from libai.config import LazyCall
 
 tokenizer = dict(
     tokenizer_name="BertTokenizer",
-    tokenizer_cfg=dict(vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt", do_lower_case=True,),
+    tokenizer_cfg=dict(
+        vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
+        do_lower_case=True,
+    ),
     append_eod=False,
 )
 

@@ -18,13 +18,15 @@ import omegaconf
 from oneflow.utils.data import DataLoader
 from oneflow.utils.data.dataset import ConcatDataset
 
+from libai.data.datasets.megatron_gpt_dataset import (
+    build_train_valid_test_datasets as build_megatron_datasets,
+)
 from libai.utils import distributed as dist
 
 from .data_utils import split_ds
 from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
-from libai.data.datasets.megatron_gpt_dataset import build_train_valid_test_datasets as build_megatron_datasets
 
 def build_megatron_gpt_train_val_test_loader(
     train_val_test_datasets,
@@ -34,6 +36,8 @@ def build_megatron_gpt_train_val_test_loader(
     sampler=None,
     num_workers=4,
     consumed_samples=0,
+    collate_fn=None,
+    **kwargs,
 ):
     train_dataset, val_dataset, test_dataset = train_val_test_datasets
     # train_dataset, val_dataset, test_dataset = build_megatron_datasets(
@@ -80,7 +84,6 @@ def build_megatron_gpt_train_val_test_loader(
     return train_loader, valid_loader, test_loader
 
 
-
 def build_nlp_train_val_test_loader(
     dataset,
     splits,
@@ -117,8 +120,9 @@ def build_nlp_train_val_test_loader(
     train_dataset = dataset_mixer(train_datasets)
     val_dataset = dataset_mixer(val_datasets)
     test_dataset = dataset_mixer(test_datasets)
-    import ipdb; ipdb.set_trace()
+    import ipdb
 
+    ipdb.set_trace()
     # train_dataset, val_dataset, test_dataset = build_train_valid_test_datasets(
     #     data_prefix=1,
     #     data_impl=1,
@@ -173,7 +177,7 @@ def build_nlp_train_loader(
     seed=0,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
-    **kwargs
+    **kwargs,
 ):
     """
     Args:
@@ -252,7 +256,7 @@ def build_image_train_loader(
     collate_fn=None,
     dataset_mixer=ConcatDataset,
     mixup_func=None,
-    **kwargs
+    **kwargs,
 ):
     """
     Args:
@@ -290,13 +294,15 @@ def build_image_train_loader(
     # Bind up mixup_func to dataloader, and this will be used in Trainer.step
     dataloader.mixup_func = mixup_func
 
+
 def build_train_valid_test_data_iterators(cfg):
     """通过外部定义的build_train_valid_test_datasets_provider函数，
-        1. 先计算train_val_test_num_samples；
-        2. 然后传入该函数中生成数据集；
-        3. 由数据集生成iterator"""
+    1. 先计算train_val_test_num_samples；
+    2. 然后传入该函数中生成数据集；
+    3. 由数据集生成iterator"""
 
     (train_dataloader, valid_dataloader, test_dataloader) = (None, None, None)
+
 
 def build_image_test_loader(
     dataset, test_batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None, **kwargs
@@ -356,30 +362,25 @@ def build_image_test_loader(
 
     if train_dataloader is not None:
         train_data_iterator = (
-            iter(train_dataloader)
-            if dl_type == "single"
-            else iter(cyclic_iter(train_dataloader))
+            iter(train_dataloader) if dl_type == "single" else iter(cyclic_iter(train_dataloader))
         )
     else:
         train_data_iterator = None
 
     if valid_dataloader is not None:
         valid_data_iterator = (
-            iter(valid_dataloader)
-            if dl_type == "single"
-            else iter(cyclic_iter(valid_dataloader))
+            iter(valid_dataloader) if dl_type == "single" else iter(cyclic_iter(valid_dataloader))
         )
     else:
         valid_data_iterator = None
 
     if test_dataloader is not None:
         test_data_iterator = (
-            iter(test_dataloader)
-            if dl_type == "single"
-            else iter(cyclic_iter(test_dataloader))
+            iter(test_dataloader) if dl_type == "single" else iter(cyclic_iter(test_dataloader))
         )
     else:
         test_data_iterator = None
+
 
 def trivial_batch_collator(batch):
     assert isinstance(batch[0], Instance), "batch[0] must be `instance` for trivial batch collator"

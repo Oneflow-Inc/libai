@@ -249,7 +249,6 @@ class DefaultTrainer(TrainerBase):
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
-        self.model.t5_model.load_state_dict(flow.load('tests/t5_test/flow_t5.f', consistent_src_rank=0))
         self.model.eval()
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)

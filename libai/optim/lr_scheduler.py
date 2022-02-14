@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+
 from oneflow.nn.optimizer.lr_scheduler import LrScheduler
 
 
@@ -36,8 +37,8 @@ class PolynomialLR(LrScheduler):
     For example:
         .. code-block:: python
             import oneflow as flow
-           
-            ... 
+
+            ...
             polynomial_scheduler = flow.optimizer.lr_scheduler.PolynomialScheduler(optimizer,
                                                                            steps=5,
                                                                            end_learning_rate=0.00001,
@@ -72,8 +73,7 @@ class PolynomialLR(LrScheduler):
         else:
             cur_batch = min(cur_batch, decay_batch)
         return [
-            (base_lr - self.end_learning_rate)
-            * ((1 - cur_batch / decay_batch) ** (self.power))
+            (base_lr - self.end_learning_rate) * ((1 - cur_batch / decay_batch) ** (self.power))
             + self.end_learning_rate
             for base_lr in self.base_lrs
         ]
