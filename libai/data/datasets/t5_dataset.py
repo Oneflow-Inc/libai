@@ -46,6 +46,7 @@ class T5Dataset(flow.utils.data.Dataset):
         data_prefix,
         indexed_dataset,
         max_seq_length=512,
+        max_seq_length_dec=128,
         mask_lm_prob=0.15,
         max_preds_per_seq=None,
         short_seq_prob=0.0,
@@ -54,6 +55,7 @@ class T5Dataset(flow.utils.data.Dataset):
         self.seed = seed
         self.mask_lm_prob = mask_lm_prob
         self.max_seq_length = max_seq_length
+        self.max_seq_length_dec = max_seq_length_dec
         self.short_seq_prob = short_seq_prob
         if max_preds_per_seq is None:
             max_preds_per_seq = math.ceil(max_seq_length * mask_lm_prob / 10) * 10
@@ -70,6 +72,8 @@ class T5Dataset(flow.utils.data.Dataset):
         self.bos_id = tokenizer.bos_token_id
         self.eos_id = tokenizer.eos_token_id
         self.pad_id = tokenizer.pad_token_id
+        self.cls_id = tokenizer.cls_token_id
+        self.sep_id = tokenizer.sep_token_id
         self.special_tokens = tokenizer.additional_special_tokens_ids
 
     def __len__(self):
@@ -83,6 +87,7 @@ class T5Dataset(flow.utils.data.Dataset):
 
         sents = self.dataset[idx]
         tokens = [token for sent in sents for token in sent]
+        tokens = tokens[: self.max_seq_length - 2]
 
         (
             tokens,
@@ -97,15 +102,17 @@ class T5Dataset(flow.utils.data.Dataset):
             labels,
             encoder_padding_mask,
             decoder_padding_mask,
+            encoder_decoder_padding_mask,
             loss_mask,
         ) = self.pad_and_convert_to_numpy(tokens, masked_spans)
 
         sample = Instance(
-            encoder_input=DistTensorData(encoder_input),
-            decoder_input=DistTensorData(decoder_input),
-            encoder_padding_mask=DistTensorData(encoder_padding_mask),
-            decoder_padding_mask=DistTensorData(decoder_padding_mask),
-            labels=DistTensorData(labels, placement_idx=-1),
+            encoder_input_ids=DistTensorData(encoder_input),
+            decoder_input_ids=DistTensorData(decoder_input),
+            encoder_attn_mask=DistTensorData(encoder_padding_mask),
+            decoder_attn_mask=DistTensorData(decoder_padding_mask),
+            encoder_decoder_attn_mask=DistTensorData(encoder_decoder_padding_mask),
+            lm_labels=DistTensorData(labels, placement_idx=-1),
             loss_mask=DistTensorData(loss_mask, placement_idx=-1),
         )
         return sample
@@ -286,7 +293,7 @@ class T5Dataset(flow.utils.data.Dataset):
         encoder_input = flow.tensor(encoder_input, dtype=flow.long)
 
         num_tokens_dec = len(decoder_input)
-        num_pad_dec = self.max_seq_length - num_tokens_dec
+        num_pad_dec = self.max_seq_length_dec - num_tokens_dec
         assert num_pad_dec >= 0
 
         # tokens and token types
@@ -300,6 +307,11 @@ class T5Dataset(flow.utils.data.Dataset):
             [1] * num_tokens_dec + [0] * num_pad_dec, dtype=flow.long
         )
 
+        encoder_padding_mask = self.make_attention_mask(encoder_input, encoder_input)
+        decoder_padding_mask = self.make_attention_mask(decoder_input, decoder_input)
+        encoder_decoder_padding_mask = self.make_attention_mask(decoder_input, encoder_input)
+        decoder_padding_mask = decoder_padding_mask * self.make_history_mask(decoder_input)
+
         # labels and loss mask
         labels = flow.tensor(decoder_output + [-1] * num_pad_dec, dtype=flow.long)
         loss_mask = [1] * num_tokens_dec + [0] * num_pad_dec
@@ -311,8 +323,32 @@ class T5Dataset(flow.utils.data.Dataset):
             labels,
             encoder_padding_mask,
             decoder_padding_mask,
+            encoder_decoder_padding_mask,
             loss_mask,
         )
+
+    def make_attention_mask(self, source_block, target_block):
+        """
+        Returns a 2-dimensional (2-D) attention mask
+        :param source_block: 1-D array
+        :param target_block: 1-D array
+        """
+        mask = (target_block[None, :] >= 1) * (source_block[:, None] >= 1)
+        mask = mask.to(flow.long)
+        # (source_length, target_length)
+        return mask
+
+    def make_history_mask(self, block):
+        length = block.shape[0]
+        arange = flow.arange(length)
+        history_mask = (
+            arange[
+                None,
+            ]
+            <= arange[:, None]
+        )
+        history_mask = history_mask.to(flow.long)
+        return history_mask
 
     @property
     def supports_prefetch(self):
