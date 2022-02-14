@@ -19,4 +19,4 @@ from enum import Enum
 class ModelType(Enum):
     encoder_only = "encoder"
     decoder_only = "decoder"
-    encoder_decoder = "both"
+    encoder_decoder = "encoder_decoder"

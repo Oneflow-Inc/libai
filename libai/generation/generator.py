@@ -178,7 +178,7 @@ class Generator(nn.Module):
         return beam_scorer
 
     def _prepare_model_inputs(self, input_ids, **model_kwargs):
-        if "past_key_values" in model_kwargs and model_kwargs["past_key_values"] is not None:
+        if model_kwargs.get("past_key_values", None) is not None:
             input_ids = input_ids[:, -1:]
         model_inputs = {}
         model_inputs["input_ids"] = input_ids
@@ -199,7 +199,7 @@ class Generator(nn.Module):
         )
         input_ids = input_ids.index_select(0, expanded_return_idx.to(input_ids.device))
 
-        if "attention_mask" in model_kwargs:
+        if model_kwargs.get("attention_mask", None) is not None:
             attention_mask = model_kwargs["attention_mask"]
             model_kwargs["attention_mask"] = attention_mask.index_select(0, expanded_return_idx)
 
@@ -219,7 +219,7 @@ class Generator(nn.Module):
         if len(outputs) > 1:
             model_kwargs["past_key_values"] = outputs[1]
 
-        if "attention_mask" in model_kwargs:
+        if model_kwargs.get("attention_mask", None) is not None:
             attention_mask = model_kwargs["attention_mask"]
             model_kwargs["attention_mask"] = flow.cat(
                 [attention_mask, attention_mask.new_ones((attention_mask.shape[0], 1))], dim=-1
@@ -227,14 +227,12 @@ class Generator(nn.Module):
         return model_kwargs
 
     def greedy_search(self, input_ids, **model_kwargs):
-        is_encoder_decoder = self.model.model_type == ModelType.encoder_decoder
-
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         cur_len = input_ids.shape[-1]
 
         while True:
             model_inputs = self._prepare_model_inputs(input_ids, **model_kwargs)
-            if is_encoder_decoder:
+            if self.model.model_type == ModelType.encoder_decoder:
                 outputs = self.model.decoder(**model_inputs)
             else:
                 outputs = self.model(**model_inputs)
@@ -268,8 +266,6 @@ class Generator(nn.Module):
         return input_ids
 
     def sample(self, input_ids, **model_kwargs):
-        is_encoder_decoder = self.model.model_type == ModelType.encoder_decoder
-
         input_ids, model_kwargs = self._expand_inputs(
             input_ids,
             expand_size=self.num_return_sequences,
@@ -281,7 +277,7 @@ class Generator(nn.Module):
 
         while True:
             model_inputs = self._prepare_model_inputs(input_ids, **model_kwargs)
-            if is_encoder_decoder:
+            if self.model.model_type == ModelType.encoder_decoder:
                 outputs = self.model.decoder(**model_inputs)
             else:
                 outputs = self.model(**model_inputs)
@@ -316,7 +312,6 @@ class Generator(nn.Module):
         return input_ids
 
     def beam_search(self, input_ids, **model_kwargs):
-        is_encoder_decoder = self.model.model_type == ModelType.encoder_decoder
         batch_size, cur_len = input_ids.shape
 
         beam_scorer = self._prepare_beam_search_scorer(batch_size)
@@ -334,7 +329,7 @@ class Generator(nn.Module):
 
         while True:
             model_inputs = self._prepare_model_inputs(input_ids, **model_kwargs)
-            if is_encoder_decoder:
+            if self.model.model_type == ModelType.encoder_decoder:
                 outputs = self.model.decoder(**model_inputs)
             else:
                 outputs = self.model(**model_inputs)
@@ -398,7 +393,6 @@ class Generator(nn.Module):
         return sequence_outputs["sequences"]
 
     def beam_sample(self, input_ids, **model_kwargs):
-        is_encoder_decoder = self.model.model_type == ModelType.encoder_decoder
         batch_size, cur_len = input_ids.shape
 
         beam_scorer = self._prepare_beam_search_scorer(batch_size)
@@ -416,7 +410,7 @@ class Generator(nn.Module):
 
         while True:
             model_inputs = self._prepare_model_inputs(input_ids, **model_kwargs)
-            if is_encoder_decoder:
+            if self.model.model_type == ModelType.encoder_decoder:
                 outputs = self.model.decoder(**model_inputs)
             else:
                 outputs = self.model(**model_inputs)
@@ -483,7 +477,6 @@ class Generator(nn.Module):
         return sequence_outputs["sequences"]
 
     def group_beam_search(self, input_ids, **model_kwargs):
-        is_encoder_decoder = self.model.model_type == ModelType.encoder_decoder
         batch_size, cur_len = input_ids.shape
 
         beam_scorer = self._prepare_beam_search_scorer(batch_size)
@@ -513,7 +506,7 @@ class Generator(nn.Module):
             )
 
             model_inputs = self._prepare_model_inputs(input_ids, **model_kwargs)
-            if is_encoder_decoder:
+            if self.model.model_type == ModelType.encoder_decoder:
                 outputs = self.model.decoder(**model_inputs)
             else:
                 outputs = self.model(**model_inputs)
