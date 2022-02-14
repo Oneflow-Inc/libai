@@ -39,7 +39,7 @@ LiBai is an open-source large-scale model pretraining toolbox with efficient par
 
 - **Varied training techniques**
 
-    Libai provides some out-of-the-box training techniques, e.g. Distributed Training, Mixed Precision Training, Activation Checkpointing, Recomputation, Gradient Accumulation, and Zero Redundancy Optimizer(ZeRO).
+    LiBai provides some out-of-the-box training techniques, e.g. Distributed Training, Mixed Precision Training, Activation Checkpointing, Recomputation, Gradient Accumulation, and Zero Redundancy Optimizer(ZeRO).
 
 - **Support for both CV and NLP tasks**
 
@@ -57,26 +57,27 @@ LiBai is an open-source large-scale model pretraining toolbox with efficient par
 </details>
 
 ## Installation
-
+Please refer to [Getting Started.md](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for installation
 
 ## Getting Started
-
+Please refer to [Getting Started.md](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for basic usage of LiBai
 
 ## Documentation
-Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for full API documentation and tutorials.
+Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for full API documentation and tutorials
 
 ## ChangeLog
 
 **Beta 0.1.0** was released in 15/2/2022:
-- support deit training on imagenet
-- ...
+- Support DeiT training on ImageNet
+- Support BERT pretraining
 
 Please refer to [changelog.md](./changelog.md) for details and release history.
 
 ## Contributing
-
-## Acknowledgement
+We appreciate all contributions to improve LiBai. Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for the contributing guideline.
 
 ## License
+This project is released under the [Apache 2.0 license](LICENSE).
 
 ## Citation
+If you find this project useful for your research, please consider cite:
