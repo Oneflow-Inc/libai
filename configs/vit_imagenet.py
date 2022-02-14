@@ -3,7 +3,7 @@ from .common.models.vit.vit_tiny_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
-from .common.data.imagenet import dataloader
+from .common.data.cifar100 import dataloader
 
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
@@ -12,8 +12,8 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 
-dataloader.train.dataset[0].root = "/dataset/imagenet/extract"
-dataloader.test[0].dataset.root = "/dataset/imagenet/extract"
+dataloader.train.dataset[0].root = "./"
+dataloader.test[0].dataset.root = "./"
 
 # Add MixupFunc
 dataloader.train.mixup_func = LazyCall(Mixup)(
