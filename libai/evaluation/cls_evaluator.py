@@ -57,7 +57,7 @@ class ClsEvaluator(DatasetEvaluator):
 
     def process(self, inputs, outputs):
         pred_logits = outputs["prediction_scores"]
-        labels = inputs["label"]
+        labels = inputs["labels"]
 
         # measure accuracy
         acc1 = accuracy(pred_logits, labels, topk=1)
