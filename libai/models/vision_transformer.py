@@ -311,7 +311,7 @@ class VisionTransformer(nn.Module):
         else:
             return x[:, 0], x[:, 1]
 
-    def forward(self, images, label=None):
+    def forward(self, images, labels=None):
         x = self.forward_features(images)
         # classification head
         if self.head_dist is not None:
@@ -324,8 +324,8 @@ class VisionTransformer(nn.Module):
         else:
             x = self.head(x)
 
-        if label is not None and self.training:
-            losses = self.loss_func(x, label)
+        if labels is not None and self.training:
+            losses = self.loss_func(x, labels)
             return {"losses": losses}
         else:
             return {"prediction_scores": x}

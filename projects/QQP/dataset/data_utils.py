@@ -42,7 +42,7 @@ def build_sample(ids, types, paddings, label, unique_id):
         model_input=DistTensorData(flow.tensor(ids_np, dtype=flow.long), placement_idx=0),
         attention_mask=DistTensorData(flow.tensor(paddings_np, dtype=flow.long), placement_idx=0),
         tokentype_ids=DistTensorData(flow.tensor(types_np, dtype=flow.long), placement_idx=0),
-        label=DistTensorData(flow.tensor(label, dtype=flow.long), placement_idx=-1),
+        labels=DistTensorData(flow.tensor(label, dtype=flow.long), placement_idx=-1),
     )
 
     return sample
