@@ -81,3 +81,12 @@ This project is released under the [Apache 2.0 license](LICENSE).
 
 ## Citation
 If you find this project useful for your research, please consider cite:
+```BibTeX
+@misc{of2021libai,
+  author =       {Xingyu Liao and Peng Cheng and Tianhe Ren and Depeng Liang and
+                  Kai Dang and Yi Wang and Xiaoyu Xu},
+  title =        {LiBai},
+  howpublished = {\url{https://github.com/Oneflow-Inc/libai}},
+  year =         {2021}
+}
+```

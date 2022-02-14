@@ -79,6 +79,14 @@ LiBai是一个基于OneFlow的大规模预训练开源工具箱, 主分支代码
 该项目开源自[Apache 2.0 license](LICENSE).
 
 ## Citation
-如果LiBai对于你的研究项目有帮助的话, 请参考如下的 bibtex 引用 LiBai:
-
+如果LiBai对于你的研究项目有帮助的话, 请参考如下的 BibTex 引用 LiBai:
+```BibTeX
+@misc{of2021libai,
+  author =       {Xingyu Liao and Peng Cheng and Tianhe Ren and Depeng Liang and
+                  Kai Dang and Yi Wang and Xiaoyu Xu},
+  title =        {LiBai},
+  howpublished = {\url{https://github.com/Oneflow-Inc/libai}},
+  year =         {2021}
+}
+```
 
