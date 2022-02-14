@@ -72,10 +72,6 @@ Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for fu
 
 Please refer to [changelog.md]() for details and release history.
 
-## Supported Projects
-- [x] 3D Parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
-- [x] 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for Image Classification.
-
 ## License
 
 ## Contributing
