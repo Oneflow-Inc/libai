@@ -464,10 +464,16 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training, validating, testing set")
-        # Single GPU batch_size
-        cfg.dataloader.train.train_batch_size = (
-            cfg.train.train_micro_batch_size * cfg.train.num_accumulation_steps
-        )
+        if cfg.graph.enabled:
+            # In static graph mode, data will be sliced in nn.Graph automatically,
+            # so dataloader will get mini-batch-size.
+            cfg.dataloader.train.train_batch_size = (
+                cfg.train.train_micro_batch_size * cfg.train.num_accumulation_steps
+            )
+        else:
+            # In eager mode, gradient accumulation will act like PyTorch, so dataloader
+            # will get micro-batch-size
+            cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
 
