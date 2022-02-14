@@ -24,7 +24,62 @@ from .data_utils import split_ds
 from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
-from libai.data.datasets.megatron_gpt_dataset import build_train_valid_test_datasets
+from libai.data.datasets.megatron_gpt_dataset import build_train_valid_test_datasets as build_megatron_datasets
+
+def build_megatron_gpt_train_val_test_loader(
+    train_val_test_datasets,
+    seed,
+    train_batch_size,
+    test_batch_size,
+    sampler=None,
+    num_workers=4,
+    consumed_samples=0,
+):
+    train_dataset, val_dataset, test_dataset = train_val_test_datasets
+    # train_dataset, val_dataset, test_dataset = build_megatron_datasets(
+    #     data_prefix=1,
+    #     data_impl=1,
+    #     splits_string=1,
+    #     train_valid_test_num_samples=1,
+    #     seq_length=1,
+    #     seed=1,
+    #     skip_warmup=1,
+    # )
+
+    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+
+    train_loader, _, _ = build_nlp_train_loader(
+        dataset=train_dataset,
+        train_batch_size=train_batch_size,
+        test_batch_size=None,
+        sampler=sampler,
+        num_workers=num_workers,
+        consumed_samples=consumed_samples,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    valid_loader = build_nlp_test_loader(
+        dataset=val_dataset,
+        test_batch_size=test_batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    test_loader = build_nlp_test_loader(
+        dataset=test_dataset,
+        test_batch_size=test_batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    return train_loader, valid_loader, test_loader
+
+
 
 def build_nlp_train_val_test_loader(
     dataset,
