@@ -60,7 +60,8 @@ class GraphBase(nn.Graph):
                     flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)
             self.set_pipeline_stage_id()
 
-        self.config.allow_fuse_add_to_output(True)
+        # FIXME: change this option to True after OneFlow fix the bug of FuseAddOutput
+        self.config.allow_fuse_add_to_output(False)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
 
