@@ -12,7 +12,7 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 
-# Add MixupFunc
+# Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
     mixup_alpha=0.8,
     cutmix_alpha=1.0,
@@ -36,7 +36,7 @@ train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300
-train.eval_period = 1
+train.eval_period = 1000
 train.log_period = 1
 
 # Scheduler
