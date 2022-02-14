@@ -22,7 +22,7 @@
 <h4 align="center">
     <p>
         <b>English</b> |
-        <a href="">简体中文</a>
+        <a href="https://github.com/Oneflow-Inc/libai/blob/main/README_zh-CN.md">简体中文</a>
     <p>
 </h4>
 
