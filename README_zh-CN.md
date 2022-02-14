@@ -19,14 +19,10 @@
     </a>
 </p>
 
-<h4 align="center">
-    <p>
-        <a herf="https://github.com/Oneflow-Inc/libai/blob/main/README.md">English</a> |
-        <b>简体中文</b>
-    <p>
-</h4>
-
 ## 简介
+
+[English](/README.md) | **简体中文**
+
 LiBai是一个基于OneFlow的大规模模型训练开源工具箱, 主分支代码目前支持OneFlow 0.7.0以上的版本。
 
 <details open>

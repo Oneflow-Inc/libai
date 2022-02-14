@@ -19,15 +19,11 @@
     </a>
 </p>
 
-<h4 align="center">
-    <p>
-        <b>English</b> |
-        <a href="https://github.com/Oneflow-Inc/libai/blob/main/README_zh-CN.md">简体中文</a>
-    <p>
-</h4>
-
 
 ## Introduction
+
+**English** | [简体中文](/README_zh-CN.md)
+
 LiBai is an open-source large-scale model training toolbox based on OneFlow. The main branch works with OneFlow 0.7.0.
 
 <details open>
