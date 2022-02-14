@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .enum import ModelType
-from .graph_base import GraphBase
-from .weight_init import init_method_normal, scaled_init_method_normal
+from enum import Enum
+
+
+class ModelType(Enum):
+    encoder_only = "encoder"
+    decoder_only = "decoder"
+    encoder_decoder = "both"

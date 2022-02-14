@@ -30,7 +30,7 @@ from libai.layers import (
 from libai.utils import distributed as dist
 
 from .build import MODEL_ARCH_REGISTRY
-from .utils import init_method_normal, scaled_init_method_normal
+from .utils import ModelType, init_method_normal, scaled_init_method_normal
 
 
 class T5Embedding(nn.Module):
@@ -325,6 +325,10 @@ class T5Model(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
         }
 
+    @property
+    def model_type(self):
+        return ModelType.encoder_decoder
+
     def forward(
         self,
         input_ids,
@@ -377,6 +381,15 @@ class T5Model(nn.Module):
         logits = self.lm_head(output[0], self.embeddings.token_embeddings.weight)
         output = (logits,) + output[1:]
         return output
+
+    def reorder_cache(self, past, beam_idx):
+        reordered_past = ()
+        for layer_past in past:
+            reordered_past += (
+                tuple(past_state.index_select(0, beam_idx) for past_state in layer_past[:2])
+                + layer_past[2:],
+            )
+        return reordered_past
 
 
 @MODEL_ARCH_REGISTRY.register()

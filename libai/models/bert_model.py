@@ -31,7 +31,7 @@ from libai.layers import (
 from libai.utils import distributed as dist
 
 from .build import MODEL_ARCH_REGISTRY
-from .utils import init_method_normal, scaled_init_method_normal
+from .utils import ModelType, init_method_normal, scaled_init_method_normal
 
 
 class BertEmbedding(nn.Module):
@@ -267,6 +267,10 @@ class BertModel(nn.Module):
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
         }
+
+    @property
+    def model_type(self):
+        return ModelType.encoder_only
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
         extended_attention_mask = self.extended_attn_mask(attention_mask)
