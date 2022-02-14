@@ -28,47 +28,41 @@
 
 
 ## Introduction
-Libai is an open source large pretraining toolbox based on OneFlow. The main branch works with OneFlow 0.7.0.
+LiBai is an open-source large-scale model pretraining toolbox with efficient parallelization techniques based on OneFlow. The main branch works with OneFlow 0.7.0.
 
 <details open>
 <summary> <b> Highlights </b> </summary>
 
-- **Support of multiple parallel strategy**
+- **Support a collection of parallel training components**
 
-    The toolbox supports multiple parallelism, e.g. Data Parallelism, Tensor Parallelism, and Pipeline Parallelism
+    LiBai provides multiple parallelisms, e.g. Data Parallelism, Tensor Parallelism, and Pipeline Parallelism. Besides, it's extensible for new parallelism.
 
 - **Varied training techniques**
 
-    Libai directly support the state-of-art training techniques, e.g. Distributed Training, Mixed Precision training, Activation Checkpoint, and Zero Redundance Optimizer
+    Libai provides some out-of-the-box training techniques, e.g. Distributed Training, Mixed Precision Training, Activation Checkpointing, Recomputation, Gradient Accumulation, and Zero Redundancy Optimizer(ZeRO).
 
 - **Support for both CV and NLP tasks**
 
-    Predifined data process for both CV and NLP datasets, e.g. CIFAR, ImageNet.
+    Predifined data process for both CV and NLP datasets, e.g. CIFAR, ImageNet, BERT Dataset.
 
 - **Easy Usage**
 
-    LazyConfig system for more flexible syntax and no predefined structures and easy-to-use trainer engine.
+    - LazyConfig system for more flexible syntax and no predefined structures 
+    - Friendly trainer and engine
+    - Used as a library to support building research projects on top of it
 
 - **High Efficience**
 
 </details>
 
-<!-- <details open>
-<summary> <b> Libai supported projects </b> </summary>
+## Installation
 
-- Masked word completion with [BERT](https://arxiv.org/abs/1810.04805)
 
-- Image classification with [ViT](https://arxiv.org/abs/2010.11929)
-
-</details> -->
+## Getting Started
 
 
 ## Documentation
-Please refer to [docs]() for full API documentation and tutorials.
-
-## License
-This project is released under the [Apache 2.0 license](LICENSE).
-
+Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for full API documentation and tutorials.
 
 ## ChangeLog
 
@@ -82,10 +76,10 @@ Please refer to [changelog.md]() for details and release history.
 - [x] 3D Parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
 - [x] 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for Image Classification.
 
-## Installation
-
-## Getting Started
+## License
 
 ## Contributing
 
 ## Acknowledgement
+
+## Citation
