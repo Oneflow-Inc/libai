@@ -47,6 +47,7 @@ LiBai is an open-source large-scale model pretraining toolbox with efficient par
 
 - **Easy Usage**
 
+    Components are designed to be modular in LiBai for better and easier usage as follows:
     - LazyConfig system for more flexible syntax and no predefined structures 
     - Friendly trainer and engine
     - Used as a library to support building research projects on top of it
@@ -70,12 +71,12 @@ Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for fu
 - support deit training on imagenet
 - ...
 
-Please refer to [changelog.md]() for details and release history.
-
-## License
+Please refer to [changelog.md](./changelog.md) for details and release history.
 
 ## Contributing
 
 ## Acknowledgement
+
+## License
 
 ## Citation
