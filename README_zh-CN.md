@@ -1,6 +1,6 @@
 <!-- 配图 -->
 
-<h2 align="center">LiBai: 大规模预训练开源工具箱</h2>
+<h2 align="center">LiBai</h2>
 <p align="center">
     <a href="https://pypi.org/project/LiBai/">
         <img alt="PyPI" src="https://img.shields.io/pypi/v/libai">
@@ -27,7 +27,7 @@
 </h4>
 
 ## 简介
-LiBai是一个基于OneFlow的大规模预训练开源工具箱, 主分支代码目前支持OneFlow 0.7.0以上的版本。
+LiBai是一个基于OneFlow的大规模模型训练开源工具箱, 主分支代码目前支持OneFlow 0.7.0以上的版本。
 
 <details open>
 <summary> <b> 主要特性 </b> </summary>

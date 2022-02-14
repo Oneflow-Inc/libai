@@ -1,6 +1,6 @@
 <!-- 配图 -->
 
-<h2 align="center">LiBai: Toolbox for Large Scale Pretraining</h2>
+<h2 align="center">LiBai</h2>
 <p align="center">
     <a href="https://pypi.org/project/LiBai/">
         <img alt="PyPI" src="https://img.shields.io/pypi/v/libai">
@@ -28,7 +28,7 @@
 
 
 ## Introduction
-LiBai is an open-source large-scale model pretraining toolbox with efficient parallelization techniques based on OneFlow. The main branch works with OneFlow 0.7.0.
+LiBai is an open-source large-scale model training toolbox based on OneFlow. The main branch works with OneFlow 0.7.0.
 
 <details open>
 <summary> <b> Highlights </b> </summary>
