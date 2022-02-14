@@ -26,7 +26,7 @@
     <p>
 </h4>
 
-## Introduction
+## 简介
 LiBai是一个基于OneFlow的大规模预训练开源工具箱, 主分支代码目前支持OneFlow 0.7.0以上的版本。
 
 <details open>
