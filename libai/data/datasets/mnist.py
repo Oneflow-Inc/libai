@@ -42,6 +42,6 @@ class MNISTDataset(datasets.MNIST):
         img, target = super().__getitem__(index)
         data_sample = Instance(
             images=DistTensorData(img, placement_idx=0),
-            label=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
+            labels=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample
