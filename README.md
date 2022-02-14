@@ -50,7 +50,7 @@ LiBai is an open-source large-scale model pretraining toolbox with efficient par
     Components are designed to be modular in LiBai for better and easier usage as follows:
     - LazyConfig system for more flexible syntax and no predefined structures 
     - Friendly trainer and engine
-    - Used as a library to support building research projects on top of it
+    - Used as a library to support building research projects on top of it. Please see [projects/](/projects) for some projects built on top of LiBai.
 
 - **High Efficience**
 
@@ -68,8 +68,8 @@ Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for fu
 ## ChangeLog
 
 **Beta 0.1.0** was released in 15/2/2022:
-- Support DeiT training on ImageNet
-- Support BERT pretraining
+- Support 3D parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
+- Support 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for Image Classification.
 
 Please refer to [changelog.md](./changelog.md) for details and release history.
 

@@ -42,14 +42,14 @@ LiBai是一个基于OneFlow的大规模预训练开源工具箱, 主分支代码
 
 - **同时支持视觉与自然语言处理任务**
 
-    LiBai 中内置了CV与NLP相关的数据集处理流程, 包括CIFAR100, ImageNet, BERT Dataset等数据集。
+    LiBai 中内置了CV与NLP相关的数据集处理流程, 包括CIFAR, ImageNet, BERT Dataset等数据集。
 
 - **简单易用，便于上手**
 
     LiBai的模块化设计可以让用户更为方便地将LiBai拓展到自己的项目上:
     - 配置系统采用LazyConfig方式, 使得配置系统更加灵活且易于拓展。
     - 采用Trainer与Hook结合的方式, 方便用户使用和拓展训练中需要的组件。
-    - 用户可以在安装好LiBai的基础上灵活地开发自己的任务, 而非强依赖于LiBai中的所有组件。
+    - 用户可以在安装好LiBai的基础上灵活地开发自己的任务, 而非强依赖于LiBai中的所有组件。可以查看[基于LiBai的项目](/projects)了解更多细节。
 
 - **速度快，性能高**
 
@@ -67,7 +67,7 @@ LiBai是一个基于OneFlow的大规模预训练开源工具箱, 主分支代码
 ## 更新日志
 
 最新的**Beta 0.1.0**版本已经在 2022.02.15 发布
-- 支持了2D并行DeiT模型在ImageNet上的完整训练
+- 支持了2D并行ViT模型在ImageNet上的完整训练
 - 支持3D并行的BERT模型预训练
 
 历史版本的发布与更新细节请参考[更新日志](./changelog.md)
