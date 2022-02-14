@@ -371,7 +371,7 @@ class Generator(nn.Module):
             input_ids = flow.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
             model_kwargs = self._update_model_kwargs(outputs, **model_kwargs)
 
-            if model_kwargs["past_key_values"] is not None:
+            if model_kwargs.get("past_key_values", None) is not None:
                 model_kwargs["past_key_values"] = self.model.reorder_cache(
                     model_kwargs["past_key_values"], beam_idx
                 )
@@ -455,7 +455,7 @@ class Generator(nn.Module):
             input_ids = flow.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
             model_kwargs = self._update_model_kwargs(outputs, **model_kwargs)
 
-            if model_kwargs["past_key_values"] is not None:
+            if model_kwargs.get("past_key_values", None) is not None:
                 model_kwargs["past_key_values"] = self.model.reorder_cache(
                     model_kwargs["past_key_values"], beam_idx
                 )
@@ -587,7 +587,7 @@ class Generator(nn.Module):
             input_ids = flow.cat([input_ids[beam_idx, :], current_tokens.unsqueeze(-1)], dim=-1)
             model_kwargs = self._update_model_kwargs(outputs, **model_kwargs)
 
-            if model_kwargs["past_key_values"] is not None:
+            if model_kwargs.get("past_key_values", None) is not None:
                 model_kwargs["past_key_values"] = self.model.reorder_cache(
                     model_kwargs["past_key_values"], reordering_indices
                 )
