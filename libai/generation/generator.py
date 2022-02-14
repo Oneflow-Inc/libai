@@ -180,8 +180,11 @@ class Generator(nn.Module):
     def _prepare_model_inputs(self, input_ids, **model_kwargs):
         if "past_key_values" in model_kwargs and model_kwargs["past_key_values"] is not None:
             input_ids = input_ids[:, -1:]
-        model_kwargs["input_ids"] = input_ids
-        return model_kwargs
+        model_inputs = {}
+        model_inputs["input_ids"] = input_ids
+        for k, v in model_kwargs.items():
+            model_inputs[k] = v
+        return model_inputs
 
     def _expand_inputs(self, input_ids, expand_size=1, **model_kwargs):
         if expand_size == 1:
