@@ -496,7 +496,7 @@ class Generator(nn.Module):
         beam_scores = flow.full(
             (batch_size, self.num_beams), -1e9, dtype=flow.float32, device=self.device
         )
-        beam_scores[:, :: self.num_sub_beams] = -1e9
+        beam_scores[:, :: self.num_sub_beams] = 0
         beam_scores = beam_scores.view((batch_size * self.num_beams,))
 
         while True:
