@@ -159,14 +159,14 @@ class TestSingleRoundSampler(unittest.TestCase):
 
     def test_single_sampler_multi_rank(self):
         sampler_rank0 = SingleRoundSampler(
-            list(range(100)),
+            list(range(101)),
             micro_batch_size=4,
             shuffle=False,
             data_parallel_rank=0,
             data_parallel_size=2,
         )
         sampler_rank1 = SingleRoundSampler(
-            list(range(100)),
+            list(range(101)),
             micro_batch_size=4,
             shuffle=False,
             data_parallel_rank=1,
@@ -183,10 +183,10 @@ class TestSingleRoundSampler(unittest.TestCase):
         for batch in output_iter_rank1:
             sample_output_rank1.extend(batch)
 
-        # Padding 0 if it's not enough for a batch, otherwise `to_consistent`
+        # Padding 0 if it's not enough for a batch, otherwise `to_global`
         # will raise errors for imbalanced data shape in different ranks
-        self.assertEqual(sample_output_rank0, list(range(50)) + [0, 0])
-        self.assertEqual(sample_output_rank1, list(range(50, 100)) + [0, 0])
+        self.assertEqual(sample_output_rank0, list(range(51)))
+        self.assertEqual(sample_output_rank1, list(range(51, 101)) + [0])
 
 
 if __name__ == "__main__":

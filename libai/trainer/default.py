@@ -372,13 +372,13 @@ class DefaultTrainer(TrainerBase):
             data.reraise()
 
         if mixup_func is not None:
-            images, targets = mixup_func(data.get("images").tensor, data.get("targets").tensor)
+            images, label = mixup_func(data.get("images").tensor, data.get("label").tensor)
             data.get("images").tensor = images
-            data.get("targets").tensor = targets
+            data.get("label").tensor = label
 
         ret_dict = {}
         for key, value in data.get_fields().items():
-            value.to_consistent()
+            value.to_global()
             ret_dict[key] = value.tensor
         return ret_dict
 
@@ -542,7 +542,7 @@ class DefaultTrainer(TrainerBase):
             log_info += f", scheduler milestones={cfg.train.scheduler.milestones}"
         logger.info(log_info)
 
-        # Consistent scheduler cfg
+        # Global scheduler cfg
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
         cfg.train.scheduler.max_iter = cfg.train.train_iter
 
@@ -576,7 +576,7 @@ class DefaultTrainer(TrainerBase):
         for idx, data_loader in enumerate(test_loaders):
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
-            dataset_name = getattr(data_loader.dataset, "datasetname", "UndefinedDataset")
+            dataset_name = getattr(data_loader.dataset, "dataset_name", "UndefinedDataset")
             # TODO: support multi evaluator
             # if evaluators is not None:
             #     evaluator = evaluators[idx]

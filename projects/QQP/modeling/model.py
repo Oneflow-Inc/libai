@@ -20,7 +20,7 @@ from oneflow import nn
 
 from libai.layers import Linear
 from libai.models.bert_model import BertModel
-from libai.models.utils import GraphBase, init_method_normal
+from libai.models.utils import init_method_normal
 from libai.utils import distributed as dist
 
 from .load_megatron_weight import load_megatron_bert
@@ -36,7 +36,7 @@ class ClassificationLoss(nn.Module):
         loss = nn.CrossEntropyLoss()(classification_logits, label)
         # NOTE: Change loss sbp sign [P, P] -> [P, B] to add with sop loss
         # whose sbp sign: [P, B]
-        loss = loss.to_consistent(sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]))
+        loss = loss.to_global(sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]))
         return loss
 
 
@@ -73,19 +73,8 @@ class Classification(nn.Module):
         # reshape
         classification_logits = classification_logits.view(-1, self.num_classes)
 
-        if label is not None:
+        if self.training and label is not None:
             loss = self.loss_func(classification_logits, label)
-            return loss
+            return {"total_loss": loss}
 
-        return classification_logits
-
-
-class ClassificationGraph(GraphBase):
-    def build(self, tokens, padding_mask, tokentype_ids, label=None):
-        if not self.is_train:
-            return self.model(tokens, padding_mask, tokentype_ids)
-        else:
-            losses = self.model(tokens, padding_mask, tokentype_ids, label)
-
-            losses.backward()
-            return losses
+        return {"prediction_scores": classification_logits}

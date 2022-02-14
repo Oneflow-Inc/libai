@@ -34,19 +34,34 @@ class TransformerLayer(nn.Module):
         ffn_hidden_size: size of feed forword neural network.
         num_attention_heads: number of attention heads.
         is_decoder: used to specify whether this is transformer encoder layer or transformer
-        decoder layer. Default: ``False``.
+            decoder layer. Default: ``False``.
         attention_dropout_prob: dropout probability of attention weights.
         output_dropout_prob: dropout probability of output.
         layernorm_epsilon: epsilon used in layernorm layer. Default: `1e-5`.
         init_method: method to initialize the input layer weights.
         output_layer_init_method: method to initialize the output layer weights.
-        If None, use `init_method`.
+            If None, use `init_method`.
         bias_gelu_fusion: whether fuse add bias and gelu. Default: ``False``.
         bias_dropout_fusion: whether fuse add bias and dropout. Default: ``False``.
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
-        Default: ``False``.
+            Default: ``False``.
         layer_idx: the layer index, which determines the placement.
+
+    Inputs:
+        * **hidden_states**: [bsz, seq_length, hidden_size], (S(0), B).
+        * **attention_mask**: [bsz, 1, seq_length, seq_length], (S(0), B),
+          the combination of key padding mask and casual mask of hidden states.
+        * **encoder_states**: [bsz, seq_length, hidden_size], (S(0), B), encoder output,
+          this will be used in cross attention.
+        * **encoder_attention_mask**: [bsz, 1, seq_length, seq_length],
+          (S(0), B) key padding mask of encoder states.
+        * **past_key_value**: tuple of key and value, each shape is
+          [src_len, bsz, num_heads, head_size], For decoder layer,
+          the past_key_value contains the states both from
+          self attention and cross attention.
+        * **use_cache**: it will be set to `True`, when the model is in the inference phase and
+          used for incremental decoding.
     """
 
     def __init__(
@@ -123,28 +138,12 @@ class TransformerLayer(nn.Module):
         past_key_value=None,
         use_cache=False,
     ):
-        """
-        hidden_states: [bsz, seq_length, hidden_size], (S(0), B),
-        attention_mask: [bsz, 1, seq_length, seq_length], (S(0), B),
-        the combination of key padding mask and casual mask of hidden states.
-        encoder_states: [bsz, seq_length, hidden_size], (S(0), B), encoder output,
-        this will be used in cross attention.
-        encoder_attention_mask: [bsz, 1, seq_length, seq_length],
-        (S(0), B) key padding mask of encoder states.
-        past_key_value: tuple of key and value, each shape is [src_len, bsz, num_heads, head_size].
-        For decoder layer, the past_key_value contains the states both
-        from self attention and cross attention.
-        use_cache: it will be set to `True`, when the model is in the inference phase and
-        used for incremental decoding.
-        """
         # Change placement for pipeline parallelsim
-        hidden_states = hidden_states.to_consistent(
-            placement=dist.get_layer_placement(self.layer_idx)
-        )
+        hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
 
         # hidden_states shape: (batch_size, seq_length, hidden_size)
         if attention_mask is not None:
-            attention_mask = attention_mask.to_consistent(
+            attention_mask = attention_mask.to_global(
                 placement=dist.get_layer_placement(self.layer_idx)
             )
 
