@@ -40,10 +40,9 @@ class CIFAR10Dataset(datasets.CIFAR10):
 
     def __getitem__(self, index: int):
         img, target = super().__getitem__(index)
-        print(img)
         data_sample = Instance(
             images=DistTensorData(img, placement_idx=0),
-            label=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
+            labels=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample
 
@@ -69,6 +68,6 @@ class CIFAR100Dataset(datasets.CIFAR100):
         img, target = super().__getitem__(index)
         data_sample = Instance(
             images=DistTensorData(img, placement_idx=0),
-            label=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
+            labels=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample

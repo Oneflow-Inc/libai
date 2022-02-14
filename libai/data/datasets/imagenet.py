@@ -42,6 +42,6 @@ class ImageNetDataset(datasets.ImageFolder):
         sample, target = super().__getitem__(index)
         data_sample = Instance(
             images=DistTensorData(sample, placement_idx=0),
-            label=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
+            labels=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample
