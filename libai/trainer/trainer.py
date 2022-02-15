@@ -305,4 +305,4 @@ class GraphTrainer(TrainerBase):
         loss_dict = self.graph(**data)
 
         self.write_metrics(loss_dict, data_time)
-        # self.all_losses.append(dist.tton(losses).item())
+        self.all_losses.append(dist.tton(loss_dict['masked_lm_loss']).item())

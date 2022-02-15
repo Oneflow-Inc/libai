@@ -61,6 +61,7 @@ def build_megatron_gpt_train_val_test_loader(
         consumed_samples=consumed_samples,
         seed=seed,
         collate_fn=collate_fn,
+        shuffle=False,
     )
 
     valid_loader = build_nlp_test_loader(
@@ -120,9 +121,6 @@ def build_nlp_train_val_test_loader(
     train_dataset = dataset_mixer(train_datasets)
     val_dataset = dataset_mixer(val_datasets)
     test_dataset = dataset_mixer(test_datasets)
-    import ipdb
-
-    ipdb.set_trace()
     # train_dataset, val_dataset, test_dataset = build_train_valid_test_datasets(
     #     data_prefix=1,
     #     data_impl=1,
@@ -198,7 +196,7 @@ def build_nlp_train_loader(
         sampler = CyclicSampler(
             dataset=dataset,
             micro_batch_size=train_batch_size,
-            shuffle=True,
+            shuffle=False,
             consumed_samples=consumed_samples,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),

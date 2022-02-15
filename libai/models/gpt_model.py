@@ -173,7 +173,6 @@ class GPTModel(nn.Module):
         input_embeds = self.embeddings(input_ids, past_length)
 
         attention_mask = self.casual_mask(input_ids, past_length=past_length)
-
         transformer_output = self.transformer(
             input_embeds, attention_mask, past_key_values, use_cache
         )
@@ -269,15 +268,16 @@ class Transformer(nn.Module):
             past_key_values = tuple([None] * len(self.layers))
 
         for i, (layer, past) in enumerate(zip(self.layers, past_key_values)):
-            if self.training:
-                hidden_states = layer(hidden_states, attention_mask)
-            else:
-                hidden_states = layer(
-                    hidden_states, attention_mask, past_key_value=past, use_cache=use_cache
-                )
-                if use_cache:
-                    hidden_states, present = hidden_states
-                    presents.append(present)
+            hidden_states = layer(hidden_states, attention_mask)
+            # if self.training:
+            #     hidden_states = layer(hidden_states, attention_mask)
+            # else:
+            #     hidden_states = layer(
+            #         hidden_states, attention_mask, past_key_value=past, use_cache=use_cache
+            #     )
+            #     if use_cache:
+            #         hidden_states, present = hidden_states
+            #         presents.append(present)
 
         output = self.layernorm_f(hidden_states)
         if use_cache:
@@ -298,6 +298,8 @@ class GPTLoss(flow.nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
+        with open('of_gpt_loss.txt', 'a') as f:
+            f.write(str(masked_lm_loss.item()) + '\n')
         return {"masked_lm_loss": masked_lm_loss}
 
 
@@ -314,9 +316,6 @@ class GPTForPreTraining(flow.nn.Module):
         lm_labels=None,
         loss_mask=None,
     ):
-        import ipdb
-
-        ipdb.set_trace()
         logits = self.GPT_model(
             input_ids,
             None,

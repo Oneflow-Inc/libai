@@ -250,9 +250,6 @@ class GPTDataset(flow.utils.data.Dataset):
             seq_length,
             seed,
         )
-        import ipdb
-
-        ipdb.set_trace()
 
     def __len__(self):
         # -1 is due to data structure used to retieve the index:
