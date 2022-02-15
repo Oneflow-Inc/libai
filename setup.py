@@ -17,7 +17,6 @@ import os
 import subprocess
 import sys
 
-import pybind11
 from setuptools import Extension, find_packages, setup
 
 version = "0.0.1.3"
@@ -29,6 +28,11 @@ try:
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=cwd).decode("ascii").strip()
 except Exception:
     pass
+
+
+def get_pybind11():
+    import pybind11 as pb
+    return pb
 
 
 def write_version_file():
@@ -78,7 +82,7 @@ extensions = [
             "-fPIC",
             "-fdiagnostics-color",
         ],
-        include_dirs=[pybind11.get_include()],
+        include_dirs=[get_pybind11().get_include()],
     ),
 ]
 
