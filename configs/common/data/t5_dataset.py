@@ -4,7 +4,7 @@ from libai.data import build_nlp_test_loader, build_nlp_train_val_test_loader
 from libai.data.datasets import T5Dataset
 from libai.data.data_utils import get_indexed_dataset
 
-from libai.tokenizer import BertTokenizer, T5Tokenizer
+from libai.tokenizer import BertTokenizer
 
 
 tokenization = OmegaConf.create()
@@ -43,5 +43,5 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
     ],
     splits=[[949.0, 50.0, 1.0]],
     weights=[1.0],
-    num_workers=1,
+    num_workers=4,
 )

@@ -82,7 +82,7 @@ class T5Dataset(flow.utils.data.Dataset):
     def __getitem__(self, idx):
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
-        # We % 2 ** 32 since numpy requres the seed to be between 0 and 2 ** 32 - 1
+        # We % 2 ** 32 since numpy requires the seed to be between 0 and 2 ** 32 - 1
         np_rng = np.random.RandomState(seed=((self.seed + idx) % 2 ** 32))
 
         sents = self.dataset[idx]
@@ -334,7 +334,7 @@ class T5Dataset(flow.utils.data.Dataset):
         :param target_block: 1-D array
         """
         mask = (target_block[None, :] >= 1) * (source_block[:, None] >= 1)
-        mask = mask.to(flow.long)
+        mask = mask.to(flow.long).cpu()
         # (source_length, target_length)
         return mask
 
@@ -347,7 +347,7 @@ class T5Dataset(flow.utils.data.Dataset):
             ]
             <= arange[:, None]
         )
-        history_mask = history_mask.to(flow.long)
+        history_mask = history_mask.to(flow.long).cpu()
         return history_mask
 
     @property
