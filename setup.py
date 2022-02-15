@@ -17,7 +17,6 @@ import os
 import subprocess
 import sys
 
-import pybind11
 from setuptools import Extension, find_packages, setup
 
 version = "0.0.1.3"
@@ -66,6 +65,13 @@ requirements = [
     "black==21.4b2",
 ]
 
+
+def get_pybind11():
+    import pybind11 as pb
+
+    return pb
+
+
 extensions = [
     Extension(
         "libai.data.data_utils.helpers",
@@ -78,7 +84,7 @@ extensions = [
             "-fPIC",
             "-fdiagnostics-color",
         ],
-        include_dirs=[pybind11.get_include()],
+        include_dirs=[get_pybind11().get_include()],
     ),
 ]
 

@@ -6,7 +6,6 @@ hydra-core
 nltk
 numpy
 omegaconf
-oneflow>=0.6.0
 Pygments
 PyYAML
 jieba
