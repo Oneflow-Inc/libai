@@ -36,7 +36,7 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
                 skip_warmup=False,
             ),
             max_seq_length=512,
-            mask_lm_prob=0.15,
+            mask_lm_prob=0.3,
             short_seq_prob=0.1,
         ),
     ],

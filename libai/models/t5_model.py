@@ -138,6 +138,7 @@ class T5Decoder(nn.Module):
     def __init__(
         self,
         embeddings,
+        vocab_size,
         num_layers,
         hidden_size,
         intermediate_size,
@@ -184,6 +185,7 @@ class T5Decoder(nn.Module):
             [build_layer(i + num_encoder_layers) for i in range(self.num_layers)]
         )
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
+        self.lm_head = LMLogits(vocab_size, bias=True)
 
     def forward(
         self,
@@ -232,7 +234,8 @@ class T5Decoder(nn.Module):
                     presents.append(present)
 
         output = self.layernorm_f(hidden_states)
-
+        output = self.lm_head(output, self.embeddings.token_embeddings.weight)
+            
         if use_cache:
             output = output + (presents,)  # todo: unify return format
         return output
@@ -288,6 +291,7 @@ class T5Model(nn.Module):
 
         self.decoder = T5Decoder(
             self.embeddings,
+            vocab_size,
             num_decoder_layers,
             hidden_size,
             intermediate_size,
@@ -302,7 +306,6 @@ class T5Model(nn.Module):
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
         )
-        self.lm_head = LMLogits(vocab_size, bias=True)
 
     @classmethod
     def from_config(cls, cfg):
@@ -343,11 +346,6 @@ class T5Model(nn.Module):
             past_key_values=past_key_values,
             use_cache=use_cache,
         )
-
-        if not isinstance(output, (tuple, list)):
-            output = (output,)
-        logits = self.lm_head(output[0], self.embeddings.token_embeddings.weight)
-        output = (logits,) + output[1:]
         return output
 
     def forward_encoder(self, input_ids, attention_mask):
@@ -371,11 +369,6 @@ class T5Model(nn.Module):
             past_key_values=past_key_values,
             use_cache=use_cache,
         )
-
-        if not isinstance(output, (tuple, list)):
-            output = (output,)
-        logits = self.lm_head(output[0], self.embeddings.token_embeddings.weight)
-        output = (logits,) + output[1:]
         return output
 
 
