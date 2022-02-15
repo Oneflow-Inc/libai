@@ -1,9 +1,5 @@
 sphinx==3.5.4
 recommonmark==0.6.0
 furo==2021.4.11b34
-pybind11==2.9.1
 git+https://github.com/lixiang007666/libai.git
-git+https://github.com/Oneflow-Inc/vision.git
---pre
--f https://staging.oneflow.info/branch/master/cpu
-oneflow
+
