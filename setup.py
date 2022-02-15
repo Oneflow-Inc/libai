@@ -30,11 +30,6 @@ except Exception:
     pass
 
 
-def get_pybind11():
-    import pybind11 as pb
-    return pb
-
-
 def write_version_file():
     version_path = os.path.join(cwd, "libai", "version.py")
     with open(version_path, "w") as f:
@@ -69,6 +64,12 @@ requirements = [
     "isort==5.10.1",
     "black==21.4b2",
 ]
+
+
+def get_pybind11():
+    import pybind11 as pb
+    return pb
+
 
 extensions = [
     Extension(
