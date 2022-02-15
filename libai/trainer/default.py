@@ -223,7 +223,12 @@ class DefaultTrainer(TrainerBase):
                 # If file doesn't exist, maybe because it has just been deleted.
                 # We just set start_iter to 0.
                 self.start_iter = 0
-        cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size
+        if cfg.graph.enabled:
+            cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size
+        else:
+            cfg.dataloader.consumed_samples = (
+                self.start_iter * cfg.train.global_batch_size // cfg.train.num_accumulation_steps
+            )
 
         self.train_loader = None
         self.test_loader = []
@@ -246,22 +251,6 @@ class DefaultTrainer(TrainerBase):
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
-        # Assume no other objects need to be checkpointed.
-        # We can later make it checkpoint the stateful hooks
-        self.checkpointer = Checkpointer(
-            # Assume you want to save checkpoints together with logs/statistics
-            self.model,
-            cfg.train.output_dir,
-            optimizer=self.optimizer,
-            lr_scheduler=self.lr_scheduler,
-        )
-
-        # Loading checkpoint before dataloader construction, because
-        # dataloader needs to know the consumed iterations from
-        # the last breakpoint.
-        self.resume_or_load(cfg.train.resume)
-        cfg.train.start_iter = self.start_iter
-
         if cfg.graph.enabled:
             self.graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
@@ -272,6 +261,32 @@ class DefaultTrainer(TrainerBase):
             self._trainer = EagerTrainer(
                 self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
             )
+
+        # Assume no other objects need to be checkpointed.
+        # We can later make it checkpoint the stateful hooks
+        if cfg.graph.enabled:
+            self.checkpointer = Checkpointer(
+                # Assume you want to save checkpoints together with logs/statistics
+                self.model,
+                cfg.train.output_dir,
+                # In static graph mode, optimizer and scheduler state_dict will
+                # be saved with graph.state_dict().
+                graph=self.graph_train,
+            )
+        else:
+            self.checkpointer = Checkpointer(
+                # Assume you want to save checkpoints together with logs/statistics
+                self.model,
+                cfg.train.output_dir,
+                optimizer=self.optimizer,
+                lr_scheduler=self.lr_scheduler,
+            )
+
+        # Loading checkpoint before dataloader construction, because
+        # dataloader needs to know the consumed iterations from
+        # the last breakpoint.
+        self.resume_or_load(cfg.train.resume)
+        cfg.train.start_iter = self.start_iter
 
         self.global_batch_size = cfg.train.global_batch_size
         self.max_iter = cfg.train.train_iter
@@ -311,9 +326,12 @@ class DefaultTrainer(TrainerBase):
 
         ret = [
             hooks.IterationTimer(),
-            hooks.LRScheduler(),
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
         ]
+        if not self.cfg.graph.enabled:
+            ret.append(hooks.LRScheduler())
+        ret.append(
+            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period)
+        )
 
         def test_and_save_results():
             self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
