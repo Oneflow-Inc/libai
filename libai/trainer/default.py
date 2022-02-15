@@ -528,6 +528,12 @@ class DefaultTrainer(TrainerBase):
             train_iter,
         )
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
+        if not cfg.graph.enabled:
+            # In eager mode, dataloader only get micro-batch-size each iter,
+            # which is mini-batch-size // num_accumulation, so scale `train_iter`
+            # and `warmup_iter` to be consistent with static graph mode.
+            cfg.train.train_iter *= cfg.train.num_accumulation_steps
+            cfg.train.warmup_iter *= cfg.train.num_accumulation_steps
         log_info += "Auto-scaling the config to train.train_iter={}, train.warmup_iter={}".format(
             cfg.train.train_iter, cfg.train.warmup_iter
         )
