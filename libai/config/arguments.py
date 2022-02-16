@@ -66,7 +66,8 @@ Run on multiple machines:
     parser.add_argument(
         "--fast-dev-run",
         action="store_true",
-        help="Run several batches of train, eval and test to find any bugs, (ie: a sort of unit test)",
+        help="Run several batches of train, eval and test to find any bugs, "
+        "(ie: a sort of unit test)",
     )
     parser.add_argument(
         "opts",
