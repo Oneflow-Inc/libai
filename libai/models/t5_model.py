@@ -163,14 +163,14 @@ class T5Model(flow.nn.Module):
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     layer_idx=i,
                 )
-                for i in range(hidden_layers)
+                for i in range(hidden_layers, 2*hidden_layers)
             ]
         )
 
         decoder_final_layernorm = LayerNorm(
             (hidden_size,),
             eps=layernorm_eps,
-            layer_idx=hidden_layers - 1,
+            layer_idx=2*hidden_layers - 1,
         )
 
         self.decoder = flow.nn.Sequential()
@@ -280,3 +280,27 @@ class T5ForPreTraining(flow.nn.Module):
             return {
                 "prediction_scores": logits,
             }
+    
+
+
+    @staticmethod
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+        
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            if isinstance(module_block.origin, T5Embedding):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, ExtendedMask):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+            elif isinstance(module_block.origin, LMLogits):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            elif isinstance(module_block.origin, T5Loss):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        
+        model.t5_model.encoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx) 
+        
+        model.t5_model.decoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(model.t5_model.decoder.final_layernorm.layer_idx) 
+        
