@@ -247,11 +247,6 @@ def get_all_placement(device_type="cuda"):
     dist_util = get_dist_util()
     if not flow.cuda.is_available() and device_type == "cuda":
         device_type = "cpu"
-    ranks = []
-    for i in range(dist_util.parallel_hierarchy[0]):
-        ranks.append(
-            [dist_util.num_gpus_per_node * i + j for j in range(dist_util.num_gpus_per_node)]
-        )
     return flow.placement(
         device_type,
         dist_util.ranks,
