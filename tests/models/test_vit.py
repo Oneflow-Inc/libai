@@ -31,11 +31,11 @@ class TestViTModel(unittest.TestCase):
     def test_vit_training_forward(self):
         input_tensor = flow.randn(1, 3, 224, 224).to_global(
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: 0}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         targets = flow.zeros(1, dtype=flow.int64).to_global(
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: 0}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         vit_model = build_model(model)
         vit_model.apply(dist.convert_to_distributed_default_setting)
@@ -47,11 +47,11 @@ class TestViTModel(unittest.TestCase):
     def test_vit_eval_forward(self):
         input_tensor = flow.randn(1, 3, 224, 224).to_global(
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: 0}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         targets = flow.zeros(1, dtype=flow.int64).to_global(
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: 0}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         vit_model = build_model(model)
         vit_model.apply(dist.convert_to_distributed_default_setting)
@@ -65,11 +65,11 @@ class TestViTModel(unittest.TestCase):
     def test_vit_backward(self):
         input_tensor = flow.randn(1, 3, 224, 224).to_global(
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: 0}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         targets = flow.zeros(1, dtype=flow.int64).to_global(
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: 0}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         vit_model = build_model(model)
         vit_model.apply(dist.convert_to_distributed_default_setting)
