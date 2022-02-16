@@ -27,6 +27,12 @@ def main(args):
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
 
+    if args.fast_dev_run:
+        cfg.train.train_epoch = 0
+        cfg.train.train_iter = 20
+        cfg.train.eval_period = 10
+        cfg.train.log_period = 1
+
     if args.eval_only:
         tokenizer = None
         if try_get_key(cfg, "tokenization.setup", default=False):
