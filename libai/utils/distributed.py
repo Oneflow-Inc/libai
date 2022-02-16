@@ -154,11 +154,7 @@ class _DistributeUtil(object):
 
     @property
     def ranks(self):
-        all_ranks = [
-            i * self._num_gpus_per_node + j
-            for i in range(self._num_nodes)
-            for j in range(self._num_gpus_per_node)
-        ]
+        all_ranks = [i for i in range(get_world_size())]
 
         if self._parallel_hierarchy is None:
             # 1d sbp
