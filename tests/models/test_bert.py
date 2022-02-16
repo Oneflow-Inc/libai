@@ -34,21 +34,21 @@ class TestBertModel(unittest.TestCase):
             512,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         attention_mask = flow.zeros(
             2,
             512,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         tokentype_ids = flow.zeros(
             2,
             512,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
 
         bert_model = build_model(model)
@@ -65,42 +65,42 @@ class TestBertModel(unittest.TestCase):
             512,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         attention_mask = flow.zeros(
             2,
             512,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         tokentype_ids = flow.zeros(
             2,
             512,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
 
         ns_labels = flow.zeros(
             2,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         lm_labels = flow.ones(
             2,
             512,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         loss_mask = flow.ones(
             2,
             512,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         bert_model = build_model(model)
         loss_dict = bert_model(
