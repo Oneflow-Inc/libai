@@ -1,14 +1,14 @@
 # Installation
 According to different needs, LiBai supports two installation modes:
-- [Use as a library](#use-libai-as-a-python-library): In this mode, you can use LiBai as a Python package and build your own project on top of it.
+- [Use as a library](#use-libai-as-a-python-library): In this mode, you can call LiBai's APIs or import LiBai's Module in your own project.
 - [Build from source](#build-libai-from-source): In this mode, you can develop your own project base on LiBai's framework.
 
-## Use LiBai as a Python library
+## Use LiBai as a Python Library
 ```bash
 pip install libai
 ```
 
-## Build LiBai from source
+## Build LiBai from Source
 - Clone this repo:
 ```bash
 git clone https://github.com/Oneflow-Inc/libai.git
