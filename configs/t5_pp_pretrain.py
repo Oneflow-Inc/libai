@@ -1,0 +1,24 @@
+from .common.models.t5 import pretrain_model as model
+from .common.train import train
+from .common.optim import optim
+from .common.data.t5_dataset import dataloader, tokenization
+
+from .common.models.graph import graph
+
+tokenization.tokenizer.vocab_file = "/workspace/dataset/bert_data/bert-base-chinese-vocab.txt"
+dataloader.train.dataset[0].data_prefix = "/workspace/dataset/bert_data/loss_compara_content_sentence"
+dataloader.train.dataset[0].indexed_dataset.data_prefix = "/workspace/dataset/bert_data/loss_compara_content_sentence"
+
+# T5-large model config
+model.cfg.num_attention_heads = 12
+model.cfg.hidden_size = 384
+model.cfg.hidden_layers = 6
+
+train.dist.tensor_parallel_size = 1
+train.dist.pipeline_parallel_size = 2
+# encoder_layers + decoder_layers
+train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
+
+train.train_micro_batch_size = 16
+train.recompute_grad.enabled = True
+train.output_dir = "./t5_pp_output"
