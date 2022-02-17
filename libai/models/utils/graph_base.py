@@ -17,6 +17,7 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
+from libai.utils import distributed as dist
 
 
 class GraphBase(nn.Graph):
@@ -27,6 +28,7 @@ class GraphBase(nn.Graph):
         lr_scheduler: flow.optim.lr_scheduler = None,
         fp16=False,
         recompute_grad=False,
+        grad_acc_steps=1,
         zero_optim=False,
         zero_stage=0,
         is_train=True,
@@ -47,22 +49,32 @@ class GraphBase(nn.Graph):
                     growth_interval=2000,
                 )
                 self.set_grad_scaler(grad_scaler)
+
+            if grad_acc_steps > 1:
+                self.config.set_gradient_accumulation_steps(grad_acc_steps)
+
             if recompute_grad:
                 self.set_activation_checkpoint()
+
             if zero_optim:
                 self.config.set_zero_redundancy_optimizer_mode("distributed_split")
                 self.config.set_zero_redundancy_optimizer_min_size_after_split(1)
-                if zero_stage > 1:
-                    # stage 2
-                    flow.boxing.nccl.enable_use_compute_stream(True)
                 if zero_stage > 2:
                     # stage 3
                     flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)
+
             self.set_pipeline_stage_id()
 
-        self.config.allow_fuse_add_to_output(True)
+        # FIXME: change this option to True after OneFlow fix the bug of FuseAddOutput
+        self.config.allow_fuse_add_to_output(False)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
+
+        dist_util = dist.get_dist_util()
+        # Enable compute_stream for computation and communication with the same cuda stream.
+        # This will reduce memory when using model parallelism.
+        if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
+            flow.boxing.nccl.enable_use_compute_stream(True)
 
     def build(self, **kwargs):
         if self.is_train:

@@ -3,7 +3,7 @@ from libai.scheduler import WarmupCosineLR
 
 # fmt: off
 train = dict(
-    output_dir="./demo_output/test_config",
+    output_dir="./output",
 
     # Batch size and gradient accumulation
     train_micro_batch_size=32,
@@ -14,8 +14,6 @@ train = dict(
     train_iter=10000,
     train_epoch=0,  # default train epoch is set to 0
     warmup_ratio=0,  # default warmup ratio is set to 0
-    lr_decay_iter=None,
-    eval_iter=10000,
 
     # Performance related
     amp=dict(enabled=False),  # options for Automatic Mixed Precision
@@ -35,6 +33,7 @@ train = dict(
 
     load_weight="",
     eval_period=5000,
+    topk=(1, 5),  # calculate top-k acc
     log_period=20,
     consumed_train_samples=0,
     consumed_valid_samples=0,

@@ -15,6 +15,7 @@
 
 import logging
 
+import numpy as np
 import oneflow as flow
 
 from libai.config import try_get_key
@@ -25,13 +26,8 @@ _DIST_UTIL = None
 
 
 def _merge_devices(devices):
-    node_devices = dict()
-    for node_id, device_id in devices:
-        if node_id not in node_devices:
-            node_devices[node_id] = []
-
-        node_devices[node_id].append(device_id)
-
+    num_gpus_per_node = get_world_size() // get_num_nodes()
+    node_devices = [node_id * num_gpus_per_node + device_id for node_id, device_id in devices]
     return node_devices
 
 
@@ -128,8 +124,8 @@ class _DistributeUtil(object):
         )
         num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
 
-        self._layers_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
-        self._layers_devices = [stages_devices[stage_id] for stage_id in self._layers_stage_ids]
+        self._layer_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
+        self._layer_ranks = [stages_devices[stage_id] for stage_id in self._layer_stage_ids]
 
     def _init_parallel_hierarchy(self):
         if self.is_data_model_parallel():
@@ -157,6 +153,18 @@ class _DistributeUtil(object):
         return self._parallel_hierarchy
 
     @property
+    def ranks(self):
+        all_ranks = [i for i in range(get_world_size())]
+
+        if self._parallel_hierarchy is None:
+            # 1d sbp
+            return all_ranks
+        else:
+            # 2d sbp
+            assert len(self._parallel_hierarchy) == 2
+            return np.asarray(all_ranks).reshape(self._parallel_hierarchy).tolist()
+
+    @property
     def tensor_parallel_size(self):
         return self._tensor_parallel_size
 
@@ -172,11 +180,16 @@ class _DistributeUtil(object):
     def data_parallel_size(self):
         return self._data_parallel_size
 
-    def get_layer_devices(self, layer_idx):
-        return self._layers_devices[layer_idx]
+    def get_layer_ranks(self, layer_idx):
+        layer_ranks = self._layer_ranks[layer_idx]
+        if self._parallel_hierarchy is None:
+            return layer_ranks
+        else:
+            assert len(self._parallel_hierarchy) == 2
+            return np.asarray(layer_ranks).reshape(self._parallel_hierarchy).tolist()
 
     def get_layer_stage_id(self, layer_idx):
-        return self._layers_stage_ids[layer_idx]
+        return self._layer_stage_ids[layer_idx]
 
     def is_tensor_model_parallel(self):
         return self._tensor_parallel_size > 1
@@ -222,8 +235,7 @@ def get_layer_placement(layer_idx, device_type="cuda"):
         device_type = "cpu"
     return flow.placement(
         device_type,
-        dist_util.get_layer_devices(layer_idx),
-        dist_util.parallel_hierarchy,
+        dist_util.get_layer_ranks(layer_idx),
     )
 
 
@@ -233,8 +245,7 @@ def get_all_placement(device_type="cuda"):
         device_type = "cpu"
     return flow.placement(
         device_type,
-        {i: range(dist_util.num_gpus_per_node) for i in range(dist_util.num_nodes)},
-        dist_util.parallel_hierarchy,
+        dist_util.ranks,
     )
 
 
@@ -303,6 +314,10 @@ def get_world_size():
     return flow.env.get_world_size()
 
 
+def get_num_nodes():
+    return flow.env.get_node_size()
+
+
 def convert_to_distributed_default_setting(module):
     """
     Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
@@ -315,10 +330,6 @@ def convert_to_distributed_default_setting(module):
                 placement=get_layer_placement(0),
             )
             return
-
-
-def get_num_nodes():
-    return flow.env.get_node_size()
 
 
 def ttol(tensor, pure_local=False):

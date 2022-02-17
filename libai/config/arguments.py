@@ -62,9 +62,13 @@ Run on multiple machines:
         help="Whether to attempt to resume from the checkpoint directory. "
         "See documentation of `DefaultTrainer.resume_or_load()` for what it means.",
     )
-    parser.add_argument("--eval-only", action="store_true", help="perform evaluation only")
-    # TODO: Add fast debug mode
-    parser.add_argument("--fast-debug", action="store_true", help="quickly debug")
+    parser.add_argument("--eval-only", action="store_true", help="Perform evaluation only")
+    parser.add_argument(
+        "--fast-dev-run",
+        action="store_true",
+        help="Run several batches of train, eval and test to find any bugs, "
+        "(ie: a sort of unit test)",
+    )
     parser.add_argument(
         "opts",
         help="""

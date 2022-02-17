@@ -109,7 +109,7 @@ class DemoTrainer(DefaultTrainer):
                 32,
                 512,
                 sbp=flow.sbp.split(0),
-                placement=flow.placement("cuda", {0: [0]}),
+                placement=flow.placement("cuda", [0]),
             )
         ]
 
