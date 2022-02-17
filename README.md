@@ -53,7 +53,7 @@ LiBai is an open-source large-scale model training toolbox based on OneFlow. The
 </details>
 
 ## Installation
-Please refer to [Getting Started.md](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for installation
+Please refer to [Installation.md](https://libai.readthedocs.io/en/latest/tutorials/Installation.html) for installation
 
 ## Getting Started
 Please refer to [Getting Started.md](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for basic usage of LiBai
