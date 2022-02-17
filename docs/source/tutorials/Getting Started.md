@@ -1,4 +1,50 @@
 # Getting Started
+This page provides basic tutorials about the usage of LiBai:
+- [Train VisionTransformer on ImageNet Dataset](#train-visiontransformer-on-imagenet-dataset)
+  - [Data preparation](#data-preparation)
+  - [Train vit model from scratch](#train-vit-model-from-scratch)
 
-## Installation
 
+## Train VisionTransformer on ImageNet dataset
+### Data preparation
+For ImageNet, we use standard ImageNet dataset, you can download it from http://image-net.org/.
+- For standard folder dataset, move validation images to labeled sub-folders. The file structure should be like:
+```bash
+$ tree data
+imagenet
+├── train
+│   ├── class1
+│   │   ├── img1.jpeg
+│   │   ├── img2.jpeg
+│   │   └── ...
+│   ├── class2
+│   │   ├── img3.jpeg
+│   │   └── ...
+│   └── ...
+└── val
+    ├── class1
+    │   ├── img4.jpeg
+    │   ├── img5.jpeg
+    │   └── ...
+    ├── class2
+    │   ├── img6.jpeg
+    │   └── ...
+    └── ...
+
+```
+### Train vit model from scratch
+- update the data path in [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file
+```python
+# Refine data path to imagenet data folder
+dataloader.train.dataset[0].root = "/path/to/imagenet"
+dataloader.test[0].dataset.root = "/path/to/imagenet"
+```
+- To train `vit_tiny_patch16_224` model on ImageNet on a single node with 8 gpus for 300 epochs, run:
+```bash
+bash tools/train.sh configs/vit_imagenet.py 8
+```
+- In LiBai we set the default vit model to `vit_tiny_patch16_224`. To train other vit model you can update the [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file by importing the other vit model in the config file as follows:
+```python
+# from .common.models.vit.vit_tiny_patch16_224 import model
+from .common.models.vit.vit_base_patch16_224 import model
+```
