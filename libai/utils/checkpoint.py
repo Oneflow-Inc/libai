@@ -50,7 +50,7 @@ class Checkpointer(object):
     objects.
     """
 
-    # NOTE: only support data_parallel for saving model
+    # NOTE: only support data/tensor parallel for saving model
     # TODO: save model: support model_parallel and pipeline parallel
 
     def __init__(

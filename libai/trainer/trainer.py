@@ -247,7 +247,7 @@ class EagerTrainer(TrainerBase):
         # If you want your model (or a submodule of it) to behave
         # like evaluation during training, you can overwrite its train() method.
 
-        model.train()
+        # model.train()
 
         self.model = model
         self.data_loader = data_loader
@@ -259,7 +259,7 @@ class EagerTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        # assert self.model.training, "[EagerTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
@@ -282,24 +282,25 @@ class GraphTrainer(TrainerBase):
     def __init__(self, graph, data_loader):
         super().__init__()
 
-        graph.model.train()
+        # graph.model.train()
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
+        self.all_losses = []
 
     def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.
         """
-        assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        # assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
         data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
-
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
 
         self.write_metrics(loss_dict, data_time)
+        self.all_losses.append(dist.tton(loss_dict['masked_lm_loss']).item())

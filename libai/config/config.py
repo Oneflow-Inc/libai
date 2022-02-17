@@ -34,7 +34,6 @@ def configurable(init_func=None, *, from_config=None):
             @configurable
             def __init__(self, a, b=2, c=3):
                 pass
-
             @classmethod
             def from_config(cls, cfg):   # 'cfg' must be the first argument
                 # Returns kwargs to be passed to __init__

@@ -13,27 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .activation import build_activation
-from .cross_entropy import ParallelCrossEntropyLoss
-from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding
-from .layer_norm import LayerNorm
-from .linear import Linear, Linear1D
-from .lm_logits import LMLogits
-from .mlp import MLP
-from .transformer_layer import TransformerLayer
+import oneflow as flow
+import sys
 
-__all__ = [
-    "Embedding",
-    "VocabEmbedding",
-    "SinePositionalEmbedding",
-    "build_activation",
-    "Linear",
-    "Linear1D",
-    "MLP",
-    "LayerNorm",
-    "TransformerLayer",
-    "ParallelCrossEntropyLoss",
-    "LMLogits",
-    "ExtendedMask",
-    "CasualMask",
-]
+sys.path.append(".")
+
+from libai.data import Metadata, Instance
+
+data1 = Metadata(flow.Tensor(3, 3))
+data2 = Metadata(flow.Tensor(4, 4))
+
+item1 = Instance(tokens=data1, mask=data2)
+item2 = Instance(tokens=data1, mask=data2)
+
+print(len(item1))
+
+batch_item = Instance.stack([item1, item2])
+
+for value in batch_item.get_fields().values():
+    value.to_consistent()
+
+print([value.tensor for value in batch_item.get_fields().values()])
+# print(batch_item.tokens.tensor)
+# print(batch_item.mask.tensor)

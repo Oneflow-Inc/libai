@@ -59,11 +59,12 @@ class BertEmbeddings(nn.Module):
         embedding_dropout_prob,
         num_tokentypes=0,
         init_method=nn.init.xavier_normal_,
+        fp16=False,
     ):
         super().__init__()
         self.vocab_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
         self.position_embeddings = Embedding(
-            max_sequence_length, hidden_size, init_method=init_method
+            max_sequence_length, hidden_size, init_method=init_method, fp16=fp16
         )
 
         # NOTE(l1aoxingyu): Set position_ids sbp sign to [B, B] initially, because position_ids is a
@@ -78,7 +79,7 @@ class BertEmbeddings(nn.Module):
 
         if num_tokentypes > 0:
             self.tokentype_embeddings = Embedding(
-                num_tokentypes, hidden_size, init_method=init_method
+                num_tokentypes, hidden_size, init_method=init_method, fp16=fp16
             )
             self.tokentype_ids = flow.zeros(
                 self.position_ids.size(),
@@ -234,8 +235,10 @@ class BertModel(nn.Module):
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
         apply_query_key_layer_scaling=True,
+        fp16=False,
     ):
         super().__init__()
+        self.hidden_layers = hidden_layers
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
 
@@ -247,6 +250,7 @@ class BertModel(nn.Module):
             hidden_dropout_prob,
             num_tokentypes,
             init_method,
+            fp16,
         )
 
         # Mask generation
@@ -399,6 +403,5 @@ class BertForPreTraining(nn.Module):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
             elif isinstance(module_block.origin, BertPreTrainingHeads):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-
         # Set the last layernorm stage id
         model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)

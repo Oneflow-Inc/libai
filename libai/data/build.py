@@ -18,11 +18,71 @@ import omegaconf
 from oneflow.utils.data import DataLoader
 from oneflow.utils.data.dataset import ConcatDataset
 
+from libai.data.datasets.megatron_gpt_dataset import (
+    build_train_valid_test_datasets as build_megatron_datasets,
+)
 from libai.utils import distributed as dist
 
 from .data_utils import split_ds
 from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
+
+
+def build_megatron_gpt_train_val_test_loader(
+    train_val_test_datasets,
+    seed,
+    train_batch_size,
+    test_batch_size,
+    sampler=None,
+    num_workers=4,
+    consumed_samples=0,
+    collate_fn=None,
+    **kwargs,
+):
+    train_dataset, val_dataset, test_dataset = train_val_test_datasets
+    # train_dataset, val_dataset, test_dataset = build_megatron_datasets(
+    #     data_prefix=1,
+    #     data_impl=1,
+    #     splits_string=1,
+    #     train_valid_test_num_samples=1,
+    #     seq_length=1,
+    #     seed=1,
+    #     skip_warmup=1,
+    # )
+
+    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+
+    train_loader, _, _ = build_nlp_train_loader(
+        dataset=train_dataset,
+        train_batch_size=train_batch_size,
+        test_batch_size=None,
+        sampler=sampler,
+        num_workers=num_workers,
+        consumed_samples=consumed_samples,
+        seed=seed,
+        collate_fn=collate_fn,
+        shuffle=False,
+    )
+
+    valid_loader = build_nlp_test_loader(
+        dataset=val_dataset,
+        test_batch_size=test_batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    test_loader = build_nlp_test_loader(
+        dataset=test_dataset,
+        test_batch_size=test_batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    return train_loader, valid_loader, test_loader
 
 
 def build_nlp_train_val_test_loader(
@@ -61,6 +121,15 @@ def build_nlp_train_val_test_loader(
     train_dataset = dataset_mixer(train_datasets)
     val_dataset = dataset_mixer(val_datasets)
     test_dataset = dataset_mixer(test_datasets)
+    # train_dataset, val_dataset, test_dataset = build_train_valid_test_datasets(
+    #     data_prefix=1,
+    #     data_impl=1,
+    #     splits_string=1,
+    #     train_valid_test_num_samples=1,
+    #     seq_length=1,
+    #     seed=1,
+    #     skip_warmup=1,
+    # )
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
@@ -106,7 +175,7 @@ def build_nlp_train_loader(
     seed=0,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
-    **kwargs
+    **kwargs,
 ):
     """
     Args:
@@ -127,7 +196,7 @@ def build_nlp_train_loader(
         sampler = CyclicSampler(
             dataset=dataset,
             micro_batch_size=train_batch_size,
-            shuffle=True,
+            shuffle=False,
             consumed_samples=consumed_samples,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
@@ -185,7 +254,7 @@ def build_image_train_loader(
     collate_fn=None,
     dataset_mixer=ConcatDataset,
     mixup_func=None,
-    **kwargs
+    **kwargs,
 ):
     """
     Args:
@@ -223,7 +292,14 @@ def build_image_train_loader(
     # Bind up mixup_func to dataloader, and this will be used in Trainer.step
     dataloader.mixup_func = mixup_func
 
-    return dataloader, None, None
+
+def build_train_valid_test_data_iterators(cfg):
+    """通过外部定义的build_train_valid_test_datasets_provider函数，
+    1. 先计算train_val_test_num_samples；
+    2. 然后传入该函数中生成数据集；
+    3. 由数据集生成iterator"""
+
+    (train_dataloader, valid_dataloader, test_dataloader) = (None, None, None)
 
 
 def build_image_test_loader(
@@ -247,6 +323,61 @@ def build_image_test_loader(
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )
+
+    # Build dataloders.
+    train_dataloader = build_pretraining_data_loader(
+        cfg, train_ds, cfg.train.consumed_train_samples
+    )
+    valid_dataloader = build_pretraining_data_loader(
+        cfg, valid_ds, cfg.train.consumed_valid_samples
+    )
+    test_dataloader = build_pretraining_data_loader(cfg, test_ds, 0)
+
+    # Flags to know if we need to do training/validation/testing.
+    do_train = train_dataloader is not None and cfg.train.train_iter > 0
+    do_valid = valid_dataloader is not None and cfg.train.eval_iter > 0
+    do_test = test_dataloader is not None and cfg.train.eval_iter > 0
+    # Need to broadcast num_tokens and num_type_tokens.
+    flags = flow.tensor(
+        [int(do_train), int(do_valid), int(do_test)], dtype=flow.long, device="cuda"
+    )
+    # flags = torch.cuda.LongTensor(
+    #     [int(do_train), int(do_valid), int(do_test)])
+    # else:
+    #     flags = torch.cuda.LongTensor([0, 0, 0])
+
+    # Broadcast num tokens.
+    # torch.distributed.broadcast(flags,
+    #                             mpu.get_tensor_model_parallel_src_rank(),  # 获取当前全局rank对应的tp组的第一个local rank
+    #                             group=mpu.get_tensor_model_parallel_group())
+    cfg.train.do_train = flags[0].item()
+    cfg.train.do_valid = flags[1].item()
+    cfg.train.do_test = flags[2].item()
+
+    # Build iterators.
+    dl_type = cfg.data.dataloader_type
+    assert dl_type in ["single", "cyclic"]
+
+    if train_dataloader is not None:
+        train_data_iterator = (
+            iter(train_dataloader) if dl_type == "single" else iter(cyclic_iter(train_dataloader))
+        )
+    else:
+        train_data_iterator = None
+
+    if valid_dataloader is not None:
+        valid_data_iterator = (
+            iter(valid_dataloader) if dl_type == "single" else iter(cyclic_iter(valid_dataloader))
+        )
+    else:
+        valid_data_iterator = None
+
+    if test_dataloader is not None:
+        test_data_iterator = (
+            iter(test_dataloader) if dl_type == "single" else iter(cyclic_iter(test_dataloader))
+        )
+    else:
+        test_data_iterator = None
 
 
 def trivial_batch_collator(batch):

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from .bert_model import BertForPreTraining, BertModel
+from .gpt_model import GPTModel
 from .build import build_graph, build_model
 from .t5_model import T5ForPreTraining, T5Model
 from .vision_transformer import VisionTransformer
@@ -26,4 +27,5 @@ __all__ = [
     "T5Model",
     "T5ForPreTraining",
     "VisionTransformer",
+    "GPTModel",
 ]
