@@ -3,6 +3,7 @@ import csv
 from oneflow.utils.data import Dataset, DataLoader
 from libai.tokenizer import BertTokenizer
 import oneflow as flow
+from libai.data.structures import DistTensorData, Instance
 
 
 def load_data(name, path):
@@ -42,8 +43,8 @@ def load_data(name, path):
 
 
 class TrainDataset(Dataset):
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, name, path):
+        self.data = load_data(name, path)
     
     def __len__(self):
         return len(self.data)
@@ -54,15 +55,20 @@ class TrainDataset(Dataset):
         ids = [101] + ids + [102]
         attention_mask = [1] * len(ids)
         token_type_ids = [0] * len(ids)
-        return {"input_ids": ids, "token_type_ids": token_type_ids, "attention_mask": attention_mask}
+        sample = Instance(
+            input_ids=DistTensorData(ids),
+            attention_mask=DistTensorData(attention_mask),
+            tokentype_ids=DistTensorData(token_type_ids),
+        )
+        return sample
     
     def __getitem__(self, index):
         return self.text2id(self.data[index])
 
 
 class TestDataset(Dataset):
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, name, path):
+        self.data = load_data(name, path)
     
     def __len__(self):
         return len(self.data)
@@ -80,8 +86,13 @@ class TestDataset(Dataset):
         token_type_ids = [0] * len(ids) + [0]*(50-length)
         token_type_ids = flow.tensor(token_type_ids).long()
 
-        return {"input_ids": ids, "token_type_ids": token_type_ids, "attention_mask": attention_mask}
-    
+        sample = Instance(
+            input_ids=DistTensorData(ids),
+            attention_mask=DistTensorData(attention_mask),
+            tokentype_ids=DistTensorData(token_type_ids),
+        )
+        return sample
+
     def __getitem__(self, index):
         # sent1, sent2
         return self.text2id(self.data[index][1]), self.text2id(self.data[index][2]), float(data[index][0])
