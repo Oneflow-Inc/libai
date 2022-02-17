@@ -27,9 +27,9 @@ def numpy_to_flow(tensor: np.ndarray) -> flow.Tensor:
 def get_sample(mode: str):
     from pathlib import Path
     data_path = Path("/workspace/data/gpt_dataset")
-    tokens_enc = np.load(data_path / 'input_ids.npy')[0: 16]
-    enc_mask = np.load(data_path / 'attention_mask.npy')[0: 16]
-    position_ids = np.load(data_path / 'position_ids.npy')[0: 16]
+    tokens_enc = np.load(data_path / 'samples'/ 'input_ids.npy')[0: 4]
+    enc_mask = np.load(data_path / 'attention_mask.npy')[0: 4]
+    position_ids = np.load(data_path / 'position_ids.npy')[0: 4]
     func = {
         'flow': numpy_to_flow,
         'torch': lambda x: torch.from_numpy(x).cuda(),

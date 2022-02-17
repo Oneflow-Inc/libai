@@ -143,7 +143,7 @@ class GPTModel(nn.Module):
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
         )
 
-        self.lm_head = LMLogits(vocab_size, bias=True)
+        self.lm_head = LMLogits(vocab_size, bias=False)
 
     @classmethod
     def from_config(cls, cfg):
@@ -166,23 +166,17 @@ class GPTModel(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
         }
 
-    def forward(self, input_ids, past_key_values, use_cache):
-        input_ids_shape = input_ids.size()
-        past_length = past_key_values[0].size(2) if past_key_values is not None else 0
+    def forward(self, input_ids):
 
-        input_embeds = self.embeddings(input_ids, past_length)
+        input_embeds = self.embeddings(input_ids, 0)
 
-        attention_mask = self.casual_mask(input_ids, past_length=past_length)
+        attention_mask = self.casual_mask(input_ids, past_length=0)
         transformer_output = self.transformer(
-            input_embeds, attention_mask, past_key_values, use_cache
+            input_embeds, attention_mask
         )
-        if use_cache:
-            transformer_output, presents = transformer_output
 
         output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
 
-        if use_cache:
-            output = (output, presents)
         return output
 
 
@@ -260,28 +254,13 @@ class Transformer(nn.Module):
         self.layers = nn.ModuleList([build_layer(i) for i in range(self.num_layers)])
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
 
-    def forward(self, hidden_states, attention_mask, past_key_values=None, use_cache=False):
+    def forward(self, hidden_states, attention_mask):
         # hidden_states shape: (batch_size, seq_length, hidden_size)
         # sbp: [S(0), B]
-        presents = []
-        if past_key_values is None:
-            past_key_values = tuple([None] * len(self.layers))
-
-        for i, (layer, past) in enumerate(zip(self.layers, past_key_values)):
+        for i, layer in enumerate(self.layers):
             hidden_states = layer(hidden_states, attention_mask)
-            # if self.training:
-            #     hidden_states = layer(hidden_states, attention_mask)
-            # else:
-            #     hidden_states = layer(
-            #         hidden_states, attention_mask, past_key_value=past, use_cache=use_cache
-            #     )
-            #     if use_cache:
-            #         hidden_states, present = hidden_states
-            #         presents.append(present)
 
         output = self.layernorm_f(hidden_states)
-        if use_cache:
-            output = (output, presents)
 
         return output
 
@@ -298,8 +277,6 @@ class GPTLoss(flow.nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
-        with open('of_gpt_loss.txt', 'a') as f:
-            f.write(str(masked_lm_loss.item()) + '\n')
         return {"masked_lm_loss": masked_lm_loss}
 
 
@@ -316,11 +293,6 @@ class GPTForPreTraining(flow.nn.Module):
         lm_labels=None,
         loss_mask=None,
     ):
-        logits = self.GPT_model(
-            input_ids,
-            None,
-            False,
-        )
-
+        logits = self.GPT_model(input_ids)
         lm_loss = self.loss_func(logits, lm_labels, loss_mask)
         return lm_loss

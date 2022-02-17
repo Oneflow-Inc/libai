@@ -283,7 +283,7 @@ class GraphTrainer(TrainerBase):
     def __init__(self, graph, data_loader):
         super().__init__()
 
-        graph.model.train()
+        # graph.model.train()
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
@@ -293,14 +293,13 @@ class GraphTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        # assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
         data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
-
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
 

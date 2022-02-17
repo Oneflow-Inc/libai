@@ -249,7 +249,7 @@ class DefaultTrainer(TrainerBase):
 
         # Assume these objects must be constructed in this order.
         self.model = self.build_model(cfg)
-        # self.model.eval()
+        self.model.eval()
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
@@ -362,7 +362,6 @@ class DefaultTrainer(TrainerBase):
             OrderedDict of results, if evaluation is enabled. Otherwise None.
         """
         super().train(self.start_iter, self.max_iter)
-        import ipdb; ipdb.set_trace()
         all_losses = self._trainer.all_losses
         with open("of_bert_loss.txt", "w") as f:
             for loss in all_losses:

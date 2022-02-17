@@ -10,7 +10,7 @@ if __name__ == '__main__':
     NUM_ATTENTION_HEADS=16
     FFN_HIDDEN_SIZE=1536
     ENCODER_SEQ_LENGTH=512
-    DECODER_SEQ_LENGTH=1024
+    DECODER_SEQ_LENGTH=256
 
     flow_gpt = GPTModel(
         num_layers=6,
@@ -57,12 +57,20 @@ if __name__ == '__main__':
             MEGA_FM = out
     
 
+    class Graph(flow.nn.Graph):
+        def __init__(self) -> None:
+            super().__init__()
+            self.model = flow_gpt
+        
+        def build(self, tokens_enc):
+            return self.model(tokens_enc)
+
+
+    flow_gpt = Graph()
     tokens_enc, position_ids, enc_mask = get_sample('flow')
     with flow.no_grad():
         flow_output = flow_gpt(
-            tokens_enc,
-            None,
-            False,
+            tokens_enc[:, :DECODER_SEQ_LENGTH],
         )
         
     
@@ -70,9 +78,9 @@ if __name__ == '__main__':
     import torch
     with torch.no_grad():
         megatron_output = megatron_gpt(
-            tokens_enc,
-            position_ids,
-            enc_mask,
+            tokens_enc[:, :DECODER_SEQ_LENGTH],
+            position_ids[:, :DECODER_SEQ_LENGTH],
+            enc_mask[..., :DECODER_SEQ_LENGTH, :DECODER_SEQ_LENGTH],
         )
     import numpy as np
     print('max diff: ', np.max(np.max(flow_output.numpy() - megatron_output.detach().cpu().numpy())))

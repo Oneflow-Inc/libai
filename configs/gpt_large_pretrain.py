@@ -24,4 +24,3 @@ train.recompute_grad.enabled = True
 train.output_dir = "./demo_output"
 train.recompute_grad=dict(enabled=True)
 
-graph.enabled=False
