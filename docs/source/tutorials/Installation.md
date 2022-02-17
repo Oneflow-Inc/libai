@@ -1,7 +1,7 @@
 # Installation
 According to different needs, LiBai supports two installation modes:
 - [Use as a library](#use-libai-as-a-python-library): In this mode, you can call LiBai's APIs or import LiBai's Module in your own project.
-- [Build from source](#build-libai-from-source): In this mode, you can develop your own project base on LiBai's framework.
+- [Build from source](#build-libai-from-source): In this mode, you can develop your own project based on LiBai's framework.
 
 ## Use LiBai as a Python Library
 ```bash
