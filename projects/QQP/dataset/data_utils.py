@@ -39,10 +39,10 @@ def build_sample(ids, types, paddings, label, unique_id):
     types_np = np.array(types, dtype=np.int64)
     paddings_np = np.array(paddings, dtype=np.int64)
     sample = Instance(
-        text=DistTensorData(flow.tensor(ids_np, dtype=flow.long), placement_idx=0),
-        padding_mask=DistTensorData(flow.tensor(paddings_np, dtype=flow.long), placement_idx=0),
-        types=DistTensorData(flow.tensor(types_np, dtype=flow.long), placement_idx=0),
-        label=DistTensorData(flow.tensor(label, dtype=flow.long), placement_idx=-1),
+        model_input=DistTensorData(flow.tensor(ids_np, dtype=flow.long), placement_idx=0),
+        attention_mask=DistTensorData(flow.tensor(paddings_np, dtype=flow.long), placement_idx=0),
+        tokentype_ids=DistTensorData(flow.tensor(types_np, dtype=flow.long), placement_idx=0),
+        labels=DistTensorData(flow.tensor(label, dtype=flow.long), placement_idx=-1),
     )
 
     return sample

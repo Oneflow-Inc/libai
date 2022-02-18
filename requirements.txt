@@ -1,12 +1,11 @@
 boto3
 botocore
 cloudpickle
-flowvision
+flowvision==0.0.6
 hydra-core
 nltk
 numpy
 omegaconf
-oneflow>=0.6.0
 Pygments
 PyYAML
 jieba

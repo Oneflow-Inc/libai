@@ -28,7 +28,7 @@ class TestMetadata(unittest.TestCase):
         x_meta.to_global()
         x_consistent = x.to_global(
             sbp=flow.sbp.broadcast,
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", {0: [0]}),
+            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
 
         self.assertEqual(x_meta.tensor.sbp, x_consistent.sbp)
