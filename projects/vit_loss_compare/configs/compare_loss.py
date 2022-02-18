@@ -10,16 +10,32 @@ from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_ST
 
 from data.build import build_image_train_loader
 
-model = get_config("common/models/vit.py").vit_model
+from libai.models.vit_libai import VisionTransformer
+model = LazyCall(VisionTransformer)(
+    img_size=224,
+    patch_size=16,
+    in_chans=3,
+    embed_dim=192,
+    mlp_ratio=4.0,
+    depth=12,
+    num_heads=3,
+    drop_rate=0.0,
+    attn_drop_rate=0.0,
+    drop_path_rate=0.0,
+    num_classes=1000,
+    loss_func=None,
+)
+
 graph = get_config("common/models/graph.py").graph
 train = get_config("common/train.py").train
+train.seed = 0
 dataloader = get_config("common/data/imagenet.py").dataloader
 
 dataloader.train._target_ = build_image_train_loader
 # Remove test dataset
 del dataloader.test
 
-graph.enabled = False
+graph.enabled = True
 
 # 数据相关的设置
 no_augmentation_transform = LazyCall(transforms.Compose)(
@@ -31,16 +47,16 @@ no_augmentation_transform = LazyCall(transforms.Compose)(
         LazyCall(transforms.CenterCrop)(
             size=(224, 224),
         ),
+        LazyCall(transforms.ToTensor)(),
         LazyCall(transforms.Normalize)(
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD,
         ),
-        LazyCall(transforms.ToTensor)(),
     ]
 )
 dataloader.train.dataset[0].transform = no_augmentation_transform
 
-dataloader.train.dataset[0].root = "/dataset/imagenet/extract"
+dataloader.train.dataset[0].root = "/dataset/extract"
 
 
 # 模型设置: 关闭dropout等任何随机性的部分

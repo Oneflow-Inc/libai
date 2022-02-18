@@ -191,7 +191,6 @@ class MultiheadAttention(nn.Module):
 
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
-
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
             if self.scale_mask_softmax_fusion:
@@ -224,7 +223,8 @@ class MultiheadAttention(nn.Module):
 
         # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context)
-
+        # import pdb
+        # pdb.set_trace()
         if self.bias_dropout_fusion:
             output, bias = output
             output = flow._C.fused_bias_add_dropout(

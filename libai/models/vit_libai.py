@@ -79,11 +79,12 @@ class VisionTransformer(nn.Module):
                     attention_dropout_prob=attn_drop_rate,
                     output_dropout_prob=drop_rate,
                     drop_path_prob=dpr[i],
+                    layernorm_epsilon=1e-6,
                     layer_idx=i
                 ) for i in range(depth)
             ]
         )
-        self.norm = LayerNorm(embed_dim)
+        self.norm = LayerNorm(embed_dim, eps=1e-6)
         self.head = Linear(embed_dim, num_classes)
 
         # Loss func
@@ -129,6 +130,8 @@ class VisionTransformer(nn.Module):
         return x[:, 0]
     
     def forward(self, images, labels=None):
+        # from pdb import set_trace
+        # set_trace()
         x = self.forward_features(images)
         x = self.head(x)
 
