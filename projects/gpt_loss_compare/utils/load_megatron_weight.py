@@ -23,129 +23,49 @@ from libai.utils.checkpoint import get_missing_parameters_message, get_unexpecte
 logger = logging.getLogger(__name__)
 
 
-def convert_tensor(tensor: torch.Tensor):
-    tensor = tensor.float()
-    return flow.Tensor(tensor.cpu().numpy())
+def convert_and_copy_tensor(tensor_lhs: flow.Tensor, tensor_rhs: torch.Tensor):
+    """ copy torch tensor weights to flow tensor weights
 
-
-def change_megatron_key(state_dict):
-    of_state_dict = {}
-
-    # Language model.
-    language_model = state_dict["language_model"]
-
-    # Embedding.
-    embedding = language_model["embedding"]
-    of_state_dict["bert.embeddings.vocab_embeddings.weight"] = convert_tensor(
-        embedding["word_embeddings"]["weight"]
-    )
-    of_state_dict["bert.embeddings.position_embeddings.weight"] = convert_tensor(
-        embedding["position_embeddings"]["weight"]
-    )
-    of_state_dict["bert.embeddings.tokentype_embeddings.weight"] = convert_tensor(
-        embedding["tokentype_embeddings"]["weight"]
-    )
-
-    # Encoder.
-    encoder = language_model["encoder"]
-    for key, value in encoder.items():
-        # Change layers.0.input_layernorm.weight -> bert.encoders.0.input_layernorm.weight
-        key = "bert.encoders." + key.replace("layers.", "")
-        of_state_dict[key] = convert_tensor(value)
-    # Change the final layernorm name
-    of_state_dict["bert.final_layernorm.weight"] = of_state_dict.pop(
-        "bert.encoders.final_layernorm.weight"
-    )
-    of_state_dict["bert.final_layernorm.bias"] = of_state_dict.pop(
-        "bert.encoders.final_layernorm.bias"
-    )
-
-    # Pooler.
-    pooler = language_model["pooler"]
-    of_state_dict["bert.pooler.dense.weight"] = convert_tensor(pooler["dense.weight"])
-    of_state_dict["bert.pooler.dense.bias"] = convert_tensor(pooler["dense.bias"])
-
-    # LM head.
-    lm_head = state_dict["lm_head"]
-    of_state_dict["cls_head.predictions.dense.weight"] = convert_tensor(lm_head["dense.weight"])
-    of_state_dict["cls_head.predictions.dense.bias"] = convert_tensor(lm_head["dense.bias"])
-
-    of_state_dict["cls_head.predictions.layernorm.weight"] = convert_tensor(
-        lm_head["layernorm.weight"]
-    )
-    of_state_dict["cls_head.predictions.layernorm.bias"] = convert_tensor(lm_head["layernorm.bias"])
-
-    of_state_dict["cls_head.lm_logits.bias"] = convert_tensor(lm_head["bias"])
-
-    # Binary head.
-    binary_head = state_dict["binary_head"]
-    of_state_dict["cls_head.seq_relationship.weight"] = convert_tensor(binary_head["weight"])
-    of_state_dict["cls_head.seq_relationship.bias"] = convert_tensor((binary_head["bias"]))
-
-    return of_state_dict
-
-
-def load_tensor(tensor_lhs, tensor_rhs):
+    Args:
+        tensor_lhs (flow.Tensor)
+        tensor_rhs (torch.Tensor)
+    """
+    tensor_rhs = flow.Tensor(tensor_rhs.cpu().float().numpy())
     tensor_rhs = flow.to_global(tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp)
     tensor_lhs.copy_(tensor_rhs)
 
 
-def load_model(model: flow.nn.Module, state_dict):
-    model_state_dict = model.state_dict()
-
-    # Decide shape
-    incorrect_shapes = []
-    for k in list(state_dict.keys()):
-        if k in model_state_dict:
-            if (
-                (k.find("weight") != -1)
-                and (k.find("embeddings") == -1)
-                and (k.find("layernorm") == -1)
-            ):
-                # Transpose from (M, N) -> (N, M), because the weight
-                # shape in megatron and oneflow missing one transpose.
-                shape_model = tuple(model_state_dict[k].shape[::-1])
-            else:
-                shape_model = tuple(model_state_dict[k].shape)
-            shape_ckpt = tuple(state_dict[k].shape)
-            if shape_model != shape_ckpt:
-                incorrect_shapes.append((k, shape_ckpt, shape_model))
-                state_dict.pop(k)
-
-    unexpected_keys = []
-    for key, value in state_dict.items():
-        if key not in model_state_dict:
-            unexpected_keys.append(key)
-            continue
-        model_state_dict.pop(key)
-        if (
-            (key.find("weight") != -1)
-            and (key.find("embeddings") == -1)
-            and (key.find("layernorm") == -1)
-        ):
-            value = flow.transpose(value, 0, 1)
-        load_tensor(model.state_dict()[key], value)
-
-    missing_keys = list(model_state_dict.keys())
-
-    for k, shape_checkpoint, shape_model in incorrect_shapes:
-        logger.warning(
-            "Skip loading parameter '{}' to the model due to incompatible "
-            "shapes: {} in the checkpoint but {} in the "
-            "model! You might want to double check if this is expected.".format(
-                k, shape_checkpoint, shape_model
-            )
-        )
-    if missing_keys:
-        logger.info(get_missing_parameters_message(missing_keys))
-    if unexpected_keys:
-        logger.info(get_unexpected_parameters_message(unexpected_keys))
-
-
-def load_megatron_bert(model: flow.nn.Module, model_weight_path: str):
+def load_megatron_gpt(model: flow.nn.Module, model_weight_path: torch.nn.Module):
     import torch
 
-    logger.info("Loading megatron weight")
-    megatron_state_dict = torch.load(model_weight_path, map_location="cpu")["model"]
-    of_state_dict = change_megatron_key(megatron_state_dict)
-    load_model(model, of_state_dict)
+    logger.info("Loading megatron gpt weight")
+    model_weight_state_dict = torch.load(model_weight_path, map_location="cpu")
+    flow_state_dict = model.state_dict()
+
+
+    print('flow_weight nums: ', len(flow_state_dict))
+    print('torch_weight nums: ', len(model_weight_state_dict))
+
+    used_flow_keys = set()
+    used_torch_keys = set()
+
+    for torch_k, v in model_weight_state_dict.items():
+        k = torch_k
+        if 'embedding' not in k and '.weight'in k and len(v.shape) == 2 and 'embedding.' not in k:
+            v = v.transpose(0, 1)
+        if k == 'language_model.embedding.word_embeddings.weight':
+            k = 'embeddings.token_embeddings.weight'
+        elif k == 'language_model.embedding.position_embeddings.weight':
+            k = 'embeddings.position_embeddings.weight'
+        elif k.startswith('language_model.encoder.final_layernorm.'):
+            k = k.replace('language_model.encoder.final_layernorm', 'transformer.layernorm_f')
+        elif k.startswith('language_model.encoder'):
+            k = k.replace('language_model.encoder', 'transformer')
+
+        convert_and_copy_tensor(flow_state_dict[k], v)
+        used_flow_keys.add(k)
+        used_torch_keys.add(torch_k)
+
+    assert len(set(flow_state_dict.keys()) - used_flow_keys) == 0
+    assert len(set(model_weight_state_dict.keys()) - used_torch_keys) == 0
+        

@@ -17,9 +17,25 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+import oneflow as flow
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+from utils.load_megatron_weight import load_megatron_gpt
+
+class Trainer(DefaultTrainer):
+    @classmethod
+    def build_model(cls, cfg):
+        model = super().build_model(cfg)
+        model.GPT_model.load_state_dict(flow.load('/workspace/libai/tests/gpt_test/flow_gpt.f', 0))
+        return model
+
+    def train(self):
+        super().train()
+        all_losses = self.storage.history("total_loss").values()
+        with open("projects/gpt_loss_compare/of_loss.txt", "w") as f:
+            for loss, _ in all_losses:
+                f.write(str(loss) + "\n")
 
 
 def main(args):
@@ -46,7 +62,7 @@ def main(args):
         res = DefaultTrainer.test(cfg, test_loader, graph)  # noqa
         return
 
-    trainer = DefaultTrainer(cfg)
+    trainer = Trainer(cfg)
     return trainer.train()
 
 
