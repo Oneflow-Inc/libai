@@ -18,9 +18,9 @@ import oneflow.nn as nn
 from libai.utils import distributed as dist
 
 from .attention import MultiheadAttention
+from .droppath import DropPath
 from .layer_norm import LayerNorm
 from .mlp import MLP
-from .droppath import DropPath
 
 
 class TransformerLayer(nn.Module):
@@ -104,9 +104,9 @@ class TransformerLayer(nn.Module):
         if output_layer_init_method is None:
             output_layer_init_method = init_method
         self.output_layer_init_method = output_layer_init_method
-        
+
         self.drop_path = DropPath(drop_path_prob) if drop_path_prob > 0.0 else nn.Identity()
-        
+
         self.input_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
         )
