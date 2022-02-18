@@ -15,6 +15,7 @@
 
 import oneflow as flow
 import oneflow.nn as nn
+from flowvision.layers.weight_init import trunc_normal_
 
 from libai.layers import (
     PatchEmbedding, 
@@ -88,6 +89,20 @@ class VisionTransformer(nn.Module):
 
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
+
+        # weight init
+        trunc_normal_(self.pos_embed, std=.02)
+        trunc_normal_(self.cls_token, std=.02)
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
 
     @classmethod
     def from_config(self, cfg):
