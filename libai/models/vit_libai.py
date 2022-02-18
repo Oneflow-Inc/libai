@@ -13,17 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-from collections import OrderedDict
-from functools import partial
-
 import oneflow as flow
 import oneflow.nn as nn
 
 from libai.layers import (
     PatchEmbedding, 
     TransformerLayer, 
-    DropPath,
     LayerNorm,
     Linear,
 )
@@ -40,15 +35,15 @@ class VisionTransformer(nn.Module):
         - https://arxiv.org/abs/2010.11929
     """
     
-    
+    @configurable
     def __init__(
         self,
         img_size=224,
         patch_size=16,
         in_chans=3,
-        embed_dim=768,
+        embed_dim=192,
         depth=12,
-        num_heads=12,
+        num_heads=3,
         mlp_ratio=4.0,
         drop_rate=0.0,
         attn_drop_rate=0.0,
@@ -58,18 +53,18 @@ class VisionTransformer(nn.Module):
     ):
         super().__init__()
         self.num_classes = num_classes
-        self.patch_emb = PatchEmbedding(
+        self.patch_embed = PatchEmbedding(
             img_size=img_size,
             patch_size=patch_size,
             in_chans=in_chans,
             embed_dim=embed_dim,
         )
         ffn_size = int(embed_dim * mlp_ratio)
-        num_patches = self.patch_emb.num_patches
-        self.cls_token = flow.zeros(1, 1, embed_dim).to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
-                                                               placement=dist.get_layer_placement(0))
-        self.pos_embed = flow.zeros(1, num_patches + 1, embed_dim).to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
-                                                               placement=dist.get_layer_placement(0))
+        num_patches = self.patch_embed.num_patches
+        self.cls_token = nn.Parameter(flow.zeros(1, 1, embed_dim, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                                            placement=dist.get_layer_placement(0)))
+        self.pos_embed = nn.Parameter(flow.zeros(1, num_patches + 1, embed_dim, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                                                                                placement=dist.get_layer_placement(0)))
 
         self.pos_drop = nn.Dropout(p=drop_rate)
         dpr = [
@@ -94,10 +89,27 @@ class VisionTransformer(nn.Module):
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
-    
+    @classmethod
+    def from_config(self, cfg):
+        return {
+            "img_size": cfg.img_size,
+            "patch_size": cfg.patch_size,
+            "in_chans": cfg.in_chans,
+            "embed_dim": cfg.embed_dim,
+            "depth": cfg.depth,
+            "num_heads": cfg.num_heads,
+            "mlp_ratio": cfg.mlp_ratio,
+            "drop_rate": cfg.drop_rate,
+            "attn_drop_rate": cfg.attn_drop_rate,
+            "drop_path_rate": cfg.drop_path_rate,
+            "num_classes": cfg.num_classes,
+            "loss_func": cfg.loss_func,
+        }
+
+
     def forward_features(self, x):
         # patch embedding
-        x = self.patch_emb(x)
+        x = self.patch_embed(x)
 
         cls_token = self.cls_token.expand(
             x.shape[0], -1, -1
