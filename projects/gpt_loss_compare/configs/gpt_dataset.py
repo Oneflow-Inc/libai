@@ -3,7 +3,7 @@ from omegaconf import OmegaConf
 from ..data.build import build_megatron_gpt_train_val_test_loader
 from ..data.datasets.megatron_gpt_dataset import build_train_valid_test_datasets
 
-from ..tokenizer.tokenization_gpt2 import GPT2Tokenizer
+from libai.tokenizer.tokenization_gpt2 import GPT2Tokenizer
 
 
 
