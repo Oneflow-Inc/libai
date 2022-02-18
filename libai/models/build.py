@@ -34,11 +34,6 @@ def build_model(cfg):
     else:
         model_name = cfg.model_name
         model = MODEL_ARCH_REGISTRY.get(model_name)(cfg.model_cfg)
-
-    import oneflow as flow
-    state = flow.load('./tests/gpt_test/flow_gpt.f', 0)
-    model.GPT_model.load_state_dict(state)
-    model.eval()
     return model
 
 

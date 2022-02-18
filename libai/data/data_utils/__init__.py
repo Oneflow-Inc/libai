@@ -18,7 +18,6 @@ from .indexed_dataset import (
     IndexedDataset,
     MMapIndexedDataset,
     get_indexed_dataset,
-    make_dataset,
 )
 from .reindexed_dataset import BlockIndexedDataset, SentenceIndexedDataset
 from .split_dataset import SplitDataset, split_ds
