@@ -4,28 +4,43 @@ According to different needs, LiBai supports two installation modes:
 - [Build from source](#build-libai-from-source): In this mode, you can develop your own project based on LiBai's framework.
 
 ## Use LiBai as a Python Library
+
 ```bash
 pip install libai
 ```
 
 ## Build LiBai from Source
-- Clone this repo:
-```bash
-git clone https://github.com/Oneflow-Inc/libai.git
-cd libai
-```
-- Create a conda virtual environment and activate it:
-```bash
-conda create -n libai python=3.7 -y
-conda activate libai
-```
-- Install the stable release of OneFlow with `CUDA` support following the [official installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package)
-- Install other requirements:
-```bash
-pip install -r requirements.txt
-```
-- Build the extensional cpp dependency
-```bash
-cd /libai/data/data_utils
-make
-```
+
+1. Clone this repo:
+
+  ```bash
+  git clone https://github.com/Oneflow-Inc/libai.git
+  cd libai
+  ```
+2. Create a conda virtual environment and activate it:
+
+  ```bash
+  conda create -n libai python=3.7 -y
+  conda activate libai
+  ```
+
+3. Install the stable release of OneFlow with `CUDA` support:
+
+  ```bash
+  python3 -m pip install -f https://release.oneflow.info oneflow==0.6.0+cu102
+  ```
+
+For other release, see [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
+
+4. Install other requirements:
+
+  ```bash
+  pip install -r requirements.txt
+  ```
+
+5. Build the extensional cpp dependency
+
+  ```bash
+  cd /libai/data/data_utils
+  make
+  ```
