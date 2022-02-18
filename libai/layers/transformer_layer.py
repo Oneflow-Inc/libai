@@ -20,6 +20,7 @@ from libai.utils import distributed as dist
 from .attention import MultiheadAttention
 from .layer_norm import LayerNorm
 from .mlp import MLP
+from .droppath import DropPath
 
 
 class TransformerLayer(nn.Module):
@@ -72,6 +73,7 @@ class TransformerLayer(nn.Module):
         is_decoder=False,
         attention_dropout_prob=0.0,
         output_dropout_prob=0.0,
+        drop_path_prob=0.0,
         layernorm_epsilon=1e-5,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
@@ -102,7 +104,9 @@ class TransformerLayer(nn.Module):
         if output_layer_init_method is None:
             output_layer_init_method = init_method
         self.output_layer_init_method = output_layer_init_method
-
+        
+        self.drop_path = DropPath(drop_path_prob) if drop_path_prob > 0.0 else nn.Identity()
+        
         self.input_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
         )
@@ -165,6 +169,7 @@ class TransformerLayer(nn.Module):
             past_key_value=self_attn_past_key_value,
             use_cache=use_cache,
         )
+        attention_output = self.drop_path(attention_output)
 
         if use_cache:
             attention_output, presents = attention_output
@@ -186,10 +191,12 @@ class TransformerLayer(nn.Module):
                 attention_output, decoder_presents = attention_output
                 presents += decoder_presents
 
+            attention_output = self.drop_path(attention_output)
             hidden_states = hidden_states + attention_output
             layernorm_output = self.post_cross_attention_layernorm(hidden_states)
 
         mlp_output = self.mlp(layernorm_output)
+        mlp_output = self.drop_path(mlp_output)
         output = hidden_states + mlp_output
 
         if use_cache:
