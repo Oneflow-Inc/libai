@@ -286,7 +286,6 @@ class GraphTrainer(TrainerBase):
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
-        # self.all_losses = []
 
     def run_step(self, get_batch: Callable):
         """
@@ -304,4 +303,3 @@ class GraphTrainer(TrainerBase):
         loss_dict = self.graph(**data)
 
         self.write_metrics(loss_dict, data_time)
-        # self.all_losses.append(dist.tton(loss_dict['masked_lm_loss']).item())

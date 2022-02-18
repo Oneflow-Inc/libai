@@ -1,5 +1,5 @@
 from libai.config import LazyCall
-from libai.scheduler import WarmupCosineLR, WarmupMultiStepLR
+from libai.scheduler import WarmupCosineLR
 
 # fmt: off
 train = dict(
@@ -11,7 +11,7 @@ train = dict(
     global_batch_size=None,
     num_accumulation_steps=None,
     start_iter=0,
-    train_iter=1000,
+    train_iter=10000,
     train_epoch=0,  # default train epoch is set to 0
     warmup_ratio=0,  # default warmup ratio is set to 0
 
@@ -40,12 +40,11 @@ train = dict(
     train_samples=None,
 
     # Scheduler arguments
-    scheduler=LazyCall(WarmupMultiStepLR)(
+    scheduler=LazyCall(WarmupCosineLR)(
         # in DefaultTrainer we will automatically set max_iter
         # and warmup_iter by the given train cfg.
-        milestones=[0.999999, ],
-        warmup_factor=0.000,
-        # alpha=0.01,
+        warmup_factor=0.001,
+        alpha=0.01,
         warmup_method="linear",
     ),
 

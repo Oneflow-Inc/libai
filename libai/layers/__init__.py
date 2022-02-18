@@ -34,6 +34,4 @@ __all__ = [
     "TransformerLayer",
     "ParallelCrossEntropyLoss",
     "LMLogits",
-    "ExtendedMask",
-    "CasualMask",
 ]

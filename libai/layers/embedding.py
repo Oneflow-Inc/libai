@@ -39,10 +39,8 @@ class Embedding(nn.Module):
         embedding_dim,
         padding_idx=None,
         init_method=init.xavier_normal_,
-        fp16=False,
     ):
         super().__init__()
-        self.fp16 = fp16
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
         if padding_idx is not None:
@@ -72,15 +70,11 @@ class Embedding(nn.Module):
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
-        if self.fp16:
-            weight = flow._C.amp_white_identity(self.weight)
-        else:
-            weight = self.weight
         # embeddings with sbp sign: [B, B]
         #   [B, B] x [S(0), B] --> [S(0), B]
         #     ↑         ↑              ↑
         #   embed    pos_ids       pos_embed
-        input_embeds = flow._C.gather(weight, input_ids, axis=0)
+        input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
         return input_embeds
 
     def _fill_padding_idx_with_zero(self) -> None:
@@ -100,7 +94,7 @@ class Embedding(nn.Module):
 
 
 class VocabEmbedding(nn.Module):
-    """Construct the word embeddings, which may be split along vocabulary dimension.
+    """Construct the word embeddings, which may be splited along vocabulary dimension.
 
     Arguments:
         num_embeddings: size of vocabulary.
@@ -115,10 +109,8 @@ class VocabEmbedding(nn.Module):
         embedding_dim,
         padding_idx=None,
         init_method=init.xavier_normal_,
-        fp16=False,
     ):
         super().__init__()
-        self.fp16 = fp16
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
         if padding_idx is not None:
@@ -151,16 +143,12 @@ class VocabEmbedding(nn.Module):
 
     def forward(self, input_ids):
         # input_ids with shape (batch_size, seq_len), and sbp sign: [S(0), B]
-        if self.fp16:
-            weight = flow._C.amp_white_identity(self.weight)
-        else:
-            weight = self.weight
 
         # Gather forward sbp sign
         # [B, S(0)] x [S(0), B] --> [S(0), P]
         #     ↑           ↑            ↑
         #   embed  input_ids    input_embeds
-        input_embeds = flow._C.gather(weight, input_ids, axis=0)
+        input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
         # Set the embeds sbp from [S(0), P] --> [S(0), B] to get complete embedding results.
         input_embeds = input_embeds.to_global(sbp=dist.get_hidden_sbp())
 
