@@ -8,6 +8,8 @@ graph = get_config("common/models/graph.py").graph
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
 
+train.eval_iter = 10
+
 dataloader = dict()
 
 # Set all dropout to 0.
@@ -78,4 +80,4 @@ data = dict(
 
 
 today = date.today()
-train.output_dir = f"output/bert_loss_compare/{today}"
+train.output_dir = f"loss_compare/bert_loss_compare/{today}"

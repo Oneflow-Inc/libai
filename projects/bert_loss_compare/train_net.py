@@ -23,11 +23,18 @@ from tokenizer.tokenizer import setup_tokenizer
 from utils.load_megatron_weight import load_megatron_bert
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
+from libai.trainer import hooks
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 
 
 class Trainer(DefaultTrainer):
+    
+    # Remove checkpointer
+    def build_hooks(self):
+        ret = [hook for hook in super().build_hooks() if not isinstance(hook, hooks.PeriodicCheckpointer)]
+        return ret
+    
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
