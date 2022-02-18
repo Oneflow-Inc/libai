@@ -28,6 +28,7 @@ class Trainer(DefaultTrainer):
     def build_model(cls, cfg):
         model = super().build_model(cfg)
         model.GPT_model.load_state_dict(flow.load('/workspace/libai/tests/gpt_test/flow_gpt.f', 0))
+        model.eval()
         return model
 
     def train(self):

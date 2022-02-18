@@ -319,7 +319,7 @@ class DefaultTrainer(TrainerBase):
             self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
             return self._last_eval_results
 
-        ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
+        # ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
 
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written

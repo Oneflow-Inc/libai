@@ -27,3 +27,9 @@ train.train_micro_batch_size = 4
 train.recompute_grad.enabled = True
 train.output_dir = "./demo_output"
 train.recompute_grad=dict(enabled=True)
+train.train_iter = 1000
+train.scheduler = LazyCall(WarmupMultiStepLR)(
+    warmup_factor=0,
+    milestones=[0.999999, ],
+    warmup_method="linear",
+)
