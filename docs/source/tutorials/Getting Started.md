@@ -32,7 +32,7 @@ imagenet
     └── ...
 
 ```
-### Train ViT model from scratch
+### Train vit model from scratch
 - Update the data path in [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file
 ```python
 # Refine data path to imagenet data folder
