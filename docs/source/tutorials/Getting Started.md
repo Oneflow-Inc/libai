@@ -1,12 +1,12 @@
 # Getting Started
-This page provides basic tutorials about the usage of LiBai:
-- [Train VisionTransformer on ImageNet Dataset](#train-visiontransformer-on-imagenet-dataset)
-  - [Data preparation](#data-preparation)
+This page guides you through a basic way to get started with LiBai:
+- [Train VisionTransformer on ImageNet dataset](#train-visiontransformer-on-imagenet-dataset)
+  - [Prepare the Data](#data-preparation)
   - [Train vit model from scratch](#train-vit-model-from-scratch)
 
 
 ## Train VisionTransformer on ImageNet dataset
-### Data preparation
+### Prepare the Data
 For ImageNet, we use standard ImageNet dataset, you can download it from http://image-net.org/.
 - For standard folder dataset, move validation images to labeled sub-folders. The file structure should be like:
 ```bash
@@ -32,18 +32,18 @@ imagenet
     └── ...
 
 ```
-### Train vit model from scratch
-- update the data path in [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file
+### Train ViT model from scratch
+- Update the data path in [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file
 ```python
 # Refine data path to imagenet data folder
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 ```
-- To train `vit_tiny_patch16_224` model on ImageNet on a single node with 8 gpus for 300 epochs, run:
+- To train `vit_tiny_patch16_224` model on ImageNet on a single node with 8 GPUs for 300 epochs, run:
 ```bash
 bash tools/train.sh configs/vit_imagenet.py 8
 ```
-- In LiBai we set the default vit model to `vit_tiny_patch16_224`. To train other vit model you can update the [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file by importing the other vit model in the config file as follows:
+- The default vit model in LiBai is set to `vit_tiny_patch16_224`. To train other vit model you can update the [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file by importing the other vit models in the config file as follows:
 ```python
 # from .common.models.vit.vit_tiny_patch16_224 import model
 from .common.models.vit.vit_base_patch16_224 import model

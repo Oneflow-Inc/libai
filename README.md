@@ -62,7 +62,7 @@ See [Getting Started](https://libai.readthedocs.io/en/latest/tutorials/Getting%2
 
 ## Documentation
 
-Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for full API documentation and tutorials.
+See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) for full API documentation and tutorials.
 
 ## ChangeLog
 
