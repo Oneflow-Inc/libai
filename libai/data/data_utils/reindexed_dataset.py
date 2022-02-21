@@ -143,7 +143,7 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
 
     documents = indexed_dataset.doc_idx.astype(np.int64)
     sizes = indexed_dataset.sizes.astype(np.int64)
-    num_tokens = np.sum(sizes)
+    num_tokens = np.sum(sizes[documents[:-1]])
 
     # Build the indexed mapping if not exist.
     if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename):
@@ -209,7 +209,7 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
             # And finally add the relevant portion of last document.
             sample_list.append(self.indexed_dataset.get(doc_index_l, length=offset_l + 1))
             sample = np.concatenate(sample_list)
-
+        
         return sample
 
     @property
