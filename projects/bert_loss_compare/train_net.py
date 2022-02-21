@@ -23,27 +23,37 @@ from tokenizer.tokenizer import setup_tokenizer
 from utils.load_megatron_weight import load_megatron_bert
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
+from libai.trainer import hooks
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 
 
 class Trainer(DefaultTrainer):
+    
+    # Remove checkpointer
+    def build_hooks(self):
+        ret = [hook for hook in super().build_hooks() if not isinstance(hook, hooks.PeriodicCheckpointer)]
+        return ret
+    
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
         load_megatron_bert(
             model,
-            "/workspace/idea_model/idea_bert/megatron_model_save/bert-cn-wwm/compare_oneflow_loss_reproduce_ckpt"
-            "/iter_0000100/mp_rank_00/model_optim_rng.pt",
+            "/workspace/model_optim_rng.pt",
         )
         return model
 
     def train(self):
         super().train()
         all_losses = self.storage.history("total_loss").values()
-        with open("projects/bert_loss_compare/of_loss.txt", "w") as f:
+        with open(os.path.join(self.cfg.train.output_dir, "of_loss.txt"), "w") as f:
             for loss, _ in all_losses:
                 f.write(str(loss) + "\n")
+    
+    @classmethod
+    def test(cls, cfg, test_loaders, model, evaluator=None):
+        return {}
 
     @classmethod
     def build_train_loader(cls, cfg, tokenizer=None):
