@@ -1,0 +1,263 @@
+# coding=utf-8
+# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Pretrain T5"""
+import os
+
+import oneflow
+
+os.environ["MASTER_ADDR"] = "localhost"
+os.environ["MASTER_PORT"] = "12346"
+os.environ["RANK"] = "0"
+os.environ["WORLD_SIZE"] = "1"
+# os.environ['DATA_PATH']='/home/wang/workspace/Megatron-LM/examples'
+# os.environ['VOCAB_FILE']='/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt'
+# os.environ['CHECKPOINT_PATH']='/home/wang/workspace/Megatron-LM/examples'
+os.environ["DATA_PATH"] = "/workspace/Megatron-LM/examples"
+os.environ["VOCAB_FILE"] = "/workspace/data/libai_dataset/bert-base-chinese-vocab.txt"
+os.environ["CHECKPOINT_PATH"] = "/workspace/Megatron-LM/examples"
+import sys
+
+sys.argv.extend(
+    [
+        "--num-layers",
+        "6",
+        "--hidden-size",
+        "384",
+        "--num-attention-heads",
+        "12",
+        "--kv-channels",
+        "32",
+        "--ffn-hidden-size",
+        "1536",
+        "--encoder-seq-length",
+        "512",
+        "--decoder-seq-length",
+        "128",
+        "--micro-batch-size",
+        "16",
+        "--global-batch-size",
+        "16",
+        "--max-position-embeddings",
+        "512",
+        "--train-iters",
+        "1000000",
+        "--lr-decay-iters",
+        "1000000",
+        # '--save', '/home/wang/workspace/Megatron-LM/examples',
+        # '--load', '/home/wang/workspace/Megatron-LM/examples',
+        # '--data-path', '/home/wang/workspace/Megatron-LM/examples',
+        # '--vocab-file', '/home/wang/data/t5/dataset/bert-base-chinese-vocab.txt',
+        "--save",
+        "/workspace/Megatron-LM/examples",
+        "--load",
+        "/workspace/Megatron-LM/examples",
+        "--data-path",
+        "/workspace/Megatron-LM/examples",
+        "--vocab-file",
+        "/workspace/data/libai_dataset/bert-base-chinese-vocab.txt",
+        "--data-impl",
+        "mmap",
+        "--split",
+        "949,50,1",
+        "--lr",
+        "0.0001",
+        "--min-lr",
+        "0.00001",
+        "--lr-decay-style",
+        "linear",
+        "--lr-warmup-fraction",
+        ".01",
+        "--weight-decay",
+        "1e-2",
+        "--clip-grad",
+        "1.0",
+        "--log-interval",
+        "100",
+        "--save-interval",
+        "10000",
+        "--eval-interval",
+        "1000",
+        "--eval-iters",
+        "10",
+        # '--fp16',
+        "--vocab-extra-ids",
+        "100",
+        "--layernorm-epsilon",
+        "1e-12",
+    ]
+)
+
+
+from functools import partial
+
+import torch
+from megatron import get_args, get_timers, mpu, print_rank_0
+from megatron.data.dataset_utils import build_train_valid_test_datasets
+from megatron.initialize import initialize_megatron
+from megatron.model import ModelType, T5Model
+from megatron.training import get_model, pretrain
+from megatron.utils import average_losses_across_data_parallel_group
+
+initialize_megatron(
+    extra_args_provider=None, args_defaults={"tokenizer_type": "BertWordPieceLowerCase"}
+)
+
+
+"""
+Pipeline parallelism for T5
+===========================
+
+T5 is a model architecture with both encoder and decoder blocks.
+Consequently, pipeline parallelism is implemented slightly differently
+compared to architectures like GPT and BERT.
+
+In particular, when pipeline_model_parallel_world_size > 1, each stage
+either executes an encoder block or a decoder block. The
+--pipeline-model-parallel-split-rank argument controls the rank at which
+the split happens: all ranks lower than this argument execute the
+encoder block, and all ranks equal to or higher than this argument value
+execute the decoder block.
+
+In the encoder section of the model, only one tensor is sent downstream:
+the intermediate encoder_hidden_state. In the decoder section of the
+model, two tensors are sent downstream in the forward pass: the fully
+computed encoder_hidden_state, and the intermediate decoder_hidden_state.
+
+In particular, these are the shapes of the tensors sent between
+different workers:
+    If rank is in decoder section:
+        intermediate decoder_hidden_state (pre-transpose),
+        complete encoder_hidden_state (post-transpose).
+    If rank is at boundary between encoder and decoder sections:
+        complete encoder_hidden_state (post-transpose).
+    If rank is in encoder section:
+        intermediate encoder_hidden_state (pre-transpose).
+
+Additionally, we have code in the backward_step function in schedules.py
+to accumulate the encoder_hidden_state gradient across skip connections
+(encoder_hidden_state fed in as input to each layer in the decoder).
+"""
+
+
+def model_provider(pre_process=True, post_process=True, add_encoder=True, add_decoder=True):
+    """Build the model."""
+
+    print_rank_0("building T5 model ...")
+    model = T5Model(
+        num_tokentypes=0,
+        parallel_output=True,
+        pre_process=pre_process,
+        post_process=post_process,
+        add_encoder=add_encoder,
+        add_decoder=add_decoder,
+    )
+    return model
+
+
+def get_batch(data_iterator):
+    """Build the batch."""
+
+    keys = ["text_enc", "text_dec", "labels", "loss_mask", "enc_mask", "dec_mask", "enc_dec_mask"]
+    datatype = torch.int64
+
+    # Broadcast data.
+    if data_iterator is not None:
+        data = next(data_iterator)
+    else:
+        data = None
+    data_b = mpu.broadcast_data(keys, data, datatype)
+
+    # Unpack.
+    tokens_enc = data_b["text_enc"].long()
+    tokens_dec = data_b["text_dec"].long()
+    labels = data_b["labels"].long()
+    loss_mask = data_b["loss_mask"].float()
+
+    enc_mask = data_b["enc_mask"] < 0.5
+    dec_mask = data_b["dec_mask"] < 0.5
+    enc_dec_mask = data_b["enc_dec_mask"] < 0.5
+
+    return tokens_enc, tokens_dec, loss_mask, labels, enc_mask, dec_mask, enc_dec_mask
+
+
+def loss_func(loss_mask, output_tensor):
+    lm_loss_ = output_tensor.float()
+    lm_loss = torch.sum(lm_loss_.view(-1) * loss_mask.reshape(-1)) / loss_mask.sum()
+
+    loss = lm_loss
+    averaged_losses = average_losses_across_data_parallel_group([lm_loss])
+
+    return loss, {"lm loss": averaged_losses[0]}
+
+
+def forward_step(data_iterator, model):
+    """Forward step."""
+    args = get_args()
+    timers = get_timers()
+
+    # Get the batch.
+    timers("batch generator").start()
+    tokens_enc, tokens_dec, loss_mask, lm_labels, enc_mask, dec_mask, enc_dec_mask = get_batch(
+        data_iterator
+    )
+    timers("batch generator").stop()
+
+    # Forward model lm_labels
+    output_tensor = model(
+        tokens_enc,
+        tokens_dec,
+        enc_mask,
+        dec_mask,
+        enc_dec_mask,
+        tokentype_ids=None,
+        lm_labels=lm_labels,
+    )
+
+    return output_tensor, partial(loss_func, loss_mask)
+
+
+def train_valid_test_datasets_provider(train_val_test_num_samples):
+    """Build train, valid, and test datasets."""
+    args = get_args()
+
+    print_rank_0("> building train, validation, and test datasets " "for T5 ...")
+    train_ds, valid_ds, test_ds = build_train_valid_test_datasets(
+        data_prefix=args.data_path,
+        data_impl=args.data_impl,
+        splits_string=args.split,
+        train_valid_test_num_samples=train_val_test_num_samples,
+        max_seq_length=args.encoder_seq_length,
+        max_seq_length_dec=args.decoder_seq_length,
+        masked_lm_prob=args.mask_prob,
+        short_seq_prob=args.short_seq_prob,
+        seed=args.seed,
+        skip_warmup=(not args.mmap_warmup),
+        dataset_type="t5",
+    )
+    print_rank_0("> finished creating T5 datasets ...")
+
+    return train_ds, valid_ds, test_ds
+
+
+def get_t5_model():
+    return get_model(model_provider_func=model_provider)[0].module.eval()
+
+
+if __name__ == "__main__":
+    print(get_t5_model())
+    from utils import get_sample
+
+    get_t5_model()(*get_sample(mode="torch"))
