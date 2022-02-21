@@ -183,6 +183,7 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
     def __init__(self, data_prefix, indexed_dataset, max_seq_length=512):
         self.max_seq_length = max_seq_length
         self.indexed_dataset = indexed_dataset
+        self.doc_idx = indexed_dataset.doc_idx
 
         self.sample_idx = build_index_mappings(
             data_prefix, self.indexed_dataset, self.max_seq_length
@@ -198,16 +199,16 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
         offset_l = self.sample_idx[idx + 1][1]
         if doc_index_f == doc_index_l:
             sample = self.indexed_dataset.get(
-                doc_index_f, offset=offset_f, length=offset_l - offset_f + 1
+                self.doc_idx[doc_index_f], offset=offset_f, length=offset_l - offset_f + 1
             )
         else:
             # Otherwise, get the rest of the initial document.
-            sample_list = [self.indexed_dataset.get(doc_index_f, offset=offset_f)]
+            sample_list = [self.indexed_dataset.get(self.doc_idx[doc_index_f], offset=offset_f)]
             # Loop over all in between documents and add the entire document.
             for i in range(doc_index_f + 1, doc_index_l):
-                sample_list.append(self.indexed_dataset.get(i))
+                sample_list.append(self.indexed_dataset.get(self.doc_idx[i]))
             # And finally add the relevant portion of last document.
-            sample_list.append(self.indexed_dataset.get(doc_index_l, length=offset_l + 1))
+            sample_list.append(self.indexed_dataset.get(self.doc_idx[doc_index_l], length=offset_l + 1))
             sample = np.concatenate(sample_list)
         
         return sample
