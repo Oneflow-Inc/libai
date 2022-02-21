@@ -1,3 +1,4 @@
+from datetime import date
 from libai.config import LazyCall, get_config
 from libai.scheduler.lr_scheduler import WarmupMultiStepLR
 from libai.optim import get_default_optimizer_params
@@ -10,7 +11,7 @@ from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_ST
 
 from data.build import build_image_train_loader
 
-model = get_config("common/models/vit/vit_tiny_patch16_224.py").vit_model
+model = get_config("common/models/vit/vit_tiny_patch16_224.py").model
 graph = get_config("common/models/graph.py").graph
 train = get_config("common/train.py").train
 train.seed = 0  # 固定seed为0
@@ -77,8 +78,12 @@ train.log_period = 1
 
 # 将scheduler的milestones设大, 以达到constant LR的目的
 train.scheduler = LazyCall(WarmupMultiStepLR)(
-    max_iter=1000, warmup_iter=0, warmup_factor=0.0001, milestones=[0.99]
+    max_iter=1000, warmup_iter=0, warmup_factor=0.0001, milestones=[0.999999]
 )
 
 # Set fp16 ON
 train.amp.enabled = False
+
+
+today = date.today()
+train.output_dir = f"loss_compare/vit_loss_compare/{today}"
