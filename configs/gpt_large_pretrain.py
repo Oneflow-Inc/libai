@@ -23,4 +23,3 @@ optim.lr = 1.5e-4
 train.train_micro_batch_size = 4
 train.recompute_grad.enabled = True
 train.output_dir = "./demo_output"
-

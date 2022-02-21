@@ -208,9 +208,11 @@ class BlockIndexedDataset(flow.utils.data.Dataset):
             for i in range(doc_index_f + 1, doc_index_l):
                 sample_list.append(self.indexed_dataset.get(self.doc_idx[i]))
             # And finally add the relevant portion of last document.
-            sample_list.append(self.indexed_dataset.get(self.doc_idx[doc_index_l], length=offset_l + 1))
+            sample_list.append(
+                self.indexed_dataset.get(self.doc_idx[doc_index_l], length=offset_l + 1)
+            )
             sample = np.concatenate(sample_list)
-        
+
         return sample
 
     @property

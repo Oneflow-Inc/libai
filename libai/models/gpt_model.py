@@ -171,9 +171,7 @@ class GPTModel(nn.Module):
         input_embeds = self.embeddings(input_ids, 0)
 
         attention_mask = self.casual_mask(input_ids, past_length=0)
-        transformer_output = self.transformer(
-            input_embeds, attention_mask
-        )
+        transformer_output = self.transformer(input_embeds, attention_mask)
 
         output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
 
