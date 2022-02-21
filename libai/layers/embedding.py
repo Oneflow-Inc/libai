@@ -224,14 +224,14 @@ class SinePositionalEmbedding(nn.Module):
 class PatchEmbedding(nn.Module):
     """2D Image to Patch Embedding
     Arguments:
-        img_size: size of input image. Defaults to 224.
-        patch_size: embedded patch size. Defaults to 16.
-        in_chans: input channel's size. Defaults to 3.
+        img_size: size of input image. Default to 224.
+        patch_size: embedded patch size. Default to 16.
+        in_chans: input channel's size. Default to 3.
         embed_dim: dimension of embedded patch. Default to 768.
         norm_layer: normalization patch embedding or not. Default to None.
         flatten: flatten patch embedding or keep the 2-D shape. Default to True.
         layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
-        parallelism. Defaults to 0.
+        parallelism. Default to 0.
     """
 
     def __init__(
