@@ -1,3 +1,4 @@
+from datetime import date
 from libai.config import LazyCall, get_config
 
 from libai.scheduler import WarmupMultiStepLR
@@ -6,6 +7,8 @@ model = get_config("common/models/bert.py").pretrain_model
 graph = get_config("common/models/graph.py").graph
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
+
+train.eval_iter = 10
 
 dataloader = dict()
 
@@ -25,7 +28,6 @@ train.micro_batch_size = 16
 train.log_period = 20
 train.warmup_ratio = 0.01
 
-train.output_dir = "output/bert_loss_compare"
 
 # Set a constant lr scheduler after warmup
 optim.lr = 0.0001
@@ -34,7 +36,7 @@ train.scheduler = LazyCall(WarmupMultiStepLR)(warmup_factor=0.1, milestones=[0.9
 tokenizer = dict(
     tokenizer_name="BertTokenizer",
     tokenizer_cfg=dict(
-        vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
+        vocab_file="/workspace/dataset/bert_data/bert-base-chinese-vocab.txt",
         do_lower_case=True,
     ),
     append_eod=False,
@@ -44,9 +46,9 @@ data = dict(
     # Pad the vocab size to be divisible by this value
     # This is added for computational efficiency reasons.
     make_vocab_size_divisible_by=128,
-    data_path=["/workspace/idea_model/idea_bert/output_data/loss_compara_content_sentence"],
+    data_path=["/workspace/dataset/bert_data/loss_compara_content_sentence"],
     split="949,50,1",
-    vocab_file="/workspace/idea_model/idea_bert/bert-base-chinese-vocab.txt",
+    vocab_file="/workspace/dataset/bert_data/bert-base-chinese-vocab.txt",
     merge_file=None,
     vocab_extra_ids=0,
     seq_length=512,
@@ -75,3 +77,7 @@ data = dict(
     dataloader_type="single",
     num_workers=4,
 )
+
+
+today = date.today()
+train.output_dir = f"loss_compare/bert_loss_compare/{today}"
