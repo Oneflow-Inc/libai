@@ -13,101 +13,84 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 
-import oneflow as flow
-
-from configs.common.models.bert import pretrain_model as model
-from libai.models import build_model
+from libai.config import LazyConfig
+from libai.trainer import DefaultTrainer, hooks
+from libai.trainer.default import _check_batch_size
 from libai.utils import distributed as dist
 
 
 class TestBertModel(unittest.TestCase):
-    def test_bert_build(self):
-        bert_model = build_model(model)
-        self.assertTrue(isinstance(bert_model.bert.embeddings.vocab_embeddings.weight, flow.Tensor))
+    def setUp(self) -> None:
+        cfg = LazyConfig.load("configs/bert_large_pretrain.py")
 
-    @unittest.skip("No GPU in CI Environment")
-    def test_bert_forward(self):
-        input_ids = flow.ones(
-            2,
-            512,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        attention_mask = flow.zeros(
-            2,
-            512,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        tokentype_ids = flow.zeros(
-            2,
-            512,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
+        # set data path
+        # prepare dataset
 
-        bert_model = build_model(model)
-        output_dict = bert_model(input_ids, attention_mask, tokentype_ids)
+        cfg.tokenization.tokenizer.vocab_file = (
+            "/workspace/dataset/bert_data/bert-base-chinese-vocab.txt"
+        )
+        cfg.dataloader.train.dataset[
+            0
+        ].data_prefix = "/workspace/dataset/bert_data/loss_compara_content_sentence"
+        cfg.dataloader.train.dataset[
+            0
+        ].indexed_dataset.data_prefix = "/workspace/dataset/bert_data/loss_compara_content_sentence"
 
-        self.assertEqual(list(output_dict.keys()), ["prediction_scores", "seq_relationship_score"])
-        self.assertEqual(list(output_dict["prediction_scores"].shape), [2, 512, 30522])
-        self.assertEqual(list(output_dict["seq_relationship_score"].shape), [2, 2])
+        # set training config
+        cfg.train.train_epoch = 0
+        cfg.train.train_iter = 100
+        cfg.train.eval_period = 1000
+        cfg.train.log_period = 1
+        cfg.train.resume = False
+        cfg.train.output_dir = tempfile.mkdtemp()
 
-    @unittest.skip("No GPU in CI Environment")
-    def test_bert_backward(self):
-        input_ids = flow.ones(
-            2,
-            512,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        attention_mask = flow.zeros(
-            2,
-            512,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        tokentype_ids = flow.zeros(
-            2,
-            512,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
+        # set distributed config
+        cfg.train.dist.data_parallel_size = 1
+        cfg.train.dist.tensor_parallel_size = 1
+        cfg.train.dist.pipeline_parallel_size = 1
+        cfg.train.dist.pipeline_num_layers = 100
 
-        ns_labels = flow.zeros(
-            2,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        lm_labels = flow.ones(
-            2,
-            512,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        loss_mask = flow.ones(
-            2,
-            512,
-            dtype=flow.long,
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        bert_model = build_model(model)
-        loss_dict = bert_model(
-            input_ids, attention_mask, tokentype_ids, ns_labels, lm_labels, loss_mask
-        )
-        losses = sum(loss_dict.values())
-        losses.backward()
+        # set model
+        cfg.model.cfg.num_attention_heads = 8
+        cfg.model.cfg.hidden_size = 384
+        cfg.model.cfg.hidden_layers = 4
+        cfg.train.recompute_grad.enabled = True
+
+        dist.setup_dist_util(cfg.train.dist)
+        _check_batch_size(cfg)
+
+        self.cfg = cfg
+
+        def build_hooks(self):
+            ret = [
+                hooks.IterationTimer(),
+                hooks.LRScheduler(),
+            ]
+
+            if dist.is_main_process():
+                # run writers in the end, so that evaluation metrics are written
+                ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
+            return ret
+
+        @classmethod
+        def test(cls, cfg, test_loaders, model, evaluator=None):
+            return {}
+
+        DefaultTrainer.build_hooks = build_hooks
+        DefaultTrainer.test = test
+
+    def test_bert_eager(self):
+        self.cfg.graph.enabled = False
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
+
+    def test_bert_graph(self):
+        self.cfg.graph.enabled = False
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
 
 
 if __name__ == "__main__":
