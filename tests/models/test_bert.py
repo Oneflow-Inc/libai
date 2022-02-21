@@ -34,6 +34,9 @@ BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 
 
+setup_logger(distributed_rank=dist.get_rank())
+
+
 class TestBertModel(unittest.TestCase):
     def setUp(self) -> None:
         cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "bert_data")
@@ -60,7 +63,6 @@ class TestBertModel(unittest.TestCase):
         cfg.train.output_dir = tempfile.mkdtemp()
 
         # set distributed config
-        cfg.train.dist.data_parallel_size = 2
         cfg.train.dist.tensor_parallel_size = 1
         cfg.train.dist.pipeline_parallel_size = 1
         cfg.train.dist.pipeline_num_layers = 100
@@ -70,9 +72,6 @@ class TestBertModel(unittest.TestCase):
         cfg.model.cfg.hidden_size = 384
         cfg.model.cfg.hidden_layers = 4
         cfg.train.recompute_grad.enabled = True
-
-        rank = dist.get_rank()
-        setup_logger(cfg.train.output_dir, distributed_rank=rank)
 
         dist.setup_dist_util(cfg.train.dist)
         _check_batch_size(cfg)
@@ -103,7 +102,7 @@ class TestBertModel(unittest.TestCase):
         trainer.train()
 
     def test_bert_graph(self):
-        self.cfg.graph.enabled = False
+        self.cfg.graph.enabled = True
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
 
