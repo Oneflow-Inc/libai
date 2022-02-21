@@ -270,14 +270,10 @@ class GPTLoss(flow.nn.Module):
         super().__init__()
         self.lm_loss = ParallelCrossEntropyLoss()
 
-    def forward(self, logits, lm_labels, loss_mask):
+    def forward(self, logits, lm_labels):
         lm_loss = self.lm_loss(logits, lm_labels)
-        loss_mask = loss_mask.float()
-        denominator = loss_mask.sum().to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        )
-        masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
-        return {"masked_lm_loss": masked_lm_loss}
+        lm_loss = lm_loss.mean()
+        return {"lm_loss": lm_loss}
 
 
 @MODEL_ARCH_REGISTRY.register()
@@ -291,8 +287,7 @@ class GPTForPreTraining(flow.nn.Module):
         self,
         input_ids,
         lm_labels=None,
-        loss_mask=None,
     ):
         logits = self.GPT_model(input_ids)
-        lm_loss = self.loss_func(logits, lm_labels, loss_mask)
+        lm_loss = self.loss_func(logits, lm_labels)
         return lm_loss
