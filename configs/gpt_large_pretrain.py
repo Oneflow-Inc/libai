@@ -17,13 +17,10 @@ model.cfg.max_seq_length = 1024
 
 for ds in dataloader.train.dataset:
     ds.max_seq_length = model.cfg.max_seq_length
-# dataloader.train.dataset.max_seq_length = model.cfg.max_seq_length
-# dataloader.train.dataset[0].max_seq_length = model.cfg.max_seq_length
 
 optim.lr = 1.5e-4
 
 train.train_micro_batch_size = 4
 train.recompute_grad.enabled = True
 train.output_dir = "./demo_output"
-train.recompute_grad=dict(enabled=True)
 
