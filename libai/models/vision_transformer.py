@@ -108,14 +108,14 @@ class VisionTransformer(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, Linear):
             trunc_normal_(m.weight, std=0.02)
-            if isinstance(m, Linear) and m.bias is not None:
+            if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
         elif isinstance(m, LayerNorm):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
     @classmethod
-    def from_config(self, cfg):
+    def from_config(cls, cfg):
         return {
             "img_size": cfg.img_size,
             "patch_size": cfg.patch_size,
@@ -128,7 +128,6 @@ class VisionTransformer(nn.Module):
             "attn_drop_rate": cfg.attn_drop_rate,
             "drop_path_rate": cfg.drop_path_rate,
             "num_classes": cfg.num_classes,
-            "loss_func": cfg.loss_func,
         }
 
     def forward_features(self, x):
@@ -138,12 +137,12 @@ class VisionTransformer(nn.Module):
         cls_token = self.cls_token.expand(
             x.shape[0], -1, -1
         )  # stole cls_tokens impl from Phil Wang, thanks
-        cls_token = cls_token.to_global(sbp=flow.sbp.split(0), placement=cls_token.placement)
+        cls_token = cls_token.to_global(sbp=x.sbp, placement=cls_token.placement)
         x = flow.cat((cls_token, x), dim=1)
 
         # position embedding
         pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
-        pos_embed = pos_embed.to_global(sbp=flow.sbp.split(0), placement=pos_embed.placement)
+        pos_embed = pos_embed.to_global(sbp=x.sbp, placement=pos_embed.placement)
         x = self.pos_drop(x + self.pos_embed)
 
         # transformer block
