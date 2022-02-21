@@ -10,10 +10,10 @@ from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_ST
 
 from data.build import build_image_train_loader
 
-model = get_config("common/models/vit.py").vit_model
+model = get_config("common/models/vit/vit_tiny_patch16_224.py").vit_model
 graph = get_config("common/models/graph.py").graph
 train = get_config("common/train.py").train
-train.seed = 0
+train.seed = 0  # 固定seed为0
 dataloader = get_config("common/data/imagenet.py").dataloader
 
 dataloader.train._target_ = build_image_train_loader
