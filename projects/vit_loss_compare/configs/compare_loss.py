@@ -73,7 +73,7 @@ optim = LazyCall(flow.optim.AdamW)(
 # 对齐batchsize, 总的train_iter等数据
 train.train_micro_batch_size = 32
 train.test_micro_batch_size = 128
-train.train_iter = 50
+train.train_iter = 1000
 train.log_period = 1
 
 # 将scheduler的milestones设大, 以达到constant LR的目的
