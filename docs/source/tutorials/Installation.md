@@ -1,6 +1,6 @@
 # Installation
 LiBai provides two installation modes to meet different needs:
-- [Use as a library](#use-libai-as-a-python-library) to call LiBai's APIs or import LiBai's Module in your own project.
+- [Use as a librar](#use-libai-as-a-python-library) to call LiBai's APIs or import LiBai's module in your own project.
 - [Build from source](#build-libai-from-source) to develop your own project based on LiBai's framework.
 
 ## Use LiBai as a Python Library
@@ -29,8 +29,8 @@ pip install libai
   ```bash
   python3 -m pip install -f https://release.oneflow.info oneflow==0.6.0+cu102
   ```
-  
-  For other release, see [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
+
+  For other releases, see [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
 
 4. Install other requirements:
 
@@ -44,3 +44,4 @@ pip install libai
   cd /libai/data/data_utils
   make
   ```
+
