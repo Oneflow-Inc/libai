@@ -29,8 +29,8 @@ pip install libai
   ```bash
   python3 -m pip install -f https://release.oneflow.info oneflow==0.6.0+cu102
   ```
-
-For other release, see [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
+  
+  For other release, see [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
 
 4. Install other requirements:
 
@@ -38,7 +38,7 @@ For other release, see [OneFlow installation guide](https://github.com/Oneflow-I
   pip install -r requirements.txt
   ```
 
-5. Build the extensional cpp dependency
+5. Build the extensional cpp dependency:
 
   ```bash
   cd /libai/data/data_utils
