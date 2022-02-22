@@ -53,13 +53,16 @@ LiBai is an open-source large-scale model training toolbox based on OneFlow. The
 </details>
 
 ## Installation
-Please refer to [Getting Started.md](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for installation
+
+See [Installation instructions](https://libai.readthedocs.io/en/latest/tutorials/Installation.html).
 
 ## Getting Started
-Please refer to [Getting Started.md](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for basic usage of LiBai
+
+See [Getting Started](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) to learn about the basic usage of LiBai.
 
 ## Documentation
-Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for full API documentation and tutorials
+
+See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) for full API documentation and tutorials.
 
 ## ChangeLog
 
@@ -67,16 +70,20 @@ Please refer to [docs](https://libai.readthedocs.io/en/latest/index.html) for fu
 - Support 3D parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
 - Support 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for Image Classification.
 
-Please refer to [changelog.md](./changelog.md) for details and release history.
+See [changelog.md](./changelog.md) for details and release history.
 
 ## Contributing
-We appreciate all contributions to improve LiBai. Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for the contributing guideline.
+
+    We appreciate all contributions to improve LiBai. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the contributing guideline.
 
 ## License
+
 This project is released under the [Apache 2.0 license](LICENSE).
 
 ## Citation
-If you find this project useful for your research, please consider cite:
+
+If you find this project useful for your research, consider cite:
+
 ```BibTeX
 @misc{of2021libai,
   author =       {Xingyu Liao and Peng Cheng and Tianhe Ren and Depeng Liang and
