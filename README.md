@@ -24,31 +24,31 @@
 
 **English** | [简体中文](/README_zh-CN.md)
 
-LiBai is an open-source large-scale model training toolbox based on OneFlow. The main branch works with OneFlow 0.7.0.
+LiBai is a large-scale open-source model training toolbox based on OneFlow. The main branch works with OneFlow 0.7.0.
 
 <details open>
 <summary> <b> Highlights </b> </summary>
 
 - **Support a collection of parallel training components**
 
-    LiBai provides multiple parallelisms, e.g. Data Parallelism, Tensor Parallelism, and Pipeline Parallelism. Besides, it's extensible for new parallelism.
+    LiBai provides multiple parallelisms such as Data Parallelism, Tensor Parallelism, and Pipeline Parallelism. It's also extensible for other new parallelisms.
 
 - **Varied training techniques**
 
-    LiBai provides some out-of-the-box training techniques, e.g. Distributed Training, Mixed Precision Training, Activation Checkpointing, Recomputation, Gradient Accumulation, and Zero Redundancy Optimizer(ZeRO).
+    LiBai provides many out-of-the-box training techniques such as Distributed Training, Mixed Precision Training, Activation Checkpointing, Recomputation, Gradient Accumulation, and Zero Redundancy Optimizer(ZeRO).
 
 - **Support for both CV and NLP tasks**
 
-    Predifined data process for both CV and NLP datasets, e.g. CIFAR, ImageNet, BERT Dataset.
+    LiBai has predifined data process for both CV and NLP datasets such as CIFAR, ImageNet, and BERT Dataset.
 
-- **Easy Usage**
+- **Easy to use**
 
-    Components are designed to be modular in LiBai for better and easier usage as follows:
+    LiBai's components are designed to be modular for easier usage as follows:
     - LazyConfig system for more flexible syntax and no predefined structures 
     - Friendly trainer and engine
-    - Used as a library to support building research projects on top of it. Please see [projects/](/projects) for some projects that are built on top of LiBai.
+    - Used as a library to support building research projects on top of it. See [projects/](/projects) for some projects that are built on top of LiBai
 
-- **High Efficience**
+- **High Efficiency**
 
 </details>
 
@@ -58,7 +58,7 @@ See [Installation instructions](https://libai.readthedocs.io/en/latest/tutorials
 
 ## Getting Started
 
-See [Getting Started](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) to learn about the basic usage of LiBai.
+See [Getting Started](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for the basic usage of LiBai.
 
 ## Documentation
 
@@ -68,13 +68,13 @@ See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) f
 
 **Beta 0.1.0** was released in 15/2/2022:
 - Support 3D parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
-- Support 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for image classification.
+- Support 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for Image Classification.
 
-See [changelog](./changelog.md) for details and release history.
+See [changelog.md](./changelog.md) for details and release history.
 
 ## Contributing
 
-We appreciate all contributions to improve LiBai. See [CONTRIBUTING](./CONTRIBUTING.md) for the contributing guideline.
+    We appreciate all contributions to improve LiBai. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the contributing guideline.
 
 ## License
 
