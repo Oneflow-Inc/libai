@@ -1,8 +1,23 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import oneflow as flow
 from oneflow import nn
 from libai.tokenizer import BertTokenizer
-from libai.models import BertModel
+from .bert import BertForSimCSE
 import libai
 import random
 from tqdm import tqdm
@@ -70,7 +85,7 @@ class SimCSE_Eval(nn.Module):
 class SimcseModel(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.bert = BertModel(cfg)
+        self.bert = BertForSimCSE(cfg)
         self.pooler_type = cfg.pooler_type
         assert self.pooler_type in ["cls", "cls_before_pooler", "avg", "avg_top2", "avg_first_last"], "unrecognized pooling type %s" % self.pooler_type
         self.mlp = MLPLayer(cfg.hidden_size)
