@@ -14,9 +14,15 @@
 # limitations under the License.
 
 
+# --------------------------------------------------------
+# MAE Model
+# References:
+# mae: https://github.com/facebookresearch/mae/blob/main/models_mae.py
+# --------------------------------------------------------
+
+
 import oneflow as flow
 import oneflow.nn as nn
-from torch import device
 
 import libai.utils.distributed as dist
 from libai.layers import (
