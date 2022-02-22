@@ -273,7 +273,11 @@ class DefaultTrainer(TrainerBase):
                 self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
             )
 
-        self.global_batch_size = cfg.train.global_batch_size
+        self.global_batch_size = (
+            cfg.train.global_batch_size
+            if cfg.graph.enabled
+            else cfg.train.global_batch_size // cfg.train.num_accumulation_steps
+        )
         self.max_iter = cfg.train.train_iter
 
         self.register_hooks(self.build_hooks())

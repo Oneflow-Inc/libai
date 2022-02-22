@@ -18,6 +18,9 @@ import os
 import tempfile
 import unittest
 
+import oneflow as flow
+import oneflow.unittest
+
 from libai.config import LazyConfig
 from libai.trainer import DefaultTrainer, hooks
 from libai.trainer.default import _check_batch_size
@@ -37,7 +40,7 @@ IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestBertModel(unittest.TestCase):
+class TestBertModel(flow.unittest.TestCase):
     def setUp(self) -> None:
         cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "bert_data")
 
@@ -56,25 +59,19 @@ class TestBertModel(unittest.TestCase):
 
         # set training config
         cfg.train.train_epoch = 0
-        cfg.train.train_iter = 100
-        cfg.train.eval_period = 1000
+        cfg.train.train_iter = 10
+        cfg.train.eval_period = 1000  # no test now
         cfg.train.log_period = 1
+        cfg.train.train_micro_batch_size = 8
+        cfg.train.num_accumulation_steps = 4
         cfg.train.resume = False
         cfg.train.output_dir = tempfile.mkdtemp()
-
-        # set distributed config
-        cfg.train.dist.tensor_parallel_size = 1
-        cfg.train.dist.pipeline_parallel_size = 1
-        cfg.train.dist.pipeline_num_layers = 100
 
         # set model
         cfg.model.cfg.num_attention_heads = 8
         cfg.model.cfg.hidden_size = 384
         cfg.model.cfg.hidden_layers = 4
         cfg.train.recompute_grad.enabled = True
-
-        dist.setup_dist_util(cfg.train.dist)
-        _check_batch_size(cfg)
 
         self.cfg = cfg
 
@@ -96,13 +93,49 @@ class TestBertModel(unittest.TestCase):
         DefaultTrainer.build_hooks = build_hooks
         DefaultTrainer.test = test
 
-    def test_bert_eager(self):
+    @flow.unittest.skip_unless_2n4d()
+    def test_bert_eager_with_data_tensor_parallel(self):
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 4
+        self.cfg.train.dist.tensor_parallel_size = 2
+        # pipeline parallelism not supported in eager global
+        self.cfg.train.dist.pipeline_parallel_size = 1
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
         self.cfg.graph.enabled = False
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
 
-    def test_bert_graph(self):
+    @flow.unittest.skip_unless_2n4d()
+    def test_bert_graph_with_data_tensor_pipeline_parallel(self):
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 2
+        self.cfg.train.dist.pipeline_parallel_size = 2
+        self.cfg.train.dist.pipeline_num_layers = self.cfg.model.cfg.hidden_layers
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
         self.cfg.graph.enabled = True
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
+
+    @flow.unittest.skip_unless_2n4d()
+    def test_bert_with_zero(self):
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 4
+        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.pipeline_parallel_size = 2
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = True
+        self.cfg.train.zero_optimization.enabled = True
+        self.cfg.train.zero_optimization.stage = 3
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
 
