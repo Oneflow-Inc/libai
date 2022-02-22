@@ -18,54 +18,11 @@ import sys
 
 sys.path.append(".")
 
-import torch
-
-import oneflow as flow
-
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-# from libai.models.vit_libai import VisionTransformer
 
-def filter_keys(key, value):
-    if "norm1" in key:
-        key = key.replace("norm1", "input_layernorm")
-    elif "attn.qkv" in key:
-        key = key.replace("attn.qkv", "self_attention.query_key_value")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
-    elif "attn.proj" in key:
-        key = key.replace("attn.proj", "self_attention.dense")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
-    elif "norm2" in key:
-        key = key.replace("norm2", "post_attention_layernorm")
-    elif "mlp.fc1" in key:
-        key = key.replace("mlp.fc1", "mlp.dense_h_to_4h")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
-    elif "mlp.fc2" in key:
-        key = key.replace("mlp.fc2", "mlp.dense_4h_to_h")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
-    elif "head.weight" in key:
-            value = value.transpose((-1, -2))
-    return key, value
-
-def load_from_torch(model, path="./vit_tiny_torch_weight.pth"):
-    torch_dict = torch.load(path)
-    parameters = torch_dict
-    new_parameters = dict()
-    for key, value in parameters.items():
-        if "num_batches_tracked" not in key:
-          val = value.detach().cpu().numpy()
-          # to global tensor
-          key, val = filter_keys(key, val)
-          val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
-          new_parameters[key] = val
-    model.load_state_dict(new_parameters)
-    print("successfully load pytorch weight")
-    return model
+from utils.load_torch_weight import load_from_torch
 
 
 class Trainer(DefaultTrainer):
