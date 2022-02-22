@@ -74,7 +74,6 @@ class T5Dataset(flow.utils.data.Dataset):
         self.eos_id = vocab[tokenizer._eos_token]
         self.sentinel_tokens = [vocab[x] for x in tokenizer._additional_special_tokens]
         assert len(self.sentinel_tokens) > 0
-        import ipdb ;ipdb.set_trace()
 
     def __len__(self):
         return self.samples_mapping.shape[0]
@@ -233,6 +232,14 @@ def pad_and_convert_to_numpy(tokens, masked_positions,
     # Loss mask
     loss_mask = ([1] * num_tokens_dec) + ([0] * padding_length_dec)
     loss_mask = np.array(loss_mask, dtype=np.int64)
+
+    tokens_enc = flow.tensor(tokens_enc, dtype=flow.long)
+    tokens_dec_in = flow.tensor(tokens_dec_in , dtype=flow.long)
+    labels = flow.tensor(labels , dtype=flow.long)
+    enc_mask = flow.tensor(enc_mask, dtype=flow.long)
+    dec_mask = flow.tensor(dec_mask, dtype=flow.long)
+    enc_dec_mask = flow.tensor(enc_dec_mask, dtype=flow.long)
+    loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
     return tokens_enc, tokens_dec_in, labels, enc_mask, \
            dec_mask, enc_dec_mask, loss_mask
