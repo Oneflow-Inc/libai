@@ -15,20 +15,18 @@
 
 import datetime
 import logging
-import time
 import math
 import operator
+import time
 from collections import Counter
-
-from cv2 import log
 
 import oneflow as flow
 
 from libai.evaluation import flatten_results_dict
 from libai.trainer.trainer import HookBase
 from libai.utils import distributed as dist
-from libai.utils.checkpoint import PeriodicCheckpointer as _PeriodicCheckpointer
 from libai.utils.checkpoint import Checkpointer
+from libai.utils.checkpoint import PeriodicCheckpointer as _PeriodicCheckpointer
 from libai.utils.events import EventWriter
 from libai.utils.timer import Timer
 
@@ -183,6 +181,7 @@ class PeriodicCheckpointer(_PeriodicCheckpointer, HookBase):
 
     def after_step(self):
         self.step(self.trainer.iter)
+
 
 class BestCheckpointer(HookBase):
     """
