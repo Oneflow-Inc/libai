@@ -43,10 +43,10 @@ class MaskedAutoencoderViT(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3,
                  embed_dim=1024, depth=24, num_heads=16,
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
-                 mlp_ratio=4., norm_layer=LayerNorm, norm_pix_loss=False):
+                 mlp_ratio=4., norm_layer=LayerNorm, norm_pix_loss=False, mask_ratio=0.75):
         super().__init__()
 
-
+        self.mask_ratio = mask_ratio
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         self.patch_embed = PatchEmbedding(img_size, patch_size, in_chans, embed_dim)
@@ -176,6 +176,7 @@ class MaskedAutoencoderViT(nn.Module):
             "mlp_ratio": cfg.mlp_ratio,
             "norm_layer": cfg.norm_layer,
             "norm_pix_loss": cfg.norm_pix_loss,
+            "mask_ratio": cfg.mask_ratio,
         }
 
 
@@ -310,9 +311,15 @@ class MaskedAutoencoderViT(nn.Module):
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
         return loss
 
-
-    def forward(self, imgs, mask_ratio=0.75):
-        latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
+    def forward(self, images):
+        latent, mask, ids_restore = self.forward_encoder(images, self.mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
-        loss = self.forward_loss(imgs, pred, mask)
-        return loss, pred, mask
+        loss = self.forward_loss(images, pred, mask)
+        if self.training:
+            return {"losses": loss}
+        else:
+            return {
+                "losses": loss,
+                "pred": pred,
+                "mask": mask,
+            }

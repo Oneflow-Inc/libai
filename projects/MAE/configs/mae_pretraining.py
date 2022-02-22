@@ -1,18 +1,24 @@
 from flowvision.transforms import transforms
 from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
-from libai.config.lazy import LazyCall
+from libai.config import LazyCall, get_config
 
 from configs.common.data.imagenet import dataloader
-from configs.common.optim import optim
-from configs.common.train import train
-from configs.common.models.graph import graph
-from models.mae_vit_base_patch16 import model
+from .models.mae_vit_base_patch16 import model
+from ..data.pretraining_imagenet import PretrainingImageNetDataset
 
+train = get_config("common/train.py").train
+optim = get_config("common/optim.py").optim
+graph = get_config("common/models/graph.py").graph
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
+dataloader.train.dataset[0]._target_ = PretrainingImageNetDataset
+
+dataloader.train.dataset[0].root = "/dataset/extract"
+dataloader.test[0].dataset.root = "/dataset/extract"
+
 
 # Graph training
 graph.enabled = True
@@ -23,7 +29,7 @@ transform_train = LazyCall(transforms.Compose)(
         LazyCall(transforms.RandomResizedCrop)(
             size=(224, 224),
             scale=(0.2, 1.0),
-            Interpolation=3
+            interpolation=3
         ),
         LazyCall(transforms.RandomHorizontalFlip)(),
         LazyCall(transforms.ToTensor)(),
@@ -37,10 +43,11 @@ dataloader.train.dataset[0].transform = transform_train
 
 
 # Refine training settings for MAE
-train.train_micro_batch_size = 128
+train.train_micro_batch_size = 8
 train.train_epoch = 800
 train.warmup_ratio = 40 / 800
 train.log_period = 10
+train.eval_period = 10
 
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule: lr = base_lr * batch_size / 256

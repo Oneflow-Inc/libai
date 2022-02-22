@@ -15,8 +15,11 @@
 
 import functools
 import inspect
+import os
 
 from omegaconf import OmegaConf
+
+from .lazy import LazyConfig
 
 
 def configurable(init_func=None, *, from_config=None):
@@ -165,3 +168,19 @@ def try_get_key(cfg, *keys, default=None):
         if p is not none:
             return p
     return default
+
+
+def get_config(config_path):
+    """
+    Returns a config object from a config_path.
+    Args:
+        config_path (str): config file name relative to libai's "configs/"
+            directory, e.g., "common/models/bert.py"
+    Returns:
+        omegaconf.DictConfig: a config object
+    """
+    cfg_file = os.path.join("configs", config_path)
+    if not os.path.exists(cfg_file):
+        raise RuntimeError("{} not available in Model Zoo!".format(config_path))
+    cfg = LazyConfig.load(cfg_file)
+    return cfg

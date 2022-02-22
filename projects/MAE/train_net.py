@@ -22,16 +22,10 @@ from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 
 
-class Trainer(DefaultTrainer):
-    @classmethod
-    def build_model(cls, cfg):
-        model = super().build_model(cfg)
-        return model
 
-    @classmethod
-    def test(cls, cfg, test_loaders, model, evaluator=None):
-        return {}
-
+def test(cls, cfg, test_loaders, model, evaluator=None):
+    return {}
+DefaultTrainer.test = test
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
