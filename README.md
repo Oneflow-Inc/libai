@@ -68,7 +68,7 @@ See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) f
 
 **Beta 0.1.0** was released in 15/2/2022:
 - Support 3D parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
-- Support 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for Image Classification.
+- Support 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for image classification.
 
 See [changelog](./changelog.md) for details and release history.
 
