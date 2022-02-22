@@ -91,7 +91,7 @@ class TrainDataset(Dataset):
 
 
 class TestDataset(Dataset):
-    # sts数据集
+    # sts datasets
     def __init__(self, name, path, tokenizer):
         self.data = load_data(name, path)
         self.tokenizer = tokenizer
@@ -109,13 +109,9 @@ class TestDataset(Dataset):
         length = len(ids)
         ids = ids + [0] * (self.max_len - length)
         
-        # ids = flow.tensor(ids).long()
-
         attention_mask = [1] * length + [0] * (self.max_len - length)
-        # attention_mask = flow.tensor(attention_mask).long()
 
         token_type_ids = [0] * self.max_len
-        # token_type_ids = flow.tensor(token_type_ids).long()
 
         return {
             "input_ids" : ids,
