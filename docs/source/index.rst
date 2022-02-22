@@ -11,7 +11,6 @@ Welcome to libai's documentation!
    :maxdepth: 2
    :caption: Tutorials
 
-   tutorials/Installation.md
    tutorials/Getting Started.md
 
 .. toctree::
