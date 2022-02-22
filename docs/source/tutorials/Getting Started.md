@@ -33,7 +33,7 @@ imagenet
 
 ```
 ### Train vit model from scratch
-- Update the data path in [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file
+- Update the data path in [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file:
 ```python
 # Refine data path to imagenet data folder
 dataloader.train.dataset[0].root = "/path/to/imagenet"
