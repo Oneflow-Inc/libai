@@ -301,13 +301,14 @@ class BertModel(nn.Module):
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
         extended_attention_mask = self.extended_attn_mask(attention_mask)
         embedding_output = self.embeddings(input_ids, tokentype_ids)
-
+        total_hidden = []
         hidden_states = embedding_output
         for layer in self.encoders:
             hidden_states = layer(hidden_states, extended_attention_mask)
+            total_hidden.append(hidden_states)
         encoder_output = self.final_layernorm(hidden_states)
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
-        return encoder_output, pooled_output
+        return encoder_output, pooled_output, total_hidden
 
     def word_embeddings_weight(self):
         return self.embeddings.word_embeddings()
