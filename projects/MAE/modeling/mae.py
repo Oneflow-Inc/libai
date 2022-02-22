@@ -68,6 +68,7 @@ class MaskedAutoencoderViT(nn.Module):
                 layer_idx = i
             ) for i in range(depth)
         ])
+        # TODO: set norm placement stage id
         self.norm = norm_layer(embed_dim)
         # --------------------------------------------------------------------------
         
@@ -81,7 +82,7 @@ class MaskedAutoencoderViT(nn.Module):
                 1,
                 decoder_embed_dim,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=dist.get_layer_placement(0),
+                placement=dist.get_layer_placement(depth),
             )
         )
 
@@ -91,7 +92,7 @@ class MaskedAutoencoderViT(nn.Module):
                 num_patches + 1,
                 decoder_embed_dim,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=dist.get_layer_placement(0),
+                placement=dist.get_layer_placement(depth),
             )
         )
 
@@ -100,7 +101,7 @@ class MaskedAutoencoderViT(nn.Module):
                 hidden_size=decoder_embed_dim,
                 ffn_hidden_size=int(decoder_embed_dim * mlp_ratio),
                 num_attention_heads=decoder_num_heads,
-                layer_idx=i
+                layer_idx=(i + depth)
             ) for i in range(decoder_depth)
         ])
         
@@ -110,16 +111,22 @@ class MaskedAutoencoderViT(nn.Module):
 
         self.norm_pix_loss = norm_pix_loss
 
-        # self.initialize_weights()
+        self.initialize_weights()
 
     def initialize_weights(self):
         # initialization
         # initialize (and freeze) pos_embed by sin-cos embedding
         pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
-        self.pos_embed.data.copy_(flow.from_numpy(pos_embed).float().unsqueeze(0))
+        self.pos_embed.data.copy_(flow.from_numpy(pos_embed).float().unsqueeze(0).to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=self.pos_embed.placement
+        ))
 
         decoder_pos_embed = get_2d_sincos_pos_embed(self.decoder_pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
-        self.decoder_pos_embed.data.copy_(flow.from_numpy(decoder_pos_embed).float().unsqueeze(0))
+        self.decoder_pos_embed.data.copy_(flow.from_numpy(decoder_pos_embed).float().unsqueeze(0).to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=self.decoder_pos_embed.placement
+        ))
         
         # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
         w = self.patch_embed.proj.weight.data
