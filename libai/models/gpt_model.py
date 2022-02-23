@@ -46,7 +46,6 @@ class CasualMask(nn.Module):
                 dtype=flow.int8,
                 placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                # sbp=[flow.sbp.broadcast, flow.sbp.broadcast]
             )
         )
 
@@ -110,7 +109,6 @@ class GPTModel(nn.Module):
         apply_query_key_layer_scaling=False,
     ):
         super().__init__()
-        # init_method = init_method_normal(std=initializer_range)
         init_method = init_method_normal(sigma=initializer_range)
         if use_scaled_init_for_output_weights:
             output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
@@ -190,7 +188,7 @@ class GPTEmbedding(nn.Module):
         super().__init__()
         self.token_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
         self.position_embeddings = Embedding(max_seq_length, hidden_size, init_method=init_method)
-        self.dropout = flow.nn.Dropout(embedding_dropout_prob)
+        self.dropout = nn.Dropout(embedding_dropout_prob)
 
         self.position_ids = flow.arange(
             max_seq_length,
@@ -263,7 +261,7 @@ class Transformer(nn.Module):
         return output
 
 
-class GPTLoss(flow.nn.Module):
+class GPTLoss(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.lm_loss = ParallelCrossEntropyLoss()
@@ -275,7 +273,7 @@ class GPTLoss(flow.nn.Module):
 
 
 @MODEL_ARCH_REGISTRY.register()
-class GPTForPreTraining(flow.nn.Module):
+class GPTForPreTraining(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.GPT_model = GPTModel(cfg)
@@ -284,8 +282,11 @@ class GPTForPreTraining(flow.nn.Module):
     def forward(
         self,
         input_ids,
-        lm_labels=None,
+        labels=None,
     ):
         logits = self.GPT_model(input_ids)
-        lm_loss = self.loss_func(logits, lm_labels)
-        return lm_loss
+        if self.training and labels is not None:
+            lm_loss = self.loss_func(logits, labels)
+            return lm_loss
+        else:
+            return {'prediction_scores': logits}

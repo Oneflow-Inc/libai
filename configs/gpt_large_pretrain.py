@@ -6,7 +6,7 @@ from .common.data.gpt_dataset import dataloader, tokenization
 
 from .common.models.graph import graph
 
-# Bert-large model config
+# GPT-2 model config
 model.cfg.embedding_dropout_prob = 0.1
 model.cfg.attention_dropout_prob = 0.1
 model.cfg.num_attention_heads = 16
@@ -22,4 +22,4 @@ optim.lr = 1.5e-4
 
 train.train_micro_batch_size = 4
 train.recompute_grad.enabled = True
-train.output_dir = "./demo_output"
+train.output_dir = "./output_gpt2"
