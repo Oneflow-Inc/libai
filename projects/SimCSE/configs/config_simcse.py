@@ -48,14 +48,18 @@ dataloader.test = [
 #     )
 # ]
 
-simcse_cfg["intermediate_size"]=3072
-simcse_cfg["hidden_layers"]=12
-simcse_cfg["layernorm_eps"]=1e-12
-simcse_cfg["pretrained_model_weight"]=None
-simcse_cfg["pooler_type"]='cls'
-simcse_cfg["temp"] = 0.05
-simcse_cfg["hidden_size"] = 768
-
+simcse_cfg.update(
+    dict(
+        intermediate_size=3072,
+        hidden_layers=12,
+        layernorm_eps=1e-12,
+        # pretrained_model_weight="/home/xiezipeng/libai/projects/SimCSE/dataset/model_optim_rng.pt",
+        pretrained_model_weight=None,
+        pooler_type='cls',
+        temp=0.05,
+        hidden_size=768
+    )
+)
 
 
 model=LazyCall(SimcseModel)(cfg=simcse_cfg)
@@ -63,8 +67,8 @@ model=LazyCall(SimcseModel)(cfg=simcse_cfg)
 train.update(
     dict(
         output_dir="/home/xiezipeng/libai/projects/SimCSE/dataset",
-        train_micro_batch_size=5,
-        test_micro_batch_size=5,
+        train_micro_batch_size=64,
+        test_micro_batch_size=64,
         train_epoch=1,
         train_iter=15625,
         eval_period=50,

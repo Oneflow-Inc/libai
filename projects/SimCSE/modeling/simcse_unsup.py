@@ -18,6 +18,7 @@ import oneflow as flow
 from oneflow import nn
 from libai.tokenizer import BertTokenizer
 from .bert import BertForSimCSE
+from .load_megatron_weight import load_megatron_bert
 import libai
 import random
 from tqdm import tqdm
@@ -86,6 +87,9 @@ class SimcseModel(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.bert = BertForSimCSE(cfg)
+        if cfg.pretrained_model_weight is not None:
+            load_megatron_bert(self.bert, cfg.pretrained_model_weight)
+
         self.pooler_type = cfg.pooler_type
         self.mlp = MLPLayer(cfg)
         self.loss_func = SimCSE_Unsup_Loss(cfg)

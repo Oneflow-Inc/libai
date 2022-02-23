@@ -17,6 +17,9 @@ from libai.models import BertModel
 
 
 class BertForSimCSE(BertModel):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
         extended_attention_mask = self.extended_attn_mask(attention_mask)
         embedding_output = self.embeddings(input_ids, tokentype_ids)
