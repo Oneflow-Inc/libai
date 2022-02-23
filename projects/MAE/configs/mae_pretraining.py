@@ -19,10 +19,10 @@ dataloader.train.dataset[0]._target_ = PretrainingImageNetDataset
 dataloader.train.dataset[0].root = "/dataset/extract"
 dataloader.test[0].dataset.root = "/dataset/extract"
 
-# del dataloader.test
+del dataloader.test
 
 # Graph training
-graph.enabled = False
+graph.enabled = True
 
 # Refine data transform to MAE's default settings
 transform_train = LazyCall(transforms.Compose)(
