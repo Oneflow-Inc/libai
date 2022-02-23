@@ -20,13 +20,11 @@
 # mae: https://github.com/facebookresearch/mae/blob/main/models_vit.py
 # --------------------------------------------------------
 
-from functools import partial
-import pdb
 
 import oneflow as flow
 import oneflow.nn as nn
-from libai.layers.layer_norm import LayerNorm
 
+from libai.layers.layer_norm import LayerNorm
 import libai.models.vision_transformer
 
 
