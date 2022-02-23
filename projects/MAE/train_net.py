@@ -13,13 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+
 import sys
 
 sys.path.append(".")
+
+import oneflow as flow
+
 from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.trainer import DefaultTrainer, default_setup
+from libai.trainer import DefaultTrainer, default_setup, try_get_key
 from libai.utils.checkpoint import Checkpointer
+
+
+class Trainer(DefaultTrainer):
+    @classmethod
+    def build_model(cls, cfg):
+        model = super().build_model(cfg)
+        if try_get_key(cfg, "finetune") is not None:
+            model.load_state_dict(flow.load(cfg.finetune.path))
+        return model
 
 
 def main(args):

@@ -1,3 +1,5 @@
+from omegaconf import OmegaConf
+
 from libai.config import LazyCall, get_config
 from configs.common.data.imagenet import dataloader
 from .models.vit_base_patch16 import model
@@ -5,6 +7,9 @@ from .models.vit_base_patch16 import model
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
+# Set fine weight path
+finetune = OmegaConf.create()
+finetune.path = "/path/to/pretrained_mae_weight"
 
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
