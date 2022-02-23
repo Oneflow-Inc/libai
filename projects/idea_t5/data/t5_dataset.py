@@ -20,24 +20,25 @@ import collections
 import numpy as np
 import oneflow as flow
 
-from .dataset_utils import create_masked_lm_predictions, get_samples_mapping
 from libai.data.structures import DistTensorData, Instance
 
-class T5Dataset(flow.utils.data.Dataset):
+from .dataset_utils import create_masked_lm_predictions, get_samples_mapping
 
+
+class T5Dataset(flow.utils.data.Dataset):
     def __init__(
-        self, 
-        name, 
+        self,
+        name,
         tokenizer,
-        indexed_dataset, 
+        indexed_dataset,
         data_prefix,
-        num_epochs, 
-        max_num_samples, 
+        num_epochs,
+        max_num_samples,
         masked_lm_prob,
-        max_seq_length, 
+        max_seq_length,
         max_seq_length_dec,
-        short_seq_prob, 
-        seed
+        short_seq_prob,
+        seed,
     ):
         # Params to store.
         self.name = name
@@ -50,18 +51,22 @@ class T5Dataset(flow.utils.data.Dataset):
         self.indexed_dataset = indexed_dataset
 
         # Build the samples mapping.
-        self.samples_mapping = get_samples_mapping(self.indexed_dataset,
-                                                   data_prefix,
-                                                   num_epochs,
-                                                   max_num_samples,
-                                                   self.max_seq_length - 2, # account for added tokens
-                                                   short_seq_prob,
-                                                   self.seed,
-                                                   self.name,
-                                                   False)
+        self.samples_mapping = get_samples_mapping(
+            self.indexed_dataset,
+            data_prefix,
+            num_epochs,
+            max_num_samples,
+            self.max_seq_length - 2,  # account for added tokens
+            short_seq_prob,
+            self.seed,
+            self.name,
+            False,
+        )
 
         # Vocab stuff.
-        tokenizer.add_tokens([tokenizer._bos_token, tokenizer._eos_token, *tokenizer._additional_special_tokens])
+        tokenizer.add_tokens(
+            [tokenizer._bos_token, tokenizer._eos_token, *tokenizer._additional_special_tokens]
+        )
         vocab = tokenizer.get_vocab()
         inv_vocab = {v: k for k, v in vocab.items()}
         self.vocab_id_list = list(inv_vocab.keys())
@@ -87,24 +92,42 @@ class T5Dataset(flow.utils.data.Dataset):
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
         np_rng = np.random.RandomState(seed=(self.seed + idx))
-        return build_training_sample(sample, seq_length,
-                                     self.max_seq_length,  # needed for padding
-                                     self.max_seq_length_dec,
-                                     self.vocab_id_list,
-                                     self.vocab_id_to_token_dict,
-                                     self.cls_id, self.sep_id,
-                                     self.mask_id, self.pad_id,
-                                     self.masked_lm_prob, np_rng,
-                                     self.bos_id, self.eos_id,
-                                     self.sentinel_tokens)
+        return build_training_sample(
+            sample,
+            seq_length,
+            self.max_seq_length,  # needed for padding
+            self.max_seq_length_dec,
+            self.vocab_id_list,
+            self.vocab_id_to_token_dict,
+            self.cls_id,
+            self.sep_id,
+            self.mask_id,
+            self.pad_id,
+            self.masked_lm_prob,
+            np_rng,
+            self.bos_id,
+            self.eos_id,
+            self.sentinel_tokens,
+        )
 
 
-def build_training_sample(sample, target_seq_length,
-                          max_seq_length, max_seq_length_dec,
-                          vocab_id_list, vocab_id_to_token_dict,
-                          cls_id, sep_id, mask_id, pad_id,
-                          masked_lm_prob, np_rng, bos_id=None,
-                          eos_id=None, sentinel_tokens=None):
+def build_training_sample(
+    sample,
+    target_seq_length,
+    max_seq_length,
+    max_seq_length_dec,
+    vocab_id_list,
+    vocab_id_to_token_dict,
+    cls_id,
+    sep_id,
+    mask_id,
+    pad_id,
+    masked_lm_prob,
+    np_rng,
+    bos_id=None,
+    eos_id=None,
+    sentinel_tokens=None,
+):
     """Build training sample.
 
     Arguments:
@@ -140,35 +163,66 @@ def build_training_sample(sample, target_seq_length,
     # Masking.
     max_predictions_per_seq = masked_lm_prob * max_num_tokens
     (tokens, masked_positions, masked_labels, _, masked_spans) = create_masked_lm_predictions(
-        tokens, vocab_id_list, vocab_id_to_token_dict, masked_lm_prob,
-        cls_id, sep_id, mask_id, max_predictions_per_seq, np_rng,
-        max_ngrams=10, geometric_dist=True, masking_style="t5")
+        tokens,
+        vocab_id_list,
+        vocab_id_to_token_dict,
+        masked_lm_prob,
+        cls_id,
+        sep_id,
+        mask_id,
+        max_predictions_per_seq,
+        np_rng,
+        max_ngrams=10,
+        geometric_dist=True,
+        masking_style="t5",
+    )
 
     # Padding.
-    tokens_enc, tokens_dec_in, labels, enc_mask, \
-    dec_mask, enc_dec_mask, loss_mask \
-        = pad_and_convert_to_numpy(tokens, masked_positions,
-                                   masked_labels, pad_id, max_seq_length,
-                                   max_seq_length_dec, masked_spans,
-                                   bos_id, eos_id, sentinel_tokens)
-    
+    (
+        tokens_enc,
+        tokens_dec_in,
+        labels,
+        enc_mask,
+        dec_mask,
+        enc_dec_mask,
+        loss_mask,
+    ) = pad_and_convert_to_numpy(
+        tokens,
+        masked_positions,
+        masked_labels,
+        pad_id,
+        max_seq_length,
+        max_seq_length_dec,
+        masked_spans,
+        bos_id,
+        eos_id,
+        sentinel_tokens,
+    )
+
     sample = Instance(
-            encoder_input_ids=DistTensorData(tokens_enc),
-            decoder_input_ids=DistTensorData(tokens_dec_in),
-            encoder_attn_mask=DistTensorData(enc_mask),
-            decoder_attn_mask=DistTensorData(dec_mask),
-            encoder_decoder_attn_mask=DistTensorData(enc_dec_mask),
-            labels=DistTensorData(labels, placement_idx=-1),
-            loss_mask=DistTensorData(loss_mask, placement_idx=-1),
-        )
+        encoder_input_ids=DistTensorData(tokens_enc),
+        decoder_input_ids=DistTensorData(tokens_dec_in),
+        encoder_attn_mask=DistTensorData(enc_mask),
+        decoder_attn_mask=DistTensorData(dec_mask),
+        encoder_decoder_attn_mask=DistTensorData(enc_dec_mask),
+        labels=DistTensorData(labels, placement_idx=-1),
+        loss_mask=DistTensorData(loss_mask, placement_idx=-1),
+    )
     return sample
 
 
-def pad_and_convert_to_numpy(tokens, masked_positions,
-                             masked_labels, pad_id,
-                             max_seq_length, max_seq_length_dec,
-                             masked_spans=None, bos_id=None,
-                             eos_id=None, sentinel_tokens=None):
+def pad_and_convert_to_numpy(
+    tokens,
+    masked_positions,
+    masked_labels,
+    pad_id,
+    max_seq_length,
+    max_seq_length_dec,
+    masked_spans=None,
+    bos_id=None,
+    eos_id=None,
+    sentinel_tokens=None,
+):
     """Pad sequences and convert them to numpy."""
 
     sentinel_tokens = collections.deque(sentinel_tokens)
@@ -185,7 +239,7 @@ def pad_and_convert_to_numpy(tokens, masked_positions,
         t5_decoder_out.extend(span.label)
 
         end_index = span.index[0]
-        t5_input.extend(tokens[start_index: end_index])
+        t5_input.extend(tokens[start_index:end_index])
         t5_input.append(flag)
 
         # the next start index is the token after the last span token
@@ -234,15 +288,14 @@ def pad_and_convert_to_numpy(tokens, masked_positions,
     loss_mask = np.array(loss_mask, dtype=np.int64)
 
     tokens_enc = flow.tensor(tokens_enc, dtype=flow.long)
-    tokens_dec_in = flow.tensor(tokens_dec_in , dtype=flow.long)
-    labels = flow.tensor(labels , dtype=flow.long)
+    tokens_dec_in = flow.tensor(tokens_dec_in, dtype=flow.long)
+    labels = flow.tensor(labels, dtype=flow.long)
     enc_mask = flow.tensor(enc_mask, dtype=flow.long)
     dec_mask = flow.tensor(dec_mask, dtype=flow.long)
     enc_dec_mask = flow.tensor(enc_dec_mask, dtype=flow.long)
     loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
-    return tokens_enc, tokens_dec_in, labels, enc_mask, \
-           dec_mask, enc_dec_mask, loss_mask
+    return tokens_enc, tokens_dec_in, labels, enc_mask, dec_mask, enc_dec_mask, loss_mask
 
 
 def make_attention_mask(source_block, target_block):
@@ -257,36 +310,39 @@ def make_attention_mask(source_block, target_block):
     return mask
 
 
-
-
 def make_history_mask(block):
     length = block.shape[0]
     arange = np.arange(length)
-    history_mask = (arange[None, ] <= arange[:, None])
+    history_mask = (
+        arange[
+            None,
+        ]
+        <= arange[:, None]
+    )
     history_mask = history_mask.astype(np.int64)
     return history_mask
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     from libai.tokenizer.tokenization_bert import BertTokenizer
 
     tokenizer = BertTokenizer(
-        vocab_file='/workspace/data/libai_dataset/bert-base-chinese-vocab.txt',
+        vocab_file="/workspace/data/libai_dataset/bert-base-chinese-vocab.txt",
         do_chinese_wwm=True,
     )
 
     from libai.data.data_utils import get_indexed_dataset
+
     indexed_dataset = get_indexed_dataset(
-        data_prefix='/workspace/data/libai_dataset/loss_compara_content_sentence',
-        data_impl='mmap',
+        data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
+        data_impl="mmap",
         skip_warmup=False,
     )
     ds = T5Dataset(
-        name='train',
+        name="train",
         tokenizer=tokenizer,
         indexed_dataset=indexed_dataset,
-        data_prefix='/workspace/data/libai_dataset/loss_compara_content_sentence',
+        data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
         num_epochs=None,
         max_num_samples=160000,
         masked_lm_prob=0.15,
@@ -297,5 +353,6 @@ if __name__ == '__main__':
     )
 
     from tqdm import tqdm
+
     for d in tqdm(ds):
         pass

@@ -18,11 +18,11 @@
 #   https://github.com/google-research/albert/blob/master/create_pretraining_data.py
 # with some modifications.
 
+import collections
+import logging
 import math
 import os
 import time
-import collections
-import logging
 
 import numpy as np
 import oneflow as flow
@@ -32,8 +32,7 @@ from libai.utils import distributed as dist
 logger = logging.getLogger(__name__)
 
 
-MaskedLmInstance = collections.namedtuple("MaskedLmInstance",
-                                          ["index", "label"])
+MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
 
 
 def is_start_piece(piece):
@@ -45,18 +44,23 @@ def is_start_piece(piece):
     return not piece.startswith("##")
 
 
-def create_masked_lm_predictions(tokens,
-                                 vocab_id_list, vocab_id_to_token_dict,
-                                 masked_lm_prob,
-                                 cls_id, sep_id, mask_id,
-                                 max_predictions_per_seq,
-                                 np_rng,
-                                 max_ngrams=3,
-                                 do_whole_word_mask=True,
-                                 favor_longer_ngram=False,
-                                 do_permutation=False,
-                                 geometric_dist=False,
-                                 masking_style="bert"):
+def create_masked_lm_predictions(
+    tokens,
+    vocab_id_list,
+    vocab_id_to_token_dict,
+    masked_lm_prob,
+    cls_id,
+    sep_id,
+    mask_id,
+    max_predictions_per_seq,
+    np_rng,
+    max_ngrams=3,
+    do_whole_word_mask=True,
+    favor_longer_ngram=False,
+    do_permutation=False,
+    geometric_dist=False,
+    masking_style="bert",
+):
     """Creates the predictions for the masked LM objective.
     Note: Tokens here are vocab ids and not text tokens."""
 
@@ -76,8 +80,11 @@ def create_masked_lm_predictions(tokens,
         # Note that Whole Word Masking does *not* change the training code
         # at all -- we still predict each WordPiece independently, softmaxed
         # over the entire vocabulary.
-        if (do_whole_word_mask and len(cand_indexes) >= 1 and
-                not is_start_piece(vocab_id_to_token_dict[token])):
+        if (
+            do_whole_word_mask
+            and len(cand_indexes) >= 1
+            and not is_start_piece(vocab_id_to_token_dict[token])
+        ):
             cand_indexes[-1].append(i)
         else:
             cand_indexes.append([i])
@@ -90,17 +97,15 @@ def create_masked_lm_predictions(tokens,
     masked_lm_labels = []
 
     if masked_lm_prob == 0:
-        return (output_tokens, masked_lm_positions,
-                masked_lm_labels, token_boundary)
+        return (output_tokens, masked_lm_positions, masked_lm_labels, token_boundary)
 
-    num_to_predict = min(max_predictions_per_seq,
-                         max(1, int(round(len(tokens) * masked_lm_prob))))
+    num_to_predict = min(max_predictions_per_seq, max(1, int(round(len(tokens) * masked_lm_prob))))
 
     ngrams = np.arange(1, max_ngrams + 1, dtype=np.int64)
     if not geometric_dist:
         # Note(mingdachen):
         # By default, we set the probilities to favor shorter ngram sequences.
-        pvals = 1. / np.arange(1, max_ngrams + 1)
+        pvals = 1.0 / np.arange(1, max_ngrams + 1)
         pvals /= pvals.sum(keepdims=True)
         if favor_longer_ngram:
             pvals = pvals[::-1]
@@ -109,7 +114,7 @@ def create_masked_lm_predictions(tokens,
     for idx in range(len(cand_indexes)):
         ngram_index = []
         for n in ngrams:
-            ngram_index.append(cand_indexes[idx:idx + n])
+            ngram_index.append(cand_indexes[idx : idx + n])
         ngram_indexes.append(ngram_index)
 
     np_rng.shuffle(ngram_indexes)
@@ -129,9 +134,10 @@ def create_masked_lm_predictions(tokens,
                     continue
 
         if not geometric_dist:
-            n = np_rng.choice(ngrams[:len(cand_index_set)],
-                              p=pvals[:len(cand_index_set)] /
-                              pvals[:len(cand_index_set)].sum(keepdims=True))
+            n = np_rng.choice(
+                ngrams[: len(cand_index_set)],
+                p=pvals[: len(cand_index_set)] / pvals[: len(cand_index_set)].sum(keepdims=True),
+            )
         else:
             # Sampling "n" from the geometric distribution and clipping it to
             # the max_ngrams. Using p=0.2 default from the SpanBERT paper
@@ -181,9 +187,9 @@ def create_masked_lm_predictions(tokens,
             output_tokens[index] = masked_token
             masked_lms.append(MaskedLmInstance(index=index, label=tokens[index]))
 
-        masked_spans.append(MaskedLmInstance(
-            index=index_set,
-            label=[tokens[index] for index in index_set]))
+        masked_spans.append(
+            MaskedLmInstance(index=index_set, label=[tokens[index] for index in index_set])
+        )
 
     assert len(masked_lms) <= num_to_predict
     np_rng.shuffle(ngram_indexes)
@@ -202,9 +208,10 @@ def create_masked_lm_predictions(tokens,
                     if index in covered_indexes or index in select_indexes:
                         continue
 
-            n = np.random.choice(ngrams[:len(cand_index_set)],
-                                 p=pvals[:len(cand_index_set)] /
-                                 pvals[:len(cand_index_set)].sum(keepdims=True))
+            n = np.random.choice(
+                ngrams[: len(cand_index_set)],
+                p=pvals[: len(cand_index_set)] / pvals[: len(cand_index_set)].sum(keepdims=True),
+            )
             index_set = sum(cand_index_set[n - 1], [])
             n -= 1
 
@@ -247,8 +254,9 @@ def create_masked_lm_predictions(tokens,
     return (output_tokens, masked_lm_positions, masked_lm_labels, token_boundary, masked_spans)
 
 
-def pad_and_convert_to_numpy(tokens, tokentypes, masked_positions,
-                             masked_labels, pad_id, max_seq_length):
+def pad_and_convert_to_numpy(
+    tokens, tokentypes, masked_positions, masked_labels, pad_id, max_seq_length
+):
     """Pad sequences and convert them to numpy."""
 
     # Some checks.
@@ -264,8 +272,7 @@ def pad_and_convert_to_numpy(tokens, tokentypes, masked_positions,
     tokentypes_np = np.array(tokentypes + filler, dtype=np.int64)
 
     # Padding mask.
-    padding_mask_np = np.array([1] * num_tokens + [0] * padding_length,
-                               dtype=np.int64)
+    padding_mask_np = np.array([1] * num_tokens + [0] * padding_length, dtype=np.int64)
 
     # Lables and loss mask.
     labels = [-1] * max_seq_length
@@ -280,48 +287,44 @@ def pad_and_convert_to_numpy(tokens, tokentypes, masked_positions,
     return tokens_np, tokentypes_np, labels_np, padding_mask_np, loss_mask_np
 
 
-
-
-
-
-
-
-def get_samples_mapping(indexed_dataset,
-                        data_prefix,
-                        num_epochs,
-                        max_num_samples,
-                        max_seq_length,
-                        short_seq_prob,
-                        seed,
-                        name,
-                        binary_head):
+def get_samples_mapping(
+    indexed_dataset,
+    data_prefix,
+    num_epochs,
+    max_num_samples,
+    max_seq_length,
+    short_seq_prob,
+    seed,
+    name,
+    binary_head,
+):
     """Get a list that maps a sample index to a starting sentence index, end sentence index, and length"""
 
     if not num_epochs:
         if not max_num_samples:
-            raise ValueError("Need to specify either max_num_samples "
-                             "or num_epochs")
+            raise ValueError("Need to specify either max_num_samples " "or num_epochs")
         num_epochs = np.iinfo(np.int32).max - 1
     if not max_num_samples:
         max_num_samples = np.iinfo(np.int64).max - 1
 
     # Filename of the index mapping
     indexmap_filename = data_prefix
-    indexmap_filename += '_{}_indexmap'.format(name)
+    indexmap_filename += "_{}_indexmap".format(name)
     if num_epochs != (np.iinfo(np.int32).max - 1):
-        indexmap_filename += '_{}ep'.format(num_epochs)
+        indexmap_filename += "_{}ep".format(num_epochs)
     if max_num_samples != (np.iinfo(np.int64).max - 1):
-        indexmap_filename += '_{}mns'.format(max_num_samples)
-    indexmap_filename += '_{}msl'.format(max_seq_length)
-    indexmap_filename += '_{:0.2f}ssp'.format(short_seq_prob)
-    indexmap_filename += '_{}s'.format(seed)
-    indexmap_filename += '.npy'
+        indexmap_filename += "_{}mns".format(max_num_samples)
+    indexmap_filename += "_{}msl".format(max_seq_length)
+    indexmap_filename += "_{:0.2f}ssp".format(short_seq_prob)
+    indexmap_filename += "_{}s".format(seed)
+    indexmap_filename += ".npy"
 
     # Build the indexed mapping if not exist.
-    if flow.env.get_rank() == 0 and \
-       not os.path.isfile(indexmap_filename):
-        logger.info(' > WARNING: could not find index map file {}, building '
-              'the indices on rank 0 ...'.format(indexmap_filename))
+    if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename):
+        logger.info(
+            " > WARNING: could not find index map file {}, building "
+            "the indices on rank 0 ...".format(indexmap_filename)
+        )
 
         # Make sure the types match the helpers input types.
         assert indexed_dataset.doc_idx.dtype == np.int64
@@ -330,13 +333,14 @@ def get_samples_mapping(indexed_dataset,
         # Build samples mapping
         verbose = flow.env.get_rank() == 0
         start_time = time.time()
-        logger.info(' > building samples index mapping for {} ...'.format(
-            name))
+        logger.info(" > building samples index mapping for {} ...".format(name))
         # First compile and then import.
         import sys
         from pathlib import Path
+
         sys.path.append(str(Path(__file__).parent))
         import helpers
+
         samples_mapping = helpers.build_mapping(
             indexed_dataset.doc_idx,
             indexed_dataset.sizes.astype(np.int64),
@@ -346,15 +350,16 @@ def get_samples_mapping(indexed_dataset,
             short_seq_prob,
             seed,
             verbose,
-            2 if binary_head else 1)
-        logger.info(' > done building samples index maping')
+            2 if binary_head else 1,
+        )
+        logger.info(" > done building samples index maping")
         np.save(indexmap_filename, samples_mapping, allow_pickle=True)
-        logger.info(' > saved the index mapping in {}'.format(
-            indexmap_filename))
+        logger.info(" > saved the index mapping in {}".format(indexmap_filename))
         # Make sure all the ranks have built the mapping
-        logger.info(' > elasped time to build and save samples mapping '
-                     '(seconds): {:4f}'.format(
-                         time.time() - start_time))
+        logger.info(
+            " > elasped time to build and save samples mapping "
+            "(seconds): {:4f}".format(time.time() - start_time)
+        )
     # # This should be a barrier but nccl barrier assumes
     # # device_index=rank which is not the case for model
     # # parallel case
@@ -368,13 +373,10 @@ def get_samples_mapping(indexed_dataset,
     dist.synchronize()
 
     # Load indexed dataset.
-    logger.info(' > loading indexed mapping from {}'.format(
-        indexmap_filename))
+    logger.info(" > loading indexed mapping from {}".format(indexmap_filename))
     start_time = time.time()
-    samples_mapping = np.load(indexmap_filename, allow_pickle=True, mmap_mode='r')
-    logger.info('    loaded indexed file in {:3.3f} seconds'.format(
-        time.time() - start_time))
-    logger.info('    total number of samples: {}'.format(
-        samples_mapping.shape[0]))
+    samples_mapping = np.load(indexmap_filename, allow_pickle=True, mmap_mode="r")
+    logger.info("    loaded indexed file in {:3.3f} seconds".format(time.time() - start_time))
+    logger.info("    total number of samples: {}".format(samples_mapping.shape[0]))
 
     return samples_mapping

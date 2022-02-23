@@ -30,7 +30,7 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
     dataset=[
         LazyCall(T5Dataset)(
-            name='train',
+            name="train",
             data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
             indexed_dataset=LazyCall(get_indexed_dataset)(
                 data_prefix="/workspace/data/libai_dataset/" "/loss_compara_content_sentence",
