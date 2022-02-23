@@ -332,24 +332,23 @@ def convert_to_distributed_default_setting(module):
             return
 
 
-def ttol(tensor, pure_local=False, ranks=None):
+def ttol(tensor, pure_local=False):
     """global tensor to local tensor"""
     if tensor.is_global:
-        placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
         if pure_local:
-            tensor = tensor.to_global(placement=placement).to_local()
+            tensor = tensor.to_local()
         else:
             tensor = tensor.to_global(
-                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=placement
+                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             ).to_local()
 
     return tensor
 
 
-def tton(tensor, local_only=False, ranks=None):
+def tton(tensor, local_only=False):
     """global tensor to numpy"""
     if tensor.is_global:
-        tensor = ttol(tensor, local_only, ranks)
+        tensor = ttol(tensor, local_only)
 
     return tensor.numpy()
 

@@ -88,7 +88,6 @@ class TrainerBase:
         iter(int): the current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
-
         max_iter(int): The iteration to end training.
         storage(EventStorage): An EventStorage that's opened during the course of training.
     """
@@ -179,8 +178,7 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        # Only get metric value in rank0
-        metrics_dict = {k: dist.tton(v, local_only=False, ranks=[0]) for k, v in loss_dict.items()}
+        metrics_dict = {k: dist.tton(v, local_only=False) for k, v in loss_dict.items()}
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
