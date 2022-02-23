@@ -25,17 +25,25 @@ from utils.load_megatron_weight import load_megatron_bert
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+from libai.utils.file_utils import get_data_from_cache
 
+VOCAB_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt"  # noqa
+BIN_DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.bin"  # noqa
+IDX_DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.idx"  # noqa
+MODEL_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/models/megatron_bert.pt"
+
+VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
+BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
+IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
+MODEL_MD5 = "9c71f37d8375cdb1569c8f7e76710984"
 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
-        load_megatron_bert(
-            model,
-            "/workspace/idea_model/idea_bert/megatron_model_save/bert-cn-wwm/compare_oneflow_loss_reproduce_ckpt"
-            "/iter_0000100/mp_rank_00/model_optim_rng.pt",
-        )
+        cache_dir = os.path.join(os.getenv("LIBAI_TEST_CACHE_DIR", "./loss_align"), "models")
+        megatron_path = get_data_from_cache(MODEL_URL, cache_dir, md5=MODEL_MD5)
+        load_megatron_bert(model, megatron_path)
         return model
 
     def train(self):
@@ -54,6 +62,16 @@ def main(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
+
+    cache_dir = os.path.join(os.getenv("LIBAI_TEST_CACHE_DIR", "./loss_align"), "bert_data")
+
+    vocab_path = get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
+    data_prefix_path = get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
+    get_data_from_cache(IDX_DATA_URL, cache_dir, md5=IDX_DATA_MD5)
+    data_prefix = data_prefix_path[:-4]
+
+    cfg.data.data_path = [data_prefix]
+    cfg.data.vocab_file = vocab_path
 
     setup_tokenizer(cfg)
 
