@@ -93,10 +93,10 @@ class TestBertModel(flow.unittest.TestCase):
         DefaultTrainer.build_hooks = build_hooks
         DefaultTrainer.test = test
 
-    @flow.unittest.skip_unless_2n4d()
+    @flow.unittest.skip_unless_1n4d()
     def test_bert_eager_with_data_tensor_parallel(self):
         # set distributed config
-        self.cfg.train.dist.data_parallel_size = 4
+        self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
         # pipeline parallelism not supported in eager global
         self.cfg.train.dist.pipeline_parallel_size = 1
