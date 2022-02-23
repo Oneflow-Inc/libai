@@ -18,21 +18,17 @@ from .roberta_utils import (
     position_scores  # replace einsum
 )
 
+from libai.utils import distributed as dist
+
 # 这里包含了所有的libai里面的层
-# 为什么要用libai.layers.embedding而不是nn.embedding？
+# 为什么要用libai.layers.embedding而不是nn.embedding？因为里面封装了一些信息
 from libai.layers import (
     Embedding,
     VocabEmbedding, # 和Embedding的区别？
-    SinePositionalEmbedding, # 这个应该是position embedding
-    MultiheadAttention, # ？
     LayerNorm,
     # Activation, # 这是个啥？
     Linear,
-    LMLogits,
-    ParallelCrossEntropyLoss,
-    TransformerLayer,
     VocabEmbedding,
-    build_activation,
 )
 
 ACT2FN = {
@@ -136,7 +132,6 @@ class RobertaEmbeddings(nn.Module):
 
 # To behave as an decoder or Seq2Seq model the model needs to be initialized with the
 # is_decoder argument set to True.
-
 
 
 class RobertaSelfAttention(nn.Module):
@@ -562,7 +557,7 @@ class RobertaPooler(nn.Module):
         return pooled_output
 
 
-class Roberta(nn.Module):
+class RoBERTaModel(nn.Module):
 
     def __init__(self, args):
         super(Roberta, self).__init__()
@@ -793,7 +788,7 @@ class RobertaClassificationHead(nn.Module):
         return x
 
 
-class RobertaForCausalLM(nn.Module):
+class RoBERTaForPreTraining(nn.Module):
 
     def __init__(self, vocab_size=30522, type_vocab_size=2, max_position_embeddings=512,
                  hidden_size=768, intermediate_size=3072, chunk_size_feed_forward=0,
@@ -801,104 +796,14 @@ class RobertaForCausalLM(nn.Module):
                  layer_norm_eps=1e-5, attn_dropout=0.1, hidden_dropout=0.1,
                  position_embedding_type="absolute", is_decoder=False,
                  add_cross_attention=False):
-        super(RobertaForCausalLM, self).__init__()
-
-        if not is_decoder:
-            print(
-                "If you want to use `RobertaLMHeadModel` as a standalone, add `is_decoder=True.`")
-
-        self.roberta = Roberta(vocab_size, type_vocab_size, max_position_embeddings, hidden_size, intermediate_size, chunk_size_feed_forward, num_layers, nheads,
-                               activation, pad_token_id, layer_norm_eps, attn_dropout, hidden_dropout, position_embedding_type, is_decoder, False, add_cross_attention)
-        self.lm_head = RobertaLMHead(vocab_size, hidden_size, layer_norm_eps)
-        self.vocab_size = vocab_size
-
-        self.init_weights()
-
-    def init_weights(self):
-
-        self.apply(init_weights)
-
-    def get_output_embeddings(self):
-        return self.lm_head.decoder
-
-    def set_output_embeddings(self, new_embeddings):
-        self.lm_head.decoder = new_embeddings
-
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        encoder_hidden_states=None,
-        encoder_attention_mask=None,
-        labels=None,
-        past_key_values=None,
-        use_cache=None,
-        output_attentions=None,
-        output_hidden_states=None,
-    ):
-
-        if labels is not None:
-            use_cache = False
-
-        outputs = self.roberta(input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds,
-                               encoder_hidden_states, encoder_attention_mask, past_key_values, use_cache, output_attentions, output_hidden_states)
-
-        sequence_output = outputs[0]
-        prediction_scores = self.lm_head(sequence_output)
-
-        lm_loss = None
-        if labels is not None:
-            # we are doing next-token prediction; shift prediction scores and input ids by one
-            shifted_prediction_scores = prediction_scores[:,
-                                                          :-1, :]  # .contiguous()
-            labels = labels[:, 1:]  # .contiguous()
-            loss_fct = CrossEntropyLoss()
-            lm_loss = loss_fct(
-                shifted_prediction_scores.view(-1, self.vocab_size), labels.view(-1))
-
-        # loss, logits, past_key_values, hidden_states, attentions, cross_attentions
-        return (lm_loss, prediction_scores) + outputs[2:]
-
-    def prepare_inputs_for_generation(self, input_ids, past=None, attention_mask=None, **model_kwargs):
-        input_shape = input_ids.shape
-        # if model is used as a decoder in encoder-decoder model, the decoder attention mask is created on the fly
-        if attention_mask is None:
-            attention_mask = input_ids.new_ones(input_shape)
-
-        # cut decoder_input_ids if past is used
-        if past is not None:
-            input_ids = input_ids[:, -1:]
-
-        return {"input_ids": input_ids, "attention_mask": attention_mask, "past_key_values": past}
-
-    def _reorder_cache(self, past, beam_idx):
-        reordered_past = ()
-        for layer_past in past:
-            reordered_past += (tuple(past_state.index_select(0, beam_idx)
-                               for past_state in layer_past),)
-        return reordered_past
-
-
-class RobertaForMaskedLM(nn.Module):
-
-    def __init__(self, vocab_size=30522, type_vocab_size=2, max_position_embeddings=512,
-                 hidden_size=768, intermediate_size=3072, chunk_size_feed_forward=0,
-                 num_layers=12, nheads=12, activation="gelu", pad_token_id=1,
-                 layer_norm_eps=1e-5, attn_dropout=0.1, hidden_dropout=0.1,
-                 position_embedding_type="absolute", is_decoder=False,
-                 add_cross_attention=False):
-        super(RobertaForMaskedLM, self).__init__()
+        super(RoBERTaForPreTraining, self).__init__()
 
         if is_decoder:
             print(
                 "If you want to use `RobertaForMaskedLM` make sure `is_decoder=False` for "
                 "bi-directional self-attention."
             )
-        self.roberta = Roberta(vocab_size, type_vocab_size, max_position_embeddings, hidden_size, intermediate_size, chunk_size_feed_forward, num_layers, nheads,
+        self.roberta = RoBERTaModel(vocab_size, type_vocab_size, max_position_embeddings, hidden_size, intermediate_size, chunk_size_feed_forward, num_layers, nheads,
                                activation, pad_token_id, layer_norm_eps, attn_dropout, hidden_dropout, position_embedding_type, is_decoder, False, add_cross_attention)# add_pooling_layer = False
 
         self.lm_head = RobertaLMHead(vocab_size, hidden_size, layer_norm_eps)
@@ -951,299 +856,23 @@ class RobertaForMaskedLM(nn.Module):
             masked_lm_loss = loss_fct(
                 prediction_scores.view(-1, self.vocab_size), labels.view(-1))
         return (masked_lm_loss, prediction_scores) + outputs[2:]
+    
+    # bert中有这部分，我也不知道这个是干啥的...
+    # def set_pipeline_stage_id(model):
+    #     dist_utils = dist.get_dist_util()
 
+    #     # Set pipeline parallelism stage_id
+    #     for module_block in model.modules():
+    #         # module.origin can get the original module
+    #         if isinstance(module_block.origin, BertEmbeddings):
+    #             module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+    #         elif isinstance(module_block.origin, BertExtendedAttnMask):
+    #             module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+    #         elif isinstance(module_block.origin, TransformerLayer):
+    #             module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+    #         elif isinstance(module_block.origin, BertPreTrainingHeads):
+    #             module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
 
-class RobertaForSequenceClassification(nn.Module):
-    def __init__(self, num_labels=2, vocab_size=30522, type_vocab_size=2, max_position_embeddings=512,
-                 hidden_size=768, intermediate_size=3072, chunk_size_feed_forward=0,
-                 num_layers=12, nheads=12, activation="gelu", pad_token_id=1,
-                 layer_norm_eps=1e-5, attn_dropout=0.1, hidden_dropout=0.1,
-                 position_embedding_type="absolute", is_decoder=False,
-                 add_cross_attention=False, problem_type=None):
+    #     # Set the last layernorm stage id
+    #     model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
 
-        super(RobertaForSequenceClassification, self).__init__()
-
-        self.roberta = Roberta(vocab_size, type_vocab_size, max_position_embeddings, hidden_size, intermediate_size, chunk_size_feed_forward, num_layers, nheads,
-                               activation, pad_token_id, layer_norm_eps, attn_dropout, hidden_dropout, position_embedding_type, is_decoder, False, add_cross_attention)
-        self.classifier = RobertaClassificationHead(
-            num_labels, hidden_size, hidden_dropout)
-        self.num_labels = num_labels
-        self.problem_type = problem_type
-
-        self.init_weights()
-
-    def init_weights(self):
-
-        self.apply(init_weights)
-
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-    ):
-        r"""
-        labels (:obj:`flow.Tensor` of shape :obj:`(batch_size,)`, `optional`):
-            Labels for computing the sequence classification/regression loss. Indices should be in :obj:`[0, ...,
-            num_labels - 1]`. If :obj:`num_labels == 1` a regression loss is computed (Mean-Square loss),
-            If :obj:`num_labels > 1` a classification loss is computed (Cross-Entropy).
-        """
-        outputs = self.roberta(input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds,
-                               None, None, None, None, output_attentions, output_hidden_states)
-
-        sequence_output = outputs[0]
-        logits = self.classifier(sequence_output)
-
-        loss = None
-        if labels is not None:
-            if self.problem_type is None:
-                if self.num_labels == 1:
-                    self.problem_type = "regression"
-                elif self.num_labels > 1 and (labels.dtype == flow.int64 or labels.dtype == flow.int32):
-                    self.problem_type = "single_label_classification"
-                else:
-                    self.problem_type = "multi_label_classification"
-
-            if self.problem_type == "regression":
-                loss_fct = MSELoss()
-                if self.num_labels == 1:
-                    loss = loss_fct(logits.squeeze(), labels.squeeze())
-                else:
-                    loss = loss_fct(logits, labels)
-            elif self.problem_type == "single_label_classification":
-                loss_fct = CrossEntropyLoss()
-                loss = loss_fct(
-                    logits.view(-1, self.num_labels), labels.view(-1))
-            elif self.problem_type == "multi_label_classification":
-                loss_fct = BCEWithLogitsLoss()
-                loss = loss_fct(logits, labels)
-
-        return (loss, logits) + outputs[2:]
-
-
-class RobertaForMultipleChoice(nn.Module):
-    def __init__(self, vocab_size=49624, type_vocab_size=2, max_position_embeddings=512,
-                 hidden_size=768, intermediate_size=3072, chunk_size_feed_forward=0,
-                 num_layers=12, nheads=12, activation="gelu", pad_token_id=1,
-                 layer_norm_eps=1e-5, attn_dropout=0.1, hidden_dropout=0.1,
-                 position_embedding_type="absolute", is_decoder=False,
-                 add_pooling_layer=True, add_cross_attention=False):
-
-        super(RobertaForMultipleChoice, self).__init__()
-
-        self.roberta = Roberta(vocab_size, type_vocab_size, max_position_embeddings, hidden_size, intermediate_size, chunk_size_feed_forward, num_layers, nheads,
-                               activation, pad_token_id, layer_norm_eps, attn_dropout, hidden_dropout, position_embedding_type, is_decoder, add_pooling_layer, add_cross_attention)
-
-        self.dropout = nn.Dropout(hidden_dropout)
-        self.classifier = nn.Linear(hidden_size, 1)
-
-        self.init_weights()
-
-    def init_weights(self):
-
-        self.apply(init_weights)
-
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        labels=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        output_attentions=None,
-        output_hidden_states=None,
-    ):
-        r"""
-        labels (:obj:`flow.Tensor` of shape :obj:`(batch_size,)`, `optional`):
-            Labels for computing the multiple choice classification loss. Indices should be in ``[0, ...,
-            num_choices-1]`` where :obj:`num_choices` is the size of the second dimension of the input tensors. (See
-            :obj:`input_ids` above)
-        """
-        num_choices = input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
-
-        flat_input_ids = input_ids.view(-1, input_ids.size(-1)
-                                        ) if input_ids is not None else None
-        flat_position_ids = position_ids.view(
-            -1, position_ids.size(-1)) if position_ids is not None else None
-        flat_token_type_ids = token_type_ids.view(
-            -1, token_type_ids.size(-1)) if token_type_ids is not None else None
-        flat_attention_mask = attention_mask.view(
-            -1, attention_mask.size(-1)) if attention_mask is not None else None
-        flat_inputs_embeds = (
-            inputs_embeds.view(-1, inputs_embeds.size(-2),
-                               inputs_embeds.size(-1))
-            if inputs_embeds is not None
-            else None
-        )
-
-        outputs = self.roberta(flat_input_ids, flat_attention_mask, flat_token_type_ids, flat_position_ids, head_mask, flat_inputs_embeds,
-                               None, None, None, None, output_attentions, output_hidden_states)
-
-        pooled_output = outputs[1]
-
-        pooled_output = self.dropout(pooled_output)
-        logits = self.classifier(pooled_output)
-        reshaped_logits = logits.view(-1, num_choices)
-
-        loss = None
-        if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            loss = loss_fct(reshaped_logits, labels)
-
-        return (loss, reshaped_logits) + outputs[2:]
-
-
-class RobertaForTokenClassification(nn.Module):
-    def __init__(self, num_labels=2, vocab_size=30522, type_vocab_size=2, max_position_embeddings=512,
-                 hidden_size=768, intermediate_size=3072, chunk_size_feed_forward=0,
-                 num_layers=12, nheads=12, activation="gelu", pad_token_id=1,
-                 layer_norm_eps=1e-5, attn_dropout=0.1, hidden_dropout=0.1,
-                 position_embedding_type="absolute", is_decoder=False,
-                 add_cross_attention=False):
-
-        super(RobertaForTokenClassification, self).__init__()
-
-        self.roberta = Roberta(vocab_size, type_vocab_size, max_position_embeddings, hidden_size, intermediate_size, chunk_size_feed_forward, num_layers, nheads,
-                               activation, pad_token_id, layer_norm_eps, attn_dropout, hidden_dropout, position_embedding_type, is_decoder, False, add_cross_attention)
-        self.dropout = nn.Dropout(hidden_dropout)
-        self.classifier = nn.Linear(hidden_size, num_labels)
-
-        self.num_labels = num_labels
-
-        self.init_weights()
-
-    def init_weights(self):
-
-        self.apply(init_weights)
-
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-    ):
-        r"""
-        labels (:obj:`flow.Tensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
-            Labels for computing the token classification loss. Indices should be in ``[0, ..., num_labels -
-            1]``.
-        """
-
-        outputs = self.roberta(input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds,
-                               None, None, None, None, output_attentions, output_hidden_states)
-
-        sequence_output = outputs[0]
-        sequence_output = self.dropout(sequence_output)
-        logits = self.classifier(sequence_output)
-
-        loss = None
-        if labels is not None:
-            loss_fct = CrossEntropyLoss(ignore_index=-100)
-            # Only keep active parts of the loss
-            if attention_mask is not None:
-                active_loss = attention_mask.view(-1).eq(1)
-                active_logits = logits.view(-1, self.num_labels)
-                labels_ = labels.view(-1)
-                active_labels = flow.where(
-                    active_loss, labels_, flow.ones_like(
-                        labels_) * loss_fct.ignore_index
-                )
-                loss = loss_fct(active_logits, active_labels)
-            else:
-                loss = loss_fct(
-                    logits.view(-1, self.num_labels), labels.view(-1))
-
-        return (loss, logits) + outputs[2:]
-
-
-class RobertaForQuestionAnswering(nn.Module):
-    def __init__(self, num_labels=2, vocab_size=30522, type_vocab_size=2, max_position_embeddings=512,
-                 hidden_size=768, intermediate_size=3072, chunk_size_feed_forward=0,
-                 num_layers=12, nheads=12, activation="gelu", pad_token_id=1,
-                 layer_norm_eps=1e-5, attn_dropout=0.1, hidden_dropout=0.1,
-                 position_embedding_type="absolute", is_decoder=False,
-                 add_cross_attention=False):
-
-        super(RobertaForQuestionAnswering, self).__init__()
-
-        self.roberta = Roberta(vocab_size, type_vocab_size, max_position_embeddings, hidden_size, intermediate_size, chunk_size_feed_forward, num_layers, nheads,
-                               activation, pad_token_id, layer_norm_eps, attn_dropout, hidden_dropout, position_embedding_type, is_decoder, False, add_cross_attention)
-        self.qa_outputs = nn.Linear(hidden_size, num_labels)
-
-        self.num_labels = num_labels
-
-        self.init_weights()
-
-    def init_weights(self):
-
-        self.apply(init_weights)
-
-    def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        start_positions=None,
-        end_positions=None,
-        output_attentions=None,
-        output_hidden_states=None,
-    ):
-        r"""
-        start_positions (:obj:`flow.Tensor` of shape :obj:`(batch_size,)`, `optional`):
-            Labels for position (index) of the start of the labelled span for computing the token classification loss.
-            Positions are clamped to the length of the sequence (:obj:`sequence_length`). Position outside of the
-            sequence are not taken into account for computing the loss.
-        end_positions (:obj:`flow.Tensor` of shape :obj:`(batch_size,)`, `optional`):
-            Labels for position (index) of the end of the labelled span for computing the token classification loss.
-            Positions are clamped to the length of the sequence (:obj:`sequence_length`). Position outside of the
-            sequence are not taken into account for computing the loss.
-        """
-
-        outputs = self.roberta(input_ids, attention_mask, token_type_ids, position_ids, head_mask, inputs_embeds,
-                               None, None, None, None, output_attentions, output_hidden_states)
-
-        sequence_output = outputs[0]
-
-        logits = self.qa_outputs(sequence_output)
-        # start_logits, end_logits = logits.split(1, dim=-1)
-        # oneflow does not support split.
-        split_half = logits.shape[-1] // 2
-        start_logits, end_logits = logits[:, :,
-                                          :split_half], logits[:, :, split_half:]
-        start_logits = start_logits.squeeze(-1)  # .contiguous()
-        end_logits = end_logits.squeeze(-1)  # .contiguous()
-
-        total_loss = None
-        if start_positions is not None and end_positions is not None:
-            # If we are on multi-GPU, split add a dimension
-            if len(start_positions.size()) > 1:
-                start_positions = start_positions.squeeze(-1)
-            if len(end_positions.size()) > 1:
-                end_positions = end_positions.squeeze(-1)
-            # sometimes the start/end positions are outside our model inputs, we ignore these terms
-            ignored_index = start_logits.size(1)
-            start_positions = start_positions.clamp(0, ignored_index)
-            end_positions = end_positions.clamp(0, ignored_index)
-
-            loss_fct = CrossEntropyLoss(ignore_index=ignored_index)
-            start_loss = loss_fct(start_logits, start_positions)
-            end_loss = loss_fct(end_logits, end_positions)
-            total_loss = (start_loss + end_loss) / 2
-
-        return (total_loss, start_logits, end_logits) + outputs[2:]
