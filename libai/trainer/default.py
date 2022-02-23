@@ -273,7 +273,11 @@ class DefaultTrainer(TrainerBase):
                 self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
             )
 
-        self.global_batch_size = cfg.train.global_batch_size
+        self.global_batch_size = (
+            cfg.train.global_batch_size
+            if cfg.graph.enabled
+            else cfg.train.global_batch_size // cfg.train.num_accumulation_steps
+        )
         self.max_iter = cfg.train.train_iter
 
         self.register_hooks(self.build_hooks())
@@ -316,10 +320,19 @@ class DefaultTrainer(TrainerBase):
         ]
 
         def test_and_save_results():
-            self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
+            model = self.graph_eval if self.cfg.graph.enabled else self.model
+            self._last_eval_results = self.test(self.cfg, self.test_loader, model)
             return self._last_eval_results
 
         ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
+        ret.append(
+            hooks.BestCheckpointer(
+                self.cfg.train.eval_period,
+                self.checkpointer,
+                val_metric=try_get_key(self.cfg, "train.eval_metric", default="Acc@1"),
+                mode=try_get_key(self.cfg, "train.eval_mode", default="max"),
+            )
+        )
 
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
