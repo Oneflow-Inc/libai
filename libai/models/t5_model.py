@@ -262,7 +262,7 @@ class T5ForPreTraining(flow.nn.Module):
         encoder_attn_mask,
         decoder_attn_mask,
         encoder_decoder_attn_mask,
-        lm_labels=None,
+        labels=None,
         loss_mask=None,
     ):
         logits = self.t5_model(
@@ -273,8 +273,8 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask,
         )
 
-        if self.training and lm_labels is not None:
-            lm_loss = self.loss_func(logits, lm_labels, loss_mask)
+        if self.training and labels is not None:
+            lm_loss = self.loss_func(logits, labels, loss_mask)
             return lm_loss
         else:
             return {
