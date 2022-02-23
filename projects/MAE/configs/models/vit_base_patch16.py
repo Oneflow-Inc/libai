@@ -14,5 +14,6 @@ model = LazyCall(VisionTransformer)(
     depth=12,
     num_heads=12,
     mlp_ratio=4,
+    drop_path_rate=0.1,
     norm_layer=partial(LayerNorm, eps=1e-6),
 )
