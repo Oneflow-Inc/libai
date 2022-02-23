@@ -21,9 +21,11 @@
 # --------------------------------------------------------
 
 from functools import partial
+import pdb
 
 import oneflow as flow
 import oneflow.nn as nn
+from libai.layers.layer_norm import LayerNorm
 
 import libai.models.vision_transformer
 
@@ -31,17 +33,51 @@ import libai.models.vision_transformer
 class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
     """Vision Transformer with support for global average pooling
     """
-    def __init__(self, global_pool=False, **kwargs):
-        super(VisionTransformer, self).__init__(**kwargs)
+    def __init__(
+        self,
+        img_size=224,
+        patch_size=16,
+        in_chans=3,
+        embed_dim=768,
+        depth=12,
+        num_heads=12,
+        mlp_ratio=4.0,
+        norm_layer=LayerNorm,
+        drop_rate=0.0,
+        attn_drop_rate=0.0,
+        drop_path_rate=0.0,
+        global_pool=False,
+        num_classes=1000,
+        loss_func=None,):
+        super(VisionTransformer, self).__init__(
+            img_size, patch_size, in_chans, embed_dim, depth, num_heads, mlp_ratio,
+            drop_rate, attn_drop_rate, drop_path_rate, num_classes, loss_func)
 
         self.global_pool = global_pool
         if self.global_pool:
-            norm_layer = kwargs["norm_layer"]
-            embed_dim = kwargs["embed_dim"]
             self.fc_norm = norm_layer(embed_dim)
 
-            del self.norm
+            # TODO: fix del error
+            # del self.norm  # remove the original norm
+            self.norm = nn.Identity()
     
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "img_size": cfg.img_size,
+            "patch_size": cfg.patch_size,
+            "in_chans": cfg.in_chans,
+            "embed_dim": cfg.embed_dim,
+            "depth": cfg.depth,
+            "num_heads": cfg.num_heads,
+            "mlp_ratio": cfg.mlp_ratio,
+            "drop_rate": cfg.drop_rate,
+            "attn_drop_rate": cfg.attn_drop_rate,
+            "drop_path_rate": cfg.drop_path_rate,
+            "global_pool": cfg.global_pool,
+            "num_classes": cfg.num_classes,
+        }
+
     def forward_features(self, x):
         B = x.shape[0]
         x = self.patch_embed(x)

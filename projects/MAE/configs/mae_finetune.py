@@ -1,11 +1,9 @@
 from libai.config import LazyCall, get_config
-
 from configs.common.data.imagenet import dataloader
 from .models.vit_base_patch16 import model
 
-from flowvision.transforms import transforms
 from flowvision.data import Mixup
-from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 
 train = get_config("common/train.py").train
@@ -33,13 +31,17 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     num_classes=1000,
 )
 
+# Refine model cfg for vit training on imagenet
+model.num_classes = 1000
+model.depth = 1
+model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 # Refine training settings for MAE
 train.train_micro_batch_size = 128
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
-train.log_period = 10
-train.eval_period = 10
+train.log_period = 1
+train.eval_period = 1000
 
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule: lr = base_lr * batch_size / 256
