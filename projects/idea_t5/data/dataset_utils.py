@@ -333,10 +333,13 @@ def get_samples_mapping(indexed_dataset,
         logger.info(' > building samples index mapping for {} ...'.format(
             name))
         # First compile and then import.
-        from . import helpers
+        import sys
+        from pathlib import Path
+        sys.path.append(str(Path(__file__).parent))
+        import helpers
         samples_mapping = helpers.build_mapping(
             indexed_dataset.doc_idx,
-            indexed_dataset.sizes,
+            indexed_dataset.sizes.astype(np.int64),
             num_epochs,
             max_num_samples,
             max_seq_length,

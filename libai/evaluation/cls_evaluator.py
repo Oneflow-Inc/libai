@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 
 def accuracy(output, target, topk=(1,)):
+    output = output.reshape(-1, output.shape[-1])
+    target = target.reshape(-1)
     maxk = min(max(topk), output.size()[1])
     batch_size = target.size(0)
     _, pred = output.topk(maxk, 1, True, True)

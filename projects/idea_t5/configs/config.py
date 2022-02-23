@@ -20,7 +20,7 @@ model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
 
 # Set matched model arguments
-model.cfg.hidden_layers = 5
+model.cfg.hidden_layers = 3
 model.cfg.hidden_size = 384
 model.cfg.intermediate_size = 1536
 model.cfg.num_attention_heads = 16
