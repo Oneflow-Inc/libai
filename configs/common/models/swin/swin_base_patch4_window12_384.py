@@ -3,20 +3,20 @@ from libai.config import LazyCall
 from libai.models import SwinTransformer
 
 
-swin_tiny_patch4_window7_224_model = LazyCall(SwinTransformer)(
-    img_size=224,
+swin_base_patch4_window12_384_model = LazyCall(SwinTransformer)(
+    img_size=384,
     patch_size=4,
     in_chans=3,
     num_classes=1000,
-    embed_dim=96,
-    depths=[2, 2, 6, 2],
-    num_heads=[3, 6, 12, 24],
-    window_size=7,
+    embed_dim=128,
+    depths=[2, 2, 18, 2],
+    num_heads=[4, 8, 16, 32],
+    window_size=12,
     mlp_ratio=4.0,
     qkv_bias=True,
     qk_scale=None,
     drop_rate=0.0,
-    drop_path_rate=0.2,
+    drop_path_rate=0.1,
     ape=False,
     patch_norm=True,
     use_checkpoint=False,
