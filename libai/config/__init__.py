@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from .arguments import default_argument_parser
-from .config import configurable, try_get_key
+from .config import configurable, try_get_key, get_config
 from .instantiate import instantiate
 from .lazy import LazyCall, LazyConfig
 
@@ -25,4 +25,5 @@ __all__ = [
     "default_argument_parser",
     "configurable",
     "try_get_key",
+    "get_config",
 ]
