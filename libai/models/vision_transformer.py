@@ -143,7 +143,7 @@ class VisionTransformer(nn.Module):
         # position embedding
         pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
         pos_embed = pos_embed.to_global(sbp=x.sbp, placement=pos_embed.placement)
-        x = self.pos_drop(x + self.pos_embed)
+        x = self.pos_drop(x + pos_embed)
 
         # transformer block
         x = self.blocks(x)
