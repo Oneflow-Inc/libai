@@ -321,6 +321,14 @@ class DefaultTrainer(TrainerBase):
             return self._last_eval_results
 
         ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
+        ret.append(
+            hooks.BestCheckpointer(
+                self.cfg.train.eval_period,
+                self.checkpointer,
+                val_metric=try_get_key(self.cfg, "train.eval_metric", default="Acc@1"),
+                mode=try_get_key(self.cfg, "train.eval_mode", default="max"),
+            )
+        )
 
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
