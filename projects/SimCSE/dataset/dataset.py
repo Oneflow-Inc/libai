@@ -29,7 +29,7 @@ def load_data(name, path):
         csv_file = csv.reader(open(path, 'r', encoding='utf8'))
         data = [i for i in csv_file][1:]
         random.shuffle(data)
-        # sent1,sent2,hard_neg
+        # sent1, sent2, hard_neg
         return data
     
     def load_wiki_data(path):
@@ -61,11 +61,14 @@ def load_data(name, path):
 
 class TrainDataset(Dataset):
     # unsup
-    def __init__(self, name, path, tokenizer):
+    def __init__(self, name, path, tokenizer, max_len):
         self.name = name
         self.data = load_data(name, path)
         self.tokenizer = tokenizer
-        self.max_len = int(512/2)
+        self.max_len = int(max_len / 2)
+        self.pad_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.pad_token)
+        self.cls_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.cls_token)
+        self.sep_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.sep_token)
 
     def __len__(self):
         return len(self.data)
@@ -75,12 +78,17 @@ class TrainDataset(Dataset):
         ids = self.tokenizer.convert_tokens_to_ids(tokens)
         
         ids = ids[:self.max_len-2]
-        ids = [101] + ids + [102]
+        ids = [self.cls_id] + ids + [self.sep_id]
         
         attention_mask = [1] * len(ids)
         token_type_ids = [0] * len(ids)
         
-        return padding_for_ids({"input_ids":ids, "attention_mask":attention_mask, "token_type_ids":token_type_ids}, file_name=self.name)
+        return padding_for_ids(
+            data = {"input_ids":ids, "attention_mask":attention_mask, "token_type_ids":token_type_ids}, 
+            file_name = self.name,
+            pad_id = self.pad_id,
+            max_len = self.max_len
+            )
     
     def __getitem__(self, index):
         # {"input_ids":ids, "attention_mask":attention_mask, "token_type_ids":token_type_ids}
@@ -96,6 +104,9 @@ class TestDataset(Dataset):
         self.data = load_data(name, path)
         self.tokenizer = tokenizer
         self.max_len = 50
+        self.pad_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.pad_token)
+        self.cls_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.cls_token)
+        self.sep_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.sep_token)
     
     def __len__(self):
         return len(self.data)
@@ -105,12 +116,11 @@ class TestDataset(Dataset):
         ids = self.tokenizer.convert_tokens_to_ids(tokens)
         ids = ids[:self.max_len-2]
 
-        ids = [101] + ids + [102]
+        ids = [self.cls_id] + ids + [self.sep_id]
         length = len(ids)
-        ids = ids + [0] * (self.max_len - length)
         
-        attention_mask = [1] * length + [0] * (self.max_len - length)
-
+        ids = ids + [self.pad_id] * (self.max_len - length)
+        attention_mask = [1] * length + [self.pad_id] * (self.max_len - length)
         token_type_ids = [0] * self.max_len
 
         return {
@@ -132,8 +142,7 @@ class TestDataset(Dataset):
         )
 
 
-def padding_for_ids(data, file_name, pad_id=0, max_len=512):
-    max_len = int(max_len / 2)
+def padding_for_ids(data, file_name, pad_id=0, max_len=256):
     data['input_ids'] = data['input_ids'] + [pad_id] * (max_len - len(data['input_ids']))
     data['attention_mask'] = data['attention_mask'] + [pad_id] * (max_len - len(data['attention_mask']))
     data['token_type_ids'] = data['token_type_ids'] + [pad_id] * (max_len - len(data['token_type_ids']))

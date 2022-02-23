@@ -22,10 +22,10 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
         LazyCall(TrainDataset)(
             name="wiki",
             path="/home/xiezipeng/libai/projects/SimCSE/dataset/wiki1m_for_simcse.txt",
-            tokenizer=LazyCall(BertTokenizer)(vocab_file = "/home/xiezipeng/libai/projects/SimCSE/dataset/vocab.txt")
+            tokenizer=LazyCall(BertTokenizer)(vocab_file = "/home/xiezipeng/libai/projects/SimCSE/dataset/vocab.txt"),
+            max_len=simcse_cfg["max_position_embeddings"]
         )
     ],
-
 )
 
 dataloader.test = [
@@ -54,14 +54,17 @@ simcse_cfg["layernorm_eps"]=1e-12
 simcse_cfg["pretrained_model_weight"]=None
 simcse_cfg["pooler_type"]='cls'
 simcse_cfg["temp"] = 0.05
+simcse_cfg["hidden_size"] = 768
+
+
 
 model=LazyCall(SimcseModel)(cfg=simcse_cfg)
 
 train.update(
     dict(
         output_dir="/home/xiezipeng/libai/projects/SimCSE/dataset",
-        train_micro_batch_size=10,
-        test_micro_batch_size=10,
+        train_micro_batch_size=5,
+        test_micro_batch_size=5,
         train_epoch=1,
         train_iter=15625,
         eval_period=50,

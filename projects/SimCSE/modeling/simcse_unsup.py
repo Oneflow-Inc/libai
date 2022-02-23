@@ -42,8 +42,8 @@ class MLPLayer(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.dense = libai.layers.Linear(
-            768,
-            768,
+            cfg.hidden_size,
+            cfg.hidden_size,
             bias=True,
             parallel='row',
             layer_idx=-1
@@ -87,10 +87,10 @@ class SimcseModel(nn.Module):
         super().__init__()
         self.bert = BertForSimCSE(cfg)
         self.pooler_type = cfg.pooler_type
-        assert self.pooler_type in ["cls", "cls_before_pooler", "avg", "avg_top2", "avg_first_last"], "unrecognized pooling type %s" % self.pooler_type
-        self.mlp = MLPLayer(cfg.hidden_size)
+        self.mlp = MLPLayer(cfg)
         self.loss_func = SimCSE_Unsup_Loss(cfg)
         self.eval_func = SimCSE_Eval()
+        assert self.pooler_type in ["cls", "cls_before_pooler", "avg", "avg_top2", "avg_first_last"], "unrecognized pooling type %s" % self.pooler_type
 
     def forward(self, input_ids, attention_mask, token_type_ids, labels=None):
         # input_ids:[2*batch_size, seq_len]
@@ -129,52 +129,3 @@ class SimcseModel(nn.Module):
 
         cos_sim = self.eval_func(poolerd_result)
         return {"cos_sim": cos_sim, "labels": labels}
-
-
-# def eval(model, dataloder):
-#     model.eval()
-#     sim_tensor = flow.tensor([]).to(config.device)
-#     labels = np.array([])
-#     with flow.no_grad():
-#         for source, target, label in dataloder:
-#             source_input_ids = source.get('input_ids').to(config.device)
-#             source_attention_mask = source.get('attention_mask').to(config.device)
-#             source_token_type_ids = source.get('token_type_ids').to(config.device)
-#             source_pred = model(source_input_ids, source_attention_mask, source_token_type_ids) # [batch, hidden]
-
-#             target_input_ids = source.get('input_ids').to(config.device)
-#             target_attention_mask = source.get('attention_mask').to(config.device)
-#             target_token_type_ids = source.get('token_type_ids').to(config.device)
-#             target_pred = model(target_input_ids, target_attention_mask, target_token_type_ids)
-
-#             sim = CosineSimilarity()
-#             cos_sim = sim(source_pred, target_pred)
-#             sim_tensor = flow.cat((sim_tensor, cos_sim), dim=0)
-#             labels = np.append(labels, label)
-#     return spearmanr(labels, sim_tensor.cpu().numpy()).correlation
-
-
-# def train(model, train_dataloader, dev_dataloader, optimizer):
-#     model.train()
-#     global best
-#     for batch_idx, source in enumerate(tqdm(train_dataloader), start=1):
-#         # 维度转换 [batch, 2, seq_len] -> [batch * 2, sql_len]
-#         real_batch_num = source.get('input_ids').shape[0]
-#         input_ids = source.get('input_ids').view(real_batch_num * 2, -1).to(DEVICE)
-#         attention_mask = source.get('attention_mask').view(real_batch_num * 2, -1).to(DEVICE)
-#         token_type_ids = source.get('token_type_ids').view(real_batch_num * 2, -1).to(DEVICE)
-        
-#         loss = model(input_ids, attention_mask, token_type_ids)        
-#         optimizer.zero_grad()
-#         loss.backward()
-#         optimizer.step()
-        
-#         if batch_idx % 10 == 0: 
-#             print(loss.item())    
-#             # logger.info(f'loss: {loss.item():.4f}')
-#             corrcoef = eval(model, dev_dataloader)
-#             model.train()
-#             if best < corrcoef:
-#                 best = corrcoef
-#                 flow.save(model.state_dict(), config.save_path)
-#                 # logger.info(f"higher corrcoef: {best:.4f} in batch: {batch_idx}, save model")
