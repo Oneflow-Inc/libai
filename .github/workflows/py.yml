@@ -69,7 +69,7 @@ jobs:
 
       - name: Run unittest
         run: |
-          cd dev && bash run_unittest.sh
+          bash dev/run_unittest.sh
 
       - name: Please request CI again
         if: ${{ failure() }}
