@@ -28,6 +28,7 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     prob=1.0,
     switch_prob=0.5,
     mode="batch",
+    label_smoothing=0.1,
     num_classes=1000,
 )
 
@@ -36,7 +37,7 @@ model.num_classes = 1000
 model.depth = 1
 model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
-# Refine training settings for MAE
+# Refine training settings for MAE finetune
 train.train_micro_batch_size = 128
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
