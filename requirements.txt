@@ -1,7 +1,7 @@
 boto3
 botocore
 cloudpickle
-flowvision==0.0.6
+flowvision
 hydra-core
 nltk
 numpy

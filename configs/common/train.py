@@ -33,6 +33,8 @@ train = dict(
 
     load_weight="",
     eval_period=5000,
+    eval_metric="Acc@1",
+    eval_mode="max",
     topk=(1, 5),  # calculate top-k acc
     log_period=20,
     consumed_train_samples=0,

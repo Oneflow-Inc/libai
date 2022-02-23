@@ -15,23 +15,29 @@
 
 from .activation import build_activation
 from .cross_entropy import ParallelCrossEntropyLoss
-from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding
+from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding, PatchEmbedding
 from .layer_norm import LayerNorm
 from .linear import Linear, Linear1D
 from .lm_logits import LMLogits
 from .mlp import MLP
 from .transformer_layer import TransformerLayer
+from .attention import MultiheadAttention
+from .droppath import DropPath, drop_path
 
 __all__ = [
     "Embedding",
     "VocabEmbedding",
     "SinePositionalEmbedding",
+    "PatchEmbedding",
     "build_activation",
     "Linear",
     "Linear1D",
     "MLP",
     "LayerNorm",
     "TransformerLayer",
+    "MultiheadAttention",
     "ParallelCrossEntropyLoss",
     "LMLogits",
+    "drop_path",
+    "DropPath",
 ]
