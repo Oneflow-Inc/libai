@@ -25,10 +25,10 @@ from functools import partial
 import oneflow as flow
 import oneflow.nn as nn
 
-from libai.models.vision_transformer import VisionTransformer
+import libai.models.vision_transformer
 
 
-class VisionTransformer(VisionTransformer):
+class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
     """Vision Transformer with support for global average pooling
     """
     def __init__(self, global_pool=False, **kwargs):
@@ -55,7 +55,7 @@ class VisionTransformer(VisionTransformer):
         # position embedding
         pos_embed = self.pos_embed.expand(B, -1, -1)
         pos_embed = pos_embed.to_global(sbp=x.sbp, placement=pos_embed.placement)
-        x = self.pos_drop(x + self.pos_embed)
+        x = self.pos_drop(x + pos_embed)
 
         # transformer block
         x = self.blocks(x)
