@@ -23,8 +23,7 @@ from tokenizer.tokenizer import setup_tokenizer
 from utils.load_megatron_weight import load_megatron_bert
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.trainer import hooks
-from libai.trainer import DefaultTrainer, default_setup
+from libai.trainer import DefaultTrainer, default_setup, hooks
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.file_utils import get_data_from_cache
 
@@ -36,15 +35,20 @@ MODEL_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset
 VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
 BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
-MODEL_MD5 = "9c71f37d8375cdb1569c8f7e76710984"
+MODEL_MD5 = "1ef80646d3b7a02537e85bfdcdd1eb04"
+
 
 class Trainer(DefaultTrainer):
-    
+
     # Remove checkpointer
     def build_hooks(self):
-        ret = [hook for hook in super().build_hooks() if not isinstance(hook, hooks.PeriodicCheckpointer)]
+        ret = [
+            hook
+            for hook in super().build_hooks()
+            if not isinstance(hook, hooks.PeriodicCheckpointer)
+        ]
         return ret
-    
+
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
@@ -59,7 +63,7 @@ class Trainer(DefaultTrainer):
         with open(os.path.join(self.cfg.train.output_dir, "of_loss.txt"), "w") as f:
             for loss, _ in all_losses:
                 f.write(str(loss) + "\n")
-    
+
     @classmethod
     def test(cls, cfg, test_loaders, model, evaluator=None):
         return {}
