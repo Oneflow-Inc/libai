@@ -34,7 +34,7 @@ from .utils import init_method_normal, scaled_init_method_normal
 
 class CasualMask(nn.Module):
     """
-    Create a casual mask and combine it with the padding mask. 
+    Create a casual mask and combine it with the padding mask.
     It will be used in gpt model and T5 decoder.
     When in T5 decoder, the argument `layer_idx` should be set to first decoder layer index.
     """
