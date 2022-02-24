@@ -16,6 +16,7 @@
 import unittest
 
 import oneflow as flow
+from omegaconf import DictConfig
 
 from configs.common.models.gpt import pretrain_model as model
 from libai.models import build_model
@@ -24,6 +25,17 @@ from libai.utils import distributed as dist
 
 class TestGPTModel(unittest.TestCase):
     def test_gpt_build(self):
+        # reset dist env
+        dist.setup_dist_util(
+            DictConfig(
+                dict(
+                    data_parallel_size=1,
+                    tensor_parallel_size=1,
+                    pipeline_parallel_size=1,
+                )
+            )
+        )
+
         gpt_model = build_model(model)
         self.assertTrue(
             isinstance(gpt_model.GPT_model.embeddings.token_embeddings.weight, flow.Tensor)
