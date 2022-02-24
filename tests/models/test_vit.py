@@ -16,6 +16,7 @@
 import unittest
 
 import oneflow as flow
+from omegaconf import DictConfig
 
 import libai.utils.distributed as dist
 from configs.common.models.vit.vit_tiny_patch16_224 import model
@@ -24,6 +25,17 @@ from libai.models import build_model
 
 class TestViTModel(unittest.TestCase):
     def test_build_vit(self):
+        # reset dist env
+        dist.setup_dist_util(
+            DictConfig(
+                dict(
+                    data_parallel_size=1,
+                    tensor_parallel_size=1,
+                    pipeline_parallel_size=1,
+                )
+            )
+        )
+
         vit_model = build_model(model)
         self.assertTrue(isinstance(vit_model.patch_embed.proj.weight, flow.Tensor))
 
@@ -38,7 +50,6 @@ class TestViTModel(unittest.TestCase):
             placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         vit_model = build_model(model)
-        vit_model.apply(dist.convert_to_distributed_default_setting)
         output_dict = vit_model(input_tensor, targets)
 
         self.assertEqual(list(output_dict.keys()), ["losses"])
@@ -54,7 +65,6 @@ class TestViTModel(unittest.TestCase):
             placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         vit_model = build_model(model)
-        vit_model.apply(dist.convert_to_distributed_default_setting)
         vit_model.eval()
         output_dict = vit_model(input_tensor, targets)
 
@@ -72,7 +82,6 @@ class TestViTModel(unittest.TestCase):
             placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
         )
         vit_model = build_model(model)
-        vit_model.apply(dist.convert_to_distributed_default_setting)
         output_dict = vit_model(input_tensor, targets)
         losses = output_dict["losses"]
         losses.backward()
