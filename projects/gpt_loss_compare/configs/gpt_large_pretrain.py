@@ -10,6 +10,8 @@ optim = get_config("common/optim.py").optim
 # from .projects.gpt_loss_compare.configs.gpt_dataset import dataloader, tokenization
 from .gpt_dataset import dataloader, tokenization
 
+train.test_micro_batch_size = 4
+
 # Bert-large model config
 model.cfg.embedding_dropout_prob = 0.1
 model.cfg.attention_dropout_prob = 0.1

@@ -281,8 +281,7 @@ class GPTDataset(flow.utils.data.Dataset):
         # return {'text': np.array(sample, dtype=np.int64)}
         return Instance(
             input_ids=DistTensorData(sample[:-1]),
-            lm_labels=DistTensorData(sample[1:]),
-            loss_mask=DistTensorData(flow.ones_like(sample[:-1])),
+            labels=DistTensorData(sample[1:]),
         )
 
 
