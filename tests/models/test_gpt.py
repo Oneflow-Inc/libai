@@ -25,7 +25,9 @@ from libai.utils import distributed as dist
 class TestGPTModel(unittest.TestCase):
     def test_gpt_build(self):
         gpt_model = build_model(model)
-        self.assertTrue(isinstance(gpt_model.GPT_model.embeddings.token_embeddings.weight, flow.Tensor))
+        self.assertTrue(
+            isinstance(gpt_model.GPT_model.embeddings.token_embeddings.weight, flow.Tensor)
+        )
 
     @unittest.skip("No GPU in CI Environment")
     def test_gpt_forward(self):
@@ -41,7 +43,9 @@ class TestGPTModel(unittest.TestCase):
         output_dict = gpt_model(input_ids)
 
         self.assertEqual(list(output_dict.keys()), ["prediction_scores"])
-        self.assertEqual(list(output_dict["prediction_scores"].shape), [2, 512, model.cfg.vocab_size])
+        self.assertEqual(
+            list(output_dict["prediction_scores"].shape), [2, 512, model.cfg.vocab_size]
+        )
 
     @unittest.skip("No GPU in CI Environment")
     def test_gpt_backward(self):
@@ -61,7 +65,8 @@ class TestGPTModel(unittest.TestCase):
         )
         gpt_model = build_model(model)
         loss_dict = gpt_model(
-            input_ids, lm_labels,
+            input_ids,
+            lm_labels,
         )
         losses = sum(loss_dict.values())
         losses.backward()

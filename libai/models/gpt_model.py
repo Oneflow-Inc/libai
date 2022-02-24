@@ -289,4 +289,4 @@ class GPTForPreTraining(nn.Module):
             lm_loss = self.loss_func(logits, labels)
             return lm_loss
         else:
-            return {'prediction_scores': logits}
+            return {"prediction_scores": logits}
