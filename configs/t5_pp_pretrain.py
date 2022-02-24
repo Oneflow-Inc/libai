@@ -5,9 +5,12 @@ from .common.data.t5_dataset import dataloader, tokenization
 
 from .common.models.graph import graph
 
-tokenization.tokenizer.vocab_file = "/workspace/dataset/bert_data/bert-base-chinese-vocab.txt"
-dataloader.train.dataset[0].data_prefix = "/workspace/dataset/bert_data/loss_compara_content_sentence"
-dataloader.train.dataset[0].indexed_dataset.data_prefix = "/workspace/dataset/bert_data/loss_compara_content_sentence"
+vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
+data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
+
+tokenization.tokenizer.vocab_file = vocab_file
+dataloader.train.dataset[0].data_prefix = data_prefix
+dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
 # T5-large model config
 model.cfg.num_attention_heads = 12
@@ -21,4 +24,4 @@ train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
 train.train_micro_batch_size = 16
 train.recompute_grad.enabled = True
-train.output_dir = "./t5_pp_output"
+train.output_dir = "./output/t5_pipeline_output"
