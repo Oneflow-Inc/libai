@@ -50,7 +50,7 @@ py::array build_sample_idx(const py::array_t<int64_t>& doc_idx_, const py::array
   auto doc_idx = doc_idx_.unchecked<1>();
 
   // Mapping and it's length (1D).
-  int64_t num_samples = (num_tokens - 1) / seq_length;
+  int64_t num_samples = num_tokens / seq_length - 1;
   int64_t* sample_idx = new int64_t[2 * (num_samples + 1)];
 
   cout << "    using:" << endl << std::flush;
