@@ -276,12 +276,6 @@ def get_md5(fname):
 def download_file(out_path: str, url):
     logger.info(f"downloading from {url} to {out_path}")
     wget.download(url, out=out_path)
-    # resp = requests.get(url=url, stream=True)
-    # MB = 1024 ** 2
-    # size = int(resp.headers.get("Content-Length", 0)) / MB
-    # with open(out_path, "wb") as f:
-    #     for data in tqdm(iterable=resp.iter_content(MB), total=size, unit="m", desc=out_path):
-    #         f.write(data)
 
 
 def get_data_from_cache(url, cache_dir=None, force_download=False, md5=None):
