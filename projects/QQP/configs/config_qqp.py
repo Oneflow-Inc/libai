@@ -74,6 +74,7 @@ train.update(
         eval_period=100,
         log_period=10,
         warmup_ratio=0.01,
+        topk=(1,),
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
