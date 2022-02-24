@@ -1,17 +1,13 @@
-from libai.config.lazy import LazyCall
+from libai.config import LazyCall, get_config
 
 from libai.scheduler import WarmupMultiStepLR
 
-from .t5_model import pretrain_model as model
 from .t5_dataset import dataloader, tokenization
-from .graph import graph
-from .train import train
-from .optim import optim
 
-# model = get_config("./common/models/t5.py").pretrain_model
-# graph = get_config("./common/models/graph.py").graph
-# train = get_config("./common/train.py").train
-# optim = get_config("./common/optim.py").optim
+model = get_config("./common/models/t5.py").pretrain_model
+graph = get_config("./common/models/graph.py").graph
+train = get_config("./common/train.py").train
+optim = get_config("./common/optim.py").optim
 
 train.eval_iter = 10
 
