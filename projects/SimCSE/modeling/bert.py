@@ -31,4 +31,3 @@ class BertForSimCSE(BertModel):
         encoder_output = self.final_layernorm(hidden_states)
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output, total_hidden
-

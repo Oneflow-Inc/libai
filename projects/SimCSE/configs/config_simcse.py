@@ -38,15 +38,15 @@ dataloader.test = [
     ),
 ]
 
-# dataloader.val = [
-#     LazyCall(build_nlp_test_loader)(
-#         dataset=LazyCall(TestDataset)(
-#             name='sts',
-#             path='/home/xiezipeng/libai/projects/SimCSE/dataset/sts_dev.txt',
-#             tokenizer=LazyCall(BertTokenizer)(vocab_file = "/home/xiezipeng/libai/projects/SimCSE/dataset/vocab.txt")
-#         )
-#     )
-# ]
+dataloader.val = [
+    LazyCall(build_nlp_test_loader)(
+        dataset=LazyCall(TestDataset)(
+            name='sts',
+            path='/home/xiezipeng/libai/projects/SimCSE/dataset/sts_dev.txt',
+            tokenizer=LazyCall(BertTokenizer)(vocab_file = "/home/xiezipeng/libai/projects/SimCSE/dataset/vocab.txt")
+        )
+    )
+]
 
 simcse_cfg.update(
     dict(
@@ -56,22 +56,21 @@ simcse_cfg.update(
         # pretrained_model_weight="/home/xiezipeng/libai/projects/SimCSE/dataset/model_optim_rng.pt",
         pretrained_model_weight=None,
         pooler_type='cls',
-        temp=0.05,
+        temp=1,
         hidden_size=768
     )
 )
-
 
 model=LazyCall(SimcseModel)(cfg=simcse_cfg)
 
 train.update(
     dict(
         output_dir="/home/xiezipeng/libai/projects/SimCSE/dataset",
-        train_micro_batch_size=64,
-        test_micro_batch_size=64,
+        train_micro_batch_size=10,
+        test_micro_batch_size=10,
         train_epoch=1,
         train_iter=15625,
-        eval_period=50,
+        eval_period=100,
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,

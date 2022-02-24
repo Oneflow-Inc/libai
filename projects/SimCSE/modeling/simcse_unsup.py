@@ -67,6 +67,7 @@ class SimCSE_Unsup_Loss(nn.Module):
         z1, z2 = y_pred[:, 0], y_pred[:, 1]             
         sim = CosineSimilarity(dim=-1, temp=self.temp)
         cos_sim = sim(z1.unsqueeze(1), z2.unsqueeze(0))     # [batch, 1, hidden], [1, batch, hidden]
+
         labels = flow.arange(cos_sim.size(0), sbp=y_pred.sbp, placement=y_pred.placement).long()
         
         loss = nn.CrossEntropyLoss()(cos_sim, labels)
@@ -111,7 +112,7 @@ class SimcseModel(nn.Module):
             if self.pooler_type == "cls":
                 poolerd_result = self.mlp(last_hidden[:, 0])
             else:
-                poolerd_result = last_hidden[:, 0]
+            poolerd_result = last_hidden[:, 0]
         
         elif self.pooler_type == "avg":
             poolerd_result = ((last_hidden * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1).unsqueeze(-1))
@@ -130,6 +131,6 @@ class SimcseModel(nn.Module):
         if self.training:
             loss = self.loss_func(poolerd_result)
             return {"loss": loss}
-
-        cos_sim = self.eval_func(poolerd_result)
-        return {"cos_sim": cos_sim, "labels": labels}
+        else:
+            cos_sim = self.eval_func(poolerd_result)
+            return {"cos_sim": cos_sim, "labels": labels}

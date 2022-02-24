@@ -16,7 +16,7 @@
 import copy
 import logging
 from collections import OrderedDict
-
+import numpy as np
 from libai.utils import distributed as dist
 
 from .evaluator import DatasetEvaluator
@@ -24,7 +24,7 @@ from scipy.stats import spearmanr
 
 
 def spearman_target(labels, cos_sim):
-    return spearmanr(labels.cpu().numpy(), cos_sim.cpu().numpy()).correlation
+    return spearmanr(labels, cos_sim.cpu().numpy()).correlation
 
 
 class SimcseEvaluator(DatasetEvaluator):
@@ -43,7 +43,7 @@ class SimcseEvaluator(DatasetEvaluator):
         res = spearman_target(labels, cos_sim)
 
         self._predictions.append(
-            {"spearman": res}
+            {"cos_sim": cos_sim, "labels":labels}
         )
 
     def evaluate(self):
@@ -52,10 +52,11 @@ class SimcseEvaluator(DatasetEvaluator):
         else:
             predictions = self._predictions
 
-        total_samples = len(predictions)
+        sim_tensor = flow.tensor([])
+        label_array = np.array([])
+
         for prediction in predictions:
-            total_spearman += prediction["spearman"]
-
-        self._results = total_spearman / total_samples
-
-        return copy.deepcopy(self._results)
+            sim_tensor = flow.cat((sim_tensor, prediction["spearman"]), dim=0)
+            label_array = np.append(label_array, np.array(prediction["labels"].cpu().numpy()))
+        self._results = spearman_target(label_array, sim_tensor)
+        return copy.deepcopy(self._results, sim_tensor.cpu().numpy())

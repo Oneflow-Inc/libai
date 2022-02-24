@@ -140,7 +140,7 @@ class TestDataset(Dataset):
             token_type_ids = DistTensorData(flow.tensor([sent1['token_type_ids'], sent2['token_type_ids']], dtype=flow.long)),
             labels = DistTensorData(flow.tensor(score, dtype=flow.float))
         )
-
+        
 
 def padding_for_ids(data, file_name, pad_id=0, max_len=256):
     data['input_ids'] = data['input_ids'] + [pad_id] * (max_len - len(data['input_ids']))
@@ -156,4 +156,4 @@ def padding_for_ids(data, file_name, pad_id=0, max_len=256):
         input_ids = DistTensorData(flow.tensor(data['input_ids'], dtype=flow.long)),
         attention_mask = DistTensorData(flow.tensor(data['attention_mask'], dtype=flow.long)),
         token_type_ids = DistTensorData(flow.tensor(data['token_type_ids'], dtype=flow.long))
-    )    
+    )
