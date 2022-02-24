@@ -52,7 +52,12 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
         # prepare data path
+        if dist.get_local_rank() == 0:
+            get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
+        dist.synchronize()
+
         data_path = get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
+        
         cfg.dataloader.train.dataset[0]._target_ = CIFAR10Dataset
         cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:3])
         cfg.dataloader.train.dataset[0].download = True
