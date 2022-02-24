@@ -46,12 +46,6 @@ class TestBertModel(flow.unittest.TestCase):
 
         cfg = LazyConfig.load("configs/bert_large_pretrain.py")
 
-<<<<<<< HEAD
-        # prepare data path
-        vocab_path = get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
-        data_prefix_path = get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
-        get_data_from_cache(IDX_DATA_URL, cache_dir, md5=IDX_DATA_MD5)
-=======
         # prepare dataset
         if dist.get_local_rank() == 0:
             # download dataset on main process of each node
@@ -62,7 +56,6 @@ class TestBertModel(flow.unittest.TestCase):
 
         vocab_path = get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
         data_prefix_path = get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
->>>>>>> d75705f73be851a69bc4dd23f104c9b4c8083abd
         data_prefix = data_prefix_path[:-4]
 
         # set tokenizer and data config
@@ -141,13 +134,6 @@ class TestBertModel(flow.unittest.TestCase):
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
 
-<<<<<<< HEAD
-    @flow.unittest.skip_unless_2n4d()
-    def test_bert_graph_with_data_tensor_pipeline_parallel(self):
-        # set distributed config
-        self.cfg.train.dist.data_parallel_size = 2
-        self.cfg.train.dist.tensor_parallel_size = 2
-=======
     @flow.unittest.skip_unless_1n4d()
     def test_bert_graph_with_data_tensor_pipeline_parallel(self):
         self.cfg.train.num_accumulation_steps = 1
@@ -155,7 +141,6 @@ class TestBertModel(flow.unittest.TestCase):
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix
         self.cfg.train.dist.tensor_parallel_size = 1
->>>>>>> d75705f73be851a69bc4dd23f104c9b4c8083abd
         self.cfg.train.dist.pipeline_parallel_size = 2
         self.cfg.train.dist.pipeline_num_layers = self.cfg.model.cfg.hidden_layers
 
@@ -167,11 +152,7 @@ class TestBertModel(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-<<<<<<< HEAD
-    @unittest.skip("There is still bug in ZeRO")
-=======
     @unittest.skip("There are still bugs in ZeRO")
->>>>>>> d75705f73be851a69bc4dd23f104c9b4c8083abd
     def test_bert_with_zero(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 4
