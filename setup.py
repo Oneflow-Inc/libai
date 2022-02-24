@@ -40,7 +40,11 @@ def write_version_file():
 if sys.version_info < (3,):
     sys.exit("Sorry, Python3 is required for LiBai.")
 
+<<<<<<< HEAD
 with open(os.path.join(cwd, "requirements.txt"), "r") as f:
+=======
+with open(os.path.join(cwd, "requirements.txt"), "r", encoding="utf-8") as f:
+>>>>>>> d75705f73be851a69bc4dd23f104c9b4c8083abd
     requirements = [item.strip() for item in f.readlines()]
 
 
