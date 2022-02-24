@@ -2,6 +2,7 @@ from datetime import date
 from libai.config import LazyCall, get_config
 from libai.scheduler.lr_scheduler import WarmupMultiStepLR
 from libai.optim import get_default_optimizer_params
+from libai.data.datasets.cifar import CIFAR10Dataset
 
 import oneflow as flow
 from oneflow.nn import CrossEntropyLoss
@@ -18,6 +19,8 @@ train.seed = 0  # 固定seed为0
 dataloader = get_config("common/data/imagenet.py").dataloader
 
 dataloader.train._target_ = build_image_train_loader
+dataloader.train.dataset[0]._target_ = CIFAR10Dataset
+dataloader.train.dataset[0].download = True
 # Remove test dataset
 del dataloader.test
 
@@ -42,11 +45,11 @@ no_augmentation_transform = LazyCall(transforms.Compose)(
 )
 dataloader.train.dataset[0].transform = no_augmentation_transform
 
-dataloader.train.dataset[0].root = "/dataset/extract"
+dataloader.train.dataset[0].root = "./"
 
 
 # 模型设置: 关闭dropout等任何随机性的部分
-model.num_classes = 1000
+model.num_classes = 10
 model.loss_func = LazyCall(CrossEntropyLoss)()  # 使用最简单的Loss
 model.embed_dim = 192
 model.num_heads = 3
