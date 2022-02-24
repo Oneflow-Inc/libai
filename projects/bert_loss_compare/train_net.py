@@ -24,6 +24,7 @@ from utils.load_megatron_weight import load_megatron_bert
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup, hooks
+from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.file_utils import get_data_from_cache
 
@@ -53,6 +54,11 @@ class Trainer(DefaultTrainer):
     def build_model(cls, cfg):
         model = super().build_model(cfg)
         cache_dir = os.path.join(os.getenv("LIBAI_TEST_CACHE_DIR", "./loss_align"), "models")
+        if dist.is_main_process():
+            # download torch weight
+            get_data_from_cache(MODEL_URL, cache_dir, md5=MODEL_MD5)
+        dist.synchronize()
+
         megatron_path = get_data_from_cache(MODEL_URL, cache_dir, md5=MODEL_MD5)
         load_megatron_bert(model, megatron_path)
         return model
@@ -60,9 +66,10 @@ class Trainer(DefaultTrainer):
     def train(self):
         super().train()
         all_losses = self.storage.history("total_loss").values()
-        with open(os.path.join(self.cfg.train.output_dir, "of_loss.txt"), "w") as f:
-            for loss, _ in all_losses:
-                f.write(str(loss) + "\n")
+        if dist.is_main_process():
+            with open(os.path.join(self.cfg.train.output_dir, "of_loss.txt"), "w") as f:
+                for loss, _ in all_losses:
+                    f.write(str(loss) + "\n")
 
     @classmethod
     def test(cls, cfg, test_loaders, model, evaluator=None):
@@ -80,9 +87,14 @@ def main(args):
 
     cache_dir = os.path.join(os.getenv("LIBAI_TEST_CACHE_DIR", "./loss_align"), "bert_data")
 
+    if dist.get_local_rank() == 0:
+        get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
+        get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
+        get_data_from_cache(IDX_DATA_URL, cache_dir, md5=IDX_DATA_MD5)
+    dist.synchronize()
+
     vocab_path = get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
     data_prefix_path = get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
-    get_data_from_cache(IDX_DATA_URL, cache_dir, md5=IDX_DATA_MD5)
     data_prefix = data_prefix_path[:-4]
 
     cfg.data.data_path = [data_prefix]
