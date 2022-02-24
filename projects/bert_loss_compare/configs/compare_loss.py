@@ -33,22 +33,11 @@ train.warmup_ratio = 0.01
 optim.lr = 0.0001
 train.scheduler = LazyCall(WarmupMultiStepLR)(warmup_factor=0.1, milestones=[0.99])
 
-tokenizer = dict(
-    tokenizer_name="BertTokenizer",
-    tokenizer_cfg=dict(
-        vocab_file="/workspace/dataset/bert_data/bert-base-chinese-vocab.txt",
-        do_lower_case=True,
-    ),
-    append_eod=False,
-)
-
 data = dict(
     # Pad the vocab size to be divisible by this value
     # This is added for computational efficiency reasons.
     make_vocab_size_divisible_by=128,
-    data_path=["/workspace/dataset/bert_data/loss_compara_content_sentence"],
     split="949,50,1",
-    vocab_file="/workspace/dataset/bert_data/bert-base-chinese-vocab.txt",
     merge_file=None,
     vocab_extra_ids=0,
     seq_length=512,
@@ -80,4 +69,4 @@ data = dict(
 
 
 today = date.today()
-train.output_dir = f"loss_compare/bert_loss_compare/{today}"
+train.output_dir = f"loss_align/bert_loss_compare/{today}"
