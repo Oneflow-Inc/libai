@@ -219,3 +219,58 @@ class SinePositionalEmbedding(nn.Module):
     def extra_repr(self) -> str:
         s = "num_embeddings={num_embeddings}, embedding_dim={embedding_dim}"
         return s.format(**self.__dict__)
+
+
+class PatchEmbedding(nn.Module):
+    """2D Image to Patch Embedding
+    Arguments:
+        img_size: size of input image. Default to 224.
+        patch_size: embedded patch size. Default to 16.
+        in_chans: input channel's size. Default to 3.
+        embed_dim: dimension of embedded patch. Default to 768.
+        norm_layer: normalization patch embedding or not. Default to None.
+        flatten: flatten patch embedding or keep the 2-D shape. Default to True.
+        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
+        parallelism. Default to 0.
+    """
+
+    def __init__(
+        self,
+        img_size=224,
+        patch_size=16,
+        in_chans=3,
+        embed_dim=768,
+        norm_layer=None,
+        flatten=True,
+        *,
+        layer_idx=0,
+    ):
+        super().__init__()
+        img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        patch_size = patch_size if isinstance(patch_size, tuple) else (patch_size, patch_size)
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.grid_size = (img_size[0] // patch_size[0], img_size[1] // patch_size[1])
+        self.num_patches = self.grid_size[0] * self.grid_size[1]
+        self.flatten = flatten
+        self.proj = nn.Conv2d(
+            in_chans, embed_dim, kernel_size=patch_size, stride=patch_size
+        ).to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=dist.get_layer_placement(layer_idx),
+        )
+        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        assert (
+            H == self.img_size[0]
+        ), f"Input image height ({H}) doesn't match model ({self.img_size[0]})."
+        assert (
+            W == self.img_size[1]
+        ), f"Input image width ({W}) doesn't match model ({self.img_size[1]})."
+        x = self.proj(x)
+        if self.flatten:
+            x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
+        x = self.norm(x)
+        return x

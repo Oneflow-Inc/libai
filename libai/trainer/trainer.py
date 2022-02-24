@@ -88,7 +88,6 @@ class TrainerBase:
         iter(int): the current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
-
         max_iter(int): The iteration to end training.
         storage(EventStorage): An EventStorage that's opened during the course of training.
     """
