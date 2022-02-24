@@ -178,8 +178,12 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        # Only get metric value in rank0
-        metrics_dict = {k: dist.tton(v, local_only=False, ranks=[0]) for k, v in loss_dict.items()}
+        # Only get metric value on rank0
+        # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
+        metrics_dict = {
+            k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+            for k, v in loss_dict.items()
+        }
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
