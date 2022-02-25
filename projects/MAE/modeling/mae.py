@@ -27,12 +27,12 @@ import oneflow.nn as nn
 import libai.utils.distributed as dist
 from libai.layers import (
     PatchEmbedding, 
-    TransformerLayer, 
     LayerNorm, 
     Linear,
 )
 from libai.config import configurable
 from .pos_embed import get_2d_sincos_pos_embed
+from .transformer_layer import TransformerLayer
 
 
 class MaskedAutoencoderViT(nn.Module):
