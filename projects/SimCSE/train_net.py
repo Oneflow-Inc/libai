@@ -14,21 +14,27 @@
 # limitations under the License.
 
 
+import copy
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from collections import OrderedDict
 
-import copy
-from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.trainer import DefaultTrainer, default_setup
-from libai.utils.checkpoint import Checkpointer
-from libai.utils import distributed as dist
-from libai.evaluation import DatasetEvaluator
+import numpy as np
 from scipy.stats import spearmanr
 
+import oneflow as flow
 
-def spearman_target(labels, cos_sim):
-    return spearmanr(labels.cpu().numpy(), cos_sim.cpu().numpy()).correlation
+from libai.config import LazyConfig, default_argument_parser, try_get_key
+from libai.evaluation import DatasetEvaluator
+from libai.trainer import DefaultTrainer, default_setup
+from libai.utils import distributed as dist
+from libai.utils.checkpoint import Checkpointer
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+
+
+def spearman_target(cos_sim, labels):
+    return spearmanr(cos_sim, labels).correlation
 
 
 class SimcseEvaluator(DatasetEvaluator):
@@ -40,36 +46,44 @@ class SimcseEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        cos_sim = outputs["cos_sim"]
-        labels = inputs["labels"]                # [batch]  
-
-        # measure spearman
-        res = spearman_target(labels, cos_sim)
-
-        self._predictions.append(
-            {"spearman": res}
-        )
+        # outputs: model's out
+        # inputs: model's input
+        cos_sim = outputs["cos_sim"]  # [batch]
+        labels = outputs["labels"]  # [batch]
+        ids_model = outputs["ids"]
+        ids = inputs["input_ids"]
+        self._predictions.append({"cos_sim": cos_sim, "labels": labels, "input_ids": ids, "model_ids":ids_model})
 
     def evaluate(self):
         if not dist.is_main_process():
             return {}
         else:
             predictions = self._predictions
-        total_spearman = 0
-        total_samples = len(predictions)
+
+        sim_array = np.array([])
+        label_array = np.array([])
+        ids_array = np.array([])
+        ids_model = np.array([])
+
         for prediction in predictions:
-            total_spearman += prediction["spearman"]
-
-        self._results = total_spearman / total_samples
-
-        return {"spearman":self._results}
+            sim_array = np.append(sim_array, np.array(prediction["cos_sim"].cpu().numpy()))
+            label_array = np.append(label_array, np.array(prediction["labels"].cpu().numpy()))
+            ids_array = np.append(ids_array, np.array(prediction["input_ids"].cpu().numpy()))
+            ids_model = np.append(ids_array, np.array(prediction["model_ids"].cpu().numpy()))
         
+        np.savetxt('/home/xiezipeng/libai/projects/SimCSE/result/ids_array_test.txt', ids_array)
+        np.savetxt('/home/xiezipeng/libai/projects/SimCSE/result/ids_array_model.txt', ids_model)
+
+
+        self._results = spearman_target(sim_array, label_array)
+        return {"spearman": self._results}
+
 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_evaluator(cls, cfg):
         return SimcseEvaluator(cfg)
-        
+
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
