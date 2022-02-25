@@ -37,7 +37,6 @@ class GraphBase(nn.Graph):
 
         self.model = model
         self.is_train = is_train
-        self.grad_acc_steps = grad_acc_steps
 
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
@@ -80,7 +79,9 @@ class GraphBase(nn.Graph):
     def build(self, **kwargs):
         if self.is_train:
             loss_dict = self.model(**kwargs)
-            losses = sum(loss_dict.values()) / self.grad_acc_steps
+            # set loss.mean() as scalar tensor for grad_acc  
+            loss_dict = {key:value.mean() for key,value in loss_dict.items()}
+            losses = sum(loss_dict.values())
             losses.backward()
             return loss_dict
         else:
