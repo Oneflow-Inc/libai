@@ -28,7 +28,6 @@ from libai.trainer.default import _check_batch_size
 import libai.utils.distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
-from libai.models import build_model
 
 from configs.common.models.vit.vit_small_patch16_224 import model
 
@@ -48,7 +47,7 @@ class TestViTModel(flow.unittest.TestCase):
         # set model
         cfg.model = model
         cfg.model.num_classes = 10
-        cfg.model.depth = 1
+        cfg.model.depth = 6
         cfg.model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
         # prepare data path
@@ -126,6 +125,23 @@ class TestViTModel(flow.unittest.TestCase):
         # FIXME(l1aoxingyu): set tensor_parallel_size=2 when bugfix
         self.cfg.train.dist.tensor_parallel_size = 1
         self.cfg.train.dist.pipeline_parallel_size = 1
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = True
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
+
+    @flow.unittest.skip_unless_1n4d()
+    def test_vit_graph_with_data_tensor_pipeline_parallel(self):
+        self.cfg.train.num_accumulation_steps = 1
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 2
+        # change to 2 when 2d sbp bugfix
+        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.pipeline_parallel_size = 2
+        self.cfg.train.dist.pipeline_num_layers = self.cfg.model.depth
 
         dist.setup_dist_util(self.cfg.train.dist)
         _check_batch_size(self.cfg)

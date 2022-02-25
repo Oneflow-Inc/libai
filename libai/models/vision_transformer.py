@@ -94,8 +94,8 @@ class VisionTransformer(nn.Module):
                 for i in range(depth)
             ]
         )
-        self.norm = LayerNorm(embed_dim)
-        self.head = Linear(embed_dim, num_classes)
+        self.norm = LayerNorm(embed_dim, layer_idx=-1)
+        self.head = Linear(embed_dim, num_classes, layer_idx=-1)
 
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
@@ -160,3 +160,25 @@ class VisionTransformer(nn.Module):
             return {"losses": losses}
         else:
             return {"prediction_scores": x}
+
+
+    @staticmethod
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, PatchEmbedding):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+
+
+        # Set pos_embed and cls_token stage id
+        model.pos_embed.config.stage_id = dist_utils.get_layer_stage_id(0)
+        model.cls_token.config.stage_id = dist_utils.get_layer_stage_id(0)
+        model.pos_drop.config.stage_id = dist_utils.get_layer_stage_id(0)
+        model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
