@@ -397,6 +397,8 @@ class BertForPreTraining(nn.Module):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
             elif isinstance(module_block.origin, TransformerLayer):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+            elif isinstance(module_block.origin, BertPooler):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
             elif isinstance(module_block.origin, BertPreTrainingHeads):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
 

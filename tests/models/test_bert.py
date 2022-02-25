@@ -117,14 +117,9 @@ class TestBertModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_bert_graph_with_data_tensor_parallel(self):
-        # FIXME(l1aoxingyu): add grad_acc in nn.Graph
-        # now it will make loss to inf
-        self.cfg.train.num_accumulation_steps = 1
-
         # set distributed config
-        self.cfg.train.dist.data_parallel_size = 4
-        # FIXME(l1aoxingyu): set tensor_parallel_size=2 when bugfix
-        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.data_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 2
         self.cfg.train.dist.pipeline_parallel_size = 1
 
         dist.setup_dist_util(self.cfg.train.dist)

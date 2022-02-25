@@ -154,15 +154,20 @@ class _DistributeUtil(object):
 
     @property
     def ranks(self):
-        all_ranks = [i for i in range(get_world_size())]
+        num_devices_per_stage = self.world_size // self._pipeline_parallel_size
+
+        ranks_per_stage = [
+            i + get_rank() // num_devices_per_stage * num_devices_per_stage
+            for i in range(num_devices_per_stage)
+        ]
 
         if self._parallel_hierarchy is None:
             # 1d sbp
-            return all_ranks
+            return ranks_per_stage
         else:
             # 2d sbp
             assert len(self._parallel_hierarchy) == 2
-            return np.asarray(all_ranks).reshape(self._parallel_hierarchy).tolist()
+            return np.asarray(ranks_per_stage).reshape(self._parallel_hierarchy).tolist()
 
     @property
     def tensor_parallel_size(self):
