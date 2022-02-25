@@ -1,9 +1,7 @@
 from libai.config import LazyCall
-
 from libai.models import SwinTransformer
 
-
-swin_tiny_patch4_window7_224_model = LazyCall(SwinTransformer)(
+model = LazyCall(SwinTransformer)(
     img_size=224,
     patch_size=4,
     in_chans=3,
