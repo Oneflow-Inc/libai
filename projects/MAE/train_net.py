@@ -23,16 +23,19 @@ import oneflow as flow
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+from utils.weight_convert import load_torch_checkpoint
 
 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
-        if try_get_key(cfg, "finetune") is not None:
-            model.load_state_dict(flow.load(cfg.finetune.path))
+        # if try_get_key(cfg, "finetune") is not None:
+        #     model.load_state_dict(flow.load(cfg.finetune.path))
+        model = load_torch_checkpoint(model, path="/home/rentianhe/code/OneFlow-Models/libai/mae_finetuned_vit_base.pth")
         return model
 
+DefaultTrainer = Trainer
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
