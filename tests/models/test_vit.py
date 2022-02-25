@@ -21,15 +21,14 @@ import oneflow as flow
 import oneflow.unittest
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
+import libai.utils.distributed as dist
+from configs.common.models.vit.vit_small_patch16_224 import model
+from libai.config import LazyCall, LazyConfig
 from libai.data.datasets import CIFAR10Dataset
-from libai.config import LazyConfig, LazyCall
 from libai.trainer import DefaultTrainer, hooks
 from libai.trainer.default import _check_batch_size
-import libai.utils.distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
-
-from configs.common.models.vit.vit_small_patch16_224 import model
 
 DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/cifar10/cifar-10-python.tar.gz"
 
@@ -43,7 +42,7 @@ class TestViTModel(flow.unittest.TestCase):
         cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "vit_data")
 
         cfg = LazyConfig.load("configs/vit_imagenet.py")
-        
+
         # set model
         cfg.model = model
         cfg.model.num_classes = 10
@@ -56,7 +55,7 @@ class TestViTModel(flow.unittest.TestCase):
         dist.synchronize()
 
         data_path = get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
-        
+
         cfg.dataloader.train.dataset[0]._target_ = CIFAR10Dataset
         cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:3])
         cfg.dataloader.train.dataset[0].download = True
@@ -78,7 +77,6 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.train.recompute_grad.enabled = True
         cfg.train.amp.enabled = True
 
-        
         self.cfg = cfg
 
         def build_hooks(self):
@@ -149,6 +147,7 @@ class TestViTModel(flow.unittest.TestCase):
         self.cfg.graph.enabled = True
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
+
 
 if __name__ == "__main__":
     unittest.main()

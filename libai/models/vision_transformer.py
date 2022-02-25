@@ -161,7 +161,6 @@ class VisionTransformer(nn.Module):
         else:
             return {"prediction_scores": x}
 
-
     @staticmethod
     def set_pipeline_stage_id(model):
         dist_utils = dist.get_dist_util()
@@ -173,7 +172,6 @@ class VisionTransformer(nn.Module):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
             elif isinstance(module_block.origin, TransformerLayer):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
-
 
         # Set pos_embed and cls_token stage id
         model.pos_embed.config.stage_id = dist_utils.get_layer_stage_id(0)
