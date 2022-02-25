@@ -39,7 +39,6 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 
 # Refine model cfg for vit training on imagenet
 model.num_classes = 1000
-model.depth = 1
 model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 # Refine training settings for MAE finetune
