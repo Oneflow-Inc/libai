@@ -21,7 +21,6 @@ from libai.config import configurable
 from libai.layers import (
     Embedding,
     LayerNorm,
-    Linear,
     LMLogits,
     ParallelCrossEntropyLoss,
     TransformerLayer,
@@ -34,7 +33,9 @@ from .utils import init_method_normal, scaled_init_method_normal
 
 
 class CasualMask(nn.Module):
-    """Create a casual mask and combine it with the padding mask. It will be used in gpt model and T5 decoder.
+    """
+    Create a casual mask and combine it with the padding mask.
+    It will be used in gpt model and T5 decoder.
     When in T5 decoder, the argument `layer_idx` should be set to first decoder layer index.
     """
 
@@ -82,7 +83,8 @@ class GPTModel(nn.Module):
         layernorm_epsilon: epsilon used in layernorm.
         enable_amp: whether apply auto mixed precision (amp).
         checkpoint_activations: if `true`, checkpoint activations.
-        use_scaled_init_for_output_weights: If `true`, use 1 / sqrt(2 * num_layers) scaling for the output weights.
+        use_scaled_init_for_output_weights:
+            If `true`, use 1 / sqrt(2 * num_layers) scaling for the output weights.
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
         bias_gelu_fusion: whether fuse add bias and gelu.
         bias_dropout_fusion: whether fuse add bias and dropout.
@@ -289,4 +291,4 @@ class GPTForPreTraining(nn.Module):
             lm_loss = self.loss_func(logits, labels)
             return lm_loss
         else:
-            return {'prediction_scores': logits}
+            return {"prediction_scores": logits}
