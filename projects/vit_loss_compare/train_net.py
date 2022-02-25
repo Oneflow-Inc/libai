@@ -13,34 +13,62 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 
 sys.path.append(".")
 
+import libai.utils.distributed as dist
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+from libai.utils.file_utils import get_data_from_cache
+
+from utils.load_torch_weight import load_from_torch
+
+
+DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/cifar10/cifar-10-python.tar.gz"
+MODEL_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/models/torch_vit_tiny_weight_cifar10.pth"
+
+DATA_MD5 = "c58f30108f718f92721af3b95e74349a"
+MODEL_MD5 = "9e9edd3782d0c9dcb75d86f53800e3f9"
 
 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
-        # model.load_state_dict()
+        cache_dir = os.path.join(os.getenv("LIBAI_TEST_CACHE_DIR", "./loss_align"), "models")
+        torch_weight_path = get_data_from_cache(MODEL_URL, cache_dir, md5=MODEL_MD5)
+        model = load_from_torch(model, path=torch_weight_path)
+        print("Successfully load weight")
         return model
 
     def train(self):
         super().train()
         all_losses = self.storage.history("total_loss").values()
-        with open("of_loss.txt", "w") as f:
+        with open(os.path.join(self.cfg.train.output_dir, "./of_loss.txt"), "w") as f:
+            print("write loss")
             for loss, _ in all_losses:
                 f.write(str(loss) + "\n")
+    
+    @classmethod
+    def test(cls, cfg, test_loaders, model, evaluator=None):
+        return {}
 
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
+
+    cache_dir = os.path.join(os.getenv("LIBAI_TEST_CACHE_DIR", "./loss_align"), "vit_data")
+
+    if dist.get_local_rank() == 0:
+        get_data_from_cache(DATA_URL, cache_dir, DATA_MD5)
+    dist.synchronize()
+    data_path = get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
+    cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:3])
 
     if args.eval_only:
         tokenizer = None

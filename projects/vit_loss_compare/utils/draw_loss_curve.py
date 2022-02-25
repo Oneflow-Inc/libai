@@ -1,5 +1,5 @@
-import argparse
 import os
+import argparse
 from datetime import date
 from typing import Dict
 
@@ -29,20 +29,18 @@ def draw_result(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Draw loss curve.")
+    parser = argparse.ArgumentParser(description='Draw loss curve.')
     parser.add_argument("--torch-loss-path", type=str, help="torch loss file path")
-    parser.add_argument(
-        "--compare-item", type=int, default=1000, help="number of loss items to be compared"
-    )
+    parser.add_argument("--compare-item", type=int, default=1000, help="number of loss items to be compared")
     args = parser.parse_args()
-
-    project_name = args.torch_loss_path.split("/")[1]
-    of_loss_path = os.path.join("loss_align", project_name, f"{date.today()}", "of_loss.txt")
+    
+    project_name = args.torch_loss_path.split('/')[1]
+    of_loss_path = os.path.join("loss_compare", project_name, f"{date.today()}", "of_loss.txt")
 
     with open(of_loss_path, "r") as f:
-        flow_total_loss = [float(line) for line in f.readlines()][: args.compare_item]
+        flow_total_loss = [float(line) for line in f.readlines()][:args.compare_item]
     with open(args.torch_loss_path, "r") as f:
-        torch_total_loss = [float(line) for line in f.readlines()][: args.compare_item]
+        torch_total_loss = [float(line) for line in f.readlines()][:args.compare_item]
 
     draw_result(
         os.path.dirname(of_loss_path),
