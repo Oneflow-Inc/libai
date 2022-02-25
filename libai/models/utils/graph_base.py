@@ -79,8 +79,6 @@ class GraphBase(nn.Graph):
     def build(self, **kwargs):
         if self.is_train:
             loss_dict = self.model(**kwargs)
-            # set loss.mean() as scalar tensor for grad_acc  
-            loss_dict = {key:value.mean() for key,value in loss_dict.items()}
             losses = sum(loss_dict.values())
             losses.backward()
             return loss_dict

@@ -305,5 +305,6 @@ class GraphTrainer(TrainerBase):
 
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
+        loss_dict = {key:value.mean() for key,value in loss_dict.items()}
 
         self.write_metrics(loss_dict, data_time)
