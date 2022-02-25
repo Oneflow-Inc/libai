@@ -25,3 +25,14 @@ train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 train.train_micro_batch_size = 16
 train.recompute_grad.enabled = True
 train.output_dir = "./output/t5_pipeline_output"
+
+# cp add, for testing 
+train.global_batch_size= 64
+train.train_micro_batch_size = None
+train.log_period=1
+train.dist.data_parallel_size=2
+train.dist.pipeline_parallel_size=4
+train.dist.tensor_parallel_size=1
+train.recompute_grad.enabled = False
+train.num_accumulation_steps=1
+train.output_dir = "./output/t5_pipeline"
