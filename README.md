@@ -46,7 +46,7 @@ LiBai is a large-scale open-source model training toolbox based on OneFlow. The 
     LiBai's components are designed to be modular for easier usage as follows:
     - LazyConfig system for more flexible syntax and no predefined structures 
     - Friendly trainer and engine
-    - Used as a library to support building research projects on top of it. See [projects/](/projects) for some projects that are built on top of LiBai
+    - Used as a library to support building research projects on it. See [projects/](/projects) for some projects that are built based on LiBai
 
 - **High Efficiency**
 
@@ -68,7 +68,7 @@ See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) f
 
 **Beta 0.1.0** was released in 15/2/2022:
 - Support 3D parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
-- Support 2D Parallelism [ViT](https://arxiv.org/abs/2010.11929) models for image classification.
+- Support 2D parallelism [ViT](https://arxiv.org/abs/2010.11929) models for image classification.
 
 See [changelog](./changelog.md) for details and release history.
 
