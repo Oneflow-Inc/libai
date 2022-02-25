@@ -30,7 +30,7 @@ from libai.trainer.default import _check_batch_size
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
 
-DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/cifar10/cifar-10-python.tar.gz" # noqa
+DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/cifar10/cifar-10-python.tar.gz"  # noqa
 
 DATA_MD5 = "c58f30108f718f92721af3b95e74349a"
 
