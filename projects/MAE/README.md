@@ -1,0 +1,14 @@
+## MAE in LiBai
+**Masked Autoencoders Are Scalable Vision Learners**
+
+
+
+## Citation
+```BibTeX
+@article{he2021masked,
+  title={Masked autoencoders are scalable vision learners},
+  author={He, Kaiming and Chen, Xinlei and Xie, Saining and Li, Yanghao and Doll{\'a}r, Piotr and Girshick, Ross},
+  journal={arXiv preprint arXiv:2111.06377},
+  year={2021}
+}
+```

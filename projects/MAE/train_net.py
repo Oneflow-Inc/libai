@@ -23,7 +23,10 @@ import oneflow as flow
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+from libai.optim import build_optimizer
 from utils.weight_convert import load_torch_checkpoint
+from utils.lr_decay import get_layer_wise_lrd_overrides
+
 
 
 class Trainer(DefaultTrainer):
@@ -32,8 +35,18 @@ class Trainer(DefaultTrainer):
         model = super().build_model(cfg)
         # if try_get_key(cfg, "finetune") is not None:
         #     model.load_state_dict(flow.load(cfg.finetune.path))
-        model = load_torch_checkpoint(model, path="/home/rentianhe/code/OneFlow-Models/libai/mae_finetuned_vit_base.pth")
+        # model = load_torch_checkpoint(model, path="/home/rentianhe/code/OneFlow-Models/libai/mae_finetuned_vit_base.pth")
         return model
+    
+    @classmethod
+    def build_optimizer(cls, cfg, model):
+        # optim.lr = actual_lr
+        param_overrides = None
+        if try_get_key(cfg, "train.layer_decay") is not None:
+            param_overrides = get_layer_wise_lrd_overrides(model, cfg.optim.lr, cfg.train.layer_decay)
+        cfg.optim.parameters.overrides = param_overrides
+        return build_optimizer(cfg.optim, model)
+
 
 DefaultTrainer = Trainer
 

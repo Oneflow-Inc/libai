@@ -48,6 +48,9 @@ train.warmup_ratio = 5 / 100
 train.log_period = 1
 train.eval_period = 1000
 
+# Set layer decay for MAE fine-tune
+train.layer_decay = 0.75
+
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule: lr = base_lr * batch_size / 256
 # In LiBai, you should refine the actually learning rate due to your on settings
