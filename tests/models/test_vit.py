@@ -165,5 +165,6 @@ class TestViTModel(flow.unittest.TestCase):
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
 
+
 if __name__ == "__main__":
     unittest.main()
