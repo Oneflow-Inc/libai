@@ -78,7 +78,7 @@ train.update(
         test_micro_batch_size=20,
         train_epoch=1,
         train_iter=10000,
-        eval_period=1000,
+        eval_period=100,
         dist=dict(
             data_parallel_size=4,
             tensor_parallel_size=1,

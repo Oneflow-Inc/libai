@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import csv
 import random
 
@@ -24,6 +25,7 @@ from tqdm import tqdm
 
 import libai
 from libai.data.structures import DistTensorData, Instance
+from libai.layers import ParallelCrossEntropyLoss
 from libai.tokenizer import BertTokenizer
 from libai.utils import distributed as dist
 
@@ -69,19 +71,24 @@ class SimCSE_Unsup_Loss(nn.Module):
 
     def forward(self, pooled_result):
         # pooled_result: [batch*2, hidden]
-        labels = flow.arange(
-            pooled_result.size(0), 
-            sbp=pooled_result.sbp, 
-            placement=pooled_result.placement, 
-            dtype=flow.long
-        )
+        labels = np.arange(pooled_result.size(0))
         labels = (labels - labels % 2 * 2) + 1
+        labels = flow.tensor(
+            labels, sbp=pooled_result.sbp, placement=pooled_result.placement, dtype=flow.long
+        )
+
         sim = self.sim(pooled_result.unsqueeze(1), pooled_result.unsqueeze(0))
-        sim = sim - flow.eye(
-            pooled_result.shape[0], 
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
-            placement=pooled_result.placement
-         ) * 1e12
+
+        eye = (
+            flow.eye(
+                pooled_result.shape[0],
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=pooled_result.placement,
+            )
+            * 1e12
+        )
+
+        sim = sim - eye
         loss = self.loss_fc(sim, labels)
         loss = loss.to_global(sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]))
         return loss
@@ -101,6 +108,7 @@ class SimCSE_Eval(nn.Module):
         z2 = pooled_result[:, 1]
         # [batch]
         cos_sim = self.sim(z1, z2)
+        cos_sim = cos_sim.to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
         return cos_sim
 
 
@@ -112,7 +120,7 @@ class SimcseModel(nn.Module):
         if cfg.pretrained_model_weight is not None:
             load_megatron_bert(self.bert, cfg.pretrained_model_weight)
         self.pooler_type = cfg.pooler_type
-        # self.mlp = MLPLayer(cfg)
+        self.mlp = MLPLayer(cfg)
         self.train_forward = SimCSE_Unsup_Loss(cfg)
         self.eval_forward = SimCSE_Eval(cfg)
         assert self.pooler_type in [
@@ -138,8 +146,7 @@ class SimcseModel(nn.Module):
         # Select pooling mode
         if self.pooler_type in ["cls_before_pooler", "cls"]:
             if self.pooler_type == "cls":
-                # poolerd_result = self.mlp(last_hidden[:, 0])
-                poolerd_result = last_hidden[:, 0]
+                poolerd_result = self.mlp(last_hidden[:, 0])
             else:
                 poolerd_result = last_hidden[:, 0]
         elif self.pooler_type == "avg":

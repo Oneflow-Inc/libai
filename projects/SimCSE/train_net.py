@@ -13,16 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import copy
 import os
 import sys
 from collections import OrderedDict
 
 import numpy as np
-from scipy.stats import spearmanr
-
 import oneflow as flow
+from scipy.stats import spearmanr
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.evaluation import DatasetEvaluator
@@ -48,8 +46,12 @@ class SimcseEvaluator(DatasetEvaluator):
     def process(self, inputs, outputs):
         # outputs: model's out
         # inputs: model's input
-        cos_sim = outputs["cos_sim"].to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-        labels = outputs["labels"].to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+        cos_sim = outputs["cos_sim"].to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
+        labels = outputs["labels"].to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
         self._predictions.append({"cos_sim": cos_sim, "labels": labels})
 
     def evaluate(self):
@@ -57,17 +59,13 @@ class SimcseEvaluator(DatasetEvaluator):
             return {}
         else:
             predictions = self._predictions
-
         sim_array = np.array([])
         label_array = np.array([])
-
         for prediction in predictions:
-            sim_array = np.append(sim_array, np.array(prediction["cos_sim"].cpu().numpy()))
-            label_array = np.append(label_array, np.array(prediction["labels"].cpu().numpy()))
-
+            sim_array = np.append(sim_array, dist.tton(prediction["cos_sim"]))
+            label_array = np.append(label_array, dist.tton(prediction["labels"]))
         self._results = spearman_target(sim_array, label_array)
         return {"spearman": self._results}
-
 
 
 class Trainer(DefaultTrainer):

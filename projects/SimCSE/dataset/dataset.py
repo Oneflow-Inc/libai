@@ -15,8 +15,8 @@
 
 import csv
 import random
-import jsonlines
 
+import jsonlines
 import oneflow as flow
 from oneflow.utils.data import DataLoader, Dataset
 
@@ -28,18 +28,22 @@ def load_data(name, path):
     assert name in ["snli", "lqcmc", "eng_sts", "cnsd_sts", "wiki"]
 
     def load_snli_data(path):
-        with open('/home/xiezipeng/libai/projects/SimCSE/data/STS/cnsd-sts-train.txt', 'r', encoding='utf8') as f:            
+        with open(
+            "/home/xiezipeng/libai/projects/SimCSE/data/STS/cnsd-sts-train.txt",
+            "r",
+            encoding="utf8",
+        ) as f:
             data = [line.split("||")[1] for line in f]
 
-        with jsonlines.open(path, 'r') as f:
-            return [line.get('origin') for line in f] + data
-    
+        with jsonlines.open(path, "r") as f:
+            return [line.get("origin") for line in f] + data
+
     def load_lqcmc_data(path):
-        with open(path, 'r', encoding='utf8') as f:
-            return [line.strip().split('\t')[0] for line in f]    
+        with open(path, "r", encoding="utf8") as f:
+            return [line.strip().split("\t")[0] for line in f]
 
     def load_cnsd_sts_data(path):
-        with open(path, 'r', encoding='utf8') as f:            
+        with open(path, "r", encoding="utf8") as f:
             return [(line.split("||")[1], line.split("||")[2], line.split("||")[3]) for line in f]
 
     def load_wiki_data(path):
@@ -75,7 +79,7 @@ def padding_for_ids(data, file_name, pad_id=0, max_len=512):
     data["attention_mask"] = data["attention_mask"] + [pad_id] * (
         max_len - len(data["attention_mask"])
     )
-   
+
     data["input_ids"] = [data["input_ids"], data["input_ids"]]
     data["attention_mask"] = [data["attention_mask"], data["attention_mask"]]
 
