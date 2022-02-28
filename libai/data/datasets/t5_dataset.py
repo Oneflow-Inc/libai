@@ -289,7 +289,7 @@ class T5Dataset(flow.utils.data.Dataset):
         assert num_pad >= 0
 
         filler = [self.pad_id] * num_pad
-        encoder_input = np.array(encoder_input + filler, dtype=np.long)
+        encoder_input = np.array(encoder_input + filler, dtype=np.int64)
         encoder_input = flow.tensor(encoder_input, dtype=flow.long)
 
         num_tokens_dec = len(decoder_input)
@@ -298,7 +298,7 @@ class T5Dataset(flow.utils.data.Dataset):
 
         # tokens and token types
         filler_dec = [self.pad_id] * num_pad_dec
-        decoder_input = np.array(decoder_input + filler_dec, dtype=np.long)
+        decoder_input = np.array(decoder_input + filler_dec, dtype=np.int64)
         decoder_input = flow.tensor(decoder_input, dtype=flow.long)
 
         # padding mask
