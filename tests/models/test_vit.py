@@ -18,6 +18,7 @@ import tempfile
 import unittest
 
 import oneflow as flow
+import oneflow.unittest
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 import libai.utils.distributed as dist
