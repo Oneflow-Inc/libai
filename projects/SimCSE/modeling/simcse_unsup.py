@@ -68,17 +68,21 @@ class SimCSE_Unsup_Loss(nn.Module):
         self.loss_fc = nn.CrossEntropyLoss()
 
     def forward(self, pooled_result):
-        # [batch*2, hidden] -> [batch, 2, hidden]
-        pooled_result = pooled_result.view(-1, 2, pooled_result.size(-1))
-        # sent1, sent2
-        z1 = pooled_result[:, 0]
-        z2 = pooled_result[:, 1]
-        # [batch, 1, hidden], [1, batch, hidden] -> [batch, batch]
-        cos_sim = self.sim(z1.unsqueeze(1), z2.unsqueeze(0))
+        # pooled_result: [batch*2, hidden]
         labels = flow.arange(
-            cos_sim.size(0), sbp=cos_sim.sbp, placement=cos_sim.placement, dtype=flow.long
+            pooled_result.size(0), 
+            sbp=pooled_result.sbp, 
+            placement=pooled_result.placement, 
+            dtype=flow.long
         )
-        loss = self.loss_fc(cos_sim, labels)
+        labels = (labels - labels % 2 * 2) + 1
+        sim = self.sim(pooled_result.unsqueeze(1), pooled_result.unsqueeze(0))
+        sim = sim - flow.eye(
+            pooled_result.shape[0], 
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
+            placement=pooled_result.placement
+         ) * 1e12
+        loss = self.loss_fc(sim, labels)
         loss = loss.to_global(sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]))
         return loss
 
@@ -121,13 +125,10 @@ class SimcseModel(nn.Module):
             "unrecognized pooling type %s" % self.pooler_type
         )
 
-    def forward(self, input_ids, attention_mask, token_type_ids, labels=None):
-        saved_ids = input_ids
-
+    def forward(self, input_ids, attention_mask, token_type_ids=None, labels=None):
         # [batch, 2, seq_len] -> [batch_size * 2, seq_len]
         input_ids = input_ids.view(-1, input_ids.size(-1))
         attention_mask = attention_mask.view(-1, attention_mask.size(-1))
-        token_type_ids = token_type_ids.view(-1, token_type_ids.size(-1))
 
         outputs = self.bert(input_ids, attention_mask, token_type_ids)
         last_hidden = outputs[0]  # [batch*2, seq_len, hidden]
@@ -136,10 +137,11 @@ class SimcseModel(nn.Module):
 
         # Select pooling mode
         if self.pooler_type in ["cls_before_pooler", "cls"]:
-            # if self.pooler_type == "cls":
-            #     poolerd_result = self.mlp(last_hidden[:, 0])
-            # else:
-            poolerd_result = last_hidden[:, 0]
+            if self.pooler_type == "cls":
+                # poolerd_result = self.mlp(last_hidden[:, 0])
+                poolerd_result = last_hidden[:, 0]
+            else:
+                poolerd_result = last_hidden[:, 0]
         elif self.pooler_type == "avg":
             poolerd_result = (last_hidden * attention_mask.unsqueeze(-1)).sum(
                 1
@@ -162,4 +164,4 @@ class SimcseModel(nn.Module):
             return {"loss": loss}
         else:
             cos_sim = self.eval_forward(poolerd_result)
-            return {"cos_sim": cos_sim, "labels": labels, "ids":saved_ids}
+            return {"cos_sim": cos_sim, "labels": labels}

@@ -15,6 +15,7 @@
 
 import csv
 import random
+import jsonlines
 
 import oneflow as flow
 from oneflow.utils.data import DataLoader, Dataset
@@ -24,28 +25,32 @@ from libai.tokenizer import BertTokenizer
 
 
 def load_data(name, path):
-    assert name in ["nli", "wiki", "sts"]
+    assert name in ["snli", "lqcmc", "eng_sts", "cnsd_sts", "wiki"]
 
-    def load_nli_data(path):
-        # sup task
-        csv_file = csv.reader(open(path, "r", encoding="utf8"))
-        data = [i for i in csv_file][1:]
-        # random.shuffle(data)
-        # sent1, sent2, hard_neg
-        return data
+    def load_snli_data(path):
+        with open('/home/xiezipeng/libai/projects/SimCSE/data/STS/cnsd-sts-train.txt', 'r', encoding='utf8') as f:            
+            data = [line.split("||")[1] for line in f]
+
+        with jsonlines.open(path, 'r') as f:
+            return [line.get('origin') for line in f] + data
+    
+    def load_lqcmc_data(path):
+        with open(path, 'r', encoding='utf8') as f:
+            return [line.strip().split('\t')[0] for line in f]    
+
+    def load_cnsd_sts_data(path):
+        with open(path, 'r', encoding='utf8') as f:            
+            return [(line.split("||")[1], line.split("||")[2], line.split("||")[3]) for line in f]
 
     def load_wiki_data(path):
-        # unsup task
         data = []
         with open(path, "r", encoding="utf8") as file:
             for line in file.readlines():
                 line = " ".join(line.strip().split())
                 data.append(line)
-        # random.shuffle(data)
         return data
 
-    def load_sts_data(path):
-        # test
+    def load_eng_sts_data(path):
         data = []
         with open(path, "r", encoding="utf8") as file:
             for line in file.readlines():
@@ -53,32 +58,30 @@ def load_data(name, path):
                 data.append(line)
         return data
 
-    if name == "nli":
-        return load_nli_data(path)
+    if name == "snli":
+        return load_snli_data(path)
     elif name == "wiki":
         return load_wiki_data(path)
+    elif name == "cnsd_sts":
+        return load_cnsd_sts_data(path)
+    elif name == "eng_sts":
+        return load_eng_sts_data(path)
     else:
-        return load_sts_data(path)
+        return load_lqcmc_data(path)
 
 
-def padding_for_ids(data, file_name, pad_id=0, max_len=256):
+def padding_for_ids(data, file_name, pad_id=0, max_len=512):
     data["input_ids"] = data["input_ids"] + [pad_id] * (max_len - len(data["input_ids"]))
     data["attention_mask"] = data["attention_mask"] + [pad_id] * (
         max_len - len(data["attention_mask"])
     )
-    data["token_type_ids"] = data["token_type_ids"] + [pad_id] * (
-        max_len - len(data["token_type_ids"])
-    )
-
-    if file_name == "wiki":
-        data["input_ids"] = [data["input_ids"], data["input_ids"]]
-        data["attention_mask"] = [data["attention_mask"], data["attention_mask"]]
-        data["token_type_ids"] = [data["token_type_ids"], data["token_type_ids"]]
+   
+    data["input_ids"] = [data["input_ids"], data["input_ids"]]
+    data["attention_mask"] = [data["attention_mask"], data["attention_mask"]]
 
     return Instance(
         input_ids=DistTensorData(flow.tensor(data["input_ids"], dtype=flow.long)),
         attention_mask=DistTensorData(flow.tensor(data["attention_mask"], dtype=flow.long)),
-        token_type_ids=DistTensorData(flow.tensor(data["token_type_ids"], dtype=flow.long)),
     )
 
 
@@ -88,10 +91,10 @@ class TrainDataset(Dataset):
         self.name = name
         self.data = load_data(name, path)
         self.tokenizer = tokenizer
-        self.max_len = int(max_len / 2)
-        self.pad_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.pad_token)
-        self.cls_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.cls_token)
-        self.sep_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.sep_token)
+        self.max_len = 64
+        self.pad_id = self.tokenizer.pad_token_id
+        self.cls_id = self.tokenizer.cls_token_id
+        self.sep_id = self.tokenizer.sep_token_id
 
     def __len__(self):
         return len(self.data)
@@ -104,13 +107,11 @@ class TrainDataset(Dataset):
         ids = [self.cls_id] + ids + [self.sep_id]
 
         attention_mask = [1] * len(ids)
-        token_type_ids = [0] * len(ids)
 
         return padding_for_ids(
             data={
                 "input_ids": ids,
                 "attention_mask": attention_mask,
-                "token_type_ids": token_type_ids,
             },
             file_name=self.name,
             pad_id=self.pad_id,
@@ -118,15 +119,9 @@ class TrainDataset(Dataset):
         )
 
     def __getitem__(self, index):
-        # {"input_ids":ids, "attention_mask":attention_mask, "token_type_ids":token_type_ids}
-        if self.name == "wiki":
-            return self.text2id(self.data[index])
-        else:  # nli
-            return (
-                self.text2id(self.data[index][0]),
-                self.text2id(self.data[index][1]),
-                self.text2id(self.data[index][2]),
-            )
+        # {"input_ids":ids, "attention_mask":attention_mask}
+        assert self.name in ["snli", "wiki"]
+        return self.text2id(self.data[index])
 
 
 class TestDataset(Dataset):
@@ -134,10 +129,10 @@ class TestDataset(Dataset):
     def __init__(self, name, path, tokenizer):
         self.data = load_data(name, path)
         self.tokenizer = tokenizer
-        self.max_len = 50
-        self.pad_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.pad_token)
-        self.cls_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.cls_token)
-        self.sep_id = self.tokenizer.convert_tokens_to_ids(self.tokenizer.sep_token)
+        self.max_len = 64
+        self.pad_id = self.tokenizer.pad_token_id
+        self.cls_id = self.tokenizer.cls_token_id
+        self.sep_id = self.tokenizer.sep_token_id
 
     def __len__(self):
         return len(self.data)
@@ -152,19 +147,20 @@ class TestDataset(Dataset):
 
         ids = ids + [self.pad_id] * (self.max_len - length)
         attention_mask = [1] * length + [self.pad_id] * (self.max_len - length)
-        token_type_ids = [0] * self.max_len
 
         return {
             "input_ids": ids,
             "attention_mask": attention_mask,
-            "token_type_ids": token_type_ids,
         }
 
     def __getitem__(self, index):
         # sent1, sent2, laebl
-        sent1 = self.text2id(self.data[index][1])
-        sent2 = self.text2id(self.data[index][2])
-        score = float(self.data[index][0])
+        sample = self.data[index]
+
+        sent1 = self.text2id(sample[0])
+        sent2 = self.text2id(sample[1])
+        score = int(sample[2])
+
         return Instance(
             input_ids=DistTensorData(
                 flow.tensor([sent1["input_ids"], sent2["input_ids"]], dtype=flow.long)
@@ -172,8 +168,5 @@ class TestDataset(Dataset):
             attention_mask=DistTensorData(
                 flow.tensor([sent1["attention_mask"], sent2["attention_mask"]], dtype=flow.long)
             ),
-            token_type_ids=DistTensorData(
-                flow.tensor([sent1["token_type_ids"], sent2["token_type_ids"]], dtype=flow.long)
-            ),
-            labels=DistTensorData(flow.tensor(score, dtype=flow.float)),
+            labels=DistTensorData(flow.tensor(score, dtype=flow.int)),
         )

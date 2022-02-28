@@ -48,11 +48,9 @@ class SimcseEvaluator(DatasetEvaluator):
     def process(self, inputs, outputs):
         # outputs: model's out
         # inputs: model's input
-        cos_sim = outputs["cos_sim"]  # [batch]
-        labels = outputs["labels"]  # [batch]
-        ids_model = outputs["ids"]
-        ids = inputs["input_ids"]
-        self._predictions.append({"cos_sim": cos_sim, "labels": labels, "input_ids": ids, "model_ids":ids_model})
+        cos_sim = outputs["cos_sim"].to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+        labels = outputs["labels"].to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+        self._predictions.append({"cos_sim": cos_sim, "labels": labels})
 
     def evaluate(self):
         if not dist.is_main_process():
@@ -62,21 +60,14 @@ class SimcseEvaluator(DatasetEvaluator):
 
         sim_array = np.array([])
         label_array = np.array([])
-        ids_array = np.array([])
-        ids_model = np.array([])
 
         for prediction in predictions:
             sim_array = np.append(sim_array, np.array(prediction["cos_sim"].cpu().numpy()))
             label_array = np.append(label_array, np.array(prediction["labels"].cpu().numpy()))
-            ids_array = np.append(ids_array, np.array(prediction["input_ids"].cpu().numpy()))
-            ids_model = np.append(ids_array, np.array(prediction["model_ids"].cpu().numpy()))
-        
-        np.savetxt('/home/xiezipeng/libai/projects/SimCSE/result/ids_array_test.txt', ids_array)
-        np.savetxt('/home/xiezipeng/libai/projects/SimCSE/result/ids_array_model.txt', ids_model)
-
 
         self._results = spearman_target(sim_array, label_array)
         return {"spearman": self._results}
+
 
 
 class Trainer(DefaultTrainer):
