@@ -14,30 +14,25 @@
 # limitations under the License.
 
 
-from hashlib import md5
 import os
 import tempfile
 import unittest
-from omegaconf import DictConfig
 
 import oneflow as flow
 import oneflow.unittest
 
 from libai.config import LazyConfig
-from libai.models import build_model
 from libai.trainer import DefaultTrainer, hooks
 from libai.trainer.default import _check_batch_size
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
 
-VOCAB_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/gpt_dataset/gpt2-vocab.json"  # noqa
-MERGE_FILE_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/gpt_dataset/gpt2-merges.txt"  # noqa
+VOCAB_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt"  # noqa
 BIN_DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.bin"  # noqa
 IDX_DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.idx"  # noqa
 
-VOCAB_MD5 = "dffec25a898b1f5e569bec4dffd7e5c0"
-MERGE_FILE_MD5 = "75a37753dd7a28a2c5df80c28bf06e4e"
+VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
 BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 
@@ -45,29 +40,26 @@ IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestGPTModel(flow.unittest.TestCase):
+class TestT5Model(flow.unittest.TestCase):
     def setUp(self) -> None:
-        cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "gpt_data")
+        cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "t5_data")
 
-        cfg = LazyConfig.load("configs/gpt2_pretrain.py")
+        cfg = LazyConfig.load("configs/t5_large_pretrain.py")
 
         # prepare dataset
         if dist.get_local_rank() == 0:
             # download dataset on main process of each node
             get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
-            get_data_from_cache(MERGE_FILE_URL, cache_dir, md5=MERGE_FILE_MD5)
             get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
             get_data_from_cache(IDX_DATA_URL, cache_dir, md5=IDX_DATA_MD5)
         dist.synchronize()
 
         vocab_path = get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
-        merges_file = get_data_from_cache(MERGE_FILE_URL, cache_dir, md5=MERGE_FILE_MD5)
         data_prefix_path = get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
         data_prefix = data_prefix_path[:-4]
 
         # set tokenizer and data config
         cfg.tokenization.tokenizer.vocab_file = vocab_path
-        cfg.tokenization.tokenizer.merges_file = merges_file
         cfg.dataloader.train.dataset[0].data_prefix = data_prefix
         cfg.dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
@@ -86,16 +78,11 @@ class TestGPTModel(flow.unittest.TestCase):
 
 
         # set model
-        cfg.model.cfg.max_seq_length = 256
         cfg.model.cfg.num_attention_heads = 8
         cfg.model.cfg.hidden_size = 384
         cfg.model.cfg.hidden_layers = 4
-        cfg.model.cfg.num_layers = 4
         cfg.train.recompute_grad.enabled = True
         cfg.train.amp.enabled = True
-
-        for ds in cfg.dataloader.train.dataset:
-            ds.max_seq_length = cfg.model.cfg.max_seq_length
 
         self.cfg = cfg
 
@@ -118,7 +105,7 @@ class TestGPTModel(flow.unittest.TestCase):
         DefaultTrainer.test = test
 
     @flow.unittest.skip_unless_1n4d()
-    def test_gpt_eager_with_data_tensor_parallel(self):
+    def test_t5_eager_with_data_tensor_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
@@ -133,7 +120,7 @@ class TestGPTModel(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_gpt_graph_with_data_tensor_parallel(self):
+    def test_t5_graph_with_data_tensor_parallel(self):
         # FIXME(l1aoxingyu): add grad_acc in nn.Graph
         # now it will make loss to inf
         self.cfg.train.num_accumulation_steps = 1
@@ -152,7 +139,7 @@ class TestGPTModel(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_gpt_graph_with_data_tensor_pipeline_parallel(self):
+    def test_t5_graph_with_data_tensor_pipeline_parallel(self):
         self.cfg.train.num_accumulation_steps = 1
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
@@ -170,7 +157,7 @@ class TestGPTModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     @unittest.skip("There are still bugs in ZeRO")
-    def test_gpt_with_zero(self):
+    def test_t5_with_zero(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 4
         self.cfg.train.dist.tensor_parallel_size = 1
