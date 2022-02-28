@@ -153,23 +153,6 @@ class _DistributeUtil(object):
         return self._parallel_hierarchy
 
     @property
-    def ranks(self):
-        num_devices_per_stage = self.world_size // self._pipeline_parallel_size
-
-        ranks_per_stage = [
-            i + get_rank() // num_devices_per_stage * num_devices_per_stage
-            for i in range(num_devices_per_stage)
-        ]
-
-        if self._parallel_hierarchy is None:
-            # 1d sbp
-            return ranks_per_stage
-        else:
-            # 2d sbp
-            assert len(self._parallel_hierarchy) == 2
-            return np.asarray(ranks_per_stage).reshape(self._parallel_hierarchy).tolist()
-
-    @property
     def tensor_parallel_size(self):
         return self._tensor_parallel_size
 
@@ -241,16 +224,6 @@ def get_layer_placement(layer_idx, device_type="cuda"):
     return flow.placement(
         device_type,
         dist_util.get_layer_ranks(layer_idx),
-    )
-
-
-def get_all_placement(device_type="cuda"):
-    dist_util = get_dist_util()
-    if not flow.cuda.is_available() and device_type == "cuda":
-        device_type = "cpu"
-    return flow.placement(
-        device_type,
-        dist_util.ranks,
     )
 
 

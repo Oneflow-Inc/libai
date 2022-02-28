@@ -66,7 +66,7 @@ class TestBertModel(flow.unittest.TestCase):
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.eval_period = 1000  # no test now
+        cfg.train.eval_period = 1000  # no evaluation now
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
         cfg.train.num_accumulation_steps = 1
@@ -117,6 +117,7 @@ class TestBertModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_bert_graph_with_data_tensor_parallel(self):
+        self.cfg.train.num_accumulation_steps = 1
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
@@ -131,7 +132,7 @@ class TestBertModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_bert_graph_with_data_tensor_pipeline_parallel(self):
-        self.cfg.train.num_accumulation_steps = 1
+        self.cfg.train.num_accumulation_steps = 4
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix
