@@ -42,7 +42,7 @@ setup_logger(distributed_rank=dist.get_rank())
 
 class TestT5Model(flow.unittest.TestCase):
     def setUp(self) -> None:
-        cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "t5_data")
+        cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "bert_data")
 
         cfg = LazyConfig.load("configs/t5_large_pretrain.py")
 
@@ -63,24 +63,20 @@ class TestT5Model(flow.unittest.TestCase):
         cfg.dataloader.train.dataset[0].data_prefix = data_prefix
         cfg.dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
-        cfg.dataloader.train.num_workers = 0
-
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.eval_period = 1000  # no test now
+        cfg.train.eval_period = 1000  # no evaluation now
         cfg.train.log_period = 1
-        cfg.train.train_micro_batch_size = 4
-        cfg.train.num_accumulation_steps = 4
+        cfg.train.train_micro_batch_size = 8
+        cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
         cfg.train.output_dir = tempfile.mkdtemp()
-
-
 
         # set model
         cfg.model.cfg.num_attention_heads = 8
         cfg.model.cfg.hidden_size = 384
-        cfg.model.cfg.hidden_layers = 4
+        cfg.model.cfg.hidden_layers = 6
         cfg.train.recompute_grad.enabled = True
         cfg.train.amp.enabled = True
 
@@ -121,14 +117,9 @@ class TestT5Model(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_t5_graph_with_data_tensor_parallel(self):
-        # FIXME(l1aoxingyu): add grad_acc in nn.Graph
-        # now it will make loss to inf
-        self.cfg.train.num_accumulation_steps = 1
-
         # set distributed config
-        self.cfg.train.dist.data_parallel_size = 4
-        # FIXME(l1aoxingyu): set tensor_parallel_size=2 when bugfix
-        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.data_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 2
         self.cfg.train.dist.pipeline_parallel_size = 1
 
         dist.setup_dist_util(self.cfg.train.dist)
@@ -140,13 +131,14 @@ class TestT5Model(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_t5_graph_with_data_tensor_pipeline_parallel(self):
-        self.cfg.train.num_accumulation_steps = 1
+        self.cfg.train.num_accumulation_steps = 4
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix
         self.cfg.train.dist.tensor_parallel_size = 1
         self.cfg.train.dist.pipeline_parallel_size = 2
-        self.cfg.train.dist.pipeline_num_layers = self.cfg.model.cfg.hidden_layers
+        # encoder_layers + decoder_layers
+        self.cfg.train.dist.pipeline_num_layers = 2 * self.cfg.model.cfg.hidden_layers
 
         dist.setup_dist_util(self.cfg.train.dist)
         _check_batch_size(self.cfg)
