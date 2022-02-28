@@ -178,7 +178,12 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        metrics_dict = {k: dist.tton(v, local_only=False) for k, v in loss_dict.items()}
+        # Only get metric value on rank0
+        # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
+        metrics_dict = {
+            k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+            for k, v in loss_dict.items()
+        }
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
@@ -300,5 +305,8 @@ class GraphTrainer(TrainerBase):
 
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
+        # Add this because when set up gradient accumulations, graph will return
+        # an unpacked n-d tensor whose size is accumulation step
+        loss_dict = {key: value.mean() for key, value in loss_dict.items()}
 
         self.write_metrics(loss_dict, data_time)

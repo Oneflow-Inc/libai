@@ -40,30 +40,8 @@ def write_version_file():
 if sys.version_info < (3,):
     sys.exit("Sorry, Python3 is required for LiBai.")
 
-requirements = [
-    "boto3",
-    "botocore",
-    "cloudpickle",
-    "flowvision>=0.0.6",
-    "hydra-core",
-    "nltk",
-    "numpy",
-    "omegaconf",
-    "oneflow>=0.6.0",
-    "Pygments",
-    "PyYAML",
-    "regex",
-    "requests",
-    "sentencepiece>=0.1",
-    "tabulate",
-    "termcolor",
-    "tqdm",
-    "pybind11",
-    "portalocker",
-    "flake8==3.8.1 ",
-    "isort==5.10.1",
-    "black==21.4b2",
-]
+with open(os.path.join(cwd, "requirements.txt"), "r", encoding="utf-8") as f:
+    requirements = [item.strip() for item in f.readlines()]
 
 
 def get_pybind11():

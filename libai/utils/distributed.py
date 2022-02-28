@@ -153,18 +153,6 @@ class _DistributeUtil(object):
         return self._parallel_hierarchy
 
     @property
-    def ranks(self):
-        all_ranks = [i for i in range(get_world_size())]
-
-        if self._parallel_hierarchy is None:
-            # 1d sbp
-            return all_ranks
-        else:
-            # 2d sbp
-            assert len(self._parallel_hierarchy) == 2
-            return np.asarray(all_ranks).reshape(self._parallel_hierarchy).tolist()
-
-    @property
     def tensor_parallel_size(self):
         return self._tensor_parallel_size
 
@@ -236,16 +224,6 @@ def get_layer_placement(layer_idx, device_type="cuda"):
     return flow.placement(
         device_type,
         dist_util.get_layer_ranks(layer_idx),
-    )
-
-
-def get_all_placement(device_type="cuda"):
-    dist_util = get_dist_util()
-    if not flow.cuda.is_available() and device_type == "cuda":
-        device_type = "cpu"
-    return flow.placement(
-        device_type,
-        dist_util.ranks,
     )
 
 
@@ -332,23 +310,24 @@ def convert_to_distributed_default_setting(module):
             return
 
 
-def ttol(tensor, pure_local=False):
+def ttol(tensor, pure_local=False, ranks=None):
     """global tensor to local tensor"""
     if tensor.is_global:
+        placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
         if pure_local:
-            tensor = tensor.to_local()
+            tensor = tensor.to_global(placement=placement).to_local()
         else:
             tensor = tensor.to_global(
-                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=placement
             ).to_local()
 
     return tensor
 
 
-def tton(tensor, local_only=False):
+def tton(tensor, local_only=False, ranks=None):
     """global tensor to numpy"""
     if tensor.is_global:
-        tensor = ttol(tensor, local_only)
+        tensor = ttol(tensor, local_only, ranks)
 
     return tensor.numpy()
 
