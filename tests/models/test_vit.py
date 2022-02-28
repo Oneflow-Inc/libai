@@ -18,7 +18,6 @@ import tempfile
 import unittest
 
 import oneflow as flow
-import oneflow.unittest
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 import libai.utils.distributed as dist
@@ -71,7 +70,7 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.train.eval_period = 1000  # no test now
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
-        cfg.train.num_accumulation_steps = 4
+        cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
         cfg.train.output_dir = tempfile.mkdtemp()
         cfg.train.recompute_grad.enabled = True
@@ -119,9 +118,8 @@ class TestViTModel(flow.unittest.TestCase):
         self.cfg.train.num_accumulation_steps = 1
 
         # set distributed config
-        self.cfg.train.dist.data_parallel_size = 4
-        # FIXME(l1aoxingyu): set tensor_parallel_size=2 when bugfix
-        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.data_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 2
         self.cfg.train.dist.pipeline_parallel_size = 1
 
         dist.setup_dist_util(self.cfg.train.dist)
@@ -133,7 +131,7 @@ class TestViTModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_vit_graph_with_data_tensor_pipeline_parallel(self):
-        self.cfg.train.num_accumulation_steps = 1
+        self.cfg.train.num_accumulation_steps = 4
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix
@@ -148,6 +146,22 @@ class TestViTModel(flow.unittest.TestCase):
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
 
+    @flow.unittest.skip_unless_1n4d()
+    @unittest.skip("There are still bugs in ZeRO")
+    def test_vit_with_zero(self):
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 4
+        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.pipeline_parallel_size = 1
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = True
+        self.cfg.train.zero_optimization.enabled = True
+        self.cfg.train.zero_optimization.stage = 3
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
 
 if __name__ == "__main__":
     unittest.main()
