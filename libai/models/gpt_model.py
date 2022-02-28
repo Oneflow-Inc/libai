@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from torch import instance_norm
 import oneflow as flow
 from oneflow import nn
 from oneflow.nn import init

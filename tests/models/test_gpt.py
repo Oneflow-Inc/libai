@@ -14,14 +14,14 @@
 # limitations under the License.
 
 
-from hashlib import md5
 import os
 import tempfile
 import unittest
-from omegaconf import DictConfig
+from hashlib import md5
 
 import oneflow as flow
 import oneflow.unittest
+from omegaconf import DictConfig
 
 from libai.config import LazyConfig
 from libai.models import build_model
@@ -82,8 +82,6 @@ class TestGPTModel(flow.unittest.TestCase):
         cfg.train.num_accumulation_steps = 4
         cfg.train.resume = False
         cfg.train.output_dir = tempfile.mkdtemp()
-
-
 
         # set model
         cfg.model.cfg.max_seq_length = 256
