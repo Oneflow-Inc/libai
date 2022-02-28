@@ -321,38 +321,4 @@ def make_history_mask(block):
     )
     history_mask = history_mask.astype(np.int64)
     return history_mask
-
-
-if __name__ == "__main__":
-    from libai.tokenizer.tokenization_bert import BertTokenizer
-
-    tokenizer = BertTokenizer(
-        vocab_file="/workspace/data/libai_dataset/bert-base-chinese-vocab.txt",
-        do_chinese_wwm=True,
-    )
-
-    from libai.data.data_utils import get_indexed_dataset
-
-    indexed_dataset = get_indexed_dataset(
-        data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
-        data_impl="mmap",
-        skip_warmup=False,
-    )
-    ds = T5Dataset(
-        name="train",
-        tokenizer=tokenizer,
-        indexed_dataset=indexed_dataset,
-        data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
-        num_epochs=None,
-        max_num_samples=160000,
-        masked_lm_prob=0.15,
-        max_seq_length=512,
-        max_seq_length_dec=128,
-        short_seq_prob=0.1,
-        seed=1234,
-    )
-
-    from tqdm import tqdm
-
-    for d in tqdm(ds):
-        pass
+    
