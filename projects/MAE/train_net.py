@@ -40,7 +40,6 @@ class Trainer(DefaultTrainer):
     
     @classmethod
     def build_optimizer(cls, cfg, model):
-        # optim.lr = actual_lr
         param_overrides = None
         if try_get_key(cfg, "train.layer_decay") is not None:
             param_overrides = get_layer_wise_lrd_overrides(model, cfg.optim.lr, cfg.train.layer_decay)
