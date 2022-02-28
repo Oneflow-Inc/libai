@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from torch import instance_norm
 import oneflow as flow
 from oneflow import nn
 from oneflow.nn import init
@@ -292,3 +293,15 @@ class GPTForPreTraining(nn.Module):
             return lm_loss
         else:
             return {"prediction_scores": logits}
+
+    @staticmethod
+    def set_pipeline_stage_id(model: nn.Module):
+        dist_utis = dist.get_dist_util()
+
+        for module_block in model.modules():
+            if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
+                module_block.config.stage_id = dist_utis.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.stage_id = dist_utis.get_layer_stage_id(module_block.layer_idx)
+            elif isinstance(module_block.origin, GPTLoss):
+                module_block.config.stage_id = dist_utis.get_layer_stage_id(-1)
