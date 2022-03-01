@@ -34,7 +34,7 @@ class MNISTDataset(datasets.MNIST):
             downloaded again.
         transform (callable, optional): A function/transform that  takes in an PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
-        dataset_name (str, optional): Name for the dataset as an identifier.
+        dataset_name (str, optional): Name for the dataset as an identifier. E.g, ``mnist``
     """
 
     def __init__(
