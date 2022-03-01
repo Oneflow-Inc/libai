@@ -30,7 +30,6 @@ class HookBase:
     Base class for hooks that can be registered with :class:`TrainerBase`.
     Each hook can implement 4 methods. The way they are called is demonstrated
     in the following snippet:
-    
     ::
         hook.before_train()
         for iter in range(start_iter, max_iter):
@@ -44,6 +43,7 @@ class HookBase:
         1. In the hook method, users can access ``self.trainer`` to access more
            properties about the context (e.g., model, current iteration, or config
            if using :class:`DefaultTrainer`).
+        
         2. A hook that does something in :meth:`before_step` can often be
            implemented equivalently in :meth:`after_step`.
            If the hook takes non-trivial time, it is strongly recommended to
