@@ -169,40 +169,50 @@ class DefaultTrainer(TrainerBase):
     """
     A trainer with default training logic. Compared to `TrainerBase`, it
     contains the following logic in addition:
+    
     1. Create model, optimizer, scheduler, dataloader from the given config.
     2. Load a checkpoint or `cfg.MODEL.WEIGHTS`, if exists.
-    3. Register a few common hooks.
+    3. Register a few common hooks defined by the config.
+    
     It is created to simplify the **standard model training workflow** and reduce code boilerplate
     for users who only need the standard training workflow, with standard features.
-    It means this class makes *many assumptions* about your training logic that
+    
+    It means this class makes **many assumptions** about your training logic that
     may easily become invalid in a new research. In fact, any assumptions beyond those made in the
     :class:`TrainerBase` are too much for research.
+    
     The code of this class has been annotated about restrictive assumptions it made.
     When they do not work for you, you're encouraged to:
+    
     1. Overwrite methods of this class, OR:
     2. Use :class:`TrainerBase`, which only does minimal SGD training and
        nothing else. You can then add your own hooks if needed. OR:
-    3. Write your own training loop similar to `tools/plain_train_net.py`.
+    3. Write your own training loop similar to ``tools/train_net.py``.
+    
     Also note that the behavior of this class, like other functions/classes in
     this file, is not stable, since it is meant to represent the "common default behavior".
     It is only guaranteed to work well with the standard models and training workflow in libai.
     To obtain more stable behavior, write your own training logic with other public APIs.
-    Attributes:
-        scheduler:
-        checkpointer:
-        cfg (CfgNode):
+
     
     Examples:
+
     .. code-block:: python
+
         trainer = DefaultTrainer(cfg)
         trainer.resume_or_load()  # load last checkpoint or MODEL.WEIGHTS
         trainer.train()
+
+    Attributes:
+        scheduler:
+        checkpointer (Checkpointer):
+        cfg (omegaconf.dictconfig.DictConfig):
     """
 
     def __init__(self, cfg):
         """
         Args:
-            cfg (CfgNode):
+            cfg (omegaconf.dictconfig.DictConfig):
         """
         super().__init__()
         self.cfg = cfg
@@ -349,10 +359,14 @@ class DefaultTrainer(TrainerBase):
         a json file, and a tensorboard event file respectively.
         If you'd like a different list of writers, you can overwrite it in
         your trainer.
+        
         Returns:
             list[EventWriter]: a list of :class:`EventWriter` objects.
+        
         It is now implemented by:
+        
         .. code-block:: python
+            
             return [
                 CommonMetricPrinter(self.global_batch_size, self.max_iter),
                 JSONWriter(os.path.join(self.cfg.OUTPUT_DIR, "metrics.json")),
@@ -369,6 +383,7 @@ class DefaultTrainer(TrainerBase):
     def train(self):
         """
         Run training.
+        
         Returns:
             OrderedDict of results, if evaluation is enabled. Otherwise None.
         """
@@ -405,6 +420,7 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             libai.tokenizer.PreTrainedTokenizer:
+        
         It now calls :func:`libai.tokenizer.build_tokenizer`.
         """
         tokenizer = None
@@ -424,6 +440,7 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             flow.nn.Module:
+        
         It now calls :func:`libai.models.build_model`.
         Overwrite it if you'd like a different model.
         """
@@ -450,6 +467,7 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             torch.optim.Optimizer:
+        
         It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
@@ -472,6 +490,7 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             iterable
+        
         It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
@@ -506,7 +525,13 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_test_loader(cls, cfg, tokenizer=None):
-        # TODO: add doc string
+        """
+        Returns:
+            iterable
+        
+        It now calls :func:`libai.data.build_image_test_loader` for CV tasks or :func:`libai.data.build_nlp_test_loader` for NLP tasks.
+        Overwrite it if you'd like a different data loader.
+        """
         # If there is no test_loader, just return []
         if not try_get_key(cfg, "dataloader.test", default=False):
             return []
@@ -588,6 +613,7 @@ class DefaultTrainer(TrainerBase):
         """
         Evaluate the given model. The given model is expected to already contain
         weights to evaluate.
+        
         Args:
             cfg (CfgNode):
             test_loaders: list [dataloader1, dataloader2, ...]
@@ -595,6 +621,7 @@ class DefaultTrainer(TrainerBase):
             evaluators (list[DatasetEvaluator] or None): if None, will call
                 :meth:`build_evaluator`. Otherwise, must have the same length as
                 ``cfg.DATASETS.TEST``.
+        
         Returns:
             dict: a dict of result metrics
         """
