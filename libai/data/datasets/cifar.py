@@ -35,7 +35,7 @@ class CIFAR10Dataset(datasets.CIFAR10):
         download (bool, optional): If true, downloads the dataset from the internet and
             puts it in root directory. If dataset is already downloaded, it is not
             downloaded again.
-        dataset_name (str, optional): Name for the dataset as a an identifier.
+        dataset_name (str, optional): Name for the dataset as an identifier.
     """
 
     def __init__(
@@ -75,7 +75,7 @@ class CIFAR100Dataset(datasets.CIFAR100):
         download (bool, optional): If true, downloads the dataset from the internet and
             puts it in root directory. If dataset is already downloaded, it is not
             downloaded again.
-        dataset_name (str, optional): Name for the dataset as a an identifier.
+        dataset_name (str, optional): Name for the dataset as an identifier.
     """
 
     def __init__(
