@@ -14,3 +14,5 @@
 # limitations under the License.
 
 from .default import DefaultTrainer, default_setup
+from .hooks import *
+from .trainer import *

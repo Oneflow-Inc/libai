@@ -302,8 +302,9 @@ class DefaultTrainer(TrainerBase):
         available states (eg. optimizer and scheduler) and update iteration counter
         from the checkpoint. ``cfg.train.load_weight`` will not be used.
         Otherwise, this is considered as an independent training. The method will load model
-        weights from the file `cfg.train.load_weight` (but will not load other states) and start
+        weights from the file ``cfg.train.load_weight`` (but will not load other states) and start
         from iteration 0.
+        
         Args:
             resume (bool): whether to do resume or not
         """
@@ -322,6 +323,7 @@ class DefaultTrainer(TrainerBase):
         """
         Build a list of default hooks, including timing, evaluation,
         checkpointing, lr scheduling, precise BN, writing events.
+        
         Returns:
             list[HookBase]:
         """
