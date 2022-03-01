@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+from typing import Tuple
 
 import oneflow as flow
 from oneflow import nn
@@ -22,25 +23,28 @@ from .linear import Linear
 
 
 class MultiheadAttention(nn.Module):
-    """Multihead attention layer, support self attention and cross attention.
+    """Multi-head attention layer, support self attention and cross attention.
 
-    Arguments:
+    Args:
         hidden_size: size of hidden state.
         num_attention_heads: number of attention heads.
         is_cross_attention: used to specify whether it is self attention or cross attention.
-        Default: ``False``.
+            Defaults to False.
         attention_dropout_prob: dropout probability of attention weights.
-        Default: ``0.0``.
-        output_dropout_prob: dropout probability of output. Default: ``0.0``.
-        init_method: method to initialize the input layer weights. Default: ``init.xavier_normal_``.
+            Defaults to 0.0.
+        output_dropout_prob: dropout probability of output. Defaults to 0.0.
+        init_method: method to initialize the input layer weights.
+            Defaults to ``init.xavier_normal_``.
         output_layer_init_method: method to initialize the output layer weights.
-        If None, use `init_method`.
-        bias_dropout_fusion: whether to fuse add bias and dropout. Default: ``False``.
-        scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
-        apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
-        Default: ``False``.
+            If None, use ``init_method``.
+        bias_dropout_fusion: whether to fuse add bias and dropout.
+            Defaults to False.
+        scale_mask_softmax_fusion: whether to fuse scale, mask and softmax.
+            Defaults to False.
+        apply_query_key_layer_scaling: if `True`, scaling the attention score by layer index.
+            Defaults to False.
         layer_idx: A layer_idx sign which determines the placements.
-        It will be used in pipeline parallelism. Default: ``0``.
+            It will be used in pipeline parallelism. Defaults to 0.
     """
 
     def __init__(
@@ -121,24 +125,29 @@ class MultiheadAttention(nn.Module):
 
     def forward(
         self,
-        hidden_states,
-        encoder_states=None,
-        attention_mask=None,
-        past_key_value=None,
-        use_cache=False,
+        hidden_states: flow.Tensor,
+        encoder_states: flow.Tensor = None,
+        attention_mask: flow.Tensor = None,
+        past_key_value: Tuple[flow.Tensor, flow.Tensor] = None,
+        use_cache: bool = False,
     ):
         """
-        hidden_states: [bsz, tgt_len, hidden_size].
-        encoder_states: [bsz, src_len, hidden_size].
-        attention_mask: [bsz, 1, tgt_len, src_len].
-        it should be the combination of padding mask and casual mask.
-        In case of self attention in encoder, it is the padding mask of source input.
-        In case of self attention in decoder, it is the combination of padding mask of
-        target input and casual mask.
-        In case of cross attention in decoder, it is the padding mask of source input.
-        past_key_value: tuple of key and value, each shape is [bsz, num_heads, src_len, head_size].
-        use_cache: it will be set to True, when the model is in the inference phase
-        and used for incremental decoding.
+
+        Args:
+            hidden_states (flow.Tensor): shape is [bsz, tgt_len, hidden_size].
+            encoder_states (flow.Tensor, optional): shape is [bsz, src_len, hidden_size].
+                Defaults to None.
+            attention_mask (flow.Tensor, optional): shape is [bsz, 1, tgt_len, src_len].
+                It should be the combination of padding mask and casual mask.
+                It is the padding mask of source input when used with self-attention in encoder.
+                And it is the combination of padding mask of target input and casual mask when
+                used with self-attention in decoder. It is the padding mask of source input when
+                used with cross-attention in decoder.
+                Defaults to None.
+            past_key_value (Tuple[flow.Tensor, flow.Tensor], optional): tuple of key and value,
+                each shape is [bsz, num_heads, src_len, head_size]. Defaults to None.
+            use_cache (bool, optional): it will be set to True, when the model is in the inference
+                phase and used for incremental decoding. Defaults to False.
         """
 
         # hidden_states, encoder_states: [S(0), B]
