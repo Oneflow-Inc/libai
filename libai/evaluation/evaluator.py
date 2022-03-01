@@ -173,15 +173,18 @@ def inference_on_dataset(
             outputs = model(**paded_data)
 
             # get valid sample
-            valid_data = {key: value[:valid_sample] for key, value in data.items()}
-            valid_outputs = {key: value[:valid_sample] for key, value in outputs.items()}
+
+            valid_data = {key: dist.ttol(value)[:valid_sample] for key, value in data.items()}
+            valid_outputs = {key: dist.ttol(value)[:valid_sample] for key, value in outputs.items()}
 
             if flow.cuda.is_available():
                 dist.synchronize()
             total_compute_time += time.perf_counter() - start_compute_time
 
             start_eval_time = time.perf_counter()
-            evaluator.process(valid_data, valid_outputs)
+            if dist.is_main_process():
+                evaluator.process(valid_data, valid_outputs)
+            dist.synchronize()
             total_eval_time += time.perf_counter() - start_eval_time
 
             consumed_samples += valid_sample
