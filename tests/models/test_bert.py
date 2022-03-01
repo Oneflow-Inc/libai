@@ -62,14 +62,16 @@ class TestBertModel(flow.unittest.TestCase):
         cfg.tokenization.tokenizer.vocab_file = vocab_path
         cfg.dataloader.train.dataset[0].data_prefix = data_prefix
         cfg.dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
+        # FIXME(RenTianhe): fix dataloader worker bug
+        cfg.dataloader.train.num_workers = 0
 
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.eval_period = 1000  # no test now
+        cfg.train.eval_period = 1000  # no evaluation now
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
-        cfg.train.num_accumulation_steps = 4
+        cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
         cfg.train.output_dir = tempfile.mkdtemp()
 
@@ -117,14 +119,10 @@ class TestBertModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_bert_graph_with_data_tensor_parallel(self):
-        # FIXME(l1aoxingyu): add grad_acc in nn.Graph
-        # now it will make loss to inf
         self.cfg.train.num_accumulation_steps = 1
-
         # set distributed config
-        self.cfg.train.dist.data_parallel_size = 4
-        # FIXME(l1aoxingyu): set tensor_parallel_size=2 when bugfix
-        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.data_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 2
         self.cfg.train.dist.pipeline_parallel_size = 1
 
         dist.setup_dist_util(self.cfg.train.dist)
@@ -136,7 +134,7 @@ class TestBertModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_bert_graph_with_data_tensor_pipeline_parallel(self):
-        self.cfg.train.num_accumulation_steps = 1
+        self.cfg.train.num_accumulation_steps = 4
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix

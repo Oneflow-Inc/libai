@@ -39,6 +39,7 @@ class LayerNorm(nn.Module):
         self.normalized_shape = tuple(normalized_shape)
         self.eps = eps
         self.elementwise_affine = elementwise_affine
+        self.layer_idx = layer_idx
 
         if elementwise_affine:
             self.weight = flow.nn.Parameter(
