@@ -22,7 +22,21 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class CIFAR10Dataset(datasets.CIFAR10):
-    """CIFAR10 Dataset"""
+    r"""`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset in LiBai.
+
+    Args:
+
+        root (string): Root directory of dataset where directory
+            ``cifar-10-batches-py`` exists or will be saved to if download is set to True.
+        train (bool, optional): If True, creates dataset from training set, otherwise
+            creates from test set.
+        transform (callable, optional): A function/transform that takes in an PIL image
+            and returns a transformed version. E.g, ``transforms.RandomCrop``
+        download (bool, optional): If true, downloads the dataset from the internet and
+            puts it in root directory. If dataset is already downloaded, it is not
+            downloaded again.
+        dataset_name (str, optional): Name for the dataset as a an identifier.
+    """
 
     def __init__(
         self,
@@ -48,7 +62,22 @@ class CIFAR10Dataset(datasets.CIFAR10):
 
 
 class CIFAR100Dataset(datasets.CIFAR100):
-    """CIFAR100 Dataset"""
+    r"""`CIFAR100 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset in LiBai.
+    This is a subclass of the `CIFAR10` Dataset.
+
+    Args:
+
+        root (string): Root directory of dataset where directory
+            ``cifar-10-batches-py`` exists or will be saved to if download is set to True.
+        train (bool, optional): If True, creates dataset from training set, otherwise
+            creates from test set.
+        transform (callable, optional): A function/transform that takes in an PIL image
+            and returns a transformed version. E.g, ``transforms.RandomCrop``
+        download (bool, optional): If true, downloads the dataset from the internet and
+            puts it in root directory. If dataset is already downloaded, it is not
+            downloaded again.
+        dataset_name (str, optional): Name for the dataset as a an identifier.
+    """
 
     def __init__(
         self,
