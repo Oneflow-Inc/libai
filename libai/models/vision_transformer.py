@@ -26,9 +26,23 @@ from .build import MODEL_ARCH_REGISTRY
 
 @MODEL_ARCH_REGISTRY.register()
 class VisionTransformer(nn.Module):
-    """Vision Transformer
-    LiBai impl of: `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`
-        - https://arxiv.org/abs/2010.11929
+    """Vision Transformer in LiBai.
+
+    LiBai implement of: `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale <https://arxiv.org/abs/2010.11929>`_
+
+    Args:
+        img_size (int, tuple): input image size
+        patch_size (int, tuple): patch size
+        in_chans (int): number of input channels
+        embed_dim (int): embedding dimension
+        depth (int): depth of transformer
+        num_heads (int): number of attention heads
+        mlp_ratio (int): ratio of mlp hidden dim to embedding dim
+        drop_rate (float): dropout rate
+        attn_drop_rate (float): attention dropout rate
+        drop_path_rate (float): stochastic depth rate
+        num_classes (int): number of classes for classification head
+        loss_func (callable, optional): loss function for computing the total loss between logits and labels
     """
 
     @configurable
