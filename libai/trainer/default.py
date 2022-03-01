@@ -114,12 +114,14 @@ def _check_batch_size(cfg):
 def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
+    
     1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
     3. Setup the distributed environment
     4. Setup tokenizer if it's NLP related task
     5. Check batch_size
     6. Backup the config to the output directory
+    
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
@@ -189,6 +191,7 @@ class DefaultTrainer(TrainerBase):
         scheduler:
         checkpointer:
         cfg (CfgNode):
+    
     Examples:
     .. code-block:: python
         trainer = DefaultTrainer(cfg)
