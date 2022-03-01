@@ -17,14 +17,11 @@
 import os
 import tempfile
 import unittest
-from hashlib import md5
 
 import oneflow as flow
 import oneflow.unittest
-from omegaconf import DictConfig
 
 from libai.config import LazyConfig
-from libai.models import build_model
 from libai.trainer import DefaultTrainer, hooks
 from libai.trainer.default import _check_batch_size
 from libai.utils import distributed as dist
@@ -79,7 +76,7 @@ class TestGPTModel(flow.unittest.TestCase):
         cfg.train.eval_period = 1000  # no test now
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 4
-        cfg.train.num_accumulation_steps = 4
+        cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
         cfg.train.output_dir = tempfile.mkdtemp()
 
@@ -132,14 +129,11 @@ class TestGPTModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_gpt_graph_with_data_tensor_parallel(self):
-        # FIXME(l1aoxingyu): add grad_acc in nn.Graph
-        # now it will make loss to inf
         self.cfg.train.num_accumulation_steps = 1
 
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 4
-        # FIXME(l1aoxingyu): set tensor_parallel_size=2 when bugfix
-        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.tensor_parallel_size = 2
         self.cfg.train.dist.pipeline_parallel_size = 1
 
         dist.setup_dist_util(self.cfg.train.dist)
@@ -151,11 +145,11 @@ class TestGPTModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_gpt_graph_with_data_tensor_pipeline_parallel(self):
-        self.cfg.train.num_accumulation_steps = 1
+        self.cfg.train.num_accumulation_steps = 4
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix
-        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.tensor_parallel_size = 2
         self.cfg.train.dist.pipeline_parallel_size = 2
         self.cfg.train.dist.pipeline_num_layers = self.cfg.model.cfg.hidden_layers
 

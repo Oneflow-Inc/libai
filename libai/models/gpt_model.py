@@ -295,12 +295,14 @@ class GPTForPreTraining(nn.Module):
 
     @staticmethod
     def set_pipeline_stage_id(model: nn.Module):
-        dist_utis = dist.get_dist_util()
+        dist_utils = dist.get_dist_util()
 
         for module_block in model.modules():
             if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
-                module_block.config.stage_id = dist_utis.get_layer_stage_id(0)
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utis.get_layer_stage_id(module_block.layer_idx)
-            elif isinstance(module_block.origin, GPTLoss):
-                module_block.config.stage_id = dist_utis.get_layer_stage_id(-1)
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+            elif isinstance(module_block.origin, (LMLogits, GPTLoss)):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+        model.GPT_model.transformer.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(-1)
