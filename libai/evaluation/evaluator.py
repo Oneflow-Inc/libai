@@ -173,7 +173,6 @@ def inference_on_dataset(
             outputs = model(**paded_data)
 
             # get valid sample
-
             valid_data = {key: dist.ttol(value)[:valid_sample] for key, value in data.items()}
             valid_outputs = {key: dist.ttol(value)[:valid_sample] for key, value in outputs.items()}
 
