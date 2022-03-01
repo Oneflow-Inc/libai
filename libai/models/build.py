@@ -51,6 +51,7 @@ def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
         graph.recompute_grad = try_get_key(cfg, "train.recompute_grad.enabled", default=False)
         graph.zero_optim = try_get_key(cfg, "train.zero_optimization.enabled", default=False)
         graph.zero_stage = try_get_key(cfg, "train.zero_optimization.stage", default=1)
+        graph.grad_acc_steps = try_get_key(cfg, "train.num_accumulation_steps", default=1)
         return instantiate(graph)
     else:
         # Set eval graph
