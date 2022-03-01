@@ -62,6 +62,8 @@ class TestT5Model(flow.unittest.TestCase):
         cfg.tokenization.tokenizer.vocab_file = vocab_path
         cfg.dataloader.train.dataset[0].data_prefix = data_prefix
         cfg.dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
+        # FIXME(RenTianhe): fix dataloader worker bug
+        cfg.dataloader.train.num_workers = 0
 
         # set training config
         cfg.train.train_epoch = 0
