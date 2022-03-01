@@ -71,6 +71,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
             root="./dataset", train=True, transform=train_aug, dataset_name="imagenet train set"
         ),
     ],
+    num_workers=4,
     mixup_func=None,
 )
 
@@ -80,5 +81,6 @@ dataloader.test = [
         dataset=LazyCall(ImageNetDataset)(
             root="./dataset", train=False, transform=test_aug, dataset_name="imagenet test set"
         ),
+        num_workers=4,
     )
 ]
