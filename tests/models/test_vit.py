@@ -115,8 +115,6 @@ class TestViTModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_vit_graph_with_data_tensor_parallel(self):
-        # FIXME(l1aoxingyu): add grad_acc in nn.Graph
-        # now it will make loss to inf
         self.cfg.train.num_accumulation_steps = 1
 
         # set distributed config
