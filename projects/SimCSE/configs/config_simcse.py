@@ -74,14 +74,14 @@ model = LazyCall(SimcseModel)(cfg=simcse_cfg)
 train.update(
     dict(
         output_dir="/home/xiezipeng/libai/projects/SimCSE/result",
-        train_micro_batch_size=20,
-        test_micro_batch_size=20,
+        train_micro_batch_size=64,
+        test_micro_batch_size=64,
         train_epoch=1,
         train_iter=10000,
         eval_period=100,
         dist=dict(
-            data_parallel_size=1,
-            tensor_parallel_size=1,
+            data_parallel_size=2,
+            tensor_parallel_size=2,
             pipeline_parallel_size=1,
         ),
     )

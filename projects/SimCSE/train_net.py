@@ -46,8 +46,12 @@ class SimcseEvaluator(DatasetEvaluator):
     def process(self, inputs, outputs):
         # outputs: model's out
         # inputs: model's input
-        cos_sim = outputs["cos_sim"]
-        labels = outputs["labels"]
+        cos_sim = outputs["cos_sim"].to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
+        labels = outputs["labels"].to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
         self._predictions.append({"cos_sim": cos_sim, "labels": labels})
 
     def evaluate(self):
