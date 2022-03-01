@@ -149,7 +149,7 @@ class TestGPTModel(flow.unittest.TestCase):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix
-        self.cfg.train.dist.tensor_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 1
         self.cfg.train.dist.pipeline_parallel_size = 2
         self.cfg.train.dist.pipeline_num_layers = self.cfg.model.cfg.hidden_layers
 
