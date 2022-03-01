@@ -63,7 +63,6 @@ class CIFAR10Dataset(datasets.CIFAR10):
 
 class CIFAR100Dataset(datasets.CIFAR100):
     r"""`CIFAR100 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset in LiBai.
-    This is a subclass of the `CIFAR10` Dataset.
 
     Args:
 

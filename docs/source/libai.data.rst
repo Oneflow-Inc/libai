@@ -5,6 +5,7 @@ libai.data
 .. currentmodule:: libai.data
 .. automodule:: libai.data.datasets
     :members: 
-        MNIST,
+        MNISTDataset,
         CIFAR10Dataset,
-        CIFAR100Dataset
+        CIFAR100Dataset,
+        ImageNetDataset,
