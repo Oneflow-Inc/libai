@@ -80,8 +80,8 @@ train.update(
         train_iter=10000,
         eval_period=100,
         dist=dict(
-            data_parallel_size=2,
-            tensor_parallel_size=2,
+            data_parallel_size=1,
+            tensor_parallel_size=1,
             pipeline_parallel_size=1,
         ),
     )
