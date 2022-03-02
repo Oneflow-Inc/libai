@@ -46,17 +46,17 @@ class DatasetEvaluator:
     def process(self, inputs, outputs):
         """
         Process the pair of inputs and outputs.
-        If they contain batches, the pairs can be consumed one-by-one using `zip`:
 
         .. code-block:: python
 
-            for input_, output in zip(inputs, outputs):
-                # do evaluation on single input/output pair
-                ...
+            pred_logits = outputs["prediction_scores"]
+            labels = inputs["labels"]
+            # do evaluation on pred_logits/labels pair
+            ...
 
         Args:
-            inputs (list): the inputs that's used to call the model.
-            outputs (list): the return value of `model(inputs)`
+            inputs (dict): the inputs that's used to call the model.
+            outputs (dict): the return dict of `model(**inputs)`
         """
 
     def evaluate(self):
