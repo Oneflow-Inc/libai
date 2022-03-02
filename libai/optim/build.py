@@ -88,9 +88,9 @@ def get_default_optimizer_params(
             (LR, weight decay) for module parameters with a given name; e.g.
             ``{"embedding": {"lr": 0.01, "weight_decay": 0.1}}`` will set the LR and
             weight decay values for all module parameters named `embedding`.
-    
+
     For common transformer models, ``weight_decay_norm,weight_decay_bias`` is usually set to 0.
-    
+
     Example:
     ::
         flow.optim.AdamW(get_default_optimizer_params(model, weight_decay_norm=0, weight_decay_bias=0),
