@@ -531,7 +531,8 @@ class DefaultTrainer(TrainerBase):
         Returns:
             iterable
 
-        It now calls :func:`libai.data.build_image_test_loader` for CV tasks or :func:`libai.data.build_nlp_test_loader` for NLP tasks.
+        It now calls :func:`libai.data.build_image_test_loader` for CV tasks
+        or :func:`libai.data.build_nlp_test_loader` for NLP tasks.
         Overwrite it if you'd like a different data loader.
         """
         # If there is no test_loader, just return []
