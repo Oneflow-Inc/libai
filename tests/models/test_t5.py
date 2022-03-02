@@ -22,8 +22,8 @@ import oneflow as flow
 import oneflow.unittest
 
 from libai.config import LazyConfig
-from libai.trainer import DefaultTrainer, hooks
-from libai.trainer.default import _check_batch_size
+from libai.engine import DefaultTrainer, hooks
+from libai.engine.default import _check_batch_size
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
