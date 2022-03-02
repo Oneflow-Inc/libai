@@ -1,20 +1,20 @@
-libai.trainer
+libai.engine
 ##############################
 
-libai.trainer.default module
+libai.engine.default module
 ---------------------------------
-.. currentmodule:: libai.trainer
-.. automodule:: libai.trainer.default
+.. currentmodule:: libai.engine
+.. automodule:: libai.engine.default
     :member-order: bysource
     :members: 
         default_setup,
         DefaultTrainer,
 
 
-libai.trainer.hooks module
+libai.engine.hooks module
 ---------------------------------
-.. currentmodule:: libai.trainer
-.. automodule:: libai.trainer.hooks
+.. currentmodule:: libai.engine
+.. automodule:: libai.engine.hooks
     :member-order: bysource
     :members: 
         CallbackHook,
@@ -26,10 +26,10 @@ libai.trainer.hooks module
         LRScheduler,
 
 
-libai.trainer.trainer module
+libai.engine.trainer module
 ---------------------------------
-.. currentmodule:: libai.trainer
-.. automodule:: libai.trainer.trainer
+.. currentmodule:: libai.engine
+.. automodule:: libai.engine.trainer
     :member-order: bysource
     :members: 
         HookBase,
