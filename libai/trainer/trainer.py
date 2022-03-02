@@ -28,9 +28,11 @@ from libai.utils.events import EventStorage, get_event_storage
 class HookBase:
     """
     Base class for hooks that can be registered with :class:`TrainerBase`.
+    
     Each hook can implement 4 methods. The way they are called is demonstrated
     in the following snippet:
     ::
+        
         hook.before_train()
         for iter in range(start_iter, max_iter):
             hook.before_step()
@@ -49,6 +51,7 @@ class HookBase:
            If the hook takes non-trivial time, it is strongly recommended to
            implement the hook in :meth:`after_step` instead of :meth:`before_step`.
            The convention is that :meth:`before_step` should only take negligible time.
+           
            Following this convention will allow hooks that do care about the difference
            between :meth:`before_step` and :meth:`after_step` (e.g., timer) to
            function properly.
@@ -226,7 +229,7 @@ class TrainerBase:
 
 class EagerTrainer(TrainerBase):
     """
-    A simple trainer for the most common type of task:
+    A simple eager trainer for the most common type of task:
     single-cost single-optimizer single-data-source iterative optimization,
     optionally using data-parallelism.
     It assumes that every step, you:
@@ -289,6 +292,9 @@ class EagerTrainer(TrainerBase):
 
 
 class GraphTrainer(TrainerBase):
+    """
+    A simple graph trainer for training and evaluating models in a static graph mode.
+    """
     def __init__(self, graph, data_loader):
         super().__init__()
 

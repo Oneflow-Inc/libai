@@ -4,7 +4,7 @@ libai.trainer
 libai.trainer.default module
 ---------------------------------
 .. currentmodule:: libai.trainer
-.. automodule:: libai.trainer
+.. automodule:: libai.trainer.default
     :member-order: bysource
     :members: 
         default_setup,
