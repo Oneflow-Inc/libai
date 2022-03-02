@@ -11,6 +11,7 @@ Welcome to libai's documentation!
    :maxdepth: 2
    :caption: Tutorials
 
+   tutorials/Installation.md
    tutorials/Getting Started.md
 
 .. toctree::
@@ -19,13 +20,13 @@ Welcome to libai's documentation!
 
    libai.config
    libai.data
+   libai.engine
    libai.evaluation
    libai.layers
    libai.models
    libai.optim
    libai.scheduler
    libai.tokenizer
-   libai.trainer
    libai.utils
    
 .. toctree::
