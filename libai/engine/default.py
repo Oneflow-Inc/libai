@@ -26,13 +26,13 @@ from termcolor import colored
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
+from libai.engine import hooks
+from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.evaluation import ClsEvaluator, inference_on_dataset, print_csv_format
 from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
 from libai.tokenizer import build_tokenizer
-from libai.trainer import hooks
-from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
