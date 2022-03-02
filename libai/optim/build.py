@@ -93,6 +93,7 @@ def get_default_optimizer_params(
 
     Example:
     ::
+
         flow.optim.AdamW(get_default_optimizer_params(model, weight_decay_norm=0, weight_decay_bias=0),
                        lr=0.01, weight_decay=1e-4)
     """
