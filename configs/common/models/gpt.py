@@ -1,6 +1,6 @@
 from libai.config import LazyCall
 
-from libai.models.gpt_model import GPTModel, GPTForPreTraining
+from libai.models import GPTModel, GPTForPreTraining
 
 cfg = dict(
     num_layers=6,
