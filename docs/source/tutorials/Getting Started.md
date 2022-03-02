@@ -3,9 +3,6 @@ This is a step-by-step tutorial on how to get started with LiBai:
 - [Train Bert-large Model Parallelism](#train-bert-large-model-parallelism)
   - [Prepare the Data and the Vocab](#prepare-the-data-and-the-vocab)
   - [How to Train Bert_large Model with Parallelism](#how-to-train-bertlarge-model-with-parallelism)
-    - [Step 1. Set data path and vocab path](#step-1-set-data-path-and-vocab-path)
-    - [Step 2. Configure your parameters](#step-2-configure-your-parameters)
-    - [Step 3. Invoke parallel training](#step-3-invoke-parallel-training)
 - [Train VisionTransformer on ImageNet Dataset](#train-visiontransformer-on-imagenet-dataset)
   - [Prepare the Data](#data-preparation)
   - [Train vit Model from Scratch](#train-vit-model-from-scratch)
@@ -35,7 +32,7 @@ data_test
 We provided `train.sh` for you to execute training. Before invoking the script, there are several 
 steps to perform.
 
-#### Step 1. Set data path and vocab path
+**Step 1. Set data path and vocab path**
 
 - Update the data path and vocab path in [bert_large_pretrain](https://github.com/Oneflow-Inc/libai/blob/main/configs/bert_large_pretrain.py) config file:
 ```python
@@ -44,11 +41,9 @@ vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
 data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
 ```
 
-#### Step 2. Configure your parameters
-In the [`configs/bert_large_pretrain.py`](https://github.com/Oneflow-Inc/libai/blob/main/configs/bert_large_pretrain.py) provided, a set of parameters are defined including training scheme, model, etc.
-You can also modify the parameters setting. For example, use 8 GPUs to training, if you wish to modify the training parameters, 
-you can refer to the file [`configs/common/train.py`](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py). if you wish to use `tensor-parallelism` + `data-parallelism`, you can set 
-the following:
+**Step 2. Configure your parameters**
+- In the [`configs/bert_large_pretrain.py`](https://github.com/Oneflow-Inc/libai/blob/main/configs/bert_large_pretrain.py) provided, a set of parameters are defined including training scheme, model, etc.
+- You can also modify the parameters setting. For example, use 8 GPUs to training, if you wish to modify the training parameters, you can refer to the file [`configs/common/train.py`](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py). if you wish to use `tensor-parallelism` + `data-parallelism`, you can set the following:
 
 ```python
 train.update(
@@ -66,7 +61,7 @@ train.update(
 )
 ```
 
-#### Step 3. Invoke parallel training
+**Step 3. Invoke parallel training**
 - To train `BertForPreTraining` model on a single node with 8 GPUs, run:
 ```bash
 bash tools/train.sh configs/bert_large_pretrain.py 8
