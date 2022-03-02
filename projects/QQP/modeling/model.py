@@ -62,7 +62,7 @@ class Classification(nn.Module):
         )
         self.loss_func = ClassificationLoss()
 
-    def forward(self, model_input, attention_mask, tokentype_ids=None, label=None):
+    def forward(self, model_input, attention_mask, tokentype_ids=None, labels=None):
 
         encoder_output, pooled_output = self.language_model(
             model_input, attention_mask, tokentype_ids
@@ -73,8 +73,8 @@ class Classification(nn.Module):
         # reshape
         classification_logits = classification_logits.view(-1, self.num_classes)
 
-        if self.training and label is not None:
-            loss = self.loss_func(classification_logits, label)
+        if self.training and labels is not None:
+            loss = self.loss_func(classification_logits, labels)
             return {"total_loss": loss}
 
         return {"prediction_scores": classification_logits}

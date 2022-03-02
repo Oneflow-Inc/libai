@@ -269,9 +269,15 @@ class DefaultTrainer(TrainerBase):
             self.graph_eval = self.build_graph(cfg, self.model, is_train=False)
             self._trainer = GraphTrainer(self.graph_train, self.train_loader)
         else:
-            self._trainer = EagerTrainer(self.model, self.train_loader, self.optimizer)
+            self._trainer = EagerTrainer(
+                self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
+            )
 
-        self.global_batch_size = cfg.train.global_batch_size
+        self.global_batch_size = (
+            cfg.train.global_batch_size
+            if cfg.graph.enabled
+            else cfg.train.global_batch_size // cfg.train.num_accumulation_steps
+        )
         self.max_iter = cfg.train.train_iter
 
         self.register_hooks(self.build_hooks())
@@ -314,10 +320,19 @@ class DefaultTrainer(TrainerBase):
         ]
 
         def test_and_save_results():
-            self._last_eval_results = self.test(self.cfg, self.test_loader, self.graph_eval)
+            model = self.graph_eval if self.cfg.graph.enabled else self.model
+            self._last_eval_results = self.test(self.cfg, self.test_loader, model)
             return self._last_eval_results
 
         ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
+        ret.append(
+            hooks.BestCheckpointer(
+                self.cfg.train.eval_period,
+                self.checkpointer,
+                val_metric=try_get_key(self.cfg, "train.eval_metric", default="Acc@1"),
+                mode=try_get_key(self.cfg, "train.eval_mode", default="max"),
+            )
+        )
 
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
@@ -372,9 +387,9 @@ class DefaultTrainer(TrainerBase):
             data.reraise()
 
         if mixup_func is not None:
-            images, label = mixup_func(data.get("images").tensor, data.get("label").tensor)
+            images, labels = mixup_func(data.get("images").tensor, data.get("labels").tensor)
             data.get("images").tensor = images
-            data.get("label").tensor = label
+            data.get("labels").tensor = labels
 
         ret_dict = {}
         for key, value in data.get_fields().items():
@@ -462,7 +477,16 @@ class DefaultTrainer(TrainerBase):
         ), "cfg must contain `dataloader.train` namespace"
         logger = logging.getLogger(__name__)
         logger.info("Prepare training, validating, testing set")
-        cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
+        if cfg.graph.enabled:
+            # In static graph mode, data will be sliced in nn.Graph automatically,
+            # so dataloader will get mini-batch-size.
+            cfg.dataloader.train.train_batch_size = (
+                cfg.train.train_micro_batch_size * cfg.train.num_accumulation_steps
+            )
+        else:
+            # In eager mode, gradient accumulation will act like PyTorch, so dataloader
+            # will get micro-batch-size
+            cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
 
@@ -517,6 +541,12 @@ class DefaultTrainer(TrainerBase):
             train_iter,
         )
         cfg.train.warmup_iter = math.ceil(cfg.train.train_iter * cfg.train.warmup_ratio)
+        if not cfg.graph.enabled:
+            # In eager mode, dataloader only get micro-batch-size each iter,
+            # which is mini-batch-size // num_accumulation, so scale `train_iter`
+            # and `warmup_iter` to be consistent with static graph mode.
+            cfg.train.train_iter *= cfg.train.num_accumulation_steps
+            cfg.train.warmup_iter *= cfg.train.num_accumulation_steps
         log_info += "Auto-scaling the config to train.train_iter={}, train.warmup_iter={}".format(
             cfg.train.train_iter, cfg.train.warmup_iter
         )

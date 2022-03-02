@@ -88,7 +88,6 @@ class TrainerBase:
         iter(int): the current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
-
         max_iter(int): The iteration to end training.
         storage(EventStorage): An EventStorage that's opened during the course of training.
     """
@@ -179,7 +178,12 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        metrics_dict = {k: dist.tton(v, local_only=False) for k, v in loss_dict.items()}
+        # Only get metric value on rank0
+        # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
+        metrics_dict = {
+            k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+            for k, v in loss_dict.items()
+        }
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
@@ -232,7 +236,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader, optimizer):
+    def __init__(self, model, data_loader, optimizer, grad_acc_steps=1):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -253,6 +257,7 @@ class EagerTrainer(TrainerBase):
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
+        self.grad_acc_steps = grad_acc_steps
 
     def run_step(self, get_batch: Callable):
         """
@@ -266,17 +271,15 @@ class EagerTrainer(TrainerBase):
         data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
-        # If you want to do something with the losses, you can wrap the model.
-
         loss_dict = self.model(**data)
-        losses = sum(loss_dict.values())
+        losses = sum(loss_dict.values()) / self.grad_acc_steps
 
-        self.optimizer.zero_grad()
         losses.backward()
-
         self.write_metrics(loss_dict, data_time)
 
-        self.optimizer.step()
+        if (self.iter + 1) % self.grad_acc_steps == 0:
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
 
 class GraphTrainer(TrainerBase):
@@ -302,5 +305,8 @@ class GraphTrainer(TrainerBase):
 
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
+        # Add this because when set up gradient accumulations, graph will return
+        # an unpacked n-d tensor whose size is accumulation step
+        loss_dict = {key: value.mean() for key, value in loss_dict.items()}
 
         self.write_metrics(loss_dict, data_time)
