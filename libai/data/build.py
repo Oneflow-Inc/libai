@@ -39,7 +39,34 @@ def build_nlp_train_val_test_loader(
     dataset_mixer=ConcatDataset,
 ):
     """
-    Build nlp train_val_test dataloader
+    Build nlp train_val_test dataloader, it's used for dataset lack of valid/test dataset
+
+    Returns:
+        It will return train/valid/test dataloader
+
+            * train_loader: dataloader for training
+            * valid_loader: dataloader for validation
+            * test_loader: dataloader for testing
+
+    Arguments:
+        dataset: dataset from which to load the data. e.g.: dataset or [dataset1, dataset2, ...]
+        splits: ratio config for spliting dataset to train/valid/test. e.g.: [[7, 2, 1], ...]
+        weights: ratio config for concate dataset list (Not Supported yet). e.g.: [1.0, ...]
+        train_batch_size: how many samples per batch to load in training (micro-batch-size per GPU).
+        test_batch_size: how many samples per batch to load in testing (micro-batch-size per GPU).
+        sampler:  defines the strategy to draw
+            samples from the dataset. Can be any ``Iterable`` with ``__len__``
+            implemented.
+        num_workers: how many subprocesses to use for data
+            loading. ``0`` means that the data will be loaded in the main process.
+            (default: ``4``).
+        consumed_samples: the number of samples that have been trained at the current time,
+            used for resuming training (default: ``0``).
+        seed: random seed, used for reproducing experiments (default: ``0``).
+        collate_fn: merges a list of samples to form a
+            mini-batch of Tensor(s).  Used when using batched loading from a
+            map-style dataset.
+        dataset_mixer: function for concating list dataset.
     """
     # TODO: add input type, add dataset_weights sampler
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
@@ -109,9 +136,32 @@ def build_nlp_train_loader(
     **kwargs
 ):
     """
-    Args:
-        dataset: Dataset list or single dataset.
-        batch_size: Batch-size for each GPU.
+    Build nlp train dataloader, it's used for train dataset
+
+    Returns:
+        It will return train dataloader, and Nonetype for valid/test dataloader
+
+            * train_loader: dataloader for training
+            * None: Nonetype
+            * None: Nonetype
+
+    Arguments:
+        dataset: dataset from which to load the data. e.g.: dataset or [dataset1, dataset2, ...]
+        train_batch_size: how many samples per batch to load in training (micro-batch-size per GPU).
+        test_batch_size: no use, set it to None.
+        sampler:  defines the strategy to draw
+            samples from the dataset. Can be any ``Iterable`` with ``__len__``
+            implemented.
+        num_workers: how many subprocesses to use for data
+            loading. ``0`` means that the data will be loaded in the main process.
+            (default: ``4``).
+        consumed_samples: the number of samples that have been trained at the current time,
+            used for resuming training (default: ``0``).
+        seed: random seed, used for reproducing experiments (default: ``0``).
+        collate_fn: merges a list of samples to form a
+            mini-batch of Tensor(s).  Used when using batched loading from a
+            map-style dataset.
+        dataset_mixer: function for concating list dataset.
     """
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
@@ -154,7 +204,26 @@ def build_nlp_test_loader(
     collate_fn=None,
 ):
     """
-    Build nlp test dataloader
+    Build nlp test dataloader, it's used for test dataset
+
+    Returns:
+        It will return test dataloader
+
+            * test_loader: dataloader for testing
+
+    Arguments:
+        dataset: dataset from which to load the data. e.g.: dataset or [dataset1, dataset2, ...]
+        test_batch_size: how many samples per batch to load in testing (micro-batch-size per GPU).
+        sampler:  defines the strategy to draw
+            samples from the dataset. Can be any ``Iterable`` with ``__len__``
+            implemented.
+        num_workers: how many subprocesses to use for data
+            loading. ``0`` means that the data will be loaded in the main process.
+            (default: ``4``).
+        seed: random seed, used for reproducing experiments (default: ``0``).
+        collate_fn: merges a list of samples to form a
+            mini-batch of Tensor(s).  Used when using batched loading from a
+            map-style dataset.
     """
     # TODO: add input type
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
@@ -188,9 +257,33 @@ def build_image_train_loader(
     **kwargs
 ):
     """
-    Args:
-        dataset: Dataset list or single dataset.
-        batch_size: Batch-size for each GPU.
+    Build cv train dataloader, it's used for train dataset
+
+    Returns:
+        It will return train dataloader, and Nonetype for valid/test dataloader
+
+            * train_loader: dataloader for training
+            * None: Nonetype
+            * None: Nonetype
+
+    Arguments:
+        dataset: dataset from which to load the data. e.g.: dataset or [dataset1, dataset2, ...]
+        train_batch_size: how many samples per batch to load in training (micro-batch-size per GPU).
+        test_batch_size: no use, set it to None.
+        sampler:  defines the strategy to draw
+            samples from the dataset. Can be any ``Iterable`` with ``__len__``
+            implemented.
+        num_workers: how many subprocesses to use for data
+            loading. ``0`` means that the data will be loaded in the main process.
+            (default: ``4``).
+        consumed_samples: the number of samples that have been trained at the current time,
+            used for resuming training (default: ``0``).
+        seed: random seed, used for reproducing experiments (default: ``0``).
+        collate_fn: merges a list of samples to form a
+            mini-batch of Tensor(s).  Used when using batched loading from a
+            map-style dataset.
+        dataset_mixer: function for concating list dataset.
+        mixup_func: functional for data argumentation.
     """
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
@@ -229,6 +322,28 @@ def build_image_train_loader(
 def build_image_test_loader(
     dataset, test_batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None, **kwargs
 ):
+    """
+    Build nlp test dataloader, it's used for test dataset
+
+    Returns:
+        It will return test dataloader
+
+            * test_loader: dataloader for testing
+
+    Arguments:
+        dataset: dataset from which to load the data. e.g.: dataset or [dataset1, dataset2, ...]
+        test_batch_size: how many samples per batch to load in testing (micro-batch-size per GPU).
+        sampler:  defines the strategy to draw
+            samples from the dataset. Can be any ``Iterable`` with ``__len__``
+            implemented.
+        num_workers: how many subprocesses to use for data
+            loading. ``0`` means that the data will be loaded in the main process.
+            (default: ``4``).
+        seed: random seed, used for reproducing experiments (default: ``0``).
+        collate_fn: merges a list of samples to form a
+            mini-batch of Tensor(s).  Used when using batched loading from a
+            map-style dataset.
+    """
     if sampler is None:
         sampler = SingleRoundSampler(
             dataset=dataset,
