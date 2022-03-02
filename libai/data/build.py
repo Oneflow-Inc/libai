@@ -283,7 +283,7 @@ def build_image_train_loader(
             mini-batch of Tensor(s).  Used when using batched loading from a
             map-style dataset.
         dataset_mixer: function for concating list dataset.
-        mixup_func: functional for data argumentation.
+        mixup_func: function for data argumentation.
     """
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
