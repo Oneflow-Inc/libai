@@ -7,8 +7,9 @@ from .models.vit_base_patch16 import model
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
-# Set fine weight path
+# Path to the weight for fine-tune
 finetune = OmegaConf.create()
+finetune.enable = False  # only load weight if enable is True
 finetune.path = "/path/to/pretrained_mae_weight"
 
 train = get_config("common/train.py").train

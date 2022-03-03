@@ -50,7 +50,7 @@ def filter_keys(key, value):
     
     return key, value
 
-def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth"):
+def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth", strict=False):
     """Load checkpoint from the given torch weights.
     Torch weight from: https://github.com/facebookresearch/mae
     """
@@ -64,6 +64,6 @@ def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth"):
           key, val = filter_keys(key, val)
           val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
           new_parameters[key] = val
-    model.load_state_dict(new_parameters)
+    model.load_state_dict(new_parameters, strict=strict)
     print("Successfully load torch mae checkpoint.")
     return model
