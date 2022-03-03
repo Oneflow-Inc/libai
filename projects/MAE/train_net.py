@@ -15,6 +15,7 @@
 
 
 import sys
+import logging
 
 sys.path.append(".")
 
@@ -28,14 +29,21 @@ from utils.weight_convert import load_torch_checkpoint
 from utils.lr_decay import get_layer_wise_lrd_overrides
 
 
+logger = logging.getLogger(__name__)
+
 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
-        # if try_get_key(cfg, "finetune") is not None:
-        #     model.load_state_dict(flow.load(cfg.finetune.path))
-        # model = load_torch_checkpoint(model, path="/home/rentianhe/code/OneFlow-Models/libai/mae_finetuned_vit_base.pth")
+        if try_get_key(cfg, "finetune") is not None:
+            if cfg.finetune.enable == True:
+                logger.info("Loading pretrained weight for finetuning")
+                assert cfg.finetune.weight_style in ["oneflow", "pytorch"]
+                if cfg.finetune.weight_style == "oneflow":
+                    model.load_state_dict(flow.load(cfg.finetune.path))
+                else:
+                    model = load_torch_checkpoint(model, path=cfg.finetune.path)
         return model
     
     @classmethod

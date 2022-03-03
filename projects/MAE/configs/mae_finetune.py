@@ -10,8 +10,10 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 # Path to the weight for fine-tune
 finetune = OmegaConf.create()
 finetune.enable = False  # only load weight if enable is True
+finetune.weight_style = "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for torch weights
 finetune.path = "/path/to/pretrained_mae_weight"
 
+# Get train, optim and graph configs
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
@@ -20,8 +22,6 @@ graph = get_config("common/models/graph.py").graph
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 
-dataloader.train.dataset[0].root = "/dataset/extract"
-dataloader.test[0].dataset.root = "/dataset/extract"
 
 # Graph training
 graph.enabled = True

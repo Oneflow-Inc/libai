@@ -78,12 +78,12 @@ class MaskedAutoencoderViT(nn.Module):
             ) for i in range(depth)
         ])
         # TODO: set norm layer placement stage id
-        self.norm = norm_layer(embed_dim)
+        self.norm = norm_layer(embed_dim, layer_idx=depth)
         # --------------------------------------------------------------------------
         
         # --------------------------------------------------------------------------
         # MAE decoder specifics
-        self.decoder_embed = Linear(embed_dim, decoder_embed_dim, bias=True)
+        self.decoder_embed = Linear(embed_dim, decoder_embed_dim, bias=True, layer_idx=depth)
 
         self.mask_token = nn.Parameter(
             flow.zeros(
@@ -114,8 +114,8 @@ class MaskedAutoencoderViT(nn.Module):
             ) for i in range(decoder_depth)
         ])
         
-        self.decoder_norm = norm_layer(decoder_embed_dim)
-        self.decoder_pred = Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True)  # decoder to patch
+        self.decoder_norm = norm_layer(decoder_embed_dim, layer_idx=-1)
+        self.decoder_pred = Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True, layer_idx=-1)  # decoder to patch
         # --------------------------------------------------------------------------
 
         self.norm_pix_loss = norm_pix_loss
