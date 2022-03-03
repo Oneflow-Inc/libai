@@ -17,14 +17,13 @@ This is a step-by-step tutorial on how to get started with LiBai:
 2. [BIN_DATA_URL](https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.bin)
 3. [IDX_DATA_URL](https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.idx)
 
-- For the standard folder dataset, move data file to labeled sub-folders. The file structure should be like:
+- Download the dataset and move data file to the folder. The file structure should be like:
 ```bash
 $ tree data
-data_test
-└── bert_data
-    ├── bert-base-chinese-vocab.txt
-    ├── loss_compara_content_sentence.bin
-    └── loss_compara_content_sentence.idx
+path/to/bert_data
+├── bert-base-chinese-vocab.txt
+├── loss_compara_content_sentence.bin
+└── loss_compara_content_sentence.idx
 
 ```
 ### How to Train Bert_large Model with Parallelism
@@ -37,8 +36,8 @@ steps to perform.
 - Update the data path and vocab path in [bert_large_pretrain](https://github.com/Oneflow-Inc/libai/blob/main/configs/bert_large_pretrain.py) config file:
 ```python
 # Refine data path and vocab path to data folder
-vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
-data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
+vocab_file = "/path/to/bert_data/bert-base-chinese-vocab.txt"
+data_prefix = "/path/to/data_test/bert_data/loss_compara_content_sentence"
 ```
 
 **Step 2. Configure your parameters**
