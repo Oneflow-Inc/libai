@@ -213,7 +213,9 @@ class BertLoss(nn.Module):
 
 
 class BertModel(nn.Module):
-    """Bert language model"""
+    """The bare Bert Model transformer outputting raw hidden-states without
+    any specific head on top.
+    """
 
     @configurable
     def __init__(
@@ -299,6 +301,19 @@ class BertModel(nn.Module):
         }
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            attention_mask (flow.LongTensor): Mask to avoid performing     attention
+                on padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+
+            tokentype_ids (flow.LongTensor, optional): Segment token indices to indicate first and
+                second portions of the inputs. Indices are selected in `[0, 1]`. Defaults to None.
+        """
         extended_attention_mask = self.extended_attn_mask(attention_mask)
         embedding_output = self.embeddings(input_ids, tokentype_ids)
 
@@ -353,6 +368,11 @@ class BertPreTrainingHeads(nn.Module):
 
 @MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
+    """
+    Bert Model with two heads on top as done during the pretraining: a
+        `masked language modeling` head and a `next sentence prediction (classification)` head.
+    """
+
     def __init__(self, cfg):
         super().__init__()
         self.bert = BertModel(cfg)
@@ -372,6 +392,33 @@ class BertForPreTraining(nn.Module):
         lm_labels=None,
         loss_mask=None,
     ):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            attention_mask (flow.LongTensor): Mask to avoid performing attention on
+                padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+
+            tokentype_ids (flow.LongTensor, optional): Segment token indices to indicate first
+                and second portions of the inputs. Indices are selected in `[0, 1]`.
+                Defaults to None.
+            ns_labels (flow.LongTensor, optional): Labels for computing the next sequence prediction
+                (classification) loss. Input should be a sequence pair (see `input_ids` docstring).
+                Indices should be in `[0, 1]`:
+
+                - 0 indicates sequence B is a continuation of sequence A,
+                - 1 indicates sequence B is a random sequence.
+
+            lm_labels (flow.LongTensor, optional): Labels for computing the masked
+                language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
+            loss_mask (flow.LongTensor, optional): Mask to avoid performing loss computing
+                on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
+                loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
+        """
+
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 

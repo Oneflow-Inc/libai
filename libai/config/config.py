@@ -27,8 +27,11 @@ def configurable(init_func=None, *, from_config=None):
     Decorate a function or a class's __init__ method so that it can be called
     with a :class:`CfgNode` object using a :func:`from_config` function that translates
     :class:`CfgNode` to arguments.
+
     Examples:
-    ::
+
+    .. code-block:: python
+
         # Usage 1: Decorator on __init__:
         class A:
             @configurable
@@ -173,9 +176,11 @@ def try_get_key(cfg, *keys, default=None):
 def get_config(config_path):
     """
     Returns a config object from a config_path.
+
     Args:
         config_path (str): config file name relative to libai's "configs/"
             directory, e.g., "common/models/bert.py"
+
     Returns:
         omegaconf.DictConfig: a config object
     """
