@@ -18,6 +18,7 @@ from .build import build_graph, build_model
 from .t5_model import T5ForPreTraining, T5Model
 from .vision_transformer import VisionTransformer
 from .swin_transformer import SwinTransformer
+from .MoCo_v3 import MoCo_ViT
 
 __all__ = [
     "build_model",
@@ -28,4 +29,5 @@ __all__ = [
     "T5ForPreTraining",
     "VisionTransformer",
     "SwinTransformer",
+    'MoCo_ViT',
 ]
