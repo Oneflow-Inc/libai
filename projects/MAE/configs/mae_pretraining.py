@@ -48,7 +48,6 @@ train.train_micro_batch_size = 8
 train.train_epoch = 800
 train.warmup_ratio = 40 / 800
 train.log_period = 10
-train.eval_period = 10
 
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule: lr = base_lr * batch_size / 256
