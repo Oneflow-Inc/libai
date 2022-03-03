@@ -235,8 +235,9 @@ class MaskedAutoencoderViT(nn.Module):
         x_masked = flow.gather(x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
 
         # generate the binary mask: 0 is keep, 1 is remove
-        mask = flow.ones([N, L], sbp=x.sbp, placement=x.placement)
+        mask = dist.ttol(flow.ones([N, L], dtype=x.dtype))
         mask[:, :len_keep] = 0
+        mask = mask.to_global(sbp=x.sbp, placement=x.placement)
         # unshuffle to get binary mask
         mask = flow.gather(mask, dim=1, index=ids_restore)
 

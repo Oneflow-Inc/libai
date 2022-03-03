@@ -21,6 +21,8 @@ import oneflow as flow
 logger = logging.getLogger(__name__)
 
 def filter_keys(key, value):
+    """Filtering the state_dict keys and values to match LiBai's MAE model
+    """
     if "norm1" in key:
         key = key.replace("norm1", "input_layernorm")
     elif "attn.qkv" in key:
@@ -49,6 +51,9 @@ def filter_keys(key, value):
     return key, value
 
 def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth"):
+    """Load checkpoint from the given torch weights.
+    Torch weight from: https://github.com/facebookresearch/mae
+    """
     torch_dict = torch.load(path)["model"]
     parameters = torch_dict
     new_parameters = dict()

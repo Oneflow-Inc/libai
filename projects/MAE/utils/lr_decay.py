@@ -20,7 +20,7 @@
 # --------------------------------------------------------
 
 
-def get_layer_wise_lrd_overrides(model, learning_rate, layer_decay=.75):
+def get_layer_wise_lrd_overrides(model, weight_decay=0.05, no_weight_decay_list=[], layer_decay=.75):
     """
     Parameter groups for layer-wise lr decay
     Modified from BEiT: https://github.com/microsoft/unilm/blob/master/beit/optim_factory.py#L58
@@ -30,9 +30,16 @@ def get_layer_wise_lrd_overrides(model, learning_rate, layer_decay=.75):
     layer_scales = list(layer_decay ** (num_layers - i) for i in range(num_layers + 1))
     
     for name, param in model.named_parameters():
+        if param.ndim == 1 or name in no_weight_decay_list:
+            this_decay = 0.
+        else:
+            this_decay = weight_decay
+
         layer_idx = get_layer_idx_for_vit(name, num_layers)
+        # TODO: add lr_scale args in graph optim
         overrides[name] = {
-            "lr": learning_rate * layer_scales[layer_idx]
+            "lr_scale": layer_scales[layer_idx],
+            "weight_decay": this_decay
         }
     
     return overrides
