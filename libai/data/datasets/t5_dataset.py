@@ -94,7 +94,7 @@ class T5Dataset(flow.utils.data.Dataset):
             masked_positions,
             masked_labels,
             masked_spans,
-        ) = self.create_masked_lm_predictions(tokens, np_rng)
+        ) = self.create_masked_lm_predictions(tokens, np_rng, geometric_dist=True, max_ngrams=10)
 
         (
             encoder_input,
