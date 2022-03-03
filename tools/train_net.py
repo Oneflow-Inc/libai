@@ -17,9 +17,17 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from libai.engine import hooks
+from libai.utils import distributed as dist
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+
+@classmethod
+def test(cls, cfg, test_loaders, model, evaluator=None):
+    return {}
+
+DefaultTrainer.test = test
 
 
 def main(args):

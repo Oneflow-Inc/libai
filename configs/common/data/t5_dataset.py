@@ -32,11 +32,12 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
         LazyCall(T5Dataset)(
             data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
             indexed_dataset=LazyCall(get_indexed_dataset)(
-                data_prefix="/workspace/data/libai_dataset/" "/loss_compara_content_sentence",
+                data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
                 data_impl="mmap",
                 skip_warmup=False,
             ),
             max_seq_length=512,
+            max_seq_length_dec=128,
             mask_lm_prob=0.15,
             short_seq_prob=0.1,
         ),
