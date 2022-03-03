@@ -1,6 +1,6 @@
 # Getting Started
 This is a step-by-step tutorial on how to get started with LiBai:
-- [Train Bert-large Model Parallelism](#train-bert-large-model-parallelism)
+- [Train Bert-large Model Parallelly](#train-bert-large-model-parallelly)
   - [Prepare the Data and the Vocab](#prepare-the-data-and-the-vocab)
   - [How to Train Bert_large Model with Parallelism](#how-to-train-bertlarge-model-with-parallelism)
 - [Train VisionTransformer on ImageNet Dataset](#train-visiontransformer-on-imagenet-dataset)
@@ -8,7 +8,7 @@ This is a step-by-step tutorial on how to get started with LiBai:
   - [Train vit Model from Scratch](#train-vit-model-from-scratch)
 
 
-## Train Bert-large Model Parallelism
+## Train Bert-large Model Parallelly
 ### Prepare the Data and the Vocab
 
 - We have prepared relevant datasets, which you can download from the following link:
@@ -28,7 +28,7 @@ path/to/bert_data
 ```
 ### How to Train Bert_large Model with Parallelism
 
-We provided `train.sh` for you to execute training. Before invoking the script, there are several 
+We provided `train.sh` for execute training. Before invoking the script, there are several 
 steps to perform.
 
 **Step 1. Set data path and vocab path**
