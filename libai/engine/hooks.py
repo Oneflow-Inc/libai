@@ -23,12 +23,13 @@ from collections import Counter
 import oneflow as flow
 
 from libai.evaluation import flatten_results_dict
-from libai.trainer.trainer import HookBase
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.checkpoint import PeriodicCheckpointer as _PeriodicCheckpointer
 from libai.utils.events import EventWriter
 from libai.utils.timer import Timer
+
+from .trainer import HookBase
 
 """
 Implement some common hooks.
