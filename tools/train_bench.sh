@@ -1,6 +1,7 @@
 
+export CUDA_VISIBLE_DEVICES=4,5,6,7
 python3 -m oneflow.distributed.launch \
---nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 --master_port 12345 \
+--nproc_per_node 1 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 --master_port 12345 \
 tools/train_net.py \
 --config-file configs/t5_test.py train.output_dir="output/t5_dp"
 
