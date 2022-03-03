@@ -16,6 +16,7 @@
 from .bert_model import BertForPreTraining, BertModel
 from .build import build_graph, build_model
 from .t5_model import T5ForPreTraining, T5Model
+from .gpt_model import GPTForPreTraining, GPTModel
 from .vision_transformer import VisionTransformer
 from .swin_transformer import SwinTransformer
 
@@ -26,6 +27,8 @@ __all__ = [
     "BertForPreTraining",
     "T5Model",
     "T5ForPreTraining",
+    "GPTModel",
+    "GPTForPreTraining",
     "VisionTransformer",
     "SwinTransformer",
 ]
