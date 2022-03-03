@@ -68,7 +68,7 @@ def build_nlp_train_val_test_loader(
             map-style dataset.
         dataset_mixer: function for concating list dataset.
     """
-    # TODO: add input type, add dataset_weights sampler
+    # TODO: add dataset_weights sampler
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
@@ -225,7 +225,6 @@ def build_nlp_test_loader(
             mini-batch of Tensor(s).  Used when using batched loading from a
             map-style dataset.
     """
-    # TODO: add input type
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
     if sampler is None:
         sampler = SingleRoundSampler(
@@ -257,7 +256,7 @@ def build_image_train_loader(
     **kwargs
 ):
     """
-    Build cv train dataloader, it's used for train dataset
+    Build image train dataloader, it's used for train dataset
 
     Returns:
         It will return train dataloader, and Nonetype for valid/test dataloader
@@ -323,7 +322,7 @@ def build_image_test_loader(
     dataset, test_batch_size, sampler=None, num_workers=4, seed=0, collate_fn=None, **kwargs
 ):
     """
-    Build nlp test dataloader, it's used for test dataset
+    Build image test dataloader, it's used for test dataset
 
     Returns:
         It will return test dataloader
