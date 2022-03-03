@@ -58,7 +58,7 @@ class VisionTransformerMoCo(VisionTransformer):
         assert self.embed_dim[0] % 4 == 0, 'Embed dimension must be divisible by 4 for 2D sin-cos position embedding'
         pos_dim = self.embed_dim[0] // 4
         omega = flow.arange(pos_dim, dtype=flow.float32) / pos_dim
-        omega = 1. / omega.pow(temperature)  # torch supprts the ** op between tensor and flow, but oneflow does not.  (temperature**omega) -> omega.pow(temperature)
+        omega = 1. / flow.tensor(temperature)**omega  # torch supprts the ** op between tensor and float, but oneflow does not.  (temperature**omega) -> omega.pow(temperature)
         out_w = flow.mul(grid_w.flatten().unsqueeze(1), omega.unsqueeze(0))  #  out_w = flow.einsum('m,d->md', [grid_w.flatten(), omega])
         out_h = flow.mul(grid_h.flatten().unsqueeze(1), omega.unsqueeze(0))  #  out_h = flow.einsum('m,d->md', [grid_h.flatten(), omega])
         pos_emb = flow.cat([flow.sin(out_w), flow.cos(out_w), flow.sin(out_h), flow.cos(out_h)], dim=1)[None, :, :]
