@@ -6,4 +6,6 @@ libai.models
     :members: 
         VisionTransformer,
         BertModel,
-        BertForPreTraining
+        BertForPreTraining,
+        T5ForPreTraining,
+        T5Model

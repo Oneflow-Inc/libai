@@ -94,7 +94,7 @@ class T5Dataset(flow.utils.data.Dataset):
             masked_positions,
             masked_labels,
             masked_spans,
-        ) = self.create_masked_lm_predictions(tokens, np_rng)
+        ) = self.create_masked_lm_predictions(tokens, np_rng, geometric_dist=True, max_ngrams=10)
 
         (
             encoder_input,
@@ -112,7 +112,7 @@ class T5Dataset(flow.utils.data.Dataset):
             encoder_attn_mask=DistTensorData(encoder_padding_mask),
             decoder_attn_mask=DistTensorData(decoder_padding_mask),
             encoder_decoder_attn_mask=DistTensorData(encoder_decoder_padding_mask),
-            lm_labels=DistTensorData(labels, placement_idx=-1),
+            labels=DistTensorData(labels, placement_idx=-1),
             loss_mask=DistTensorData(loss_mask, placement_idx=-1),
         )
         return sample
