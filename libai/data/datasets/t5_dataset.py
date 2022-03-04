@@ -38,8 +38,18 @@ def is_start_piece(piece):
 class T5Dataset(flow.utils.data.Dataset):
     """
     Dataset containing sentences for T5 training.
-    """
 
+    Args:
+        tokenizer: Tokenizer to use.
+        data_prefix (str): Path to the training dataset.
+        indexed_dataset: Indexed dataset to use.
+        max_seq_length (int, optional): Maximum length of the sequence passing into encoder. All values are padded to this length. Defaults to 512.
+        max_seq_length_dec (int, optional): Maximum length of the sequence passing into decoder. All values are padded to this length. Defaults to 128.
+        mask_lm_prob (float, optional): Probability to mask tokens. Defaults to 0.15.
+        max_preds_per_seq (int, optional): Maximum number of masked tokens in each sentence. Defaults to None.
+        short_seq_prob (float, optional): Probability of producing a short sequence. Defaults to 0.0.
+        seed (int, optional): Seed for random number generator for reproducibility. Defaults to 1234.
+    """
     def __init__(
         self,
         tokenizer,
