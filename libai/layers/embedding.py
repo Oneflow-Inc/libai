@@ -223,6 +223,7 @@ class SinePositionalEmbedding(nn.Module):
 
 class PatchEmbedding(nn.Module):
     """2D Image to Patch Embedding
+    
     Arguments:
         img_size: size of input image. Default to 224.
         patch_size: embedded patch size. Default to 16.
