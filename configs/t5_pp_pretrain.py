@@ -17,12 +17,12 @@ model.cfg.num_attention_heads = 12
 model.cfg.hidden_size = 384
 model.cfg.hidden_layers = 6
 
-train.recompute_grad.enabled = True
+train.recompute_grad.enabled = False
 
-train.train_micro_batch_size = 32
+train.train_micro_batch_size = 16
 
-train.dist.tensor_parallel_size = 2
-train.dist.pipeline_parallel_size = 2
+train.dist.tensor_parallel_size = 1
+train.dist.pipeline_parallel_size = 1
 # encoder_layers + decoder_layers
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
