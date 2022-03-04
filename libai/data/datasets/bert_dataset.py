@@ -36,9 +36,24 @@ def is_start_piece(piece):
 
 
 class BertDataset(flow.utils.data.Dataset):
-    """
-    Dataset containing sentence pairs for BERT training.
+    """Dataset containing sentence pairs for BERT training.
     Each index corresponds to a randomly generated sentence pair.
+
+    Args:
+        tokenizer: Tokenizer to use.
+        data_prefix: Path to the training dataset.
+        indexed_dataset: Indexed dataset to use.
+        max_seq_length: Maximum length of the sequence. All values are padded to
+            this length. Defaults to 512.
+        mask_lm_prob: Probability to mask tokens. Defaults to 0.15.
+        short_seq_prob: Probability of producing a short sequence. Defaults to 0.0.
+        max_preds_per_seq: Maximum number of mask tokens in each sentence. Defaults to None.
+        seed: Seed for random number generator for reproducibility. Defaults to 1234.
+        binary_head: Specifies whether the underlying dataset
+            generates a pair of blocks along with a sentence_target or not.
+            Setting it to True assumes that the underlying dataset generates a
+            label for the pair of sentences which is surfaced as
+            sentence_target. Defaults to True.
     """
 
     def __init__(
