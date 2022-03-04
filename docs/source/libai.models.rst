@@ -5,6 +5,7 @@ libai.models
 .. automodule:: libai.models
     :members: 
         VisionTransformer,
+        SwinTransformer,
         BertModel,
         BertForPreTraining,
         T5ForPreTraining,
