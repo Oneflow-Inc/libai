@@ -22,9 +22,9 @@ This is a step-by-step tutorial on how to get started with LiBai:
 $ tree data
 path/to/bert_data
 ├── bert-base-chinese-vocab.txt
-├── loss_compara_content_sentence.bin
-└── loss_compara_content_sentence.idx
-
+└── data
+    ├── loss_compara_content_sentence.bin
+    └── loss_compara_content_sentence.idx
 ```
 ### How to Train Bert_large Model with Parallelism
 
@@ -37,27 +37,16 @@ steps to perform.
 ```python
 # Refine data path and vocab path to data folder
 vocab_file = "/path/to/bert_data/bert-base-chinese-vocab.txt"
-data_prefix = "/path/to/data_test/bert_data/loss_compara_content_sentence"
+data_prefix = "/path/to/bert_data/data/loss_compara_content_sentence"
 ```
 
 **Step 2. Configure your parameters**
 - In the [`configs/bert_large_pretrain.py`](https://github.com/Oneflow-Inc/libai/blob/main/configs/bert_large_pretrain.py) provided, a set of parameters are defined including training scheme, model, etc.
-- You can also modify the parameters setting. For example, use 8 GPUs to training, if you wish to modify the training parameters, you can refer to the file [`configs/common/train.py`](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py). if you wish to use `tensor-parallelism` + `data-parallelism`, you can set the following:
+- You can also modify the parameters setting. For example, use 8 GPUs to training, if you wish to modify the training parameters, you can refer to the file [`configs/common/train.py`](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py). If you want to train model with 2D mesh hybrid parallelism (4 groups for data parallel and 2 groups for tensor parallel), you can set the following:
 
 ```python
-train.update(
-    dict(
-        output_dir="./path",
-        train_micro_batch_size=16,
-        train_epoch=5,
-        train_iter=10000,
-        dist=dict(
-            data_parallel_size=4,
-            tensor_parallel_size=2,
-            pipeline_parallel_size=1,
-        ),
-    )
-)
+rain.dist.data_parallel_size=4
+train.dist.tensor_parallel_size=2
 ```
 
 **Step 3. Invoke parallel training**
