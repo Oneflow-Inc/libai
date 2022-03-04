@@ -22,16 +22,16 @@ from libai.utils import distributed as dist
 
 class Linear1D(nn.Module):
     r"""Linear layer with 1D parallelism which includes column parallelism and row parallelism.
-    The linear layer is defined as :math:`Y = XA + b`.
+    The linear layer is defined as :math:`Y = xA^T + b`.
 
-    In column parallelism, A is parallelized along the second dimension
-    as :math:`A = [A_1, ..., A_p]`.
+    In column parallelism, A^T is parallelized along the second dimension
+    as :math:`A^T = [A_1, ..., A_p]`.
 
-    In row parallelism, A is parallelized along the first dimension and X along its second
+    In row parallelism, A^T is parallelized along the first dimension and X along its second
     dimension as:
 
     .. math::
-        A = \begin{bmatrix}
+        A^T = \begin{bmatrix}
                  A\_1 \\
                  . \\
                  . \\
@@ -72,12 +72,18 @@ class Linear1D(nn.Module):
         self.skip_bias_add = skip_bias_add
 
         if parallel == "col":
-            # Column parallel weight sbp: [B, S(1)] and bias sbp: [B, S(0)].
-            weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
+            # Column parallel
+            # weight sbp sign: [B, S(0)], weight will be transposed when performing matmul
+            # so weight sbp sign actually be [B, S(1)]
+            # bias sbp sign: [B, S(0)]
+            weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
         elif parallel == "row":
-            # Row parallel weight sbp: [B, S(0)] and bias sbp: [B, B]
-            weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
+            # Row parallel
+            # weight sbp sign: [B, S(1)], weight will be transposed when performing matmul
+            # so weight sbp sign actually be [B, S(1)]
+            # bias sbp sign: [B, B]
+            weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         elif parallel == "data":
             weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
@@ -87,7 +93,7 @@ class Linear1D(nn.Module):
 
         self.weight = flow.nn.Parameter(
             flow.empty(
-                (in_features, out_features),
+                (out_features, in_features),
                 dtype=flow.float32,
                 placement=dist.get_layer_placement(layer_idx),  # for pipeline parallelism placement
                 sbp=weight_sbp,
@@ -109,29 +115,30 @@ class Linear1D(nn.Module):
         )
 
     def forward(self, x):
-        if dist.same_sbp(self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])):
-            # if the last dim of weight sbp sign is S(1), the last dim of x sbp sign must be B.
-            if self.weight.sbp[-1] == flow.sbp.split(1):
+        if dist.same_sbp(self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])):
+            # If the last dim of weight sbp sign is S(0), then last dim of weight.t sbp
+            # sign is S(1), so the last dim of x sbp sign must be B.
+            if self.weight.sbp[-1] == flow.sbp.split(0):
                 x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
                 x = x.to_global(sbp=x_sbp)
 
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
             x = x.to_global(grad_sbp=x.sbp)
-            x = flow.matmul(x, self.weight)
+            x = flow.matmul(x, self.weight, transpose_b=True)
 
         elif dist.same_sbp(
-            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
+            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
         ):
-            # if the last dim of weight sbp sign is S(0), the last dim of x sbp
-            # sign must be S(ndim-1).
-            if self.weight.sbp[-1] == flow.sbp.split(0):
+            # If the last dim of weight sbp sign is S(1), then last dim of weight.t sbp
+            # sign is S(0), so the last dim of x sbp sign must be S(ndim-1).
+            if self.weight.sbp[-1] == flow.sbp.split(1):
                 x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
                 x = x.to_global(sbp=x_sbp)
                 out_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
             else:
                 out_sbp = x.sbp
 
-            x = flow.matmul(x, self.weight)
+            x = flow.matmul(x, self.weight, transpose_b=True)
             # Change x.sbp for followup forward pass.
             # This line can be removed when sbp can be auto inferred.
             x = x.to_global(sbp=out_sbp)
@@ -142,7 +149,7 @@ class Linear1D(nn.Module):
             x = x.to_global(grad_sbp=x.sbp)
             # Change x.sbp to [S(0), S(0)] if weight is [B, B]
             x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
-            x = flow.matmul(x, self.weight)
+            x = flow.matmul(x, self.weight, transpose_b=True)
         else:
             raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")
 
