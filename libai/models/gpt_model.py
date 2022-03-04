@@ -166,6 +166,14 @@ class GPTModel(nn.Module):
         }
 
     def forward(self, input_ids):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+
+        Returns:
+            flow.Tensor: logits
+        """
 
         input_embeds = self.embeddings(input_ids, 0)
 
@@ -275,6 +283,9 @@ class GPTLoss(nn.Module):
 
 @MODEL_ARCH_REGISTRY.register()
 class GPTForPreTraining(nn.Module):
+    """
+    GPT Model with classification head on top.
+    """
     def __init__(self, cfg) -> None:
         super().__init__()
         self.GPT_model = GPTModel(cfg)
@@ -285,6 +296,19 @@ class GPTForPreTraining(nn.Module):
         input_ids,
         labels=None,
     ):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            labels (flow.LongTensor, optional): Labels for computing language modeling loss. 
+                None for evaluating. Defaults to None.
+
+        Returns:
+            dict: 
+                A dict containing :code:`loss_value` or :code:`logits` depending on training or evaluation.
+                :code:`{"masked_lm_loss": loss_value}` when training, 
+                :code:`{"prediction_scoers": logits}` when evaluating.
+        """
         logits = self.GPT_model(input_ids)
         if self.training and labels is not None:
             lm_loss = self.loss_func(logits, labels)

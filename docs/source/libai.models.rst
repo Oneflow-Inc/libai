@@ -9,4 +9,5 @@ libai.models
         BertForPreTraining,
         T5ForPreTraining,
         T5Model,
+        GPTForPreTraining,
         GPTModel
