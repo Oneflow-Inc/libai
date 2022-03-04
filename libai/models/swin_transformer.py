@@ -480,11 +480,11 @@ class BasicLayer(nn.Module):
 @MODEL_ARCH_REGISTRY.register()
 class SwinTransformer(nn.Module):
     """Swin Transformer in LiBai.
-    
-    LiBai implement of: 
+
+    LiBai implement of:
     `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows
     <https://arxiv.org/pdf/2103.14030>`_
-    
+
     Args:
         img_size (int, tuple(int)): Input image size. Default 224
         patch_size (int, tuple(int)): Patch size. Default: 4
