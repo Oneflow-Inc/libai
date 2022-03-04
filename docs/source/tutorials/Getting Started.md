@@ -45,7 +45,7 @@ data_prefix = "/path/to/bert_data/data/loss_compara_content_sentence"
 - You can also modify the parameters setting. For example, use 8 GPUs to training, if you wish to modify the training parameters, you can refer to the file [`configs/common/train.py`](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py). If you want to train model with 2D mesh hybrid parallelism (4 groups for data parallel and 2 groups for tensor parallel), you can set the following:
 
 ```python
-rain.dist.data_parallel_size=4
+train.dist.data_parallel_size=4
 train.dist.tensor_parallel_size=2
 ```
 
