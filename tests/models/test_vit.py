@@ -57,7 +57,7 @@ class TestViTModel(flow.unittest.TestCase):
         data_path = get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
 
         cfg.dataloader.train.dataset[0]._target_ = CIFAR10Dataset
-        cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:3])
+        cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:-1])
         cfg.dataloader.train.dataset[0].download = True
         cfg.dataloader.train.num_workers = 0
 
