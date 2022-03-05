@@ -132,15 +132,15 @@
 # train.dist.tensor_parallel_size=4 \
 # train.output_dir="output/4g_8p_fp16_tensor"
 
-# # 4 GPUs, fp32, 8 workers, hybrid parallel
-# python3 -m oneflow.distributed.launch \
-# --nproc_per_node 4 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 --master_port 12345 \
-# tools/train_net.py \
-# --config-file configs/t5_test.py \
-# dataloader.train.num_workers=8 \
-# train.amp.enabled=False \
-# train.dist.tensor_parallel_size=2 \
-# train.output_dir="output/4g_8p_fp32_hybrid"
+# 4 GPUs, fp32, 8 workers, hybrid parallel
+python3 -m oneflow.distributed.launch \
+--nproc_per_node 4 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 --master_port 12345 \
+tools/train_net.py \
+--config-file configs/t5_test.py \
+dataloader.train.num_workers=8 \
+train.amp.enabled=False \
+train.dist.tensor_parallel_size=2 \
+train.output_dir="output/test_result"
 
 # # 4 GPUs, fp16, 8 workers, hybrid parallel
 # python3 -m oneflow.distributed.launch \
@@ -152,11 +152,11 @@
 # train.dist.tensor_parallel_size=2 \
 # train.output_dir="output/4g_8p_fp16_hybrid"
 
-python3 -m oneflow.distributed.launch \
---nproc_per_node 4 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 --master_port 12345 \
-tools/train_net.py \
---config-file configs/t5_test.py \
-dataloader.train.num_workers=2 \
-train.amp.enabled=True \
-train.dist.tensor_parallel_size=2 \
-train.output_dir="output/4g_2p_fp16_hybrid"
+# python3 -m oneflow.distributed.launch \
+# --nproc_per_node 4 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 --master_port 12345 \
+# tools/train_net.py \
+# --config-file configs/t5_test.py \
+# dataloader.train.num_workers=2 \
+# train.amp.enabled=True \
+# train.dist.tensor_parallel_size=2 \
+# train.output_dir="output/4g_2p_fp16_hybrid"

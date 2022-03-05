@@ -303,6 +303,15 @@ class GraphTrainer(TrainerBase):
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
+        self.data = {
+            'encoder_input_ids': flow.ones((32, 512), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64), 
+            'decoder_input_ids': flow.ones((32, 128), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
+            'encoder_attn_mask': flow.ones((32, 512, 512), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64), 
+            'decoder_attn_mask': flow.ones((32, 128, 128), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
+            'encoder_decoder_attn_mask': flow.ones((32, 128, 512), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
+            'lm_labels': flow.ones((32, 128), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
+            'loss_mask': flow.ones((32, 128), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
+        }
 
     def run_step(self, get_batch: Callable):
         """
@@ -312,8 +321,14 @@ class GraphTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = next(self._data_loader_iter)
-        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        # data = next(self._data_loader_iter)
+        # data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        # for key in data:
+        #     if dist.is_main_process():
+        #         print(key, data[key].shape, data[key].sbp, data[key].placement, data[key].dtype)
+        # import pdb
+        # pdb.set_trace()
+        data = self.data
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
