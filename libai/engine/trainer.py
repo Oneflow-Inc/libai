@@ -303,14 +303,16 @@ class GraphTrainer(TrainerBase):
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
+        num_gpus = dist.get_world_size()
+        
         self.data = {
-            'encoder_input_ids': flow.ones((32, 512), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64), 
-            'decoder_input_ids': flow.ones((32, 128), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
-            'encoder_attn_mask': flow.ones((32, 512, 512), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64), 
-            'decoder_attn_mask': flow.ones((32, 128, 128), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
-            'encoder_decoder_attn_mask': flow.ones((32, 128, 512), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
-            'lm_labels': flow.ones((32, 128), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
-            'loss_mask': flow.ones((32, 128), placement=flow.placement(type="cuda", ranks=[[0, 1], [2, 3]]), sbp=(flow.sbp.split(axis=0), flow.sbp.broadcast), dtype=flow.int64),
+            'encoder_input_ids': flow.ones((16*num_gpus, 512), placement=flow.placement(type="cuda", ranks=list(range(num_gpus))), sbp=dist.get_nd_sbp([flow.sbp.split(axis=0), flow.sbp.broadcast]), dtype=flow.int64), 
+            'decoder_input_ids': flow.ones((16*num_gpus, 128), placement=flow.placement(type="cuda", ranks=list(range(num_gpus))), sbp=dist.get_nd_sbp([flow.sbp.split(axis=0), flow.sbp.broadcast]), dtype=flow.int64),
+            'encoder_attn_mask': flow.ones((16*num_gpus, 512, 512), placement=flow.placement(type="cuda", ranks=list(range(num_gpus))), sbp=dist.get_nd_sbp([flow.sbp.split(axis=0), flow.sbp.broadcast]), dtype=flow.int64), 
+            'decoder_attn_mask': flow.ones((16*num_gpus, 128, 128), placement=flow.placement(type="cuda", ranks=list(range(num_gpus))), sbp=dist.get_nd_sbp([flow.sbp.split(axis=0), flow.sbp.broadcast]), dtype=flow.int64),
+            'encoder_decoder_attn_mask': flow.ones((16*num_gpus, 128, 512), placement=flow.placement(type="cuda", ranks=list(range(num_gpus))), sbp=dist.get_nd_sbp([flow.sbp.split(axis=0), flow.sbp.broadcast]), dtype=flow.int64),
+            'lm_labels': flow.ones((16*num_gpus, 128), placement=flow.placement(type="cuda", ranks=list(range(num_gpus))), sbp=dist.get_nd_sbp([flow.sbp.split(axis=0), flow.sbp.broadcast]), dtype=flow.int64),
+            'loss_mask': flow.ones((16*num_gpus, 128), placement=flow.placement(type="cuda", ranks=list(range(num_gpus))), sbp=dist.get_nd_sbp([flow.sbp.split(axis=0), flow.sbp.broadcast]), dtype=flow.int64),
         }
 
     def run_step(self, get_batch: Callable):
