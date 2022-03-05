@@ -35,6 +35,7 @@ model.cfg.max_position_embeddings = 512
 
 train.train_iter = 200
 train.micro_batch_size = 16
+train.train_micro_batch_size = 16
 train.log_period = 20
 train.warmup_ratio = 0.01
 
