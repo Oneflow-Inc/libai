@@ -33,8 +33,8 @@ class VisionTransformer(nn.Module):
     <https://arxiv.org/abs/2010.11929>`_
 
     Args:
-        img_size (int, tuple): input image size
-        patch_size (int, tuple): patch size
+        img_size (int, tuple(int)): input image size
+        patch_size (int, tuple(int)): patch size
         in_chans (int): number of input channels
         embed_dim (int): embedding dimension
         depth (int): depth of transformer
