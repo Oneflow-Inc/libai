@@ -15,6 +15,8 @@ tokenization.tokenizer.vocab_file = vocab_file
 dataloader.train.dataset[0].data_prefix = data_prefix
 dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
+dataloader.train.num_workers=4 
+
 # Set all dropout to 0.
 model.cfg.hidden_dropout_prob = 0.1
 model.cfg.attention_probs_dropout_prob = 0.1
@@ -29,9 +31,9 @@ model.cfg.intermediate_size = 1536
 model.cfg.num_attention_heads = 12
 model.cfg.max_position_embeddings = 512
 
-train.train_iter = 200
+train.train_iter = 1000
 train.train_micro_batch_size = 16
-train.log_period = 20
+train.log_period = 10
 train.warmup_ratio = 0.01
 
 train.amp.enabled = False
