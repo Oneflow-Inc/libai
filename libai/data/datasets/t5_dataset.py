@@ -80,12 +80,13 @@ class T5Dataset(flow.utils.data.Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
+        sents = self.dataset[idx]
+
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
         # We % 2 ** 32 since numpy requires the seed to be between 0 and 2 ** 32 - 1
-        np_rng = np.random.RandomState(seed=((self.seed + idx) % 2 ** 32))
+        np_rng = np.random.RandomState(seed=(self.seed + idx))
 
-        sents = self.dataset[idx]
         tokens = [token for sent in sents for token in sent]
         tokens = tokens[: self.max_seq_length - 2]
 
@@ -290,7 +291,6 @@ class T5Dataset(flow.utils.data.Dataset):
 
         filler = [self.pad_id] * num_pad
         encoder_input = np.array(encoder_input + filler, dtype=np.int64)
-        encoder_input = flow.tensor(encoder_input, dtype=flow.long)
 
         num_tokens_dec = len(decoder_input)
         num_pad_dec = self.max_seq_length_dec - num_tokens_dec
@@ -299,22 +299,27 @@ class T5Dataset(flow.utils.data.Dataset):
         # tokens and token types
         filler_dec = [self.pad_id] * num_pad_dec
         decoder_input = np.array(decoder_input + filler_dec, dtype=np.int64)
-        decoder_input = flow.tensor(decoder_input, dtype=flow.long)
 
-        # padding mask
-        encoder_padding_mask = flow.tensor([1] * num_tokens + [0] * num_pad, dtype=flow.long)
-        decoder_padding_mask = flow.tensor(
-            [1] * num_tokens_dec + [0] * num_pad_dec, dtype=flow.long
-        )
-
+        # Create attention masks
         encoder_padding_mask = self.make_attention_mask(encoder_input, encoder_input)
         decoder_padding_mask = self.make_attention_mask(decoder_input, decoder_input)
         encoder_decoder_padding_mask = self.make_attention_mask(decoder_input, encoder_input)
         decoder_padding_mask = decoder_padding_mask * self.make_history_mask(decoder_input)
+        
+        # Labels mask.
+        labels = decoder_output + ([-1] * num_pad_dec)
+        labels = np.array(labels, dtype=np.int64)
 
-        # labels and loss mask
-        labels = flow.tensor(decoder_output + [-1] * num_pad_dec, dtype=flow.long)
-        loss_mask = [1] * num_tokens_dec + [0] * num_pad_dec
+        # Loss mask
+        loss_mask = ([1] * num_tokens_dec) + ([0] * num_pad_dec)
+        loss_mask = np.array(loss_mask, dtype=np.int64)
+        
+        encoder_input = flow.tensor(encoder_input, dtype=flow.long)
+        decoder_input = flow.tensor(decoder_input, dtype=flow.long)
+        labels = flow.tensor(labels, dtype=flow.long)
+        encoder_padding_mask = flow.tensor(encoder_padding_mask, dtype=flow.long)
+        decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.long)
+        encoder_decoder_padding_mask = flow.tensor(encoder_decoder_padding_mask, dtype=flow.long)
         loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
         return (
@@ -334,20 +339,20 @@ class T5Dataset(flow.utils.data.Dataset):
         :param target_block: 1-D array
         """
         mask = (target_block[None, :] >= 1) * (source_block[:, None] >= 1)
-        mask = mask.to(flow.long).cpu()
+        mask = mask.astype(np.int64)
         # (source_length, target_length)
         return mask
 
     def make_history_mask(self, block):
         length = block.shape[0]
-        arange = flow.arange(length)
+        arange = np.arange(length)
         history_mask = (
             arange[
                 None,
             ]
             <= arange[:, None]
         )
-        history_mask = history_mask.to(flow.long).cpu()
+        history_mask = history_mask.astype(np.int64)
         return history_mask
 
     @property
