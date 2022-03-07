@@ -16,6 +16,7 @@
 
 import numpy as np
 import oneflow as flow
+import unittest
 import oneflow.unittest
 from omegaconf import DictConfig
 from oneflow import nn
@@ -52,6 +53,7 @@ class TestLinear(flow.unittest.TestCase):
         )
         self.bias = flow.tensor([0.5721, 0.4765, 0.4740, 0.0337])
 
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n1d()
     def test_nn_linear(self):
         dist.setup_dist_util(
