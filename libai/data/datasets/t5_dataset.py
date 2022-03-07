@@ -84,7 +84,6 @@ class T5Dataset(flow.utils.data.Dataset):
 
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
-        # We % 2 ** 32 since numpy requires the seed to be between 0 and 2 ** 32 - 1
         np_rng = np.random.RandomState(seed=(self.seed + idx))
 
         tokens = [token for sent in sents for token in sent]
@@ -305,22 +304,21 @@ class T5Dataset(flow.utils.data.Dataset):
         decoder_padding_mask = self.make_attention_mask(decoder_input, decoder_input)
         encoder_decoder_padding_mask = self.make_attention_mask(decoder_input, encoder_input)
         decoder_padding_mask = decoder_padding_mask * self.make_history_mask(decoder_input)
-        
+
         # Labels mask.
         labels = decoder_output + ([-1] * num_pad_dec)
         labels = np.array(labels, dtype=np.int64)
 
         # Loss mask
         loss_mask = ([1] * num_tokens_dec) + ([0] * num_pad_dec)
-        loss_mask = np.array(loss_mask, dtype=np.int64)
-        
+        loss_mask = flow.tensor(loss_mask, dtype=flow.long)
+
         encoder_input = flow.tensor(encoder_input, dtype=flow.long)
         decoder_input = flow.tensor(decoder_input, dtype=flow.long)
         labels = flow.tensor(labels, dtype=flow.long)
         encoder_padding_mask = flow.tensor(encoder_padding_mask, dtype=flow.long)
         decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.long)
         encoder_decoder_padding_mask = flow.tensor(encoder_decoder_padding_mask, dtype=flow.long)
-        loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
         return (
             encoder_input,
