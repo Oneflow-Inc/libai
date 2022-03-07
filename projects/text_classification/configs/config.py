@@ -24,7 +24,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(ClueDataset)(
             task_name="afqmc",
-            data_dir="projects/text_classification/CLUEdatasets/afqmc",
+            data_dir="/DATA/disk1/liuchi/work/clue_data/afqmc",
             tokenizer=tokenization.tokenizer,
             max_seq_length=128,
             mode="train",
@@ -36,7 +36,7 @@ dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(ClueDataset)(
             task_name="afqmc",
-            data_dir="projects/text_classification/CLUEdatasets/afqmc",
+            data_dir="/DATA/disk1/liuchi/work/clue_data/afqmc",
             tokenizer=tokenization.tokenizer,
             max_seq_length=512,
             mode="dev",
@@ -54,7 +54,7 @@ model_cfg.update(
         num_attention_heads=16,
         # new key
         num_classes=2,
-        pretrain_megatron_weight="/home/dangkai/workspace/libai/model_optim_rng.pt",
+        pretrain_megatron_weight=None
     )
 )
 model = LazyCall(ModelForSequenceClassification)(cfg=model_cfg)
@@ -63,11 +63,11 @@ train.update(
     dict(
         recompute_grad=dict(enabled=True),
         output_dir="output/benchmark/",
-        train_micro_batch_size=32,
-        test_micro_batch_size=32,
+        train_micro_batch_size=16,
+        test_micro_batch_size=16,
         train_epoch=1,
         train_iter=0,
-        eval_period=50,
+        eval_period=500,
         log_period=50,
         dist=dict(
             data_parallel_size=1,

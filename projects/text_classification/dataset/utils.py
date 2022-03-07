@@ -75,7 +75,7 @@ class InputFeatures:
     input_ids: List[int]
     attention_mask: Optional[List[int]] = None
     token_type_ids: Optional[List[int]] = None
-    label: Optional[Union[int, float]] = None
+    labels: Optional[Union[int, float]] = None
 
 
 class DataProcessor:

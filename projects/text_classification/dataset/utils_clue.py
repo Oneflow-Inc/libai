@@ -110,7 +110,7 @@ def clue_convert_examples_to_features(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 token_type_ids=token_type_ids,
-                label=label,
+                labels=label,
             )
         )
 

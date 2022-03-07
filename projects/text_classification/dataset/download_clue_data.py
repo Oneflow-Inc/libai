@@ -72,7 +72,7 @@ def main(arguments):
         "--data_dir",
         help="directory to save data to",
         type=str,
-        default="./CLUEdatasets",
+        default="./clue_data",
     )
     parser.add_argument(
         "-t",

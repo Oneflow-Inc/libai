@@ -109,7 +109,7 @@ class ClueDataset(Dataset):
         tensors = {}
         for k, v in feature.__dict__.items():
             if v is not None:
-                if k == "label":
+                if k == "labels":
                     dtype = flow.long if isinstance(v, int) else flow.float
                     t = flow.tensor(v, dtype=dtype)
                     tensors[k] = DistTensorData(t, placement_idx=-1)
