@@ -144,6 +144,7 @@ _LOG_TIMER = {}
 def log_first_n(lvl, msg, n=1, *, name=None, key="caller"):
     """
     Log only for the first n times.
+
     Args:
         lvl (int): the logging level
         msg (str):

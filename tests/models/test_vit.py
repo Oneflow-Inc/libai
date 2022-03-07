@@ -13,78 +13,155 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
 import oneflow as flow
-from omegaconf import DictConfig
+import oneflow.unittest
+from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 import libai.utils.distributed as dist
-from configs.common.models.vit.vit_tiny_patch16_224 import model
-from libai.models import build_model
+from configs.common.models.vit.vit_small_patch16_224 import model
+from libai.config import LazyCall, LazyConfig
+from libai.data.datasets import CIFAR10Dataset
+from libai.engine import DefaultTrainer, hooks
+from libai.engine.default import _check_batch_size
+from libai.utils.file_utils import get_data_from_cache
+from libai.utils.logger import setup_logger
+
+DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/cifar10/cifar-10-python.tar.gz"  # noqa
+
+DATA_MD5 = "c58f30108f718f92721af3b95e74349a"
+
+setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestViTModel(unittest.TestCase):
-    def test_build_vit(self):
-        # reset dist env
-        dist.setup_dist_util(
-            DictConfig(
-                dict(
-                    data_parallel_size=1,
-                    tensor_parallel_size=1,
-                    pipeline_parallel_size=1,
-                )
-            )
-        )
+class TestViTModel(flow.unittest.TestCase):
+    def setUp(self) -> None:
+        cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "vit_data")
 
-        vit_model = build_model(model)
-        self.assertTrue(isinstance(vit_model.patch_embed.proj.weight, flow.Tensor))
+        cfg = LazyConfig.load("configs/vit_imagenet.py")
 
-    @unittest.skip("No GPU in CI Environment")
-    def test_vit_training_forward(self):
-        input_tensor = flow.randn(1, 3, 224, 224).to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        targets = flow.zeros(1, dtype=flow.int64).to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        vit_model = build_model(model)
-        output_dict = vit_model(input_tensor, targets)
+        # set model
+        cfg.model = model
+        cfg.model.num_classes = 10
+        cfg.model.depth = 6
+        cfg.model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
-        self.assertEqual(list(output_dict.keys()), ["losses"])
+        # prepare data path
+        if dist.get_local_rank() == 0:
+            get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
+        dist.synchronize()
 
-    @unittest.skip("No GPU in CI Environment")
-    def test_vit_eval_forward(self):
-        input_tensor = flow.randn(1, 3, 224, 224).to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        targets = flow.zeros(1, dtype=flow.int64).to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        vit_model = build_model(model)
-        vit_model.eval()
-        output_dict = vit_model(input_tensor, targets)
+        data_path = get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
 
-        self.assertEqual(list(output_dict.keys()), ["prediction_scores"])
-        self.assertEqual(list(output_dict["prediction_scores"].shape), [1, 1000])
+        cfg.dataloader.train.dataset[0]._target_ = CIFAR10Dataset
+        cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:-1])
+        cfg.dataloader.train.dataset[0].download = True
+        cfg.dataloader.train.num_workers = 0
 
-    @unittest.skip("No GPU in CI Environment")
-    def test_vit_backward(self):
-        input_tensor = flow.randn(1, 3, 224, 224).to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        targets = flow.zeros(1, dtype=flow.int64).to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
-        )
-        vit_model = build_model(model)
-        output_dict = vit_model(input_tensor, targets)
-        losses = output_dict["losses"]
-        losses.backward()
+        # refine mixup cfg
+        cfg.dataloader.train.mixup_func.num_classes = 10
+
+        del cfg.dataloader.test
+
+        # set training config
+        cfg.train.train_epoch = 0
+        cfg.train.train_iter = 10
+        cfg.train.eval_period = 1000  # no test now
+        cfg.train.log_period = 1
+        cfg.train.train_micro_batch_size = 8
+        cfg.train.num_accumulation_steps = 1
+        cfg.train.resume = False
+        cfg.train.output_dir = tempfile.mkdtemp()
+        cfg.train.recompute_grad.enabled = True
+        cfg.train.amp.enabled = True
+
+        self.cfg = cfg
+
+        def build_hooks(self):
+            ret = [
+                hooks.IterationTimer(),
+                hooks.LRScheduler(),
+            ]
+
+            if dist.is_main_process():
+                # run writers in the end, so that evaluation metrics are written
+                ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
+            return ret
+
+        @classmethod
+        def test(cls, cfg, test_loaders, model, evaluator=None):
+            return {}
+
+        DefaultTrainer.build_hooks = build_hooks
+        DefaultTrainer.test = test
+
+    @flow.unittest.skip_unless_1n4d()
+    def test_vit_eager_with_data_tensor_parallel(self):
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 2
+        # pipeline parallelism not supported in eager global now!
+        self.cfg.train.dist.pipeline_parallel_size = 1
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = False
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
+
+    @flow.unittest.skip_unless_1n4d()
+    def test_vit_graph_with_data_tensor_parallel(self):
+        self.cfg.train.num_accumulation_steps = 1
+
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 2
+        self.cfg.train.dist.pipeline_parallel_size = 1
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = True
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
+
+    @flow.unittest.skip_unless_1n4d()
+    def test_vit_graph_with_data_tensor_pipeline_parallel(self):
+        self.cfg.train.num_accumulation_steps = 4
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 2
+        # change to 2 when 2d sbp bugfix
+        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.pipeline_parallel_size = 2
+        self.cfg.train.dist.pipeline_num_layers = self.cfg.model.depth
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = True
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
+
+    @flow.unittest.skip_unless_1n4d()
+    @unittest.skip("There are still bugs in ZeRO")
+    def test_vit_with_zero(self):
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 4
+        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.pipeline_parallel_size = 1
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = True
+        self.cfg.train.zero_optimization.enabled = True
+        self.cfg.train.zero_optimization.stage = 3
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
 
 
 if __name__ == "__main__":

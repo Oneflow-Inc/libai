@@ -3,6 +3,8 @@ botocore
 cloudpickle
 flowvision
 filelock
+flowvision==0.1.0
+wget
 hydra-core
 nltk
 numpy

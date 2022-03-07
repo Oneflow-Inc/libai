@@ -7,11 +7,13 @@ libai.layers
         Embedding,
         VocabEmbedding,
         SinePositionalEmbedding,
+        PatchEmbedding,
+        DropPath,
         build_activation,
         Linear,
         Linear1D,
         MLP,
         LayerNorm,
+        MultiheadAttention,
         TransformerLayer,
-        ParallelCrossEntropyLoss,
-        LMLogits
+        ParallelCrossEntropyLoss

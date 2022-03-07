@@ -40,11 +40,11 @@ IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestBertModel(flow.unittest.TestCase):
+class TestT5Model(flow.unittest.TestCase):
     def setUp(self) -> None:
         cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "bert_data")
 
-        cfg = LazyConfig.load("configs/bert_large_pretrain.py")
+        cfg = LazyConfig.load("configs/t5_large_pretrain.py")
 
         # prepare dataset
         if dist.get_local_rank() == 0:
@@ -78,7 +78,7 @@ class TestBertModel(flow.unittest.TestCase):
         # set model
         cfg.model.cfg.num_attention_heads = 8
         cfg.model.cfg.hidden_size = 384
-        cfg.model.cfg.hidden_layers = 4
+        cfg.model.cfg.hidden_layers = 3
         cfg.train.recompute_grad.enabled = True
         cfg.train.amp.enabled = True
 
@@ -103,7 +103,7 @@ class TestBertModel(flow.unittest.TestCase):
         DefaultTrainer.test = test
 
     @flow.unittest.skip_unless_1n4d()
-    def test_bert_eager_with_data_tensor_parallel(self):
+    def test_t5_eager_with_data_tensor_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
@@ -118,8 +118,7 @@ class TestBertModel(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_bert_graph_with_data_tensor_parallel(self):
-        self.cfg.train.num_accumulation_steps = 1
+    def test_t5_graph_with_data_tensor_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
@@ -133,14 +132,15 @@ class TestBertModel(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_bert_graph_with_data_tensor_pipeline_parallel(self):
+    def test_t5_graph_with_data_tensor_pipeline_parallel(self):
         self.cfg.train.num_accumulation_steps = 4
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix
         self.cfg.train.dist.tensor_parallel_size = 1
         self.cfg.train.dist.pipeline_parallel_size = 2
-        self.cfg.train.dist.pipeline_num_layers = self.cfg.model.cfg.hidden_layers
+        # encoder_layers + decoder_layers
+        self.cfg.train.dist.pipeline_num_layers = 2 * self.cfg.model.cfg.hidden_layers
 
         dist.setup_dist_util(self.cfg.train.dist)
         _check_batch_size(self.cfg)
@@ -151,7 +151,7 @@ class TestBertModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     @unittest.skip("There are still bugs in ZeRO")
-    def test_bert_with_zero(self):
+    def test_t5_with_zero(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 4
         self.cfg.train.dist.tensor_parallel_size = 1
