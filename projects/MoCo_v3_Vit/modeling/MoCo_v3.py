@@ -1,6 +1,6 @@
 import oneflow as flow
 import oneflow.nn as nn
-from .build import MODEL_ARCH_REGISTRY
+# from libai.data.build import MODEL_ARCH_REGISTRY
 from libai.config.config import configurable
 from libai.utils.distributed import get_world_size
 
@@ -16,7 +16,7 @@ class MoCo(nn.Module):
         dim: feature dimension (default: 256)
         mlp_dim: hidden dimension in MLPs (default: 4096)
         T: softmax temperature (default: 1.0)
-        """
+        """ 
         super(MoCo, self).__init__()
 
         self.T = T
@@ -98,20 +98,22 @@ class MoCo(nn.Module):
         Output:
             loss
         """
-        print("images.size",images.size())
-        [x1, x2] = flow.chunk(images, 2, dim=1)
-        # compute features
-        q1 = self.predictor(self.base_encoder(x1)['prediction_scores'])
-        q2 = self.predictor(self.base_encoder(x2)['prediction_scores'])
+        if self.training:
+            [x1, x2] = flow.chunk(images, 2, dim=1)
+            # compute features
+            q1 = self.predictor(self.base_encoder(x1)['prediction_scores'])
+            q2 = self.predictor(self.base_encoder(x2)['prediction_scores'])
 
-        with flow.no_grad():  # no gradient
-            self._update_momentum_encoder(m)  # update the momentum encoder
+            with flow.no_grad():  # no gradient
+                self._update_momentum_encoder(m)  # update the momentum encoder
 
-            # compute momentum features as targets
-            k1 = self.momentum_encoder(x1)['prediction_scores']
-            k2 = self.momentum_encoder(x2)['prediction_scores']
+                # compute momentum features as targets
+                k1 = self.momentum_encoder(x1)['prediction_scores']
+                k2 = self.momentum_encoder(x2)['prediction_scores']
 
-        return {"losses": self.contrastive_loss(q1, k2) + self.contrastive_loss(q2, k1)}
+            return {"losses": self.contrastive_loss(q1, k2) + self.contrastive_loss(q2, k1)}
+        else:
+            return self.base_encoder(images)
 
 
 # class MoCo_ResNet(MoCo):
@@ -126,7 +128,7 @@ class MoCo(nn.Module):
 #         # predictor
 
 
-@MODEL_ARCH_REGISTRY.register()
+# @MODEL_ARCH_REGISTRY.register()
 class MoCo_ViT(MoCo):
     def _build_projector_and_predictor_mlps(self, dim, mlp_dim):
         hidden_dim = self.base_encoder.head.weight.shape[0] # linear.weight.T

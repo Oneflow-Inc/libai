@@ -1,13 +1,14 @@
-from libai.config import LazyCall
-from libai.models import MoCo_ViT
-from libai.models.vision_transformer import VisionTransformer
 import oneflow as flow
 import oneflow.nn as nn
+from libai.config import LazyCall
+# from libai.models import MoCo_ViT
+from projects.MoCo_v3_Vit.modeling.MoCo_v3 import MoCo_ViT
+from libai.models.vision_transformer import VisionTransformer
+
 import math
 from operator import mul
 from functools import reduce
 from libai.layers import PatchEmbedding
-
 
 class VisionTransformerMoCo(VisionTransformer):
     def __init__(self, stop_grad_conv1=False, **kwargs):

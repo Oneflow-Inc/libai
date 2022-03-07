@@ -1,12 +1,17 @@
 import oneflow as flow
 import random
+from libai.config import LazyCall, get_config
 from PIL import ImageFilter, ImageOps
-from .common.models.graph import graph
-from .common.models.moco_v3.MoCo_v3_Vit import model
-from .common.train import train
-from .common.optim import optim
-from .common.data.imagenet import dataloader
+from .models.MoCo_v3_Vit import model
+# from configs.common.models.graph import graph
+# from configs.common.train import train
+# from configs.common.optim import optim
+from configs.common.data.imagenet import dataloader
 from flowvision import transforms
+
+train = get_config("common/train.py").train
+optim = get_config("common/optim.py").optim
+graph = get_config("common/models/graph.py").graph
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/dataset/imagenet/extract"
