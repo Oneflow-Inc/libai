@@ -187,9 +187,19 @@ class TrainerBase:
         """
         # Only get metric value on rank0
         # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
+        """
+        consider model
+        """
+        # metrics_dict = {
+        #     k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+        #     for k, v in loss_dict.items()
+        # }
+        
+        """
+        only data
+        """
         metrics_dict = {
-            k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
-            for k, v in loss_dict.items()
+            "losses": np.ones(1)
         }
         metrics_dict["data_time"] = data_time
 
@@ -304,6 +314,20 @@ class GraphTrainer(TrainerBase):
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
 
+        num_gpus = dist.get_world_size()
+        # self.data = {
+        #     "images": flow.ones((16*num_gpus, 3, 224, 224), 
+        #                         placement=flow.placement(type="cuda", ranks=list(range(num_gpus))),
+        #                         sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+        #                         dtype=flow.float32
+        #                     ),
+        #     "labels": flow.zeros((16*num_gpus, 1000),
+        #                           placement=flow.placement(type="cuda", ranks=list(range(num_gpus))),
+        #                           sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]),
+        #                           dtype=flow.int64,
+        #                     )
+        # }
+
     def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.
@@ -314,12 +338,17 @@ class GraphTrainer(TrainerBase):
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
         data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        
+        # data = self.data
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
-        loss_dict = self.graph(**data)
+        # loss_dict = self.graph(**data)
+       
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step
-        loss_dict = {key: value.mean() for key, value in loss_dict.items()}
+        # loss_dict = {key: value.mean() for key, value in loss_dict.items()}
+
+        loss_dict = {"losses": 0.0}
 
         self.write_metrics(loss_dict, data_time)
