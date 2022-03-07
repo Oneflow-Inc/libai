@@ -14,9 +14,10 @@
 # limitations under the License.
 
 
+import unittest
+
 import numpy as np
 import oneflow as flow
-import unittest
 import oneflow.unittest
 from omegaconf import DictConfig
 from oneflow import nn
