@@ -19,7 +19,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import oneflow as flow
 from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.trainer import DefaultTrainer, default_setup
+from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 
 class Trainer(DefaultTrainer):
@@ -31,6 +31,7 @@ class Trainer(DefaultTrainer):
         return model
 
     def train(self):
+        self._hooks = self._hooks[:3] + self._hooks[4:] # remove evaluation hook
         super().train()
         all_losses = self.storage.history("total_loss").values()
         with open("projects/t5_loss_compare/of_loss.txt", "w") as f:
