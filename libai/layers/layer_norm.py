@@ -22,7 +22,7 @@ from libai.utils import distributed as dist
 class LayerNorm(nn.Module):
     """Applies Layer Normalization over a mini-batch of inputs in 1D parallelism.
 
-    Arguments:
+    Args:
         normalized_shape: input shape from an expected input of size.
         eps: a value added to the denominator for numerical stability. Defaults to 1e-5.
             elementwise_affine: a boolean value that when set to ``True``, this module
@@ -39,6 +39,7 @@ class LayerNorm(nn.Module):
         self.normalized_shape = tuple(normalized_shape)
         self.eps = eps
         self.elementwise_affine = elementwise_affine
+        self.layer_idx = layer_idx
 
         if elementwise_affine:
             self.weight = flow.nn.Parameter(
