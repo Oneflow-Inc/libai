@@ -17,7 +17,7 @@ import oneflow.nn as nn
 
 from libai.utils import distributed as dist
 
-from .attention import MultiheadAttention
+from .attention import MultiheadAttention, timmAttention
 from .droppath import DropPath
 from .layer_norm import LayerNorm
 from .mlp import MLP
@@ -205,6 +205,28 @@ class TransformerLayer(nn.Module):
 
     def build_attention(self, is_cross_attention=False):
         return MultiheadAttention(
+            self.hidden_size,
+            self.num_attention_heads,
+            is_cross_attention=is_cross_attention,
+            attention_dropout_prob=self.attention_dropout_prob,
+            output_dropout_prob=self.output_dropout_prob,
+            init_method=self.init_method,
+            output_layer_init_method=self.output_layer_init_method,
+            bias_dropout_fusion=self.bias_dropout_fusion,
+            scale_mask_softmax_fusion=self.scale_mask_softmax_fusion,
+            apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
+            layer_idx=self.layer_idx,
+        )
+
+
+class timmTransformerLayer(TransformerLayer):
+    """Transformer layer use timmAttention
+    """
+    def __init__(**kwargs):
+        super().__init__(**kwargs)
+    
+    def build_attention(self, is_cross_attention=False):
+        return timmAttention(
             self.hidden_size,
             self.num_attention_heads,
             is_cross_attention=is_cross_attention,
