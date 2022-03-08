@@ -19,5 +19,5 @@ model.cfg.hidden_size = 384
 model.cfg.hidden_layers = 6
 
 train.train_micro_batch_size = 16
-train.recompute_grad.enabled = True
+train.activation_checkpoint.enabled = True
 train.output_dir = "./output/t5_output"
