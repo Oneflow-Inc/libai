@@ -75,7 +75,7 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
         cfg.train.output_dir = tempfile.mkdtemp()
-        cfg.train.recompute_grad.enabled = True
+        cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 
         self.cfg = cfg
