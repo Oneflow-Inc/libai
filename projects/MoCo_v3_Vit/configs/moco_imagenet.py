@@ -1,11 +1,8 @@
 import oneflow as flow
 import random
-from libai.config import LazyCall, get_config
+from libai.config import LazyCall, get_config, lazy
 from PIL import ImageFilter, ImageOps
 from .models.MoCo_v3_Vit import model
-# from configs.common.models.graph import graph
-# from configs.common.train import train
-# from configs.common.optim import optim
 from configs.common.data.imagenet import dataloader
 from flowvision import transforms
 
@@ -43,29 +40,30 @@ normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
 
 # follow BYOL's augmentation recipe: https://arxiv.org/abs/2006.07733
 augmentation1 = [
-    transforms.RandomResizedCrop(224, scale=(.2, 1.)),
-    transforms.RandomApply([
-        transforms.ColorJitter(0.4, 0.4, 0.2, 0.1)  # not strengthened
+    LazyCall(transforms.RandomResizedCrop)(size=224, scale=(.2, 1.)),
+    LazyCall(transforms.RandomApply)(transforms=[
+        LazyCall(transforms.ColorJitter)(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)  # not strengthened
     ], p=0.8),
     # transforms.RandomGrayscale(p=0.2), # oneflow does not support RandomGrayscale
-    transforms.RandomApply([GaussianBlur([.1, 2.])], p=1.0), 
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
+    LazyCall(transforms.RandomApply)(transforms=[GaussianBlur(sigma=[.1, 2.])], p=1.0), 
+    LazyCall(transforms.RandomHorizontalFlip)(),
+    LazyCall(transforms.ToTensor)(),
     normalize
 ]
 
 augmentation2 = [
-    transforms.RandomResizedCrop(224, scale=(.2, 1.)),
-    transforms.RandomApply([
-        transforms.ColorJitter(0.4, 0.4, 0.2, 0.1)  # not strengthened
+    LazyCall(transforms.RandomResizedCrop)(size=224, scale=(.2, 1.)),
+    LazyCall(transforms.RandomApply)(transforms=[
+        LazyCall(transforms.ColorJitter)(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)  # not strengthened
     ], p=0.8),
-    # transforms.RandomGrayscale(p=0.2),
-    transforms.RandomApply([GaussianBlur([.1, 2.])], p=1.0), 
-    transforms.RandomApply([Solarize()], p=0.2),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
+    # transforms.RandomGrayscale(p=0.2), # oneflow does not support RandomGrayscale
+    LazyCall(transforms.RandomApply)(transforms=[GaussianBlur(sigma=[.1, 2.])], p=1.0), 
+    LazyCall(transforms.RandomApply)(transforms=[Solarize()], p=0.2),
+    LazyCall(transforms.RandomHorizontalFlip)(),
+    LazyCall(transforms.ToTensor)(),
     normalize
 ]
+
 
 
 class TwoCropsTransform:
@@ -84,9 +82,9 @@ class TwoCropsTransform:
 dataloader.train.mixup_func = None
 
 # Add augmentation Func
-dataloader.train.dataset[0].transform=TwoCropsTransform(
-                                               transforms.Compose(augmentation1),
-                                               transforms.Compose(augmentation2))
+dataloader.train.dataset[0].transform=LazyCall(TwoCropsTransform)(
+                                               base_transform1=LazyCall(transforms.Compose)(transforms=augmentation1),
+                                               base_transform2=LazyCall(transforms.Compose)(transforms=augmentation2))
 
 
 
@@ -96,11 +94,11 @@ optim.eps = 1e-8
 optim.weight_decay = .1
 
 # Refine train cfg for moco v3 model
-train.train_micro_batch_size = 128  # 128
-train.test_micro_batch_size = 128  # 128
+train.train_micro_batch_size = 10  # 128
+train.test_micro_batch_size = 10  # 128
 train.train_epoch = 300
 train.warmup_ratio = 40 / 300
-train.eval_period = 1 # 1000
+train.eval_period = 1000 
 train.log_period = 1
 
 # Scheduler

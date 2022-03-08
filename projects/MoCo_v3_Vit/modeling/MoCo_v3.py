@@ -3,6 +3,7 @@ import oneflow.nn as nn
 # from libai.data.build import MODEL_ARCH_REGISTRY
 from libai.config.config import configurable
 from libai.utils.distributed import get_world_size
+from libai.layers import Linear
 
 
 class MoCo(nn.Module):
@@ -49,8 +50,7 @@ class MoCo(nn.Module):
             dim1 = input_dim if l == 0 else mlp_dim
             dim2 = output_dim if l == num_layers - 1 else mlp_dim
 
-            mlp.append(nn.Linear(dim1, dim2, bias=False))
-
+            mlp.append(Linear(dim1, dim2,  bias=False)) # libai
             if l < num_layers - 1:
                 mlp.append(nn.BatchNorm1d(dim2))
                 mlp.append(nn.ReLU(inplace=True))

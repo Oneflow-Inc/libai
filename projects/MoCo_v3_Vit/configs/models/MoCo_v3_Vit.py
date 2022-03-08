@@ -4,6 +4,7 @@ from libai.config import LazyCall
 # from libai.models import MoCo_ViT
 from projects.MoCo_v3_Vit.modeling.MoCo_v3 import MoCo_ViT
 from libai.models.vision_transformer import VisionTransformer
+from libai.layers import Linear
 
 import math
 from operator import mul
@@ -31,7 +32,7 @@ class VisionTransformerMoCo(VisionTransformer):
         self.build_2d_sincos_position_embedding()
         # weight initialization
         for name, m in self.named_modules():
-            if isinstance(m, nn.Linear):
+            if isinstance(m, Linear): # libai
                 if 'qkv' in name:
                     # treat the weights of Q, K, V separately
                     val = math.sqrt(6. / float(m.weight.shape[0] // 3 + m.weight.shape[1]))
