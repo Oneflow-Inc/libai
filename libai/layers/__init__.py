@@ -21,7 +21,7 @@ from .linear import Linear, Linear1D
 from .lm_logits import LMLogits
 from .mlp import MLP
 from .transformer_layer import TransformerLayer
-from .attention import MultiheadAttention
+from .attention import MultiheadAttention, timmAttention
 from .droppath import DropPath, drop_path
 
 __all__ = [
@@ -36,6 +36,7 @@ __all__ = [
     "LayerNorm",
     "TransformerLayer",
     "MultiheadAttention",
+    "timmAttention",
     "ParallelCrossEntropyLoss",
     "LMLogits",
     "drop_path",
