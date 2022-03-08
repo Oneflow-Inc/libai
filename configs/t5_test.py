@@ -17,8 +17,6 @@ dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
 train.eval_iter = 10
 
-dataloader.train.num_workers = 4 
-
 # Set all dropout to 0.
 model.cfg.hidden_dropout_prob = 0.1
 model.cfg.attention_probs_dropout_prob = 0.1
@@ -40,24 +38,19 @@ train.log_period = 10
 train.warmup_ratio = 0.01
 
 train.amp.enabled = False
-train.recompute_grad.enabled = False
+train.activation_checkpoint.enabled = False
 train.log_period = 1
 
-# gpus = (dp_num) * mp_num * pipeline_num
-# 4 = mp_num(2) * ?dp_num(2)
-# 8 = 2 * 2 *x
 
-# train.dist.data_parallel_size = 2
-
-train.dist.tensor_parallel_size = 2
-train.dist.pipeline_parallel_size = 2
+train.dist.tensor_parallel_size = 1
+train.dist.pipeline_parallel_size = 1
 
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
 # Set a constant lr scheduler after warmup
 optim.lr = 0.0001
 
-train.output_dir = "output/demo"
+train.output_dir = "output/t5_profile"
 
 # for ds in dataloader.train.dataset:
     # ds.max_num_samples = train.train_iter * train.micro_batch_size
