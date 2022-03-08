@@ -13,13 +13,13 @@ from .gpt_dataset import dataloader, tokenization
 train.test_micro_batch_size = 4
 
 # Bert-large model config
-model.cfg.embedding_dropout_prob = 0.1
-model.cfg.attention_dropout_prob = 0.1
+model.cfg.embedding_dropout_prob = 0.0
+model.cfg.attention_dropout_prob = 0.0
 model.cfg.num_attention_heads = 16
-model.cfg.hidden_size = 384
-model.cfg.ffn_hidden_size = 1536
-model.cfg.num_layers = 6
-model.cfg.max_seq_length = 256
+model.cfg.hidden_size = 768
+model.cfg.ffn_hidden_size = 768 * 4
+model.cfg.num_layers = 12
+model.cfg.max_seq_length = 1024
 
 dataloader.train.train_val_test_datasets.seq_length = model.cfg.max_seq_length
 
@@ -35,5 +35,4 @@ train.scheduler = LazyCall(WarmupMultiStepLR)(
     milestones=[0.999999, ],
     warmup_method="linear",
 )
-
-# train.model_path = '/workspace/libai/tests/gpt_test/flow_gpt.f'
+train.model_path = '/workspace/libai/tests/gpt_test/flow_gpt.f'
