@@ -17,7 +17,7 @@ model.cfg.num_attention_heads = 12
 model.cfg.hidden_size = 384
 model.cfg.hidden_layers = 6
 
-train.recompute_grad.enabled = False
+train.activation_checkpoint.enabled = True
 
 train.train_micro_batch_size = 16
 

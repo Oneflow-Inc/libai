@@ -79,7 +79,7 @@ class TestT5Model(flow.unittest.TestCase):
         cfg.model.cfg.num_attention_heads = 8
         cfg.model.cfg.hidden_size = 384
         cfg.model.cfg.hidden_layers = 3
-        cfg.train.recompute_grad.enabled = True
+        cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 
         self.cfg = cfg

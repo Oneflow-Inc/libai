@@ -24,9 +24,6 @@ from libai.utils import distributed as dist
 
 from .build import MODEL_ARCH_REGISTRY
 
-nn.Linear = Linear
-nn.LayerNorm = LayerNorm
-
 
 def window_partition(x, window_size):
     B, H, W, C = x.shape
@@ -103,9 +100,9 @@ class WindowAttention(nn.Module):
             ),
         )
 
-        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.qkv = Linear(dim, dim * 3, bias=qkv_bias)
         self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = nn.Linear(dim, dim)
+        self.proj = Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
         self.softmax = nn.Softmax(dim=-1)
         self.fused_bias_add_dropout = fused_bias_add_dropout
@@ -175,7 +172,7 @@ class SwinTransformerBlock(nn.Module):
         attn_drop (float, optional): Attention dropout rate. Default: 0.0
         drop_path (float, optional): Stochastic depth rate. Default: 0.0
         act_layer (nn.Module, optional): Activation layer. Default: nn.GELU
-        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
+        norm_layer (nn.Module, optional): Normalization layer.  Default: libai.layers.LayerNorm
     """
 
     def __init__(
@@ -192,7 +189,7 @@ class SwinTransformerBlock(nn.Module):
         attn_drop=0.0,
         drop_path=0.0,
         act_layer=nn.GELU,
-        norm_layer=nn.LayerNorm,
+        norm_layer=LayerNorm,
     ):
         super().__init__()
         self.dim = dim
@@ -316,14 +313,14 @@ class PatchMerging(nn.Module):
     Args:
         input_resolution (tuple[int]): Resolution of input feature.
         dim (int): Number of input channels.
-        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
+        norm_layer (nn.Module, optional): Normalization layer.  Default: libai.layers.LayerNorm
     """
 
-    def __init__(self, input_resolution, dim, norm_layer=nn.LayerNorm):
+    def __init__(self, input_resolution, dim, norm_layer=LayerNorm):
         super().__init__()
         self.input_resolution = input_resolution
         self.dim = dim
-        self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
+        self.reduction = Linear(4 * dim, 2 * dim, bias=False)
         self.norm = norm_layer(4 * dim)
 
     def forward(self, x):
@@ -413,7 +410,7 @@ class BasicLayer(nn.Module):
         drop (float, optional): Dropout rate. Default: 0.0
         attn_drop (float, optional): Attention dropout rate. Default: 0.0
         drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
-        norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm
+        norm_layer (nn.Module, optional): Normalization layer. Default: libai.layers.LayerNorm
         downsample (nn.Module | None, optional): Downsample at the end of the layer. Default: None
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
     """
@@ -431,7 +428,7 @@ class BasicLayer(nn.Module):
         drop=0.0,
         attn_drop=0.0,
         drop_path=0.0,
-        norm_layer=nn.LayerNorm,
+        norm_layer=LayerNorm,
         downsample=None,
         use_checkpoint=False,
     ):
@@ -482,12 +479,15 @@ class BasicLayer(nn.Module):
 
 @MODEL_ARCH_REGISTRY.register()
 class SwinTransformer(nn.Module):
-    """Vision Transformer
-    LiBai impl of: `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows`
-        - https://arxiv.org/pdf/2103.14030
+    """Swin Transformer in LiBai.
+
+    LiBai implement of:
+    `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows
+    <https://arxiv.org/pdf/2103.14030>`_
+
     Args:
-        img_size (int | tuple(int)): Input image size. Default 224
-        patch_size (int | tuple(int)): Patch size. Default: 4
+        img_size (int, tuple(int)): Input image size. Default 224
+        patch_size (int, tuple(int)): Patch size. Default: 4
         in_chans (int): Number of input image channels. Default: 3
         num_classes (int): Number of classes for classification head. Default: 1000
         embed_dim (int): Patch embedding dimension. Default: 96
@@ -500,10 +500,12 @@ class SwinTransformer(nn.Module):
         drop_rate (float): Dropout rate. Default: 0
         attn_drop_rate (float): Attention dropout rate. Default: 0
         drop_path_rate (float): Stochastic depth rate. Default: 0.1
-        norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm.
+        norm_layer (nn.Module): Normalization layer. Default: libai.layers.LayerNorm.
         ape (bool): If True, add absolute position embedding to the patch embedding. Default: False
         patch_norm (bool): If True, add normalization after patch embedding. Default: True
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
+        loss_func (callable, optional): loss function for computing the total loss
+                                    between logits and labels
     """
 
     @configurable
@@ -523,10 +525,11 @@ class SwinTransformer(nn.Module):
         drop_rate=0.0,
         attn_drop_rate=0.0,
         drop_path_rate=0.1,
-        norm_layer=nn.LayerNorm,
+        norm_layer=LayerNorm,
         ape=False,
         patch_norm=True,
         use_checkpoint=False,
+        loss_func=None,
         **kwargs,
     ):
         super().__init__()
@@ -589,16 +592,19 @@ class SwinTransformer(nn.Module):
 
         self.norm = norm_layer(self.num_features)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.head = nn.Linear(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
+        self.head = Linear(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
+
+        # Loss func
+        self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
+        if isinstance(m, Linear):
             trunc_normal_(m.weight, std=0.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
+            if isinstance(m, Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
+        elif isinstance(m, LayerNorm):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
@@ -637,7 +643,12 @@ class SwinTransformer(nn.Module):
         x = flow.flatten(x, 1)
         return x
 
-    def forward(self, x):
-        x = self.forward_features(x)
+    def forward(self, images, labels=None):
+        x = self.forward_features(images)
         x = self.head(x)
-        return x
+
+        if labels is not None and self.training:
+            losses = self.loss_func(x, labels)
+            return {"losses": losses}
+        else:
+            return {"prediction_scores": x}

@@ -25,6 +25,7 @@ libai.data.datasets module
         CIFAR10Dataset,
         CIFAR100Dataset,
         ImageNetDataset,
+        BertDataset
 
 
 libai.data.samplers module
@@ -34,3 +35,15 @@ libai.data.samplers module
     :members:
         CyclicSampler,
         SingleRoundSampler,
+
+libai.data.build module
+---------------------------------
+.. currentmodule:: libai.data
+.. automodule:: libai.data.build
+    :members:
+        build_nlp_train_val_test_loader,
+        build_nlp_train_loader,
+        build_nlp_test_loader,
+        build_image_train_loader,
+        build_image_test_loader,
+        
