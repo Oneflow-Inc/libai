@@ -258,8 +258,10 @@ class BestCheckpointer(HookBase):
                 self._update_best(latest_metric, metric_iter)
             else:
                 logger.info(
-                    f"Not saving as latest eval score for {self._val_metric} is {latest_metric:0.5f}, "
-                    f"not better than best score {self.best_metric:0.5f} @ iteration {self.best_iter}."
+                    f"Not saving as latest eval score for "
+                    f"{self._val_metric} is {latest_metric:0.5f}, "
+                    f"not better than best score {self.best_metric:0.5f} "
+                    f"@ iteration {self.best_iter}."
                 )
 
         dist.synchronize()
