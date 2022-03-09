@@ -264,9 +264,9 @@ class BestCheckpointer(HookBase):
 
         dist.synchronize()
         flag = flag.to_global(
-            sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda")
+            sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cpu")
         )
-        if dist.ttol(flag).item() == 1:
+        if flag.to_local().item() == 1:
             self._checkpointer.save(f"{self._file_prefix}")
 
     def after_step(self):
