@@ -14,14 +14,11 @@
 # limitations under the License.
 
 import copy
-import logging
 from collections import OrderedDict
 
 from libai.utils import distributed as dist
 
 from .evaluator import DatasetEvaluator
-
-logger = logging.getLogger(__name__)
 
 
 def accuracy(output, target, topk=(1,)):

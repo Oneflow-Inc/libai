@@ -16,3 +16,4 @@
 from .evaluator import DatasetEvaluator, inference_on_dataset
 from .utils import print_csv_format, flatten_results_dict
 from .cls_evaluator import ClsEvaluator
+from .ppl_evaluator import PPLEvaluator
