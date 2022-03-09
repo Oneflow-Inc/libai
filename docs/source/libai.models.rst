@@ -7,4 +7,8 @@ libai.models
         VisionTransformer,
         SwinTransformer,
         BertModel,
-        BertForPreTraining
+        BertForPreTraining,
+        T5ForPreTraining,
+        T5Model,
+        GPTForPreTraining,
+        GPTModel
