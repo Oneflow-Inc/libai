@@ -20,9 +20,9 @@ sys.path.append(".")
 
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.trainer import DefaultTrainer, default_setup
+# from libai.trainer import DefaultTrainer, default_setup
+from projects.MoCo_v3_Vit.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)

@@ -1,3 +1,4 @@
+import math
 import oneflow as flow
 import oneflow.nn as nn
 # from libai.data.build import MODEL_ARCH_REGISTRY
@@ -12,7 +13,7 @@ class MoCo(nn.Module):
     https://arxiv.org/abs/1911.05722
     """
     @configurable
-    def __init__(self, base_encoder, momentum_encoder, dim=256, mlp_dim=4096, T=1.0):
+    def __init__(self, base_encoder, momentum_encoder, dim=256, mlp_dim=4096, T=1.0, m=0.99, max_iter=300):
         """
         dim: feature dimension (default: 256)
         mlp_dim: hidden dimension in MLPs (default: 4096)
@@ -21,12 +22,13 @@ class MoCo(nn.Module):
         super(MoCo, self).__init__()
 
         self.T = T
-
+        self.m = m
         # build encoders
         self.base_encoder = base_encoder
         self.momentum_encoder = momentum_encoder
         self.base_encoder.num_classes = dim
         self.momentum_encoder.num_classes = dim
+        self.max_iter = max_iter
 
         self._build_projector_and_predictor_mlps(dim, mlp_dim)
 
@@ -89,7 +91,12 @@ class MoCo(nn.Module):
 
         return nn.CrossEntropyLoss()(logits, labels) * (2 * self.T)
 
-    def forward(self, images, labels=None, m=0.99):
+    def adjust_moco_momentum(self, cu_iter, m):
+        """Adjust moco momentum based on current epoch"""
+        m = 1. - 0.5 * (1. + math.cos(math.pi * cu_iter / self.max_iter)) * (1. - m)
+        return m
+
+    def forward(self, images, labels=None, cu_iter=0, m=0.99):
         """
         Input:
             x1: first views of images
@@ -104,6 +111,8 @@ class MoCo(nn.Module):
             q1 = self.predictor(self.base_encoder(x1)['prediction_scores'])
             q2 = self.predictor(self.base_encoder(x2)['prediction_scores'])
 
+            m = self.adjust_moco_momentum(cu_iter, m) # update the moco_momentum
+
             with flow.no_grad():  # no gradient
                 self._update_momentum_encoder(m)  # update the momentum encoder
 
@@ -111,7 +120,7 @@ class MoCo(nn.Module):
                 k1 = self.momentum_encoder(x1)['prediction_scores']
                 k2 = self.momentum_encoder(x2)['prediction_scores']
 
-            return {"losses": self.contrastive_loss(q1, k2) + self.contrastive_loss(q2, k1)}
+            return {"losses": self.contrastive_loss(q1, k2) + self.contrastive_loss(q2, k1)}, {"m":m}
         else:
             return self.base_encoder(images)
 

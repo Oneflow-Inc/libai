@@ -1,8 +1,8 @@
 import oneflow as flow
 import random
-from libai.config import LazyCall, get_config, lazy
+from libai.config import LazyCall, get_config
 from PIL import ImageFilter, ImageOps
-from .models.MoCo_v3_Vit import model
+from .models.MoCo_v3_vit_small import model
 from configs.common.data.imagenet import dataloader
 from flowvision import transforms
 
@@ -94,8 +94,8 @@ optim.eps = 1e-8
 optim.weight_decay = .1
 
 # Refine train cfg for moco v3 model
-train.train_micro_batch_size = 10  # 128
-train.test_micro_batch_size = 10  # 128
+train.train_micro_batch_size = 64  # 128
+train.test_micro_batch_size = 64  # 128
 train.train_epoch = 300
 train.warmup_ratio = 40 / 300
 train.eval_period = 1000 
@@ -110,3 +110,5 @@ train.scheduler.warmup_method = "linear"
 train.amp.enabled = True
 
 graph.enabled = False
+
+model.max_iter = train.train_epoch
