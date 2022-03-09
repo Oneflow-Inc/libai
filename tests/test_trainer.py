@@ -21,9 +21,9 @@ from oneflow.utils.data import DataLoader, TensorDataset
 
 sys.path.append(".")
 from libai.config import LazyCall, default_argument_parser
+from libai.engine import DefaultTrainer, default_setup
 from libai.optim import get_default_optimizer_params
 from libai.scheduler import WarmupMultiStepLR
-from libai.trainer import DefaultTrainer, default_setup
 from tests.layers.test_trainer_model import build_graph, build_model
 
 

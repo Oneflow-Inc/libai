@@ -58,7 +58,8 @@ class GraphBase(nn.Graph):
 
             if zero_optim:
                 self.config.set_zero_redundancy_optimizer_mode("distributed_split")
-                self.config.set_zero_redundancy_optimizer_min_size_after_split(1)
+                if zero_stage > 1:
+                    flow.boxing.nccl.enable_use_compute_stream(True)
                 if zero_stage > 2:
                     # stage 3
                     flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)

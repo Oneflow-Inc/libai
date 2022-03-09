@@ -49,6 +49,10 @@ FLOW_OPTIMIZERS = register_optimizer()
 
 
 def build_optimizer(cfg, model):
+    """
+    Build an optimizer from config.
+    """
+
     if "_target_" in cfg:
         cfg.parameters.model = model
         optim = instantiate(cfg)
@@ -84,12 +88,17 @@ def get_default_optimizer_params(
             (LR, weight decay) for module parameters with a given name; e.g.
             ``{"embedding": {"lr": 0.01, "weight_decay": 0.1}}`` will set the LR and
             weight decay values for all module parameters named `embedding`.
+
     For common transformer models, ``weight_decay_norm,weight_decay_bias`` is usually set to 0.
+
     Example:
     ::
+
         flow.optim.AdamW(
             get_default_optimizer_params(model, weight_decay_norm=0, weight_decay_bias=0),
-                       lr=0.01, weight_decay=1e-4)
+            lr=0.01,
+            weight_decay=1e-4
+        )
     """
     if overrides is None:
         overrides = {}
@@ -159,7 +168,7 @@ def reduce_param_groups(params: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Reorganize the parameter groups and merge duplicated groups.
     The number of parameter groups needs to be as small as possible in order
-    to efficiently use the PyTorch multi-tensor optimizer. Therefore instead
+    to efficiently use the OneFlow multi-tensor optimizer. Therefore instead
     of using a parameter_group per single parameter, we reorganize the
     parameter groups and merge duplicated groups. This approach speeds
     up multi-tensor optimizer significantly.
