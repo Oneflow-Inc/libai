@@ -302,7 +302,7 @@ class DefaultTrainer(TrainerBase):
         cfg.train.start_iter = self.start_iter
 
         # global_batch_size = micro_batch_size * num_gpus * num_accumulation_steps
-        # When using gradient accumulation in graph mode, each run_step 
+        # When using gradient accumulation in graph mode, each run_step
         # handle `global_batch_size` samples.
         # When using gradient accumulation in eager mode, each run_step just handle
         # `micro_batch_size * num_gpus` samples, so we need to divide `num_accumulation_steps`
