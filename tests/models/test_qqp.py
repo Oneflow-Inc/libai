@@ -15,6 +15,7 @@
 
 
 import os
+import shutil
 import unittest
 import oneflow.unittest
 
@@ -44,7 +45,7 @@ class TestQQPModel(flow.unittest.TestCase):
         cfg = LazyConfig.load("projects/QQP/configs/config_qqp.py")
 
         # prepare dataset
-        if dist.get_local_rank() == 0:
+        if dist.is_main_process():
             # download dataset on main process of each node
             get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
             get_data_from_cache(DEMO_TSV_URL, cache_dir, md5=DEMO_TSV_MD5)
@@ -80,6 +81,11 @@ class TestQQPModel(flow.unittest.TestCase):
         cfg.train.amp.enabled = True
 
         self.cfg = cfg
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if os.path.isdir(TEST_OUTPUT) and dist.is_main_process():
+            shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
     def test_qqp_eager_with_data_tensor_parallel(self):
@@ -131,6 +137,4 @@ class TestQQPModel(flow.unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    if os.path.exists(TEST_OUTPUT):
-        os.rmdir(TEST_OUTPUT)
         
