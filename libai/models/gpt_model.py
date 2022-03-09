@@ -75,19 +75,35 @@ class GPTModel(nn.Module):
         num_layers (int): The number of TransformerLayer in the encoder and decoder.
         vocab_size (int): The size of vocabulary file.
         hidden_size (int): The size of hidden states.
-        ffn_hidden_size (int): The size of intermediate layer in feed-forward network for each TransformerLayer.
-        num_attention_heads (int): The number of attention heads for each attention layer of TransformerLayer.
-        max_seq_length (int, optional):  Max sequence length of input, defines the shape of Position Embeddings in T5Emebedding. Defaults to 1024.
-        embedding_dropout_prob (float, optional): The dropout ratio for the output of GPTEmbedding Layer. Defaults to 0.0.
-        attention_dropout_prob (float, optional):  The dropout ratio for the output of each attention layer in TransformerLayer. Defaults to 0.0.
-        output_dropout_prob (float, optional): The dropout ratio for the output for each TransformerLayer. Defaults to 0.0.
-        layernorm_epsilon (float, optional): The epsilon of LayerNorm layer. Defaults to 1e-5.
-        initializer_range (float, optional): Sigma of the normal distribution in the initialization method. Defaults to 0.02.
-        use_scaled_init_for_output_weights (bool, optional): _description_. Defaults to True.
-        bias_gelu_fusion (bool, optional): Whether or not to fuse the computing of bias and gelu. Defaults to False.
-        bias_dropout_fusion (bool, optional): Whether or not to fuse the computing of dropout and bias. Defaults to False.
-        scale_mask_softmax_fusion (bool, optional): Whether to fuse the computing of mask and softmax in attention layers. Defaults to False.
-        apply_query_key_layer_scaling (bool, optional): Whether or not to use layer index related scaling in computing attention scores. If True, the scaling factor equals to sqrt(d) * (layer_index + 1). Defaults to False.
+        ffn_hidden_size (int):
+            The size of intermediate layer in feed-forward network for each TransformerLayer.
+        num_attention_heads (int):
+            The number of attention heads for each attention layer of TransformerLayer.
+        max_seq_length (int, optional):
+            Max sequence length of input, defines the shape of Position Embeddings in T5Emebedding.
+            Defaults to 1024.
+        embedding_dropout_prob (float, optional):
+            The dropout ratio for the output of GPTEmbedding Layer. Defaults to 0.0.
+        attention_dropout_prob (float, optional):
+            The dropout ratio for the output of each attention layer in TransformerLayer.
+            Defaults to 0.0.
+        output_dropout_prob (float, optional):
+            The dropout ratio for the output for each TransformerLayer. Defaults to 0.0.
+        layernorm_epsilon (float, optional):
+            The epsilon of LayerNorm layer. Defaults to 1e-5.
+        initializer_range (float, optional):
+            Sigma of the normal distribution in the initialization method. Defaults to 0.02.
+        use_scaled_init_for_output_weights (bool, optional): Defaults to True.
+        bias_gelu_fusion (bool, optional):
+            Whether or not to fuse the computing of bias and gelu. Defaults to False.
+        bias_dropout_fusion (bool, optional):
+            Whether or not to fuse the computing of dropout and bias. Defaults to False.
+        scale_mask_softmax_fusion (bool, optional):
+            Whether to fuse the computing of mask and softmax in attention layers.
+            Defaults to False.
+        apply_query_key_layer_scaling (bool, optional):
+            Whether or not to use layer index related scaling in computing attention scores.
+            If True, the scaling factor equals to sqrt(d) * (layer_index + 1). Defaults to False.
     """
 
     @configurable
@@ -307,7 +323,8 @@ class GPTForPreTraining(nn.Module):
 
         Returns:
             dict:
-                A dict containing :code:`loss_value` or :code:`logits` depending on training or evaluation.
+                A dict containing :code:`loss_value` or :code:`logits`
+                depending on training or evaluation.
                 :code:`{"masked_lm_loss": loss_value}` when training,
                 :code:`{"prediction_scoers": logits}` when evaluating.
         """

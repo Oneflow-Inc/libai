@@ -29,7 +29,8 @@ class GPT2Dataset(flow.utils.data.Dataset):
         tokenizer: Tokenizer to use.
         data_prefix (str): Path to the training dataset.
         indexed_dataset: Indexed dataset to use.
-        max_seq_length (int, optional): Maximum length of the sequence passing into encoder. All values are padded to this length. Defaults to 512.
+        max_seq_length (int, optional): Maximum length of the sequence passing into encoder.
+            All values are padded to this length. Defaults to 512.
     """
 
     def __init__(self, tokenizer, data_prefix, indexed_dataset, max_seq_length=512):

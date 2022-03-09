@@ -88,18 +88,28 @@ class T5Model(flow.nn.Module):
         vocab_size (int): The size of vocabulary file.
         hidden_size (int): The size of hidden states.
         hidden_layers (int): The number of TransformerLayer in the encoder and decoder.
-        num_attention_heads (int): The number of attention heads for each attention layer of TransformerLayer.
-        intermediate_size (int): The size of intermediate layer in feed-forward network for each TransformerLayer.
+        num_attention_heads (int):
+            The number of attention heads for each attention layer of TransformerLayer.
+        intermediate_size (int):
+            The size of intermediate layer in feed-forward network for each TransformerLayer.
         embedding_dropout_prob (float): The dropout ratio for the output of T5Embedding Layer.
         hidden_dropout_prob (float): The dropout ratio for the output for each TransformerLayer.
-        attention_probs_dropout_prob (float): The dropout ratio for the output of each attention layer in TransformerLayer.
-        max_position_embeddings (int): Max sequence length of input, defines the shape of Position Embeddings in T5Emebedding.
-        initializer_range (float, optional): Sigma of the normal distribution in the initialization method. Defaults to 0.02.
+        attention_probs_dropout_prob (float):
+            The dropout ratio for the output of each attention layer in TransformerLayer.
+        max_position_embeddings (int):
+            Max sequence length of input, defines the shape of Position Embeddings in T5Emebedding.
+        initializer_range (float, optional):
+            Sigma of the normal distribution in the initialization method. Defaults to 0.02.
         layernorm_eps (float, optional): The epsilon of LayerNorm layer. Defaults to 1e-12.
-        bias_gelu_fusion (bool, optional): Whether or not to fuse the computing of bias and gelu. Defaults to False.
-        bias_dropout_fusion (bool, optional): Whether or not to fuse the computing of dropout and bias. Defaults to False.
-        scale_mask_softmax_fusion (bool, optional): Whether to fuse the computing of mask and softmax in attention layers. Defaults to False.
-        apply_query_key_layer_scaling (bool, optional): Whether or not to use layer index related scaling in computing attention scores.
+        bias_gelu_fusion (bool, optional):
+            Whether or not to fuse the computing of bias and gelu. Defaults to False.
+        bias_dropout_fusion (bool, optional):
+            Whether or not to fuse the computing of dropout and bias. Defaults to False.
+        scale_mask_softmax_fusion (bool, optional):
+            Whether to fuse the computing of mask and softmax in attention layers.
+            Defaults to False.
+        apply_query_key_layer_scaling (bool, optional):
+            Whether or not to use layer index related scaling in computing attention scores.
             If True, the scaling factor equals to sqrt(d) * (layer_index + 1). Defaults to True.
     """
 
@@ -231,18 +241,23 @@ class T5Model(flow.nn.Module):
         """
 
         Args:
-            encoder_input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary for encoder.
-            decoder_input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary for decoder.
-            encoder_attn_mask (flow.LongTensor): Mask for encoder to avoid performing attention on
+            encoder_input_ids (flow.LongTensor):
+                Indices of input sequence tokens in vocabulary for encoder.
+            decoder_input_ids (flow.LongTensor):
+                Indices of input sequence tokens in vocabulary for decoder.
+            encoder_attn_mask (flow.LongTensor):
+                Mask for encoder to avoid performing attention on
                 padding token indices. Mask values selected in `[0, 1]`:
 
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
 
-            decoder_attn_mask (flow.LongTensor): Mask for decoder to avoid performing attention on
-                subsequent token indices. Mask values have the same meaning as encoder_attn_mask.
-            encoder_decoder_attn_mask (flow.LongTensor): Mask for decoder to avoid performing attention on
-                encoder padded token indices. Mask values have the same meaning as encoder_attn_mask.
+            decoder_attn_mask (flow.LongTensor):
+                Mask for decoder to avoid performing attention on subsequent token indices.
+                Mask values have the same meaning as encoder_attn_mask.
+            encoder_decoder_attn_mask (flow.LongTensor):
+                Mask for decoder to avoid performing attention on encoder padded token indices.
+                Mask values have the same meaning as encoder_attn_mask.
 
         Returns:
             flow.Tensor: logits
@@ -312,29 +327,36 @@ class T5ForPreTraining(flow.nn.Module):
         """
 
         Args:
-            encoder_input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary for encoder.
-            decoder_input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary for decoder.
-            encoder_attn_mask (flow.LongTensor): Mask for encoder to avoid performing attention on
+            encoder_input_ids (flow.LongTensor):
+                Indices of input sequence tokens in vocabulary for encoder.
+            decoder_input_ids (flow.LongTensor):
+                Indices of input sequence tokens in vocabulary for decoder.
+            encoder_attn_mask (flow.LongTensor):
+                Mask for encoder to avoid performing attention on
                 padding token indices. Mask values selected in `[0, 1]`:
 
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
 
-            decoder_attn_mask (flow.LongTensor): Mask for decoder to avoid performing attention on
-                subsequent token indices. Mask values have the same meaning as encoder_attn_mask.
-            encoder_decoder_attn_mask (flow.LongTensor): Mask for decoder to avoid performing attention on
-                encoder padded token indices. Mask values have the same meaning as encoder_attn_mask.
+            decoder_attn_mask (flow.LongTensor):
+                Mask for decoder to avoid performing attention on subsequent token indices.
+                Mask values have the same meaning as encoder_attn_mask.
+            encoder_decoder_attn_mask (flow.LongTensor):
+                Mask for decoder to avoid performing attention on encoder padded token indices.
+                Mask values have the same meaning as encoder_attn_mask.
             labels (flow.LongTensor, optional): Labels for computing the masked
                 language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
                 None for evaluating.
-            loss_mask (flow.Tensor, optional): Mask to avoid performing loss computing
-                on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
-                loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
+            loss_mask (flow.Tensor, optional):
+                Mask to avoid performing loss computing on ignored tokens.
+                Tokens with indices set to `-1` are ignored (masked), the loss is only computed
+                for the tokens with labels in `[0, ..., config.vocab_size]`.
                 None for evaluating.
 
         Returns:
             dict:
-                A dict containing :code:`loss_value` or :code:`logits` depending on training or evaluation.
+                A dict containing :code:`loss_value` or :code:`logits`
+                depending on training or evaluation.
                 :code:`{"masked_lm_loss": loss_value}` when training,
                 :code:`{"prediction_scoers": logits}` when evaluating.
         """
