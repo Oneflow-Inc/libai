@@ -27,7 +27,7 @@ class GraphBase(nn.Graph):
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
         fp16=False,
-        recompute_grad=False,
+        activation_checkpoint=False,
         grad_acc_steps=1,
         zero_optim=False,
         zero_stage=0,
@@ -53,7 +53,7 @@ class GraphBase(nn.Graph):
             if grad_acc_steps > 1:
                 self.config.set_gradient_accumulation_steps(grad_acc_steps)
 
-            if recompute_grad:
+            if activation_checkpoint:
                 self.set_activation_checkpoint()
 
             if zero_optim:
