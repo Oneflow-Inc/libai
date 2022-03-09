@@ -22,7 +22,7 @@ from libai.utils import distributed as dist
 
 class Linear1D(nn.Module):
     r"""Linear layer with 1D parallelism which includes column parallelism and row parallelism.
-    The linear layer is defined as :math:`Y = xA^T + b`.
+    The linear layer is defined as :math:`y = xA^T + b`.
 
     In column parallelism, A^T is parallelized along the second dimension
     as :math:`A^T = [A_1, ..., A_p]`.
