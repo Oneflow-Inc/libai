@@ -33,16 +33,12 @@ class VisionTransformerMoCo(VisionTransformer):
         # weight initialization
         for name, m in self.named_modules():
             if isinstance(m, Linear): # libai
-                '''
-                To-do: match the q k v parameter name in libai and fix the init manner.
-                '''
-                # if 'qkv' in name:
-                #     print("match the qkv in name")
-                #     # treat the weights of Q, K, V separately
-                #     val = math.sqrt(6. / float(m.weight.shape[0] // 3 + m.weight.shape[1])) # shape may be wrong in oneflow (the transpose issue)
-                #     nn.init.uniform_(m.weight, -val, val)
-                # else:
-                #     nn.init.xavier_uniform_(m.weight)
+                if 'query_key_value' in name:
+                    # treat the weights of Q, K, V separately
+                    val = math.sqrt(6. / float(m.weight.shape[0] // 3 + m.weight.shape[1])) # shape may be wrong in oneflow (the transpose issue)
+                    nn.init.uniform_(m.weight, -val, val)
+                else:
+                    nn.init.xavier_uniform_(m.weight)
 
                 nn.init.zeros_(m.bias)
         nn.init.normal_(self.cls_token, std=1e-6)
