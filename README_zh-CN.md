@@ -23,7 +23,7 @@
 
 [English](/README.md) | **简体中文**
 
-LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支代码目前支持OneFlow 0.7.0以上的版本。
+LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支代码目前支持OneFlow 0.a.0以上的版本。 by a
 
 <details open>
 <summary> <b> 主要特性 </b> </summary>
