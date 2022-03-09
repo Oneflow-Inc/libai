@@ -380,4 +380,4 @@ def synchronize():
     if world_size == 1:
         return
 
-    flow._oneflow_internal.eager.multi_client.Sync()
+    flow.comm.barrier()
