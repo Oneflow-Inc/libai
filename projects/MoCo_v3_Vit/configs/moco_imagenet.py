@@ -1,18 +1,21 @@
-import oneflow as flow
 import random
-from libai.config import LazyCall, get_config
 from PIL import ImageFilter, ImageOps
-from .models.MoCo_v3_vit_small import model
-from configs.common.data.imagenet import dataloader
+
+import oneflow as flow
 from flowvision import transforms
+
+from libai.config import LazyCall, get_config
+from projects.MoCo_v3_Vit.configs.models.MoCo_v3_vit_small import model
+from configs.common.data.imagenet import dataloader
+
 
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/dataset/imagenet/extract"
-dataloader.test[0].dataset.root = "/dataset/imagenet/extract"
+dataloader.train.dataset[0].root = "/dataset/extract"
+dataloader.test[0].dataset.root = "/dataset/extract"
 
 
 class GaussianBlur(object):
@@ -110,5 +113,3 @@ train.scheduler.warmup_method = "linear"
 train.amp.enabled = True
 
 graph.enabled = False
-
-model.max_iter = train.train_epoch

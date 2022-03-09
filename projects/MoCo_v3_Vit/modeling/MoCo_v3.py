@@ -1,8 +1,8 @@
 import math
+
 import oneflow as flow
 import oneflow.nn as nn
-# from libai.data.build import MODEL_ARCH_REGISTRY
-from libai.config.config import configurable
+
 from libai.utils.distributed import get_world_size
 from libai.layers import Linear
 
@@ -12,7 +12,6 @@ class MoCo(nn.Module):
     Build a MoCo model with a base encoder, a momentum encoder, and two MLPs
     https://arxiv.org/abs/1911.05722
     """
-    @configurable
     def __init__(self, base_encoder, momentum_encoder, dim=256, mlp_dim=4096, T=1.0, m=0.99, max_iter=300):
         """
         dim: feature dimension (default: 256)
@@ -36,15 +35,6 @@ class MoCo(nn.Module):
             param_m.data.copy_(param_b.data)  # initialize
             param_m.requires_grad = False  # not update by gradient
 
-    @classmethod
-    def from_config(cls, cfg):
-        return {
-            "base_encoder": cfg.base_encoder,
-            "momentum_encoder": cfg.momentum_encoder,
-            "dim": cfg.dim,
-            "mlp_dim": cfg.mlp_dim,
-            "T": cfg.T,
-        }
 
     def _build_mlp(self, num_layers, input_dim, mlp_dim, output_dim, last_bn=True):
         mlp = []
@@ -160,8 +150,6 @@ def concat_all_gather(tensor):
     *** Warning ***: flow.distributed.all_gather has no gradient.
     """
 
-    # oneflow only
-    # flow.comm.all_gather seems to support local tensor only, thus I changed tensor to local first
     tensor = tensor.to_local()
 
     tensors_gather = [flow.ones_like(tensor)

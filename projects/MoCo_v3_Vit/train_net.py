@@ -13,15 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 
 sys.path.append(".")
 
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from libai.config import LazyConfig, default_argument_parser, try_get_key
-# from libai.trainer import DefaultTrainer, default_setup
-from projects.MoCo_v3_Vit.trainer import DefaultTrainer, default_setup
+from libai.trainer import default_setup
+from projects.MoCo_v3_Vit.trainer.MoCo_v3_trainer import MoCoDefaultTrainer as DefaultTrainer
 from libai.utils.checkpoint import Checkpointer
 
 def main(args):
