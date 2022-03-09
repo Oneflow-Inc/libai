@@ -50,6 +50,7 @@ class T5Dataset(flow.utils.data.Dataset):
         short_seq_prob (float, optional): Probability of producing a short sequence. Defaults to 0.0.
         seed (int, optional): Seed for random number generator for reproducibility. Defaults to 1234.
     """
+
     def __init__(
         self,
         tokenizer,

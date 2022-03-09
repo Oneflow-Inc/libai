@@ -369,7 +369,7 @@ class BertPreTrainingHeads(nn.Module):
 @MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
     """Bert Model with two heads on top as done during the pretraining: a
-        `masked language modeling` head and a `next sentence prediction (classification)` head.
+    `masked language modeling` head and a `next sentence prediction (classification)` head.
     """
 
     def __init__(self, cfg):

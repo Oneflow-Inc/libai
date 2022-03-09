@@ -85,7 +85,7 @@ class T5Model(flow.nn.Module):
     """T5 Model that outputs logits.
 
     Args:
-        vocab_size (int): The size of vocabulary file. 
+        vocab_size (int): The size of vocabulary file.
         hidden_size (int): The size of hidden states.
         hidden_layers (int): The number of TransformerLayer in the encoder and decoder.
         num_attention_heads (int): The number of attention heads for each attention layer of TransformerLayer.
@@ -99,9 +99,10 @@ class T5Model(flow.nn.Module):
         bias_gelu_fusion (bool, optional): Whether or not to fuse the computing of bias and gelu. Defaults to False.
         bias_dropout_fusion (bool, optional): Whether or not to fuse the computing of dropout and bias. Defaults to False.
         scale_mask_softmax_fusion (bool, optional): Whether to fuse the computing of mask and softmax in attention layers. Defaults to False.
-        apply_query_key_layer_scaling (bool, optional): Whether or not to use layer index related scaling in computing attention scores. 
+        apply_query_key_layer_scaling (bool, optional): Whether or not to use layer index related scaling in computing attention scores.
             If True, the scaling factor equals to sqrt(d) * (layer_index + 1). Defaults to True.
     """
+
     @configurable
     def __init__(
         self,
@@ -292,6 +293,7 @@ class T5ForPreTraining(flow.nn.Module):
     """
     T5 Model with classification head on top.
     """
+
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
@@ -323,7 +325,7 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask (flow.LongTensor): Mask for decoder to avoid performing attention on
                 encoder padded token indices. Mask values have the same meaning as encoder_attn_mask.
             labels (flow.LongTensor, optional): Labels for computing the masked
-                language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`. 
+                language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
                 None for evaluating.
             loss_mask (flow.Tensor, optional): Mask to avoid performing loss computing
                 on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
@@ -331,9 +333,9 @@ class T5ForPreTraining(flow.nn.Module):
                 None for evaluating.
 
         Returns:
-            dict: 
+            dict:
                 A dict containing :code:`loss_value` or :code:`logits` depending on training or evaluation.
-                :code:`{"masked_lm_loss": loss_value}` when training, 
+                :code:`{"masked_lm_loss": loss_value}` when training,
                 :code:`{"prediction_scoers": logits}` when evaluating.
         """
         logits = self.t5_model(

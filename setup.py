@@ -15,9 +15,9 @@
 
 import glob
 import os
+import shutil
 import subprocess
 import sys
-import shutil
 from os import path
 from typing import List
 
@@ -76,9 +76,7 @@ def get_libai_configs() -> List[str]:
     Return a list of configs to include in package for model zoo.
     """
     source_configs_dir = path.join(path.dirname(path.realpath(__file__)), "configs")
-    destination = path.join(
-        path.dirname(path.realpath(__file__)), "libai", "config", "configs"
-    )
+    destination = path.join(path.dirname(path.realpath(__file__)), "libai", "config", "configs")
     # Symlink the config directory inside package to have a cleaner pip install.
 
     # Remove stale symlink/directory from a previous build.

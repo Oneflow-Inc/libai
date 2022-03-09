@@ -89,6 +89,7 @@ class GPTModel(nn.Module):
         scale_mask_softmax_fusion (bool, optional): Whether to fuse the computing of mask and softmax in attention layers. Defaults to False.
         apply_query_key_layer_scaling (bool, optional): Whether or not to use layer index related scaling in computing attention scores. If True, the scaling factor equals to sqrt(d) * (layer_index + 1). Defaults to False.
     """
+
     @configurable
     def __init__(
         self,
@@ -286,6 +287,7 @@ class GPTForPreTraining(nn.Module):
     """
     GPT Model with classification head on top.
     """
+
     def __init__(self, cfg) -> None:
         super().__init__()
         self.GPT_model = GPTModel(cfg)
@@ -300,13 +302,13 @@ class GPTForPreTraining(nn.Module):
 
         Args:
             input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
-            labels (flow.LongTensor, optional): Labels for computing language modeling loss. 
+            labels (flow.LongTensor, optional): Labels for computing language modeling loss.
                 None for evaluating. Defaults to None.
 
         Returns:
-            dict: 
+            dict:
                 A dict containing :code:`loss_value` or :code:`logits` depending on training or evaluation.
-                :code:`{"masked_lm_loss": loss_value}` when training, 
+                :code:`{"masked_lm_loss": loss_value}` when training,
                 :code:`{"prediction_scoers": logits}` when evaluating.
         """
         logits = self.GPT_model(input_ids)
