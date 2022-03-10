@@ -321,7 +321,7 @@ class T5ForPreTraining(flow.nn.Module):
         encoder_attn_mask,
         decoder_attn_mask,
         encoder_decoder_attn_mask,
-        labels=None,
+        lm_labels=None,
         loss_mask=None,
     ):
         """
@@ -344,7 +344,7 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask (flow.LongTensor):
                 Mask for decoder to avoid performing attention on encoder padded token indices.
                 Mask values have the same meaning as encoder_attn_mask.
-            labels (flow.LongTensor, optional): Labels for computing the masked
+            lm_labels (flow.LongTensor, optional): Labels for computing the masked
                 language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
                 None for evaluating.
             loss_mask (flow.Tensor, optional):
@@ -368,8 +368,8 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask,
         )
 
-        if self.training and labels is not None:
-            lm_loss = self.loss_func(logits, labels, loss_mask)
+        if lm_labels is not None:
+            lm_loss = self.loss_func(logits, lm_labels, loss_mask)
             return lm_loss
         else:
             return {

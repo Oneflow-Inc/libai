@@ -22,7 +22,7 @@ import oneflow as flow
 import oneflow.unittest
 
 from libai.config import LazyConfig
-from libai.engine import DefaultTrainer, hooks
+from libai.engine import DefaultTrainer
 from libai.engine.default import _check_batch_size
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
@@ -86,24 +86,6 @@ class TestBertModel(flow.unittest.TestCase):
         cfg.train.amp.enabled = True
 
         self.cfg = cfg
-
-        def build_hooks(self):
-            ret = [
-                hooks.IterationTimer(),
-                hooks.LRScheduler(),
-            ]
-
-            if dist.is_main_process():
-                # run writers in the end, so that evaluation metrics are written
-                ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
-            return ret
-
-        @classmethod
-        def test(cls, cfg, test_loaders, model, evaluator=None):
-            return {}
-
-        DefaultTrainer.build_hooks = build_hooks
-        DefaultTrainer.test = test
 
     @classmethod
     def tearDownClass(cls) -> None:
