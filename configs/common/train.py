@@ -37,6 +37,7 @@ train = dict(
         enabled=True,
         evaluator=LazyCall(ClsEvaluator)(topk=(1, 5)),  # calculate top-k acc
         eval_period=5000,
+        run_iter=0,  # running steps for evaluation, `0` means running total datasets
         eval_metric="Acc@1",
         eval_mode="max",
     ),
