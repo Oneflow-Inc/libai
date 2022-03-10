@@ -49,10 +49,14 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_optimizer(cls, cfg, model):
         param_overrides = None
-        # TODO: add lr_scale in optim param_groups
-        # if try_get_key(cfg, "train.layer_decay") is not None:
-        #     param_overrides = get_layer_wise_lrd_overrides(model, cfg.optim.lr, cfg.train.layer_decay)
-        # cfg.optim.parameters.overrides = param_overrides
+        if try_get_key(cfg, "train.layer_decay") is not None:
+            param_overrides = get_layer_wise_lrd_overrides(
+                model, 
+                weight_decay = cfg.optim.weight_decay, 
+                no_weight_decay_list = model.no_weight_decay(), 
+                layer_decay = cfg.train.layer_decay
+            )
+        cfg.optim.parameters.overrides = param_overrides
         return build_optimizer(cfg.optim, model)
 
 
