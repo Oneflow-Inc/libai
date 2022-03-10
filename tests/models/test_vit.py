@@ -72,7 +72,7 @@ class TestViTModel(flow.unittest.TestCase):
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.eval_period = 1000  # no test now
+        cfg.train.evaluation.enabled = False  # no test now
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
         cfg.train.num_accumulation_steps = 1
@@ -94,12 +94,7 @@ class TestViTModel(flow.unittest.TestCase):
                 ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
             return ret
 
-        @classmethod
-        def test(cls, cfg, test_loaders, model, evaluator=None):
-            return {}
-
         DefaultTrainer.build_hooks = build_hooks
-        DefaultTrainer.test = test
 
     @classmethod
     def tearDownClass(cls) -> None:

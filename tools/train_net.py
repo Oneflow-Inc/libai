@@ -33,7 +33,7 @@ def main(args):
     if args.fast_dev_run:
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 20
-        cfg.train.eval_period = 10
+        cfg.train.evaluation.eval_period = 10
         cfg.train.log_period = 1
 
     if args.eval_only:

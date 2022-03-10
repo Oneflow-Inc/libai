@@ -71,7 +71,7 @@ class TestBertModel(flow.unittest.TestCase):
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.eval_period = 1000  # no evaluation now
+        cfg.train.evaluation.eval_period = 10
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
         cfg.train.num_accumulation_steps = 1
