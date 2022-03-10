@@ -329,7 +329,7 @@ class GPTForPreTraining(nn.Module):
                 :code:`{"prediction_scoers": logits}` when evaluating.
         """
         logits = self.GPT_model(input_ids)
-        if self.training and labels is not None:
+        if labels is not None:
             lm_loss = self.loss_func(logits, labels)
             return lm_loss
         else:
