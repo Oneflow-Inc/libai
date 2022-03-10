@@ -1,8 +1,8 @@
 import time
 from typing import Callable
 
-from libai.trainer import DefaultTrainer
-from libai.trainer.trainer import EagerTrainer
+from libai.engine import DefaultTrainer
+from libai.engine.trainer import EagerTrainer
 
 
 
