@@ -183,11 +183,11 @@ def inference_on_dataset(
             valid_data = {key: dist.ttol(value)[:valid_sample] for key, value in data.items()}
             valid_outputs = {}
             for key, value in outputs.items():
-                valid_outputs[key] = dist.ttol(
-                    value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]]
-                )
-                if valid_outputs[key].ndim > 1:
-                    valid_outputs[key] = valid_outputs[key][:valid_sample]
+                value = dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
+                if value.ndim > 1:
+                    valid_outputs[key] = value[:valid_sample]  # Slice if it's batched output
+                else:
+                    valid_outputs[key] = value
 
             if flow.cuda.is_available():
                 dist.synchronize()

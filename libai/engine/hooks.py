@@ -237,7 +237,7 @@ class BestCheckpointer(HookBase):
             if metric_tuple is None:
                 logger.warning(
                     f"Given val metric {self._val_metric} does not seem to be computed/stored. "
-                    "Will not be checkpointed based on it."
+                    "Will not be checkpointed based on that."
                 )
             else:
                 latest_metric, metric_iter = metric_tuple
