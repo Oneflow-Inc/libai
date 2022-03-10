@@ -64,7 +64,7 @@ optim.weight_decay = 0.1
 
 train.update(
     dict(
-        recompute_grad=dict(enabled=True),
+        activation_checkpoint=dict(enabled=True),
         amp=dict(enabled=True),
         output_dir="output/finetune_qqp/",
         train_micro_batch_size=16,

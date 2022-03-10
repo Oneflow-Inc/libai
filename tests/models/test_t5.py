@@ -22,8 +22,8 @@ import oneflow as flow
 import oneflow.unittest
 
 from libai.config import LazyConfig
-from libai.trainer import DefaultTrainer, hooks
-from libai.trainer.default import _check_batch_size
+from libai.engine import DefaultTrainer, hooks
+from libai.engine.default import _check_batch_size
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
@@ -78,8 +78,8 @@ class TestT5Model(flow.unittest.TestCase):
         # set model
         cfg.model.cfg.num_attention_heads = 8
         cfg.model.cfg.hidden_size = 384
-        cfg.model.cfg.hidden_layers = 6
-        cfg.train.recompute_grad.enabled = True
+        cfg.model.cfg.hidden_layers = 3
+        cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 
         self.cfg = cfg

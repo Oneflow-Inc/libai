@@ -46,26 +46,31 @@ class DatasetEvaluator:
     def process(self, inputs, outputs):
         """
         Process the pair of inputs and outputs.
-        If they contain batches, the pairs can be consumed one-by-one using `zip`:
+
         .. code-block:: python
-            for input_, output in zip(inputs, outputs):
-                # do evaluation on single input/output pair
-                ...
+
+            pred_logits = outputs["prediction_scores"]
+            labels = inputs["labels"]
+            # do evaluation on pred_logits/labels pair
+            ...
+
         Args:
-            inputs (list): the inputs that's used to call the model.
-            outputs (list): the return value of `model(inputs)`
+            inputs (dict): the inputs that's used to call the model.
+            outputs (dict): the return dict of `model(**inputs)`
         """
 
     def evaluate(self):
         """
         Evaluate/summarize the performance, after processing all input/output pairs.
+
         Returns:
             dict:
                 A new evaluator class can return a dict of arbitrary format
                 as long as the user can process the results.
                 In our train_net.py, we expect the following format:
-                * key: the name of the task (e.g., bbox)
-                * value: a dict of {metric name: score}, e.g.: {"AP50": 80}
+
+                * key: the name of the task (e.g., Classification)
+                * value: a dict of {metric name: score}, e.g.: {"Acc@1": 75.0}
         """
 
 
@@ -116,6 +121,7 @@ def inference_on_dataset(
     Run model on the data_loader and evaluate the metrics with evaluator.
     Also benchmark the inference speed of `model.__call__` accurately.
     The model will be used in eval mode.
+
     Args:
         model (callable): a callable which takes an object from
             `data_loader` and returns some outputs.
@@ -128,6 +134,7 @@ def inference_on_dataset(
         get_batch: a Callable function for getting data from dataloader
         evaluator: the evaluator(s) to run. Use `None` if you only want to benchmark,
             but don't want to do any evaluation.
+
     Returns:
         The return value of `evaluator.evaluate()`
     """
@@ -173,15 +180,17 @@ def inference_on_dataset(
             outputs = model(**paded_data)
 
             # get valid sample
-            valid_data = {key: value[:valid_sample] for key, value in data.items()}
-            valid_outputs = {key: value[:valid_sample] for key, value in outputs.items()}
+            valid_data = {key: dist.ttol(value)[:valid_sample] for key, value in data.items()}
+            valid_outputs = {key: dist.ttol(value)[:valid_sample] for key, value in outputs.items()}
 
             if flow.cuda.is_available():
                 dist.synchronize()
             total_compute_time += time.perf_counter() - start_compute_time
 
             start_eval_time = time.perf_counter()
-            evaluator.process(valid_data, valid_outputs)
+            if dist.is_main_process():
+                evaluator.process(valid_data, valid_outputs)
+            dist.synchronize()
             total_eval_time += time.perf_counter() - start_eval_time
 
             consumed_samples += valid_sample

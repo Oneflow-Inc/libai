@@ -25,8 +25,8 @@ import libai.utils.distributed as dist
 from configs.common.models.vit.vit_small_patch16_224 import model
 from libai.config import LazyCall, LazyConfig
 from libai.data.datasets import CIFAR10Dataset
-from libai.trainer import DefaultTrainer, hooks
-from libai.trainer.default import _check_batch_size
+from libai.engine import DefaultTrainer, hooks
+from libai.engine.default import _check_batch_size
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
 
@@ -57,7 +57,7 @@ class TestViTModel(flow.unittest.TestCase):
         data_path = get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
 
         cfg.dataloader.train.dataset[0]._target_ = CIFAR10Dataset
-        cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:3])
+        cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:-1])
         cfg.dataloader.train.dataset[0].download = True
         cfg.dataloader.train.num_workers = 0
 
@@ -75,7 +75,7 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
         cfg.train.output_dir = tempfile.mkdtemp()
-        cfg.train.recompute_grad.enabled = True
+        cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 
         self.cfg = cfg

@@ -24,7 +24,7 @@ from libai import models
 from libai import optim
 from libai import scheduler
 from libai import tokenizer
-from libai import trainer
+from libai import engine
 from libai import utils
 
 try:

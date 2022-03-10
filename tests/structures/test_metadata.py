@@ -22,13 +22,14 @@ from libai.utils import distributed as dist
 
 
 class TestMetadata(unittest.TestCase):
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     def test_to_global(self):
         x = flow.rand(10, 10)
         x_meta = DistTensorData(x)
         x_meta.to_global()
         x_consistent = x.to_global(
             sbp=flow.sbp.broadcast,
-            placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),
+            placement=flow.placement("cuda", [0]),
         )
 
         self.assertEqual(x_meta.tensor.sbp, x_consistent.sbp)
@@ -48,6 +49,7 @@ class TestMetadata(unittest.TestCase):
         self.assertEqual(x_meta.tensor.placement, x_consistent.placement)
         self.assertTrue((flow.equal(x_meta.tensor, x_consistent)).sum().item() == 100)
 
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     def test_stack(self):
         x_list = [DistTensorData(flow.rand(10, 8)) for _ in range(5)]
 
