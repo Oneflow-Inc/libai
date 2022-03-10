@@ -153,6 +153,9 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
 
         # sample-idx.
         start_time = time.time()
+
+        from libai.data.data_utils import helpers
+
         sample_idx = helpers.build_sample_idx(documents, sizes, max_seq_length, num_tokens)
         np.save(indexmap_filename, sample_idx, allow_pickle=True)
         logger.info(
