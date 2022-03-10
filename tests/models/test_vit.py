@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-import tempfile
+import shutil
 import unittest
 
 import oneflow as flow
@@ -34,6 +34,8 @@ DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/
 
 DATA_MD5 = "c58f30108f718f92721af3b95e74349a"
 
+TEST_OUTPUT = "output_unittest/test_vit"
+
 setup_logger(distributed_rank=dist.get_rank())
 
 
@@ -50,8 +52,9 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
         # prepare data path
-        if dist.get_local_rank() == 0:
+        if dist.is_main_process():
             get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
+            os.makedirs(TEST_OUTPUT, exist_ok=True)
         dist.synchronize()
 
         data_path = get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
@@ -74,7 +77,7 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.train.train_micro_batch_size = 8
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
-        cfg.train.output_dir = tempfile.mkdtemp()
+        cfg.train.output_dir = TEST_OUTPUT
         cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 
@@ -97,6 +100,11 @@ class TestViTModel(flow.unittest.TestCase):
 
         DefaultTrainer.build_hooks = build_hooks
         DefaultTrainer.test = test
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if os.path.isdir(TEST_OUTPUT) and dist.is_main_process():
+            shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
     def test_vit_eager_with_data_tensor_parallel(self):

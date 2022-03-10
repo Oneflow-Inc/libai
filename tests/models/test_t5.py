@@ -15,7 +15,7 @@
 
 
 import os
-import tempfile
+import shutil
 import unittest
 
 import oneflow as flow
@@ -36,6 +36,8 @@ VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
 BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 
+TEST_OUTPUT = "output_unittest/test_t5"
+
 
 setup_logger(distributed_rank=dist.get_rank())
 
@@ -47,11 +49,12 @@ class TestT5Model(flow.unittest.TestCase):
         cfg = LazyConfig.load("configs/t5_large_pretrain.py")
 
         # prepare dataset
-        if dist.get_local_rank() == 0:
+        if dist.is_main_process():
             # download dataset on main process of each node
             get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
             get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
             get_data_from_cache(IDX_DATA_URL, cache_dir, md5=IDX_DATA_MD5)
+            os.makedirs(TEST_OUTPUT, exist_ok=True)
         dist.synchronize()
 
         vocab_path = get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
@@ -73,7 +76,7 @@ class TestT5Model(flow.unittest.TestCase):
         cfg.train.train_micro_batch_size = 8
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
-        cfg.train.output_dir = tempfile.mkdtemp()
+        cfg.train.output_dir = TEST_OUTPUT
 
         # set model
         cfg.model.cfg.num_attention_heads = 8
@@ -101,6 +104,11 @@ class TestT5Model(flow.unittest.TestCase):
 
         DefaultTrainer.build_hooks = build_hooks
         DefaultTrainer.test = test
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if os.path.isdir(TEST_OUTPUT) and dist.is_main_process():
+            shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
     def test_t5_eager_with_data_tensor_parallel(self):

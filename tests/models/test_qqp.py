@@ -17,9 +17,9 @@
 import os
 import shutil
 import unittest
-import oneflow.unittest
 
 import oneflow as flow
+import oneflow.unittest
 
 from libai.config import LazyConfig
 from libai.engine import DefaultTrainer
@@ -29,10 +29,13 @@ from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
 
 VOCAB_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt"  # noqa
-DEMO_TSV_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/QQP/demo.tsv"  # noqa
+DEMO_TSV_URL = (
+    "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/QQP/demo.tsv"  # noqa
+)
 
 VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
 DEMO_TSV_MD5 = "e3f900e8724646234aacf758dd669d4d"
+
 TEST_OUTPUT = "output_unittest/test_qqp"
 
 setup_logger(distributed_rank=dist.get_rank())
@@ -70,7 +73,7 @@ class TestQQPModel(flow.unittest.TestCase):
         cfg.train.train_micro_batch_size = 2
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
-        cfg.train.output_dir = TEST_OUTPUT     
+        cfg.train.output_dir = TEST_OUTPUT
 
         # set model
         cfg.model.cfg.num_attention_heads = 8
@@ -137,4 +140,3 @@ class TestQQPModel(flow.unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-        
