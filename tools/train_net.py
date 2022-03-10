@@ -22,7 +22,7 @@ from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("libai." + __name__)
 
 
 def main(args):
