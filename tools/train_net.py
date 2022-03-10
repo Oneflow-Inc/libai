@@ -13,13 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import sys
+
+from cv2 import log
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+
+logger = logging.getLogger(__name__)
 
 
 def main(args):
@@ -44,6 +49,8 @@ def main(args):
         if try_get_key(cfg, "train.graph.enabled", default=False):
             model = DefaultTrainer.build_graph(cfg, model, is_train=False)
         test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
+        if len(test_loader) == 0:
+            logger.info("No dataset in dataloader.test, " "please set dataset for dataloader.test")
         _ = DefaultTrainer.test(cfg, test_loader, model)
         return
 

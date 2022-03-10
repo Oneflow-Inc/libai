@@ -161,9 +161,9 @@ def inference_on_dataset(
     last_batch_lack = (dps - (total_samples % dps)) % dps
 
     # reset total samples
-    run_iter = len(data_loader) if run_iter == 0 else min(run_iter, len(data_loader))
+    run_iter = len(data_loader) if run_iter == 0 else run_iter
     if run_iter != len(data_loader):
-        total_samples = run_iter * batch_size
+        total_samples = min(run_iter * batch_size, len(data_loader.dataset))
         logger.info(
             f"with run_iter {run_iter}, "
             f"reset total samples {len(data_loader.dataset)} to {total_samples}"
