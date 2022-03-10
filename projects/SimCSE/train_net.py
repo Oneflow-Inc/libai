@@ -19,7 +19,6 @@ import sys
 from collections import OrderedDict
 
 import numpy as np
-import oneflow as flow
 from scipy.stats import spearmanr
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
@@ -44,15 +43,9 @@ class SimcseEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        # outputs: model's out
-        # inputs: model's input
-        cos_sim = outputs["cos_sim"].to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        )
-        labels = outputs["labels"].to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        )
-        self._predictions.append({"cos_sim": cos_sim, "labels": labels})
+        sim = outputs["sim"]
+        labels = inputs["labels"]
+        self._predictions.append({"sim": sim, "labels": labels})
 
     def evaluate(self):
         if not dist.is_main_process():
@@ -62,7 +55,7 @@ class SimcseEvaluator(DatasetEvaluator):
         sim_array = np.array([])
         label_array = np.array([])
         for prediction in predictions:
-            sim_array = np.append(sim_array, dist.tton(prediction["cos_sim"]))
+            sim_array = np.append(sim_array, dist.tton(prediction["sim"]))
             label_array = np.append(label_array, dist.tton(prediction["labels"]))
         self._results = spearman_target(sim_array, label_array)
         return {"spearman": self._results}

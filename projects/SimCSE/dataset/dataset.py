@@ -25,18 +25,15 @@ from libai.tokenizer import BertTokenizer
 
 
 def load_data(name, path):
-    assert name in ["snli", "lqcmc", "eng_sts", "cnsd_sts", "wiki"]
+    assert name in ["snli-sup", "snli-unsup", "lqcmc", "eng_sts", "cnsd_sts", "wiki", "add"]
 
-    def load_snli_data(path):
-        with open(
-            "/home/xiezipeng/libai/projects/SimCSE/data/STS/cnsd-sts-train.txt",
-            "r",
-            encoding="utf8",
-        ) as f:
-            data = [line.split("||")[1] for line in f]
-
+    def load_snli_data_unsup(path):
         with jsonlines.open(path, "r") as f:
-            return [line.get("origin") for line in f] + data
+            return [line.get("origin") for line in f]
+
+    def load_snli_data_sup(path):
+        with jsonlines.open(path, 'r') as f:
+            return [(line['origin'], line['entailment'], line['contradiction']) for line in f]
 
     def load_lqcmc_data(path):
         with open(path, "r", encoding="utf8") as f:
@@ -61,20 +58,31 @@ def load_data(name, path):
                 line = line.strip().split("\t")
                 data.append(line)
         return data
+    
+    def load_sts_to_train(path):
+        if path is None:
+            return []
+        with open(path, "r", encoding="utf8",) as f:
+            data = [line.split("||")[1] for line in f]
+        return data
 
-    if name == "snli":
-        return load_snli_data(path)
+    if name == "snli-unsup":
+        return load_snli_data_unsup(path)
+    elif name == "snli-sup":
+        return load_snli_data_sup(path)
     elif name == "wiki":
         return load_wiki_data(path)
     elif name == "cnsd_sts":
         return load_cnsd_sts_data(path)
     elif name == "eng_sts":
         return load_eng_sts_data(path)
-    else:
+    elif name == "lqcmc":
         return load_lqcmc_data(path)
+    else:
+        return load_sts_to_train(path)
 
 
-def padding_for_ids(data, file_name, pad_id=0, max_len=512):
+def padding_for_ids(data, pad_id=0, max_len=512):
     data["input_ids"] = data["input_ids"] + [pad_id] * (max_len - len(data["input_ids"]))
     data["attention_mask"] = data["attention_mask"] + [pad_id] * (
         max_len - len(data["attention_mask"])
@@ -91,9 +99,9 @@ def padding_for_ids(data, file_name, pad_id=0, max_len=512):
 
 class TrainDataset(Dataset):
     # unsup
-    def __init__(self, name, path, tokenizer, max_len):
+    def __init__(self, name, path, tokenizer, max_len, path2=None):
         self.name = name
-        self.data = load_data(name, path)
+        self.data = load_data(name, path) + load_data('add', path2)
         self.tokenizer = tokenizer
         self.max_len = 64
         self.pad_id = self.tokenizer.pad_token_id
@@ -117,14 +125,12 @@ class TrainDataset(Dataset):
                 "input_ids": ids,
                 "attention_mask": attention_mask,
             },
-            file_name=self.name,
             pad_id=self.pad_id,
             max_len=self.max_len,
         )
 
     def __getitem__(self, index):
         # {"input_ids":ids, "attention_mask":attention_mask}
-        assert self.name in ["snli", "wiki"]
         return self.text2id(self.data[index])
 
 
@@ -173,4 +179,61 @@ class TestDataset(Dataset):
                 flow.tensor([sent1["attention_mask"], sent2["attention_mask"]], dtype=flow.long)
             ),
             labels=DistTensorData(flow.tensor(score, dtype=flow.int)),
+        )
+
+
+class TrainDataset_sup(Dataset):
+    def __init__(self, name, path, tokenizer, max_len=64):
+        self.data = load_data(name, path)
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.pad_id = self.tokenizer.pad_token_id
+        self.cls_id = self.tokenizer.cls_token_id
+        self.sep_id = self.tokenizer.sep_token_id
+    
+    def __len__(self):
+        return len(self.data)
+
+    def pad_text(self, ids):
+        attention_mask = [1] * len(ids)
+        ids = ids + [self.pad_id] * (self.max_len - len(ids))
+        attention_mask = attention_mask + [self.pad_id] * (self.max_len - len(attention_mask))
+        return ids, attention_mask
+    
+    def text2id(self, text):
+        tokens = self.tokenizer.tokenize(text)
+        ids = self.tokenizer.convert_tokens_to_ids(tokens)
+        ids = ids[: self.max_len - 2]
+        ids = [self.cls_id] + ids + [self.sep_id]
+        ids, attention_mask = self.pad_text(ids)
+        return ids, attention_mask
+    
+    def __getitem__(self, index):
+        ids0, mask0 = self.text2id(self.data[index][0])
+        ids1, mask1 = self.text2id(self.data[index][1])
+        ids2, mask2 = self.text2id(self.data[index][2])
+        return Instance(
+            input_ids = DistTensorData(
+                flow.tensor([ids0, ids1, ids2], dtype=flow.long)
+            ),
+            attention_mask = DistTensorData(
+                flow.tensor([mask0, mask1, mask2], dtype=flow.long)
+            )
+        )
+
+class TestDataset_sup(TrainDataset_sup):
+    def __getitem__(self, index):
+        label = int(self.data[index][2])
+        ids0, mask0 = self.text2id(self.data[index][0])
+        ids1, mask1 = self.text2id(self.data[index][1])
+        return Instance(
+            input_ids = DistTensorData(
+                flow.tensor([ids0, ids1], dtype=flow.long)
+            ),
+            attention_mask = DistTensorData(
+                flow.tensor([mask0, mask1], dtype=flow.long)
+            ),
+            labels = DistTensorData(
+                flow.tensor(label, dtype=flow.int)
+            ),
         )
