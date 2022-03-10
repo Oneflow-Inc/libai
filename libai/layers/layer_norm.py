@@ -22,7 +22,7 @@ from libai.utils import distributed as dist
 class LayerNorm(nn.Module):
     """Applies Layer Normalization over a mini-batch of inputs in 1D parallelism.
 
-    Arguments:
+    Args:
         normalized_shape: input shape from an expected input of size.
         eps: a value added to the denominator for numerical stability. Defaults to 1e-5.
             elementwise_affine: a boolean value that when set to ``True``, this module
