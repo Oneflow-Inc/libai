@@ -16,6 +16,7 @@
 import logging
 import math
 import os
+import time
 from collections import OrderedDict
 from typing import Callable, Optional
 
@@ -111,6 +112,31 @@ def _check_batch_size(cfg):
         raise ValueError("train_micro_batch_size and global_batch_size must be set either")
 
 
+def _compile_dependencies():
+    logger = logging.getLogger(__name__)
+    # =========================
+    # Compile dataset C++ code.
+    # =========================
+    # TODO: move this to ninja
+    if dist.get_local_rank() == 0:
+        start_time = time.time()
+        logger.info("> compiling dataset index builder ...")
+        from libai.data.data_utils import compile_helper
+
+        compile_helper()
+        logger.info(
+            ">>> done with dataset index builder. Compilation time: {:.3f} "
+            "seconds".format(time.time() - start_time)
+        )
+
+    dist.synchronize()
+    if dist.get_local_rank() == 0:
+        logger.info(
+            ">>> done with compiling. "
+            "Compilation time: {:.3f} seconds".format(time.time() - start_time)
+        )
+
+
 def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
@@ -121,6 +147,7 @@ def default_setup(cfg, args):
     4. Setup tokenizer if it's NLP related task
     5. Check batch_size
     6. Backup the config to the output directory
+    7. Compile dependencies
 
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
@@ -163,6 +190,8 @@ def default_setup(cfg, args):
     flow.boxing.nccl.set_fusion_max_ops_num(
         try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
+
+    _compile_dependencies()
 
 
 class DefaultTrainer(TrainerBase):
