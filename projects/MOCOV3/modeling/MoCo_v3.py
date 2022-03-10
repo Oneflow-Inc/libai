@@ -115,19 +115,7 @@ class MoCo(nn.Module):
             return self.base_encoder(images)
 
 
-# class MoCo_ResNet(MoCo):
-#     def _build_projector_and_predictor_mlps(self, dim, mlp_dim):
-#         hidden_dim = self.base_encoder.fc.weight.shape[1]
-#         del self.base_encoder.fc, self.momentum_encoder.fc # remove original fc layer
 
-#         # projectors
-#         self.base_encoder.fc = self._build_mlp(2, hidden_dim, mlp_dim, dim)
-#         self.momentum_encoder.fc = self._build_mlp(2, hidden_dim, mlp_dim, dim)
-
-#         # predictor
-
-
-# @MODEL_ARCH_REGISTRY.register()
 class MoCo_ViT(MoCo):
     def _build_projector_and_predictor_mlps(self, dim, mlp_dim):
         hidden_dim = self.base_encoder.head.weight.shape[0] # linear.weight.T
@@ -153,7 +141,6 @@ def concat_all_gather(tensor):
     tensor = tensor.to_local()
 
     tensors_gather = [flow.ones_like(tensor)
-        # for _ in range(flow.distributed.get_world_size())]
         for _ in range(get_world_size())]
 
     # flow.distributed.all_gather(tensors_gather, tensor, async_op=False)

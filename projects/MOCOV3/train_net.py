@@ -19,7 +19,7 @@ sys.path.append(".")
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import default_setup
-from projects.MoCo_v3_Vit.trainer.MoCo_v3_trainer import MoCoDefaultTrainer as DefaultTrainer
+from projects.MOCOV3.trainer.MoCo_v3_trainer import MoCoDefaultTrainer as DefaultTrainer
 from libai.utils.checkpoint import Checkpointer
 
 def main(args):

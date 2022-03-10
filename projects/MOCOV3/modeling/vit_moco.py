@@ -5,10 +5,8 @@ from functools import reduce
 import oneflow as flow
 import oneflow.nn as nn
 
-from projects.MoCo_v3_Vit.modeling.MoCo_v3 import MoCo_ViT
 from libai.models.vision_transformer import VisionTransformer
 from libai.layers import Linear, PatchEmbedding
-from libai.config import LazyCall
 
 
 class VisionTransformerMoCo(VisionTransformer):
@@ -75,12 +73,3 @@ class VisionTransformerMoCo(VisionTransformer):
         pe_token = flow.zeros([1, 1, self.embed_dim], dtype=flow.float32).cuda().to_global(sbp=sbp, placement=placement)
         self.pos_embed = nn.Parameter(flow.cat([pe_token, pos_emb], dim=1))
         self.pos_embed.requires_grad = False
-
-model = LazyCall(MoCo_ViT)(
-            base_encoder=LazyCall(VisionTransformerMoCo)(), 
-            momentum_encoder=LazyCall(VisionTransformerMoCo)(),
-            dim=256, 
-            mlp_dim=4096, 
-            T=.2,
-            m = 0.99
-)

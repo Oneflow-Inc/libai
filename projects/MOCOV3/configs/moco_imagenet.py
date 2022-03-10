@@ -3,9 +3,9 @@ import random
 from flowvision import transforms
 
 from libai.config import LazyCall, get_config
-from projects.MoCo_v3_Vit.configs.models.MoCo_v3_vit_small import model
+from projects.MOCOV3.configs.models.MoCo_v3_vit_small import model
 from configs.common.data.imagenet import dataloader
-from projects.MoCo_v3_Vit.trainsform.transform import TwoCropsTransform, augmentation1, augmentation2
+from projects.MOCOV3.trainsform.transform import TwoCropsTransform, augmentation1, augmentation2
 
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
