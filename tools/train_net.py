@@ -19,14 +19,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
-from libai.evaluation import ClsEvaluator
 from libai.utils.checkpoint import Checkpointer
-
-
-class Trainer(DefaultTrainer):
-    @classmethod
-    def build_evaluator(cls, cfg):
-        return ClsEvaluator(cfg)
 
 
 def main(args):
@@ -41,17 +34,20 @@ def main(args):
         cfg.train.log_period = 1
 
     if args.eval_only:
-        model = Trainer.build_model(cfg)
+        tokenizer = None
+        if try_get_key(cfg, "tokenization.setup", default=False):
+            tokenizer = DefaultTrainer.build_tokenizer(cfg)
+        model = DefaultTrainer.build_model(cfg)
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=args.resume
         )
         if try_get_key(cfg, "train.graph.enabled", default=False):
-            model = Trainer.build_graph(cfg, model, is_train=False)
-        test_loader = Trainer.build_test_loader(cfg)
-        _ = Trainer.test(cfg, test_loader, model)
+            model = DefaultTrainer.build_graph(cfg, model, is_train=False)
+        test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
+        _ = DefaultTrainer.test(cfg, test_loader, model)
         return
 
-    trainer = Trainer(cfg)
+    trainer = DefaultTrainer(cfg)
     return trainer.train()
 
 

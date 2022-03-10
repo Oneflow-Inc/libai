@@ -30,8 +30,7 @@ class PPLEvaluator(DatasetEvaluator):
     probability model predicts a sample.
     """
 
-    def __init__(self, cfg):
-        self.cfg = cfg
+    def __init__(self):
         self._predictions = []
 
     def reset(self):

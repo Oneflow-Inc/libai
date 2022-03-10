@@ -1,4 +1,5 @@
 from libai.config import LazyCall
+from libai.evaluation import PPLEvaluator
 from .common.models.gpt import pretrain_model as model
 from .common.train import train
 from .common.optim import optim
@@ -11,7 +12,7 @@ merge_files = "./data_test/gpt_data/gpt2-merges.txt"
 data_prefix = "./data_test/gpt_data/loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
-tokenization.tokenizer.merges_file = merge_files 
+tokenization.tokenizer.merges_file = merge_files
 dataloader.train.dataset[0].data_prefix = data_prefix
 dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
@@ -31,4 +32,7 @@ optim.lr = 1.5e-4
 
 train.train_micro_batch_size = 4
 train.activation_checkpoint.enabled = True
+
+train.evaluation.evaluator = LazyCall(PPLEvaluator)()
+
 train.output_dir = "./output/gpt2_output"
