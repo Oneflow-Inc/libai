@@ -32,6 +32,7 @@ class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
         alpha: float = 0.0,
         last_step: int = -1,
         verbose: bool = False):
+        self.warmup_steps = warmup_steps
         super().__init__(
             optimizer=optimizer,
             decay_steps=decay_steps,
@@ -39,7 +40,6 @@ class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
             last_step=last_step,
             verbose=verbose
         )
-        self.warmup_steps = warmup_steps
     
     def get_lr(self, base_lr, step):
         if step < self.warmup_steps:
@@ -58,13 +58,15 @@ class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
         for i, (group, lr) in enumerate(zip(self.optimizer.param_groups, lrs)):
             if "lr_scale" in group:
                 group["lr"] = lr * group["lr_scale"]
-                self._last_lr.append(lr)
-                if self.verbose:
-                    self.print_lr(i, lr)
+            else:
+                group["lr"] = lr
+            self._last_lr.append(lr)
+            if self.verbose:
+                self.print_lr(i, lr)
 
 
 
-def WarmupLayerScaleCosineLR(
+def warmup_layerscale_cosine_lr_scheduler(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
     warmup_factor: float,

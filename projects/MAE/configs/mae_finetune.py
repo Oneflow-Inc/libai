@@ -3,6 +3,7 @@ from omegaconf import OmegaConf
 from libai.config import LazyCall, get_config
 from configs.common.data.imagenet import dataloader
 from .models.vit_base_patch16 import model
+from ..utils.scheduler import warmup_layerscale_cosine_lr_scheduler
 
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
@@ -74,7 +75,7 @@ optim.betas = (0.9, 0.999)
 
 
 # Refine scheduler
-# Default scheduler in LiBai training config is WarmupCosineLR
+train.scheduler._target_ = warmup_layerscale_cosine_lr_scheduler
 train.scheduler.warmup_factor = 0.001
 train.scheduler.alpha = 0.
 train.scheduler.warmup_method = "linear"

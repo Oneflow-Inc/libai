@@ -20,29 +20,47 @@
 # --------------------------------------------------------
 
 
-def get_layer_wise_lrd_overrides(model, weight_decay=0.05, no_weight_decay_list=[], layer_decay=.75):
+def param_groups_lrd(model, weight_decay=0.05, no_weight_decay_list=[], layer_decay=.75):
     """
     Parameter groups for layer-wise lr decay
     Modified from BEiT: https://github.com/microsoft/unilm/blob/master/beit/optim_factory.py#L58
     """
-    overrides = {}
+    param_group_names = {}
+    param_groups = {}
     num_layers = len(model.blocks) + 1
     layer_scales = list(layer_decay ** (num_layers - i) for i in range(num_layers + 1))
     
     for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+
         if param.ndim == 1 or name in no_weight_decay_list:
+            g_decay = "no_decay"
             this_decay = 0.
         else:
+            g_decay = "decay"
             this_decay = weight_decay
 
         layer_idx = get_layer_idx_for_vit(name, num_layers)
-        # TODO: add lr_scale args in graph optim
-        overrides[name] = {
-            "lr_scale": layer_scales[layer_idx],
-            "weight_decay": this_decay
-        }
-    
-    return overrides
+        group_name = "layer_%d_%s" % (layer_idx, g_decay)
+
+        if group_name not in param_group_names:
+            this_scale = layer_scales[layer_idx]
+
+            param_group_names[group_name] = {
+                "lr_scale": this_scale,
+                "weight_decay": this_decay,
+                "params": [],
+            }
+            param_groups[group_name] = {
+                "lr_scale": this_scale,
+                "weight_decay": this_decay,
+                "params": [],
+            }
+        param_group_names[group_name]["params"].append(name)
+        param_groups[group_name]["params"].append(param)
+
+    return list(param_groups.values())
 
 
 def get_layer_idx_for_vit(name, num_layers):

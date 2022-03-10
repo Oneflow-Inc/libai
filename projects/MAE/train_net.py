@@ -26,7 +26,7 @@ from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 from libai.optim import build_optimizer
 from utils.weight_convert import load_torch_checkpoint
-from utils.lr_decay import get_layer_wise_lrd_overrides
+from utils.lr_decay import param_groups_lrd
 
 
 logger = logging.getLogger(__name__)
@@ -48,15 +48,22 @@ class Trainer(DefaultTrainer):
     
     @classmethod
     def build_optimizer(cls, cfg, model):
-        param_overrides = None
         if try_get_key(cfg, "train.layer_decay") is not None:
-            param_overrides = get_layer_wise_lrd_overrides(
+            param_groups = param_groups_lrd(
                 model, 
-                weight_decay = cfg.optim.weight_decay, 
-                no_weight_decay_list = model.no_weight_decay(), 
-                layer_decay = cfg.train.layer_decay
+                weight_decay=cfg.optim.weight_decay, 
+                no_weight_decay_list=model.no_weight_decay(), 
+                layer_decay=cfg.train.layer_decay
             )
-        cfg.optim.parameters.overrides = param_overrides
+            optim = flow.optim.AdamW(
+                parameters=param_groups,
+                lr=cfg.optim.lr,
+                weight_decay=cfg.optim.weight_decay,
+                betas=cfg.optim.betas,
+                eps=cfg.optim.eps,
+                do_bias_correction=cfg.optim.do_bias_correction
+            )
+            return optim
         return build_optimizer(cfg.optim, model)
 
 
