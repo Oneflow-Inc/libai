@@ -70,11 +70,12 @@ class Embedding(nn.Module):
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
+        weight = flow._C.amp_white_identity(self.weight)
         # embeddings with sbp sign: [B, B]
         #   [B, B] x [S(0), B] --> [S(0), B]
         #     ↑         ↑              ↑
         #   embed    pos_ids       pos_embed
-        input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
+        input_embeds = flow._C.gather(weight, input_ids, axis=0)
         return input_embeds
 
     def _fill_padding_idx_with_zero(self) -> None:
@@ -142,13 +143,14 @@ class VocabEmbedding(nn.Module):
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
+        weight = flow._C.amp_white_identity(self.weight)
         # input_ids with shape (batch_size, seq_len), and sbp sign: [S(0), B]
 
         # Gather forward sbp sign
         # [B, S(0)] x [S(0), B] --> [S(0), P]
         #     ↑           ↑            ↑
         #   embed  input_ids    input_embeds
-        input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
+        input_embeds = flow._C.gather(weight, input_ids, axis=0)
         # Set the embeds sbp from [S(0), P] --> [S(0), B] to get complete embedding results.
         input_embeds = input_embeds.to_global(sbp=dist.get_hidden_sbp())
 
