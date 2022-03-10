@@ -115,7 +115,7 @@ class T5Dataset(flow.utils.data.Dataset):
         (
             encoder_input,
             decoder_input,
-            labels,
+            lm_labels,
             encoder_padding_mask,
             decoder_padding_mask,
             encoder_decoder_padding_mask,
@@ -128,7 +128,7 @@ class T5Dataset(flow.utils.data.Dataset):
             encoder_attn_mask=DistTensorData(encoder_padding_mask),
             decoder_attn_mask=DistTensorData(decoder_padding_mask),
             encoder_decoder_attn_mask=DistTensorData(encoder_decoder_padding_mask),
-            labels=DistTensorData(labels, placement_idx=-1),
+            lm_labels=DistTensorData(lm_labels, placement_idx=-1),
             loss_mask=DistTensorData(loss_mask, placement_idx=-1),
         )
         return sample
