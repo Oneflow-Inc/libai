@@ -28,7 +28,7 @@ from libai.config.instantiate import instantiate
 from libai.data import Instance
 from libai.engine import hooks
 from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase
-from libai.evaluation import ClsEvaluator, inference_on_dataset, print_csv_format
+from libai.evaluation import inference_on_dataset, print_csv_format
 from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
@@ -358,20 +358,24 @@ class DefaultTrainer(TrainerBase):
             hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period)
         )
 
-        def test_and_save_results():
-            model = self.graph_eval if self.cfg.graph.enabled else self.model
-            self._last_eval_results = self.test(self.cfg, self.test_loader, model)
-            return self._last_eval_results
+        if self.cfg.train.evaluation.enabled:
 
-        ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
-        ret.append(
-            hooks.BestCheckpointer(
-                self.cfg.train.eval_period,
-                self.checkpointer,
-                val_metric=try_get_key(self.cfg, "train.eval_metric", default="Acc@1"),
-                mode=try_get_key(self.cfg, "train.eval_mode", default="max"),
+            def test_and_save_results():
+                model = self.graph_eval if self.cfg.graph.enabled else self.model
+                self._last_eval_results = self.test(self.cfg, self.test_loader, model)
+                return self._last_eval_results
+
+            ret.append(hooks.EvalHook(self.cfg.train.evaluation.eval_period, test_and_save_results))
+            ret.append(
+                hooks.BestCheckpointer(
+                    self.cfg.train.evaluation.eval_period,
+                    self.checkpointer,
+                    val_metric=try_get_key(
+                        self.cfg, "train.evaluation.eval_metric", default="Acc@1"
+                    ),
+                    mode=try_get_key(self.cfg, "train.evaluation.eval_mode", default="max"),
+                )
             )
-        )
 
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
@@ -633,7 +637,8 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_evaluator(cls, cfg):
-        return ClsEvaluator(cfg)
+        evaluator = instantiate(cfg.train.evaluation.evaluator)
+        return evaluator
 
     @classmethod
     def test(cls, cfg, test_loaders, model, evaluator=None):
@@ -663,7 +668,7 @@ class DefaultTrainer(TrainerBase):
         for idx, data_loader in enumerate(test_loaders):
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
-            dataset_name = getattr(data_loader.dataset, "dataset_name", "UndefinedDataset")
+            dataset_name = type(data_loader.dataset).__name__
             # TODO: support multi evaluator
             # if evaluators is not None:
             #     evaluator = evaluators[idx]

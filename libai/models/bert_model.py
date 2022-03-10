@@ -356,7 +356,7 @@ class BertPreTrainingHeads(nn.Module):
         seq_relationship_score = self.seq_relationship(pooled_output)
         prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
 
-        if self.training and lm_labels is not None:
+        if lm_labels is not None:
             return self.loss_func(
                 prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
             )

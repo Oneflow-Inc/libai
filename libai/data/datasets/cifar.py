@@ -35,7 +35,6 @@ class CIFAR10Dataset(datasets.CIFAR10):
         download (bool, optional): If true, downloads the dataset from the internet and
             puts it in root directory. If dataset is already downloaded, it is not
             downloaded again.
-        dataset_name (str, optional): Name for the dataset as an identifier. E.g, ``cifar10``
     """
 
     def __init__(
@@ -44,13 +43,11 @@ class CIFAR10Dataset(datasets.CIFAR10):
         train: bool = True,
         transform: Optional[Callable] = None,
         download: bool = False,
-        dataset_name: str = "cifar10",
         **kwargs
     ):
         super(CIFAR10Dataset, self).__init__(
             root=root, train=train, transform=transform, download=download, **kwargs
         )
-        self.dataset_name = dataset_name
 
     def __getitem__(self, index: int):
         img, target = super().__getitem__(index)

@@ -1,4 +1,5 @@
 from libai.config import LazyCall
+from libai.evaluation import PPLEvaluator
 from .common.models.t5 import pretrain_model as model
 from .common.train import train
 from .common.optim import optim
@@ -20,4 +21,7 @@ model.cfg.hidden_layers = 6
 
 train.train_micro_batch_size = 16
 train.activation_checkpoint.enabled = True
+
+train.evaluation.evaluator = LazyCall(PPLEvaluator)()
+
 train.output_dir = "./output/t5_output"
