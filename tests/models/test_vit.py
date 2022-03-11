@@ -64,15 +64,20 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.dataloader.train.dataset[0].download = True
         cfg.dataloader.train.num_workers = 0
 
+        cfg.dataloader.test[0].dataset._target_ = CIFAR10Dataset
+        cfg.dataloader.test[0].dataset.train = False
+        cfg.dataloader.test[0].dataset.root = "/".join(data_path.split("/")[:-1])
+        cfg.dataloader.test[0].dataset.download = True
+        cfg.dataloader.test[0].num_workers = 0
+
         # refine mixup cfg
         cfg.dataloader.train.mixup_func.num_classes = 10
-
-        del cfg.dataloader.test
 
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.evaluation.enabled = False  # no test now
+        cfg.train.evaluation.eval_period = 10
+        cfg.train.evaluation.eval_iter = 10
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
         cfg.train.num_accumulation_steps = 1
@@ -82,19 +87,6 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.train.amp.enabled = True
 
         self.cfg = cfg
-
-        def build_hooks(self):
-            ret = [
-                hooks.IterationTimer(),
-                hooks.LRScheduler(),
-            ]
-
-            if dist.is_main_process():
-                # run writers in the end, so that evaluation metrics are written
-                ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
-            return ret
-
-        DefaultTrainer.build_hooks = build_hooks
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -193,7 +193,12 @@ def inference_on_dataset(
             outputs = model(**paded_data)
 
             # get valid sample
-            valid_data = {key: dist.ttol(value)[:valid_sample] for key, value in data.items()}
+            valid_data = {
+                key: dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])[
+                    :valid_sample
+                ]
+                for key, value in data.items()
+            }
             valid_outputs = {}
             for key, value in outputs.items():
                 value = dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
