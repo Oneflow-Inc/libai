@@ -25,7 +25,7 @@ import libai.utils.distributed as dist
 from configs.common.models.vit.vit_small_patch16_224 import model
 from libai.config import LazyCall, LazyConfig
 from libai.data.datasets import CIFAR10Dataset
-from libai.engine import DefaultTrainer, hooks
+from libai.engine import DefaultTrainer
 from libai.engine.default import _check_batch_size
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
