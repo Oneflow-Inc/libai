@@ -11,7 +11,7 @@ from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from libai.tokenizer import BertTokenizer
 
 from projects.SomeBug.dataset import TrainDataset_sup, TestDataset_sup
-from projects.SomeBug.simcse_sup import Simcse
+from projects.SomeBug.simcse_sup1 import Simcse
 
 
 tokenization.tokenizer = LazyCall(BertTokenizer)(
@@ -32,18 +32,18 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
     ],
 )
 
-dataloader.test = [
-    LazyCall(build_nlp_test_loader)(
-        dataset=LazyCall(TestDataset_sup)(
-            name="cnsd_sts",
-            path="./data/STS/cnsd-sts-dev.txt",
-            tokenizer=LazyCall(BertTokenizer)(
-                vocab_file="./data/vocab.txt"
-            ),
-            max_len = 64,
-        ),
-    ),
-]
+# dataloader.test = [
+#     LazyCall(build_nlp_test_loader)(
+#         dataset=LazyCall(TestDataset_sup)(
+#             name="cnsd_sts",
+#             path="./data/STS/cnsd-sts-dev.txt",
+#             tokenizer=LazyCall(BertTokenizer)(
+#                 vocab_file="./data/vocab.txt"
+#             ),
+#             max_len = 64,
+#         ),
+#     ),
+# ]
 
 
 simcse_cfg.update(
