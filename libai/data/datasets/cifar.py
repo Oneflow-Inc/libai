@@ -81,13 +81,11 @@ class CIFAR100Dataset(datasets.CIFAR100):
         train: bool = True,
         transform: Optional[Callable] = None,
         download: bool = False,
-        dataset_name: str = "cifar100",
         **kwargs
     ):
         super(CIFAR100Dataset, self).__init__(
             root=root, train=train, transform=transform, download=download, **kwargs
         )
-        self.dataset_name = dataset_name
 
     def __getitem__(self, index: int):
         img, target = super().__getitem__(index)
