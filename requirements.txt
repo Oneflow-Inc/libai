@@ -1,7 +1,6 @@
 boto3
 botocore
 cloudpickle
-flowvision
 filelock
 flowvision==0.1.0
 wget
