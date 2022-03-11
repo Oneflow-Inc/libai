@@ -56,10 +56,10 @@ class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
     def update_lrs(self, lrs):
         self._last_lr = []
         for i, (group, lr) in enumerate(zip(self.optimizer.param_groups, lrs)):
-            if "lr_scale" in group:
-                group["lr"] = lr * group["lr_scale"]
+            if "lr_scale" in group.options:
+                group.options["lr"] = lr * group.options["lr_scale"]
             else:
-                group["lr"] = lr
+                group.options["lr"] = lr
             self._last_lr.append(lr)
             if self.verbose:
                 self.print_lr(i, lr)
