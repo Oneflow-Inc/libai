@@ -114,7 +114,7 @@ def inference_on_dataset(
     model,
     data_loader,
     batch_size,
-    run_iter,
+    eval_iter,
     get_batch: Callable,
     evaluator: Union[DatasetEvaluator, List[DatasetEvaluator], None],
 ):
@@ -132,7 +132,7 @@ def inference_on_dataset(
         batch_size: batch size for inference
         data_loader: an iterable object with a length.
             The elements it generates will be the inputs to the model.
-        run_iter: running steps for evaluation, `0` means running total datasets
+        eval_iter: running steps for evaluation, `0` means running total datasets
         get_batch: a Callable function for getting data from dataloader
         evaluator: the evaluator(s) to run. Use `None` if you only want to benchmark,
             but don't want to do any evaluation.
@@ -161,13 +161,11 @@ def inference_on_dataset(
     last_batch_lack = (dps - (total_samples % dps)) % dps
 
     # reset total samples
-    run_iter = len(data_loader) if run_iter == 0 else run_iter
-    if run_iter != len(data_loader):
-        total_samples = min(run_iter * batch_size, len(data_loader.dataset))
-        logger.info(
-            f"with run_iter {run_iter}, "
-            f"reset total samples {len(data_loader.dataset)} to {total_samples}"
-        )
+    total_samples = min(eval_iter * batch_size, len(data_loader.dataset))
+    logger.info(
+        f"with eval_iter {eval_iter}, "
+        f"reset total samples {len(data_loader.dataset)} to {total_samples}"
+    )
     logger.info(f"Start inference on {total_samples} samples")
 
     with ExitStack() as stack:
@@ -177,7 +175,7 @@ def inference_on_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
-            if idx >= run_iter:
+            if idx >= eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time
             if idx == num_warmup:

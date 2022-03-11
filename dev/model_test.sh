@@ -9,8 +9,6 @@ python3 -m oneflow.distributed.launch --nproc_per_node 4 -m unittest -f tests/mo
 
 python3 -m oneflow.distributed.launch --nproc_per_node 4 -m unittest -f tests/models/test_gpt.py
 
-python3 -m oneflow.distributed.launch --nproc_per_node 4 -m unittest -f tests/models/test_qqp.py
-
 python3 -m oneflow.distributed.launch --nproc_per_node 4 -m unittest -f tests/models/test_t5.py
 
 python3 -m oneflow.distributed.launch --nproc_per_node 4 -m unittest -f tests/models/test_vit.py

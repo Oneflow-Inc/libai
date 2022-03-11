@@ -389,7 +389,7 @@ class DefaultTrainer(TrainerBase):
 
         if self.cfg.train.evaluation.enabled:
 
-            assert self.cfg.train.evaluation.run_iter >= 0, "run_iter must be positive number"
+            assert self.cfg.train.evaluation.eval_iter > 0, "run_iter must be positive number"
 
             def test_and_save_results():
                 model = self.graph_eval if self.cfg.graph.enabled else self.model
@@ -717,7 +717,7 @@ class DefaultTrainer(TrainerBase):
                 model,
                 data_loader,
                 test_batch_size,
-                cfg.train.evaluation.run_iter,
+                cfg.train.evaluation.eval_iter,
                 cls.get_batch,
                 evaluator,
             )

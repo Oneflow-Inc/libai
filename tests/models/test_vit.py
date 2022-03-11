@@ -52,7 +52,7 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
         # prepare data path
-        if dist.is_main_process():
+        if dist.get_local_rank() == 0:
             get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
             os.makedirs(TEST_OUTPUT, exist_ok=True)
         dist.synchronize()
@@ -98,7 +98,7 @@ class TestViTModel(flow.unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        if os.path.isdir(TEST_OUTPUT) and dist.is_main_process():
+        if os.path.isdir(TEST_OUTPUT) and dist.get_local_rank() == 0:
             shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()

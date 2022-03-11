@@ -51,7 +51,7 @@ class TestGPTModel(flow.unittest.TestCase):
         cfg = LazyConfig.load("configs/gpt2_pretrain.py")
 
         # prepare dataset
-        if dist.is_main_process():
+        if dist.get_local_rank() == 0:
             # download dataset on main process of each node
             get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
             get_data_from_cache(MERGE_FILE_URL, cache_dir, md5=MERGE_FILE_MD5)
@@ -112,7 +112,7 @@ class TestGPTModel(flow.unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        if os.path.isdir(TEST_OUTPUT) and dist.is_main_process():
+        if os.path.isdir(TEST_OUTPUT) and dist.get_local_rank() == 0:
             shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
