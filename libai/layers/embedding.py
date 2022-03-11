@@ -73,10 +73,7 @@ class Embedding(nn.Module):
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
-        if self.amp_enabled:
-            weight = flow._C.amp_white_identity(self.weight)
-        else:
-            weight = self.weight
+        weight = flow._C.amp_white_identity(self.weight) if self.amp_enabled else self.weight
         # embeddings with sbp sign: [B, B]
         #   [B, B] x [S(0), B] --> [S(0), B]
         #     ↑         ↑              ↑
@@ -152,10 +149,7 @@ class VocabEmbedding(nn.Module):
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
-        if self.amp_enabled:
-            weight = flow._C.amp_white_identity(self.weight)
-        else:
-            weight = self.weight
+        weight = flow._C.amp_white_identity(self.weight) if self.amp_enabled else self.weight
         # input_ids with shape (batch_size, seq_len), and sbp sign: [S(0), B]
 
         # Gather forward sbp sign
