@@ -1,18 +1,20 @@
 from omegaconf import OmegaConf
 
-from configs.common.data.bert_dataset import tokenization
-from configs.common.models.bert import cfg as model_cfg
-from configs.common.models.graph import graph
-from configs.common.optim import optim
-from configs.common.train import train
+from libai.config import get_config
 from libai.config import LazyCall
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from libai.tokenizer import BertTokenizer
 from projects.text_classification.modeling.model import ModelForSequenceClassification
 from projects.text_classification.dataset import ClueDataset
 
+tokenization = get_config("common/data/bert_dataset.py").tokenization
+optim = get_config("common/optim.py").optim
+model_cfg = get_config("common/models/bert.py").cfg
+graph = get_config("common/models/graph.py").graph
+train = get_config("common/train.py").train
+
 tokenization.tokenizer = LazyCall(BertTokenizer)(
-    vocab_file="bert-base-chinese-vocab.txt",
+    vocab_file="/DATA/disk1/liuchi/work/bert-base-chinese-vocab.txt",
     do_lower_case=True,
     do_chinese_wwm=False,
 )
@@ -63,8 +65,8 @@ train.update(
     dict(
         recompute_grad=dict(enabled=True),
         output_dir="output/benchmark/",
-        train_micro_batch_size=16,
-        test_micro_batch_size=16,
+        train_micro_batch_size=4,
+        test_micro_batch_size=4,
         train_epoch=1,
         train_iter=0,
         eval_period=500,

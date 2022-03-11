@@ -1,4 +1,6 @@
 ''' Script for downloading all GLUE data.
+Modify from https://github.com/nyu-mll/GLUE-baselines/blob/master/download_glue_data.py
+
 Note: for legal reasons, we are unable to host MRPC.
 You can either use the version hosted by the SentEval team, which is already tokenized,
 or you can download the original data from (https://download.microsoft.com/download/D/4/6/D46FF87A-F6B9-4252-AA8B-3604ED519838/MSRParaphraseCorpus.msi) and extract the data from it manually.

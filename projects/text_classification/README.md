@@ -1,5 +1,5 @@
 # Text classification projects
-
+**English** | [简体中文](/projects/text_classification/README_zh-CN.md)
 ## GLUE tasks
 
 Fine-tuning the pretrained language models for sequence classification on the GLUE benchmark: [General Language Understanding Evaluation](https://gluebenchmark.com/). This is a common benchmark for *English* pretrained language models.
@@ -12,11 +12,11 @@ python3 dataset/download_glue_data.py
 
 Here is how to finetune the task on one of them:
 ```bash
-bash tools/train.sh projects/text_classification/configs/config.py $num_gpus
+bash tools/train.sh tools/train_net.py projects/text_classification/configs/config.py $num_gpus train.train_iter=10
 ```
 where `$num_gpus` indicates the number of GPUs. If you want to run the distributed program, you can change it, for example:
 ```bash
-bash tools/train.sh projects/text_classification/configs/config.py 2
+bash tools/train.sh tools/train_net.py projects/text_classification/configs/config.py 2 train.train_iter=10
 ```
 
 Before running the program, you should modify the `config.py` file. Modification fields include but are not limited to task_name, data_dir, vocab_file, model hyperparameter, learning rate, and batch size, and so on.

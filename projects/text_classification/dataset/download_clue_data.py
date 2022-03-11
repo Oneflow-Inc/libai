@@ -1,5 +1,5 @@
 """ Script for downloading all CLUE data.
-For licence information, see the original dataset information links
+The original dataset information links
 available from: https://www.cluebenchmarks.com/
 Example usage:
   python download_clue_data.py --data_dir data --tasks all

@@ -1,5 +1,5 @@
-
 # 文本分类任务
+[English](/projects/text_classification/README.md) | 简体中文
 
 ## GLUE 任务
 
@@ -11,13 +11,13 @@ cd projects/text_classification
 python3 dataset/download_glue_data.py
 ```
 
-这里示范如何微调该任务：
+可以通过以下命令在此任务上进行finetune:
 ```bash
-bash tools/train.sh projects/text_classification/configs/config.py $num_gpus
+bash tools/train.sh tools/train_net.py projects/text_classification/configs/config.py $num_gpus train.train_iter=10
 ```
 其中`$num_gpus`表示运行程序的GPU数量。如果你想执行分布式训练，可以这样修改：
 ```bash
-bash tools/train.sh projects/text_classification/configs/config.py 2
+bash tools/train.sh tools/train_net.py projects/text_classification/configs/config.py 2 train.train_iter=10
 ```
 
 在运行程序之前，你应当修改`config.py`配置文件。待修改字段包括但不限于task_name、data_dir、vocab_file、模型超参数、学习率、批次大小等等。

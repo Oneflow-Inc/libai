@@ -18,9 +18,9 @@ import os
 import time
 from enum import Enum
 from typing import Optional, Union
+from filelock import FileLock
 
 import oneflow as flow
-from filelock import FileLock
 from oneflow.utils.data import Dataset
 
 from libai.data.structures import DistTensorData, Instance
