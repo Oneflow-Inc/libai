@@ -42,6 +42,7 @@ class T5Embedding(flow.nn.Module):
         max_sequence_length,
         embedding_dropout_prob,
         init_method=flow.nn.init.xavier_normal_,
+        amp_enabled=False,
     ) -> None:
         super().__init__()
         self.hidden_size = hidden_size
@@ -51,11 +52,13 @@ class T5Embedding(flow.nn.Module):
             num_embeddings=vocab_size,
             embedding_dim=hidden_size,
             init_method=init_method,
+            amp_enabled=amp_enabled,
         )
         self.position_embeddings = Embedding(
             num_embeddings=max_sequence_length,
             embedding_dim=hidden_size,
             init_method=init_method,
+            amp_enabled=amp_enabled,
         )
         self.position_ids = flow.arange(
             max_sequence_length,
@@ -111,6 +114,8 @@ class T5Model(flow.nn.Module):
         apply_query_key_layer_scaling (bool, optional):
             Whether or not to use layer index related scaling in computing attention scores.
             If True, the scaling factor equals to sqrt(d) * (layer_index + 1). Defaults to True.
+        amp_enabled (bool, optional):
+            Whether or not to set fp16 for embedding weight in T5 model. Defaults to False.
     """
 
     @configurable
@@ -131,6 +136,7 @@ class T5Model(flow.nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=True,
+        amp_enabled=False,
     ) -> None:
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -141,6 +147,7 @@ class T5Model(flow.nn.Module):
             max_sequence_length=max_position_embeddings,
             embedding_dropout_prob=embedding_dropout_prob,
             init_method=init_method,
+            amp_enabled=amp_enabled,
         )
         self.extended_attn_mask = ExtendedMask()
 
@@ -228,6 +235,7 @@ class T5Model(flow.nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "amp_enabled": cfg.amp_enabled,
         }
 
     def forward(
