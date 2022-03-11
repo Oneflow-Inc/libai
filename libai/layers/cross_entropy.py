@@ -43,5 +43,4 @@ class ParallelCrossEntropyLoss(nn.Module):
             logits.view(-1, logits.shape[-1]),
             target.view(-1),
         )
-        lm_loss = flow._C.amp_white_identity(lm_loss)
         return lm_loss

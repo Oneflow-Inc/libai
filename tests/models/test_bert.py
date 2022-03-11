@@ -86,6 +86,7 @@ class TestBertModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     def test_bert_eager_with_data_tensor_parallel(self):
+        self.cfg.train.amp.enabled = False
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
