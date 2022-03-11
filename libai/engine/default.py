@@ -504,7 +504,8 @@ class DefaultTrainer(TrainerBase):
         Overwrite it if you'd like a different model.
         """
         assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
-        # Set model fp16 option because of embedding layer `white_identity` manual insert for amp training.
+        # Set model fp16 option because of embedding layer `white_identity` manual 
+        # insert for amp training.
         if try_get_key(cfg.model.cfg, "amp_enabled") is not None:
             cfg.model.cfg.amp_enabled = cfg.train.amp.enabled
         model = build_model(cfg.model)
