@@ -389,6 +389,8 @@ class DefaultTrainer(TrainerBase):
 
         if self.cfg.train.evaluation.enabled:
 
+            assert self.cfg.train.evaluation.eval_iter > 0, "run_iter must be positive number"
+
             def test_and_save_results():
                 model = self.graph_eval if self.cfg.graph.enabled else self.model
                 self._last_eval_results = self.test(self.cfg, self.test_loader, model)
@@ -504,6 +506,10 @@ class DefaultTrainer(TrainerBase):
         Overwrite it if you'd like a different model.
         """
         assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
+        # Set model fp16 option because of embedding layer `white_identity` manual
+        # insert for amp training if provided.
+        if try_get_key(cfg.model.cfg, "amp_enabled") is not None:
+            cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
@@ -711,9 +717,13 @@ class DefaultTrainer(TrainerBase):
             #         )
             #         results[dataset_name] = {}
             #         continue
-
             results_i = inference_on_dataset(
-                model, data_loader, test_batch_size, cls.get_batch, evaluator
+                model,
+                data_loader,
+                test_batch_size,
+                cfg.train.evaluation.eval_iter,
+                cls.get_batch,
+                evaluator,
             )
             results[dataset_name] = results_i
             if dist.is_main_process():
