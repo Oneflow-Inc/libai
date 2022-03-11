@@ -15,7 +15,7 @@
 
 
 import os
-import tempfile
+import shutil
 import unittest
 
 import oneflow as flow
@@ -38,6 +38,8 @@ MERGE_FILE_MD5 = "75a37753dd7a28a2c5df80c28bf06e4e"
 BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 
+TEST_OUTPUT = "output_unittest/test_gpt"
+
 
 setup_logger(distributed_rank=dist.get_rank())
 
@@ -55,6 +57,7 @@ class TestGPTModel(flow.unittest.TestCase):
             get_data_from_cache(MERGE_FILE_URL, cache_dir, md5=MERGE_FILE_MD5)
             get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
             get_data_from_cache(IDX_DATA_URL, cache_dir, md5=IDX_DATA_MD5)
+            os.makedirs(TEST_OUTPUT, exist_ok=True)
         dist.synchronize()
 
         vocab_path = get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
@@ -73,12 +76,12 @@ class TestGPTModel(flow.unittest.TestCase):
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.eval_period = 1000  # no test now
+        cfg.train.evaluation.enabled = False  # no test now
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 4
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
-        cfg.train.output_dir = tempfile.mkdtemp()
+        cfg.train.output_dir = TEST_OUTPUT
 
         # set model
         cfg.model.cfg.max_seq_length = 256
@@ -105,12 +108,12 @@ class TestGPTModel(flow.unittest.TestCase):
                 ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
             return ret
 
-        @classmethod
-        def test(cls, cfg, test_loaders, model, evaluator=None):
-            return {}
-
         DefaultTrainer.build_hooks = build_hooks
-        DefaultTrainer.test = test
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if os.path.isdir(TEST_OUTPUT) and dist.get_local_rank() == 0:
+            shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
     def test_gpt_eager_with_data_tensor_parallel(self):

@@ -389,6 +389,8 @@ class DefaultTrainer(TrainerBase):
 
         if self.cfg.train.evaluation.enabled:
 
+            assert self.cfg.train.evaluation.eval_iter > 0, "run_iter must be positive number"
+
             def test_and_save_results():
                 model = self.graph_eval if self.cfg.graph.enabled else self.model
                 self._last_eval_results = self.test(self.cfg, self.test_loader, model)
@@ -715,9 +717,13 @@ class DefaultTrainer(TrainerBase):
             #         )
             #         results[dataset_name] = {}
             #         continue
-
             results_i = inference_on_dataset(
-                model, data_loader, test_batch_size, cls.get_batch, evaluator
+                model,
+                data_loader,
+                test_batch_size,
+                cfg.train.evaluation.eval_iter,
+                cls.get_batch,
+                evaluator,
             )
             results[dataset_name] = results_i
             if dist.is_main_process():
