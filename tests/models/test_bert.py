@@ -75,6 +75,7 @@ class TestBertModel(flow.unittest.TestCase):
         cfg.train.evaluation.eval_iter = 10
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
+        cfg.train.test_micro_batch_size = 4
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
         cfg.train.output_dir = TEST_OUTPUT
