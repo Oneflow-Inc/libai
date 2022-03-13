@@ -1,4 +1,52 @@
 <!-- 配图 -->
+ LiBai的模块化设计可以让用户更为方便地将LiBai拓展到自己的项目上:
+    - 配置系统采用LazyConfig方式，使得配置系统更加灵活且易于拓展
+    - 采用Trainer与Hook结合的方式，方便用户使用和拓展训练中需要的组件
+    - 用户可以在安装好LiBai的基础上灵活地开发自己的任务，而非强依赖于LiBai中的所有组件。可以查看[基于LiBai的项目](/projects)了解更多细节
+
+- **速度快，性能高**
+
+</details>
+
+## 安装
+请参考[LiBai安装文档](https://libai.readthedocs.io/en/latest/tutorials/Installation.html)进行安装。
+
+## 快速入门
+请参考[快速入门文档](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html)了解和学习LiBai的基本使用，后续我们将提供丰富的教程与完整的使用指南。
+
+## 使用文档
+请参考[LiBai使用文档](https://libai.readthedocs.io/en/latest/index.html)了解LiBai中相关接口的使用。
+
+## 更新日志
+
+最新的**Beta 0.1.0**版本已经在 2022.02.15 发布：
+- 支持2D并行ViT模型在ImageNet上的完整训练
+- 支持3D并行的BERT模型预训练
+
+历史版本的发布与更新细节请参考[更新日志](./changelog.md)。
+
+## 参与贡献
+
+我们欢迎任何有助于提升LiBai的贡献. 请参考[贡献指南](./CONTRIBUTING.md)来了解如何参与贡献。
+
+## 许可证
+
+该项目开源自[Apache 2.0 license](LICENSE)。
+
+## Citation
+
+如果LiBai对于你的研究项目有帮助的话，请参考如下的BibTeX引用LiBai：
+
+```BibTeX
+@misc{of2021libai,
+  author =       {Xingyu Liao and Peng Cheng and Tianhe Ren and Depeng Liang and
+                  Kai Dang and Yi Wang and Xiaoyu Xu},
+  title =        {LiBai},
+  howpublished = {\url{https://github.com/Oneflow-Inc/libai}},
+  year =         {2021}
+}
+```
+
 
 <h2 align="center">LiBai</h2>
 <p align="center">
@@ -19,29 +67,6 @@
     </a>
 </p>
 
-
-## Introduction
-
-**English** | [简体中文](/README_zh-CN.md)
-
-LiBai is a large-scale open-source model training toolbox based on OneFlow. The main branch works with OneFlow 0.7.0.
-
-<details open>
-<summary> <b> Highlights </b> </summary>
-
-- **Support a collection of parallel training components**
-
-    LiBai provides multiple parallelisms such as Data Parallelism, Tensor Parallelism, and Pipeline Parallelism. It's also extensible for other new parallelisms.
-
-- **Varied training techniques**
-
-    LiBai provides many out-of-the-box training techniques such as Distributed Training, Mixed Precision Training, Activation Checkpointing, Recomputation, Gradient Accumulation, and Zero Redundancy Optimizer(ZeRO).
-
-- **Support for both CV and NLP tasks**
-
-    LiBai has predifined data process for both CV and NLP datasets such as CIFAR, ImageNet, and BERT Dataset.
-
-- **Easy to use**
 
     LiBai's components are designed to be modular for easier usage as follows:
     - LazyConfig system for more flexible syntax and no predefined structures 
