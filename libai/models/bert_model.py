@@ -59,11 +59,14 @@ class BertEmbeddings(nn.Module):
         embedding_dropout_prob,
         num_tokentypes=0,
         init_method=nn.init.xavier_normal_,
+        amp_enabled=False,
     ):
         super().__init__()
-        self.vocab_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
+        self.vocab_embeddings = VocabEmbedding(
+            vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled
+        )
         self.position_embeddings = Embedding(
-            max_sequence_length, hidden_size, init_method=init_method
+            max_sequence_length, hidden_size, init_method=init_method, amp_enabled=amp_enabled
         )
 
         # NOTE(l1aoxingyu): Set position_ids sbp sign to [B, B] initially, because position_ids is a
@@ -78,7 +81,7 @@ class BertEmbeddings(nn.Module):
 
         if num_tokentypes > 0:
             self.tokentype_embeddings = Embedding(
-                num_tokentypes, hidden_size, init_method=init_method
+                num_tokentypes, hidden_size, init_method=init_method, amp_enabled=amp_enabled
             )
             self.tokentype_ids = flow.zeros(
                 self.position_ids.size(),
@@ -236,6 +239,7 @@ class BertModel(nn.Module):
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
         apply_query_key_layer_scaling=True,
+        amp_enabled=False,
     ):
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -249,6 +253,7 @@ class BertModel(nn.Module):
             hidden_dropout_prob,
             num_tokentypes,
             init_method,
+            amp_enabled,
         )
 
         # Mask generation
@@ -298,6 +303,7 @@ class BertModel(nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "amp_enabled": cfg.amp_enabled,
         }
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
@@ -356,7 +362,7 @@ class BertPreTrainingHeads(nn.Module):
         seq_relationship_score = self.seq_relationship(pooled_output)
         prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
 
-        if self.training and lm_labels is not None:
+        if lm_labels is not None:
             return self.loss_func(
                 prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
             )
