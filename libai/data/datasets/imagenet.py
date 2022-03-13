@@ -32,21 +32,14 @@ class ImageNetDataset(datasets.ImageFolder):
             creates from test set.
         transform (callable, optional): A function/transform that  takes in an PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
-        dataset_name (str, optional): Name for the dataset as an identifier. E.g, ``imagenet``
     """
 
     def __init__(
-        self,
-        root: str,
-        train: bool = True,
-        transform: Optional[Callable] = None,
-        dataset_name: str = "imagenet",
-        **kwargs
+        self, root: str, train: bool = True, transform: Optional[Callable] = None, **kwargs
     ):
         prefix = "train" if train else "val"
         root = os.path.join(root, prefix)
         super(ImageNetDataset, self).__init__(root=root, transform=transform, **kwargs)
-        self.dataset_name = dataset_name
 
     def __getitem__(self, index: int):
         sample, target = super().__getitem__(index)

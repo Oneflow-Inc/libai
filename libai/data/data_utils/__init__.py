@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .dataset_utils import compile_helper
 from .indexed_dataset import (
     IndexedCachedDataset,
     IndexedDataset,

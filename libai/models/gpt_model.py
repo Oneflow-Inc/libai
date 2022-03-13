@@ -125,6 +125,7 @@ class GPTModel(nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
+        amp_enabled=False,
     ):
         super().__init__()
         init_method = init_method_normal(sigma=initializer_range)
@@ -139,6 +140,7 @@ class GPTModel(nn.Module):
             max_seq_length,
             init_method=init_method,
             embedding_dropout_prob=embedding_dropout_prob,
+            amp_enabled=amp_enabled,
         )
 
         self.casual_mask = CasualMask()
@@ -180,6 +182,7 @@ class GPTModel(nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "amp_enabled": cfg.amp_enabled,
         }
 
     def forward(self, input_ids):
@@ -210,10 +213,15 @@ class GPTEmbedding(nn.Module):
         max_seq_length,
         init_method=init.xavier_normal_,
         embedding_dropout_prob=0.0,
+        amp_enabled=False,
     ):
         super().__init__()
-        self.token_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
-        self.position_embeddings = Embedding(max_seq_length, hidden_size, init_method=init_method)
+        self.token_embeddings = VocabEmbedding(
+            vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled
+        )
+        self.position_embeddings = Embedding(
+            max_seq_length, hidden_size, init_method=init_method, amp_enabled=amp_enabled
+        )
         self.dropout = nn.Dropout(embedding_dropout_prob)
 
         self.position_ids = flow.arange(
@@ -329,7 +337,7 @@ class GPTForPreTraining(nn.Module):
                 :code:`{"prediction_scoers": logits}` when evaluating.
         """
         logits = self.GPT_model(input_ids)
-        if self.training and labels is not None:
+        if labels is not None:
             lm_loss = self.loss_func(logits, labels)
             return lm_loss
         else:
