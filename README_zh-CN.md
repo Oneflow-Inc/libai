@@ -19,68 +19,70 @@
     </a>
 </p>
 
-## 简介
 
-[English](/README.md) | **简体中文**
+## Introduction
 
+**English** | [简体中文](/README_zh-CN.md)
 
-LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支代码目前支持OneFlow 0.b.0以上的版本。 by b
-
+LiBai is a large-scale open-source model training toolbox based on OneFlow. The main branch works with OneFlow 0.7.0.
 
 <details open>
-<summary> <b> 主要特性 </b> </summary>
+<summary> <b> Highlights </b> </summary>
 
-- **支持丰富的并行训练配置**
+- **Support a collection of parallel training components**
 
-    LiBai支持了丰富的并行训练配置，包括数据并行、模型并行、流水并行等并行方式。可拓展性好，易于拓展到更丰富的并行训练模式上。
+    LiBai provides multiple parallelisms such as Data Parallelism, Tensor Parallelism, and Pipeline Parallelism. It's also extensible for other new parallelisms.
 
-- **多样化的训练技巧**
+- **Varied training techniques**
 
-    LiBai提供了丰富的开箱即用的训练技巧，包括但不限于分布式训练、混合精度训练、后向重计算、Zero Redundancy Optimizer(ZeRO)等训练方式。
+    LiBai provides many out-of-the-box training techniques such as Distributed Training, Mixed Precision Training, Activation Checkpointing, Recomputation, Gradient Accumulation, and Zero Redundancy Optimizer(ZeRO).
 
-- **同时支持视觉与自然语言处理任务**
+- **Support for both CV and NLP tasks**
 
-    LiBai中内置了CV与NLP相关的数据集处理流程，包括CIFAR、ImageNet、BERT Dataset等数据集。
+    LiBai has predifined data process for both CV and NLP datasets such as CIFAR, ImageNet, and BERT Dataset.
 
-- **简单易用，便于上手**
+- **Easy to use**
 
-    LiBai的模块化设计可以让用户更为方便地将LiBai拓展到自己的项目上:
-    - 配置系统采用LazyConfig方式，使得配置系统更加灵活且易于拓展
-    - 采用Trainer与Hook结合的方式，方便用户使用和拓展训练中需要的组件
-    - 用户可以在安装好LiBai的基础上灵活地开发自己的任务，而非强依赖于LiBai中的所有组件。可以查看[基于LiBai的项目](/projects)了解更多细节
+    LiBai's components are designed to be modular for easier usage as follows:
+    - LazyConfig system for more flexible syntax and no predefined structures 
+    - Friendly trainer and engine
+    - Used as a library to support building research projects on it. See [projects/](/projects) for some projects that are built based on LiBai
 
-- **速度快，性能高**
+- **High Efficiency**
 
 </details>
 
-## 安装
-请参考[LiBai安装文档](https://libai.readthedocs.io/en/latest/tutorials/Installation.html)进行安装。
+## Installation
 
-## 快速入门
-请参考[快速入门文档](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html)了解和学习LiBai的基本使用，后续我们将提供丰富的教程与完整的使用指南。
+See [Installation instructions](https://libai.readthedocs.io/en/latest/tutorials/Installation.html).
 
-## 使用文档
-请参考[LiBai使用文档](https://libai.readthedocs.io/en/latest/index.html)了解LiBai中相关接口的使用。
+## Getting Started
 
-## 更新日志
+See [Getting Started](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for the basic usage of LiBai.
 
-最新的**Beta 0.1.0**版本已经在 2022.02.15 发布：
-- 支持2D并行ViT模型在ImageNet上的完整训练
-- 支持3D并行的BERT模型预训练
+## Documentation
 
-历史版本的发布与更新细节请参考[更新日志](./changelog.md)。
+See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) for full API documentation and tutorials.
 
-## 参与贡献
+## ChangeLog
 
-我们欢迎任何有助于提升LiBai的贡献. 请参考[贡献指南](./CONTRIBUTING.md)来了解如何参与贡献。
+**Beta 0.1.0** was released in 15/2/2022:
+- Support 3D parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
+- Support 2D parallelism [ViT](https://arxiv.org/abs/2010.11929) models for image classification.
 
-## 许可证
+See [changelog](./changelog.md) for details and release history.
 
-该项目开源自[Apache 2.0 license](LICENSE)。
+## Contributing
+
+We appreciate all contributions to improve LiBai. See [CONTRIBUTING](./CONTRIBUTING.md) for the contributing guideline.
+
+## License
+
+This project is released under the [Apache 2.0 license](LICENSE).
 
 ## Citation
 
-如果LiBai对于你的研究项目有帮助的话，请参考如下的BibTeX引用LiBai：
+If you find this project useful for your research, consider cite:
 
 ```BibTeX
 @misc{of2021libai,
@@ -91,4 +93,3 @@ LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支�
   year =         {2021}
 }
 ```
-
