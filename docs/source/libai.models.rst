@@ -6,13 +6,15 @@ Supported models in LiBai(李白)
 - `SwinTransformer`_
 - `BERT`_
 - `T5`_
-- `GPT`_
+- `GPT-2`_
 
 .. _VisionTransformer: https://arxiv.org/abs/2010.11929
 .. _SwinTransformer: https://arxiv.org/abs/2103.14030
 .. _BERT: https://arxiv.org/abs/1810.04805
 .. _T5: https://arxiv.org/abs/1910.10683
-.. _GPT: https://s3-us-west-2.amazonaws.com/openai-assets/research-covers/language-unsupervised/language_understanding_paper.pdf
+.. _GPT-2: https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf
+
+
 
 .. currentmodule:: libai.models
 
@@ -43,8 +45,8 @@ T5
         T5ForPreTraining,
         T5Model,
 
-GPT
----
+GPT-2
+-----
 .. automodule:: libai.models
     :members: 
         GPTForPreTraining,
