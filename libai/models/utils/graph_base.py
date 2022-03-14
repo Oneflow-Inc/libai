@@ -66,8 +66,7 @@ class GraphBase(nn.Graph):
 
             self.set_pipeline_stage_id()
 
-        # FIXME: change this option to True after OneFlow fix the bug of FuseAddOutput
-        self.config.allow_fuse_add_to_output(False)
+        self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
 

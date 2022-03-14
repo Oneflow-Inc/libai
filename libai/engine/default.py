@@ -314,6 +314,9 @@ class DefaultTrainer(TrainerBase):
                 # In static graph mode, optimizer and scheduler state_dict will
                 # be saved with graph.state_dict().
                 graph=self.graph_train,
+                # We print lr by `LRScheduler` hook, so we need to save/load eager lr_scheduler,
+                # otherwise, lr will be reset to initial state when resuming training.
+                lr_scheduler=self.lr_scheduler,
             )
         else:
             self.checkpointer = Checkpointer(
@@ -380,15 +383,11 @@ class DefaultTrainer(TrainerBase):
 
         ret = [
             hooks.IterationTimer(),
+            hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
+            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
         ]
-        if not self.cfg.graph.enabled:
-            ret.append(hooks.LRScheduler())
-        ret.append(
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period)
-        )
 
         if self.cfg.train.evaluation.enabled:
-
             assert self.cfg.train.evaluation.eval_iter > 0, "run_iter must be positive number"
 
             def test_and_save_results():
