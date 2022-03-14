@@ -197,10 +197,6 @@ class TrainerBase:
         # all_metrics_dict = dist.gather(metrics_dict)
         all_metrics_dict = metrics_dict
 
-        # dist_util = dist.get_dist_util()
-        # if (dist_util.is_pipeline_model_parallel() and dist.is_last_process()) or (
-        #     not dist_util.is_pipeline_model_parallel() and dist.is_main_process()
-        # ):
         if dist.is_main_process():
             storage = get_event_storage()
 
