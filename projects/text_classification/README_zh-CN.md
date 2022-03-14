@@ -1,5 +1,5 @@
 # 文本分类任务
-[English](/projects/text_classification/README.md) | 简体中文
+[English](/projects/text_classification/README.md) | **简体中文**
 
 ## GLUE 任务
 

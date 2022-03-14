@@ -1,3 +1,4 @@
+# flake8: noqa
 """ Script for downloading all CLUE data.
 The original dataset information links
 available from: https://www.cluebenchmarks.com/

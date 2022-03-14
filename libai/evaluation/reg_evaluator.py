@@ -28,17 +28,15 @@ logger = logging.getLogger(__name__)
 
 
 class RegEvaluator(DatasetEvaluator):
-    def __init__(self, cfg):
-        self.cfg = cfg
+    def __init__(self):
         self._predictions = []
 
     def reset(self):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        # FIX ME: support dict args, not implement in graph right now
-        preds = outputs[-1]  # decide by your model output
-        labels = inputs[-1]  # decide by your dataloder output
+        pred_logits = outputs["prediction_scores"]
+        labels = inputs["labels"]
 
         # measure accuracy
         preds = preds.cpu().numpy()

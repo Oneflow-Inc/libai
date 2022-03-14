@@ -16,4 +16,3 @@ per-file-ignores =
   tests/**.py: E402
   tools/**.py: E402
   projects/**/configs/**.py:F401
-  projects/text_classification/dataset/download_glue_data.py: E501

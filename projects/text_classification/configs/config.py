@@ -26,7 +26,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(ClueDataset)(
             task_name="afqmc",
-            data_dir="/DATA/disk1/liuchi/work/clue_data/afqmc",
+            data_dir="./projects/text_classification/dataset/clue_data/afqmc",
             tokenizer=tokenization.tokenizer,
             max_seq_length=128,
             mode="train",
@@ -38,7 +38,7 @@ dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(ClueDataset)(
             task_name="afqmc",
-            data_dir="/DATA/disk1/liuchi/work/clue_data/afqmc",
+            data_dir="./projects/text_classification/dataset/clue_data/afqmc",
             tokenizer=tokenization.tokenizer,
             max_seq_length=512,
             mode="dev",

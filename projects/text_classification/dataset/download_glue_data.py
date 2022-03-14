@@ -1,3 +1,4 @@
+# flake8: noqa
 ''' Script for downloading all GLUE data.
 Modify from https://github.com/nyu-mll/GLUE-baselines/blob/master/download_glue_data.py
 

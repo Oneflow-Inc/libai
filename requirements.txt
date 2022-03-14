@@ -1,7 +1,6 @@
 boto3
 botocore
 cloudpickle
-filelock
 flowvision==0.1.0
 wget
 hydra-core
@@ -14,7 +13,6 @@ jieba
 regex
 requests
 sentencepiece>=0.1
-scikit-learn
 tabulate
 termcolor
 tqdm
