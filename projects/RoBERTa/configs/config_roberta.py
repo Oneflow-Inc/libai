@@ -7,7 +7,7 @@ cfg = dict(
     max_position_embeddings=512,
     type_vocab_size=2,
     hidden_size=768,
-    hidden_dropout=0,
+    hidden_dropout_prob=0.1,
     pad_token_id=1,
     position_embedding_type="absolute",
     num_layers=12,
@@ -18,7 +18,9 @@ cfg = dict(
     layer_norm_eps=0.00001,
     attn_dropout=0,
     is_decoder=False,
-    add_cross_attention=False
+    add_cross_attention=False,
+    add_pooling_layer=True,
+    initializer_range=0.02,
 )
 
 bert_model = LazyCall(RoBERTaModel)(cfg=cfg)

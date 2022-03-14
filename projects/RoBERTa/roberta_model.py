@@ -560,11 +560,11 @@ class RobertaPooler(nn.Module):
 class RoBERTaModel(nn.Module):
 
     def __init__(self, args):
-        super(Roberta, self).__init__()
+        super(RoBERTaModel, self).__init__()
         self.embeddings = RobertaEmbeddings(args.vocab_size, args.max_position_embeddings, args.type_vocab_size,
-                                            args.hidden_size, args.layer_norm_eps, args.hidden_dropout, args.pad_token_id, args.position_embedding_type)
+                                            args.hidden_size, args.layer_norm_eps, args.hidden_dropout_prob, args.pad_token_id, args.position_embedding_type)
         self.encoder = RobertaEncoder(args.num_layers, args.max_position_embeddings, args.hidden_size, args.intermediate_size, args.nheads, args.activation,
-                                      args.chunk_size_feed_forward, args.layer_norm_eps, args.attn_dropout, args.hidden_dropout, args.position_embedding_type, args.is_decoder, args.add_cross_attention)
+                                      args.chunk_size_feed_forward, args.layer_norm_eps, args.attn_dropout, args.hidden_dropout_prob, args.position_embedding_type, args.is_decoder, args.add_cross_attention)
 
         self.pooler = RobertaPooler(args.hidden_size) if args.add_pooling_layer else None
         self.is_decoder = args.is_decoder
@@ -612,7 +612,7 @@ class RoBERTaModel(nn.Module):
 
         return head_mask
 
-    def get_extended_attention_mask(self, attention_mask: flow.Tensor, input_shape: Tuple[int], device: flow.device) -> flow.Tensor:
+    def get_extended_attention_mask(self, attention_mask: flow.Tensor, input_shape: Tuple[int], device: flow.device=None) -> flow.Tensor:
 
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
@@ -689,13 +689,17 @@ class RoBERTaModel(nn.Module):
             raise ValueError(
                 "You have to specify either input_ids or inputs_embeds")
 
-        device = input_ids.device if input_ids is not None else inputs_embeds.device
+        # device = input_ids.placement.device if input_ids is not None else inputs_embeds.placement.device
+        # device = input_ids.device if input_ids is not None else inputs_embeds.device
+
 
         # past_key_values_length
         past_key_values_length = past_key_values[0][0].shape[2] if past_key_values is not None else 0
         if attention_mask is None:
             attention_mask = flow.ones(
-                ((batch_size, seq_length + past_key_values_length)), device=device)
+                ((batch_size, seq_length + past_key_values_length)))
+                # ((batch_size, seq_length + past_key_values_length)), device=device)
+
         if token_type_ids is None:
             if hasattr(self.embeddings, "token_type_ids"):
                 buffered_token_type_ids = self.embeddings.token_type_ids[:, :seq_length]
@@ -704,12 +708,16 @@ class RoBERTaModel(nn.Module):
                 token_type_ids = buffered_token_type_ids_expanded
             else:
                 token_type_ids = flow.zeros(
-                    input_shape, dtype=flow.int64, device=device)
+                    input_shape, dtype=flow.int64)
+                    # input_shape, dtype=flow.int64, device=device)
+                    
 
         # We can provide a self-attention mask of dimensions [batch_size, from_seq_length, to_seq_length]
         # ourselves in which case we just need to make it broadcastable to all heads.
         extended_attention_mask: flow.Tensor = self.get_extended_attention_mask(
-            attention_mask, input_shape, device)
+            attention_mask, input_shape )
+            # attention_mask, input_shape, device)
+
         # If a 2D or 3D attention mask is provided for the cross-attention
         # we need to make broadcastable to [batch_size, num_heads, seq_length, seq_length]
         if self.is_decoder and encoder_hidden_states is not None:
@@ -718,7 +726,8 @@ class RoBERTaModel(nn.Module):
                 encoder_batch_size, encoder_sequence_length)
             if encoder_attention_mask is None:
                 encoder_attention_mask = flow.ones(
-                    encoder_hidden_shape, device=device)
+                    encoder_hidden_shape)
+                    # encoder_hidden_shape, device=device)
             encoder_extended_attention_mask = self.invert_attention_mask(
                 encoder_attention_mask)
         else:
@@ -739,7 +748,8 @@ class RoBERTaModel(nn.Module):
             sequence_output) if self.pooler is not None else None
 
         # sequence_output, pooled_output, past_key_values, hidden_states, attentions, cross_attentions.
-        return (sequence_output, pooled_output) + encoder_outputs[1:]
+        # return (sequence_output, pooled_output) + encoder_outputs[1:]
+        return encoder_outputs, pooled_output
 
 
 class RobertaLMHead(nn.Module):

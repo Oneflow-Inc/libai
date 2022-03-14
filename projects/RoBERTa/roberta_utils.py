@@ -7,6 +7,7 @@ from .dev_ops import LayerNorm
 
 # for cumsum
 import numpy as np
+from libai.utils import distributed as dist
 
 
 def init_weights(module):
@@ -34,8 +35,9 @@ def create_position_ids_from_input_ids(input_ids, padding_idx, past_key_values_l
     # The series of casts and type-conversions here are carefully balanced to both work with ONNX export and XLA.
     mask = input_ids.ne(padding_idx).to(flow.int32)
     # oneflow does not support cumsum now.
-    mask_cumsum = flow.tensor(np.cumsum(mask.numpy(), axis=1)).to(
-        mask.device, mask.dtype)
+    mask_cumsum = flow.tensor(np.cumsum(mask.numpy(), axis=1), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=dist.get_layer_placement(0)).to(mask.dtype)
+        # mask.device, mask.dtype)
     incremental_indices = (mask_cumsum + past_key_values_length) * mask
     return incremental_indices.to(flow.int64) + padding_idx
 
