@@ -54,7 +54,7 @@ def build_optimizer(cfg, model):
     """
 
     if "_target_" in cfg:
-        cfg.parameters.model = model
+        cfg.params.model = model
         optim = instantiate(cfg)
     else:
         optim_name = cfg.optim_name
