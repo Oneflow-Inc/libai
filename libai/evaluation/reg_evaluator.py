@@ -1,4 +1,3 @@
-import pdb
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 #
@@ -51,8 +50,6 @@ class RegEvaluator(DatasetEvaluator):
         else:
             predictions = self._predictions
         
-        pdb.set_trace()
-
         preds = np.array([])
         labels = np.array([])
         for prediction in predictions:
