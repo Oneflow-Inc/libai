@@ -13,6 +13,7 @@ Welcome to libai's documentation!
 
    tutorials/Installation.md
    tutorials/Getting Started.md
+   tutorials/Config.md
 
 .. toctree::
    :maxdepth: 2
