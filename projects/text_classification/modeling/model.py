@@ -45,6 +45,7 @@ class ModelForSequenceClassification(nn.Module):
         self.model = BertModel(cfg)
         if cfg.pretrain_megatron_weight is not None:
             from .load_megatron_weight import load_megatron_bert
+
             logger.info(f"loading pretraining: {cfg.pretrain_megatron_weight}")
             load_megatron_bert(self.model, cfg.pretrain_megatron_weight)
             logger.info("load succeed")

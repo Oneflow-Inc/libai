@@ -17,12 +17,13 @@ import logging
 import os
 import time
 from enum import Enum
-from filelock import FileLock
 from typing import Optional, Union
 
-from libai.data.structures import DistTensorData, Instance
 import oneflow as flow
+from filelock import FileLock
 from oneflow.utils.data import Dataset
+
+from libai.data.structures import DistTensorData, Instance
 
 from .utils import EncodePattern
 from .utils_clue import clue_convert_examples_to_features, clue_output_modes, clue_processors

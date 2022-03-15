@@ -56,7 +56,7 @@ model_cfg.update(
         num_attention_heads=16,
         # new key
         num_classes=2,
-        pretrain_megatron_weight=None
+        pretrain_megatron_weight=None,
     )
 )
 model = LazyCall(ModelForSequenceClassification)(cfg=model_cfg)

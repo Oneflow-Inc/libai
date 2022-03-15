@@ -49,7 +49,7 @@ class RegEvaluator(DatasetEvaluator):
             return {}
         else:
             predictions = self._predictions
-        
+
         preds = np.array([])
         labels = np.array([])
         for prediction in predictions:
