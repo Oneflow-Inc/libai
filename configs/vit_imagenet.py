@@ -1,4 +1,10 @@
 from libai.config import LazyCall
+# from .common.models.vit.vit_base_patch32_224 import model
+# from .common.models.vit.vit_base_patch16_224 import model
+# from .common.models.vit.vit_small_patch16_224 import model
+# from .common.models.vit.vit_small_patch32_224 import model
+# from .common.models.vit.vit_large_patch16_224 import model
+# from .common.models.vit.vit_large_patch32_224 import model
 from .common.models.vit.vit_tiny_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train
@@ -9,8 +15,8 @@ from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/path/to/imagenet"
-dataloader.test[0].dataset.root = "/path/to/imagenet"
+dataloader.train.dataset[0].root = "/dataset/extract"
+dataloader.test[0].dataset.root = "/dataset/extract"
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
