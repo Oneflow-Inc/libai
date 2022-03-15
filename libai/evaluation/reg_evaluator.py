@@ -1,3 +1,4 @@
+import pdb
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 #
@@ -39,7 +40,7 @@ class RegEvaluator(DatasetEvaluator):
         labels = inputs["labels"]
 
         # measure accuracy
-        preds = preds.cpu().numpy()
+        preds = pred_logits.cpu().topk(1)[1].squeeze(1).numpy()
         labels = labels.cpu().numpy()
 
         self._predictions.append({"preds": preds, "labels": labels})
@@ -49,12 +50,14 @@ class RegEvaluator(DatasetEvaluator):
             return {}
         else:
             predictions = self._predictions
+        
+        pdb.set_trace()
 
         preds = np.array([])
         labels = np.array([])
         for prediction in predictions:
-            preds = np.concatenate(preds, prediction["preds"])
-            labels = np.concatenate(labels, prediction["labels"])
+            preds = np.concatenate((preds, prediction["preds"]))
+            labels = np.concatenate((labels, prediction["labels"]))
 
         pearson_corr = pearsonr(preds, labels)[0]
         spearman_corr = spearmanr(preds, labels)[0]
