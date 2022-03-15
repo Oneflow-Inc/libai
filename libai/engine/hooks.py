@@ -392,7 +392,7 @@ class LRScheduler(HookBase):
                     return i
 
     def after_step(self):
-        lr = self._optimizer.param_groups[self._best_param_group_id]["lr"]
+        lr = self.scheduler.get_last_lr()[self._best_param_group_id]
         self.trainer.storage.put_scalar("lr", lr, smoothing_hint=False)
         self.scheduler.step()
 
