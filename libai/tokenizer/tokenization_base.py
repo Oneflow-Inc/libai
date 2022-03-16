@@ -166,7 +166,6 @@ class PreTrainedTokenizer(object):
                 continue
             if key in self.SPECIAL_TOKENS_ATTRIBUTES:
                 if key == "additional_special_tokens":
-                    assert isinstance(value, (list, tuple)), f"Value {value} is not a list or tuple"
                     assert all(
                         isinstance(t, str) for t in value
                     ), "One of the tokens is not a string"
