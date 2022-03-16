@@ -13,8 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .evaluator import DatasetEvaluator, inference_on_dataset
-from .utils import print_csv_format, flatten_results_dict
-from .cls_evaluator import ClsEvaluator
-from .ppl_evaluator import PPLEvaluator
-from .reg_evaluator import RegEvaluator
+from .clue_dataset import ClueDataset
+from .glue_dataset import GlueDataset
