@@ -73,12 +73,17 @@ class WindowAttention(nn.Module):
 
         # define a parameter table of relative position bias
         # Author zzk: we add trunc normal here！
+        # self.relative_position_bias_table = nn.Parameter(
+        #     flow.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads)
+        # ).to_global(
+        #     placement=dist.get_layer_placement(0),
+        #     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        # )  # 2*Wh-1 * 2*Ww-1, nH
         self.relative_position_bias_table = nn.Parameter(
-            flow.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads)
-        ).to_global(
-            placement=dist.get_layer_placement(0),
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        )  # 2*Wh-1 * 2*Ww-1, nH
+            flow.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads,
+                        placement=dist.get_layer_placement(0),
+                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),)
+        ) # 2*Wh-1 * 2*Ww-1, nH
         trunc_normal_(self.relative_position_bias_table, std=0.02)
 
         # get pair-wise relative position index for each token inside the window
