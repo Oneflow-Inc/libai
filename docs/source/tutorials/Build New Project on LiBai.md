@@ -6,8 +6,8 @@ The advantages of using LiBai to start a new project(such as paper reproduction 
 
 - Avoid redundant work, developers can directly inherit many bulit-in modules from LiBai.
 - Easily reproduce the experiments already run, because LiBai will saves the configuration file automatically .
-- Useful information will be outputed during training, such as remaining training time, current iter, throughput, loss information and current learning rate, etc.
-- For distributed training, only a few parameters need to be set.
+- Automatically output the useful information during training time, such as remaining training time, current iter, throughput, loss information and current learning rate, etc.
+- Set a few config params to enjoy distributed training techniques.
 
 ## Introduce
 Let's take the [Bert_Finetune](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP) task as an example to introduce LiBai.
