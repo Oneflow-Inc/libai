@@ -204,7 +204,7 @@ This is the config for optimizer. You can see the default configuration in `conf
 
 We utilize the function `get_default_optimizer_params` in LiBai. It needs the `nn.Module` as the argument and returns the parameter groups.
 
-With `LazyConfig`, we can set the other arguments in advance and pass the `model` argument later. You can see more detail in `libai/optim/build.py:build_optimizer`.
+With `LazyConfig`, we can set the other arguments in advance and pass the `model` argument later. You can see more detail in [API docs of libai optim](../libai.optim.html#libai.optim.get_default_optimizer_params).
 
 ```python
 # optim.py:
@@ -248,6 +248,7 @@ You can see some example datasets in `configs/common/data/`, such as `cifar100`,
 Here we use `bert_dataset.py` as example:
 
 ```python
+# bert_dataset.py:
 from libai.config import LazyCall
 from omegaconf import OmegaConf
 from libai.data import build_nlp_test_loader, build_nlp_train_val_test_loader
@@ -274,6 +275,10 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
     weights=[1.0],
     num_workers=4,
 )
+
+# my_config.py:
+dataloader.train.dataset[0].max_seq_length = 256
+dataloader.train.num_workers = 2
 ```
 
 LiBai provides two functions `build_nlp_train_val_test_loader` and `build_image_train_loader` that create a default train data loader from a give config. It takes the list of `dataset_class`(e.g., `BertDataset`) and combine them with a `ConcatDataset`. 
@@ -282,12 +287,71 @@ It's recommended to check out [API docs of libai.data](../libai.data.html#libai.
 
 ### tokenization (optional)
 
+You need to configure a tokenizer if you want to train a NLP task. Each NLP dataset has its own tokenizer config in the corresponding data config file.
+
+Here we use 
+
+```python
+# bert_dataset.py:
+from libai.config import LazyCall
+from omegaconf import OmegaConf
+from libai.tokenizer import BertTokenizer
+
+tokenization = OmegaConf.create()
+
+tokenization.tokenizer = LazyCall(BertTokenizer)(
+    vocab_file="bert-base-chinese-vocab.txt",
+    do_lower_case=True,
+    do_chinese_wwm=True,
+)
+tokenization.append_eod = False
+tokenization.make_vocab_size_divisible_by = 128
+
+# my_config.py:
+tokenization.tokenizer.do_lower_case = False
+```
+
+Tokenization config must contain the a tokenizer(e.g., `BertTokenizer`). `append_eod` and `make_vocab_size_divisible_by` are not necessary. 
+
+`make_vocab_size_divisible_by` is used for padding the vocab size to be divisible by this value. This is added for computational efficiency when tensor parallelism.
 
 ## Get the Default Config
 
-You do not need to rewrite all contents in a config file every time, you can 
+You don't need to rewrite all contents in config every time, and you can import a config file as a python file or use function [`get_config`](../libai.config.html#libai.config.get_config).
 
+If you build LiBai from source, you can get all default config files in `configs/*`. Then you can import the config files as follows:
 
+```python
+# import config
+from .common.models.bert import pretrain_model as model
+from .common.models.graph import graph
+from .common.train import train
+from .common.optim import optim
+from .common.data.bert_dataset import dataloader, tokenization
+
+# modify it
+train.train_iter = 100
+...
+```
+
+If you install LiBai by `pip`, you can use `get_config` function to get all default ocnfig files as follows:
+
+```python
+from libai.config import get_config
+# get config
+model = get_config("common/models/bert.py").pretrain_model
+graph = get_config("common/models/graph.py").graph
+train = get_config("common/train.py").train
+optim = get_config("common/optim.py").optim
+dataloader = get_config("common/data/bert_dataset.py").dataloader
+tokenization = get_config("common/data/bert_dataset.py").tokenization
+
+# modify it
+train.train_iter = 100
+...
+```
 
 ## Best Practice with LazyConfig
 
+1. Treat the configs you write as actual "code": avoid copying them or duplicating them; import the common parts between configs.
+2. Keep the configs you write simple: don't include keys that do not affect the experimental setting.
