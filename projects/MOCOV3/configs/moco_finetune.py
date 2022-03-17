@@ -20,8 +20,8 @@ finetune.weight_style = "pytorch"  # Set "oneflow" for loading oneflow weights, 
 finetune.path = "projects/MOCOV3/output/vit-s-300ep.pth.tar"
 
 linearProb = OmegaConf.create()
-linearProb.enable = False  # only load weight if enable is True
-linearProb.weight_style = "pytorch"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+linearProb.enable = False  
+linearProb.weight_style = "pytorch" 
 linearProb.path = "projects/MOCOV3/output/linear-vit-s-300ep.pth.tar"
 
 # Refine data path to imagenet

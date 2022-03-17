@@ -31,6 +31,7 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
+
         if try_get_key(cfg, "finetune") is not None:
             if cfg.finetune.enable == True:
 
@@ -45,8 +46,8 @@ class Trainer(DefaultTrainer):
                 if cfg.finetune.weight_style == "oneflow":
                     model.load_state_dict(flow.load(cfg.finetune.path))
                 else:
-                    model = load_torch_checkpoint(model, path=cfg.finetune.path, strict=False, linear_keyword=linear_keyword)
-                    # model = load_torch_checkpoint_linear(model, path=cfg.linearProb.path, strict=True)
+                    # model = load_torch_checkpoint(model, path=cfg.finetune.path, strict=False, linear_keyword=linear_keyword)
+                    model = load_torch_checkpoint_linear(model, path=cfg.linearProb.path, strict=True)
                 # if cfg.linearProb.enable == True:
                 #     logger.info("Loading pretrained weight for linearprob")
                 #     assert cfg.linearProb.weight_style in ["oneflow", "pytorch"]
