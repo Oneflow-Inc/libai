@@ -37,7 +37,7 @@ path_to_your_config.py \        # config.py for your task
 train.evaluation.eval_iter=20   # set eval_iter for testing
 ```
 
-### training & no evaluation
+### Training & no evaluation
 
 If you want to train without evaluation, you can set `train.evaluation.enabled=False` in your `config.py` or in the command line:
 
@@ -49,7 +49,7 @@ path_to_your_config.py \         # config.py for your task
 train.evaluation.enabled=False   # set no evaluation 
 ```
 
-### resume train
+### Resume train
 
 If you want to resume training, you should set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
 
