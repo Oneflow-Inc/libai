@@ -74,7 +74,7 @@ For more details about the supported parallelism training on different models, p
 &#10004; means you can train this model under specific parallelism techniques or combine two or three of them with &#10004; for 2D or 3D paralleism training.
 
 **Examples:**
-On above table, **BERT** model supports three parallelism techniques, if we have 1 node with 8 GPUs, you can try out different combinations of parallelism training techniques by updating [bert config file](../../../configs/bert_large_pretrain.py)` as follows:
+On the above table, **BERT** model supports three parallelism techniques, if we have 1 node with 8 GPUs, you can try out different combinations of parallelism training techniques by updating [bert config file](../../../configs/bert_large_pretrain.py) as follows:
 - **Pure Data Parallel Training on 8GPUs**
 ```python
 from .common.train import train
@@ -97,6 +97,8 @@ from .common.train import train
 train.dist.pipeline_parallel_size = 8
 ```
 - **Data Parallel + Tensor Parallel for 2D Parallel Training on 8 GPUs**
+
+In this example, 8 GPUs will be splitted into **2 groups**, each group contains **4 GPUs**, and the input data will be splitted into 2 parts on batch dim for data parallel training. And in each group, the weight layer will be splited into 4 parts on 4 GPUs for tensor parallel training.
 ```python
 from .common.train import train
 ...
@@ -105,6 +107,8 @@ train.dist.data_parallel_size = 2
 train.dist.tensor_parallel_size = 4
 ```
 - **Data Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
+
+In this example, 8 GPUs will be splitted into **2 groups**, each group contains **4 GPUs**, and the input data will be splitted into 2 parts on batch dim for data parallel training. And each group contains **4 stages**, different layers in the model will be put on different stages automatically for pipeline parallel training.
 ```python
 from .common.train import train
 ...
