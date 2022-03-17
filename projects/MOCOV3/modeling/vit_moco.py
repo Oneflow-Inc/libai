@@ -25,7 +25,10 @@ class VisionTransformerMoCo(VisionTransformer):
         self.attn_drop_rate=0.0
         self.drop_path_rate=0.0
         self.qkv_bias=True
-        
+
+        self.stop_grad_conv1 = stop_grad_conv1
+
+    def initialization(self):
         # Use fixed 2D sin-cos position embedding
         self.build_2d_sincos_position_embedding()
 
@@ -47,7 +50,7 @@ class VisionTransformerMoCo(VisionTransformer):
             nn.init.uniform_(self.patch_embed.proj.weight, -val, val)
             nn.init.zeros_(self.patch_embed.proj.bias)
 
-            if stop_grad_conv1:
+            if self.stop_grad_conv1:
                 self.patch_embed.proj.weight.requires_grad = False
                 self.patch_embed.proj.bias.requires_grad = False
 

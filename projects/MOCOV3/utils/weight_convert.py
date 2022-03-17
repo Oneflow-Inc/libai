@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+from statistics import mode
 
 import torch
 import oneflow as flow
@@ -50,21 +51,43 @@ def filter_keys(key, value):
     
     return key, value
 
-def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth", strict=False):
+def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth", strict=False, linear_keyword="head"):
     """Load checkpoint from the given torch weights.
-    Torch weight from: https://github.com/facebookresearch/moco-v3
+    Torch weight from: xxx
     """
-    torch_dict = torch.load(path)['state_dict']
+    torch_dict = torch.load(path)["state_dict"]
     parameters = torch_dict
     new_parameters = dict()
     for key, value in parameters.items():
         if "num_batches_tracked" not in key:
-          val = value.detach().cpu().numpy()
-          # to global tensor
-          key, val = filter_keys(key, val)
-          val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
-          new_parameters[key] = val
-    # model.load_state_dict(new_parameters, strict=strict)
-    print("Successfully load torch moco checkpoint.")
-    # return model
-    return new_parameters
+            if key.startswith('module.base_encoder') and not key.startswith('module.base_encoder.%s' % linear_keyword):
+                val = value.detach().cpu().numpy()
+                # to global tensor
+                key, val = filter_keys(key, val)
+                val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
+                new_parameters[key[len("module.base_encoder."):]] = val
+
+    model.load_state_dict(new_parameters, strict=strict)
+
+    print("Successfully load torch mocov3 checkpoint.")
+    return model
+
+
+def load_torch_checkpoint_linear(model, path="./mae_finetuned_vit_base.pth", strict=False, linear_keyword="head"):
+    """Load checkpoint from the given torch weights.
+    Torch weight from: xxx
+    """
+    torch_dict = torch.load(path)["state_dict"]
+    parameters = torch_dict
+    new_parameters = dict()
+    for key, value in parameters.items():
+        if "num_batches_tracked" not in key:
+            val = value.detach().cpu().numpy()
+            # to global tensor
+            key, val = filter_keys(key, val)
+            val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
+            new_parameters[key[len("module."):]] = val
+
+    model.load_state_dict(new_parameters, strict=strict)
+    print("Successfully load torch mocov3 checkpoint.")
+    return model
