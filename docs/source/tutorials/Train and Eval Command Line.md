@@ -25,9 +25,9 @@ path_to_your_config.py # config.py for your task
 
 ### Training & Partial Evaluation 
 
-If the test dataset costs a lot of time, you can set `train.evaluation.eval_iter=20` in your `config.py` or in the command line, it will run 20 steps for only part of the test dataset in testing for fast eval:
+If the evaluation process is time consuming, you can set the parameter `train.evaluation.eval_iter` in your `config.py` to a smaller number such as 20, which can make the evaluation process faster by only using part of the testset. You can also set the parameter by the command line directly :
 
-> NOTE: the eval metric will be calculated in partly testing dataset
+> NOTE: the eval metric will be calculated by part of testing dataset
 
 ```shell
 bash tools/train.sh \
