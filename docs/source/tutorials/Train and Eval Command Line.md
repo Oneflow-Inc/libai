@@ -1,9 +1,10 @@
 # Training & Evaluation in Command Line 
 
 LiBai provides multiple arguments for covering a variety of situations.
-- <a href="##training">training command line</a>
-- <a href="##evaluation">evaluation command line</a>
-- <a href="##quickly check total pipeline">quickly check total pipeline</a>
+
+- [training command line](##trainin)
+- [evaluation command line](##evaluation)
+- [quickly check total pipeline](##quickly-check-total-pipeline)
 
 ## training
 
