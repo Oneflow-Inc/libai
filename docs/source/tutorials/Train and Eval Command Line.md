@@ -69,7 +69,7 @@ train.output_dir=path/task       # set resume path, it should be parent director
 
 If you want to evaluate your model without training,  you should set `--eval-only` in your command line, and set `train.load_weight`.
 
-Besides, `train.evaluation.eval_iter=20` is also valid in `--eval-only`, you can set it according to your own needs.
+Besides, `train.evaluation.eval_iter=20` will be valid in `--eval-only` if you set it, you can set `eval_iter` according to your own needs.
 
 ```shell
 bash tools/train.sh \
@@ -82,14 +82,14 @@ train.load_weight=path/task/model_final      # set model path
 
 ## Quickly check in the respective loop
 
-If you want to quickly run several batches of train, eval and test to find any bugs, you can set `--fast-dev-run` in command line. It will change config settings to
+If you want to find out whether there are any bugs in your program, you can pass `--fast-dev-run` to the command line, which will change config settings to:
 ```python
 train.train_epoch = 0
 train.train_iter = 20
 train.evaluation.eval_period = 10
 train.log_period = 1
 ```
-runing command, `train.evaluation.eval_iter=20` is also valid in `--fast-dev-run `, you can set it according to own your needs.
+Besides, `train.evaluation.eval_iter=20` will be valid in `--fast-dev-run` if you set it, you can set `eval_iter` according to your own needs.
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
