@@ -218,7 +218,11 @@ class Checkpointer(object):
         keys = self.path_manager.ls(f)
         for key in keys:
             data[key] = flow.load(os.path.join(f, key), global_src_rank=0)
-        data["iter"] = int(f.split("_")[-1])
+        try:
+            data["iter"] = int(f.split("_")[-1])
+        except:  # noqa
+            self.logger.info(f"iter info in {f} not found, set iter to 0")
+            data["iter"] = 0
         return data
 
     def _load_model(self, checkpoint: Any):
