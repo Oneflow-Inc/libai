@@ -14,6 +14,7 @@ Welcome to libai's documentation!
    tutorials/Installation.md
    tutorials/Getting Started.md
    tutorials/Config.md
+   tutorials/Model Zoo.md
 
 .. toctree::
    :maxdepth: 2

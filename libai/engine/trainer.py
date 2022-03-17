@@ -283,6 +283,7 @@ class EagerTrainer(TrainerBase):
         self.write_metrics(loss_dict, data_time)
 
         if (self.iter + 1) % self.grad_acc_steps == 0:
+            self.optimizer.clip_grad()
             self.optimizer.step()
             self.optimizer.zero_grad()
 
