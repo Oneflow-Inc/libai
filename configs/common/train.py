@@ -4,64 +4,117 @@ from libai.evaluation import ClsEvaluator
 
 # fmt: off
 train = dict(
+    
+    # Directory where output files are written
     output_dir="./output",
 
-    # Batch size and gradient accumulation
+    # `train_micro_batch_size` is number of images per batch on each GPU. 
+    # train_mini_batch_size = train_micro_batch_size * num_accumulation_steps.
+    # This is also the number of training images per step (i.e. per iteration). 
+
+    # If we use 8 GPUs for data parallel groups, `train_micro_batch_size = 2` and 
+    # `num_accumulation_steps = 4`, then each GPU will see 2 images per batch and
+    # 8 images per iteration.
+    # Total 64 images will be trained per iteration across all GPUs.
+
+    # global_batch_size = micro_batch_size  * num_grad_acc * data_parallel_groups
     train_micro_batch_size=32,
-    test_micro_batch_size=32,
     global_batch_size=None,
     num_accumulation_steps=None,
-    start_iter=0,
+
+    # The total training iteration
     train_iter=10000,
-    train_epoch=0,  # default train epoch is set to 0
-    warmup_ratio=0,  # default warmup ratio is set to 0
-
-    # Performance related
-    amp=dict(enabled=False),  # options for Automatic Mixed Precision
-    activation_checkpoint=dict(enabled=False),  # options for recompute gradient
-    # NCCL fusion threshold megabytes, set to 0 to compatible with previous version of OneFlow
-    nccl_fusion_threshold_mb=16,
-    # Maximum number of ops of NCCL fusion, set to 0 to compatible with previous version of OneFlow
-    nccl_fusion_max_ops=24,
-
-    # ZeRO Optimization
-    zero_optimization=dict(
-        enabled=False,
-        stage=1,
-    ),
-
-    checkpointer=dict(period=5000, max_to_keep=100),  # options for PeriodicCheckpointer
-
-    # options for evaluation
-    evaluation=dict(
-        enabled=True,
-        evaluator=LazyCall(ClsEvaluator)(topk=(1, 5)),  # calculate top-k acc
-        eval_period=5000,
-        eval_iter=1e9,  # running steps for evaluation
-        eval_metric="Acc@1",
-        eval_mode="max",
-    ),
-
-    load_weight="",
-    log_period=20,
+    # The total training epoch, will be scaled to iteration automatically.
+    # We will choose by `max(train_iter, train_epoch * iter_per_epoch)`.
+    train_epoch=0,  
     consumed_train_samples=0,
     consumed_valid_samples=0,
     train_samples=None,
 
-    # Scheduler arguments
+    # Fraction of lr-warmup-iters to use for warmup (as a float)
+    warmup_ratio=0,  
+
+    # The start iteration, usually needn't set it manually.
+    # It can be computed automatically when resuming training.
+    start_iter=0,
+
+    # Enable automatic mixed precision for training
+    # Note that this does not change model's inference behavior.
+    amp=dict(enabled=False),  
+
+    # Enable activation checkpointing to allow for training
+    # with larger models, sequences, and batch sizes.
+    # Checkpoint the input activations of each transformer layers by default.
+    activation_checkpoint=dict(enabled=False),  
+
+    # NCCL fusion threshold megabytes, set to 0 to 
+    # compatible with previous version of OneFlow.
+    nccl_fusion_threshold_mb=16,
+
+    # Maximum number of ops of NCCL fusion, set to 0 to 
+    # compatible with previous version of OneFlow.
+    nccl_fusion_max_ops=24,
+
+    # Enable ZeRO Optimization to allow for training with larger models.
+    # This optimization will reduce optimizer stages memory consumption
+    # as described in ZeRO https://arxiv.org/abs/1910.02054.
+    zero_optimization=dict(
+        enabled=False,
+        stage=1,
+    ),
+    
+    # Save a checkpoint after every this number of iterations,
+    # and maximum number of checkpoint will be kept.
+    checkpointer=dict(period=5000, max_to_keep=100),  
+
+    # Options for evaluation
+
+    # `test_micro_batch_size` is number of images per batch on each GPU for testing. 
+    # If we use 8 GPUs for data parallel groups and `test_micro_batch_size = 2`, then
+    # total 16 images will be used per iteration across all GPUs.
+    test_micro_batch_size=32,
+
+    # Enabled evaluation during training every `eval_period` number of iterations.
+    # You can set the maximum evaluation iterations to run for validation/test.
+    # You can also set a customized evaluator for use.
+    evaluation=dict(
+        enabled=True,
+        # evaluator for calculating top-k acc
+        evaluator=LazyCall(ClsEvaluator)(topk=(1, 5)),  
+        eval_period=5000,
+        eval_iter=1e9,  # running steps for validation/test
+
+        # Metrics to be used for best model checkpoint.
+        eval_metric="Acc@1",
+        eval_mode="max",
+    ),
+
+    # Path to a checkpoint file to be loaded to the model. 
+    load_weight="",
+
+    # Output log to console after every this number of iterations.
+    log_period=20,
+
+    # lr_scheduler arguments
+    # See libai/scheduler/lr_scheduler.py for definition.
     scheduler=LazyCall(WarmupCosineLR)(
-        # in DefaultTrainer we will automatically set max_iter
-        # and warmup_iter by the given train cfg.
+        # In DefaultTrainer we will automatically set `max_iter`
+        # and `warmup_iter` by the given train cfg.
         warmup_factor=0.001,
         alpha=0.01,
         warmup_method="linear",
     ),
 
     # Distributed arguments
+    # See https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html for more detail.
     dist=dict(
         data_parallel_size=1,
         tensor_parallel_size=1,
         pipeline_parallel_size=1,
     ),
+    
+    # Set seed to positive to use a fixed seed. Note that a fixed seed increases
+    # reproducibility but does not guarantee fully deterministic behavior.
+    # Disabling all parallelism further increases reproducibility.
     seed=1234,
 )

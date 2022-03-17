@@ -1,16 +1,16 @@
-### Lazy Configs
+# Lazy Configs
 
 We find the traditional yacs-based config system or python argparse command-line options cannot offer enough flexibility for new project development. We just borrowed the [lazy config system](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) from detectron2 as an alternative, non-intrusive config system for LiBai.
 
 You can read the [d2 tutorial](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) for the syntax and basic usage of lazy config. Here we will show you some example usage in LiBai.
 
-#### Configs in LiBai
+## Configs in LiBai
 
 In LiBai, we define a standard set of config namespace for later use. This set of namespace must be kept if you want to use complete training and evaluation process of LiBai. 
 
 In summary, this namespace is `model, graph, train, optim, dataloader, tokenization(optional)`, and we will introduce it in detail below.
 
-**model**
+### model
 
 This is the config for model definition. You can see some examples in `configs/common/models`.
 
@@ -53,7 +53,7 @@ After you define the model config in a python file, you can `import` it in the g
 
 You can access and change all keys in the model config after import.
 
-**graph**
+### graph
 
 This is the config for `nn.Graph` mode. You can learn more information about the static graph mode in official [nn.Graph docs](https://docs.oneflow.org/master/basics/08_nn_graph.html).
 
@@ -71,13 +71,15 @@ graph.enabled = True
 graph.debug = -1 
 ```
 
-**train**
+### train
 
 This is the config for training and evaluation. You can find the default train config in `configs/common/train.py`.
 
 We will show you the convention about training / test specific parameters as follows:
 
 ```python
+from libai.config import LazyCall
+
 train = dict(
     
     # Directory where output files are written
@@ -181,6 +183,7 @@ train = dict(
     ),
 
     # Distributed arguments
+    # FIXME(lxy): When distributed config is ready, replace it!
     # See https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html for more detail.
     dist=dict(
         data_parallel_size=1,
@@ -195,21 +198,96 @@ train = dict(
 )
 ```
 
-**optim**
+### optim
 
-This is 
+This is the config for optimizer. You can see the default configuration in `configs/common/optim.py`.
 
-**dataloader**
+We utilize the function `get_default_optimizer_params` in LiBai. It needs the `nn.Module` as the argument and returns the parameter groups.
 
-**tokenization (optional)**
+With `LazyConfig`, we can set the other arguments in advance and pass the `model` argument later. You can see more detail in `libai/optim/build.py:build_optimizer`.
+
+```python
+# optim.py:
+import oneflow as flow
+from libai.config import LazyCall
+from libai.optim import get_default_optimizer_params
+
+optim = LazyCall(flow.optim.AdamW)(
+    params=LazyCall(get_default_optimizer_params)(
+        # params.model is meant to be set to the model object,
+        # before instantiating the optimizer.
+        clip_grad_max_norm=1.0,
+        clip_grad_norm_type=2.0,
+        weight_decay_norm=0.0,
+        weight_decay_bias=0.0,
+    ),
+    lr=1e-4,
+    weight_decay=0.01,
+    betas=(0.9, 0.999),
+    eps=1e-8,
+    do_bias_correction=True,
+)
+
+# my_config.py:
+import oneflow as flow
+optim._target_ = flow.optim.SGD
+
+# Remove the incompatible arguments in optim
+del optim.do_bias_correction
+
+# Set the need arguments
+optim.momentum = 0.9
+```
+
+### dataloader
+
+This is the config for dataset/dataloader. It is the component that provides data to model. A dataloader usually takes raw information and process them into a format needed by the model.
+
+You can see some example datasets in `configs/common/data/`, such as `cifar100`, `imagenet`, `bert_dataset` and so on. You can also define your customized dataset config as you like.
+
+Here we use `bert_dataset.py` as example:
+
+```python
+from libai.config import LazyCall
+from omegaconf import OmegaConf
+from libai.data import build_nlp_test_loader, build_nlp_train_val_test_loader
+from libai.data.datasets import BertDataset
+from libai.data.data_utils import get_indexed_dataset
+
+dataloader = OmegaConf.create()
+
+dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
+    dataset=[
+        LazyCall(BertDataset)(
+            data_prefix="/your/data_prefix/path",
+            indexed_dataset=LazyCall(get_indexed_dataset)(
+                data_prefix="/your/data_prefix/path",
+                data_impl="mmap",
+                skip_warmup=False,
+            ),
+            max_seq_length=512,
+            mask_lm_prob=0.15,
+            short_seq_prob=0.1,
+        ),
+    ],
+    splits=[[949.0, 50.0, 1.0]],
+    weights=[1.0],
+    num_workers=4,
+)
+```
+
+LiBai provides two functions `build_nlp_train_val_test_loader` and `build_image_train_loader` that create a default train data loader from a give config. It takes the list of `dataset_class`(e.g., `BertDataset`) and combine them with a `ConcatDataset`. 
+
+It's recommended to check out [API docs of libai.data](../libai.data.html#libai.data.build.build_nlp_train_loader) to learn more about the APIs of `build_nlp_train_val_test_loader`.
+
+### tokenization (optional)
 
 
-
-#### Get the Default Config
+## Get the Default Config
 
 You do not need to rewrite all contents in a config file every time, you can 
 
 
 
-#### Best Practice with LazyConfig
+## Best Practice with LazyConfig
 
