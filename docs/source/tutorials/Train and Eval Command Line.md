@@ -49,7 +49,7 @@ path_to_your_config.py \         # config.py for your task
 train.evaluation.enabled=False   # set no evaluation 
 ```
 
-### Resume train
+### Resume training
 
 If you want to resume training, you should set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
 
