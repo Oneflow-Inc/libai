@@ -1,25 +1,25 @@
-# Start A New Project
+# Build New Project on LiBai
 
-If developers want to start a new project(Such as paper reproduction and finetune task), how can we use Libai to achieve the least code work.
+Here we provide the basic guide for users to build new projects based on LiBai, and introduce how to use LiBai to achieve the least code work.
 
-The advantages of using Libai to develop a task are as follows:
-- Avoid repeating a lot of work, many functions of Libai can be directly inherited in projects.
-- We can quickly reproduce the experiments we have run, because Libai automatically saves the configuration file.
-- Various information will be output during training, such as remaining training time, current iter, throughput, loss information and current learning rate.
-- Only a few parameters need to be set for distributed training.
+The advantages of using LiBai to start a new project(such as paper reproduction and finetune task) are as follows:
 
+- Avoid redundant work, developers can directly inherit many bulit-in modules from LiBai.
+- Easily reproduce the experiments already run, because LiBai will saves the configuration file automatically .
+- Useful information will be outputed during training, such as remaining training time, current iter, throughput, loss information and current learning rate, etc.
+- For distributed training, only a few parameters need to be set.
 
 ## Introduce
-Let's use Bert_Finetune task as an example to introduce Libai, The complete project is [here](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP).
+Let's take the [Bert_Finetune](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP) task as an example to introduce LiBai.
 
-For start a new Libai project, our main work is as follows:
+Main steps for starting a new LiBai project:
 
-1. Prepare the file named `config.py`, relevant info as follows, you can refer to the [config.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/configs/config_qqp.py).
-    - This file is independent of the default config in Libai.
-    - Contains the definition of task related Class, such as `Tokenizer` and `Dataset`.
-    - Contains the relevant parameters of the task.
-    - Defining related class with `LazyCall`, this method does not call the object, but returns a dict.
-    - Many supporting objects have been imported from the `configs.common`, it can greatly reduce the workload.
+1. Prepare a config file(such as [config.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/configs/config_qqp.py)) which contains:
+    - This file should be independent of the default config in LiBai.
+    - The relevant parameters of the task.
+    - Defining related Class, such as `Model`, `Optimizer`, `Scheduler`, `Dataset`.
+    - You can inherit the default config in `configs/common` and rewrite it, which can greatly reduce the workload.
+    - Related class defined with LazyCall which returns a dict instead of calling the object.
 
 2. Prepare the file named `model.py`, relevant info as follows, you can refer to the [model.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/modeling/model.py).
     - Build related models in this file, the construction method is similar to OneFlow.
@@ -37,7 +37,7 @@ For start a new Libai project, our main work is as follows:
 
 
 ## Main Function Entry
-[tools.train_net.py](https://github.com/Oneflow-Inc/libai/blob/main/tools/train_net.py) is the default main function entry provided in Libai, so we only need to rewrite some functions based on this file.
+[tools.train_net.py](https://github.com/Oneflow-Inc/libai/blob/main/tools/train_net.py) is the default main function entry provided in LiBai, so we only need to rewrite some functions based on this file.
 
 Here is an example:
 
@@ -112,7 +112,7 @@ class MyModel(nn.Module):
     def __init__(self, cfg):
         ...
 
-    def forward(self, input):
+    def forward(self, input_ids, attention_mask):
         ...
         return {'loss': loss}
 ```
@@ -141,8 +141,8 @@ class TrainDataset(Dataset):
 ```
 
 ## Build Config
-The `config.py` in Libai is special, which takes the form of lazyconfig and will be saved as `.yaml` at runtime.
-The following describes the complete `config.py` and how to inherit the config in Libai.
+The `config.py` in LiBai is special, which takes the form of lazyconfig and will be saved as `.yaml` at runtime.
+The following describes the complete `config.py` and how to inherit the config in LiBai.
 
 First, config has several necessary fields:
 - `train`: It contains training related parameters and is a dict type.
@@ -151,7 +151,7 @@ First, config has several necessary fields:
 - `lr_scheduler`: Related to learning rate, If not defined, the default will be used.
 - `graph`: Import directly, and the model will be automatically converted to graph during operation.
 
-> All imported modules must take Libai as the root directory, otherwise, the saved `yaml` file will not be able to save the correct path of the module, resulting in an error when reading `yaml`, so the experiment cannot be reproduced.
+> All imported modules must take LiBai as the root directory, otherwise, the saved `yaml` file will not be able to save the correct path of the module, resulting in an error when reading `yaml`, so the experiment cannot be reproduced.
 
 A complete `config.py` example:
 
