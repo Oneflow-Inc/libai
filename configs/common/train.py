@@ -22,7 +22,7 @@ train = dict(
     global_batch_size=None,
     num_accumulation_steps=None,
 
-    # The total training iteration
+    # The total training iterations
     train_iter=10000,
     # The total training epoch, will be scaled to iteration automatically.
     # We will choose by `max(train_iter, train_epoch * iter_per_epoch)`.
