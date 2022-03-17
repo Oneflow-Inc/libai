@@ -1,5 +1,5 @@
 # LiBai Model Zoo
-To data, LiBai implements the following models:
+To date, LiBai implements the following models:
 - [Vision Transformer](https://arxiv.org/abs/2010.11929)
 - [Swin Transformer](https://arxiv.org/abs/2103.14030)
 - [BERT](https://arxiv.org/abs/1810.04805)
@@ -76,6 +76,8 @@ For more details about the supported parallelism training on different models, p
 **Examples:**
 On the above table, **BERT** model supports three parallelism techniques, if we have 1 node with 8 GPUs, you can try out different combinations of parallelism training techniques by updating [bert config file](../../../configs/bert_large_pretrain.py) as follows:
 - **Pure Data Parallel Training on 8 GPUs**
+
+In this example, the input data will be splitted into 8 parts on batch dim for data parallel training on 8 GPUs.
 ```python
 from .common.train import train
 ...
@@ -84,6 +86,8 @@ train.dist.data_parallel_size = 8
 ```
 
 - **Pure Tensor Parallel Training on 8 GPUs**
+
+In this example, the weight of the layers in the model be splitted into 8 parts for tensor parallel training on 8 GPUs.
 ```python
 from .common.train import train
 ...
@@ -92,6 +96,8 @@ train.dist.tensor_parallel_size = 8
 ```
 
 - **Pure Pipeline Parallel Training on 8 GPUs**
+
+In this example, 8 GPUs will be splitted into 8 stages, different layers of the model will be put on different stages automatically for pipeline parallel training.
 ```python
 from .common.train import train
 ...
