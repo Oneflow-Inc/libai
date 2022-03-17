@@ -54,7 +54,7 @@ qqp_cfg.update(
         num_attention_heads=16,
         # new key
         num_classes=2,
-        pretrain_megatron_weight=None #"path/to/model_optim_rng.pt",
+        pretrain_megatron_weight=None,  # "path/to/model_optim_rng.pt",
     )
 )
 model = LazyCall(Classification)(cfg=qqp_cfg)
