@@ -13,11 +13,11 @@ In LiBai, a collection of parallel training strategies is provided:
 - **Tensor Parallel Training**
 - **Pipeline Parallel Training**
 
-You can read oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) to basicly understand the conception about parallelization techniques.
+You can read oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) to understand the basic conception about parallelization techniques.
 
 
 ## Supported Model in LiBai
-In LiBai, you can try out different parallel mode by easily updating the [training config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py).
+In LiBai, you can try out different parallel modes easily by updating the [training config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py).
 ```python
 dist=dict(
         data_parallel_size=1,
@@ -74,37 +74,60 @@ For more details about the supported parallelism training on different models, p
 &#10004; means you can train this model under specific parallelism techniques or combine two or three of them with &#10004; for 2D or 3D paralleism training.
 
 **Examples:**
-In this table, **BERT** model supports three parallelism techniques, if we have 1 nodes with 8GPUs, you can try different combination of parallelism training by updating [bert config file](../../../configs/bert_large_pretrain.py) as following:
+On above table, **BERT** model supports three parallelism techniques, if we have 1 node with 8 GPUs, you can try out different combinations of parallelism training techniques by updating [bert config file](../../../configs/bert_large_pretrain.py)` as follows:
 - **Pure Data Parallel Training on 8GPUs**
 ```python
+from .common.train import train
+...
+
 train.dist.data_parallel_size = 8
 ```
-- **Pure Tensor Parallel Training on 8GPUs**
+- **Pure Tensor Parallel Training on 8 GPUs**
 ```python
+from .common.train import train
+...
+
 train.dist.tensor_parallel_size = 8
 ```
-- **Pure Pipeline Parallel Training on 8GPUs**
+- **Pure Pipeline Parallel Training on 8 GPUs**
 ```python
+from .common.train import train
+...
+
 train.dist.pipeline_parallel_size = 8
 ```
-- **Data Parallel + Tensor Parallel for 2D Parallel Training**
+- **Data Parallel + Tensor Parallel for 2D Parallel Training on 8 GPUs**
 ```python
+from .common.train import train
+...
+
 train.dist.data_parallel_size = 2
 train.dist.tensor_parallel_size = 4
 ```
-- **Data Parallel + Pipeline Parallel for 2D Parallel Training**
+- **Data Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
 ```python
+from .common.train import train
+...
+
 train.dist.data_parallel_size = 2
 train.dist.pipeline_parallel_size = 4
 ```
-- **Tensor Parallel + Pipeline Parallel for 2D Parallel Training**
+- **Tensor Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
 ```python
+from .common.train import train
+...
+
 train.dist.tensor_parallel_size = 2
 train.dist.pipeline_parallel_size = 4
 ```
-- **Data Parallel + Tensor Parallel + Pipeline Parallel for 3D Parallel Training**
+- **Data Parallel + Tensor Parallel + Pipeline Parallel for 3D Parallel Training on 8 GPUs**
 ```python
+from .common.train import train
+...
+
 train.dist.data_parallel_size = 2
 train.dist.tensor_parallel_size = 2
 train.dist.pipeline_parallel_size = 2
 ```
+
+You can also use command line to control the
