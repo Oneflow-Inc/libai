@@ -2,17 +2,17 @@
 
 LiBai provides multiple arguments for covering a variety of situations.
 
-- [training command line](##trainin)
-- [evaluation command line](##evaluation)
-- [quickly check total pipeline](##quickly-check-total-pipeline)
+- [Training command line](##Training)
+- [Evaluation command line](##Evaluation)
+- [Quickly check in the respective loop](##Quickly-check-in-the-respective-loop)
 
-## training
+## Training
 
-LiBai provides `tools/train.sh` and `tools/train_net.py` for launching training & eval command.
+LiBai provides `tools/train.sh` and `tools/train_net.py` for launching training & eval task.
 
 You can modify `tools/train_net.py` according to your own needs.
 
-### train & totally evaluation
+### Training & totally evaluation
 
 For completely train and test, you can run: 
 
@@ -23,9 +23,9 @@ tools/train_net.py \
 path_to_your_config.py # config.py for your task
 ```
 
-### train & partly evaluation 
+### Training & partly evaluation 
 
-If test dataset cost much time. you can set `train.evaluation.eval_iter=20` in your `config.py` or in command line, it will run 20 steps in testing for fast eval, which may only test part of the test dataset:
+If the test dataset costs a lot of time, you can set `train.evaluation.eval_iter=20` in your `config.py` or in the command line, it will run 20 steps for only part of the test dataset in testing for fast eval:
 
 > NOTE: the eval metric will be calculated in partly testing dataset
 
@@ -37,9 +37,9 @@ path_to_your_config.py \        # config.py for your task
 train.evaluation.eval_iter=20   # set eval_iter for testing
 ```
 
-### train & no evaluation
+### training & no evaluation
 
-If you want to train without evaluation, you can set `train.evaluation.enabled=False` in your `config.py` or in command line:
+If you want to train without evaluation, you can set `train.evaluation.enabled=False` in your `config.py` or in the command line:
 
 ```shell
 bash tools/train.sh \
@@ -51,7 +51,7 @@ train.evaluation.enabled=False   # set no evaluation
 
 ### resume train
 
-If you want to resume traing, you should set `--resume` in command line, and set `train.output_dir` in your `config.py` and command line
+If you want to resume training, you should set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
 
 For example: your training was interrupted unexpectly, your lastest model path is `output/demo/model_0000019/`. you should set `train.output_dir=output/demo` for resume trainig.
 
@@ -65,9 +65,9 @@ train.output_dir=path/task       # set resume path, it should be parent director
 ```
 
 
-## evaluation
+## Evaluation
 
-If you want to evaluate your model without train,  you should set `--eval-only` in you command line, and set `train.load_weight`.
+If you want to evaluate your model without training,  you should set `--eval-only` in your command line, and set `train.load_weight`.
 
 Besides, `train.evaluation.eval_iter=20` is also valid in `--eval-only`, you can set it according to your own needs.
 
@@ -80,7 +80,7 @@ path_to_your_config.py \                     # config.py for your task
 train.load_weight=path/task/model_final      # set model path
 ```
 
-## quickly check total pipeline
+## Quickly check in the respective loop
 
 If you want to quickly run several batches of train, eval and test to find any bugs, you can set `--fast-dev-run` in command line. It will change config settings to
 ```python
