@@ -2,10 +2,6 @@
 
 LiBai provides multiple arguments for covering a variety of situations.
 
-- [Training command line](##Training)
-- [Evaluation command line](##Evaluation)
-- [Quickly check in the respective loop](##Quickly-check-in-the-respective-loop)
-
 ## Training
 
 LiBai provides `tools/train.sh` and `tools/train_net.py` for launching training & eval task.
