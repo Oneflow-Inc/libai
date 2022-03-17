@@ -69,9 +69,9 @@ train = dict(
 
     # Options for evaluation
 
-    # `test_micro_batch_size` is number of images per batch on each GPU for testing.
+    # `test_micro_batch_size` is number of samples per batch on each GPU for testing.
     # If we use 8 GPUs for data parallel groups and `test_micro_batch_size = 2`, then
-    # total 16 images will be used per iteration across all GPUs.
+    # total 16 samples will be used per iteration across all GPUs.
     test_micro_batch_size=32,
 
     # Enabled evaluation during training every `eval_period` number of iterations.

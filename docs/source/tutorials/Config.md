@@ -85,14 +85,14 @@ train = dict(
     # Directory where output files are written
     output_dir="./output",
 
-    # `train_micro_batch_size` is number of images per batch on each GPU. 
+    # `train_micro_batch_size` is number of samples per batch on each GPU. 
     # train_mini_batch_size = train_micro_batch_size * num_accumulation_steps.
-    # This is also the number of training images per step (i.e. per iteration). 
+    # This is also the number of training samples per step (i.e. per iteration). 
 
     # If we use 8 GPUs for data parallel groups, `train_micro_batch_size = 2` and 
-    # `num_accumulation_steps = 4`, then each GPU will see 2 images per batch and
-    # 8 images per iteration.
-    # Total 64 images will be trained per iteration across all GPUs.
+    # `num_accumulation_steps = 4`, then each GPU will see 2 samples per batch and
+    # 8 samples per iteration.
+    # Total 64 samples will be trained per iteration across all GPUs.
 
     # global_batch_size = micro_batch_size  * num_grad_acc * data_parallel_groups
     train_micro_batch_size=32,
@@ -146,9 +146,9 @@ train = dict(
 
     # Options for evaluation
 
-    # `test_micro_batch_size` is number of images per batch on each GPU for testing. 
+    # `test_micro_batch_size` is number of samples per batch on each GPU for testing. 
     # If we use 8 GPUs for data parallel groups and `test_micro_batch_size = 2`, then
-    # total 16 images will be used per iteration across all GPUs.
+    # total 16 samples will be used per iteration across all GPUs.
     test_micro_batch_size=32,
 
     # Enabled evaluation during training every `eval_period` number of iterations.
