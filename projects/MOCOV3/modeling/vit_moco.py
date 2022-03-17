@@ -17,7 +17,7 @@ class VisionTransformerMoCo(VisionTransformer):
         self.img_size=224 
         self.patch_size=16  
         self.in_chans=3 
-        self.embed_dim=192  # if build_2d_sincos_position_embedding 192 else 384
+        self.embed_dim=384  # if build_2d_sincos_position_embedding 192 else 384
         self.mlp_ratio=4.0 
         self.depth=12 
         self.num_heads=12 
@@ -33,9 +33,6 @@ class VisionTransformerMoCo(VisionTransformer):
         for name, m in self.named_modules():
             if isinstance(m, Linear): # libai
                 if 'query_key_value' in name:
-                    # import pdb
-                    # pdb.set_trace()
-                    # treat the weights of Q, K, V separately
                     val = math.sqrt(6. / float(m.weight.shape[0] // 3 + m.weight.shape[1])) # shape may be wrong in oneflow (the transpose issue)
                     nn.init.uniform_(m.weight, -val, val)
                 else:

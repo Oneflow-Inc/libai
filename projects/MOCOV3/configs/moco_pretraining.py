@@ -5,7 +5,7 @@ from flowvision import transforms
 from libai.config import LazyCall, get_config
 from projects.MOCOV3.configs.models.MoCo_v3_vit_small import model
 from configs.common.data.imagenet import dataloader
-from projects.MOCOV3.trainsform.pretraining_transform import TwoCropsTransform, augmentation1, augmentation2
+from projects.MOCOV3.transform.pretraining_transform import TwoCropsTransform, augmentation1, augmentation2
 from configs.common.optim import optim
 from configs.common.train import train
 from configs.common.models.graph import graph
