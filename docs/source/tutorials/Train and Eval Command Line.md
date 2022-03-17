@@ -10,7 +10,7 @@ LiBai provides multiple arguments for covering a variety of situations.
 
 LiBai provides `tools/train.sh` and `tools/train_net.py` for launching training & eval command.
 
-You can modify `tools/train_net.py` according to your needs.
+You can modify `tools/train_net.py` according to your own needs.
 
 ### train & totally evaluation
 
@@ -25,7 +25,7 @@ path_to_your_config.py # config.py for your task
 
 ### train & partly evaluation 
 
-If test dataset cost much time. you can set `train.evaluation.eval_iter=20` in your `config.py` or in command line, it will run `20` steps in testing for fast eval:
+If test dataset cost much time. you can set `train.evaluation.eval_iter=20` in your `config.py` or in command line, it will run 20 steps in testing for fast eval, which may only test part of the test dataset:
 
 > NOTE: the eval metric will be calculated in partly testing dataset
 
@@ -53,6 +53,8 @@ train.evaluation.enabled=False   # set no evaluation
 
 If you want to resume traing, you should set `--resume` in command line, and set `train.output_dir` in your `config.py` and command line
 
+For example: your training was interrupted unexpectly, your lastest model path is `output/demo/model_0000019/`. you should set `train.output_dir=output/demo` for resume trainig.
+
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
@@ -67,7 +69,7 @@ train.output_dir=path/task       # set resume path, it should be parent director
 
 If you want to evaluate your model without train,  you should set `--eval-only` in you command line, and set `train.load_weight`.
 
-Besides, `train.evaluation.eval_iter=20` is also valid in `eval-only`, you can set it according to your needs.
+Besides, `train.evaluation.eval_iter=20` is also valid in `--eval-only`, you can set it according to your own needs.
 
 ```shell
 bash tools/train.sh \
@@ -87,7 +89,7 @@ train.train_iter = 20
 train.evaluation.eval_period = 10
 train.log_period = 1
 ```
-runing command, `train.evaluation.eval_iter=20` is also valid in `--fast-dev-run `, you can set it according to your needs.
+runing command, `train.evaluation.eval_iter=20` is also valid in `--fast-dev-run `, you can set it according to own your needs.
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
