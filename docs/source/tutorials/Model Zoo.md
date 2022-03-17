@@ -150,4 +150,11 @@ train.dist.tensor_parallel_size = 2
 train.dist.pipeline_parallel_size = 2
 ```
 
-You can also use command line to control the
+You can also use **command line** to control the parallelization mode as follows:
+```bash
+bash tools/train.sh tools/train_net.py configs/bert_large_pretrain.py \
+8 \  # num of gpus
+train.dist.data_parallel_size=2 \
+train.dist.tensor_parallel_size=2 \
+train.dist.pipeline_parallel_size=2 \
+```
