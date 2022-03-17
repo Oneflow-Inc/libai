@@ -4,6 +4,7 @@ from typing import Callable
 from libai.engine import DefaultTrainer
 from libai.engine.trainer import EagerTrainer
 
+from  utils.weight_convert_tools import load_torch_checkpoint
 
 
 class MoCoDefaultTrainer(DefaultTrainer):
@@ -17,6 +18,8 @@ class MoCoDefaultTrainer(DefaultTrainer):
         self._trainer = MoCoEagerTrainer(
                 self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
             )
+
+        # self.model = load_torch_checkpoint(self.model, path=cfg.train.pretrain_path)
 
 
 class MoCoEagerTrainer(EagerTrainer):

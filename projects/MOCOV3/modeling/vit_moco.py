@@ -28,6 +28,7 @@ class VisionTransformerMoCo(VisionTransformer):
         
         # Use fixed 2D sin-cos position embedding
         self.build_2d_sincos_position_embedding()
+
         # weight initialization
         for name, m in self.named_modules():
             if isinstance(m, Linear): # libai

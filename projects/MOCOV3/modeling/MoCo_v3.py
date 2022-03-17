@@ -62,7 +62,7 @@ class MoCo(nn.Module):
     def _update_momentum_encoder(self, m):
         """Momentum update of the momentum encoder"""
         for param_b, param_m in zip(self.base_encoder.parameters(), self.momentum_encoder.parameters()):
-            param_m.data = param_m.data * m + param_b.data * (1. - m) # 0302  for graph mode ->bug: AttributeError: 'TensorBlock' object has no attribute 'data'. It works well on eager mode
+            param_m.data = param_m.data * m + param_b.data * (1. - m)  # for graph mode ->bug: AttributeError: 'TensorBlock' object has no attribute 'data'. It works well on eager mode
 
     def contrastive_loss(self, q, k):
 
