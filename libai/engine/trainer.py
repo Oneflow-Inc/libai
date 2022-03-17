@@ -28,9 +28,11 @@ from libai.utils.events import EventStorage, get_event_storage
 class HookBase:
     """
     Base class for hooks that can be registered with :class:`TrainerBase`.
+
     Each hook can implement 4 methods. The way they are called is demonstrated
     in the following snippet:
     ::
+
         hook.before_train()
         for iter in range(start_iter, max_iter):
             hook.before_step()
@@ -38,15 +40,18 @@ class HookBase:
             hook.after_step()
         iter += 1
         hook.after_train()
+
     Notes:
         1. In the hook method, users can access ``self.trainer`` to access more
            properties about the context (e.g., model, current iteration, or config
            if using :class:`DefaultTrainer`).
+
         2. A hook that does something in :meth:`before_step` can often be
            implemented equivalently in :meth:`after_step`.
            If the hook takes non-trivial time, it is strongly recommended to
            implement the hook in :meth:`after_step` instead of :meth:`before_step`.
            The convention is that :meth:`before_step` should only take negligible time.
+
            Following this convention will allow hooks that do care about the difference
            between :meth:`before_step` and :meth:`after_step` (e.g., timer) to
            function properly.
@@ -84,11 +89,11 @@ class TrainerBase:
     The only assumption we made here is: the training runs in a loop.
     A subclass can implement what the loop is.
     We made no assumptions about the existence of dataloader, optimizer, model, etc.
+
     Attributes:
         iter(int): the current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
-
         max_iter(int): The iteration to end training.
         storage(EventStorage): An EventStorage that's opened during the course of training.
     """
@@ -104,6 +109,7 @@ class TrainerBase:
         """
         Register hooks to the trainer. The hooks are executed in the order
         they are registered.
+
         Args:
             hooks (list[Optional[HookBase]]): list of hooks
         """
@@ -179,17 +185,18 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        metrics_dict = {k: dist.tton(v, local_only=False) for k, v in loss_dict.items()}
+        # Only get metric value on rank0
+        # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
+        metrics_dict = {
+            k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+            for k, v in loss_dict.items()
+        }
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
         # all_metrics_dict = dist.gather(metrics_dict)
         all_metrics_dict = metrics_dict
 
-        # dist_util = dist.get_dist_util()
-        # if (dist_util.is_pipeline_model_parallel() and dist.is_last_process()) or (
-        #     not dist_util.is_pipeline_model_parallel() and dist.is_main_process()
-        # ):
         if dist.is_main_process():
             storage = get_event_storage()
 
@@ -218,13 +225,15 @@ class TrainerBase:
 
 class EagerTrainer(TrainerBase):
     """
-    A simple trainer for the most common type of task:
+    A simple eager trainer for the most common type of task:
     single-cost single-optimizer single-data-source iterative optimization,
     optionally using data-parallelism.
     It assumes that every step, you:
+
     1. Compute the loss with a data from the data_loader.
     2. Compute the gradients with the above loss.
     3. Update the model with the optimizer.
+
     All other tasks during training (checkpointing, logging, evaluation, LR schedule)
     are maintained by hooks, which can be registered by :meth:`TrainerBase.register_hooks`.
     If you want to do anything fancier than this,
@@ -232,7 +241,7 @@ class EagerTrainer(TrainerBase):
     or write your own training loop.
     """
 
-    def __init__(self, model, data_loader, optimizer):
+    def __init__(self, model, data_loader, optimizer, grad_acc_steps=1):
         """
         Args:
             model: a flow.nn.Module. Takes a data from data_loader and returns a
@@ -253,6 +262,7 @@ class EagerTrainer(TrainerBase):
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
+        self.grad_acc_steps = grad_acc_steps
 
     def run_step(self, get_batch: Callable):
         """
@@ -266,20 +276,23 @@ class EagerTrainer(TrainerBase):
         data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
-        # If you want to do something with the losses, you can wrap the model.
-
         loss_dict = self.model(**data)
-        losses = sum(loss_dict.values())
+        losses = sum(loss_dict.values()) / self.grad_acc_steps
 
-        self.optimizer.zero_grad()
         losses.backward()
-
         self.write_metrics(loss_dict, data_time)
 
-        self.optimizer.step()
+        if (self.iter + 1) % self.grad_acc_steps == 0:
+            self.optimizer.clip_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
 
 class GraphTrainer(TrainerBase):
+    """
+    A simple graph trainer for training and evaluating models in a static graph mode.
+    """
+
     def __init__(self, graph, data_loader):
         super().__init__()
 
@@ -302,5 +315,8 @@ class GraphTrainer(TrainerBase):
 
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
+        # Add this because when set up gradient accumulations, graph will return
+        # an unpacked n-d tensor whose size is accumulation step
+        loss_dict = {key: value.mean() for key, value in loss_dict.items()}
 
         self.write_metrics(loss_dict, data_time)

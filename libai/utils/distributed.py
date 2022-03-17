@@ -15,6 +15,7 @@
 
 import logging
 
+import numpy as np
 import oneflow as flow
 
 from libai.config import try_get_key
@@ -25,13 +26,8 @@ _DIST_UTIL = None
 
 
 def _merge_devices(devices):
-    node_devices = dict()
-    for node_id, device_id in devices:
-        if node_id not in node_devices:
-            node_devices[node_id] = []
-
-        node_devices[node_id].append(device_id)
-
+    num_gpus_per_node = get_world_size() // get_num_nodes()
+    node_devices = [node_id * num_gpus_per_node + device_id for node_id, device_id in devices]
     return node_devices
 
 
@@ -128,8 +124,8 @@ class _DistributeUtil(object):
         )
         num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
 
-        self._layers_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
-        self._layers_devices = [stages_devices[stage_id] for stage_id in self._layers_stage_ids]
+        self._layer_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
+        self._layer_ranks = [stages_devices[stage_id] for stage_id in self._layer_stage_ids]
 
     def _init_parallel_hierarchy(self):
         if self.is_data_model_parallel():
@@ -172,11 +168,16 @@ class _DistributeUtil(object):
     def data_parallel_size(self):
         return self._data_parallel_size
 
-    def get_layer_devices(self, layer_idx):
-        return self._layers_devices[layer_idx]
+    def get_layer_ranks(self, layer_idx):
+        layer_ranks = self._layer_ranks[layer_idx]
+        if self._parallel_hierarchy is None:
+            return layer_ranks
+        else:
+            assert len(self._parallel_hierarchy) == 2
+            return np.asarray(layer_ranks).reshape(self._parallel_hierarchy).tolist()
 
     def get_layer_stage_id(self, layer_idx):
-        return self._layers_stage_ids[layer_idx]
+        return self._layer_stage_ids[layer_idx]
 
     def is_tensor_model_parallel(self):
         return self._tensor_parallel_size > 1
@@ -192,11 +193,33 @@ class _DistributeUtil(object):
 
 
 def setup_dist_util(cfg):
+    """Initialize the distributed environment with configuration.
+
+    Examples:
+
+    .. code-block:: python
+
+        from omegaconf import DictConfig
+
+        # set the hybrid parallel distributed environment with 2D mesh GPUs
+        setup_dist_util(
+            DictConfig(
+                dict(
+                    data_parallel_size=2,
+                    tensor_parallel_size=2,
+                    pipeline_parallel_size=1,
+                )
+            )
+        )
+
+    """
     global _DIST_UTIL
     _DIST_UTIL = _DistributeUtil(cfg)
 
 
 def get_dist_util():
+    """Get distributed utils if it's been setup. Otherwise, initialize it with
+    single node/single gpu environment."""
     global _DIST_UTIL
     if _DIST_UTIL is None:
         logger.warning(
@@ -217,28 +240,32 @@ def get_dist_util():
 
 
 def get_layer_placement(layer_idx, device_type="cuda"):
+    """Get `flow.placement` object with the initialized distributed environment
+        according to the layer_idx.
+
+    Args:
+        layer_idx (int): layer index indicating the rank groups. This is very useful for pipeline
+            parallelism training where different layers on different ranks.
+        device_type (str, optional): device type. Defaults to "cuda".
+    """
     dist_util = get_dist_util()
     if not flow.cuda.is_available() and device_type == "cuda":
         device_type = "cpu"
     return flow.placement(
         device_type,
-        dist_util.get_layer_devices(layer_idx),
-        dist_util.parallel_hierarchy,
-    )
-
-
-def get_all_placement(device_type="cuda"):
-    dist_util = get_dist_util()
-    if not flow.cuda.is_available() and device_type == "cuda":
-        device_type = "cpu"
-    return flow.placement(
-        device_type,
-        {i: range(dist_util.num_gpus_per_node) for i in range(dist_util.num_nodes)},
-        dist_util.parallel_hierarchy,
+        dist_util.get_layer_ranks(layer_idx),
     )
 
 
 def get_nd_sbp(sbp_list):
+    """Get nd sbp signature list, which is consistent with 1D/2D mesh GPUs.
+
+    Args:
+        sbp_list (list): a sbp list with 2D mesh.
+
+    Returns:
+        An modified sbp list according to the initialized distributed environment.
+    """
     assert isinstance(sbp_list, list)
     assert len(sbp_list) == 2
     assert all(isinstance(sbp, flow.sbp.sbp) for sbp in sbp_list)
@@ -275,6 +302,7 @@ def get_tensor_parallel_size():
 
 
 def same_sbp(lhs_sbp, rhs_sbp):
+    """Determine if two sbp signature is same."""
     assert len(lhs_sbp) == len(rhs_sbp)
 
     for i in range(len(lhs_sbp)):
@@ -303,13 +331,17 @@ def get_world_size():
     return flow.env.get_world_size()
 
 
+def get_num_nodes():
+    return flow.env.get_node_size()
+
+
 def convert_to_distributed_default_setting(module):
     """
     Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
-        consistent tensor with data parallelism as default.
+        global tensor with data parallelism as default.
     """
     for param in module.parameters():
-        if not param.is_consistent:
+        if not param.is_global:
             module.to_global(
                 sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=get_layer_placement(0),
@@ -317,27 +349,24 @@ def convert_to_distributed_default_setting(module):
             return
 
 
-def get_num_nodes():
-    return flow.env.get_node_size()
-
-
-def ttol(tensor, pure_local=False):
-    """consistent tensor to local tensor"""
-    if tensor.is_consistent:
+def ttol(tensor, pure_local=False, ranks=None):
+    """global tensor to local tensor."""
+    if tensor.is_global:
+        placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
         if pure_local:
-            tensor = tensor.to_local()
+            tensor = tensor.to_global(placement=placement).to_local()
         else:
             tensor = tensor.to_global(
-                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=placement
             ).to_local()
 
     return tensor
 
 
-def tton(tensor, local_only=False):
-    """consistent tensor to numpy"""
-    if tensor.is_consistent:
-        tensor = ttol(tensor, local_only)
+def tton(tensor, local_only=False, ranks=None):
+    """global tensor to numpy ndarray."""
+    if tensor.is_global:
+        tensor = ttol(tensor, local_only, ranks)
 
     return tensor.numpy()
 
@@ -345,10 +374,10 @@ def tton(tensor, local_only=False):
 def synchronize():
     """
     Helper function to synchronize (barrier) among all processes when
-    using distributed training
+    using distributed training.
     """
     world_size = get_world_size()
     if world_size == 1:
         return
 
-    flow._oneflow_internal.eager.multi_client.Sync()
+    flow.comm.barrier()

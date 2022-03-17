@@ -18,7 +18,8 @@ from oneflow.utils.data import Sampler
 
 
 class CyclicSampler(Sampler):
-    """This sampler supports cyclic sampling, and it is also compatible with
+    """
+    This sampler supports cyclic sampling, and it is also compatible with
     non data parallelism and data parallelism.
 
     Arguments:
@@ -27,10 +28,10 @@ class CyclicSampler(Sampler):
         global_batch_size is micro_batch_size times data_parallel_size.
         shuffle: whether to shuffle the dataset.
         consumed_samples: the number of samples that have been trained at the current time,
-        used for resuming training.
+            used for resuming training (default: ``0``).
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
-        seed: random seed, used for reproducing experiments.
+        seed: random seed, used for reproducing experiments (default: ``0``).
     """
 
     def __init__(
@@ -106,7 +107,8 @@ class CyclicSampler(Sampler):
 
 
 class SingleRoundSampler(Sampler):
-    """This sampler supports single round sampling, and it is also compatible with
+    """
+    This sampler supports single round sampling, and it is also compatible with
     non data parallelism and data parallelism.
 
     Arguments:
@@ -116,8 +118,8 @@ class SingleRoundSampler(Sampler):
         shuffle: whether to shuffle the dataset.
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
-        seed: random seed, used for reproducing experiments.
-        drop_last: whether to drop the remaining data. Default to `False`.
+        seed: random seed, used for reproducing experiments (default: ``0``).
+        drop_last: whether to drop the remaining data (default: ``False``).
     """
 
     def __init__(
@@ -169,11 +171,15 @@ class SingleRoundSampler(Sampler):
                 yield batch
                 batch = []
 
-        if len(batch) > 0 and not self.drop_last:
-            # TODO: fix sampler bug when batch_size=1
-            for _ in range(self.micro_batch_size - len(batch)):
+        if not self.drop_last:
+            if self.data_parallel_rank >= remain and remain > 0:
                 batch.append(0)
-            yield batch
+            if len(batch) > 0:
+                yield batch
 
     def __len__(self):
-        return self.data_size // (self.micro_batch_size * self.data_parallel_size)
+        global_batch_size = self.micro_batch_size * self.data_parallel_size
+        if self.drop_last:
+            return self.data_size // global_batch_size
+        else:
+            return (self.data_size + global_batch_size - 1) // global_batch_size

@@ -64,7 +64,9 @@ class JSONWriter(EventWriter):
     Write scalars to a json file.
     It saves scalars as one json per line (instead of a big json) for easy parsing.
     Examples parsing such a json file:
+
     ::
+
         $ cat metrics.json | jq -s '.[0:2]'
         [
           {
@@ -222,6 +224,7 @@ class EventStorage:
 
     def __init__(self, start_iter=0):
         """
+
         Args:
             start_iter (int): the iteration number to start with
         """
@@ -238,6 +241,7 @@ class EventStorage:
         """
         Add an `img_tensor` associated with `img_name`, to be shown on
         tensorboard.
+
         Args:
             img_name (str): The name of the image to put into tensorboard.
             img_tensor (torch.Tensor or numpy.array): An `uint8` or `float`
@@ -251,6 +255,7 @@ class EventStorage:
     def put_scalar(self, name, value, smoothing_hint=True):
         """
         Add a scalar `value` to the `HistoryBuffer` associated with `name`.
+
         Args:
             smoothing_hint (bool): a 'hint' on whether this scalar is noisy and should be
                 smoothed when logged. The hint will be accessible through
@@ -276,7 +281,11 @@ class EventStorage:
     def put_scalars(self, *, smoothing_hint=True, **kwargs):
         """
         Put multiple scalars from keyword arguments.
+
         Examples:
+
+        .. code-block:: python
+
             storage.put_scalars(loss=my_loss, accuracy=my_accuracy, smoothing_hint=True)
         """
         for k, v in kwargs.items():
@@ -342,8 +351,7 @@ class EventStorage:
     @property
     def iter(self):
         """
-        Returns:
-            int: The current iteration number. When used together with a trainer,
+        Returns the current iteration number. When used together with a trainer,
                 this is ensured to be the same as trainer.iter.
         """
         return self._iter

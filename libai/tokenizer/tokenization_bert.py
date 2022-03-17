@@ -84,6 +84,27 @@ def _is_chinese_substr(char):
 class BertTokenizer(PreTrainedTokenizer):
     """
     Construct a BERT tokenizer. Based on WordPiece.
+
+    Args:
+        vocab_file (:obj:`str`):
+            Path to a one-wordpiece-per-line vocabulary file.
+        do_lower_case (:obj:`bool`, `optional`, defaults to :obj:`True`):
+            Whether to lower case the input
+            Only has an effect when do_basic_tokenize=True.
+        do_basic_tokenize (:obj:`bool`, `optional`, defaults to :obj:`True`):
+            Whether to do basic tokenization before wordpiece.
+        never_split (:obj:`Iterable`, `optional`):
+            List of tokens which will never be split during tokenization.
+            Only has an effect when do_basic_tokenize=True.
+        tokenize_chinese_chars (:obj:`bool`, `optional`, defaults to :obj:`True`):
+            Whether to tokenize Chinese characters.
+            This should likely be deactivated for Japanese,
+            see: https://github.com/huggingface/pytorch-pretrained-BERT/issues/328.
+        do_chinese_wwm (:obj:`bool`, `optional`, defaults to :obj:`False`):
+            Whether to do whole word masking for Chinese.
+            Chinese sentence will be segmented by a third-party tool first.
+            Each substr will be added '##' prefix and its index will be calucated by
+            id(##A) = id(A) + vocab_size.
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
@@ -106,27 +127,6 @@ class BertTokenizer(PreTrainedTokenizer):
         do_chinese_wwm=False,
         **kwargs,
     ):
-        """Constructs a BertTokenizer.
-        Args:
-            **vocab_file**: Path to a one-wordpiece-per-line vocabulary file
-            **do_lower_case**: (`optional`) boolean (default True)
-                Whether to lower case the input
-                Only has an effect when do_basic_tokenize=True
-            **do_basic_tokenize**: (`optional`) boolean (default True)
-                Whether to do basic tokenization before wordpiece.
-            **never_split**: (`optional`) list of string
-                List of tokens which will never be split during tokenization.
-                Only has an effect when do_basic_tokenize=True
-            **tokenize_chinese_chars**: (`optional`) boolean (default True)
-                Whether to tokenize Chinese characters.
-                This should likely be deactivated for Japanese:
-                see: https://github.com/huggingface/pytorch-pretrained-BERT/issues/328
-            **do_chinese_wwm**: (`optional`) boolean (default False)
-                Whether to do whole word masking for Chinese.
-                Chinese sentence will be segmented by a third-party tool first.
-                Each substr will be added '##' prefix and its index will be calucated by
-                id(##A) = id(A) + vocab_size.
-        """
         super(BertTokenizer, self).__init__(
             unk_token=unk_token,
             sep_token=sep_token,

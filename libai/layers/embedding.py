@@ -29,8 +29,9 @@ class Embedding(nn.Module):
     Arguments:
         num_embeddings: size of vocabulary.
         embedding_dim: dimension of embeddings.
-        padding_idx: pad index.
-        init_method: method to initialize weights.
+        padding_idx: pad index. Defaults to None.
+        init_method: method to initialize weights. Defaults to init.xavier_normal_.
+        amp_enabled: fp16 option for embedding weight. Defaults to False.
     """
 
     def __init__(
@@ -39,6 +40,7 @@ class Embedding(nn.Module):
         embedding_dim,
         padding_idx=None,
         init_method=init.xavier_normal_,
+        amp_enabled=False,
     ):
         super().__init__()
         self.num_embeddings = num_embeddings
@@ -55,6 +57,7 @@ class Embedding(nn.Module):
                 padding_idx = self.num_embeddings + padding_idx
         self.padding_idx = padding_idx
         self.init_method = init_method
+        self.amp_enabled = amp_enabled
 
         assert num_embeddings > 0
         self.weight = nn.Parameter(
@@ -66,15 +69,16 @@ class Embedding(nn.Module):
             )
         )
         self.init_method(self.weight)
-        # FIXME(Lxy): Fill padding_idx is not supported in nd_sbp right now.
+        # FIXME(lxy): Fill padding_idx is not supported in nd_sbp right now.
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
+        weight = flow._C.amp_white_identity(self.weight) if self.amp_enabled else self.weight
         # embeddings with sbp sign: [B, B]
         #   [B, B] x [S(0), B] --> [S(0), B]
         #     ↑         ↑              ↑
         #   embed    pos_ids       pos_embed
-        input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
+        input_embeds = flow._C.gather(weight, input_ids, axis=0)
         return input_embeds
 
     def _fill_padding_idx_with_zero(self) -> None:
@@ -94,13 +98,14 @@ class Embedding(nn.Module):
 
 
 class VocabEmbedding(nn.Module):
-    """Construct the word embeddings, which may be splited along vocabulary dimension.
+    """Construct the word embeddings, which may be split along vocabulary dimension.
 
     Arguments:
         num_embeddings: size of vocabulary.
         embedding_dim: dimension of embeddings.
-        padding_idx: pad index.
-        init_method: method to initialize weights.
+        padding_idx: pad index. Defaults to None.
+        init_method: method to initialize weights. Defaults to init.xavier_normal_.
+        amp_enabled: fp16 option for embedding weight. Defaults to False.
     """
 
     def __init__(
@@ -109,6 +114,7 @@ class VocabEmbedding(nn.Module):
         embedding_dim,
         padding_idx=None,
         init_method=init.xavier_normal_,
+        amp_enabled=False,
     ):
         super().__init__()
         self.num_embeddings = num_embeddings
@@ -125,6 +131,7 @@ class VocabEmbedding(nn.Module):
                 padding_idx = self.num_embeddings + padding_idx
         self.padding_idx = padding_idx
         self.init_method = init_method
+        self.amp_enabled = amp_enabled
 
         # Word token embedding shape with (vocab_size, hidden_size)
         # sbp: [B, S(0)]
@@ -142,13 +149,14 @@ class VocabEmbedding(nn.Module):
         # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
+        weight = flow._C.amp_white_identity(self.weight) if self.amp_enabled else self.weight
         # input_ids with shape (batch_size, seq_len), and sbp sign: [S(0), B]
 
         # Gather forward sbp sign
         # [B, S(0)] x [S(0), B] --> [S(0), P]
         #     ↑           ↑            ↑
         #   embed  input_ids    input_embeds
-        input_embeds = flow._C.gather(self.weight, input_ids, axis=0)
+        input_embeds = flow._C.gather(weight, input_ids, axis=0)
         # Set the embeds sbp from [S(0), P] --> [S(0), B] to get complete embedding results.
         input_embeds = input_embeds.to_global(sbp=dist.get_hidden_sbp())
 
@@ -219,3 +227,59 @@ class SinePositionalEmbedding(nn.Module):
     def extra_repr(self) -> str:
         s = "num_embeddings={num_embeddings}, embedding_dim={embedding_dim}"
         return s.format(**self.__dict__)
+
+
+class PatchEmbedding(nn.Module):
+    """2D Image to Patch Embedding
+
+    Arguments:
+        img_size: size of input image. Default to 224.
+        patch_size: embedded patch size. Default to 16.
+        in_chans: input channel's size. Default to 3.
+        embed_dim: dimension of embedded patch. Default to 768.
+        norm_layer: normalization patch embedding or not. Default to None.
+        flatten: flatten patch embedding or keep the 2-D shape. Default to True.
+        layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
+        parallelism. Default to 0.
+    """
+
+    def __init__(
+        self,
+        img_size=224,
+        patch_size=16,
+        in_chans=3,
+        embed_dim=768,
+        norm_layer=None,
+        flatten=True,
+        *,
+        layer_idx=0,
+    ):
+        super().__init__()
+        img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        patch_size = patch_size if isinstance(patch_size, tuple) else (patch_size, patch_size)
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.grid_size = (img_size[0] // patch_size[0], img_size[1] // patch_size[1])
+        self.num_patches = self.grid_size[0] * self.grid_size[1]
+        self.flatten = flatten
+        self.proj = nn.Conv2d(
+            in_chans, embed_dim, kernel_size=patch_size, stride=patch_size
+        ).to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=dist.get_layer_placement(layer_idx),
+        )
+        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        assert (
+            H == self.img_size[0]
+        ), f"Input image height ({H}) doesn't match model ({self.img_size[0]})."
+        assert (
+            W == self.img_size[1]
+        ), f"Input image width ({W}) doesn't match model ({self.img_size[1]})."
+        x = self.proj(x)
+        if self.flatten:
+            x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
+        x = self.norm(x)
+        return x

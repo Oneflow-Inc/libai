@@ -38,6 +38,22 @@ def is_start_piece(piece):
 class T5Dataset(flow.utils.data.Dataset):
     """
     Dataset containing sentences for T5 training.
+
+    Args:
+        tokenizer: Tokenizer to use.
+        data_prefix (str): Path to the training dataset.
+        indexed_dataset: Indexed dataset to use.
+        max_seq_length (int, optional): Maximum length of the sequence passing into encoder.
+            All values are padded to this length. Defaults to 512.
+        max_seq_length_dec (int, optional): Maximum length of the sequence passing into decoder.
+            All values are padded to this length. Defaults to 128.
+        mask_lm_prob (float, optional): Probability to mask tokens. Defaults to 0.15.
+        max_preds_per_seq (int, optional): Maximum number of masked tokens in each sentence.
+            Defaults to None.
+        short_seq_prob (float, optional):
+            Probability of producing a short sequence. Defaults to 0.0.
+        seed (int, optional):
+            Seed for random number generator for reproducibility. Defaults to 1234.
     """
 
     def __init__(
@@ -46,6 +62,7 @@ class T5Dataset(flow.utils.data.Dataset):
         data_prefix,
         indexed_dataset,
         max_seq_length=512,
+        max_seq_length_dec=128,
         mask_lm_prob=0.15,
         max_preds_per_seq=None,
         short_seq_prob=0.0,
@@ -54,6 +71,7 @@ class T5Dataset(flow.utils.data.Dataset):
         self.seed = seed
         self.mask_lm_prob = mask_lm_prob
         self.max_seq_length = max_seq_length
+        self.max_seq_length_dec = max_seq_length_dec
         self.short_seq_prob = short_seq_prob
         if max_preds_per_seq is None:
             max_preds_per_seq = math.ceil(max_seq_length * mask_lm_prob / 10) * 10
@@ -70,42 +88,47 @@ class T5Dataset(flow.utils.data.Dataset):
         self.bos_id = tokenizer.bos_token_id
         self.eos_id = tokenizer.eos_token_id
         self.pad_id = tokenizer.pad_token_id
+        self.cls_id = tokenizer.cls_token_id
+        self.sep_id = tokenizer.sep_token_id
         self.special_tokens = tokenizer.additional_special_tokens_ids
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, idx):
+        sents = self.dataset[idx]
+
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
-        # We % 2 ** 32 since numpy requres the seed to be between 0 and 2 ** 32 - 1
-        np_rng = np.random.RandomState(seed=((self.seed + idx) % 2 ** 32))
+        np_rng = np.random.RandomState(seed=(self.seed + idx))
 
-        sents = self.dataset[idx]
         tokens = [token for sent in sents for token in sent]
+        tokens = tokens[: self.max_seq_length - 2]
 
         (
             tokens,
             masked_positions,
             masked_labels,
             masked_spans,
-        ) = self.create_masked_lm_predictions(tokens, np_rng)
+        ) = self.create_masked_lm_predictions(tokens, np_rng, geometric_dist=True, max_ngrams=10)
 
         (
             encoder_input,
             decoder_input,
-            labels,
+            lm_labels,
             encoder_padding_mask,
             decoder_padding_mask,
+            encoder_decoder_padding_mask,
             loss_mask,
         ) = self.pad_and_convert_to_numpy(tokens, masked_spans)
 
         sample = Instance(
-            encoder_input=DistTensorData(encoder_input),
-            decoder_input=DistTensorData(decoder_input),
-            encoder_padding_mask=DistTensorData(encoder_padding_mask),
-            decoder_padding_mask=DistTensorData(decoder_padding_mask),
-            labels=DistTensorData(labels, placement_idx=-1),
+            encoder_input_ids=DistTensorData(encoder_input),
+            decoder_input_ids=DistTensorData(decoder_input),
+            encoder_attn_mask=DistTensorData(encoder_padding_mask),
+            decoder_attn_mask=DistTensorData(decoder_padding_mask),
+            encoder_decoder_attn_mask=DistTensorData(encoder_decoder_padding_mask),
+            lm_labels=DistTensorData(lm_labels, placement_idx=-1),
             loss_mask=DistTensorData(loss_mask, placement_idx=-1),
         )
         return sample
@@ -282,27 +305,36 @@ class T5Dataset(flow.utils.data.Dataset):
         assert num_pad >= 0
 
         filler = [self.pad_id] * num_pad
-        encoder_input = np.array(encoder_input + filler, dtype=np.long)
-        encoder_input = flow.tensor(encoder_input, dtype=flow.long)
+        encoder_input = np.array(encoder_input + filler, dtype=np.int64)
 
         num_tokens_dec = len(decoder_input)
-        num_pad_dec = self.max_seq_length - num_tokens_dec
+        num_pad_dec = self.max_seq_length_dec - num_tokens_dec
         assert num_pad_dec >= 0
 
         # tokens and token types
         filler_dec = [self.pad_id] * num_pad_dec
-        decoder_input = np.array(decoder_input + filler_dec, dtype=np.long)
+        decoder_input = np.array(decoder_input + filler_dec, dtype=np.int64)
+
+        # Create attention masks
+        encoder_padding_mask = self.make_attention_mask(encoder_input, encoder_input)
+        decoder_padding_mask = self.make_attention_mask(decoder_input, decoder_input)
+        encoder_decoder_padding_mask = self.make_attention_mask(decoder_input, encoder_input)
+        decoder_padding_mask = decoder_padding_mask * self.make_history_mask(decoder_input)
+
+        # Labels mask.
+        labels = decoder_output + ([-1] * num_pad_dec)
+        labels = np.array(labels, dtype=np.int64)
+
+        # Loss mask
+        loss_mask = ([1] * num_tokens_dec) + ([0] * num_pad_dec)
+        loss_mask = np.array(loss_mask, dtype=np.int64)
+
+        encoder_input = flow.tensor(encoder_input, dtype=flow.long)
         decoder_input = flow.tensor(decoder_input, dtype=flow.long)
-
-        # padding mask
-        encoder_padding_mask = flow.tensor([1] * num_tokens + [0] * num_pad, dtype=flow.long)
-        decoder_padding_mask = flow.tensor(
-            [1] * num_tokens_dec + [0] * num_pad_dec, dtype=flow.long
-        )
-
-        # labels and loss mask
-        labels = flow.tensor(decoder_output + [-1] * num_pad_dec, dtype=flow.long)
-        loss_mask = [1] * num_tokens_dec + [0] * num_pad_dec
+        labels = flow.tensor(labels, dtype=flow.long)
+        encoder_padding_mask = flow.tensor(encoder_padding_mask, dtype=flow.long)
+        decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.long)
+        encoder_decoder_padding_mask = flow.tensor(encoder_decoder_padding_mask, dtype=flow.long)
         loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
         return (
@@ -311,8 +343,32 @@ class T5Dataset(flow.utils.data.Dataset):
             labels,
             encoder_padding_mask,
             decoder_padding_mask,
+            encoder_decoder_padding_mask,
             loss_mask,
         )
+
+    def make_attention_mask(self, source_block, target_block):
+        """
+        Returns a 2-dimensional (2-D) attention mask
+        :param source_block: 1-D array
+        :param target_block: 1-D array
+        """
+        mask = (target_block[None, :] >= 1) * (source_block[:, None] >= 1)
+        mask = mask.astype(np.int64)
+        # (source_length, target_length)
+        return mask
+
+    def make_history_mask(self, block):
+        length = block.shape[0]
+        arange = np.arange(length)
+        history_mask = (
+            arange[
+                None,
+            ]
+            <= arange[:, None]
+        )
+        history_mask = history_mask.astype(np.int64)
+        return history_mask
 
     @property
     def supports_prefetch(self):

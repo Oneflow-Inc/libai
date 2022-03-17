@@ -31,6 +31,21 @@ def WarmupCosineLR(
     alpha: float = 0.0,
     warmup_method: str = "linear",
 ):
+    """Create a schedule with a learning rate that decreases following
+    the values of the Cosine function between the initial lr set in the
+    optimizer to 0, after a warmup period during which it increases linearly
+    between 0 and the initial lr set in the optimizer.
+
+    Args:
+        optimizer (flow.optim.Optimizer): Wrapped optimizer.
+        max_iter (int): Total training iters.
+        warmup_factor (float): The warmup factor.
+        warmup_iter (int): The number of warmup steps.
+        alpha (float, optional): The learning rate scale factor (:math:`\\alpha`). Defaults to 0.0.
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
+            In linear mode, the multiplication factor starts with warmup_factor in
+            the first epoch and then inreases linearly to reach 1. Defaults to "linear".
+    """
     cosine_decay_lr = flow.optim.lr_scheduler.CosineDecayLR(
         optimizer, decay_steps=max_iter, alpha=alpha
     )
@@ -57,6 +72,21 @@ def WarmupCosineAnnealingLR(
     eta_min: float = 0.0,
     warmup_method: str = "linear",
 ):
+    """Create a schedule with a learning rate that decreases following
+    the values of the Cosine Annealing function between the initial
+    lr set in the optimizer to 0, after a warmup period during which
+    it increases linearly between 0 and the initial lr set in the optimizer.
+
+    Args:
+        optimizer (flow.optim.Optimizer): Wrapped optimizer.
+        max_iter (int): Total training iters.
+        warmup_factor (float): The warmup factor.
+        warmup_iter (int): The number of warmup steps.
+        eta_min (float, optional): Minimum learning rate. Defaults to 0.0.
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
+            In linear mode, the multiplication factor starts with warmup_factor in the first epoch
+            and then inreases linearly to reach 1. Defaults to "linear".
+    """
     cosine_annealing_lr = flow.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=max_iter, eta_min=eta_min
     )
@@ -82,6 +112,21 @@ def WarmupMultiStepLR(
     gamma: float = 0.1,
     warmup_method: str = "linear",
 ):
+    """Create a schedule with a learning rate that decreases following the values of the MultiStep
+    function between the initial lr set in the optimizer to 0, after a warmup period during which
+    it increases linearly between 0 and the initial lr set in the optimizer.
+
+    Args:
+        optimizer (flow.optim.Optimizer): Wrapped optimizer.
+        max_iter (int): Total training iters.
+        warmup_factor (float): The warmup factor.
+        warmup_iter (int): The number of warmup steps.
+        milestones (list): List of step indices. Must be increasing.
+        gamma (float, optional): Multiplicative factor of learning rate decay. Defaults to 0.1.
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
+            In linear mode, the multiplication factor starts with warmup_factor in the first
+            epoch and then inreases linearly to reach 1. Defaults to "linear".
+    """
     multistep_lr = flow.optim.lr_scheduler.MultiStepLR(
         optimizer, milestones=milestones, gamma=gamma
     )
@@ -106,6 +151,21 @@ def WarmupExponentialLR(
     warmup_iter: int,
     warmup_method: str = "linear",
 ):
+    """Create a schedule with a learning rate that decreases following the values of
+    the Exponential function between the initial lr set in the optimizer to 0,
+    after a warmup period during which it increases linearly between 0 and the
+    initial lr set in the optimizer.
+
+    Args:
+        optimizer (flow.optim.Optimizer): Wrapped optimizer.
+        max_iter (int): Total training iters.
+        gamma (float): Multiplicative factor of learning rate decay.
+        warmup_factor (float): The warmup factor.
+        warmup_iter (int): The number of warmup steps.
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
+            In linear mode, the multiplication factor starts with warmup_factor in the first epoch
+            and then inreases linearly to reach 1. Defaults to "linear".
+    """
     exponential_lr = flow.optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
     if warmup_iter == 0:
         logger.warning("warmup iters equals to zero, return ExponentialLR")
@@ -120,7 +180,7 @@ def WarmupExponentialLR(
 
 
 @SCHEDULER_REGISTRY.register()
-def WarmupPolynomailLR(
+def WarmupPolynomialLR(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
     warmup_factor: float,
@@ -130,6 +190,25 @@ def WarmupPolynomailLR(
     cycle: bool = False,
     warmup_method: str = "linear",
 ):
+    """Create a schedule with a learning rate that decreases as a polynomial decay from
+    the initial lr set in the optimizer to end lr defined by `lr_end`,
+    after a warmup period during which it increases linearly from 0 to the
+    initial lr set in the optimizer.
+
+
+    Args:
+        optimizer (flow.optim.Optimizer): Wrapped optimizer.
+        max_iter (int): Total training iters.
+        warmup_factor (float): The warmup factor.
+        warmup_iter (int): The number of warmup steps.
+        end_learning_rate (float, optional): The final learning rate. Defaults to 0.0001.
+        power (float, optional): The power of polynomial. Defaults to 1.0.
+        cycle (bool, optional): If cycle is True, the scheduler will decay the learning rate
+            every decay steps. Defaults to False.
+        warmup_method (str, optional): The method of warmup, you can choose "linear" or "constant".
+            In linear mode, the multiplication factor starts with warmup_factor in the first
+            epoch and then inreases linearly to reach 1. Defaults to "linear".
+    """
     polynomial_lr = flow.optim.lr_scheduler.PolynomialLR(
         optimizer, steps=max_iter, end_learning_rate=end_learning_rate, power=power, cycle=cycle
     )

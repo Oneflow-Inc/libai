@@ -22,7 +22,20 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class MNISTDataset(datasets.MNIST):
-    """CIFAR10 Dataset"""
+    r"""`MNIST <http://yann.lecun.com/exdb/mnist/>`_ Dataset in LiBai.
+
+    Args:
+        root (string): Root directory of dataset where ``MNIST/processed/training.pt``
+            and  ``MNIST/processed/test.pt`` exist.
+        train (bool, optional): If True, creates dataset from ``training.pt``,
+            otherwise from ``test.pt``.
+        download (bool, optional): If true, downloads the dataset from the internet and
+            puts it in root directory. If dataset is already downloaded, it is not
+            downloaded again.
+        transform (callable, optional): A function/transform that  takes in an PIL image
+            and returns a transformed version. E.g, ``transforms.RandomCrop``
+        dataset_name (str, optional): Name for the dataset as an identifier. E.g, ``mnist``
+    """
 
     def __init__(
         self,
@@ -40,6 +53,6 @@ class MNISTDataset(datasets.MNIST):
         img, target = super().__getitem__(index)
         data_sample = Instance(
             images=DistTensorData(img, placement_idx=0),
-            targets=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
+            labels=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample

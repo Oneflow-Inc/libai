@@ -85,6 +85,7 @@ class Checkpointer(object):
     def save(self, name: str, **kwargs: Dict[str, str]):
         """
         Dump model and checkpointables to a file.
+
         Args:
             name (str): name of the file.
             kwargs (dict): extra arbitrary data to save.
@@ -111,7 +112,7 @@ class Checkpointer(object):
             if self.path_manager.exists(save_file):
                 self.path_manager.mkdirs(save_file)
 
-            flow.save(data[save_name], save_file, consistent_dst_rank=0)
+            flow.save(data[save_name], save_file, global_dst_rank=0)
 
         self.tag_last_checkpoint(basename)
 
@@ -119,11 +120,13 @@ class Checkpointer(object):
         """
         Load from the given checkpoint. When path points to network file, this
         function has to be called on all ranks.
+
         Args:
             path (str): path or url to the checkpoint. If empty, will not load
                 anything.
             checkpointables (list): List of checkpointable names to load. If not
                 specified (None), will load all the possible checkpointables.
+
         Returns:
             dict:
                 extra data loaded from the checkpoint that has not been
@@ -214,7 +217,7 @@ class Checkpointer(object):
         data = {}
         keys = self.path_manager.ls(f)
         for key in keys:
-            data[key] = flow.load(os.path.join(f, key))
+            data[key] = flow.load(os.path.join(f, key), global_src_rank=0)
         data["iter"] = int(f.split("_")[-1])
         return data
 
@@ -281,8 +284,8 @@ class Checkpointer(object):
             v = state_dict[k]
             if not isinstance(v, np.ndarray) and not isinstance(v, flow.Tensor):
                 raise ValueError("Unsupported type found in checkpoint! {}: {}".format(k, type(v)))
-            # If it's local tensor, convert it to consistent tensor.
-            if not v.is_consistent:
+            # If it's local tensor, convert it to global tensor.
+            if not v.is_global:
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
                     state_dict[k] = v.to_global(sbp=model_v.sbp, placement=model_v.placement)
@@ -326,6 +329,7 @@ class PeriodicCheckpointer:
     def step(self, iteration: int, **kwargs: Any):
         """
         Perform the appropriate action at the given iteration.
+
         Args:
             iteration (int): the current epoch, ranged in [0, max_iter-1].
             kwargs (Any): extra data to save, same as in
@@ -357,6 +361,7 @@ class PeriodicCheckpointer:
         """
         Same argument as :meth:`Checkpointer.save`.
         Use this method to manually save checkpoints outside the schedule.
+
         Args:
             name (str): file name.
             kwargs (Any): extra data to save, same as in

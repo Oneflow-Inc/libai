@@ -22,7 +22,20 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class CIFAR10Dataset(datasets.CIFAR10):
-    """CIFAR10 Dataset"""
+    r"""`CIFAR10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset in LiBai.
+
+    Args:
+
+        root (string): Root directory of dataset where directory
+            ``cifar-10-batches-py`` exists or will be saved to if download is set to True.
+        train (bool, optional): If True, creates dataset from training set, otherwise
+            creates from test set.
+        transform (callable, optional): A function/transform that takes in an PIL image
+            and returns a transformed version. E.g, ``transforms.RandomCrop``
+        download (bool, optional): If true, downloads the dataset from the internet and
+            puts it in root directory. If dataset is already downloaded, it is not
+            downloaded again.
+    """
 
     def __init__(
         self,
@@ -38,16 +51,29 @@ class CIFAR10Dataset(datasets.CIFAR10):
 
     def __getitem__(self, index: int):
         img, target = super().__getitem__(index)
-        print(img)
         data_sample = Instance(
             images=DistTensorData(img, placement_idx=0),
-            targets=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
+            labels=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample
 
 
 class CIFAR100Dataset(datasets.CIFAR100):
-    """CIFAR100 Dataset"""
+    r"""`CIFAR100 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset in LiBai.
+
+    Args:
+
+        root (string): Root directory of dataset where directory
+            ``cifar-10-batches-py`` exists or will be saved to if download is set to True.
+        train (bool, optional): If True, creates dataset from training set, otherwise
+            creates from test set.
+        transform (callable, optional): A function/transform that takes in an PIL image
+            and returns a transformed version. E.g, ``transforms.RandomCrop``
+        download (bool, optional): If true, downloads the dataset from the internet and
+            puts it in root directory. If dataset is already downloaded, it is not
+            downloaded again.
+        dataset_name (str, optional): Name for the dataset as an identifier. E.g, ``cifar100``
+    """
 
     def __init__(
         self,
@@ -65,6 +91,6 @@ class CIFAR100Dataset(datasets.CIFAR100):
         img, target = super().__getitem__(index)
         data_sample = Instance(
             images=DistTensorData(img, placement_idx=0),
-            targets=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
+            labels=DistTensorData(flow.tensor(target, dtype=flow.long), placement_idx=-1),
         )
         return data_sample

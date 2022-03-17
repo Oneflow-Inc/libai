@@ -31,15 +31,15 @@ class MLP(nn.Module):
         ffn_hidden_size: size of each intermediate sample.
         output_dropout_prob: Output dropout probability. Defaults to 0.0.
         init_method: method to initialize the first linear weight.
-        Defaults to nn.init.xavier_normal_.
+            Defaults to :func:`nn.init.xavier_normal_`.
         output_layer_init_method: method to initialize the second linear weight. If set to None,
-        it will use ``init_method`` instead. Defaults to None.
+            it will use ``init_method`` instead. Defaults to None.
         bias_gelu_fusion: If set to ``True``, it will fuse bias adding and elementwise
-        gelu activation. Defaults to ``False``.
+            gelu activation. Defaults to ``False``.
         bias_dropout_fusion: If set to ``True``, it will fuse bias adding and dropout.
-        Defaults to ``False``.
+            Defaults to ``False``.
         layer_idx: A layer_idx sign which determines the placement. It will be used in
-        pipeline parallelism. Defaults to 0.
+            pipeline parallelism. Defaults to 0.
     """
 
     def __init__(

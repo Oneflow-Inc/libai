@@ -926,6 +926,45 @@ class PreTrainedTokenizer(object):
         return str(self._eod_token)
 
     @property
+    def start_token(self) -> str:
+        """
+        :obj:`str`: Start token of sentence. Common name for bos_token and cls_token.
+        """
+        if self._bos_token is not None and self._cls_token is not None:
+            if self._bos_token == self._cls_token:
+                return str(self._bos_token)
+            else:
+                logger.error("Conflict between bos_token and cls_token.")
+                return None
+        elif self._bos_token is None and self._cls_token is not None:
+            return str(self._cls_token)
+        elif self._bos_token is not None and self._cls_token is None:
+            return str(self._bos_token)
+        else:
+            logger.error("Using start_token, but it is not set yet.")
+            return None
+
+    @property
+    def end_token(self) -> str:
+        """
+        :obj:`str`: End token of sentence. Common name for eos_token and sep_token.
+        Note: eod_token is not considered, because it is often same with eos_token.
+        """
+        if self._eos_token is not None and self._sep_token is not None:
+            if self._eos_token == self._sep_token:
+                return str(self._eos_token)
+            else:
+                logger.error("Conflict between eos_token and _sep_token.")
+                return None
+        elif self._eos_token is None and self._sep_token is not None:
+            return str(self._sep_token)
+        elif self._eos_token is not None and self._sep_token is None:
+            return str(self._eos_token)
+        else:
+            logger.error("Using end_token, but it is not set yet.")
+            return None
+
+    @property
     def additional_special_tokens(self) -> List[str]:
         """
         :obj:`List[str]`: All the additional special tokens you may want to use.
@@ -1054,6 +1093,30 @@ class PreTrainedTokenizer(object):
         if self._eod_token is None:
             return None
         return self.convert_tokens_to_ids(self.eod_token)
+
+    @property
+    def start_token_id(self) -> Optional[int]:
+        """
+        :obj:`Optional[int]`: Id of the start token in the vocabulary.
+        Returns :obj:`None` if the token has not been set.
+        """
+        start_token = self.start_token
+        if start_token is None:
+            return None
+        else:
+            return self.convert_tokens_to_ids(start_token)
+
+    @property
+    def end_token_id(self) -> Optional[int]:
+        """
+        :obj:`Optional[int]`: Id of the end token in the vocabulary.
+        Returns :obj:`None` if the token has not been set.
+        """
+        end_token = self.end_token
+        if end_token is None:
+            return None
+        else:
+            return self.convert_tokens_to_ids(end_token)
 
     @property
     def additional_special_tokens_ids(self) -> List[int]:

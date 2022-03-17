@@ -20,10 +20,8 @@ from oneflow import nn
 
 from libai.layers import Linear
 from libai.models.bert_model import BertModel
-from libai.models.utils import GraphBase, init_method_normal
+from libai.models.utils import init_method_normal
 from libai.utils import distributed as dist
-
-from .load_megatron_weight import load_megatron_bert
 
 logger = logging.getLogger("libai." + __name__)
 
@@ -46,6 +44,8 @@ class Classification(nn.Module):
         self.num_classes = cfg.num_classes
         self.language_model = BertModel(cfg)
         if cfg.pretrain_megatron_weight is not None:
+            from .load_megatron_weight import load_megatron_bert
+
             logger.info(f"loading pretraining: {cfg.pretrain_megatron_weight}")
             load_megatron_bert(self.language_model, cfg.pretrain_megatron_weight)
             logger.info("load succeed")
@@ -62,7 +62,7 @@ class Classification(nn.Module):
         )
         self.loss_func = ClassificationLoss()
 
-    def forward(self, model_input, attention_mask, tokentype_ids=None, label=None):
+    def forward(self, model_input, attention_mask, tokentype_ids=None, labels=None):
 
         encoder_output, pooled_output = self.language_model(
             model_input, attention_mask, tokentype_ids
@@ -73,19 +73,8 @@ class Classification(nn.Module):
         # reshape
         classification_logits = classification_logits.view(-1, self.num_classes)
 
-        if label is not None:
-            loss = self.loss_func(classification_logits, label)
-            return loss
+        if self.training and labels is not None:
+            loss = self.loss_func(classification_logits, labels)
+            return {"total_loss": loss}
 
-        return classification_logits
-
-
-class ClassificationGraph(GraphBase):
-    def build(self, tokens, padding_mask, tokentype_ids, label=None):
-        if not self.is_train:
-            return self.model(tokens, padding_mask, tokentype_ids)
-        else:
-            losses = self.model(tokens, padding_mask, tokentype_ids, label)
-
-            losses.backward()
-            return losses
+        return {"prediction_scores": classification_logits}

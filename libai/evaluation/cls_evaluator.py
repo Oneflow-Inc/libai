@@ -14,57 +14,51 @@
 # limitations under the License.
 
 import copy
-import logging
 from collections import OrderedDict
-
-import oneflow as flow
 
 from libai.utils import distributed as dist
 
 from .evaluator import DatasetEvaluator
 
-logger = logging.getLogger(__name__)
 
-
-def accuracy(output, target, topk=1):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
-    with flow.no_grad():
-        # TODO: support tuple topk=(1, 5, 10)
-        # maxk = max(topk)
-        batch_size = target.size(0)
-
-        _, pred = output.topk(topk, 1, True, True)
-        pred = pred.transpose(0, 1)
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-        # TODO: support tuple topk
-        # res = []
-        # for k in topk:
-        #     correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
-        #     res.append(correct_k.mul_(100.0 / batch_size))
-        correct_k = correct[:topk].reshape(-1).float().sum(0, keepdim=True)
-        res = correct_k.mul_(100.0 / batch_size).item()
-        return res
+def accuracy(output, target, topk=(1,)):
+    maxk = min(max(topk), output.size()[1])
+    batch_size = target.size(0)
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.reshape(1, -1).expand_as(pred))
+    return [
+        (correct[: min(k, maxk)].reshape(-1).float().sum(0) * 100.0 / batch_size).item()
+        for k in topk
+    ]
 
 
 class ClsEvaluator(DatasetEvaluator):
-    def __init__(self, cfg):
-        self.cfg = cfg
+    """
+    Evaluate accuracy for classification,
+    The metrics range from 0 to 100 (instead of 0 to 1),
+    We support evaluate different topk accuracy,
+    you can reset `cfg.train.topk=(1, 5, N)` according to your needs.
+    """
+
+    def __init__(self, topk=(1, 5)):
+        self.topk = topk
         self._predictions = []
 
     def reset(self):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        # FIX ME: support dict args, not implement in graph right now
-        pred_logits = outputs[-1]  # decide by your model output
-        labels = inputs[-1]  # decide by your dataloder output
+        pred_logits = outputs["prediction_scores"]
+        labels = inputs["labels"]
 
         # measure accuracy
-        acc1 = accuracy(pred_logits, labels, topk=1)
-        num_correct_acc1 = acc1 * labels.size(0) / 100
+        topk_acc = accuracy(pred_logits, labels, topk=self.topk)
+        num_correct_acc_topk = [acc * labels.size(0) / 100 for acc in topk_acc]
 
-        self._predictions.append({"num_correct": num_correct_acc1, "num_samples": labels.size(0)})
+        self._predictions.append(
+            {"num_correct_topk": num_correct_acc_topk, "num_samples": labels.size(0)}
+        )
 
     def evaluate(self):
         if not dist.is_main_process():
@@ -72,15 +66,19 @@ class ClsEvaluator(DatasetEvaluator):
         else:
             predictions = self._predictions
 
-        total_correct_num = 0
+        total_correct_num = OrderedDict()
+        for top_k in self.topk:
+            total_correct_num["Acc@" + str(top_k)] = 0
+
         total_samples = 0
         for prediction in predictions:
-            total_correct_num += prediction["num_correct"]
-            total_samples += prediction["num_samples"]
+            for top_k, num_correct_n in zip(self.topk, prediction["num_correct_topk"]):
+                total_correct_num["Acc@" + str(top_k)] += int(num_correct_n)
 
-        acc1 = total_correct_num / total_samples * 100
+            total_samples += int(prediction["num_samples"])
 
         self._results = OrderedDict()
-        self._results["Acc@1"] = acc1
+        for top_k, topk_correct_num in total_correct_num.items():
+            self._results[top_k] = topk_correct_num / total_samples * 100
 
         return copy.deepcopy(self._results)
