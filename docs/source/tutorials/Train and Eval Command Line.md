@@ -12,7 +12,7 @@ LiBai provides `tools/train.sh` and `tools/train_net.py` for launching training 
 
 You can modify `tools/train_net.py` according to your own needs.
 
-### Training & totally evaluation
+### Training & Evaluation
 
 For completely train and test, you can run: 
 
@@ -23,7 +23,7 @@ tools/train_net.py \
 path_to_your_config.py # config.py for your task
 ```
 
-### Training & partly evaluation 
+### Training & Partial Evaluation 
 
 If the test dataset costs a lot of time, you can set `train.evaluation.eval_iter=20` in your `config.py` or in the command line, it will run 20 steps for only part of the test dataset in testing for fast eval:
 
@@ -37,7 +37,7 @@ path_to_your_config.py \        # config.py for your task
 train.evaluation.eval_iter=20   # set eval_iter for testing
 ```
 
-### Training & no evaluation
+### Training & No Evaluation
 
 If you want to train without evaluation, you can set `train.evaluation.enabled=False` in your `config.py` or in the command line:
 
@@ -49,7 +49,7 @@ path_to_your_config.py \         # config.py for your task
 train.evaluation.enabled=False   # set no evaluation 
 ```
 
-### Resume training
+### Resume Training
 
 If you want to resume training, you should set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
 
