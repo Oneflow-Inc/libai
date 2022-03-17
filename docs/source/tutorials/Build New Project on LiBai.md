@@ -43,57 +43,17 @@ Here is an example:
 
 ```python
 import numpy as np
-from scipy.stats import spearmanr
 from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.evaluation import DatasetEvaluator
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
-
-
-def spearman_target(pred, labels):
-    # Calculate spearman
-    return spearmanr(pred, labels).correlation
-
-
-class MyEvaluator(DatasetEvaluator):
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self._predictions = []
-
-    def reset(self):
-        self._predictions = []
-
-    def process(self, inputs, outputs):
-        pred = outputs["pred"]
-        labels = outputs["labels"]
-        self._predictions.append({"pred": pred, "labels": labels})
-
-    def evaluate(self):
-        if not dist.is_main_process():
-            return {}
-        else:
-            predictions = self._predictions
-        pred_array = np.array([])
-        label_array = np.array([])
-        for prediction in predictions:
-            pred_array = np.append(pred_array, dist.tton(prediction["pred"]))
-            label_array = np.append(label_array, dist.tton(prediction["labels"]))
-        self._results = spearman_target(pred_array, label_array)
-        return {"spearman": self._results}
-
-
-class MyTrainer(DefaultTrainer):
-    @classmethod
-    def build_evaluator(cls, cfg):
-        return MyEvaluator(cfg)
 
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
-    trainer = MyTrainer(cfg)
+    trainer = DefaultTrainer(cfg)
     return trainer.train()
 
 
@@ -157,17 +117,50 @@ A complete `config.py` example:
 
 ```python
 from omegaconf import OmegaConf
+from scipy.stats import spearmanr
 from configs.common.data.bert_dataset import tokenization
 from configs.common.models.bert import cfg as my_cfg
 from configs.common.models.graph import graph
 from configs.common.optim import optim
 from configs.common.train import train
 from libai.config import LazyCall
+from libai.evaluation import DatasetEvaluator
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from libai.tokenizer import BertTokenizer
 from libai.optim import get_default_optimizer_params, PolynomialLR
 from projects.MyProjects.dataset.dataset import TrainDataset, TestDataset
 from projects.MyProjects.modeling import MyModel
+
+
+def spearman_target(pred, labels):
+    # Calculate spearman
+    return spearmanr(pred, labels).correlation
+
+
+class MyEvaluator(DatasetEvaluator):
+    def __init__(self):
+        self._predictions = []
+
+    def reset(self):
+        self._predictions = []
+
+    def process(self, inputs, outputs):
+        pred = outputs["pred"]
+        labels = outputs["labels"]
+        self._predictions.append({"pred": pred, "labels": labels})
+
+    def evaluate(self):
+        if not dist.is_main_process():
+            return {}
+        else:
+            predictions = self._predictions
+        pred_array = np.array([])
+        label_array = np.array([])
+        for prediction in predictions:
+            pred_array = np.append(pred_array, dist.tton(prediction["pred"]))
+            label_array = np.append(label_array, dist.tton(prediction["labels"]))
+        self._results = spearman_target(pred_array, label_array)
+        return {"spearman": self._results}
 
 
 tokenization.tokenizer = LazyCall(BertTokenizer)(
@@ -224,7 +217,17 @@ train.update(
     dict(
         output_dir=".../result",
         train_micro_batch_size=64,
+        evaluation=dict(
+        enabled=True,
+        evaluator=LazyCall(MyEvaluator)(),
+            eval_period=5000,
+            eval_iter=1e9,
+            eval_metric="spearman",
+            eval_mode="max",
+        ),
+
         ...
+        
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
