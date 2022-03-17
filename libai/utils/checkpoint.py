@@ -16,7 +16,6 @@
 import copy
 import logging
 import os
-from asyncio.log import logger
 from collections import defaultdict
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 

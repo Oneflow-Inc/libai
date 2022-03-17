@@ -13,6 +13,7 @@ Welcome to libai's documentation!
 
    tutorials/Installation.md
    tutorials/Getting Started.md
+   tutorials/Train and Eval Command Line.md
 
 .. toctree::
    :maxdepth: 2
