@@ -122,7 +122,7 @@ train = dict(
 
     # Enable activation checkpointing to allow for training
     # with larger models, sequences, and batch sizes.
-    # Checkpoint the input activations of each transformer layers by default.
+    # If enabled, checkpoint the input activations of each transformer layers by default.
     activation_checkpoint=dict(enabled=False),  
 
     # NCCL fusion threshold megabytes, set to 0 to 
@@ -283,7 +283,7 @@ dataloader.train.dataset[0].max_seq_length = 256
 dataloader.train.num_workers = 2
 ```
 
-LiBai provides two functions `build_nlp_train_val_test_loader` and `build_image_train_loader` that create a default train data loader from a give config. It takes the list of `dataset_class`(e.g., `BertDataset`) and combine them using `flow.utils.data.dataset.ConcatDataset`. 
+LiBai provides two functions `build_nlp_train_val_test_loader` and `build_image_train_loader` that create a default train data loader from a given config. It takes the list of `dataset_class`(e.g., `BertDataset`) and combines them using `flow.utils.data.dataset.ConcatDataset`. 
 
 It's recommended to check out [API docs of libai.data](../libai.data.html#libai.data.build.build_nlp_train_loader) to learn more about the APIs of `build_nlp_train_val_test_loader`.
 
@@ -313,7 +313,7 @@ tokenization.make_vocab_size_divisible_by = 128
 tokenization.tokenizer.do_lower_case = False
 ```
 
-Tokenization config must contain the a tokenizer(e.g., `BertTokenizer`). `append_eod` and `make_vocab_size_divisible_by` are not necessary. 
+Tokenization config must contain a tokenizer(e.g., `BertTokenizer`). `append_eod` and `make_vocab_size_divisible_by` are not necessary. 
 
 `make_vocab_size_divisible_by` is used for padding the vocab size to be divisible by this value. This is added for computational efficiency when tensor parallelism.
 

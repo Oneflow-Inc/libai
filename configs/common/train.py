@@ -45,7 +45,7 @@ train = dict(
 
     # Enable activation checkpointing to allow for training
     # with larger models, sequences, and batch sizes.
-    # Checkpoint the input activations of each transformer layers by default.
+    # If enabled, checkpoint the input activations of each transformer layers by default.
     activation_checkpoint=dict(enabled=False),
 
     # NCCL fusion threshold megabytes, set to 0 to
