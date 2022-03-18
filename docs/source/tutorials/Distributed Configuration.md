@@ -12,7 +12,7 @@ dist=dict(
 For example, you can set `data_parallel_size=2` which will automatically split the input data into two groups for data parallel training.
 
 ## Distributed Setting Example
-Here we provide simple examples for users to understand the basic configuration of LiBai's distributed settings. LiBai's **BERT** model supports three parallelism techniques, and here we use 1 node with 8 GPUs as an example. If you do not change any default settings, LiBai will execute **data parallel training as default**. You can try out different combinations of parallelism training techniques by updating [bert config file](../../../configs/bert_large_pretrain.py) as follows:
+Here we provide simple examples for users to understand the basic configuration of LiBai's distributed settings. LiBai's **BERT** model supports three parallelism techniques (**data parallel training**, **tensor parallel training** and **pipeline parallel training**), and here we use 1 node with 8 GPUs as an example. If you do not change any default settings, LiBai will execute **data parallel training as default**. You can try out different combinations of parallelism training techniques by updating [bert config file](../../../configs/bert_large_pretrain.py) as follows:
 #### **Pure Data Parallel Training on 8 GPUs**
 
 In this example, the input data will be splitted into 8 parts on batch dim for data parallel training on 8 GPUs.
