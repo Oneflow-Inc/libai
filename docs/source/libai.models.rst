@@ -17,7 +17,8 @@ Supported models in LiBai(李白)
 
 
 .. currentmodule:: libai.models
-.. automodule:: libai.models
+
+.. automodule:: libai.models.build
     :members:
         build_model,
         build_graph,

@@ -174,7 +174,7 @@ class VisionTransformer(nn.Module):
         Args:
             images (flow.Tensor): training samples.
             labels (flow.LongTensor, optional): training targets
-        
+
         Returns:
             dict:
                 A dict containing :code:`loss_value` or :code:`logits`
