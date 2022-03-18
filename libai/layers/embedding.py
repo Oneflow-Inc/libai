@@ -30,7 +30,7 @@ class Embedding(nn.Module):
         num_embeddings: size of vocabulary.
         embedding_dim: dimension of embeddings.
         padding_idx: pad index. Defaults to None.
-        init_method: method to initialize weights. Defaults to init.xavier_normal_.
+        init_method: method to initialize weights. Defaults to `init.xavier_normal_`.
         amp_enabled: fp16 option for embedding weight. Defaults to False.
     """
 
@@ -104,7 +104,7 @@ class VocabEmbedding(nn.Module):
         num_embeddings: size of vocabulary.
         embedding_dim: dimension of embeddings.
         padding_idx: pad index. Defaults to None.
-        init_method: method to initialize weights. Defaults to init.xavier_normal_.
+        init_method: method to initialize weights. Defaults to `init.xavier_normal_`.
         amp_enabled: fp16 option for embedding weight. Defaults to False.
     """
 

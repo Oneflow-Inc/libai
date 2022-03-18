@@ -486,6 +486,8 @@ class DefaultTrainer(TrainerBase):
         tokenizer = None
         if try_get_key(cfg, "tokenization") is not None:
             tokenizer = build_tokenizer(cfg.tokenization)
+            # FIXME(lxy): In case model is not defined with cfg, the `vocab_size` can be
+            # accessed by `model.vocab_size`.
             if try_get_key(cfg, "model.cfg.vocab_size", default=None) is not None:
                 # In case the model does not need vocab_size as argument
                 multiple = (

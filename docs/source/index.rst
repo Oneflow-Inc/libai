@@ -14,6 +14,7 @@ Welcome to libai's documentation!
    tutorials/Installation.md
    tutorials/Getting Started.md
    tutorials/Train and Eval Command Line.md
+   tutorials/Config_System.md
    tutorials/Model Zoo.md
 
 .. toctree::
