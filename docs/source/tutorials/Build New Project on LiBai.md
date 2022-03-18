@@ -12,6 +12,22 @@ The advantages of using LiBai to start a new project(such as paper reproduction 
 ## Introduce
 Let's take the [Bert_Finetune](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP) task as an example to introduce LiBai.
 
+The complete file structure of a project:
+
+```
+projects/my_project
+├── configs
+│   └── config_custom.py
+│   └── ...
+├── dataset
+│   ├── custom_dataset.py
+│   └── ...
+├── modeling
+│   ├── custom_model.py
+│   └── ...
+├── README.md
+```
+
 Main steps for starting a new LiBai project:
 
 1. Prepare a config file(such as [config.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/configs/config_qqp.py)) which contains:
