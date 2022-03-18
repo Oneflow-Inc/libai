@@ -25,8 +25,13 @@ conda activate libai
 ```
 
 - Install the stable release of OneFlow with `CUDA` support refer to [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
+- Install `pybind11`
 
-- For an editable install:
+```bash
+pip install pybind11
+```
+
+- For an editable installation of LiBai:
 
 ```bash
 pip install -e .
