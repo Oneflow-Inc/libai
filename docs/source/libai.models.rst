@@ -25,33 +25,33 @@ Supported models in LiBai(李白)
 
 VisionTransformer
 -----------------
-.. automodule:: libai.models
+.. automodule:: libai.models.vision_transformer
     :members: 
         VisionTransformer,
 
 SwinTransformer
 ---------------
-.. automodule:: libai.models
+.. automodule:: libai.models.swin_transformer
     :members: 
         SwinTransformer,
 
 BERT
 ----
-.. automodule:: libai.models
+.. automodule:: libai.models.bert_model
     :members: 
         BertModel,
         BertForPreTraining,
 
 T5
 ---
-.. automodule:: libai.models
+.. automodule:: libai.models.t5_model
     :members: 
         T5ForPreTraining,
         T5Model,
 
 GPT-2
 -----
-.. automodule:: libai.models
+.. automodule:: libai.models.gpt_model
     :members: 
         GPTForPreTraining,
         GPTModel
