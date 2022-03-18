@@ -31,4 +31,4 @@ where `$num_gpus` indicates the number of GPUs. For example, if you want to run 
 bash tools/train.sh tools/train_net.py projects/text_classification/configs/config.py 4
 ```
 
-Before running the program, you should modify the `projects/QQP/configs/config_qqp.py` depend on your own needs . Modification fields include but are not limited to task_name, data_dir, vocab_file, model hyperparameter, learning rate, and batch size, and so on.
+Before running the program, you should modify the `projects/QQP/configs/config_qqp.py` depend on your own needs. Modification fields include but are not limited to task_name, data_dir, vocab_file, model hyperparameter, learning rate, and batch size, and so on.
