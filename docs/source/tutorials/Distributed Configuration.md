@@ -42,6 +42,7 @@ from .common.train import train
 
 train.dist.pipeline_parallel_size = 8
 ```
+**Note:** For models which have been configured with pipeline parallelism, e.g., BERT, GPT-2, T5 and VisionTransformer model in LiBai, you can simply update the distributed config for pipeline parallel training. If you need to train your own model with pipeline parallel strategy, please refer to [Write Models]() for more details about configuring your own model with pipeline parallelism.
 
 #### **Data Parallel + Tensor Parallel for 2D Parallel Training on 8 GPUs**
 
