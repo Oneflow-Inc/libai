@@ -5,7 +5,7 @@ Here we provide the basic guide for users to build new projects based on LiBai, 
 The advantages of using LiBai to start a new project(such as paper reproduction and finetune task) are as follows:
 
 - Avoid redundant work, developers can directly inherit many bulit-in modules from LiBai.
-- Easily reproduce the experiments already run, because LiBai will saves the configuration file automatically .
+- Easily reproduce the experiments already run, because LiBai will save the configuration file automatically.
 - Automatically output the useful information during training time, such as remaining training time, current iter, throughput, loss information and current learning rate, etc.
 - Set a few config params to enjoy distributed training techniques.
 
@@ -21,14 +21,14 @@ Main steps for starting a new LiBai project:
     - You can inherit the default config in `configs/common` and rewrite it, which can greatly reduce the workload.
     - Related class defined with LazyCall which returns a dict instead of calling the object.
 
-2. Prepare the file named `model.py`, relevant info as follows, you can refer to the [model.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/modeling/model.py).
+2. Prepare a model file(such as [model.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/modeling/model.py)) which contains:
     - Build related models in this file, the construction method is similar to OneFlow.
     - Because Libai will set up a static diagram by default, the calculation of loss needs to be inside the model.
     - The function `forward` must return a dict.
-    - When defining a tensor in the model, need to use `to_global`, turn tensor into a consistent pattern.
+    - When defining a tensor in the model, you need to use `to_global`, turn tensor into a consistent pattern.
     - When defining layers, you can import them directly from `libai.layers`, because it already have SBP defined.
 
-3. Prepare the file named `dataset.py`, relevant info as follows, you can refer to the [dataset.py](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP/dataset).
+3. Prepare a dataset file(such as [dataset.py](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP/dataset)) which contains:
     - Build `Dataset` in this file, the construction method is similar to OneFlow.
     - The difference is that we need to use `DistTensorData` and `Instance`.
     - The shape of each batch must be consistent.
