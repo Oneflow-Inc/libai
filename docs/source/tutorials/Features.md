@@ -49,7 +49,7 @@ optim.params.clip_grad_max_norm = None
 optim.params.clip_grad_norm_type = None
 ```
 
-`clip_grad_max_norm` and `clip_grad_norm_type` can be checked in [API docs of oneflow](https://oneflow.readthedocs.io/en/master/nn.html#oneflow.nn.utils.clip_grad_norm_)
+`clip_grad_max_norm` and `clip_grad_norm_type` can be checked in [API docs of oneflow](https://oneflow.readthedocs.io/en/master/nn.html#oneflow.nn.utils.clip_grad_norm_).
 
 ## Gradient Accumulation
 
