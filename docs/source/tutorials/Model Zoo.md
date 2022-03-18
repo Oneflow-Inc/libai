@@ -8,7 +8,7 @@ To date, LiBai implements the following models:
 
 
 ## Parallelism Mode in LiBai
-A collection of parallel training strategies are supported in LiBai:
+A collection of parallel training strategies is supported in LiBai:
 - **Data Parallel Training**
 - **Tensor Parallel Training**
 - **Pipeline Parallel Training**
