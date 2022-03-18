@@ -24,8 +24,9 @@ train = dict(
 
     # The total training iterations
     train_iter=10000,
-    # The total training epoch, will be scaled to iteration automatically.
-    # We will choose by `max(train_iter, train_epoch * iter_per_epoch)`.
+    # The total training epochs, will be scaled to training iterations automatically.
+    # The actual total training iterations will be calculated by the
+    # formula `max(train_iter, train_epoch * iter_per_epoch)`.
     train_epoch=0,
     consumed_train_samples=0,
     consumed_valid_samples=0,
@@ -38,8 +39,8 @@ train = dict(
     # It can be computed automatically when resuming training.
     start_iter=0,
 
-    # Enable automatic mixed precision for training
-    # Note that this does not change model's inference behavior.
+    # Enable automatic mixed precision for training which does not
+    # change model's inference behavior.
     amp=dict(enabled=False),
 
     # Enable activation checkpointing to allow for training
@@ -63,7 +64,7 @@ train = dict(
         stage=1,
     ),
 
-    # Save a checkpoint after every this number of iterations,
+    # Save a model checkpoint after every this number of iterations,
     # and maximum number of checkpoint will be kept.
     checkpointer=dict(period=5000, max_to_keep=100),
 
@@ -74,7 +75,8 @@ train = dict(
     # total 16 samples will be used per iteration across all GPUs.
     test_micro_batch_size=32,
 
-    # Enabled evaluation during training every `eval_period` number of iterations.
+    # Enabled evaluation during training, after every `eval_period` number of iterations
+    # will perform the evaluation process.
     # You can set the maximum evaluation iterations to run for validation/test.
     # You can also set a customized evaluator for use.
     evaluation=dict(
@@ -89,7 +91,7 @@ train = dict(
         eval_mode="max",
     ),
 
-    # Path to a checkpoint file to be loaded to the model.
+    # Path to a checkpoint file to be loaded to the model for training or evaluation.
     load_weight="",
 
     # Output log to console after every this number of iterations.

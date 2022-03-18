@@ -1,18 +1,18 @@
 # Lazy Configs
 
-We find the traditional yacs-based config system or python argparse command-line options cannot offer enough flexibility for new project development. We just borrowed the [lazy config system](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) from detectron2 as an alternative, non-intrusive config system for LiBai.
+We found the traditional yacs-based config system or python argparse command-line options suffer from providing enough flexibility for the development of new project. So we borrowed the [lazy config system](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) design from detectron2 which forms the non-intrusive config system for LiBai.
 
-You can read the [d2 tutorial](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) for the syntax and basic usage of lazy config. Here we will show you some example usage in LiBai.
+You can refer to the [d2 tutorial](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) for more details of the syntax and basic usage of lazy config. We will show you some example usage in LiBai in the following section.
 
 ## Configs in LiBai
 
-In LiBai, we define a standard set of config namespace for later use. This set of namespace must be kept if you want to use complete training and evaluation process of LiBai. 
+In LiBai, we define a standard set of config namespaces for later use. This set of namespaces must be kept if you want to perform the complete training and evaluation process of LiBai. 
 
-In summary, this namespace is `model, graph, train, optim, dataloader, tokenization(optional)`, and we will introduce it in detail below.
+In summary, this set of namespaces is `model, graph, train, optim, dataloader, tokenization(optional)`, and we will introduce it in detail as follows.
 
 ### model
 
-This is the config for model definition. You can see some examples in `configs/common/models`.
+The configuration for model definition. You can refer to `configs/common/models` for more examples.
 
 A model config file can be loaded like this:
 
@@ -55,11 +55,11 @@ You can access and change all keys in the model config after import.
 
 ### graph
 
-This is the config for `nn.Graph` mode. You can learn more information about the static graph mode in official [nn.Graph docs](https://docs.oneflow.org/master/basics/08_nn_graph.html).
+The configuration for static `nn.Graph` mode. You can learn more information about the static graph mode from the official [nn.Graph docs](https://docs.oneflow.org/master/basics/08_nn_graph.html).
 
 LiBai has already defined a `GraphBase` class for almost all models use. You can simply turn on this option converting eager mode to graph mode. 
 
-The graph config can be found in `configs/common/models/graph.py`, and two useful options are shown as follows:
+The graph config can be found in [graph.py](../../../configs/common/models/graph.py), and two useful options are shown as follows:
 
 ```python
 # Turn on graph mode, if set to `False`, will use eager mode.
@@ -101,8 +101,9 @@ train = dict(
 
     # The total training iterations
     train_iter=10000,
-    # The total training epoch, will be scaled to iteration automatically.
-    # We will choose by `max(train_iter, train_epoch * iter_per_epoch)`.
+    # The total training epochs, will be scaled to training iterations automatically.
+    # The actual total training iterations will be calculated by the 
+    # formula `max(train_iter, train_epoch * iter_per_epoch)`.
     train_epoch=0,  
     consumed_train_samples=0,
     consumed_valid_samples=0,
@@ -115,8 +116,8 @@ train = dict(
     # It can be computed automatically when resuming training.
     start_iter=0,
 
-    # Enable automatic mixed precision for training
-    # Note that this does not change model's inference behavior.
+    # Enable automatic mixed precision for training which does not 
+    # change model's inference behavior.
     amp=dict(enabled=False),  
 
     # Enable activation checkpointing to allow for training
@@ -140,7 +141,7 @@ train = dict(
         stage=1,
     ),
     
-    # Save a checkpoint after every this number of iterations,
+    # Save a model checkpoint after every this number of iterations,
     # and maximum number of checkpoint will be kept.
     checkpointer=dict(period=5000, max_to_keep=100),  
 
@@ -151,7 +152,8 @@ train = dict(
     # total 16 samples will be used per iteration across all GPUs.
     test_micro_batch_size=32,
 
-    # Enabled evaluation during training every `eval_period` number of iterations.
+    # Enabled evaluation during training, after every `eval_period` number of iterations
+    # will perform the evaluation process.
     # You can set the maximum evaluation iterations to run for validation/test.
     # You can also set a customized evaluator for use.
     evaluation=dict(
@@ -166,7 +168,7 @@ train = dict(
         eval_mode="max",
     ),
 
-    # Path to a checkpoint file to be loaded to the model. 
+    # Path to a checkpoint file to be loaded to the model for training or evaluation. 
     load_weight="",
 
     # Output log to console after every this number of iterations.
