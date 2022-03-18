@@ -1,6 +1,6 @@
 # Import PyTorch models to Libai
 
-`oneflow.nn.Module` and `torch.nn.Module` implement the same interface, so you can simply replace `torch` in the model definition with `oneflow` to embed the existing model structure into Libai.
+`oneflow.nn.Module` implements the same interface as `torch.nn.Module`, so you can simply replace `torch` in the model definition with `oneflow` to embed the existing model structure into Libai.
 
 Take [MobileNetV2](https://github.com/d-li14/mobilenetv2.pytorch/blob/master/models/imagenet/mobilenetv2.py) training cifar100 as an example.
 
@@ -31,7 +31,7 @@ def mobilenetv2(**kwargs):
     return MobileNetV2(**kwargs)
 ```
 
-It is only necessary to **change the `torch` in the import statement to `oneflow`** to convert it into an oneflow model while ensuring the model structure is identical. Then add the training loss calculation at the end of the model to form a complete training model, i.e.
+It is only necessary to **modify the `torch` in the import statement to `oneflow`** to convert it into an oneflow model while ensuring the model structure is identical. Then add the training loss calculation at the end of the model to form a complete training model, i.e.
 
 libai/model/MobileNetV2.py
 
