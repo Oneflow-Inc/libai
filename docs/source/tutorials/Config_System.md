@@ -1,4 +1,4 @@
-# Lazy Configs
+# Config System
 
 We found the traditional yacs-based config system or python argparse command-line options suffer from providing enough flexibility for the development of new project. So we borrowed the [lazy config system](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) design from detectron2 which forms the non-intrusive config system for LiBai.
 
@@ -283,7 +283,7 @@ dataloader.train.dataset[0].max_seq_length = 256
 dataloader.train.num_workers = 2
 ```
 
-LiBai provides two functions `build_nlp_train_val_test_loader` and `build_image_train_loader` that create a default train data loader from a give config. It takes the list of `dataset_class`(e.g., `BertDataset`) and combine them with a `ConcatDataset`. 
+LiBai provides two functions `build_nlp_train_val_test_loader` and `build_image_train_loader` that create a default train data loader from a give config. It takes the list of `dataset_class`(e.g., `BertDataset`) and combine them using `flow.utils.data.dataset.ConcatDataset`. 
 
 It's recommended to check out [API docs of libai.data](../libai.data.html#libai.data.build.build_nlp_train_loader) to learn more about the APIs of `build_nlp_train_val_test_loader`.
 
