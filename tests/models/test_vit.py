@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-import tempfile
+import shutil
 import unittest
 
 import oneflow as flow
@@ -25,14 +25,16 @@ import libai.utils.distributed as dist
 from configs.common.models.vit.vit_small_patch16_224 import model
 from libai.config import LazyCall, LazyConfig
 from libai.data.datasets import CIFAR10Dataset
-from libai.trainer import DefaultTrainer, hooks
-from libai.trainer.default import _check_batch_size
+from libai.engine import DefaultTrainer
+from libai.engine.default import _check_batch_size
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
 
 DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/cifar10/cifar-10-python.tar.gz"  # noqa
 
 DATA_MD5 = "c58f30108f718f92721af3b95e74349a"
+
+TEST_OUTPUT = "output_unittest/test_vit"
 
 setup_logger(distributed_rank=dist.get_rank())
 
@@ -52,51 +54,44 @@ class TestViTModel(flow.unittest.TestCase):
         # prepare data path
         if dist.get_local_rank() == 0:
             get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
+            os.makedirs(TEST_OUTPUT, exist_ok=True)
         dist.synchronize()
 
         data_path = get_data_from_cache(DATA_URL, cache_dir, md5=DATA_MD5)
 
         cfg.dataloader.train.dataset[0]._target_ = CIFAR10Dataset
-        cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:3])
+        cfg.dataloader.train.dataset[0].root = "/".join(data_path.split("/")[:-1])
         cfg.dataloader.train.dataset[0].download = True
         cfg.dataloader.train.num_workers = 0
+
+        cfg.dataloader.test[0].dataset._target_ = CIFAR10Dataset
+        cfg.dataloader.test[0].dataset.train = False
+        cfg.dataloader.test[0].dataset.root = "/".join(data_path.split("/")[:-1])
+        cfg.dataloader.test[0].dataset.download = True
+        cfg.dataloader.test[0].num_workers = 0
 
         # refine mixup cfg
         cfg.dataloader.train.mixup_func.num_classes = 10
 
-        del cfg.dataloader.test
-
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.eval_period = 1000  # no test now
+        cfg.train.evaluation.eval_period = 10
+        cfg.train.evaluation.eval_iter = 10
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
-        cfg.train.output_dir = tempfile.mkdtemp()
-        cfg.train.recompute_grad.enabled = True
+        cfg.train.output_dir = TEST_OUTPUT
+        cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 
         self.cfg = cfg
 
-        def build_hooks(self):
-            ret = [
-                hooks.IterationTimer(),
-                hooks.LRScheduler(),
-            ]
-
-            if dist.is_main_process():
-                # run writers in the end, so that evaluation metrics are written
-                ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
-            return ret
-
-        @classmethod
-        def test(cls, cfg, test_loaders, model, evaluator=None):
-            return {}
-
-        DefaultTrainer.build_hooks = build_hooks
-        DefaultTrainer.test = test
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if os.path.isdir(TEST_OUTPUT) and dist.get_local_rank() == 0:
+            shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
     def test_vit_eager_with_data_tensor_parallel(self):

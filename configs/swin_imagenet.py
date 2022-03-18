@@ -1,5 +1,5 @@
 from libai.config import LazyCall
-from .common.models.vit.vit_tiny_patch16_224 import model
+from .common.models.swin.swin_tiny_patch4_window7_224 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
@@ -11,6 +11,9 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
+
+dataloader.train.dataset[0].root = "/dataset/extract"
+dataloader.test[0].dataset.root = "/dataset/extract"
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
@@ -36,7 +39,7 @@ train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300
-train.evaluation.eval_period = 1000
+train.eval_period = 1000
 train.log_period = 1
 
 # Scheduler

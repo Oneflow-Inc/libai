@@ -1,5 +1,6 @@
 from libai.config import LazyCall
 from libai.scheduler import WarmupCosineLR
+from libai.evaluation import ClsEvaluator
 
 # fmt: off
 train = dict(
@@ -17,7 +18,7 @@ train = dict(
 
     # Performance related
     amp=dict(enabled=False),  # options for Automatic Mixed Precision
-    recompute_grad=dict(enabled=False),  # options for recompute gradient
+    activation_checkpoint=dict(enabled=False),  # options for recompute gradient
     # NCCL fusion threshold megabytes, set to 0 to compatible with previous version of OneFlow
     nccl_fusion_threshold_mb=16,
     # Maximum number of ops of NCCL fusion, set to 0 to compatible with previous version of OneFlow
@@ -31,11 +32,17 @@ train = dict(
 
     checkpointer=dict(period=5000, max_to_keep=100),  # options for PeriodicCheckpointer
 
+    # options for evaluation
+    evaluation=dict(
+        enabled=True,
+        evaluator=LazyCall(ClsEvaluator)(topk=(1, 5)),  # calculate top-k acc
+        eval_period=5000,
+        eval_iter=1e9,  # running steps for evaluation
+        eval_metric="Acc@1",
+        eval_mode="max",
+    ),
+
     load_weight="",
-    eval_period=5000,
-    eval_metric="Acc@1",
-    eval_mode="max",
-    topk=(1, 5),  # calculate top-k acc
     log_period=20,
     consumed_train_samples=0,
     consumed_valid_samples=0,

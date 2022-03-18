@@ -15,15 +15,15 @@
 
 
 import os
-import tempfile
+import shutil
 import unittest
 
 import oneflow as flow
 import oneflow.unittest
 
 from libai.config import LazyConfig
-from libai.trainer import DefaultTrainer, hooks
-from libai.trainer.default import _check_batch_size
+from libai.engine import DefaultTrainer
+from libai.engine.default import _check_batch_size
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
@@ -35,6 +35,8 @@ IDX_DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/data
 VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
 BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
+
+TEST_OUTPUT = "output_unittest/test_bert"
 
 
 setup_logger(distributed_rank=dist.get_rank())
@@ -52,6 +54,7 @@ class TestBertModel(flow.unittest.TestCase):
             get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
             get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
             get_data_from_cache(IDX_DATA_URL, cache_dir, md5=IDX_DATA_MD5)
+            os.makedirs(TEST_OUTPUT, exist_ok=True)
         dist.synchronize()
 
         vocab_path = get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
@@ -68,39 +71,28 @@ class TestBertModel(flow.unittest.TestCase):
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.eval_period = 1000  # no evaluation now
+        cfg.train.evaluation.eval_period = 10
+        cfg.train.evaluation.eval_iter = 10
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
+        cfg.train.test_micro_batch_size = 4
         cfg.train.num_accumulation_steps = 1
         cfg.train.resume = False
-        cfg.train.output_dir = tempfile.mkdtemp()
+        cfg.train.output_dir = TEST_OUTPUT
 
         # set model
         cfg.model.cfg.num_attention_heads = 8
         cfg.model.cfg.hidden_size = 384
         cfg.model.cfg.hidden_layers = 4
-        cfg.train.recompute_grad.enabled = True
+        cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 
         self.cfg = cfg
 
-        def build_hooks(self):
-            ret = [
-                hooks.IterationTimer(),
-                hooks.LRScheduler(),
-            ]
-
-            if dist.is_main_process():
-                # run writers in the end, so that evaluation metrics are written
-                ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
-            return ret
-
-        @classmethod
-        def test(cls, cfg, test_loaders, model, evaluator=None):
-            return {}
-
-        DefaultTrainer.build_hooks = build_hooks
-        DefaultTrainer.test = test
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if os.path.isdir(TEST_OUTPUT) and dist.get_local_rank() == 0:
+            shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
     def test_bert_eager_with_data_tensor_parallel(self):

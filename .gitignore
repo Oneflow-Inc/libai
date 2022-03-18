@@ -132,13 +132,12 @@ dmypy.json
 .pyre/
 
 # zw
-.github
-configs
-data_test
-dev
-docs
-libai
-log
-output
-tests
-tools
+/configs
+/data_test
+/dev
+/docs
+/libai
+/log
+/output
+/tests
+/tools

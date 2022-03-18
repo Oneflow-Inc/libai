@@ -14,14 +14,11 @@
 # limitations under the License.
 
 import copy
-import logging
 from collections import OrderedDict
 
 from libai.utils import distributed as dist
 
 from .evaluator import DatasetEvaluator
-
-logger = logging.getLogger(__name__)
 
 
 def accuracy(output, target, topk=(1,)):
@@ -37,19 +34,26 @@ def accuracy(output, target, topk=(1,)):
 
 
 class ClsEvaluator(DatasetEvaluator):
-    def __init__(self, cfg):
-        self.cfg = cfg
+    """
+    Evaluate accuracy for classification,
+    The metrics range from 0 to 100 (instead of 0 to 1),
+    We support evaluate different topk accuracy,
+    you can reset `cfg.train.topk=(1, 5, N)` according to your needs.
+    """
+
+    def __init__(self, topk=(1, 5)):
+        self.topk = topk
         self._predictions = []
 
     def reset(self):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        pred_logits = outputs["prediction_scores"]
-        labels = inputs["labels"]
+        pred_logits = outputs["prediction_scores"] # 网络输出
+        labels = inputs["labels"] # 网络输入
 
         # measure accuracy
-        topk_acc = accuracy(pred_logits, labels, topk=self.cfg.train.topk)
+        topk_acc = accuracy(pred_logits, labels, topk=self.topk)
         num_correct_acc_topk = [acc * labels.size(0) / 100 for acc in topk_acc]
 
         self._predictions.append(
@@ -63,12 +67,12 @@ class ClsEvaluator(DatasetEvaluator):
             predictions = self._predictions
 
         total_correct_num = OrderedDict()
-        for top_k in self.cfg.train.topk:
+        for top_k in self.topk:
             total_correct_num["Acc@" + str(top_k)] = 0
 
         total_samples = 0
         for prediction in predictions:
-            for top_k, num_correct_n in zip(self.cfg.train.topk, prediction["num_correct_topk"]):
+            for top_k, num_correct_n in zip(self.topk, prediction["num_correct_topk"]):
                 total_correct_num["Acc@" + str(top_k)] += int(num_correct_n)
 
             total_samples += int(prediction["num_samples"])

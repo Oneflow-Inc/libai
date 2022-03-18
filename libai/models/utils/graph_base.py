@@ -27,7 +27,7 @@ class GraphBase(nn.Graph):
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
         fp16=False,
-        recompute_grad=False,
+        activation_checkpoint=False,
         grad_acc_steps=1,
         zero_optim=False,
         zero_stage=0,
@@ -53,20 +53,20 @@ class GraphBase(nn.Graph):
             if grad_acc_steps > 1:
                 self.config.set_gradient_accumulation_steps(grad_acc_steps)
 
-            if recompute_grad:
+            if activation_checkpoint:
                 self.set_activation_checkpoint()
 
             if zero_optim:
                 self.config.set_zero_redundancy_optimizer_mode("distributed_split")
-                self.config.set_zero_redundancy_optimizer_min_size_after_split(1)
+                if zero_stage > 1:
+                    flow.boxing.nccl.enable_use_compute_stream(True)
                 if zero_stage > 2:
                     # stage 3
                     flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)
 
             self.set_pipeline_stage_id()
 
-        # FIXME: change this option to True after OneFlow fix the bug of FuseAddOutput
-        self.config.allow_fuse_add_to_output(False)
+        self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
 

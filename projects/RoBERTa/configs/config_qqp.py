@@ -61,7 +61,7 @@ qqp_cfg.update(
 
 model = LazyCall(Classification)(cfg=qqp_cfg)
 
-optim.lr = 1e-6
+optim.lr = 1e-4
 optim.weight_decay = 0.1
 
 # 这里是自己加的~

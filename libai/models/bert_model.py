@@ -59,11 +59,14 @@ class BertEmbeddings(nn.Module):
         embedding_dropout_prob,
         num_tokentypes=0,
         init_method=nn.init.xavier_normal_,
+        amp_enabled=False,
     ):
         super().__init__()
-        self.vocab_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
+        self.vocab_embeddings = VocabEmbedding(
+            vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled
+        )
         self.position_embeddings = Embedding(
-            max_sequence_length, hidden_size, init_method=init_method
+            max_sequence_length, hidden_size, init_method=init_method, amp_enabled=amp_enabled
         )
 
         # NOTE(l1aoxingyu): Set position_ids sbp sign to [B, B] initially, because position_ids is a
@@ -78,7 +81,7 @@ class BertEmbeddings(nn.Module):
 
         if num_tokentypes > 0:
             self.tokentype_embeddings = Embedding(
-                num_tokentypes, hidden_size, init_method=init_method
+                num_tokentypes, hidden_size, init_method=init_method, amp_enabled=amp_enabled
             )
             self.tokentype_ids = flow.zeros(
                 self.position_ids.size(),
@@ -213,7 +216,9 @@ class BertLoss(nn.Module):
 
 
 class BertModel(nn.Module):
-    """Bert language model"""
+    """The bare Bert Model transformer outputting raw hidden-states without
+    any specific head on top.
+    """
 
     @configurable
     def __init__(
@@ -234,6 +239,7 @@ class BertModel(nn.Module):
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
         apply_query_key_layer_scaling=True,
+        amp_enabled=False,
     ):
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -247,6 +253,7 @@ class BertModel(nn.Module):
             hidden_dropout_prob,
             num_tokentypes,
             init_method,
+            amp_enabled,
         )
 
         # Mask generation
@@ -296,9 +303,23 @@ class BertModel(nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "amp_enabled": cfg.amp_enabled,
         }
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            attention_mask (flow.LongTensor): Mask to avoid performing     attention
+                on padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+
+            tokentype_ids (flow.LongTensor, optional): Segment token indices to indicate first and
+                second portions of the inputs. Indices are selected in `[0, 1]`. Defaults to None.
+        """
         extended_attention_mask = self.extended_attn_mask(attention_mask)
         embedding_output = self.embeddings(input_ids, tokentype_ids)
 
@@ -341,7 +362,7 @@ class BertPreTrainingHeads(nn.Module):
         seq_relationship_score = self.seq_relationship(pooled_output)
         prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
 
-        if self.training and lm_labels is not None:
+        if lm_labels is not None:
             return self.loss_func(
                 prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
             )
@@ -353,6 +374,10 @@ class BertPreTrainingHeads(nn.Module):
 
 @MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
+    """Bert Model with two heads on top as done during the pretraining: a
+    `masked language modeling` head and a `next sentence prediction (classification)` head.
+    """
+
     def __init__(self, cfg):
         super().__init__()
         self.bert = BertModel(cfg)
@@ -372,6 +397,33 @@ class BertForPreTraining(nn.Module):
         lm_labels=None,
         loss_mask=None,
     ):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            attention_mask (flow.LongTensor): Mask to avoid performing attention on
+                padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+
+            tokentype_ids (flow.LongTensor, optional): Segment token indices to indicate first
+                and second portions of the inputs. Indices are selected in `[0, 1]`.
+                Defaults to None.
+            ns_labels (flow.LongTensor, optional): Labels for computing the next sequence prediction
+                (classification) loss. Input should be a sequence pair (see `input_ids` docstring).
+                Indices should be in `[0, 1]`:
+
+                - 0 indicates sequence B is a continuation of sequence A,
+                - 1 indicates sequence B is a random sequence.
+
+            lm_labels (flow.LongTensor, optional): Labels for computing the masked
+                language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
+            loss_mask (flow.LongTensor, optional): Mask to avoid performing loss computing
+                on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
+                loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
+        """
+
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 

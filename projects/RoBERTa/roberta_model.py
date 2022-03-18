@@ -63,11 +63,11 @@ class RobertaEmbeddings(nn.Module):
         # position_ids (1, len position emb) is contiguous in memory and exported when serialized
         self.position_embedding_type = position_embedding_type
         self.register_buffer("position_ids", flow.arange(
-            max_position_embeddings).expand(1, -1))
+            max_position_embeddings, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=dist.get_layer_placement(0),).expand(1, -1))
         self.register_buffer(
             "token_type_ids",
-            flow.zeros(self.position_ids.size(), dtype=flow.int64,
-                       device=self.position_ids.device),
+            flow.zeros(self.position_ids.size(), dtype=flow.int64,sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=dist.get_layer_placement(0)),
             persistent=False,
         )
 
@@ -126,8 +126,8 @@ class RobertaEmbeddings(nn.Module):
         sequence_length = input_shape[1]
 
         position_ids = flow.arange(
-            self.padding_idx + 1, sequence_length + self.padding_idx + 1, dtype=flow.int64, device=inputs_embeds.device
-        )
+            self.padding_idx + 1, sequence_length + self.padding_idx + 1, dtype=flow.int64, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=dist.get_layer_placement(0))
         return position_ids.unsqueeze(0).expand(input_shape)
 
 # To behave as an decoder or Seq2Seq model the model needs to be initialized with the
@@ -150,7 +150,7 @@ class RobertaSelfAttention(nn.Module):
 
         self.query = Linear(hidden_size, self.all_head_size)
         self.key = Linear(hidden_size, self.all_head_size)
-        self.value = nn.Linear(hidden_size, self.all_head_size)
+        self.value = Linear(hidden_size, self.all_head_size)
 
         self.dropout = nn.Dropout(dropout)
         self.position_embedding_type = position_embedding_type
@@ -223,9 +223,9 @@ class RobertaSelfAttention(nn.Module):
         if self.position_embedding_type == "relative_key" or self.position_embedding_type == "relative_key_query":
             seq_length = hidden_states.size()[1]
             position_ids_l = flow.arange(
-                seq_length, dtype=flow.int64, device=hidden_states.device).view(-1, 1)
+                seq_length, dtype=flow.int64, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),placement=dist.get_layer_placement(0)).view(-1, 1)
             position_ids_r = flow.arange(
-                seq_length, dtype=flow.int64, device=hidden_states.device).view(1, -1)
+                seq_length, dtype=flow.int64, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),placement=dist.get_layer_placement(0)).view(1, -1)
             distance = position_ids_l - position_ids_r
             positional_embedding = self.distance_embedding(
                 distance + self.max_position_embeddings - 1)
@@ -279,7 +279,7 @@ class RobertaSelfAttention(nn.Module):
 class RobertaSelfOutput(nn.Module):
     def __init__(self, hidden_size, layer_norm_eps=1e-5, dropout=0):
         super().__init__()
-        self.dense = nn.Linear(hidden_size, hidden_size)
+        self.dense = Linear(hidden_size, hidden_size)
         self.LayerNorm = LayerNorm(hidden_size, eps=layer_norm_eps)
         self.dropout = nn.Dropout(dropout)
 
@@ -352,7 +352,7 @@ class RobertaAttention(nn.Module):
 class RobertaIntermediate(nn.Module):
     def __init__(self, hidden_size, intermediate_size, activation):
         super(RobertaIntermediate, self).__init__()
-        self.dense = nn.Linear(hidden_size, intermediate_size)
+        self.dense = Linear(hidden_size, intermediate_size)
         if isinstance(activation, str):
             self.intermediate_act_fn = ACT2FN[activation]
         else:
@@ -367,7 +367,7 @@ class RobertaIntermediate(nn.Module):
 class RobertaOutput(nn.Module):
     def __init__(self, hidden_size, intermediate_size, layer_norm_eps=1e-5, dropout=0):
         super(RobertaOutput, self).__init__()
-        self.dense = nn.Linear(intermediate_size, hidden_size)
+        self.dense = Linear(intermediate_size, hidden_size)
         self.LayerNorm = LayerNorm(hidden_size, eps=layer_norm_eps)
         self.dropout = nn.Dropout(dropout)
 
@@ -545,7 +545,7 @@ class RobertaEncoder(nn.Module):
 class RobertaPooler(nn.Module):
     def __init__(self, hidden_size):
         super().__init__()
-        self.dense = nn.Linear(hidden_size, hidden_size)
+        self.dense = Linear(hidden_size, hidden_size)
         self.activation = nn.Tanh()
 
     def forward(self, hidden_states):
@@ -624,7 +624,7 @@ class RoBERTaModel(nn.Module):
             # - if the model is an encoder, make the mask broadcastable to [batch_size, num_heads, seq_length, seq_length]
             if self.is_decoder:
                 batch_size, seq_length = input_shape
-                seq_ids = flow.arange(seq_length, device=device)
+                seq_ids = flow.arange(seq_length, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),placement=dist.get_layer_placement(0))
                 causal_mask = seq_ids[None, None, :].repeat(
                     batch_size, seq_length, 1) <= seq_ids[None, :, None]
                 # in case past_key_values are used we need to add a prefix ones mask to the causal mask
@@ -637,7 +637,7 @@ class RoBERTaModel(nn.Module):
                         [
                             flow.ones(
                                 (batch_size, seq_length,
-                                 prefix_seq_len), device=device, dtype=causal_mask.dtype
+                                 prefix_seq_len), dtype=causal_mask.dtype, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),placement=dist.get_layer_placement(0)
                             ),
                             causal_mask,
                         ],
@@ -697,7 +697,7 @@ class RoBERTaModel(nn.Module):
         past_key_values_length = past_key_values[0][0].shape[2] if past_key_values is not None else 0
         if attention_mask is None:
             attention_mask = flow.ones(
-                ((batch_size, seq_length + past_key_values_length)))
+                ((batch_size, seq_length + past_key_values_length)), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),placement=dist.get_layer_placement(0))
                 # ((batch_size, seq_length + past_key_values_length)), device=device)
 
         if token_type_ids is None:
@@ -708,7 +708,7 @@ class RoBERTaModel(nn.Module):
                 token_type_ids = buffered_token_type_ids_expanded
             else:
                 token_type_ids = flow.zeros(
-                    input_shape, dtype=flow.int64)
+                    input_shape, dtype=flow.int64,sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=dist.get_layer_placement(0),)
                     # input_shape, dtype=flow.int64, device=device)
                     
 
@@ -726,7 +726,7 @@ class RoBERTaModel(nn.Module):
                 encoder_batch_size, encoder_sequence_length)
             if encoder_attention_mask is None:
                 encoder_attention_mask = flow.ones(
-                    encoder_hidden_shape)
+                    encoder_hidden_shape, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),placement=dist.get_layer_placement(0))
                     # encoder_hidden_shape, device=device)
             encoder_extended_attention_mask = self.invert_attention_mask(
                 encoder_attention_mask)
@@ -757,11 +757,11 @@ class RobertaLMHead(nn.Module):
 
     def __init__(self, vocab_size=30522, hidden_size=768, layer_norm_eps=1e-5):
         super().__init__()
-        self.dense = nn.Linear(hidden_size, hidden_size)
+        self.dense = Linear(hidden_size, hidden_size)
         self.layer_norm = LayerNorm(hidden_size, eps=layer_norm_eps)
 
-        self.decoder = nn.Linear(hidden_size, vocab_size, bias=False)
-        self.bias = nn.Parameter(flow.zeros(vocab_size))
+        self.decoder = Linear(hidden_size, vocab_size, bias=False)
+        self.bias = nn.Parameter(flow.zeros(vocab_size, sbp=self.decoder.bias.sbp, placement=self.decoder.bias.placement)) #sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=dist.get_layer_placement(0),
 
         # Need a link between the two variables so that the bias is correctly resized with `resize_token_embeddings`
         self.decoder.bias = self.bias
@@ -784,9 +784,9 @@ class RobertaClassificationHead(nn.Module):
 
     def __init__(self, num_labels=2, hidden_size=768, hidden_dropout=0.0):
         super().__init__()
-        self.dense = nn.Linear(hidden_size, hidden_size)
+        self.dense = Linear(hidden_size, hidden_size)
         self.dropout = nn.Dropout(hidden_dropout)
-        self.out_proj = nn.Linear(hidden_size, num_labels)
+        self.out_proj = Linear(hidden_size, num_labels)
 
     def forward(self, features):
         x = features[:, 0, :]  # take <s> token (equiv. to [CLS])

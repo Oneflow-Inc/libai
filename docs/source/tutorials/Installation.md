@@ -11,20 +11,20 @@ pip install libai
 
 ## Build LiBai from Source
 
-1. Clone this repo:
+- Clone this repo:
 
   ```bash
   git clone https://github.com/Oneflow-Inc/libai.git
   cd libai
   ```
-2. Create a conda virtual environment and activate it:
+- Create a conda virtual environment and activate it:
 
   ```bash
   conda create -n libai python=3.7 -y
   conda activate libai
   ```
 
-3. Install the stable release of OneFlow with `CUDA` support:
+- Install the stable release of OneFlow with `CUDA` support:
 
   ```bash
   python3 -m pip install -f https://release.oneflow.info oneflow==0.6.0+cu102
@@ -32,13 +32,13 @@ pip install libai
 
   For other releases, see [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
 
-4. Install other requirements:
+- Install other requirements:
 
   ```bash
   pip install -r requirements.txt
   ```
 
-5. Build the extensional cpp dependency:
+- Build the extensional cpp dependency:
 
   ```bash
   cd /libai/data/data_utils
