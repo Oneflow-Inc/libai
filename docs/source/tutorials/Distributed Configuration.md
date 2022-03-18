@@ -12,7 +12,7 @@ dist=dict(
 For example, you can set `data_parallel_size=2` which will automatically split the input data into two groups for data parallel training.
 
 ## Distributed Setting Example
-Here we provide simple examples for users to understand the basic configuration of LiBai's distributed settings. LiBai's **BERT** model supports three parallelism techniques (**data parallel training**, **tensor parallel training** and **pipeline parallel training**), and here we use 1 node with 8 GPUs as an example. If you do not change any default settings, LiBai will execute **data parallel training as default**. You can try out different combinations of parallelism training techniques by updating [bert config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/bert_large_pretrain.py) as follows:
+Here we provide simple examples for users to understand the basic configuration of LiBai's distributed settings. LiBai's **BERT** model supports three parallelism techniques (**data parallel training**, **tensor parallel training** and **pipeline parallel training**), and here we use 1 node with 8 GPUs as an example. If you do not change any default settings, LiBai will execute **data parallel training** by default. You can try out different combinations of parallelism training techniques by updating [bert config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/bert_large_pretrain.py) as follows:
 #### **Pure Data Parallel Training on 8 GPUs**
 
 In this example, the model is replicated on 8 GPUs, and each replica handles only part of the input data during iteration.
@@ -46,7 +46,8 @@ train.dist.pipeline_parallel_size = 8
 
 #### **Data Parallel + Tensor Parallel for 2D Parallel Training on 8 GPUs**
 
-In this example, 8 GPUs will be splitted into **2 groups**, each group contains **4 GPUs**, and the input data will be splitted into 2 parts by chunking in the batch dimension for data parallel training between 2 groups. And in each group, the weight of the layers in the model will be splited into 4 parts on 4 GPUs for tensor parallel training.
+In this example, 8 GPUs will be splitted into **2 groups**, each group contains **4 GPUs**, and the input data will be splitted into 2 parts by chunking in the batch dimension for data parallel training between 2 groups. The model is replicated between **2 data parellel groups**, within each group, the weight of each layers will be splited across **4 GPUs** for tensor parallel training.
+
 ```python
 from .common.train import train
 ...
@@ -57,7 +58,7 @@ train.dist.tensor_parallel_size = 4
 
 #### **Data Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
 
-In this example, 8 GPUs will be splitted into **2 groups**, each group contains **4 GPUs**, and the input data will be splitted into 2 parts by chunking in the batch dimension for data parallel training. And each group contains **4 stages**, different layers in the model will be put on different stages automatically for pipeline parallel training.
+In this example, 8 GPUs will be splitted into **2 groups**, each group contains **4 GPUs**, and the input data will be splitted into 2 parts by chunking in the batch dimension for data parallel training. The model is replicated between **2 data parellel groups**, and each group contains **4 stages**, different layers in the model will be put on different stages automatically for pipeline parallel training.
 ```python
 from .common.train import train
 ...
@@ -68,7 +69,8 @@ train.dist.pipeline_parallel_size = 4
 
 #### **Tensor Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
 
-In this example, 8 GPUs will be splitted into **2 groups**, each group contains **4 GPUs**, and the weight of the layers in the model be splitted into 2 parts for tensor parallel training between 2 groups. And each group contains **4 stages**, different layers in the model will be put on different stages automatically for pipeline parallel training.
+In this example, 8 GPUs will be splitted into **4 stages**, each stage contains **2 GPUs** as a **group**. And different layers in the model will be put on different stages automatically for pipeline parallel training. The weight of the layers be put on the specific stage will be splitted into 2 parts for tensor parallel training within the group. 
+
 ```python
 from .common.train import train
 ...
@@ -79,7 +81,8 @@ train.dist.pipeline_parallel_size = 4
 
 #### **Data Parallel + Tensor Parallel + Pipeline Parallel for 3D Parallel Training on 8 GPUs**
 
-In this example, 8 GPUs will also be splitted into **2 groups**, but each group will also be splitted into **2 mini groups**, each mini groups contains 2 GPUs, the input data will be splitted into two parts by chunking in the batch dimension for data parallel training on 2 groups, and in each group, the weight of the layers in the model will be splitted into 2 parts for tensor parallel training on **2 mini groups**, and each mini group contrain **2 stages**, different layers in the model will be put on different stages for pipeline parallel training.
+In this example, 8 GPUs will also be splitted into **2 stages**, different layers in the model will be put on different stages for pipeline parallel training. Each stage only contains a portion of the whole model, and each stage will be splitted into **2 groups**. In each stage, the model is replicated between **2 data parellel groups**, each **data parallel group** contains **2 GPUs**, the input data will be splitted into 2 parts by chunking in the batch dimension for data parallel training between **2 data parallel groups**, within each group, the weight of each layers will be splited across **2 GPUs** for tensor parallel training.
+
 ```python
 from .common.train import train
 ...
@@ -101,7 +104,8 @@ And the `data_parallel_size` will be automatically setted to `(8 / (2 * 2)) = 2`
 
 
 ## Update Distributed Config with Command Line
-You can also use **command line** to control the parallelization mode as follows:
+You can also control the parallelization strategy by **command line** paremeters as follows:
+
 ```bash
 bash tools/train.sh tools/train_net.py configs/bert_large_pretrain.py \
 8 \  # num of gpus

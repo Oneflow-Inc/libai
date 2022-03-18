@@ -104,11 +104,7 @@ class VocabEmbedding(nn.Module):
         num_embeddings: size of vocabulary.
         embedding_dim: dimension of embeddings.
         padding_idx: pad index. Defaults to None.
-<<<<<<< HEAD
         init_method: method to initialize weights. Defaults to ``flow.nn.init.xavier_normal_``.
-=======
-        init_method: method to initialize weights. Defaults to `init.xavier_normal_`.
->>>>>>> d724ae4d92fbf190751b944d1aba61520184504d
         amp_enabled: fp16 option for embedding weight. Defaults to False.
     """
 

@@ -59,7 +59,7 @@ The configuration for static `nn.Graph` mode. You can learn more information abo
 
 LiBai has already defined a `GraphBase` class for almost all models use. You can simply turn on this option converting eager mode to graph mode. 
 
-The graph config can be found in [graph.py](../../../configs/common/models/graph.py), and two useful options are shown as follows:
+The graph config can be found in [graph.py](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/models/graph.py), and two useful options are shown as follows:
 
 ```python
 # Turn on graph mode, if set to `False`, will use eager mode.
