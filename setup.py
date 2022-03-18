@@ -13,9 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
 import os
+import shutil
 import subprocess
 import sys
+from os import path
+from typing import List
 
 from setuptools import Extension, find_packages, setup
 
@@ -66,6 +70,32 @@ extensions = [
     ),
 ]
 
+
+def get_libai_configs() -> List[str]:
+    """
+    Return a list of configs to include in package for model zoo.
+    """
+    source_configs_dir = path.join(path.dirname(path.realpath(__file__)), "configs")
+    destination = path.join(path.dirname(path.realpath(__file__)), "libai", "config", "configs")
+    # Symlink the config directory inside package to have a cleaner pip install.
+
+    # Remove stale symlink/directory from a previous build.
+    if path.exists(source_configs_dir):
+        if path.islink(destination):
+            os.unlink(destination)
+        elif path.isdir(destination):
+            shutil.rmtree(destination)
+
+    if not path.exists(destination):
+        try:
+            os.symlink(source_configs_dir, destination)
+        except OSError:
+            # Fall back to copying if symlink fails: ex. on Windows.
+            shutil.copytree(source_configs_dir, destination)
+    config_paths = glob.glob("configs/**/*.py", recursive=True)
+    return config_paths
+
+
 if __name__ == "__main__":
     print(f"Building wheel {package_name}-{version}")
 
@@ -85,6 +115,7 @@ if __name__ == "__main__":
         license=license,
         install_requires=requirements,
         packages=find_packages(),
+        package_data={"libai.config": get_libai_configs()},
         ext_modules=extensions,
         test_suite="tests",
     )

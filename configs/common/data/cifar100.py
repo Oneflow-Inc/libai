@@ -53,7 +53,6 @@ dataloader.train = LazyCall(build_image_train_loader)(
             train=True,
             download=True,
             transform=train_aug,
-            dataset_name="cifar100 train set",
         ),
     ],
     num_workers=4,
@@ -74,7 +73,6 @@ dataloader.test = [
             train=False,
             download=True,
             transform=test_aug,
-            dataset_name="cifar100 test set",
         ),
         num_workers=4,
     )

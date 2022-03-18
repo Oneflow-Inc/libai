@@ -114,6 +114,7 @@ def inference_on_dataset(
     model,
     data_loader,
     batch_size,
+    eval_iter,
     get_batch: Callable,
     evaluator: Union[DatasetEvaluator, List[DatasetEvaluator], None],
 ):
@@ -131,6 +132,7 @@ def inference_on_dataset(
         batch_size: batch size for inference
         data_loader: an iterable object with a length.
             The elements it generates will be the inputs to the model.
+        eval_iter: running steps for evaluation
         get_batch: a Callable function for getting data from dataloader
         evaluator: the evaluator(s) to run. Use `None` if you only want to benchmark,
             but don't want to do any evaluation.
@@ -140,9 +142,8 @@ def inference_on_dataset(
     """
     num_devices = dist.get_world_size()
     logger = logging.getLogger(__name__)
-    logger.info("Start inference on {} samples".format(len(data_loader.dataset)))
 
-    total = len(data_loader.dataset)  # inference data loader must have a fixed length
+    total_samples = len(data_loader.dataset)  # inference data loader must have a fixed length
     if evaluator is None:
         # create a no-op evaluator
         evaluator = DatasetEvaluators([])
@@ -150,14 +151,24 @@ def inference_on_dataset(
         evaluator = DatasetEvaluators(evaluator)
     evaluator.reset()
 
-    num_warmup = min(5, total - 1)
+    num_warmup = min(5, len(data_loader) - 1)
     start_time = time.perf_counter()
     total_data_time = 0
     total_compute_time = 0
     total_eval_time = 0
     consumed_samples = 0
     dps = dist.get_data_parallel_size()
-    last_batch_lack = (dps - (total % dps)) % dps
+    last_batch_lack = (dps - (total_samples % dps)) % dps
+
+    # reset total samples
+    real_eval_iter = min(eval_iter, len(data_loader))
+    total_samples = min(real_eval_iter * batch_size, len(data_loader.dataset))
+    logger.info(
+        f"with eval_iter {eval_iter}, "
+        f"reset total samples {len(data_loader.dataset)} to {total_samples}"
+    )
+    logger.info(f"Start inference on {total_samples} samples")
+
     with ExitStack() as stack:
         if isinstance(model, (flow.nn.Module, flow.nn.Graph)):
             stack.enter_context(inference_context(model))
@@ -165,6 +176,8 @@ def inference_on_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
+            if idx >= real_eval_iter:
+                break
             total_data_time += time.perf_counter() - start_data_time
             if idx == num_warmup:
                 start_time = time.perf_counter()
@@ -180,8 +193,19 @@ def inference_on_dataset(
             outputs = model(**paded_data)
 
             # get valid sample
-            valid_data = {key: dist.ttol(value)[:valid_sample] for key, value in data.items()}
-            valid_outputs = {key: dist.ttol(value)[:valid_sample] for key, value in outputs.items()}
+            valid_data = {
+                key: dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])[
+                    :valid_sample
+                ]
+                for key, value in data.items()
+            }
+            valid_outputs = {}
+            for key, value in outputs.items():
+                value = dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
+                if value.ndim > 1:
+                    valid_outputs[key] = value[:valid_sample]  # Slice if it's batched output
+                else:
+                    valid_outputs[key] = value
 
             if flow.cuda.is_available():
                 dist.synchronize()
@@ -201,12 +225,12 @@ def inference_on_dataset(
             total_seconds_per_iter = (time.perf_counter() - start_time) / iters_after_start
             if idx >= num_warmup * 2 or compute_seconds_per_iter > 5:
                 eta = datetime.timedelta(
-                    seconds=int(total_seconds_per_iter * (total // batch_size - idx - 1))
+                    seconds=int(total_seconds_per_iter * (total_samples // batch_size - idx - 1))
                 )
                 log_every_n_seconds(
                     logging.INFO,
                     (
-                        f"Inference done {consumed_samples}/{total}. "
+                        f"Inference done {consumed_samples}/{total_samples}. "
                         f"Dataloading: {data_seconds_per_iter:.4f} s/iter. "
                         f"Inference: {compute_seconds_per_iter:.4f} s/iter. "
                         f"Eval: {eval_seconds_per_iter:.4f} s/iter. "
@@ -224,14 +248,14 @@ def inference_on_dataset(
     logger.info("Total valid samples: {}".format(consumed_samples))
     logger.info(
         "Total inference time: {} ({:.6f} s / iter per device, on {} devices)".format(
-            total_time_str, total_time / (total - num_warmup), num_devices
+            total_time_str, total_time / (total_samples - num_warmup), num_devices
         )
     )
     total_compute_time_str = str(datetime.timedelta(seconds=int(total_compute_time)))
     logger.info(
         "Total inference pure compute time: {} ({:.6f} s / iter per device, on {} devices)".format(
             total_compute_time_str,
-            total_compute_time / (total - num_warmup),
+            total_compute_time / (total_samples - num_warmup),
             num_devices,
         )
     )
