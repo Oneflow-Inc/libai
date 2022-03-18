@@ -21,12 +21,12 @@ import oneflow as flow
 from libai.utils import distributed as dist
 
 
-def pad_batch(x_dict, batch_size, last_batch_lack, ls_last_batch):
+def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
     x = list(x_dict.values())[0]
     tensor_batch = x.shape[0]
     assert tensor_batch <= batch_size
 
-    if tensor_batch == batch_size and not ls_last_batch:
+    if tensor_batch == batch_size and not is_last_batch:
         return x_dict, batch_size
 
     valid_sample = tensor_batch - last_batch_lack
