@@ -645,6 +645,19 @@ class SwinTransformer(nn.Module):
         return x
 
     def forward(self, images, labels=None):
+        """
+
+        Args:
+            images (flow.Tensor): training samples.
+            labels (flow.LongTensor, optional): training targets
+        
+        Returns:
+            dict:
+                A dict containing :code:`loss_value` or :code:`logits`
+                depending on training or evaluation mode.
+                :code:`{"losses": loss_value}` when training,
+                :code:`{"prediction_scores": logits}` when evaluating.
+        """
         x = self.forward_features(images)
         x = self.head(x)
 
