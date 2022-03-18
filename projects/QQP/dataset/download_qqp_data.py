@@ -18,11 +18,12 @@ import sys
 sys.path.append(".")
 from libai.utils.file_utils import get_data_from_cache  # noqa
 
-VOCAB_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt"  # noqa
-QQP_TRAIN_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/QQP/train.tsv"  # noqa
-QQP_TEST_URL = (
-    "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/QQP/dev.tsv"  # noqa
-)
+# fmt:off
+VOCAB_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt" # noqa
+QQP_TRAIN_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/QQP/train.tsv" # noqa
+QQP_TEST_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/QQP/dev.tsv" # noqa
+# fmt:on
+
 
 VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
 QQP_TRAIN_MD5 = "f65950abb9499d8e3e33da7d68d61c4e"
