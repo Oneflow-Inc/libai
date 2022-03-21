@@ -203,8 +203,15 @@ train = dict(
 
 **Example:** If you need to train 300 epochs with 5 warmup epochs, you can update the config as follows:
 ```python
+# config.py
 train.train_epoch = 300
 train.warmup_ratio = 5 / 300
+```
+If you need to train 1000 iters with 200 warmup iters, you can set the training config like this:
+```python
+# config.py
+train.train_iter = 1000
+train.warmup_ratio = 200 / 1000
 ```
 
 
