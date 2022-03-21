@@ -35,7 +35,7 @@ optim.weight_decay = 0.05
 train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128
 train.train_epoch = 300
-train.warmup_ratio = 20 / 300
+train.warmup_ratio = 5 / 300
 train.evaluation.eval_period = 1000
 train.log_period = 1
 

@@ -201,6 +201,13 @@ train = dict(
 ```
 **Note:** ``warmup_ratio`` is the ratio of warmup iterations to the total training iterations, and the real ``warmup iterations`` will be calculated by ``wramup_ratio * train_iter`` automatically.
 
+**Example:** If you need to train 300 epochs with 5 warmup epochs, you can update the config as follows:
+```python
+train.train_epoch = 300
+train.warmup_ratio = 5 / 300
+```
+
+
 ### optim
 
 This is the config for optimizer. You can see the default configuration in `configs/common/optim.py`.
