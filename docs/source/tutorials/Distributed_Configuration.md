@@ -106,7 +106,7 @@ And the `data_parallel_size` will be automatically setted to `(8 / (2 * 2)) = 2`
 
 
 ## Update Distributed Config with Command Line
-You can also control the parallelization strategy by **command line** paremeters as follows:
+You can also control the parallelization strategy by **command line** parameters as follows:
 
 ```bash
 bash tools/train.sh tools/train_net.py configs/bert_large_pretrain.py \
