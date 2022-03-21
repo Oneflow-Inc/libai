@@ -33,34 +33,26 @@ class Trainer(DefaultTrainer):
         model = super().build_model(cfg)
 
         if try_get_key(cfg, "finetune") is not None:
+            linear_keyword = "head"
+            for name, param in model.named_parameters():
+                if name not in ['%s.weight' % linear_keyword, '%s.bias' % linear_keyword]:
+                    param.requires_grad = False
+
+            assert cfg.finetune.weight_style in ["oneflow", "pytorch"]
             if cfg.finetune.enable == True:
-
-                logger.info("freeze all layers but the last head")
-                linear_keyword = "head"
-                for name, param in model.named_parameters():
-                    if name not in ['%s.weight' % linear_keyword, '%s.bias' % linear_keyword]:
-                        param.requires_grad = False
-
-                logger.info("Loading pretrained weight for finetuning")
-                assert cfg.finetune.weight_style in ["oneflow", "pytorch"]
                 if cfg.finetune.weight_style == "oneflow":
-                    model.load_state_dict(flow.load(cfg.finetune.path))
+                    model.load_state_dict(flow.load(cfg.finetune.finetune_path))
                 else:
-                    # model = load_torch_checkpoint(model, path=cfg.finetune.path, strict=False, linear_keyword=linear_keyword)
-                    model = load_torch_checkpoint_linear(model, path=cfg.linearProb.path, strict=True)
-                # if cfg.linearProb.enable == True:
-                #     logger.info("Loading pretrained weight for linearprob")
-                #     assert cfg.linearProb.weight_style in ["oneflow", "pytorch"]
-                #     if cfg.linearProb.weight_style == "oneflow":
-                #         model.load_state_dict(flow.load(cfg.linearProb.path))
-                #     else:
-                #         model = load_torch_checkpoint_linear(model, path=cfg.linearProb.path, strict=False)
-                # else:
-                #     logger.info("init the head layer")
-                #     getattr(model, linear_keyword).weight.data.normal_(mean=0.0, std=0.01)
-                #     getattr(model, linear_keyword).bias.data.zeros_()
+                    model = load_torch_checkpoint(model, path=cfg.finetune.finetune_path, strict=False, linear_keyword=linear_keyword)
+                    getattr(model, linear_keyword).weight.data.normal_(mean=0.0, std=0.01)
+                    getattr(model, linear_keyword).bias.data.zeros_()
             else:
-                model.initialization()
+                if cfg.finetune.weight_style == "oneflow":
+                    model.load_state_dict(flow.load(cfg.finetune.inference_path))
+                else:
+                    model = load_torch_checkpoint_linear(model, path=cfg.finetune.inference_path, strict=True)
+        else:
+            model.initialization()
         return model
 
 DefaultTrainer = Trainer
@@ -96,5 +88,4 @@ def main(args):
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
-    args.eval_only = True
     main(args)

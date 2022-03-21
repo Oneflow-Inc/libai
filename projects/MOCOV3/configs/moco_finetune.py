@@ -15,14 +15,11 @@ from .models.vit import model
 
 # Path to the weight for fine-tune
 finetune = OmegaConf.create()
-finetune.enable = True  # only load weight if enable is True
+finetune.enable = False  # True for finetune and False for inference
 finetune.weight_style = "pytorch"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
-finetune.path = "projects/MOCOV3/output/vit-s-300ep.pth.tar"
+finetune.finetune_path = "projects/MOCOV3/output/vit-s-300ep.pth.tar"
+finetune.inference_path = "projects/MOCOV3/output/linear-vit-s-300ep.pth.tar"
 
-linearProb = OmegaConf.create()
-linearProb.enable = False  
-linearProb.weight_style = "pytorch" 
-linearProb.path = "projects/MOCOV3/output/linear-vit-s-300ep.pth.tar"
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/dataset/extract"
@@ -37,7 +34,7 @@ optim.weight_decay = .1
 # Refine train cfg for moco v3 model
 train["train_micro_batch_size"] = 128
 train["test_micro_batch_size"] = 128
-train["train_epoch"] = 100
+train["train_epoch"] = 0
 train["warmup_ratio"] = 40 / 300
 train["eval_period"] = 10
 train["log_period"]  =1
