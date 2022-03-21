@@ -1,37 +1,15 @@
-# Import PyTorch models to Libai
+# Train PyTorch models with LiBai seamlessly
 
-`oneflow.nn.Module` implements the same interface as `torch.nn.Module`, so you can simply replace `torch` in the model definition with `oneflow` to embed the existing model structure into Libai.
+`oneflow.nn.Module` implements the same interface as `torch.nn.Module`, so it's easy for users to convert a pytorch model to oneflow model and train it based on LiBai.
 
 Take [MobileNetV2](https://github.com/d-li14/mobilenetv2.pytorch/blob/master/models/imagenet/mobilenetv2.py) training cifar100 as an example.
 
-### Replace `torch` with `oneflow`
+### Steps for converting `torch` model script to `oneflow`
 
-libai/model/MobileNetV2.py (original code)
+Take MobileNetV2 as an example, the original implementation can be found in [there](https://github.com/d-li14/mobilenetv2.pytorch/blob/master/models/imagenet/mobilenetv2.py).
 
-```python
-"""
-Creates a MobileNetV2 Model as defined in:
-Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zhmoginov, Liang-Chieh Chen. (2018). 
-MobileNetV2: Inverted Residuals and Linear Bottlenecks
-arXiv preprint arXiv:1801.04381.
-import from https://github.com/tonylins/pytorch-mobilenet-v2
-"""
 
-import torch.nn as nn
-import math
-
-__all__ = ['mobilenetv2']
-
-... # omit some code
-
-def mobilenetv2(**kwargs):
-    """
-    Constructs a MobileNet V2 model
-    """
-    return MobileNetV2(**kwargs)
-```
-
-It is only necessary to **modify the `torch` in the import statement to `oneflow`** to convert it into an oneflow model while ensuring the model structure is identical. Then add the training loss calculation at the end of the model to form a complete training model, i.e.
+To convert the above script into oneflow, the only thing user need to do is simply changing import torch.nn as nn to import oneflow.nn as nn. Then add the loss module at the end of the forward function to form a complete training module.
 
 libai/model/MobileNetV2.py
 
@@ -72,11 +50,11 @@ class MobileNetV2Training(nn.Module):
             return {"prediction_scores": logits}
 ```
 
-Now we have obtained a MobileNetV2 model that is usable under Libai.
+Now we have created a MobileNetV2 model which is usable in Libai.
 
-### Set the training configuration
+### Create configuration file
 
-Create a configuration file: configs/cifar.py
+For example configs/mobilenetv2_cifar100.py
 
 ```python
 from libai.config import LazyCall
@@ -87,29 +65,11 @@ from .common.optim import optim
 from .common.data.cifar100 import dataloader
 
 model = LazyCall(MobileNetV2Training)()
-```
-
-### Modify the configuration of the cifar100 dataset
-configs/common/data/cifar100.py (modify the `mixup_func` in dataloader.train to `None`)
-
-```python
-dataloader = OmegaConf.create()
-dataloader.train = LazyCall(build_image_train_loader)(
-    dataset=[
-        LazyCall(CIFAR10Dataset)(
-            root="./",
-            train=True,
-            download=True,
-            transform=train_aug,
-        ),
-    ],
-    num_workers=12,
-    mixup_func=None
-)
+dataloader.train.mixup_func = None  # remove mixup augmentation
 ```
 
 ### Start training
 
-The imported PyTorch model structure can be used for training by running `zsh tools/train.sh tools/train_net.py configs/cifar.py 1` in the Libai directory.
+After the above preparation, users can start training on single GPU by running `bash tools/train.sh tools/train_net.py configs/cifar.py 1` under Libai.
 
 
