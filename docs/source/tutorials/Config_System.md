@@ -199,6 +199,7 @@ train = dict(
     seed=1234,
 )
 ```
+**Note:** ``warmup_ratio`` is the ratio of warmup iterations to the total training iterations, and the real ``warmup iterations`` will be calculated by ``wramup_ratio * train_iter`` automatically.
 
 ### optim
 
