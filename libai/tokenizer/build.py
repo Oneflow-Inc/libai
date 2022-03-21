@@ -30,7 +30,7 @@ and expected to return a `PreTrainedTokenizer` object.
 
 def build_tokenizer(cfg):
     """Initialize tokenizer."""
-    # NOTE(l1aoxingyu): Maybe there is no need for tokenizer between tensor parallel group.
+    # NOTE(lxy): Maybe there is no need for tokenizer between tensor parallel group.
     if "_target_" in cfg.tokenizer:
         tokenizer = instantiate(cfg.tokenizer)
     else:
