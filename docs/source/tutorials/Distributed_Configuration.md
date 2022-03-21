@@ -1,6 +1,6 @@
 # Distributed Configuration
 
-In LiBai, you can try out different parallel strategies by simplely changing the distributed config in [training config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py).
+In LiBai, you can try out different parallel strategies by simply changing the distributed config in [training config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py).
 ```python
 # Distributed arguments
 dist=dict(
@@ -62,7 +62,7 @@ Here we provide a specific example for you to understand this, we number 8 GPUs 
 
 #### **Data Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
 
-In this example, 8 GPUs will be split into **2 groups**, each group contains **4 GPUs**, and the input data will be split into 2 parts by chunking in the batch dimension for data parallel training. The model is replicated between **2 data parellel groups**, and each group contains **4 stages**, different layers in the model will be put on different stages automatically for pipeline parallel training.
+In this example, 8 GPUs will be split into **4 stages**, each stage contains **2 GPUs** which will be split into **2 data-parallel groups**, each stage only contains a portion of the model. The weight of the layers put on the specific stage is replicated on **2 data-parallel groups**, each group handles a portion of the input data.
 ```python
 from .common.train import train
 ...
@@ -73,7 +73,7 @@ train.dist.pipeline_parallel_size = 4
 
 #### **Tensor Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
 
-In this example, 8 GPUs will be split into **4 stages**, each stage contains **2 GPUs** as a **group**. And different layers in the model will be put on different stages automatically for pipeline parallel training. The weight of the layers be put on the specific stage will be split into 2 parts for tensor parallel training within the group. 
+In this example, 8 GPUs will be split into **4 stages**, each stage contains **2 GPUs** as a **group**. And different layers in the model will be put on different stages automatically for pipeline parallel training. The weight of the layers put on the specific stage will be split into 2 parts for tensor parallel training within the group. 
 
 ```python
 from .common.train import train
