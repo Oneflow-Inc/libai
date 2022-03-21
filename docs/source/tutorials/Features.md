@@ -76,7 +76,7 @@ train.num_accumulation_steps = None
 
 ## Activation Checkpointing
 
-To reduce GPU memory usage and deploy a large model to a training system, LiBai support activation checkpointing. We use a Transformer layer as the unit of checkpointing because the activation size bloats in the middle of a Transformer layer so checkpointing the input of a Transformer layer is storage-efficient.
+To reduce GPU memory usage and deploy a large model to a training system, LiBai supports activation checkpointing. We use a Transformer layer as the unit of checkpointing because the activation size bloats in the middle of a Transformer layer so checkpointing the input of a Transformer layer is storage-efficient.
 
 LiBai supports [activation checkpointing](https://arxiv.org/abs/1604.06174) by `set_activation_checkpoint` in `GraphBase`. So models using `libai.layers.TransformerLayer` supports activation checkpointing by default. If you want to set activation checkpointing for your customized layers, you need to override this function. 
 
