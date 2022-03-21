@@ -33,6 +33,7 @@ from .common.train import train
 
 train.dist.tensor_parallel_size = 8
 ```
+**Note:** Only work for models built with ``libai.layers``.
 
 #### **Pure Pipeline Parallel Training on 8 GPUs**
 
@@ -57,6 +58,7 @@ from .common.train import train
 train.dist.data_parallel_size = 2
 train.dist.tensor_parallel_size = 4
 ```
+Here we provide a specific example for you to understand this, we number 8 GPUs from 0 to 7, e.g., ``[0, 1, 2, 3, 4, 5, 6, 7]``, and for ``data parallel + tensor parallel``, 8 GPUs will be split into 2 groups as ``[[0, 1, 2, 3], [4, 5, 6, 7]]``, ``GPU: [0, 1, 2, 3]`` as group-0 and ``GPU: [4, 5, 6, 7]`` as group-1. The model is replicated between group-0 and group-1. In group-0, the model will execute tensor parallel between ``GPU: [0, 1, 2, 3]``. In group-1, the model will execute tensor parallel between ``GPU: [4, 5, 6, 7]``, and each group only handle a portion of the input data for data parallel training.
 
 #### **Data Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
 
