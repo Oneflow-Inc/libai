@@ -20,38 +20,13 @@ sys.path.append(".")
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import default_setup
-from libai.engine import DefaultTrainer
 from libai.utils.checkpoint import Checkpointer
-from utils.weight_convert import load_torch_checkpoint, load_torch_checkpoint_linear
+from projects.MOCOV3.trainer.MoCo_v3_trainer import MoCoPretrainingTrainer
+from projects.MOCOV3.trainer.vit_finetuning_trainer import VitFinetuningTrainer
 
 
 logger = logging.getLogger(__name__)
 
-class Trainer(DefaultTrainer):
-    @classmethod
-    def build_model(cls, cfg):
-        model = super().build_model(cfg)
-
-        if try_get_key(cfg, "finetune") is not None:
-            linear_keyword = "head"
-            for name, param in model.named_parameters():
-                if name not in ['%s.weight' % linear_keyword, '%s.bias' % linear_keyword]:
-                    param.requires_grad = False
-
-            assert cfg.finetune.weight_style in ["oneflow", "pytorch"]
-            if cfg.finetune.enable == True:
-                if cfg.finetune.weight_style == "oneflow":
-                    model.load_state_dict(flow.load(cfg.finetune.finetune_path))
-                else:
-                    model = load_torch_checkpoint(model, path=cfg.finetune.finetune_path, strict=False, linear_keyword=linear_keyword)
-                getattr(model, linear_keyword).weight.data.normal_(mean=0.0, std=0.01)
-                getattr(model, linear_keyword).bias.data.zeros_()
-
-        else:
-            model.initialization()
-        return model
-
-DefaultTrainer = Trainer
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
@@ -63,6 +38,11 @@ def main(args):
         cfg.train.train_iter = 20
         cfg.train.eval_period = 10
         cfg.train.log_period = 1
+
+    if try_get_key(cfg, "finetune") is None:
+        DefaultTrainer = MoCoPretrainingTrainer
+    else:
+        DefaultTrainer = VitFinetuningTrainer
 
     if args.eval_only:
         tokenizer = None

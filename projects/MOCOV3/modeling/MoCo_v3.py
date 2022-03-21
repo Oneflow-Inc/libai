@@ -62,8 +62,8 @@ class MoCo(nn.Module):
     def _update_momentum_encoder(self, m):
         """Momentum update of the momentum encoder"""
         for param_b, param_m in zip(self.base_encoder.parameters(), self.momentum_encoder.parameters()):
-            param_m.data = param_m.data * m + param_b.data * (1. - m)  # for graph mode ->bug: AttributeError: 'TensorBlock' object has no attribute 'data'. It works well on eager mode
-
+            param_m.data = param_m.data * m + param_b.data * (1. - m)  
+            
     def contrastive_loss(self, q, k):
 
         # normalize
@@ -74,7 +74,7 @@ class MoCo(nn.Module):
         k = concat_all_gather(k).to_global(sbp=q.sbp, placement=q.placement)
 
         # Einstein sum is more intuitive
-        logits = flow.einsum('nc,mc->nm', [q, k]) / self.T  # Oneflow does not support Einstein sum currently
+        logits = flow.einsum('nc,mc->nm', q, k) / self.T  
         N = logits.shape[0] // get_world_size() 
         labels = (flow.arange(N, dtype=flow.long) + N * flow.env.get_rank()).cuda().to_global(sbp=flow.sbp.split(0), placement=logits.placement)
 
@@ -117,10 +117,8 @@ class MoCo(nn.Module):
 
 class MoCo_ViT(MoCo):
     def _build_projector_and_predictor_mlps(self, dim, mlp_dim):
-        hidden_dim = self.base_encoder.head.weight.shape[0] # linear.weight.T
+        hidden_dim = self.base_encoder.head.weight.shape[0]
         
-        # del -> bug: AttributeError: head
-        # del self.base_encoder.head, self.momentum_encoder.head # remove original fc layer
         # projectors
         self.base_encoder.head = self._build_mlp(3, hidden_dim, mlp_dim, dim)
         self.momentum_encoder.head = self._build_mlp(3, hidden_dim, mlp_dim, dim)

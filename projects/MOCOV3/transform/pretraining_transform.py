@@ -34,7 +34,7 @@ augmentation1 = [
     LazyCall(transforms.RandomApply)(transforms=[
         LazyCall(transforms.ColorJitter)(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)  # not strengthened
     ], p=0.8),
-    # transforms.RandomGrayscale(p=0.2), # oneflow does not support RandomGrayscale
+    # transforms.RandomGrayscale(p=0.2),
     LazyCall(transforms.RandomApply)(transforms=[GaussianBlur(sigma=[.1, 2.])], p=1.0), 
     LazyCall(transforms.RandomHorizontalFlip)(),
     LazyCall(transforms.ToTensor)(),
@@ -46,7 +46,7 @@ augmentation2 = [
     LazyCall(transforms.RandomApply)(transforms=[
         LazyCall(transforms.ColorJitter)(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)  # not strengthened
     ], p=0.8),
-    # transforms.RandomGrayscale(p=0.2), # oneflow does not support RandomGrayscale
+    # transforms.RandomGrayscale(p=0.2), 
     LazyCall(transforms.RandomApply)(transforms=[GaussianBlur(sigma=[.1, 2.])], p=1.0), 
     LazyCall(transforms.RandomApply)(transforms=[Solarize()], p=0.2),
     LazyCall(transforms.RandomHorizontalFlip)(),

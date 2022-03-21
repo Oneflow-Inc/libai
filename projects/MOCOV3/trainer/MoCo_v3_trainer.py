@@ -4,7 +4,7 @@ from typing import Callable
 from libai.engine import DefaultTrainer
 from libai.engine.trainer import EagerTrainer
 
-class MoCoDefaultTrainer(DefaultTrainer):
+class MoCoPretrainingTrainer(DefaultTrainer):
 
     def __init__(self, cfg):
 
