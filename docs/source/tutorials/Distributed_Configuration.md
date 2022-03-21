@@ -1,6 +1,6 @@
 # Distributed Configuration
 
-In LiBai, you can try out different parallel strategy by simple changing the distributed config in [training config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py).
+In LiBai, you can try out different parallel strategies by simplely changing the distributed config in [training config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py).
 ```python
 # Distributed arguments
 dist=dict(
@@ -49,7 +49,7 @@ train.dist.pipeline_parallel_size = 8
 
 #### **Data Parallel + Tensor Parallel for 2D Parallel Training on 8 GPUs**
 
-In this example, 8 GPUs will be split into **2 groups**, each group contains **4 GPUs**, and the input data will be split into 2 parts by chunking in the batch dimension for data parallel training between 2 groups. The model is replicated between **2 data parellel groups**, within each group, the weight of each layers will be splited across **4 GPUs** for tensor parallel training.
+In this example, 8 GPUs will be split into **2 groups**, each group contains **4 GPUs**, and the input data will be split into 2 parts by chunking in the batch dimension for data parallel training between 2 groups. The model is replicated between **2 data-parellel groups**, within each group, the weight of each layers will be splited across **4 GPUs** for tensor parallel training.
 
 ```python
 from .common.train import train
