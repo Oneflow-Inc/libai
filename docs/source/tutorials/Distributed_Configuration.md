@@ -73,7 +73,7 @@ train.dist.pipeline_parallel_size = 4
 
 #### **Tensor Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
 
-In this example, 8 GPUs will be split into **4 stages**, each stage contains **2 GPUs** as a **group**. And different layers in the model will be put on different stages automatically for pipeline parallel training. The weight of the layers be put on the specific stage will be splitted into 2 parts for tensor parallel training within the group. 
+In this example, 8 GPUs will be split into **4 stages**, each stage contains **2 GPUs** as a **group**. And different layers in the model will be put on different stages automatically for pipeline parallel training. The weight of the layers be put on the specific stage will be split into 2 parts for tensor parallel training within the group. 
 
 ```python
 from .common.train import train
