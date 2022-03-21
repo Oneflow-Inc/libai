@@ -1,6 +1,6 @@
 # Distributed Configuration
 
-In LiBai, you can try out different parallel modes easily by updating the distributed config in [training config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py).
+In LiBai, you can try out different parallel strategy by simple changing the distributed config in [training config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/train.py).
 ```python
 # Distributed arguments
 dist=dict(
