@@ -55,7 +55,7 @@ optim.params.clip_grad_norm_type = None
 
 Gradient accumulation is a common strategy to train large-scale models when memory becomes the bottleneck. This technique will split the mini-batch into several micro-batches, then perform normal forward and backward operations. Models will only be updated after accumulating the gradients of all these micro-batches. 
 
-Besides, when training with pipeline parallel, gradient accumulation makes different stages executed in parallel micro-batch. Therefore, the calculation of each stage is not blocked.
+Besides, when training with pipeline parallel, gradient accumulation makes different stages executed in different micro-batch in parallel. Therefore, the calculation of each stage can be overlapped.
 
 ### Usage
 
