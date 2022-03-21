@@ -44,13 +44,9 @@ class Trainer(DefaultTrainer):
                     model.load_state_dict(flow.load(cfg.finetune.finetune_path))
                 else:
                     model = load_torch_checkpoint(model, path=cfg.finetune.finetune_path, strict=False, linear_keyword=linear_keyword)
-                    getattr(model, linear_keyword).weight.data.normal_(mean=0.0, std=0.01)
-                    getattr(model, linear_keyword).bias.data.zeros_()
-            else:
-                if cfg.finetune.weight_style == "oneflow":
-                    model.load_state_dict(flow.load(cfg.finetune.inference_path))
-                else:
-                    model = load_torch_checkpoint_linear(model, path=cfg.finetune.inference_path, strict=True)
+                getattr(model, linear_keyword).weight.data.normal_(mean=0.0, std=0.01)
+                getattr(model, linear_keyword).bias.data.zeros_()
+
         else:
             model.initialization()
         return model

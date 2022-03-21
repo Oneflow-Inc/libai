@@ -74,8 +74,7 @@ class MoCo(nn.Module):
         k = concat_all_gather(k).to_global(sbp=q.sbp, placement=q.placement)
 
         # Einstein sum is more intuitive
-        logits = flow.matmul(q, k.T) / self.T # Equals to flow.einsum('nc,mc->nm', [q, k]) / self.T
-        # logits = flow.einsum('nc,mc->nm', [q, k]) / self.T  # Oneflow does not support Einstein sum currently
+        logits = flow.einsum('nc,mc->nm', [q, k]) / self.T  # Oneflow does not support Einstein sum currently
         N = logits.shape[0] // get_world_size() 
         labels = (flow.arange(N, dtype=flow.long) + N * flow.env.get_rank()).cuda().to_global(sbp=flow.sbp.split(0), placement=logits.placement)
 

@@ -240,8 +240,10 @@ class VisionTransformerMoCo(VisionTransformer):
         pos_dim = self.embed_dim // 4
         omega = (flow.arange(pos_dim, dtype=flow.float32) / pos_dim).cuda().to_global(sbp=sbp, placement=placement)
         omega = 1. / flow.tensor(temperature).cuda().to_global(sbp=sbp, placement=placement)**omega  
-        out_w = flow.mul(grid_w.flatten().unsqueeze(1), omega.unsqueeze(0))  #  out_w = flow.einsum('m,d->md', [grid_w.flatten(), omega])
-        out_h = flow.mul(grid_h.flatten().unsqueeze(1), omega.unsqueeze(0))  #  out_h = flow.einsum('m,d->md', [grid_h.flatten(), omega])
+        # out_w = flow.mul(grid_w.flatten().unsqueeze(1), omega.unsqueeze(0))  
+        # out_h = flow.mul(grid_h.flatten().unsqueeze(1), omega.unsqueeze(0))  
+        out_w = flow.einsum('m,d->md', [grid_w.flatten(), omega])
+        out_h = flow.einsum('m,d->md', [grid_h.flatten(), omega])
         pos_emb = flow.cat([flow.sin(out_w), flow.cos(out_w), flow.sin(out_h), flow.cos(out_h)], dim=1)[None, :, :]
         # assert self.num_tokens == 1, 'Assuming one and only one token, [cls]'  # num_token=1 in libai impl
         pe_token = flow.zeros([1, 1, self.embed_dim], dtype=flow.float32).cuda().to_global(sbp=sbp, placement=placement)
