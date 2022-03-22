@@ -1,4 +1,5 @@
 import os
+
 from libai.utils.download import download
 
 fixtrue_urls = {
@@ -12,6 +13,6 @@ BASE_DIR = "tests/fixtures"
 
 def get_fixtures(fixture_dir):
     fixture_name = fixture_dir.split("/")[-1]
-    if(fixture_name not in fixtrue_urls):
+    if fixture_name not in fixtrue_urls:
         raise RuntimeError("{} not available in LiBai tests fixtrues!".format(fixture_name))
     return download(fixtrue_urls[fixture_name], BASE_DIR)

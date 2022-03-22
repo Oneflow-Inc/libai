@@ -26,8 +26,8 @@ import unicodedata
 from io import open
 from typing import Dict, List, Optional, Union
 
-from libai.utils.file_utils import cached_path
 from libai.utils.file_io import PathManager
+from libai.utils.file_utils import cached_path
 
 logger = logging.getLogger(__name__)
 
