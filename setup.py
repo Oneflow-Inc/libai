@@ -23,7 +23,7 @@ from typing import List
 
 from setuptools import Extension, find_packages, setup
 
-version = "0.1.0"
+version = "0.0.1.4"
 package_name = "LiBai"
 cwd = os.path.dirname(os.path.abspath(__file__))
 
