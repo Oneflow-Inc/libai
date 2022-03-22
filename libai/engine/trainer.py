@@ -197,10 +197,6 @@ class TrainerBase:
         # all_metrics_dict = dist.gather(metrics_dict)
         all_metrics_dict = metrics_dict
 
-        # dist_util = dist.get_dist_util()
-        # if (dist_util.is_pipeline_model_parallel() and dist.is_last_process()) or (
-        #     not dist_util.is_pipeline_model_parallel() and dist.is_main_process()
-        # ):
         if dist.is_main_process():
             storage = get_event_storage()
 
@@ -287,6 +283,7 @@ class EagerTrainer(TrainerBase):
         self.write_metrics(loss_dict, data_time)
 
         if (self.iter + 1) % self.grad_acc_steps == 0:
+            self.optimizer.clip_grad()
             self.optimizer.step()
             self.optimizer.zero_grad()
 

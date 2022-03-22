@@ -98,8 +98,7 @@ class BertDataset(flow.utils.data.Dataset):
     def __getitem__(self, idx):
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
-        # We % 2 ** 32 since numpy requres the seed to be between 0 and 2 ** 32 - 1
-        np_rng = np.random.RandomState(seed=((self.seed + idx) % 2 ** 32))
+        np_rng = np.random.RandomState(seed=(self.seed + idx))
 
         sents = self.dataset[idx]
 
@@ -380,6 +379,7 @@ class BertDataset(flow.utils.data.Dataset):
             assert idx < num_tokens
             labels[idx] = label
             loss_mask[idx] = 1
+
         labels = flow.tensor(labels, dtype=flow.long)
         loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 

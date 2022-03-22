@@ -19,6 +19,7 @@ cfg = dict(
     bias_dropout_fusion=False,
     scale_mask_softmax_fusion=False,
     apply_query_key_layer_scaling=True,
+    amp_enabled=False,
 )
 
 bert_model = LazyCall(T5Model)(cfg=cfg)

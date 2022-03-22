@@ -240,8 +240,9 @@ def get_dist_util():
 
 
 def get_layer_placement(layer_idx, device_type="cuda"):
-    """Get `flow.placement` object with the initialized distributed environment
-        according to the layer_idx.
+    """
+    Get ``flow.placement`` object with the initialized distributed environment
+    according to the ``layer_idx``.
 
     Args:
         layer_idx (int): layer index indicating the rank groups. This is very useful for pipeline
@@ -338,7 +339,7 @@ def get_num_nodes():
 def convert_to_distributed_default_setting(module):
     """
     Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
-        global tensor with data parallelism as default.
+    global tensor with data parallelism as default.
     """
     for param in module.parameters():
         if not param.is_global:
@@ -380,4 +381,4 @@ def synchronize():
     if world_size == 1:
         return
 
-    flow._oneflow_internal.eager.multi_client.Sync()
+    flow.comm.barrier()
