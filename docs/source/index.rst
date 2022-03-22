@@ -17,6 +17,7 @@ Welcome to libai's documentation!
    tutorials/Features.md
    tutorials/Config_System.md
    tutorials/Distributed_Configuration.md
+   tutorials/Write_Models.md
    tutorials/Model_Zoo.md
 
 .. toctree::
