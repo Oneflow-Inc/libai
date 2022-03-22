@@ -59,7 +59,7 @@ The configuration for static `nn.Graph` mode. You can learn more information abo
 
 LiBai has already defined a `GraphBase` class for almost all models use. You can simply turn on this option converting eager mode to graph mode. 
 
-The graph config can be found in [graph.py](../../../configs/common/models/graph.py), and two useful options are shown as follows:
+The graph config can be found in [graph.py](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/models/graph.py), and two useful options are shown as follows:
 
 ```python
 # Turn on graph mode, if set to `False`, will use eager mode.
@@ -199,6 +199,21 @@ train = dict(
     seed=1234,
 )
 ```
+**Note:** ``warmup_ratio`` is the ratio of warmup iterations to the total training iterations, and the real ``warmup iterations`` will be calculated by ``wramup_ratio * train_iter`` automatically.
+
+**Example:** If you need to train 300 epochs with 5 warmup epochs, you can update the config as follows:
+```python
+# config.py
+train.train_epoch = 300
+train.warmup_ratio = 5 / 300
+```
+If you need to train 1000 iters with 200 warmup iters, you can set the training config like this:
+```python
+# config.py
+train.train_iter = 1000
+train.warmup_ratio = 200 / 1000
+```
+
 
 ### optim
 
