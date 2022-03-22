@@ -1,8 +1,6 @@
 # Build New Project on LiBai
 
-Here we provide the basic guide for users to build new projects based on LiBai, and introduce how to use LiBai to achieve the least code work.
-
-The advantages of using LiBai to start a new project(such as paper reproduction and finetune task) are as follows:
+Here we provide the basic guide for users to build new projects based on LiBai. The advantages of using LiBai to start a new project(such as paper reproduction and finetune task) are as follows:
 
 - Avoid redundant work, developers can directly inherit many built-in modules from LiBai.
 - Easily reproduce the experiments already run, because LiBai will save the configuration file automatically.
@@ -10,9 +8,9 @@ The advantages of using LiBai to start a new project(such as paper reproduction 
 - Set a few config params to enjoy distributed training techniques.
 
 ## Introduce
-Let's take the [Bert_Finetune](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP) task as an example to introduce LiBai.
+Let's take the [Bert Finetune](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP) task as an example to introduce LiBai.
 
-The complete file structure of a project:
+The complete file structure of the project:
 
 ```
 projects/my_project
@@ -28,7 +26,7 @@ projects/my_project
 ├── README.md
 ```
 
-Main steps for starting a new LiBai project:
+Starting a new project based on LiBai step by step:
 
 1. Prepare a config file(such as [config.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/configs/config_qqp.py)) which contains:
     - This file should be independent of the default config in LiBai.
@@ -41,19 +39,19 @@ Main steps for starting a new LiBai project:
     - Build related models in this file, the construction method is similar to OneFlow.
     - Because Libai will set up a static diagram by default, the calculation of loss needs to be inside the model.
     - The function `forward` must return a dict.
-    - When defining a tensor in the model, you need to use `to_global`, turn tensor into a consistent pattern.
-    - When defining layers, you can import them directly from `libai.layers`, because it already have SBP defined.
+    - When defining a tensor in the model, you need to use `to_global`, turn tensor into a global pattern.
+    - When defining layers, you can import them directly from `libai.layers`, because it have already pre-defined the SBP signature.
 
 3. Prepare a dataset file(such as [dataset.py](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP/dataset)) which contains:
     - Build `Dataset` in this file, the construction method is similar to OneFlow.
     - The difference is that we need to use `DistTensorData` and `Instance`.
-    - The shape of each batch must be consistent.
+    - The shape of each batch must be global.
     - The return `key`  
-    - In `__getitem__` function, the `key` returned by the method must be consistent with the parameter name of the 'forward' function in the 'model'.
+    - In `__getitem__` function, the `key` returned by the method must be global with the parameter name of the 'forward' function in the 'model'.
 
 
 ## Main Function Entry
-[tools.train_net.py](https://github.com/Oneflow-Inc/libai/blob/main/tools/train_net.py) is the default main function entry provided in LiBai.
+[tools/train_net.py](https://github.com/Oneflow-Inc/libai/blob/main/tools/train_net.py) is the default main function entry provided in LiBai.
 
 
 ## Build Config
@@ -63,8 +61,8 @@ The following describes the complete `config.py` and how to inherit the config i
 First, config has several necessary fields:
 - `train`: It contains training related parameters and is a dict type.
 - `model`: Model used by the task, specify the generation method in the file, due to the characteristics of lazycall, the model     will be generated at runtime.
-- `optim`: Optimizer related. If not defined, the default will be used.
-- `lr_scheduler`: Related to learning rate, If not defined, the default will be used.
+- `optim`: Optimizer related. Default to AdamW.
+- `lr_scheduler`: Related to learning rate, Default to warmup cosine decay lr-scheduler.
 - `graph`: Import directly, and the model will be automatically converted to graph during operation.
 
 > All imported modules must take LiBai as the root directory, otherwise, the saved `yaml` file will not be able to save the correct path of the module, resulting in an error when reading `yaml`, so the experiment cannot be reproduced.

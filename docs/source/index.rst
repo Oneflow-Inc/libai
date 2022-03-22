@@ -12,8 +12,8 @@ Welcome to libai's documentation!
    :caption: Tutorials
 
    tutorials/Installation.md
-   tutorials/Build_New_Project_on_LiBai.md
    tutorials/Getting_Started.md
+   tutorials/Build_New_Project_on_LiBai.md
    tutorials/Train_and_Eval_Command_Line.md
    tutorials/Features.md
    tutorials/Config_System.md
