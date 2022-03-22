@@ -43,7 +43,6 @@ class Solarize(object):
         return ImageOps.solarize(x)
 
 
-
 # follow BYOL's augmentation recipe: https://arxiv.org/abs/2006.07733
 augmentation1 = [
     LazyCall(transforms.RandomResizedCrop)(size=224, scale=(.2, 1.)),
@@ -71,7 +70,6 @@ augmentation2 = [
 ]
 
 
-
 class TwoCropsTransform:
     """Take two random crops of one image"""
 
@@ -82,5 +80,4 @@ class TwoCropsTransform:
     def __call__(self, x):
         im1 = self.base_transform1(x)
         im2 = self.base_transform2(x)
-        # return [im1, im2]
         return flow.cat((im1, im2), dim=0)

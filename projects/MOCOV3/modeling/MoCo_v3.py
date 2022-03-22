@@ -109,14 +109,7 @@ class MoCo(nn.Module):
         return m
 
     def forward(self, images, labels=None, cu_iter=0, m=0.99):
-        """
-        Input:
-            x1: first views of images
-            x2: second views of images
-            m: moco momentum
-        Output:
-            loss
-        """
+
         if self.training:
             [x1, x2] = flow.chunk(images, 2, dim=1)
             # compute features
