@@ -111,6 +111,7 @@ if __name__ == "__main__":
         name=package_name,
         version=version,
         description="Toolkit for Pretraining Models with OneFlow",
+        long_description_content_type="text/markdown",
         long_description=readme,
         license=license,
         install_requires=requirements,
