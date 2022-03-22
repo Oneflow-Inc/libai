@@ -364,9 +364,9 @@ class T5ForPreTraining(flow.nn.Module):
         Returns:
             dict:
                 A dict containing :code:`loss_value` or :code:`logits`
-                depending on training or evaluation.
+                depending on training or evaluation mode.
                 :code:`{"masked_lm_loss": loss_value}` when training,
-                :code:`{"prediction_scoers": logits}` when evaluating.
+                :code:`{"prediction_scores": logits}` when evaluating.
         """
         logits = self.t5_model(
             encoder_input_ids,
