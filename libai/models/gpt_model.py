@@ -334,7 +334,7 @@ class GPTForPreTraining(nn.Module):
                 A dict containing :code:`loss_value` or :code:`logits`
                 depending on training or evaluation.
                 :code:`{"masked_lm_loss": loss_value}` when training,
-                :code:`{"prediction_scoers": logits}` when evaluating.
+                :code:`{"prediction_scores": logits}` when evaluating.
         """
         logits = self.GPT_model(input_ids)
         if labels is not None:
