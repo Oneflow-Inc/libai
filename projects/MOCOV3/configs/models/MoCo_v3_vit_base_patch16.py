@@ -1,11 +1,7 @@
-import math
-from operator import mul
-from functools import reduce
-
 from libai.config import LazyCall
 
-from projects.MOCOV3.modeling.MoCo_v3 import MoCo_ViT
-from projects.MOCOV3.configs.models.vit_moco import VisionTransformerMoCo
+from modeling.MoCo_v3 import MoCo_ViT
+from modeling.vit_moco import VisionTransformerMoCo
 
 
 base_encoder = LazyCall(VisionTransformerMoCo)(
@@ -18,6 +14,7 @@ base_encoder = LazyCall(VisionTransformerMoCo)(
                 mlp_ratio=4,
                 drop_path_rate=0.1,
                 global_pool=False,
+                stop_grad_conv1=False
             )
 
 momentum_encoder = LazyCall(VisionTransformerMoCo)(
@@ -30,7 +27,9 @@ momentum_encoder = LazyCall(VisionTransformerMoCo)(
                 mlp_ratio=4,
                 drop_path_rate=0.1,
                 global_pool=False,
+                stop_grad_conv1=False
             )
+
 
 model = LazyCall(MoCo_ViT)(
             base_encoder=base_encoder, 

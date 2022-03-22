@@ -1,5 +1,4 @@
 from omegaconf import OmegaConf
-import oneflow as flow
 
 from configs.common.data.imagenet import dataloader
 from configs.common.train import train
@@ -24,11 +23,11 @@ dataloader.train.mixup_func = None
 optim.lr = .1
 optim.weight_decay = 0
 # Refine train cfg for moco v3 model
-train["train_micro_batch_size"] = 64
-train["test_micro_batch_size"] = 64
+train["train_micro_batch_size"] = 32
+train["test_micro_batch_size"] = 32
 train["train_epoch"] = 90
 train["warmup_ratio"] = 5 / 90
-train["eval_period"] = 10
+train["eval_period"] = 1
 train["log_period"]  =1
 
 # Scheduler

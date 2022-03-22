@@ -1,5 +1,5 @@
 from libai.config import LazyCall
-from projects.MOCOV3.modeling.vit import VisionTransformer
+from modeling.vit import VisionTransformer
 
 model = LazyCall(VisionTransformer)(
         img_size=224,

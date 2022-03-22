@@ -13,16 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
+
 import sys
 import logging
+
 sys.path.append(".")
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import default_setup
 from libai.utils.checkpoint import Checkpointer
-from projects.MOCOV3.trainer.MoCo_v3_trainer import MoCoPretrainingTrainer
-from projects.MOCOV3.trainer.vit_finetuning_trainer import VitFinetuningTrainer
+from trainer.MoCo_v3_trainer import MoCoPretrainingTrainer
+from trainer.vit_finetuning_trainer import VitFinetuningTrainer
 
 
 logger = logging.getLogger(__name__)

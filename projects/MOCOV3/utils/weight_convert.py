@@ -73,7 +73,7 @@ def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth", strict=Fal
     return model
 
 
-def load_torch_checkpoint_linear(model, path="./mae_finetuned_vit_base.pth", strict=False, linear_keyword="head"):
+def load_torch_checkpoint_linear(model, path="./mae_finetuned_vit_base.pth", strict=False):
     """Load checkpoint from the given torch weights.
     Torch weight from: xxx
     """

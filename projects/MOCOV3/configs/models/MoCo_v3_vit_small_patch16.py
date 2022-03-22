@@ -1,7 +1,7 @@
 from libai.config import LazyCall
 
-from projects.MOCOV3.modeling.MoCo_v3 import MoCo_ViT
-from projects.MOCOV3.configs.models.vit_moco import VisionTransformerMoCo
+from modeling.MoCo_v3 import MoCo_ViT
+from modeling.vit_moco import VisionTransformerMoCo
 
 
 base_encoder = LazyCall(VisionTransformerMoCo)(

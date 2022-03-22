@@ -1,12 +1,35 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# --------------------------------------------------------
+# ViT Model
+# References:
+# mae: https://github.com/facebookresearch/mae/blob/main/models_vit.py
+# --------------------------------------------------------
+
+
 import oneflow as flow
 import oneflow.nn as nn
-
 from flowvision.layers.weight_init import trunc_normal_
 
 import libai.utils.distributed as dist
 from libai.config.config import configurable
 from libai.layers import LayerNorm, Linear, PatchEmbedding
 from .transformer_layer import TransformerLayer
+
 
 class VisionTransformer(nn.Module):
     """Vision Transformer
