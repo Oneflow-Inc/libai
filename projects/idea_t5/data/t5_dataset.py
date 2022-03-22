@@ -205,7 +205,7 @@ def build_training_sample(
         encoder_attn_mask=DistTensorData(enc_mask),
         decoder_attn_mask=DistTensorData(dec_mask),
         encoder_decoder_attn_mask=DistTensorData(enc_dec_mask),
-        labels=DistTensorData(labels, placement_idx=-1),
+        lm_labels=DistTensorData(labels, placement_idx=-1),
         loss_mask=DistTensorData(loss_mask, placement_idx=-1),
     )
     return sample
