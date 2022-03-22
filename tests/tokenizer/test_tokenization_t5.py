@@ -20,6 +20,7 @@ import tempfile
 import unittest
 
 from libai.tokenizer.tokenization_t5 import GoogleT5Tokenizer
+from tests.fixtures.utils import get_fixtures
 from tests.tokenizer.test_tokenization_common import TokenizerTesterMixin
 
 SPIECE_UNDERLINE = "▁"
@@ -37,6 +38,7 @@ class GoogleT5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         super().setUp()
 
         # We have a SentencePiece fixture for testing
+        get_fixtures(SAMPLE_VOCAB)
         tokenizer = GoogleT5Tokenizer(SAMPLE_VOCAB)
         tokenizer.save_pretrained(self.tmpdirname)
 

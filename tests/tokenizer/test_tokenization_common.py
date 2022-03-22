@@ -23,6 +23,7 @@ import tempfile
 from typing import Tuple
 
 from libai.tokenizer import PreTrainedTokenizer
+from tests.fixtures.utils import get_fixtures
 
 
 def get_tests_dir(append_path=None):
@@ -50,6 +51,7 @@ class TokenizerTesterMixin:
 
     def setUp(self):
         self.tokenizers_list = []
+        get_fixtures("sample_text.txt")
         with open(f"{get_tests_dir()}/../fixtures/sample_text.txt", encoding="utf-8") as f_data:
             self._data = f_data.read().replace("\n\n", "\n").strip()
 
