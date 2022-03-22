@@ -197,27 +197,27 @@ train.update(
 After building the `config.py`, if we want to get the corresponding fields in the project, we just need to access like `cfg.my_cfg.***`
 
 ## Start Training
-After the above modules are built, we can start training.
+The `train.sh` file contains some parameters, such as `GPUS`, `NODE`, etc.
 
 ```bash
-bash projects/my_projects/train.sh projects/my_projects/config.py 1
+#!/usr/bin/env bash
+FILE=$1
+CONFIG=$2
+GPUS=$3
+NODE=${NODE:-1}
+NODE_RANK=${NODE_RANK:-0}
+ADDR=${ADDR:-127.0.0.1}
+PORT=${PORT:-12345}
+
+python3 -m oneflow.distributed.launch \
+--nproc_per_node $GPUS --nnodes $NODE --node_rank $NODE_RANK --master_addr $ADDR --master_port $PORT \
+$FILE --config-file $CONFIG ${@:4}
 ```
+
+After the above modules are built, we can start training with single gpu.
 
 > Config can support both `py` files and generated `yaml` files.
 
 ```bash
-CONFIG=projects/your_task/config.py  # output/your_task/config.yaml
-GPUS=1
-NODE=1
-NODE_RANK=0
-PORT=2345
-
-python3 -m oneflow.distributed.launch \
-    --nproc_per_node $GPUS \
-    --nnodes $NODE \
-    --node_rank $NODE_RANK \
-    --master_addr $PORT \
-    projects/your_task/finetune.py \
-    --config-file $CONFIG \
-    --num-gpus $GPUS
+bash projects/my_projects/train.sh projects/my_projects/config.py 1
 ```
