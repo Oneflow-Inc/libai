@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2019 HuggingFace Inc.
+# Copyright 2021 The OneFlow Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 
 import inspect
 import os
@@ -72,7 +73,6 @@ class TokenizerTesterMixin:
         toks = list(filter(lambda t: [t[0]] == tokenizer.encode(t[1]), toks))
         if max_length is not None and len(toks) > max_length:
             toks = toks[:max_length]
-        # toks_str = [t[1] for t in toks]
         toks_ids = [t[0] for t in toks]
 
         # Ensure consistency
