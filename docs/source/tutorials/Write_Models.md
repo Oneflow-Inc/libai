@@ -49,7 +49,7 @@ With ``LazyConfig System``, you can simply import the model in your config file 
 ```python
 # config.py
 from libai.config import LazyCall
-from toy_model.py import ToyModel
+from toy_model import ToyModel
 
 model = LazyCall(ToyModel)(
     num_classes=1000
