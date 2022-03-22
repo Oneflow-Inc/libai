@@ -27,6 +27,7 @@ from io import open
 from typing import Dict, List, Optional, Union
 
 from libai.utils.file_utils import cached_path
+from libai.utils.file_io import PathManager
 
 logger = logging.getLogger(__name__)
 
@@ -416,10 +417,10 @@ class PreTrainedTokenizer(object):
         This method make sure the full tokenizer can then be re-loaded using the
         :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
         """
-        if not os.path.isdir(save_directory):
+        if not PathManager.isdir(save_directory):
             logger.error("Saving directory ({}) should be a directory".format(save_directory))
             return
-        os.makedirs(save_directory, exist_ok=True)
+        PathManager.mkdirs(save_directory)
 
         special_tokens_map_file = os.path.join(save_directory, SPECIAL_TOKENS_MAP_FILE)
         added_tokens_file = os.path.join(save_directory, ADDED_TOKENS_FILE)
