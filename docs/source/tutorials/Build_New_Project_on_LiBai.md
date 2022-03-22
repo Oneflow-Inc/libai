@@ -4,7 +4,7 @@ Here we provide the basic guide for users to build new projects based on LiBai, 
 
 The advantages of using LiBai to start a new project(such as paper reproduction and finetune task) are as follows:
 
-- Avoid redundant work, developers can directly inherit many bulit-in modules from LiBai.
+- Avoid redundant work, developers can directly inherit many built-in modules from LiBai.
 - Easily reproduce the experiments already run, because LiBai will save the configuration file automatically.
 - Automatically output the useful information during training time, such as remaining training time, current iter, throughput, loss information and current learning rate, etc.
 - Set a few config params to enjoy distributed training techniques.
@@ -69,23 +69,12 @@ First, config has several necessary fields:
 
 > All imported modules must take LiBai as the root directory, otherwise, the saved `yaml` file will not be able to save the correct path of the module, resulting in an error when reading `yaml`, so the experiment cannot be reproduced.
 
-A complete `config.py` example:
-
 ```python
-from omegaconf import OmegaConf
+# my_evaluator.py
+import numpy as np
 from scipy.stats import spearmanr
-from configs.common.data.bert_dataset import tokenization
-from configs.common.models.bert import cfg as my_cfg
-from configs.common.models.graph import graph
-from configs.common.optim import optim
-from configs.common.train import train
-from libai.config import LazyCall
+from libai.utils import distributed as dist
 from libai.evaluation import DatasetEvaluator
-from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
-from libai.tokenizer import BertTokenizer
-from libai.optim import get_default_optimizer_params, PolynomialLR
-from projects.MyProjects.dataset.dataset import TrainDataset, TestDataset
-from projects.MyProjects.modeling import MyModel
 
 
 def spearman_target(pred, labels):
@@ -117,6 +106,25 @@ class MyEvaluator(DatasetEvaluator):
             label_array = np.append(label_array, dist.tton(prediction["labels"]))
         self._results = spearman_target(pred_array, label_array)
         return {"spearman": self._results}
+```
+
+A complete `config.py` example:
+
+```python
+from my_evaluator import MyEvaluator, spearman_target
+from omegaconf import OmegaConf
+from configs.common.data.bert_dataset import tokenization
+from configs.common.models.bert import cfg as my_cfg
+from configs.common.models.graph import graph
+from configs.common.optim import optim
+from configs.common.train import train
+from libai.config import LazyCall
+from libai.utils import distributed as dist
+from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
+from libai.tokenizer import BertTokenizer
+from libai.optim import get_default_optimizer_params, PolynomialLR
+from projects.MyProjects.dataset.dataset import TrainDataset, TestDataset
+from projects.MyProjects.modeling import MyModel
 
 
 tokenization.tokenizer = LazyCall(BertTokenizer)(
