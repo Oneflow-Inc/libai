@@ -99,9 +99,6 @@ def get_libai_configs() -> List[str]:
 if __name__ == "__main__":
     print(f"Building wheel {package_name}-{version}")
 
-    with open("README.md", "r", encoding="utf-8") as f:
-        readme = f.read()
-
     with open("LICENSE", "r", encoding="utf-8") as f:
         license = f.read()
 
@@ -111,10 +108,33 @@ if __name__ == "__main__":
         name=package_name,
         version=version,
         description="Toolkit for Pretraining Models with OneFlow",
-        long_description_content_type="text/markdown",
-        long_description=readme,
         license=license,
-        install_requires=requirements,
+        install_requires=[
+            "boto3",
+            "botocore",
+            "cloudpickle",
+            "flowvision==0.1.0",
+            "wget",
+            "hydra-core",
+            "nltk",
+            "numpy",
+            "omegaconf",
+            "Pygments",
+            "PyYAML",
+            "jieba",
+            "regex",
+            "requests",
+            "scipy",
+            "sentencepiece>=0.1",
+            "tabulate",
+            "termcolor",
+            "tqdm",
+            "pybind11",
+            "portalocker",
+            "flake8==3.8.1 ",
+            "isort==5.10.1",
+            "black==21.4b ",
+        ],
         packages=find_packages(),
         package_data={"libai.config": get_libai_configs()},
         ext_modules=extensions,
