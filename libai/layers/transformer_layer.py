@@ -173,7 +173,7 @@ class TransformerLayer(nn.Module):
 
         if use_cache:
             attention_output, presents = attention_output
-        hidden_states = hidden_states + attention_output
+        hidden_states = layernorm_output + attention_output
 
         layernorm_output = self.post_attention_layernorm(hidden_states)
 
@@ -197,7 +197,7 @@ class TransformerLayer(nn.Module):
 
         mlp_output = self.mlp(layernorm_output)
         mlp_output = self.drop_path(mlp_output)
-        output = hidden_states + mlp_output
+        output = layernorm_output + mlp_output
 
         if use_cache:
             output = (output, presents)
