@@ -8,12 +8,12 @@ To date, LiBai implements the following models:
 
 
 ## Parallelism Mode in LiBai
-In LiBai, a collection of parallel training strategies is provided:
+A collection of parallel training strategies is supported in LiBai:
 - **Data Parallel Training**
 - **Tensor Parallel Training**
 - **Pipeline Parallel Training**
 
-You can read oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) to understand the basic conception about parallelization techniques.
+You can refer to oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) for a better understanding of the basic conception of parallelization techniques.
 
 
 ## Supported Model in LiBai

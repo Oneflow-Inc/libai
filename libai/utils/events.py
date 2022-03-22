@@ -312,7 +312,7 @@ class EventStorage:
         """
         Returns:
             dict[str -> (float, int)]: mapping from the name of each scalar to the most
-                recent value and the iteration number its added.
+            recent value and the iteration number its added.
         """
         return self._latest_scalars
 
@@ -336,7 +336,7 @@ class EventStorage:
         """
         Returns:
             dict[name -> bool]: the user-provided hint on whether the scalar
-                is noisy and needs smoothing.
+            is noisy and needs smoothing.
         """
         return self._smoothing_hints
 
@@ -344,6 +344,7 @@ class EventStorage:
         """
         User should either: (1) Call this function to increment storage.iter when needed. Or
         (2) Set `storage.iter` to the correct iteration number before each iteration.
+
         The storage will then be able to associate the new data with an iteration number.
         """
         self._iter += 1
