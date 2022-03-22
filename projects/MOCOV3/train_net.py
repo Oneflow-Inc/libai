@@ -21,10 +21,9 @@ sys.path.append(".")
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import default_setup
+from libai.engine.default import DefaultTrainer as VitFinetuneTriainer
 from libai.utils.checkpoint import Checkpointer
 from trainer.MoCo_v3_trainer import MoCoPretrainingTrainer
-from trainer.vit_finetuning_trainer import VitFinetuningTrainer
-
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ def main(args):
     if try_get_key(cfg, "finetune") is None:
         DefaultTrainer = MoCoPretrainingTrainer
     else:
-        DefaultTrainer = VitFinetuningTrainer
+        DefaultTrainer = VitFinetuneTriainer
 
     if args.eval_only:
         tokenizer = None
