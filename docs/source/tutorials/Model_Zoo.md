@@ -13,7 +13,7 @@ A collection of parallel training strategies is supported in LiBai:
 - **Tensor Parallel Training**
 - **Pipeline Parallel Training**
 
-You can refer to oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) for better understanding the basic conception about parallelization techniques.
+You can refer to oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) for a better understanding of the basic conception of parallelization techniques.
 
 
 ## Supported Model in LiBai
