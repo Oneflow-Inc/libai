@@ -53,68 +53,8 @@ Main steps for starting a new LiBai project:
 
 
 ## Main Function Entry
-[tools.train_net.py](https://github.com/Oneflow-Inc/libai/blob/main/tools/train_net.py) is the default main function entry provided in LiBai, so we only need to rewrite some functions based on this file.
+[tools.train_net.py](https://github.com/Oneflow-Inc/libai/blob/main/tools/train_net.py) is the default main function entry provided in LiBai.
 
-Here is an example:
-
-```python
-import numpy as np
-from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.trainer import DefaultTrainer, default_setup
-from libai.utils import distributed as dist
-from libai.utils.checkpoint import Checkpointer
-
-
-def main(args):
-    cfg = LazyConfig.load(args.config_file)
-    cfg = LazyConfig.apply_overrides(cfg, args.opts)
-    default_setup(cfg, args)
-    trainer = DefaultTrainer(cfg)
-    return trainer.train()
-
-
-if __name__ == "__main__":
-    args = default_argument_parser().parse_args()
-    main(args)
-```
-
-## Build Model
-Preparing a model file is simple, a `model.py` example:
-
-```python
-from oneflow import nn
-
-class MyModel(nn.Module):
-    def __init__(self, cfg):
-        ...
-
-    def forward(self, input_ids, attention_mask):
-        ...
-        return {'loss': loss}
-```
-
-## Build Datasets
-Preparing a dataset file is simple, a `datasets.py` example:
-
-```python
-class TrainDataset(Dataset):
-    def __init__(self, data):
-        self.data = data
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        ...
-        return Instance(
-        input_ids = DistTensorData(
-          flow.tensor(data["input_ids"], dtype=flow.long)
-          ),
-        attention_mask = DistTensorData(
-          flow.tensor(data["attention_mask"], dtype=flow.long)
-          ),
-        )
-```
 
 ## Build Config
 The `config.py` in LiBai is special, which takes the form of lazyconfig and will be saved as `.yaml` at runtime.
