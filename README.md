@@ -89,7 +89,7 @@ See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) f
 - Support 3D parallel [BERT](https://arxiv.org/abs/1810.04805) model
 - Support 3D parallel [GPT-2](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf) model
 - Support 3D parallel [T5](https://arxiv.org/abs/1910.10683) model
-- Support 3D parallel [Vision Transformer](https://arxiv.org/abs/2010.11929)
+- Support 3D parallel [Vision Transformer](https://arxiv.org/abs/2010.11929) model
 - Support Data parallel [Swin Transformer](https://arxiv.org/abs/2103.14030) model
 - Support finetune task in [projects](/projects/)
 - Support text classification task in [projects](/projects/)
