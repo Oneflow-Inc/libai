@@ -65,9 +65,9 @@ LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支�
 
 ## 更新日志
 
-最新的**Beta 0.1.0**版本已经在 2022.03.22 发布, 目前主要支持以下特性及模型:
+最新的 **Beta 0.1.0** 版本已经在 2022.03.22 发布, 目前 **0.1.0** 版本主要支持以下特性及模型:
 
-**相关特性**
+**相关特性:**
 - 数据并行 (Data Parallelism)
 - 1维张量并行 (1D Tensor Parallelism)
 - 流水并行 (Pipeline Parallelism)
@@ -82,12 +82,12 @@ LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支�
 - 易于使用的 `Trainer` 和 `Evaluator`
 - 同时支持图像和文本的数据预处理
 
-**支持的模型**
-- 3D并行的`BERT`模型
-- 3D并行的`GPT-2`模型
-- 3D并行的`T5`模型
-- 3D并行的`ViT`模型
-- 数据并行的`Swin-Transformer`模型
+**支持的模型:**
+- 支持3D并行的[BERT](https://arxiv.org/abs/1810.04805)模型
+- 支持3D并行的[GPT-2](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)模型
+- 支持3D并行的[T5](https://arxiv.org/abs/1910.10683)模型
+- 支持3D并行的[Vision Transformer](https://arxiv.org/abs/2010.11929)模型
+- 支持数据并行的[Swin Transformer](https://arxiv.org/abs/2103.14030)模型
 - 在`projects/`中支持相关的finetune任务
 - 在`projects/`中支持文本分类任务
 
