@@ -27,19 +27,33 @@ optim.lr = 5e-4
 optim.eps = 1e-8
 optim.weight_decay = 0.05
 optim.params.clip_grad_max_norm = 5.0
+optim.params.clip_grad_norm_type = 2.0
 
 # Refine train cfg for swin model
-train.train_micro_batch_size = 32
-train.test_micro_batch_size = 32
+train.train_micro_batch_size = 128
+train.test_micro_batch_size = 128
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300
 train.evaluation.eval_period = 200
-train.log_period = 1
+train.log_period = 20
 
 # Scheduler
 train.scheduler.warmup_factor = 5e-7
 train.scheduler.alpha = 0.0
 train.scheduler.warmup_method = "linear"
+
+# different parallel strategy settings
+
+# data parallel
+# train.dist.data_parallel_size = 1
+# train.dist.tensor_parallel_size = 1
+# train.dist.pipeline_parallel_size = 1
+
+# pipeline + data parallel
+train.dist.data_parallel_size=2
+train.dist.tensor_parallel_size=4
+train.dist.pipeline_parallel_size=1
+# train.dist.pipeline_num_layers = sum(model.depths)
 
 # Set fp16 ON
 train.amp.enabled = False
