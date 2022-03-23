@@ -11,6 +11,8 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
+dataloader.train.dataset[0].root = "/dataset/extract"
+dataloader.test[0].dataset.root = "/dataset/extract"
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
@@ -43,6 +45,11 @@ train.log_period = 1
 train.scheduler.warmup_factor = 0.001
 train.scheduler.alpha = 0.01
 train.scheduler.warmup_method = "linear"
+
+# Distributed cfg
+train.dist.data_parallel_size = 4
+train.dist.tensor_parallel_size = 2
+train.dist.pipeline_parallel_size = 1
 
 # Set fp16 ON
 train.amp.enabled = True

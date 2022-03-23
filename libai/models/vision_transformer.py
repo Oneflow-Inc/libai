@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from attr import has
 import oneflow as flow
 import oneflow.nn as nn
 from flowvision.layers.weight_init import trunc_normal_
@@ -44,6 +45,7 @@ class VisionTransformer(nn.Module):
         attn_drop_rate (float): attention dropout rate
         drop_path_rate (float): stochastic depth rate
         num_classes (int): number of classes for classification head
+        global_pool (str): type of global pooling for final sequence (default: 'cls_token')
         loss_func (callable, optional): loss function for computing the total loss
                                         between logits and labels
     """
@@ -61,10 +63,13 @@ class VisionTransformer(nn.Module):
         drop_rate=0.0,
         attn_drop_rate=0.0,
         drop_path_rate=0.0,
+        global_pool="token",
         num_classes=1000,
         loss_func=None,
     ):
         super().__init__()
+        assert global_pool in ('', 'avg_pool', 'cls_token')
+        self.global_pool = global_pool
         self.num_classes = num_classes
         self.patch_embed = PatchEmbedding(
             img_size=img_size,
@@ -74,24 +79,36 @@ class VisionTransformer(nn.Module):
         )
         ffn_size = int(embed_dim * mlp_ratio)
         num_patches = self.patch_embed.num_patches
-        self.cls_token = nn.Parameter(
-            flow.zeros(
-                1,
-                1,
-                embed_dim,
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=dist.get_layer_placement(0),
+        
+        if self.global_pool == "cls_token":
+            self.cls_token = nn.Parameter(
+                flow.zeros(
+                    1,
+                    1,
+                    embed_dim,
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=dist.get_layer_placement(0),
+                )
             )
-        )
-        self.pos_embed = nn.Parameter(
-            flow.zeros(
-                1,
-                num_patches + 1,
-                embed_dim,
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=dist.get_layer_placement(0),
+            self.pos_embed = nn.Parameter(
+                flow.zeros(
+                    1,
+                    num_patches + 1,
+                    embed_dim,
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=dist.get_layer_placement(0),
+                )
             )
-        )
+        elif self.global_pool == "avg_pool":
+            self.pos_embed = nn.Parameter(
+                flow.zeros(
+                    1,
+                    num_patches,
+                    embed_dim,
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=dist.get_layer_placement(0),
+                )
+            )   
 
         self.pos_drop = nn.Dropout(p=drop_rate)
         dpr = [
@@ -111,7 +128,11 @@ class VisionTransformer(nn.Module):
                 for i in range(depth)
             ]
         )
-        self.norm = LayerNorm(embed_dim, layer_idx=-1)
+        self.use_fc_norm = self.global_pool == 'avg_pool'
+        self.norm = LayerNorm(embed_dim, layer_idx=-1) if not self.use_fc_norm else nn.Identity()
+
+        # Classifier Head
+        self.fc_norm = LayerNorm(embed_dim, layer_idx=-1) if self.use_fc_norm else nn.Identity()
         self.head = Linear(embed_dim, num_classes, layer_idx=-1)
 
         # Loss func
@@ -119,7 +140,8 @@ class VisionTransformer(nn.Module):
 
         # weight init
         trunc_normal_(self.pos_embed, std=0.02)
-        trunc_normal_(self.cls_token, std=0.02)
+        if self.global_pool == "cls_token":
+            trunc_normal_(self.cls_token, std=0.02)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -144,6 +166,7 @@ class VisionTransformer(nn.Module):
             "drop_rate": cfg.drop_rate,
             "attn_drop_rate": cfg.attn_drop_rate,
             "drop_path_rate": cfg.drop_path_rate,
+            "global_pool": cfg.global_pool,
             "num_classes": cfg.num_classes,
         }
 
@@ -151,11 +174,12 @@ class VisionTransformer(nn.Module):
         # patch embedding
         x = self.patch_embed(x)
 
-        cls_token = self.cls_token.expand(
-            x.shape[0], -1, -1
-        )  # stole cls_tokens impl from Phil Wang, thanks
-        cls_token = cls_token.to_global(sbp=x.sbp, placement=cls_token.placement)
-        x = flow.cat((cls_token, x), dim=1)
+        if self.global_pool == "cls_token":
+            cls_token = self.cls_token.expand(
+                x.shape[0], -1, -1
+            )  # stole cls_tokens impl from Phil Wang, thanks
+            cls_token = cls_token.to_global(sbp=x.sbp, placement=cls_token.placement)
+            x = flow.cat((cls_token, x), dim=1)
 
         # position embedding
         pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
@@ -166,7 +190,14 @@ class VisionTransformer(nn.Module):
         x = self.blocks(x)
         x = self.norm(x)
 
-        return x[:, 0]
+        return x
+
+    def forward_head(self, x):
+        if self.global_pool:
+            x = x[:, 1:].mean(dim=1) if self.global_pool == "avg_pool" else x[:, 0]
+        x = self.fc_norm(x)
+        x = self.head(x)
+        return x
 
     def forward(self, images, labels=None):
         """
@@ -183,7 +214,7 @@ class VisionTransformer(nn.Module):
                 :code:`{"prediction_scores": logits}` when evaluating.
         """
         x = self.forward_features(images)
-        x = self.head(x)
+        x = self.forward_head(x)
 
         if labels is not None and self.training:
             losses = self.loss_func(x, labels)
@@ -205,8 +236,10 @@ class VisionTransformer(nn.Module):
 
         # Set pos_embed and cls_token stage id
         model.pos_embed.config.stage_id = dist_utils.get_layer_stage_id(0)
-        model.cls_token.config.stage_id = dist_utils.get_layer_stage_id(0)
+        if hasattr(model, "cls_token"):
+            model.cls_token.config.stage_id = dist_utils.get_layer_stage_id(0)
         model.pos_drop.config.stage_id = dist_utils.get_layer_stage_id(0)
         model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.fc_norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
         model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
         model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
