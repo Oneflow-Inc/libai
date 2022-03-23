@@ -72,12 +72,13 @@ class WindowAttention(nn.Module):
         self.scale = qk_scale or head_dim ** -0.5
 
         # define a parameter table of relative position bias
-        # Author zzk: we add trunc normal here！
         self.relative_position_bias_table = nn.Parameter(
-            flow.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads)
-        ).to_global(
-            placement=dist.get_layer_placement(0),
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            flow.zeros(
+                (2 * window_size[0] - 1) * (2 * window_size[1] - 1),
+                num_heads,
+                placement=dist.get_layer_placement(0),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            )
         )  # 2*Wh-1 * 2*Ww-1, nH
         trunc_normal_(self.relative_position_bias_table, std=0.02)
 
@@ -644,6 +645,19 @@ class SwinTransformer(nn.Module):
         return x
 
     def forward(self, images, labels=None):
+        """
+
+        Args:
+            images (flow.Tensor): training samples.
+            labels (flow.LongTensor, optional): training targets
+
+        Returns:
+            dict:
+                A dict containing :code:`loss_value` or :code:`logits`
+                depending on training or evaluation mode.
+                :code:`{"losses": loss_value}` when training,
+                :code:`{"prediction_scores": logits}` when evaluating.
+        """
         x = self.forward_features(images)
         x = self.head(x)
 

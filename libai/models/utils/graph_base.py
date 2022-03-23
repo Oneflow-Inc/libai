@@ -17,7 +17,6 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
-from libai.utils import distributed as dist
 
 
 class GraphBase(nn.Graph):
@@ -66,16 +65,17 @@ class GraphBase(nn.Graph):
 
             self.set_pipeline_stage_id()
 
-        # FIXME: change this option to True after OneFlow fix the bug of FuseAddOutput
-        self.config.allow_fuse_add_to_output(False)
+        self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
 
-        dist_util = dist.get_dist_util()
+        # dist_util = dist.get_dist_util()
         # Enable compute_stream for computation and communication with the same cuda stream.
         # This will reduce memory when using model parallelism.
-        if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
-            flow.boxing.nccl.enable_use_compute_stream(True)
+        # if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
+
+        # Enable compute_stream by default.
+        flow.boxing.nccl.enable_use_compute_stream(True)
 
     def build(self, **kwargs):
         if self.is_train:
