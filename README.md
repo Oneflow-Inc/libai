@@ -2,9 +2,6 @@
 
 <h2 align="center">LiBai</h2>
 <p align="center">
-    <a href="https://pypi.org/project/LiBai/">
-        <img alt="PyPI" src="https://img.shields.io/pypi/v/libai">
-    </a>
     <a href="https://libai.readthedocs.io/en/latest/index.html">
         <img alt="docs" src="https://img.shields.io/badge/docs-latest-blue">
     </a>
@@ -16,6 +13,12 @@
     </a>
     <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-pink.svg">
+    </a>
+    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+        <img alt="Python Checks" src="https://github.com/Oneflow-Inc/libai/workflows/Python checks/badge.svg">
+    </a>
+    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+        <img alt="Docs Release Status" src="https://github.com/Oneflow-Inc/libai/workflows/Document Release/badge.svg">
     </a>
 </p>
 
