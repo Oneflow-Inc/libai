@@ -239,6 +239,7 @@ class BertModel(nn.Module):
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
         apply_query_key_layer_scaling=True,
+        apply_residual_post_layernorm=False,
         amp_enabled=False,
     ):
         super().__init__()
@@ -275,6 +276,7 @@ class BertModel(nn.Module):
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
+                    apply_residual_post_layernorm=apply_residual_post_layernorm,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
