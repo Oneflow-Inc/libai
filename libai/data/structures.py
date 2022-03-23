@@ -51,7 +51,20 @@ class DistTensorData:
         else:
             self.placement = dist.get_layer_placement(self.placement_idx)
 
+        if flow.env.get_rank() == 0:
+            print(f"local shape: {self.tensor.shape}")
+
+        device_type = "cuda"
+        if not flow.cuda.is_available():
+            device_type = "cpu"
+        self.tensor = self.tensor.to_global(sbp=flow.sbp.split(0), placement=flow.env.all_device_placement(device_type))
+        self.tensor = self.tensor.to_global(sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement(device_type))
         self.tensor = self.tensor.to_global(sbp=self.sbp, placement=self.placement)
+
+        if flow.env.get_rank() == 0:
+            print(f"global shape: {self.tensor.shape}, sbp: {self.sbp}, placement: {self.placement}")
+
+        exit(0)
 
     @staticmethod
     def stack(distTensor_lists: List["DistTensorData"]) -> "DistTensorData":
