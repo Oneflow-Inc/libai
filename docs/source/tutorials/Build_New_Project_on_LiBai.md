@@ -45,7 +45,7 @@ Starting a new project based on LiBai step by step:
     - Build `Dataset` in this file, the construction method is similar to OneFlow.
     - The difference is that we need to use `DistTensorData` and `Instance`.
     - The shape of each batch must be global.
-    - In `__getitem__` function, the `key` returned by the method must be global with the parameter name of the 'forward' function in the 'model'.
+    - In `__getitem__` function, the `key` returned by the method must be consistent with the parameter name of the `forward` function in the `model`.
 
 
 ## Main Function Entry
@@ -53,150 +53,9 @@ Starting a new project based on LiBai step by step:
 
 
 ## Build Config
-The `config.py` in LiBai is special, which takes the form of lazyconfig and will be saved as `.yaml` at runtime.
-The following describes the complete `config.py` and how to inherit the config in LiBai.
-
-First, config has several necessary fields:
-- `train`: It contains training related parameters and is a dict type.
-- `model`: Model used by the task, specify the generation method in the file, due to the characteristics of lazycall, the model     will be generated at runtime.
-- `optim`: Optimizer related. Default to AdamW.
-- `lr_scheduler`: Related to learning rate. Default to warmup cosine decay lr-scheduler.
-- `graph`: Import directly, and the model will be automatically convert to nn.Graph mode for training and evaluation, please refer to [nn.Graph docs](https://oneflow.readthedocs.io/en/master/graph.html) for more details.
+The `config.py` in LiBai is special, which takes the form of lazyconfig and will be saved as `.yaml` at runtime, and config has several necessary fields, such as `train`, `model`, `optim`, `lr_scheduler`, `graph`. for more information, please refer to [Config_System.md](https://libai.readthedocs.io/en/latest/tutorials/Config_System.html).
 
 > All imported modules must take LiBai as the root directory, otherwise, the saved `yaml` file will not be able to save the correct path of the module, resulting in an error when reading `yaml`, so the experiment cannot be reproduced.
-
-```python
-# my_evaluator.py
-import numpy as np
-from scipy.stats import spearmanr
-from libai.utils import distributed as dist
-from libai.evaluation import DatasetEvaluator
-
-
-def spearman_target(pred, labels):
-    # Calculate spearman
-    return spearmanr(pred, labels).correlation
-
-
-class MyEvaluator(DatasetEvaluator):
-    def __init__(self):
-        self._predictions = []
-
-    def reset(self):
-        self._predictions = []
-
-    def process(self, inputs, outputs):
-        pred = outputs["pred"]
-        labels = outputs["labels"]
-        self._predictions.append({"pred": pred, "labels": labels})
-
-    def evaluate(self):
-        if not dist.is_main_process():
-            return {}
-        else:
-            predictions = self._predictions
-        pred_array = np.array([])
-        label_array = np.array([])
-        for prediction in predictions:
-            pred_array = np.append(pred_array, dist.tton(prediction["pred"]))
-            label_array = np.append(label_array, dist.tton(prediction["labels"]))
-        self._results = spearman_target(pred_array, label_array)
-        return {"spearman": self._results}
-```
-
-A complete `config.py` example:
-
-```python
-from my_evaluator import MyEvaluator, spearman_target
-from omegaconf import OmegaConf
-from configs.common.data.bert_dataset import tokenization
-from configs.common.models.bert import cfg as my_cfg
-from configs.common.models.graph import graph
-from configs.common.optim import optim
-from configs.common.train import train
-from libai.config import LazyCall
-from libai.utils import distributed as dist
-from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
-from libai.tokenizer import BertTokenizer
-from libai.optim import get_default_optimizer_params, PolynomialLR
-from projects.MyProjects.dataset.dataset import TrainDataset, TestDataset
-from projects.MyProjects.modeling import MyModel
-
-
-tokenization.tokenizer = LazyCall(BertTokenizer)(
-    vocab_file=".../vocab.txt",
-)
-
-dataloader = OmegaConf.create()
-dataloader.train = LazyCall(build_nlp_train_loader)(
-    dataset=[
-        LazyCall(TrainDataset)(
-            path=".../train.txt",
-            ...
-            ),
-        )
-    ],
-)
-
-dataloader.test = [
-    LazyCall(build_nlp_test_loader)(
-        dataset=LazyCall(TestDataset)(
-            path=".../test.txt",
-            ...
-            ),
-        ),
-    ),
-]
-
-my_cfg.update(
-    dict(
-        vocab_size=21128,
-        ...
-    )
-)
-
-model = LazyCall(MyModel)(cfg=my_cfg)
-
-optim = LazyCall(flow.optim.AdamW)(
-    parameters=LazyCall(get_default_optimizer_params)(
-        # parameters.model is meant to be set to the model object, before instantiating the optimizer.
-        clip_grad_max_norm=1.0,
-        ...
-    ),
-    lr=1e-4,
-    ...
-)
-
-lr_scheduler = LazyCall(flow.optim.lr_scheduler.WarmUpLR)(
-    lrsch_or_optimizer=LazyCall(PolynomialLR)(steps=1000, end_learning_rate=1.0e-5,),
-    warmup_factor=0,
-    ...
-)
-
-train.update(
-    dict(
-        output_dir=".../result",
-        train_micro_batch_size=64,
-        evaluation=dict(
-        enabled=True,
-        evaluator=LazyCall(MyEvaluator)(),
-            eval_period=5000,
-            eval_iter=1e9,
-            eval_metric="spearman",
-            eval_mode="max",
-        ),
-
-        ...
-        
-        dist=dict(
-            data_parallel_size=1,
-            tensor_parallel_size=1,
-            pipeline_parallel_size=1,
-        ),
-    )
-)
-
-```
 
 After building the `config.py`, if we want to get the corresponding fields in the project, we just need to access like `cfg.my_cfg.***`.
 
@@ -223,5 +82,5 @@ After the above modules are built, we can start training with single gpu.
 > Config can support both `py` files and generated `yaml` files.
 
 ```bash
-bash projects/my_projects/train.sh projects/my_projects/config.py 1
+bash projects/my_projects/train.sh train_net.py projects/my_projects/config.py 1
 ```
