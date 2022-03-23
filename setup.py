@@ -44,9 +44,6 @@ def write_version_file():
 if sys.version_info < (3,):
     sys.exit("Sorry, Python3 is required for LiBai.")
 
-with open(os.path.join(cwd, "requirements.txt"), "r", encoding="utf-8") as f:
-    requirements = [item.strip() for item in f.readlines()]
-
 
 def get_pybind11():
     import pybind11 as pb
@@ -134,6 +131,7 @@ if __name__ == "__main__":
             "flake8==3.8.1 ",
             "isort==5.10.1",
             "black==21.4b ",
+            "autoflake",
         ],
         packages=find_packages(),
         package_data={"libai.config": get_libai_configs()},
