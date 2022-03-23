@@ -16,6 +16,7 @@ Welcome to libai's documentation!
    tutorials/Train_and_Eval_Command_Line.md
    tutorials/Features.md
    tutorials/Config_System.md
+   tutorials/Build_New_Project_on_LiBai.md
    tutorials/Distributed_Configuration.md
    tutorials/Model_Zoo.md
 
