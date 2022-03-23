@@ -22,6 +22,6 @@
 - Support 3D parallel [T5](https://arxiv.org/abs/1910.10683) model
 - Support 3D parallel [Vision Transformer](https://arxiv.org/abs/2010.11929) model
 - Support Data parallel [Swin Transformer](https://arxiv.org/abs/2103.14030) model
-- Support finetune task in [projects](https://github.com/Oneflow-Inc/libai/tree/main/projects)
-- Support text classification task in [projects](https://github.com/Oneflow-Inc/libai/tree/main/projects)
+- Support finetune task in [QQP project](https://github.com/Oneflow-Inc/libai/tree/main/projects/QQP)
+- Support text classification task in [text classification project](https://github.com/Oneflow-Inc/libai/tree/main/projects/text_classification)
 
