@@ -20,6 +20,7 @@ cfg = dict(
     scale_mask_softmax_fusion=False,
     apply_query_key_layer_scaling=True,
     add_binary_head=True,
+    amp_enabled=False,
 )
 
 bert_model = LazyCall(BertModel)(cfg=cfg)

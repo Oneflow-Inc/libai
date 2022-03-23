@@ -11,7 +11,13 @@ Welcome to libai's documentation!
    :maxdepth: 2
    :caption: Tutorials
 
-   tutorials/Getting Started.md
+   tutorials/Installation.md
+   tutorials/Getting_Started.md
+   tutorials/Train_and_Eval_Command_Line.md
+   tutorials/Features.md
+   tutorials/Config_System.md
+   tutorials/Distributed_Configuration.md
+   tutorials/Model_Zoo.md
 
 .. toctree::
    :maxdepth: 2
@@ -19,13 +25,13 @@ Welcome to libai's documentation!
 
    libai.config
    libai.data
+   libai.engine
    libai.evaluation
    libai.layers
    libai.models
    libai.optim
    libai.scheduler
    libai.tokenizer
-   libai.trainer
    libai.utils
    
 .. toctree::

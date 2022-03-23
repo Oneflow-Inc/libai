@@ -23,20 +23,23 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class ImageNetDataset(datasets.ImageFolder):
-    """ImageNet Dataset"""
+    r"""`ImageNet <http://image-net.org/>`_ 2012 Classification Dataset in LiBai.
+
+    Args:
+
+        root (string): Root directory of the ImageNet Dataset.
+        train (bool, optional): If True, creates dataset from training set, otherwise
+            creates from test set.
+        transform (callable, optional): A function/transform that  takes in an PIL image
+            and returns a transformed version. E.g, ``transforms.RandomCrop``
+    """
 
     def __init__(
-        self,
-        root: str,
-        train: bool = True,
-        transform: Optional[Callable] = None,
-        dataset_name: str = "imagenet",
-        **kwargs
+        self, root: str, train: bool = True, transform: Optional[Callable] = None, **kwargs
     ):
         prefix = "train" if train else "val"
         root = os.path.join(root, prefix)
         super(ImageNetDataset, self).__init__(root=root, transform=transform, **kwargs)
-        self.dataset_name = dataset_name
 
     def __getitem__(self, index: int):
         sample, target = super().__getitem__(index)

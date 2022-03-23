@@ -23,6 +23,16 @@ from libai.data.structures import DistTensorData, Instance
 
 
 class GPT2Dataset(flow.utils.data.Dataset):
+    """Dataset containing sentences for GPT2 training.
+
+    Args:
+        tokenizer: Tokenizer to use.
+        data_prefix (str): Path to the training dataset.
+        indexed_dataset: Indexed dataset to use.
+        max_seq_length (int, optional): Maximum length of the sequence passing into encoder.
+            All values are padded to this length. Defaults to 512.
+    """
+
     def __init__(self, tokenizer, data_prefix, indexed_dataset, max_seq_length=512):
         self.dataset = BlockIndexedDataset(
             data_prefix, indexed_dataset, max_seq_length=max_seq_length

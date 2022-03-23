@@ -16,6 +16,7 @@
 import logging
 import math
 import os
+import time
 from collections import OrderedDict
 from typing import Callable, Optional
 
@@ -26,13 +27,13 @@ from termcolor import colored
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
-from libai.evaluation import ClsEvaluator, inference_on_dataset, print_csv_format
+from libai.engine import hooks
+from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase
+from libai.evaluation import inference_on_dataset, print_csv_format
 from libai.models import build_graph, build_model
 from libai.optim import build_optimizer
 from libai.scheduler import build_lr_scheduler
 from libai.tokenizer import build_tokenizer
-from libai.trainer import hooks
-from libai.trainer.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
@@ -111,15 +112,43 @@ def _check_batch_size(cfg):
         raise ValueError("train_micro_batch_size and global_batch_size must be set either")
 
 
+def _compile_dependencies():
+    logger = logging.getLogger(__name__)
+    # =========================
+    # Compile dataset C++ code.
+    # =========================
+    # TODO: move this to ninja
+    if dist.get_local_rank() == 0:
+        start_time = time.time()
+        logger.info("> compiling dataset index builder ...")
+        from libai.data.data_utils import compile_helper
+
+        compile_helper()
+        logger.info(
+            ">>> done with dataset index builder. Compilation time: {:.3f} "
+            "seconds".format(time.time() - start_time)
+        )
+
+    dist.synchronize()
+    if dist.get_local_rank() == 0:
+        logger.info(
+            ">>> done with compiling. "
+            "Compilation time: {:.3f} seconds".format(time.time() - start_time)
+        )
+
+
 def default_setup(cfg, args):
     """
     Perform some basic common setups at the beginning of a job, including:
+
     1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
     3. Setup the distributed environment
     4. Setup tokenizer if it's NLP related task
     5. Check batch_size
     6. Backup the config to the output directory
+    7. Compile dependencies
+
     Args:
         args (argparse.NameSpace): the command line arguments to be logged
     """
@@ -162,44 +191,57 @@ def default_setup(cfg, args):
         try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
 
+    _compile_dependencies()
+
 
 class DefaultTrainer(TrainerBase):
     """
     A trainer with default training logic. Compared to `TrainerBase`, it
     contains the following logic in addition:
+
     1. Create model, optimizer, scheduler, dataloader from the given config.
     2. Load a checkpoint or `cfg.MODEL.WEIGHTS`, if exists.
-    3. Register a few common hooks.
+    3. Register a few common hooks defined by the config.
+
     It is created to simplify the **standard model training workflow** and reduce code boilerplate
     for users who only need the standard training workflow, with standard features.
-    It means this class makes *many assumptions* about your training logic that
+
+    It means this class makes **many assumptions** about your training logic that
     may easily become invalid in a new research. In fact, any assumptions beyond those made in the
     :class:`TrainerBase` are too much for research.
+
     The code of this class has been annotated about restrictive assumptions it made.
     When they do not work for you, you're encouraged to:
+
     1. Overwrite methods of this class, OR:
     2. Use :class:`TrainerBase`, which only does minimal SGD training and
        nothing else. You can then add your own hooks if needed. OR:
-    3. Write your own training loop similar to `tools/plain_train_net.py`.
+    3. Write your own training loop similar to ``tools/train_net.py``.
+
     Also note that the behavior of this class, like other functions/classes in
     this file, is not stable, since it is meant to represent the "common default behavior".
     It is only guaranteed to work well with the standard models and training workflow in libai.
     To obtain more stable behavior, write your own training logic with other public APIs.
-    Attributes:
-        scheduler:
-        checkpointer:
-        cfg (CfgNode):
+
+
     Examples:
+
     .. code-block:: python
+
         trainer = DefaultTrainer(cfg)
         trainer.resume_or_load()  # load last checkpoint or MODEL.WEIGHTS
         trainer.train()
+
+    Attributes:
+        scheduler:
+        checkpointer (Checkpointer):
+        cfg (omegaconf.dictconfig.DictConfig):
     """
 
     def __init__(self, cfg):
         """
         Args:
-            cfg (CfgNode):
+            cfg (omegaconf.dictconfig.DictConfig):
         """
         super().__init__()
         self.cfg = cfg
@@ -223,7 +265,12 @@ class DefaultTrainer(TrainerBase):
                 # If file doesn't exist, maybe because it has just been deleted.
                 # We just set start_iter to 0.
                 self.start_iter = 0
-        cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size
+        if cfg.graph.enabled:
+            cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size
+        else:
+            cfg.dataloader.consumed_samples = (
+                self.start_iter * cfg.train.global_batch_size // cfg.train.num_accumulation_steps
+            )
 
         self.train_loader = None
         self.test_loader = []
@@ -246,22 +293,6 @@ class DefaultTrainer(TrainerBase):
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
-        # Assume no other objects need to be checkpointed.
-        # We can later make it checkpoint the stateful hooks
-        self.checkpointer = Checkpointer(
-            # Assume you want to save checkpoints together with logs/statistics
-            self.model,
-            cfg.train.output_dir,
-            optimizer=self.optimizer,
-            lr_scheduler=self.lr_scheduler,
-        )
-
-        # Loading checkpoint before dataloader construction, because
-        # dataloader needs to know the consumed iterations from
-        # the last breakpoint.
-        self.resume_or_load(cfg.train.resume)
-        cfg.train.start_iter = self.start_iter
-
         if cfg.graph.enabled:
             self.graph_train = self.build_graph(
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
@@ -273,6 +304,41 @@ class DefaultTrainer(TrainerBase):
                 self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
             )
 
+        # Assume no other objects need to be checkpointed.
+        # We can later make it checkpoint the stateful hooks
+        if cfg.graph.enabled:
+            self.checkpointer = Checkpointer(
+                # Assume you want to save checkpoints together with logs/statistics
+                self.model,
+                cfg.train.output_dir,
+                # In static graph mode, optimizer and scheduler state_dict will
+                # be saved with graph.state_dict().
+                graph=self.graph_train,
+                # We print lr by `LRScheduler` hook, so we need to save/load eager lr_scheduler,
+                # otherwise, lr will be reset to initial state when resuming training.
+                lr_scheduler=self.lr_scheduler,
+            )
+        else:
+            self.checkpointer = Checkpointer(
+                # Assume you want to save checkpoints together with logs/statistics
+                self.model,
+                cfg.train.output_dir,
+                optimizer=self.optimizer,
+                lr_scheduler=self.lr_scheduler,
+            )
+
+        # Loading checkpoint before dataloader construction, because
+        # dataloader needs to know the consumed iterations from
+        # the last breakpoint.
+        self.resume_or_load(cfg.train.resume)
+        cfg.train.start_iter = self.start_iter
+
+        # global_batch_size = micro_batch_size * num_gpus * num_accumulation_steps
+        # When using gradient accumulation in graph mode, each run_step
+        # handle `global_batch_size` samples.
+        # When using gradient accumulation in eager mode, each run_step just handle
+        # `micro_batch_size * num_gpus` samples, so we need to divide `num_accumulation_steps`
+        # to get the actual `batch_size` for computing `throughput` and `consumed_samples`
         self.global_batch_size = (
             cfg.train.global_batch_size
             if cfg.graph.enabled
@@ -289,8 +355,9 @@ class DefaultTrainer(TrainerBase):
         available states (eg. optimizer and scheduler) and update iteration counter
         from the checkpoint. ``cfg.train.load_weight`` will not be used.
         Otherwise, this is considered as an independent training. The method will load model
-        weights from the file `cfg.train.load_weight` (but will not load other states) and start
+        weights from the file ``cfg.train.load_weight`` (but will not load other states) and start
         from iteration 0.
+
         Args:
             resume (bool): whether to do resume or not
         """
@@ -309,30 +376,36 @@ class DefaultTrainer(TrainerBase):
         """
         Build a list of default hooks, including timing, evaluation,
         checkpointing, lr scheduling, precise BN, writing events.
+
         Returns:
             list[HookBase]:
         """
 
         ret = [
             hooks.IterationTimer(),
-            hooks.LRScheduler(),
+            hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
             hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
         ]
 
-        def test_and_save_results():
-            model = self.graph_eval if self.cfg.graph.enabled else self.model
-            self._last_eval_results = self.test(self.cfg, self.test_loader, model)
-            return self._last_eval_results
+        if self.cfg.train.evaluation.enabled:
+            assert self.cfg.train.evaluation.eval_iter > 0, "run_iter must be positive number"
 
-        ret.append(hooks.EvalHook(self.cfg.train.eval_period, test_and_save_results))
-        ret.append(
-            hooks.BestCheckpointer(
-                self.cfg.train.eval_period,
-                self.checkpointer,
-                val_metric=try_get_key(self.cfg, "train.eval_metric", default="Acc@1"),
-                mode=try_get_key(self.cfg, "train.eval_mode", default="max"),
+            def test_and_save_results():
+                model = self.graph_eval if self.cfg.graph.enabled else self.model
+                self._last_eval_results = self.test(self.cfg, self.test_loader, model)
+                return self._last_eval_results
+
+            ret.append(hooks.EvalHook(self.cfg.train.evaluation.eval_period, test_and_save_results))
+            ret.append(
+                hooks.BestCheckpointer(
+                    self.cfg.train.evaluation.eval_period,
+                    self.checkpointer,
+                    val_metric=try_get_key(
+                        self.cfg, "train.evaluation.eval_metric", default="Acc@1"
+                    ),
+                    mode=try_get_key(self.cfg, "train.evaluation.eval_mode", default="max"),
+                )
             )
-        )
 
         if dist.is_main_process():
             # run writers in the end, so that evaluation metrics are written
@@ -346,10 +419,14 @@ class DefaultTrainer(TrainerBase):
         a json file, and a tensorboard event file respectively.
         If you'd like a different list of writers, you can overwrite it in
         your trainer.
+
         Returns:
             list[EventWriter]: a list of :class:`EventWriter` objects.
+
         It is now implemented by:
+
         .. code-block:: python
+
             return [
                 CommonMetricPrinter(self.global_batch_size, self.max_iter),
                 JSONWriter(os.path.join(self.cfg.OUTPUT_DIR, "metrics.json")),
@@ -366,6 +443,7 @@ class DefaultTrainer(TrainerBase):
     def train(self):
         """
         Run training.
+
         Returns:
             OrderedDict of results, if evaluation is enabled. Otherwise None.
         """
@@ -402,11 +480,14 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             libai.tokenizer.PreTrainedTokenizer:
+
         It now calls :func:`libai.tokenizer.build_tokenizer`.
         """
         tokenizer = None
         if try_get_key(cfg, "tokenization") is not None:
             tokenizer = build_tokenizer(cfg.tokenization)
+            # FIXME(lxy): In case model is not defined with cfg, the `vocab_size` can be
+            # accessed by `model.vocab_size`.
             if try_get_key(cfg, "model.cfg.vocab_size", default=None) is not None:
                 # In case the model does not need vocab_size as argument
                 multiple = (
@@ -421,10 +502,18 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             flow.nn.Module:
+
         It now calls :func:`libai.models.build_model`.
         Overwrite it if you'd like a different model.
         """
         assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
+        # Set model fp16 option because of embedding layer `white_identity` manual
+        # insert for amp training if provided.
+        if try_get_key(cfg.model, "cfg.amp_enabled") is not None:
+            cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        # In case some model define without cfg keyword.
+        elif try_get_key(cfg.model, "amp_enabled") is not None:
+            cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
@@ -447,6 +536,7 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             torch.optim.Optimizer:
+
         It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
         """
@@ -469,6 +559,7 @@ class DefaultTrainer(TrainerBase):
         """
         Returns:
             iterable
+
         It now calls :func:`libai.data.build_train_valid_test_loader`.
         Overwrite it if you'd like a different data loader.
         """
@@ -503,7 +594,14 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_test_loader(cls, cfg, tokenizer=None):
-        # TODO: add doc string
+        """
+        Returns:
+            iterable
+
+        It now calls :func:`libai.data.build_image_test_loader` for CV tasks
+        or :func:`libai.data.build_nlp_test_loader` for NLP tasks.
+        Overwrite it if you'd like a different data loader.
+        """
         # If there is no test_loader, just return []
         if not try_get_key(cfg, "dataloader.test", default=False):
             return []
@@ -578,13 +676,15 @@ class DefaultTrainer(TrainerBase):
 
     @classmethod
     def build_evaluator(cls, cfg):
-        return ClsEvaluator(cfg)
+        evaluator = instantiate(cfg.train.evaluation.evaluator)
+        return evaluator
 
     @classmethod
     def test(cls, cfg, test_loaders, model, evaluator=None):
         """
         Evaluate the given model. The given model is expected to already contain
         weights to evaluate.
+
         Args:
             cfg (CfgNode):
             test_loaders: list [dataloader1, dataloader2, ...]
@@ -592,6 +692,7 @@ class DefaultTrainer(TrainerBase):
             evaluators (list[DatasetEvaluator] or None): if None, will call
                 :meth:`build_evaluator`. Otherwise, must have the same length as
                 ``cfg.DATASETS.TEST``.
+
         Returns:
             dict: a dict of result metrics
         """
@@ -606,7 +707,7 @@ class DefaultTrainer(TrainerBase):
         for idx, data_loader in enumerate(test_loaders):
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
-            dataset_name = getattr(data_loader.dataset, "dataset_name", "UndefinedDataset")
+            dataset_name = type(data_loader.dataset).__name__
             # TODO: support multi evaluator
             # if evaluators is not None:
             #     evaluator = evaluators[idx]
@@ -620,9 +721,13 @@ class DefaultTrainer(TrainerBase):
             #         )
             #         results[dataset_name] = {}
             #         continue
-
             results_i = inference_on_dataset(
-                model, data_loader, test_batch_size, cls.get_batch, evaluator
+                model,
+                data_loader,
+                test_batch_size,
+                cfg.train.evaluation.eval_iter,
+                cls.get_batch,
+                evaluator,
             )
             results[dataset_name] = results_i
             if dist.is_main_process():

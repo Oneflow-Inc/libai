@@ -85,6 +85,7 @@ class Checkpointer(object):
     def save(self, name: str, **kwargs: Dict[str, str]):
         """
         Dump model and checkpointables to a file.
+
         Args:
             name (str): name of the file.
             kwargs (dict): extra arbitrary data to save.
@@ -119,11 +120,13 @@ class Checkpointer(object):
         """
         Load from the given checkpoint. When path points to network file, this
         function has to be called on all ranks.
+
         Args:
             path (str): path or url to the checkpoint. If empty, will not load
                 anything.
             checkpointables (list): List of checkpointable names to load. If not
                 specified (None), will load all the possible checkpointables.
+
         Returns:
             dict:
                 extra data loaded from the checkpoint that has not been
@@ -214,8 +217,12 @@ class Checkpointer(object):
         data = {}
         keys = self.path_manager.ls(f)
         for key in keys:
-            data[key] = flow.load(os.path.join(f, key))
-        data["iter"] = int(f.split("_")[-1])
+            data[key] = flow.load(os.path.join(f, key), global_src_rank=0)
+        try:
+            data["iter"] = int(f.split("_")[-1])
+        except:  # noqa
+            self.logger.info(f"iter info in {f} not found, set iter to 0")
+            data["iter"] = 0
         return data
 
     def _load_model(self, checkpoint: Any):
@@ -326,6 +333,7 @@ class PeriodicCheckpointer:
     def step(self, iteration: int, **kwargs: Any):
         """
         Perform the appropriate action at the given iteration.
+
         Args:
             iteration (int): the current epoch, ranged in [0, max_iter-1].
             kwargs (Any): extra data to save, same as in
@@ -357,6 +365,7 @@ class PeriodicCheckpointer:
         """
         Same argument as :meth:`Checkpointer.save`.
         Use this method to manually save checkpoints outside the schedule.
+
         Args:
             name (str): file name.
             kwargs (Any): extra data to save, same as in

@@ -1,6 +1,6 @@
 from libai.config import LazyCall
 
-from libai.models.gpt_model import GPTModel, GPTForPreTraining
+from libai.models import GPTModel, GPTForPreTraining
 
 cfg = dict(
     num_layers=6,
@@ -19,6 +19,7 @@ cfg = dict(
     bias_dropout_fusion=False,
     scale_mask_softmax_fusion=False,
     apply_query_key_layer_scaling=False,
+    amp_enabled=False,
 )
 
 gpt_model = LazyCall(GPTModel)(cfg=cfg)

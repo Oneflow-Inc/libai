@@ -84,10 +84,14 @@ class LazyCall:
     """
     Wrap a callable so that when it's called, the call will not be executed,
     but returns a dict that describes the call.
+
     LazyCall object has to be called with only keyword arguments. Positional
     arguments are not yet supported.
+
     Examples:
-    ::
+
+    .. code-block:: python
+
         from libai.config import instantiate, LazyCall
         layer_cfg = LazyCall(nn.Conv2d)(in_channels=32, out_channels=32)
         layer_cfg.out_channels = 64   # can edit it afterwards
@@ -239,6 +243,7 @@ class LazyConfig:
     def load(filename: str, keys: Union[None, str, Tuple[str, ...]] = None):
         """
         Load a config file.
+
         Args:
             filename: absolute path or relative path w.r.t. the current working directory
             keys: keys to load and return. If not given, return all keys
@@ -296,6 +301,7 @@ class LazyConfig:
         Note that when the config dictionary contains complex objects (e.g. lambda),
         it can't be saved to yaml. In that case we will print an error and
         attempt to save to a pkl file instead.
+
         Args:
             cfg: an omegaconf config object
             filename: yaml file name to save the config file
@@ -350,11 +356,13 @@ class LazyConfig:
     def apply_overrides(cfg, overrides: List[str]):
         """
         In-place override contents of cfg.
+
         Args:
             cfg: an omegaconf config object
             overrides: list of strings in the format of "a=b" to override configs.
-                See https://hydra.cc/docs/next/advanced/override_grammar/basic/
-                for syntax.
+
+        See https://hydra.cc/docs/next/advanced/override_grammar/basic/ for syntax.
+
         Returns:
             the cfg object
         """
@@ -392,9 +400,11 @@ class LazyConfig:
         Try to convert a config object into Python-like pseudo code.
         Note that perfect conversion is not always possible. So the returned
         results are mainly meant to be human-readable, and not meant to be executed.
+
         Args:
             cfg: an omegaconf config object
             prefix: root name for the resulting code (default: "cfg.")
+
         Returns:
             str of formatted Python code
         """
