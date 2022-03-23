@@ -226,7 +226,7 @@ def _build_train_valid_test_datasets(
     indexed_dataset = get_indexed_dataset_(data_prefix, data_impl, skip_warmup)
 
     if dataset_type == DSET_TYPE_ICT:
-        title_dataset = get_indexed_dataset_(titles_data_path, data_impl, skip_warmup)
+        get_indexed_dataset_(titles_data_path, data_impl, skip_warmup)
 
     # Get start and end indices of train/valid/train into doc-idx
     # Note that doc-idx is designed to be num-docs + 1 so we can
