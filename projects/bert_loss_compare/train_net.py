@@ -23,7 +23,7 @@ from tokenizer.tokenizer import setup_tokenizer
 from utils.load_megatron_weight import load_megatron_bert
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.trainer import DefaultTrainer, default_setup, hooks
+from libai.engine import DefaultTrainer, default_setup, hooks
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.file_utils import get_data_from_cache
@@ -70,10 +70,6 @@ class Trainer(DefaultTrainer):
             with open(os.path.join(self.cfg.train.output_dir, "of_loss.txt"), "w") as f:
                 for loss, _ in all_losses:
                     f.write(str(loss) + "\n")
-
-    @classmethod
-    def test(cls, cfg, test_loaders, model, evaluator=None):
-        return {}
 
     @classmethod
     def build_train_loader(cls, cfg, tokenizer=None):

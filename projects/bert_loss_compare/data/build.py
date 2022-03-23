@@ -48,7 +48,7 @@ def build_train_valid_test_data_iterators(cfg):
     if cfg.train.start_iter > 0 and cfg.train.consumed_valid_samples == 0:
         if cfg.train.train_samples is None:
             cfg.train.consumed_valid_samples = (
-                (cfg.train.start_iter // cfg.train.eval_period)
+                (cfg.train.start_iter // cfg.train.evaluation.eval_period)
                 * cfg.train.eval_iter
                 * cfg.train.global_batch_size
             )
@@ -67,7 +67,7 @@ def build_train_valid_test_data_iterators(cfg):
         train_samples = cfg.train.train_samples
     else:
         train_samples = cfg.train.train_iter * cfg.train.global_batch_size
-    eval_iter = (cfg.train.train_iter // cfg.train.eval_period + 1) * cfg.train.eval_iter
+    eval_iter = (cfg.train.train_iter // cfg.train.evaluation.eval_period + 1) * cfg.train.eval_iter
     test_iter = cfg.train.eval_iter
     train_val_test_num_samples = [
         train_samples,
@@ -121,7 +121,7 @@ def build_train_valid_test_data_iterators(cfg):
             iter(train_dataloader) if dl_type == "single" else iter(cyclic_iter(train_dataloader))
         )
     else:
-        train_data_iterator = None
+        pass
 
     if valid_dataloader is not None:
         valid_data_iterator = (

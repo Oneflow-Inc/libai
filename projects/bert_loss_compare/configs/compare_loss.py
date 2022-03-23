@@ -27,6 +27,7 @@ train.train_iter = 1000
 train.micro_batch_size = 16
 train.log_period = 20
 train.warmup_ratio = 0.01
+train.evaluation.enabled = False
 
 
 # Set a constant lr scheduler after warmup
