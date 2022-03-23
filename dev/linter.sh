@@ -18,6 +18,9 @@ fi
 
 set -v
 
+echo "Running autoflake ..."
+autoflake --remove-unused-variables --in-place --recursive .
+
 echo "Running isort ..."
 isort . --atomic
 
