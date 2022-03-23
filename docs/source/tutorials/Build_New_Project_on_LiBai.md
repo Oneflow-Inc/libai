@@ -28,10 +28,9 @@ projects/my_project
 
 Starting a new project based on LiBai step by step:
 
-1. Prepare a config file(such as [config.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/configs/config_qqp.py)) which contains:
-    - This file should be independent of the default config in LiBai.
+1. Prepare an independent config file(such as [config.py](https://github.com/Oneflow-Inc/libai/blob/main/projects/QQP/configs/config_qqp.py)) which contains:
     - The relevant parameters of the task.
-    - Defining related Class, such as `Model`, `Optimizer`, `Scheduler`, `Dataset`.
+    - The pre-defined related Class, such as `Model`, `Optimizer`, `Scheduler`, `Dataset`.
     - You can inherit the default config in `configs/common` and rewrite it, which can greatly reduce the workload.
     - Related class defined with LazyCall which returns a dict instead of calling the object.
 
