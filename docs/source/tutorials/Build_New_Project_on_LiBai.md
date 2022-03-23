@@ -45,7 +45,6 @@ Starting a new project based on LiBai step by step:
     - Build `Dataset` in this file, the construction method is similar to OneFlow.
     - The difference is that we need to use `DistTensorData` and `Instance`.
     - The shape of each batch must be global.
-    - The return `key`  
     - In `__getitem__` function, the `key` returned by the method must be global with the parameter name of the 'forward' function in the 'model'.
 
 
@@ -61,8 +60,8 @@ First, config has several necessary fields:
 - `train`: It contains training related parameters and is a dict type.
 - `model`: Model used by the task, specify the generation method in the file, due to the characteristics of lazycall, the model     will be generated at runtime.
 - `optim`: Optimizer related. Default to AdamW.
-- `lr_scheduler`: Related to learning rate, Default to warmup cosine decay lr-scheduler.
-- `graph`: Import directly, and the model will be automatically converted to graph during operation.
+- `lr_scheduler`: Related to learning rate. Default to warmup cosine decay lr-scheduler.
+- `graph`: Import directly, and the model will be automatically convert to nn.Graph mode for training and evaluation, please refer to [nn.Graph docs](https://oneflow.readthedocs.io/en/master/graph.html) for more details.
 
 > All imported modules must take LiBai as the root directory, otherwise, the saved `yaml` file will not be able to save the correct path of the module, resulting in an error when reading `yaml`, so the experiment cannot be reproduced.
 
@@ -199,7 +198,7 @@ train.update(
 
 ```
 
-After building the `config.py`, if we want to get the corresponding fields in the project, we just need to access like `cfg.my_cfg.***`
+After building the `config.py`, if we want to get the corresponding fields in the project, we just need to access like `cfg.my_cfg.***`.
 
 ## Start Training
 The `train.sh` file contains some parameters, such as `GPUS`, `NODE`, etc.
