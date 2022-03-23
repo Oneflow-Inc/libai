@@ -23,7 +23,7 @@ from typing import List
 
 from setuptools import Extension, find_packages, setup
 
-version = "0.1.1"
+version = "0.1.0"
 package_name = "LiBai"
 cwd = os.path.dirname(os.path.abspath(__file__))
 
@@ -131,6 +131,7 @@ if __name__ == "__main__":
             "flake8==3.8.1 ",
             "isort==5.10.1",
             "black==21.4b ",
+            "autoflake",
         ],
         packages=find_packages(),
         package_data={"libai.config": get_libai_configs()},
