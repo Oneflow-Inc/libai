@@ -58,7 +58,7 @@ See [Installation instructions](https://libai.readthedocs.io/en/latest/tutorials
 
 ## Getting Started
 
-See [Getting Started](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html) for the basic usage of LiBai.
+See [Getting Started](https://libai.readthedocs.io/en/latest/tutorials/Getting_Started.html) for the basic usage of LiBai.
 
 ## Documentation
 

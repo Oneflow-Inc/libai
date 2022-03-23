@@ -89,7 +89,8 @@ def get_default_optimizer_params(
             ``{"embedding": {"lr": 0.01, "weight_decay": 0.1}}`` will set the LR and
             weight decay values for all module parameters named `embedding`.
 
-    For common transformer models, ``weight_decay_norm,weight_decay_bias`` is usually set to 0.
+    For common transformer models, ``weight_decay_norm`` and ``weight_decay_bias``
+    are usually set to 0.
 
     Example:
     ::
