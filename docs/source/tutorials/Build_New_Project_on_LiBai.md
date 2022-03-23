@@ -82,5 +82,5 @@ After the above modules are built, we can start training with single gpu.
 > Config can support both `py` files and generated `yaml` files.
 
 ```bash
-bash projects/my_projects/train.sh train_net.py projects/my_projects/config.py 1
+bash projects/my_projects/train.sh tools/train_net.py projects/my_projects/config.py 1
 ```
