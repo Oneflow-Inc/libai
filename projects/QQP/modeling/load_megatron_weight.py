@@ -18,6 +18,7 @@ import logging
 import oneflow as flow
 import torch
 
+import libai.utils.distributed as dist
 from libai.utils.checkpoint import get_missing_parameters_message, get_unexpected_parameters_message
 
 logger = logging.getLogger("libai." + __name__)
@@ -79,7 +80,12 @@ def change_megatron_key(state_dict):
 
 
 def load_tensor(tensor_lhs, tensor_rhs):
-    tensor_rhs = flow.to_global(tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp)
+    tensor_rhs = flow.to_global(
+        tensor_rhs,
+        placement=tensor_lhs.placement,
+        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+    )
+    tensor_rhs = tensor_rhs.to_global(sbp=tensor_lhs.sbp)
     tensor_lhs.copy_(tensor_rhs)
 
 
