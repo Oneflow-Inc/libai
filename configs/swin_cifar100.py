@@ -31,7 +31,8 @@ optim.params.clip_grad_max_norm = None
 optim.params.clip_grad_norm_type = None
 
 # Refine train cfg for swin model
-train.train_micro_batch_size = 16
+train.train_micro_batch_size = 4
+train.num_accumulation_steps = 4
 train.test_micro_batch_size = 16
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300
@@ -57,12 +58,12 @@ train.scheduler.warmup_method = "linear"
 
 train.dist.data_parallel_size=2
 train.dist.tensor_parallel_size=1
-train.dist.pipeline_parallel_size=4
+train.dist.pipeline_parallel_size=2
 train.dist.pipeline_num_layers = sum(model.depths)
-train.output_dir="./output_2_4"
+train.output_dir="./output"
 
 # Set fp16 ON
-train.amp.enabled = False
-graph.enabled = False
+train.amp.enabled = True
+graph.enabled = True
 
 

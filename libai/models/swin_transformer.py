@@ -201,6 +201,7 @@ class SwinTransformerBlock(nn.Module):
         self.window_size = window_size
         self.shift_size = shift_size
         self.mlp_ratio = mlp_ratio
+        self.layer_idx = layer_idx
         if min(self.input_resolution) <= self.window_size:
             # if window size is larger than input resolution, we don't partition windows
             self.shift_size = 0
@@ -327,6 +328,7 @@ class PatchMerging(nn.Module):
         self.dim = dim
         self.reduction = Linear(4 * dim, 2 * dim, bias=False, layer_idx=layer_idx)
         self.norm = norm_layer(4 * dim, layer_idx=layer_idx)
+        self.layer_idx = layer_idx
 
     def forward(self, x):
         """
@@ -607,9 +609,9 @@ class SwinTransformer(nn.Module):
             layer_id_offset += depths[i_layer]
             self.layers.append(layer)
 
-        self.norm = norm_layer(self.num_features, layer_idx=layer_id_offset-1)
+        self.norm = norm_layer(self.num_features, layer_idx=-1)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.head = Linear(self.num_features, num_classes, layer_idx=layer_id_offset-1) if num_classes > 0 else nn.Identity()
+        self.head = Linear(self.num_features, num_classes, layer_idx=-1) if num_classes > 0 else nn.Identity()
 
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
@@ -682,3 +684,23 @@ class SwinTransformer(nn.Module):
             return {"losses": losses}
         else:
             return {"prediction_scores": x}
+
+    @staticmethod
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+
+        model.patch_embed.config.stage_id = dist_utils.get_layer_stage_id(0)
+        model.pos_drop.config.stage_id = dist_utils.get_layer_stage_id(0)
+
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, SwinTransformerBlock):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+            elif isinstance(module_block.origin, PatchMerging):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+
+        model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.avgpool.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
