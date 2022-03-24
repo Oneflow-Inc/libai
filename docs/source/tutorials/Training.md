@@ -1,10 +1,10 @@
 # Training
 
-To run training, we highly recommend users to use standardized “trainer” in LiBai
+To run training, we highly recommend users to use the standardized `trainer` in LiBai
 
 ## Trainer Abstraction
 
-We provide a standardized “trainer” abstraction with a hook system that helps simplify the standard training behavior.
+We provide a standardized `trainer` abstraction with a hook system that helps to simplify the standard training behavior.
 
 DefaultTrainer is initialized from lazy config system, used by `tools/train_net.py` and many scripts. It includes many standard default behaviors that one might want to opt in, including default configurations for optimizer, learning rate schedule, logging, evaluation, checkpointing etc.
 
@@ -13,10 +13,11 @@ For simple customizations (e.g. change optimizer, evaluator, LR scheduler, data 
 
 ## Customize a DefaultTrainer
 
-For complicated customizations, we recommend users to overwrite function in [`DefaultTrainer`](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/default.py).
+For complicated customizations, we recommend users to overwrite function in [DefaultTrainer](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/default.py).
 
-In DefaultTrainer, training consists of `run_step in trainer` and `hooks`, you can modify `trainer` and `hooks` according to your own needs
+In DefaultTrainer, training consists of `run_step in trainer` and `hooks`, you can modify `trainer` and `hooks` according to your own needs. 
 
+The following code indicates how `run_step` and `hooks` work during training
 ```python
 class DefaultTrainer(TrainerBase):
     def train(self, start_iter: int, max_iter: int):
@@ -92,7 +93,7 @@ Using a trainer+hook system means there will always be some non-standard behavio
 
 For extra tasks during training, check the hook system to see if it’s supported.
 
-[`HookBase`](https://github.com/Oneflow-Inc/libai/blob/ffe5ca0e46544d1cbb4fbe88d9185f96c0dc2c95/libai/engine/trainer.py#L28) in `libai/engine/trainer.py` provides a standard behavior for users to use hook. You can overwirte its function according to your own needs. Please refer to [libai/engine/hooks.py](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/hooks.py)
+[HookBase](https://github.com/Oneflow-Inc/libai/blob/ffe5ca0e46544d1cbb4fbe88d9185f96c0dc2c95/libai/engine/trainer.py#L28) in `libai/engine/trainer.py` provides a standard behavior for users to use hook. You can overwirte its function according to your own needs. Please refer to [libai/engine/hooks.py](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/hooks.py)
 ```python 
 class HookBase:
     def before_train(self):
@@ -135,7 +136,7 @@ Then you can import your `hook` in `tools/my_train_net.py`
 
 ### Modify train_step in Trainer
 
-In LiBai, `EagerTrainer` and `GraphTrainer` are supported in `libai/engine/trainer.py`. `EagerTrainer` supports `train_step` for `eager` mode while `GraphTrainer` supports `train_step` for `graph` mode, the mode is depended on `graph.enabled` in your `config.py`.
+LiBai provides `EagerTrainer` and `GraphTrainer` in `libai/engine/trainer.py` by default. `EagerTrainer` is used in `eager` mode while `GraphTrainer` is used in `graph` mode, and the mode is determined by the `graph.enabled` parameter in your `config.py`.
 
 > more details about `eager` and `graph` mode, please refer to [oneflow doc](https://docs.oneflow.org/en/master/basics/08_nn_graph.html)
 
