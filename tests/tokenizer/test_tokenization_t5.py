@@ -42,6 +42,25 @@ class GoogleT5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         tokenizer = GoogleT5Tokenizer(SAMPLE_VOCAB)
         tokenizer.save_pretrained(self.tmpdirname)
 
+    def test_convert_token_and_id(self):
+        """Test ``_convert_token_to_id`` and ``_convert_id_to_token``."""
+        token = "<s>"
+        token_id = 1
+
+        self.assertEqual(self.get_tokenizer()._convert_token_to_id(token), token_id)
+        self.assertEqual(self.get_tokenizer()._convert_id_to_token(token_id), token)
+
+    def test_get_vocab(self):
+        vocab_keys = list(self.get_tokenizer().get_vocab().keys())
+
+        self.assertEqual(vocab_keys[0], "<unk>")
+        self.assertEqual(vocab_keys[1], "<s>")
+        self.assertEqual(vocab_keys[-1], "<pad>")
+        self.assertEqual(len(vocab_keys), 1_101)
+
+    def test_vocab_size(self):
+        self.assertEqual(self.get_tokenizer().vocab_size, 1_100)
+
     def test_full_tokenizer(self):
         tokenizer = GoogleT5Tokenizer(SAMPLE_VOCAB)
 
