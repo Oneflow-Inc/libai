@@ -6,7 +6,7 @@ To run training, we highly recommend users to use standardized “trainer” in 
 
 We provide a standardized “trainer” abstraction with a hook system that helps simplify the standard training behavior.
 
-DefaultTrainer is initialized from lazy config system, used by tools/train_net.py and many scripts. It includes many standard default behaviors that one might want to opt in, including default configurations for optimizer, learning rate schedule, logging, evaluation, checkpointing etc.
+DefaultTrainer is initialized from lazy config system, used by `tools/train_net.py` and many scripts. It includes many standard default behaviors that one might want to opt in, including default configurations for optimizer, learning rate schedule, logging, evaluation, checkpointing etc.
 
 
 For simple customizations (e.g. change optimizer, evaluator, LR scheduler, data loader, etc.), modify your `lazycall` method in `config.py` according to your own needs (refer to [Config_System](https://libai.readthedocs.io/en/latest/tutorials/Config_System.html#configs-in-libai)).
