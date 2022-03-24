@@ -1,21 +1,21 @@
 # Training
 
-To run training, we highly recommend users to use the standardized `trainer` in LiBai
+To run training, we highly recommend users to use the standardized `trainer` in LiBai.
 
 ## Trainer Abstraction
 
 We provide a standardized `trainer` abstraction with a hook system that helps to simplify the standard training behavior.
 
-DefaultTrainer is initialized from lazy config system, used by `tools/train_net.py` and many scripts. It includes many standard default behaviors that one might want to opt in, including default configurations for optimizer, learning rate schedule, logging, evaluation, checkpointing etc.
+`DefaultTrainer` is initialized from the lazy config system, used by `tools/train_net.py` and many scripts. It includes many standard default behaviors that one might want to opt in, including default configurations for the optimizer, learning rate scheduler, logging, evaluation, model checkpointing and etc.
 
 
-For simple customizations (e.g. change optimizer, evaluator, LR scheduler, data loader, etc.), modify your `lazycall` method in `config.py` according to your own needs (refer to [Config_System](https://libai.readthedocs.io/en/latest/tutorials/Config_System.html#configs-in-libai)).
+For simple customizations (e.g. change optimizer, evaluator, LR scheduler, data loader, etc.), you can just modify the corresponding configuration in `config.py` according to your own needs (refer to [Config_System](https://libai.readthedocs.io/en/latest/tutorials/Config_System.html#configs-in-libai)).
 
 ## Customize a DefaultTrainer
 
 For complicated customizations, we recommend users to overwrite function in [DefaultTrainer](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/default.py).
 
-In DefaultTrainer, training consists of `run_step in trainer` and `hooks`, you can modify `trainer` and `hooks` according to your own needs. 
+In `DefaultTrainer`, the training process consists of `run_step in trainer` and `hooks` which can be modified according to your own needs. 
 
 The following code indicates how `run_step` and `hooks` work during training
 ```python
@@ -39,7 +39,7 @@ class DefaultTrainer(TrainerBase):
 
 ```
 
-Refer to `tools/train_net.py`, you can rewrite `tools/my_train_net.py` with your modified `_trainer` and `hooks`. We will introduce how to modify `_trainer` and `hooks` in next subsection.
+Refer to `tools/train_net.py`, you can rewrite `tools/my_train_net.py` with your modified `_trainer` and `hooks`. We will introduce how to modify them in the next subsection.
 
 ```python
 # tools/my_train_net.py
@@ -167,9 +167,9 @@ from libai.utils.events import get_event_storage
 
 # inside the model:
 if self.training:
-  value = # compute the value from inputs
-  storage = get_event_storage()
-  storage.put_scalar("some_accuracy", value)
+    value = # compute the value from inputs
+    storage = get_event_storage()
+    storage.put_scalar("some_accuracy", value)
 
 ```
 
