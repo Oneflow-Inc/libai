@@ -133,6 +133,45 @@ class InfoHook(HookBase):
 
 Then you can import your `hook` in `tools/my_train_net.py`
 
-### Modify train_step() in Trainer
+### Modify train_step in Trainer
 
-In LiBai, 
+In LiBai, `EagerTrainer` and `GraphTrainer` are supported in `libai/engine/trainer.py`. `EagerTrainer` supports `train_step` for `eager` mode while `GraphTrainer` supports `train_step` for `graph` mode, the mode is depended on `graph.enabled` in your `config.py`.
+
+> more details about `eager` and `graph` mode, please refer to [oneflow doc](https://docs.oneflow.org/en/master/basics/08_nn_graph.html)
+
+As an example, to add a temp variable for model output in run_step
+
+```python
+class MyEagerTrainer(EagerTrainer):
+
+    def __init__(self, model, data_loader, optimizer, grad_acc_steps=1):
+        super().__init__(model, data_loader, optimizer, grad_acc_steps)
+        self.previous_output = None
+
+    def run_step(self, get_batch: Callable):
+        ...
+        loss_dict = self.model(**data)
+        self.previous_output = loss_dict
+        ...
+```
+
+Then you can set your `MyEagerTrainer` as `self.trainer` in `tools/my_train_net.py`
+
+## Logging of Metrics
+
+During training, trainer put metrics to a centralized [EventStorage](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.events). You can use the following code to access it and log metrics to it:
+
+```python
+from libai.utils.events import get_event_storage
+
+# inside the model:
+if self.training:
+  value = # compute the value from inputs
+  storage = get_event_storage()
+  storage.put_scalar("some_accuracy", value)
+
+```
+
+See [EventStorage](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.events) for more details.
+
+Metrics are then written to various destinations with EventWriter. Metrics information will be written to `{cfg.train.output_dir}/metrics.json`. DefaultTrainer enables a few EventWriter with default configurations. See above for how to customize them.
