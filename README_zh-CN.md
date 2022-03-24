@@ -88,8 +88,8 @@ LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支�
 - 支持3D并行的[T5](https://arxiv.org/abs/1910.10683)模型
 - 支持3D并行的[Vision Transformer](https://arxiv.org/abs/2010.11929)模型
 - 支持数据并行的[Swin Transformer](https://arxiv.org/abs/2103.14030)模型
-- 在`projects/`中支持相关的finetune任务
-- 在`projects/`中支持文本分类任务
+- 在[QQP project](/projects/QQP/)中支持相关的finetune任务
+- 在[text classification project](/projects/text_classification/)中支持文本分类任务
 
 历史版本的发布与更新细节请参考[更新日志](./changelog.md)。
 
