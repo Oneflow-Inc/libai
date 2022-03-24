@@ -13,4 +13,5 @@ Tutorials
    Config_System.md
    Build_New_Project_on_LiBai.md
    Distributed_Configuration.md
+   Evaluation.md
    Model_Zoo.md
