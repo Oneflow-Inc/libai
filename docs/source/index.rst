@@ -14,8 +14,8 @@ Welcome to libai's documentation!
    tutorials/Installation.md
    tutorials/Getting Started.md
    tutorials/Train and Eval Command Line.md
-   tutorials/Model Zoo.md
    tutorials/Evaluation.md
+   tutorials/Model Zoo.md
 
 .. toctree::
    :maxdepth: 2

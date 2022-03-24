@@ -1,7 +1,7 @@
 # Evaluation
 Evaluation is a process that takes a number of inputs/outputs pairs and aggregates them. You can always use the model directly and just parse its inputs/outputs manually to perform evaluation. Alternatively, evaluation is implemented in LiBai using the `DatasetEvaluator` interface.
 
-LiBai includes a few `DatasetEvaluator` that computes metrics like Acc@N, PPL. You can also implement your own `DatasetEvaluator` that performs some other jobs using the inputs/outputs pairs. For example, to count how many instances are detected on the validation set:
+LiBai includes a few `DatasetEvaluator` that computes metrics like top-N accuracy, PPL(Perplexity). You can also implement your own `DatasetEvaluator` that performs some other jobs using the inputs/outputs pairs. For example, to count how many instances are detected on the validation set:
 ``` Python
 class Counter(DatasetEvaluator):
   def reset(self):
@@ -13,7 +13,7 @@ class Counter(DatasetEvaluator):
     # save self.count somewhere, or print it, or return it.
     return {"count": self.count}
 ```
-## Use evaluators
+## Evaluator Usage
 To evaluate using the methods of evaluators manually:
 ```
 def get_all_inputs_outputs():
@@ -40,7 +40,7 @@ eval_results = inference_on_dataset(
 
 Firstly, create a new file in `libai/evaluation/`, and declare a new evaluator class that inherits the `DatasetEvaluator` and overwrites its `process` and `evaluation` functions to satisfy the needs.
 
-For example, declare a `MyEvaluator` class in `libai/evaluator/myevaluator`.
+For example, declare a `MyEvaluator` class in `libai/evaluator/myevaluator.py`.
 ``` Python
 class MyEvaluator(DatasetEvaluator):
     def __init__(self):
