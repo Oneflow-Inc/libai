@@ -17,7 +17,7 @@ For complicated customizations, we recommend users to overwrite function in [Def
 
 In `DefaultTrainer`, the training process consists of `run_step in trainer` and `hooks` which can be modified according to your own needs. 
 
-The following code indicates how `run_step` and `hooks` work during training
+The following code indicates how `run_step` and `hooks` work during training:
 ```python
 class DefaultTrainer(TrainerBase):
     def train(self, start_iter: int, max_iter: int):
@@ -138,9 +138,9 @@ Then you can import your `hook` in `tools/my_train_net.py`
 
 LiBai provides `EagerTrainer` and `GraphTrainer` in `libai/engine/trainer.py` by default. `EagerTrainer` is used in `eager` mode while `GraphTrainer` is used in `graph` mode, and the mode is determined by the `graph.enabled` parameter in your `config.py`.
 
-> more details about `eager` and `graph` mode, please refer to [oneflow doc](https://docs.oneflow.org/en/master/basics/08_nn_graph.html)
+> more details about `eager` and `graph` mode, please refer to [oneflow doc](https://docs.oneflow.org/en/master/basics/08_nn_graph.html).
 
-As an example, to add a temp variable for model output in run_step
+As an example, to add a temp variable for model output in run_step:
 
 ```python
 class MyEagerTrainer(EagerTrainer):
