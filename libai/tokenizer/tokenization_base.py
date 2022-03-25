@@ -431,7 +431,7 @@ class PreTrainedTokenizer(object):
             - special-tokens-to-class-attributes-mapping,
             - tokenizer instantiation positional and keywords inputs (e.g. do_lower_case for Bert).
         
-        This won't save modifications other than (added tokens and special token mapping)
+        This won't save modifications other than ``added tokens`` and ``special token mapping``,
         you may have applied to the tokenizer after the instantiation (e.g. modifying
         tokenizer.do_lower_case after creation).
         This method make sure the full tokenizer can then be re-loaded using the
@@ -675,7 +675,7 @@ class PreTrainedTokenizer(object):
         """
         Converts a string in a sequence of tokens, using the tokenizer.
         Split in words for word-based vocabulary or sub-words for sub-word-based vocabularies
-        (BPE/SentencePieces/WordPieces). Takes care of added tokens.
+        (BPE/SentencePieces/WordPieces). Take care of added tokens.
         
         Args:
             text (:obj:`str`):
