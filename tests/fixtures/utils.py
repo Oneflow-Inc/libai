@@ -1,11 +1,9 @@
-import os
-
 from libai.utils.download import download
 
 fixtrue_urls = {
-    "sample_text.txt": "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/fixtures/sample_text.txt",
-    "spiece.model": "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/fixtures/spiece.model",
-    "test_sentencepiece.model": "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/fixtures/test_sentencepiece.model",
+    "sample_text.txt": "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/fixtures/sample_text.txt",  # noqa
+    "spiece.model": "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/fixtures/spiece.model",  # noqa
+    "test_sentencepiece.model": "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/fixtures/test_sentencepiece.model",  # noqa
 }
 
 BASE_DIR = "tests/fixtures"
