@@ -1,12 +1,12 @@
-# Advanced Tutorial
+# How to customize your own parallel
 
 ## Define your own parallel model with LiBai.layers
 
 ### Large-scale FC
 
-Let's say that you have a huge fully-connected-layer for large-scale classification (e.g., 1000w classes), which makes it impossible to fit into a single GPU.
+Suppose you have a huge fully-connected-layer for large-scale classification (e.g., 1000w classes), which makes it impossible to fit into a single GPU.
 
-Don't worry, with help of `LiBai.layers`, you can write models in a familiar way that you used to write models for a single GPU. We give a simple example showing how to write a tensor-parallel fully-connected-layer with 2 GPUs.
+Don't worry, with the help of `LiBai.layers`, you can write models in a familiar way that you used to write models for a single GPU. We give a simple example showing how to write a tensor-parallel fully-connected-layer with 2 GPUs.
 
 ```python
 # huge_fc_example.py
@@ -51,9 +51,9 @@ Through the result, you can find that `y` has been split along with `axis=1` on 
 
 ### Large MLP models
 
-MLP is very popular in transformer-based models. Assume we have a huge MLP model and its very large hidden size makes it difficult to fit into a single GPU.
+MLP is very popular in transformer-based models. Assume we have a huge MLP model with huge hidden size which makes it difficult to fit into a single GPU.
 
-We can then split the model weights across GPUs in a 2D mesh while you still write your model in a familiar way.
+We can then split the model weights across GPUs in a hybrid parallel mode while you still write your model in a familiar way.
 
 We give a simple example about the 2D parallel MLP in the LiBai context.
 
@@ -108,7 +108,7 @@ python3 -m oneflow.distributed.launch --nproc_per_node 4 huge_mlp_example.py
 >> rank: 0, tensor shape: oneflow.Size([16, 1024])
 ```
 
-From above, you can see that data are split into 2 groups for data parallel and weights are split into 2 groups for model parallel. So this simple example just implements a 2D parallel.
+From above, you can see that data are split into 2 groups for data parallel and weights are split into 2 groups for tensor parallel. So this simple example just implements a 2D parallel.
 
 For the sake of your convenience, we provide some prevalent models such as BERT, GPT-2, and ViT in Mode Zoo. Feel free to customize them into different sizes to fit into your special needs.
 
@@ -170,13 +170,13 @@ train.dist.pipeline_num_layers = hidden_layers
 
 First of all, we will introduce you GPipe for your better understanding. In GPipe, when the forward passes of all microbatches finish, the backward passes would be executed (shown in below).
 
-![gpipe](./assets/gpipe.png)
+![gpipe](../assets/gpipe.png)
 
 1F1B performs one forward pass followed by one backward pass. Finally, at the end of a batch, complete backward passes for all remaining in-flight microbatches. In general, 1F1B is more efficient than GPipe.
 
 There are two schedules of 1F1B pipeline, the non-interleaved and the interleaved. The figures are shown below. 
 
-![1f1b](./assets/1f1b.png)
+![1f1b](../assets/1f1b.png)
 
 In LiBai, the non-interleaved schedule is supported currently, and this mode is more memory-efficient than GPipe.
 
