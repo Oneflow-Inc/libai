@@ -51,7 +51,7 @@ Through the result, you can find that `y` has been split along with `axis=1` on 
 
 ### Large MLP models
 
-MLP is very popular in transformer-based models. Assume we have a huge MLP model with huge hidden size which makes it difficult to fit into a single GPU.
+Assume we have a huge MLP model which is very popular in transformer-based models, with a huge hidden size that makes it difficult to fit into a single GPU.
 
 We can then split the model weights across GPUs in a hybrid parallel mode while you still write your model in a familiar way.
 
@@ -108,7 +108,7 @@ python3 -m oneflow.distributed.launch --nproc_per_node 4 huge_mlp_example.py
 >> rank: 0, tensor shape: oneflow.Size([16, 1024])
 ```
 
-From above, you can see that data are split into 2 groups for data parallel and weights are split into 2 groups for tensor parallel. So this simple example just implements a 2D parallel.
+From above, you can see that data are split into 2 groups for data parallel and weights are split into 2 groups for tensor model parallel. So this simple example just implements a 2D parallel.
 
 For the sake of your convenience, we provide some prevalent models such as BERT, GPT-2, and ViT in Mode Zoo. Feel free to customize them into different sizes to fit into your special needs.
 
@@ -156,7 +156,7 @@ class MyModule(nn.Module):
         ...
 ```
 
-After configuring models and data placement, the only thing that needs to do is set the distributed configuration.
+After configuring models and data placement, the only thing that needs to do is setting the distributed configuration.
 
 ```python
 # set pipeline stages to 2
@@ -168,7 +168,7 @@ train.dist.pipeline_num_layers = hidden_layers
 
 ### Introduction of 1F1B pipeline parallel
 
-First of all, we will introduce you GPipe for your better understanding. In GPipe, when the forward passes of all microbatches finish, the backward passes would be executed (shown in below).
+First of all, we will introduce GPipe to you for your better understanding. In GPipe, when the forward passes of all microbatches finish, the backward passes would be executed (shown in below).
 
 ![gpipe](../assets/gpipe.png)
 
