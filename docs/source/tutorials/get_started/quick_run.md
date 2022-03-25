@@ -1,11 +1,12 @@
-# Getting Started
+# Quick Run
 This is a step-by-step tutorial on how to get started with LiBai:
-- [Train Bert-large Model Parallelly](#train-bert-large-model-parallelly)
-  - [Prepare the Data and the Vocab](#prepare-the-data-and-the-vocab)
-  - [How to Train Bert_large Model with Parallelism](#how-to-train-bertlarge-model-with-parallelism)
-- [Train VisionTransformer on ImageNet Dataset](#train-visiontransformer-on-imagenet-dataset)
-  - [Prepare the Data](#data-preparation)
-  - [Train vit Model from Scratch](#train-vit-model-from-scratch)
+- [Quick Run](#quick-run)
+  - [Train Bert-large Model Parallelly](#train-bert-large-model-parallelly)
+    - [Prepare the Data and the Vocab](#prepare-the-data-and-the-vocab)
+    - [How to Train Bert_large Model with Parallelism](#how-to-train-bert_large-model-with-parallelism)
+  - [Train VisionTransformer on ImageNet Dataset](#train-visiontransformer-on-imagenet-dataset)
+    - [Prepare the Data](#prepare-the-data)
+    - [Train vit Model from Scratch](#train-vit-model-from-scratch)
 
 
 ## Train Bert-large Model Parallelly
