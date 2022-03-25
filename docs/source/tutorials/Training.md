@@ -140,7 +140,7 @@ LiBai provides `EagerTrainer` and `GraphTrainer` in `libai/engine/trainer.py` by
 
 > more details about `eager` and `graph` mode, please refer to [oneflow doc](https://docs.oneflow.org/en/master/basics/08_nn_graph.html).
 
-As an example, to add a temp variable for model output in run_step:
+As an example, using a temp variable to keep the model's output in run_step:
 
 ```python
 class MyEagerTrainer(EagerTrainer):
