@@ -47,7 +47,7 @@ Refer to `tools/train_net.py`, you can rewrite `tools/my_train_net.py` with your
 import ...
 from libai.engine import DefaultTrainer
 from path_to_myhook import myhook
-from path_to_mytraner import _mytrainer
+from path_to_mytrainer import _mytrainer
 
 class MyTrainer(DefaultTrainer):
     def __init__(self, cfg):
@@ -87,13 +87,13 @@ if __name__ == "__main__":
     main(args)
 ```
 
-Using a trainer+hook system means there will always be some non-standard behaviors that cannot be supported, especially in research. For this reason, we intentionally keep the trainer & hook system minimal, rather than powerful.
+Using ``trainer & hook`` system means there will always be some non-standard behaviors which is hard to support in LiBai, especially for research. For this reason, we intentionally keep the ``trainer & hook`` system minimal, rather than powerful.
 
-### Add Hooks in Trainer
+### Customize Hooks in Trainer
 
-For extra tasks during training, check the hook system to see if it’s supported.
+You can customize your own hooks for some extra tasks during training.
 
-[HookBase](https://github.com/Oneflow-Inc/libai/blob/ffe5ca0e46544d1cbb4fbe88d9185f96c0dc2c95/libai/engine/trainer.py#L28) in `libai/engine/trainer.py` provides a standard behavior for users to use hook. You can overwirte its function according to your own needs. Please refer to [libai/engine/hooks.py](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/hooks.py)
+[HookBase](https://github.com/Oneflow-Inc/libai/blob/ffe5ca0e46544d1cbb4fbe88d9185f96c0dc2c95/libai/engine/trainer.py#L28) in `libai/engine/trainer.py` provides a standard behavior for users to use hook. You can overwirte its function according to your own needs. Please refer to [libai/engine/hooks.py](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/hooks.py) for more details.
 ```python 
 class HookBase:
     def before_train(self):
@@ -117,7 +117,7 @@ class HookBase:
         """
 ```
 
-As an example, to print `iter` in trainer during training:
+Depending on the functionality of the hook, users can specify what the hook will do at each stage of the training in ``before_train``, ``after_train``, ``before_step``, ``after_step``. For example, to print `iter` in trainer during training:
 
 ```python
 class InfoHook(HookBase):
