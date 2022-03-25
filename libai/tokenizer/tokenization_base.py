@@ -18,6 +18,7 @@ This class only focus on tokenization, converting token to id and their inverse 
 It does not construct inputs using special symbols."""
 
 import copy
+import itertools
 import json
 import logging
 import os
@@ -25,6 +26,7 @@ import unicodedata
 from io import open
 from typing import Dict, List, Optional, Union
 
+from libai.utils.file_io import PathManager
 from libai.utils.file_utils import cached_path
 
 logger = logging.getLogger(__name__)
@@ -153,6 +155,7 @@ class PreTrainedTokenizer(object):
         # until the serialization of Fast tokenizers is updated
         self.added_tokens_encoder: Dict[str, int] = {}
         self.added_tokens_decoder: Dict[int, str] = {}
+        self.unique_no_split_tokens: List[str] = []
 
         # inputs and kwargs for saving and re-loading
         # (see ``from_pretrained`` and ``save_pretrained``)
@@ -355,20 +358,13 @@ class PreTrainedTokenizer(object):
         # Update with newly provided kwargs
         init_kwargs.update(kwargs)
 
-        # Set max length if needed
-        if pretrained_model_name_or_path in cls.max_model_input_sizes:
-            # if we're using a pretrained model, ensure the tokenizer
-            # wont index sequences longer than the number of positional embeddings
-            max_len = cls.max_model_input_sizes[pretrained_model_name_or_path]
-            if max_len is not None and isinstance(max_len, (int, float)):
-                init_kwargs["max_len"] = min(init_kwargs.get("max_len", int(1e12)), max_len)
-
         # Merge resolved_vocab_files arguments in init_kwargs.
         added_tokens_file = resolved_vocab_files.pop("added_tokens_file", None)
         special_tokens_map_file = resolved_vocab_files.pop("special_tokens_map_file", None)
         for args_name, file_path in resolved_vocab_files.items():
             if args_name not in init_kwargs:
                 init_kwargs[args_name] = file_path
+
         if special_tokens_map_file is not None:
             special_tokens_map = json.load(open(special_tokens_map_file, encoding="utf-8"))
             for key, value in special_tokens_map.items():
@@ -383,11 +379,29 @@ class PreTrainedTokenizer(object):
         tokenizer.init_kwargs = init_kwargs
 
         # Add supplementary tokens.
+        special_tokens = tokenizer.all_special_tokens
         if added_tokens_file is not None:
-            added_tok_encoder = json.load(open(added_tokens_file, encoding="utf-8"))
-            added_tok_decoder = {v: k for k, v in added_tok_encoder.items()}
-            tokenizer.added_tokens_encoder.update(added_tok_encoder)
-            tokenizer.added_tokens_decoder.update(added_tok_decoder)
+            with open(added_tokens_file, encoding="utf-8") as added_tokens_handle:
+                added_tok_encoder = json.load(added_tokens_handle)
+
+            # Sort added tokens by index
+            added_tok_encoder_sorted = list(sorted(added_tok_encoder.items(), key=lambda x: x[1]))
+
+            for token, index in added_tok_encoder_sorted:
+                assert index == len(tokenizer), (
+                    f"Non-consecutive added token '{token}' found. "
+                    f"Should have index {len(tokenizer)} but has index {index} in saved vocabulary."
+                )
+                tokenizer.add_tokens(token, special_tokens=bool(token in special_tokens))
+
+        # Check all our special tokens are registered as "no split" token
+        # (we don't cut them) and are in the vocab
+        added_tokens = tokenizer.sanitize_special_tokens()
+        if added_tokens:
+            logger.warning(
+                "Special tokens have been added in the vocabulary,"
+                "make sure the associated word embedding are fine-tuned or trained."
+            )
 
         return tokenizer
 
@@ -403,16 +417,18 @@ class PreTrainedTokenizer(object):
         This method make sure the full tokenizer can then be re-loaded using the
         :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
         """
-        if not os.path.isdir(save_directory):
+        if not PathManager.isdir(save_directory):
             logger.error("Saving directory ({}) should be a directory".format(save_directory))
             return
+        PathManager.mkdirs(save_directory)
 
         special_tokens_map_file = os.path.join(save_directory, SPECIAL_TOKENS_MAP_FILE)
         added_tokens_file = os.path.join(save_directory, ADDED_TOKENS_FILE)
         tokenizer_config_file = os.path.join(save_directory, TOKENIZER_CONFIG_FILE)
 
         tokenizer_config = copy.deepcopy(self.init_kwargs)
-        tokenizer_config["init_inputs"] = copy.deepcopy(self.init_inputs)
+        if len(self.init_inputs) > 0:
+            tokenizer_config["init_inputs"] = copy.deepcopy(self.init_inputs)
         for file_id in self.vocab_files_names.keys():
             tokenizer_config.pop(file_id, None)
 
@@ -422,12 +438,11 @@ class PreTrainedTokenizer(object):
         with open(special_tokens_map_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(self.special_tokens_map, ensure_ascii=False))
 
-        with open(added_tokens_file, "w", encoding="utf-8") as f:
-            if self.added_tokens_encoder:
-                out_str = json.dumps(self.added_tokens_encoder, ensure_ascii=False)
-            else:
-                out_str = "{}"
-            f.write(out_str)
+        added_vocab = self.get_added_vocab()
+        if added_vocab:
+            with open(added_tokens_file, "w", encoding="utf-8") as f:
+                out_str = json.dumps(added_vocab, ensure_ascii=False)
+                f.write(out_str)
 
         vocab_files = self.save_vocabulary(save_directory)
 
@@ -533,7 +548,29 @@ class PreTrainedTokenizer(object):
         self.added_tokens_encoder.update(added_tok_encoder)
         self.added_tokens_decoder.update(added_tok_decoder)
 
+        if special_tokens:
+            self.unique_no_split_tokens = sorted(
+                set(self.unique_no_split_tokens).union(set(new_tokens))
+            )
+        else:
+            self.unique_no_split_tokens = sorted(
+                set(self.unique_no_split_tokens).union(set(tokens_to_add))
+            )
+
         return len(tokens_to_add)
+
+    def sanitize_special_tokens(self) -> int:
+        """
+        Make sure that all the special tokens attributes of the tokenizer
+        (:obj:`tokenizer.mask_token`, :obj:`tokenizer.cls_token`, etc.)
+        are in the vocabulary.
+
+        Add the missing ones to the vocabulary if needed.
+
+        Return:
+            :obj:`int`: The number of tokens added in the vocaulary during the operation.
+        """
+        return self.add_tokens(self.all_special_tokens, special_tokens=True)
 
     def add_special_tokens(self, special_tokens_dict: Dict[str, str]) -> int:
         """
@@ -641,27 +678,24 @@ class PreTrainedTokenizer(object):
             for tok in tok_list:
                 tokenized_text = []
                 for sub_text in text_list:
-                    if (
-                        sub_text not in self.added_tokens_encoder
-                        and sub_text not in self.all_special_tokens
-                    ):
+                    if sub_text not in self.unique_no_split_tokens:
                         tokenized_text += split_on_token(tok, sub_text)
                     else:
                         tokenized_text += [sub_text]
                 text_list = tokenized_text
-            return sum(
-                (
-                    self._tokenize(token, **kwargs)
-                    if token not in self.added_tokens_encoder
-                    and token not in self.all_special_tokens
-                    else [token]
-                    for token in tokenized_text
-                ),
-                [],
+            return list(
+                itertools.chain.from_iterable(
+                    (
+                        self._tokenize(token)
+                        if token not in self.unique_no_split_tokens
+                        else [token]
+                        for token in tokenized_text
+                    )
+                )
             )
 
-        added_tokens = list(self.added_tokens_encoder.keys()) + self.all_special_tokens
-        tokenized_text = split_on_tokens(added_tokens, text)
+        no_split_token = self.unique_no_split_tokens
+        tokenized_text = split_on_tokens(no_split_token, text)
         return tokenized_text
 
     def _tokenize(self, text, **kwargs):

@@ -2,9 +2,6 @@
 
 <h2 align="center">LiBai</h2>
 <p align="center">
-    <a href="https://pypi.org/project/LiBai/">
-        <img alt="PyPI" src="https://img.shields.io/pypi/v/libai">
-    </a>
     <a href="https://libai.readthedocs.io/en/latest/index.html">
         <img alt="docs" src="https://img.shields.io/badge/docs-latest-blue">
     </a>
@@ -16,6 +13,12 @@
     </a>
     <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-pink.svg">
+    </a>
+    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+        <img alt="Python Checks" src="https://github.com/Oneflow-Inc/libai/workflows/Python checks/badge.svg">
+    </a>
+    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+        <img alt="Docs Release Status" src="https://github.com/Oneflow-Inc/libai/workflows/Document Release/badge.svg">
     </a>
 </p>
 
@@ -66,9 +69,30 @@ See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) f
 
 ## ChangeLog
 
-**Beta 0.1.0** was released in 15/2/2022:
-- Support 3D parallelism [BERT](https://arxiv.org/abs/1810.04805) models for pretraining.
-- Support 2D parallelism [ViT](https://arxiv.org/abs/2010.11929) models for image classification.
+**Beta 0.1.0** was released in 22/03/2022, the main features and supported models in **0.1.0** version are as follows:
+
+**Features:**
+- Support Data Parallelism
+- Support 1D Tensor Parallelism
+- Support Pipeline Parallelism
+- Unified distributed Layers for both single-GPU and multi-GPU training
+- `LazyConfig` system for more flexible syntax and no predefined structures
+- Easy-to-use trainer and engine
+- Support both CV and NLP data processing
+- Mixed Precision Training
+- Activation Checkpointing
+- Gradient Accumulation
+- Gradient Clipping
+- Zero Redundancy Optimizer (ZeRO)
+
+**Supported Models:**
+- Support 3D parallel [BERT](https://arxiv.org/abs/1810.04805) model
+- Support 3D parallel [GPT-2](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf) model
+- Support 3D parallel [T5](https://arxiv.org/abs/1910.10683) model
+- Support 3D parallel [Vision Transformer](https://arxiv.org/abs/2010.11929) model
+- Support Data parallel [Swin Transformer](https://arxiv.org/abs/2103.14030) model
+- Support finetune task in [QQP project](/projects/QQP/)
+- Support text classification task in [text classification project](/projects/text_classification/)
 
 See [changelog](./changelog.md) for details and release history.
 
