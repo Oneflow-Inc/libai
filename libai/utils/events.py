@@ -187,10 +187,6 @@ class CommonMetricPrinter(EventWriter):
         except KeyError:
             lr = "N/A"
 
-        # TODO: add memory usage statistic
-        # if torch.cuda.is_available():
-        #     max_mem_mb = torch.cuda.max_memory_allocated() / 1024.0 / 1024.0
-        # else:
         max_mem_mb = None
 
         # NOTE: max_mem is parsed by grep in "dev/parse_results.sh"
@@ -244,7 +240,7 @@ class EventStorage:
 
         Args:
             img_name (str): The name of the image to put into tensorboard.
-            img_tensor (torch.Tensor or numpy.array): An `uint8` or `float`
+            img_tensor (flow.Tensor or numpy.array): An `uint8` or `float`
                 Tensor of shape `[channel, height, width]` where `channel` is
                 3. The image format should be RGB. The elements in img_tensor
                 can either have values in [0, 1] (float32) or [0, 255] (uint8).

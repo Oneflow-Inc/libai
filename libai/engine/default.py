@@ -260,6 +260,9 @@ class DefaultTrainer(TrainerBase):
             try:
                 with open(save_file, "r") as f:
                     last_saved = f.read().strip()
+                assert (
+                    last_saved != "model_final"
+                ), "model training has finished, check your model in train.output_dir"
                 self.start_iter = int(last_saved.split("_")[-1]) + 1
             except IOError:
                 # If file doesn't exist, maybe because it has just been deleted.
@@ -361,16 +364,24 @@ class DefaultTrainer(TrainerBase):
         Args:
             resume (bool): whether to do resume or not
         """
+        weight_path = self.cfg.train.load_weight
+        assert isinstance(
+            weight_path, str
+        ), f"cfg.train.load_weight:{self.cfg.train.load_weight} must be string"
+        if len(weight_path) == 0 or weight_path is None:
+            return
+        assert os.path.isdir(
+            weight_path
+        ), f"cfg.train.load_weight:{self.cfg.train.load_weight} must be directory"
         if resume:
-            if self.checkpointer.has_checkpoint():
-                # The checkpoint stores the training iteration that just finished, thus we start
-                # at the next iteration (or iter zero if there's no checkpoint).
-                assert self.start_iter == (
-                    self.checkpointer.resume_or_load(None, resume=True).get("iter", -1) + 1
-                )
-            else:
-                # This is considered as an independent training.
-                self.checkpointer.load(self.cfg.train.load_weight, checkpointables=[])
+            assert self.checkpointer.has_checkpoint()
+            # The checkpoint stores the training iteration that just finished, thus we start
+            # at the next iteration (or iter zero if there's no checkpoint).
+            assert self.start_iter == (
+                self.checkpointer.resume_or_load(None, resume=True).get("iter", -1) + 1
+            )
+        else:
+            self.checkpointer.load(weight_path, checkpointables=[])
 
     def build_hooks(self):
         """
