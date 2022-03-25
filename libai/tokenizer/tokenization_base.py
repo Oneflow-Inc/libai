@@ -189,19 +189,24 @@ class PreTrainedTokenizer(object):
     @classmethod
     def from_pretrained(cls, *inputs, **kwargs):
         r"""
-        Instantiate a :class:`~transformers.PreTrainedTokenizer` (or a derived class) from a
+        Instantiate a :class:`~PreTrainedTokenizer` (or a derived class) from a
         predefined tokenizer.
         
         Args:
-            pretrained_model_name_or_path: either:
-              - a string with the `shortcut name` of a predefined tokenizer to load from cache
-              or download, e.g.: ``bert-base-uncased``.
-              - a path to a `directory` containing vocabulary files required by the tokenizer,
-              for instance saved using the :func:`~transformers.PreTrainedTokenizer.save_pretrained`
-              method, e.g.: ``./my_model_directory/``.
-              - (not applicable to all derived classes) a path or url to a single saved vocabulary
-              file if and only if the tokenizer only requires a single vocabulary file
-              (e.g. Bert, XLNet), e.g.: ``./my_model_directory/vocab.txt``.
+            pretrained_model_name_or_path(`str` or `os.PathLike`):
+                Can be either:
+                
+                - a string with the `shortcut name` of a predefined tokenizer to load from cache
+                  or download, e.g.: ``bert-base-uncased``.
+                
+                - a path to a `directory` containing vocabulary files required by the tokenizer, 
+                  for instance saved using the :func:`~PreTrainedTokenizer.save_pretrained` 
+                  method, e.g., ``./my_model_directory/``.
+                
+                - (not applicable to all derived classes) a path or url to a single saved 
+                  vocabulary file if and only if the tokenizer only requires a single vocabulary 
+                  file (e.g. Bert, XLNet), e.g., ``./my_model_directory/vocab.txt``.
+                
             cache_dir: (`optional`) string:
                 Path to a directory in which a downloaded predefined tokenizer vocabulary files
                 should be cached if the standard cache should not be used.
@@ -218,7 +223,7 @@ class PreTrainedTokenizer(object):
                 Tokenizer ``__init__`` method. Can be used to set special tokens
                 like ``bos_token``, ``eos_token``, ``unk_token``, ``sep_token``,
                 ``pad_token``, ``cls_token``, ``mask_token``, ``additional_special_tokens``.
-                See parameters in the doc string of :class:`~transformers.PreTrainedTokenizer`
+                See parameters in the doc string of :class:`~PreTrainedTokenizer`
                 for details.
         
         Examples:
@@ -424,8 +429,7 @@ class PreTrainedTokenizer(object):
             
             - added tokens,
             - special-tokens-to-class-attributes-mapping,
-            - tokenizer instantiation positional and keywords inputs
-            (e.g. do_lower_case for Bert).
+            - tokenizer instantiation positional and keywords inputs (e.g. do_lower_case for Bert).
         
         This won't save modifications other than (added tokens and special token mapping)
         you may have applied to the tokenizer after the instantiation (e.g. modifying
@@ -513,7 +517,7 @@ class PreTrainedTokenizer(object):
     def add_tokens(self, new_tokens: Union[str, List[str]], special_tokens: bool = False) -> int:
         """
         Add a list of new tokens to the tokenizer class. If the new tokens are not in the
-        vocabulary, they are added to it with indices starting from length of
+        vocabulary, they are added to it with indices starting from the length of
         the current vocabulary.
         
         .. Note::
@@ -521,7 +525,7 @@ class PreTrainedTokenizer(object):
             the token embedding matrix of the model so that its embedding matrix matches
             the tokenizer.
             In order to do that, please use the
-            :meth:`~transformers.PreTrainedModel.resize_token_embeddings` method.
+            :meth:`~PreTrainedModel.resize_token_embeddings` method.
         
         Args:
             new_tokens (:obj:`str`, or a list of `str`):
@@ -607,7 +611,7 @@ class PreTrainedTokenizer(object):
             When adding new tokens to the vocabulary, you should make sure to also resize the
             token embedding matrix of the model so that its embedding matrix matches the tokenizer.
             In order to do that, please use the
-            :meth:`~transformers.PreTrainedModel.resize_token_embeddings` method.
+            :meth:`~PreTrainedModel.resize_token_embeddings` method.
         
         Using :obj:`add_special_tokens` will ensure your special tokens can be used in several ways:
         - Special tokens are carefully handled by the tokenizer (they are never split).
@@ -615,7 +619,7 @@ class PreTrainedTokenizer(object):
         :obj:`tokenizer.cls_token`. This makes it easy to develop model-agnostic training and
         fine-tuning scripts.
         When possible, special tokens are already registered for provided pretrained models
-        (for instance :class:`~transformers.BertTokenizer` :obj:`cls_token` is already registered
+        (for instance :class:`~BertTokenizer` :obj:`cls_token` is already registered
         to be :obj`'[CLS]'` and XLM's one is also registered to be :obj:`'</s>'`).
         
         Args:

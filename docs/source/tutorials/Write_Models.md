@@ -1,13 +1,13 @@
 # Write Models
 
-In this section, we are showing users how to implement new model entirely from scratch and make it compatible with LiBai.
+In this section, we will introduce how to implement new model entirely from scratch and make it compatible with LiBai.
 
 
 ## Construct Models in LiBai
 
-LiBai uses ``LazyConfig`` for more flexible config system, which means you can simply import your own model in your config and train it under LiBai.
+LiBai uses [LazyConfig](https://libai.readthedocs.io/en/latest/tutorials/Config_System.html) for more flexible config system, which means you can simply import your own model in your config and train it under LiBai.
 
-For image classification task, the input data is usually a batch of images and labels during training, and only images when testing. The following code shows how to build a toy model for image classification task, import this code in your code:
+For image classification task, the input data is usually a batch of images and labels. The following code shows how to build a toy model for image classification task, import this code in your code:
 ```python
 # toy_model.py
 import oneflow as flow
