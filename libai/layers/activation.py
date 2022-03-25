@@ -48,7 +48,7 @@ class Passthrough(nn.Module):
 
 def build_activation(activation: Optional[Activation]):
     """
-    Fetching activation layers by name, e.g., 
+    Fetching activation layers by name, e.g.,
     ``build_activation("gelu")`` returns ``nn.GELU()`` module.
     """
     if not activation:

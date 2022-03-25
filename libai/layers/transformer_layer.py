@@ -135,19 +135,22 @@ class TransformerLayer(nn.Module):
         use_cache=False,
     ):
         """
-            Args:
-                hidden_states: shape is (batch_size, seq_length, hidden_size), sbp signature is (S(0), B).
-                attention_mask: the combination of key padding mask and casual mask of hidden states 
-                    with shape (batch_size, 1, seq_length, seq_length) and the sbp signature is (S(0), B), 
-                encoder_states: encoder output with shape (batch_size, seq_length, hidden_size) 
-                    and the sbp signature is (S(0), B), which will be used in cross attention.
-                encoder_attention_mask: key padding mask of encoder states with shape 
-                    (batch_size, 1, seq_length, seq_length) and the sbp signature is (S(0), B).
-                past_key_value: tuple of key and value, each shape is (seq_length, bsz, num_heads, head_size), 
-                    For decoder layer, the past_key_value contains the states both from 
-                    self attention and cross attention.
-                use_cache: it will be set to `True` when the model is in the inference phase and 
-                    used for incremental decoding.
+        Args:
+            hidden_states: shape is (batch_size, seq_length, hidden_size),
+                sbp signature is (S(0), B).
+            attention_mask: the combination of key padding mask and casual mask of hidden states
+                with shape (batch_size, 1, seq_length, seq_length) and the sbp
+                signature is (S(0), B),
+            encoder_states: encoder output with shape (batch_size, seq_length, hidden_size)
+                and the sbp signature is (S(0), B), which will be used in cross attention.
+            encoder_attention_mask: key padding mask of encoder states with shape
+                (batch_size, 1, seq_length, seq_length) and the sbp signature is (S(0), B).
+            past_key_value: tuple of key and value, each shape is
+                (seq_length, bsz, num_heads, head_size), For decoder layer,
+                the past_key_value contains the states both from self attention
+                and cross attention.
+            use_cache: it will be set to `True` when the model is in the inference phase and
+                used for incremental decoding.
         """
         # Change placement for pipeline parallelsim
         hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))

@@ -18,8 +18,7 @@ import oneflow.nn as nn
 
 
 def drop_path(x, drop_prob: float = 0.5, training: bool = False):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
-    """
+    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
     if drop_prob == 0.0 or not training:
         return x
@@ -32,8 +31,7 @@ def drop_path(x, drop_prob: float = 0.5, training: bool = False):
 
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
-    """
+    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
     def __init__(self, drop_prob=None):
         super(DropPath, self).__init__()
