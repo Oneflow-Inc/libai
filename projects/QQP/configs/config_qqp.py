@@ -49,9 +49,9 @@ qqp_cfg.update(
     dict(
         # exist key
         vocab_size=21248,
-        hidden_size=256,  # 1024,
-        hidden_layers=6,  # 24,
-        num_attention_heads=4,  # 16,
+        hidden_size=1024,
+        hidden_layers=24,
+        num_attention_heads=16,
         # new key
         num_classes=2,
         pretrain_megatron_weight=None,  # "path/to/model_optim_rng.pt",
@@ -65,7 +65,6 @@ optim.weight_decay = 0.1
 train.update(
     dict(
         activation_checkpoint=dict(enabled=True),
-        checkpointer=dict(period=10, max_to_keep=100),
         amp=dict(enabled=True),
         output_dir="output/finetune_qqp/",
         train_micro_batch_size=16,
