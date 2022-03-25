@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import logging
-import math
 
 import numpy as np
 import oneflow as flow
@@ -123,16 +122,19 @@ class _DistributeUtil(object):
             f"number of layers ({cfg.pipeline_num_layers}) is less than"
             f" pipeline model parallel size ({self._pipeline_parallel_size})"
         )
-        num_layers_per_stage = math.ceil(cfg.pipeline_num_layers / self._pipeline_parallel_size)
-        stage_offset = num_layers_per_stage * self._pipeline_parallel_size - cfg.pipeline_num_layers
+        num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
+        stage_offset = cfg.pipeline_num_layers % self._pipeline_parallel_size
 
         # stage_offset can make the later stages contain more layers when pipeline_num_layers
         # cannot be divided by pipeline_parallel_size.
-        # This can help pipeline parallel more memory efficient.
-        self._layer_stage_ids = [
-            i // num_layers_per_stage
-            for i in range(stage_offset, cfg.pipeline_num_layers + stage_offset)
-        ]
+        # This can make pipeline parallel more memory efficient.
+        self._layer_stage_ids = []
+        for i in range(0, cfg.pipeline_num_layers - stage_offset, num_layers_per_stage):
+            stage_id = i // num_layers_per_stage
+            if stage_id >= (self._pipeline_parallel_size - stage_offset):
+                self._layer_stage_ids.append(stage_id)
+            self._layer_stage_ids.extend([stage_id] * num_layers_per_stage)
+
         self._layer_ranks = [stages_devices[stage_id] for stage_id in self._layer_stage_ids]
 
     def _init_parallel_hierarchy(self):
