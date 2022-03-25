@@ -18,6 +18,7 @@ import logging
 import oneflow as flow
 import torch
 
+import libai.utils.distributed as dist
 from libai.utils.checkpoint import get_missing_parameters_message, get_unexpected_parameters_message
 
 logger = logging.getLogger("libai." + __name__)
@@ -79,7 +80,12 @@ def change_megatron_key(state_dict):
 
 
 def load_tensor(tensor_lhs, tensor_rhs):
-    tensor_rhs = flow.to_global(tensor_rhs, placement=tensor_lhs.placement, sbp=tensor_lhs.sbp)
+    tensor_rhs = flow.to_global(
+        tensor_rhs,
+        placement=tensor_lhs.placement,
+        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+    )
+    tensor_rhs = tensor_rhs.to_global(sbp=tensor_lhs.sbp)
     tensor_lhs.copy_(tensor_rhs)
 
 
@@ -90,16 +96,7 @@ def load_model(model: flow.nn.Module, state_dict):
     incorrect_shapes = []
     for k in list(state_dict.keys()):
         if k in model_state_dict:
-            if (
-                (k.find("weight") != -1)
-                and (k.find("embeddings") == -1)
-                and (k.find("layernorm") == -1)
-            ):
-                # Transpose from (M, N) -> (N, M), because the weight
-                # shape in megatron and oneflow missing one transpose.
-                shape_model = tuple(model_state_dict[k].shape[::-1])
-            else:
-                shape_model = tuple(model_state_dict[k].shape)
+            shape_model = tuple(model_state_dict[k].shape)
             shape_ckpt = tuple(state_dict[k].shape)
             if shape_model != shape_ckpt:
                 incorrect_shapes.append((k, shape_ckpt, shape_model))
@@ -111,12 +108,6 @@ def load_model(model: flow.nn.Module, state_dict):
             unexpected_keys.append(key)
             continue
         model_state_dict.pop(key)
-        if (
-            (key.find("weight") != -1)
-            and (key.find("embeddings") == -1)
-            and (key.find("layernorm") == -1)
-        ):
-            value = flow.transpose(value, 0, 1)
         load_tensor(model.state_dict()[key], value)
 
     missing_keys = list(model_state_dict.keys())
