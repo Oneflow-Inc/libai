@@ -368,7 +368,7 @@ class DefaultTrainer(TrainerBase):
         assert isinstance(
             weight_path, str
         ), f"cfg.train.load_weight:{self.cfg.train.load_weight} must be string"
-        if len(weight_path) == 0 or weight_path is None:
+        if len(weight_path) == 0:
             return
         assert os.path.isdir(
             weight_path
