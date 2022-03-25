@@ -19,6 +19,7 @@ cfg = dict(
     bias_dropout_fusion=True,
     scale_mask_softmax_fusion=False,
     apply_query_key_layer_scaling=True,
+    apply_residual_post_layernorm=False,
     add_binary_head=True,
     amp_enabled=False,
 )
