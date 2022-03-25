@@ -467,9 +467,9 @@ class PreTrainedTokenizer(object):
     def save_vocabulary(self, save_directory):
         """Save the tokenizer vocabulary to a directory. This method does *NOT* save added tokens
         and special token mappings.
-        Please use :func:`~transformers.PreTrainedTokenizer.save_pretrained` `()` to save the
+        Please use :func:`~PreTrainedTokenizer.save_pretrained` to save the
         full Tokenizer state if you want to reload it using the
-        :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
+        :func:`~PreTrainedTokenizer.from_pretrained` class method.
         """
         raise NotImplementedError
 
@@ -672,12 +672,14 @@ class PreTrainedTokenizer(object):
         Converts a string in a sequence of tokens, using the tokenizer.
         Split in words for word-based vocabulary or sub-words for sub-word-based vocabularies
         (BPE/SentencePieces/WordPieces). Takes care of added tokens.
+        
         Args:
             text (:obj:`str`):
                 The sequence to be encoded.
             **kwargs (additional keyword arguments):
                 Passed along to the model-specific ``prepare_for_tokenization``
                 preprocessing method.
+        
         Returns:
             :obj:`List[str]`: The list of tokens.
         """
@@ -787,6 +789,7 @@ class PreTrainedTokenizer(object):
         """
         Converts a single index or a sequence of indices in a token or a sequence of tokens,
         using the vocabulary and added tokens.
+        
         Args:
             ids (:obj:`int` or :obj:`List[int]`):
                 The token id (or token ids) to convert to tokens.
@@ -818,8 +821,10 @@ class PreTrainedTokenizer(object):
         Converts a sequence of tokens in a single string. The most simple way to do it is
         ``" ".join(tokens)`` but we often want to remove sub-word tokenization artifacts
         at the same time.
+        
         Args:
             tokens (:obj:`List[str]`): The token to join in a string.
+        
         Returns:
             :obj:`str`: The joined tokens.
         """
@@ -836,6 +841,7 @@ class PreTrainedTokenizer(object):
         Converts a sequence of ids (integer) in a string, using the tokenizer and vocabulary
         with options to remove special tokens and clean up tokenization spaces.
         Similar to doing ``self.convert_tokens_to_string(self.convert_ids_to_tokens(token_ids))``.
+        
         Args:
             token_ids: list of tokenized input ids. Can be obtained using the `encode` or
             `encode_plus` methods.
