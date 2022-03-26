@@ -7,9 +7,5 @@ libai.tokenizer
     :members:
         BertTokenizer,
         GPT2Tokenizer,
-<<<<<<< HEAD
         GoogleT5Tokenizer,
         PreTrainedTokenizer,
-=======
-        GoogleT5Tokenizer
->>>>>>> 433b27b3737909ccf447be367fc1a55bcfe9e0f3
