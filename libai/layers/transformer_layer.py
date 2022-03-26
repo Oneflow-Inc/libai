@@ -47,7 +47,7 @@ class TransformerLayer(nn.Module):
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
             Default: ``False``.
-        apply_residual_post_layernorm: if `true`, use original BERT residual
+        apply_residual_post_layernorm: if ``true``, use original BERT residual
             connection ordering. Otherwise, use Megatron BERT residual connection which
             is more stable when scaling model size introduced in
             https://arxiv.org/pdf/1909.08053.pdf.
