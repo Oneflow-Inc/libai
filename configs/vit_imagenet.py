@@ -12,6 +12,10 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 
+# Refine model cfg for vit training on imagenet
+model.num_classes = 1000
+model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
     mixup_alpha=0.8,
@@ -19,15 +23,11 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     prob=1.0,
     switch_prob=0.5,
     mode="batch",
-    num_classes=1000,
+    num_classes=model.num_classes,
 )
 
-# Refine model cfg for vit training on imagenet
-model.num_classes = 1000
-model.loss_func = LazyCall(SoftTargetCrossEntropy)()
-
 # Refine optimizer cfg for vit model
-optim.lr = 5e-4
+optim.lr = 1e-3  # 5e-4 * 1024 (batchsize) / 512
 optim.eps = 1e-8
 optim.weight_decay = 0.05
 

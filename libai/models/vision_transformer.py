@@ -131,6 +131,9 @@ class VisionTransformer(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
+    def no_weight_decay(self):
+        return {'pos_embed', 'cls_token'}
+
     @classmethod
     def from_config(cls, cfg):
         return {
