@@ -58,10 +58,10 @@ actual_lr = base_lr * (train.train_micro_batch_size * 8 / 256)
 
 
 # Refine optim settings
-optim.parameters.clip_grad_max_norm = None
-optim.parameters.clip_grad_norm_type = None
-optim.parameters.weight_decay_norm = None
-optim.parameters.weight_decay_bias = None
+optim.params.clip_grad_max_norm = None
+optim.params.clip_grad_norm_type = None
+optim.params.weight_decay_norm = None
+optim.params.weight_decay_bias = None
 optim.lr = actual_lr
 optim.weight_decay = 0.05
 optim.betas = (0.9, 0.95)
