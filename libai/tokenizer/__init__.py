@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from .build import TOKENIZER_REGISTRY, build_tokenizer
-from .tokenization_base import PreTrainedTokenizer
 from .tokenization_bert import BertTokenizer
 from .tokenization_gpt2 import GPT2Tokenizer
 from .tokenization_t5 import GoogleT5Tokenizer
+from .tokenization_base import PreTrainedTokenizer
