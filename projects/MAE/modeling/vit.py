@@ -27,8 +27,7 @@ from flowvision.layers.weight_init import trunc_normal_
 
 import libai.utils.distributed as dist
 from libai.config.config import configurable
-from libai.layers import LayerNorm, Linear, PatchEmbedding
-from .transformer_layer import TransformerLayer
+from libai.layers import LayerNorm, Linear, PatchEmbedding, TransformerLayer
 
 
 class VisionTransformer(nn.Module):

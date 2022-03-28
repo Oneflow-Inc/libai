@@ -29,10 +29,10 @@ from libai.layers import (
     PatchEmbedding, 
     LayerNorm, 
     Linear,
+    TransformerLayer,
 )
 from libai.config import configurable
 from .pos_embed import get_2d_sincos_pos_embed
-from .transformer_layer import TransformerLayer
 
 
 class MaskedAutoencoderViT(nn.Module):
