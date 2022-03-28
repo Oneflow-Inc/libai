@@ -36,7 +36,7 @@ eval_results = inference_on_dataset(
 )
 ```
 ## Customize Evaluator using DatasetEvaluator
-`DatasetEvaluator` is the Base class for a dataset evaluator. This class will accumulate information of the inputs/outputs (by `process`) after every batch inference, and produce evaluation results in the end (by `evaluate`). The inputs is from the `trainer.get_data()`, which converts the outputs of `dataset.__getitem__()` to dict. The Outputs is from the dict return of `model.forward()`.
+`DatasetEvaluator` is the Base class for a dataset evaluator. This class will accumulate information of the inputs/outputs (by `process`) after every batch inference, and produce evaluation results in the end (by `evaluate`). The inputs is from the `trainer.get_batch()`, which converts the outputs of `dataset.__getitem__()` to dict. The Outputs is from the dict return of `model.forward()`.
 
 Firstly, declare a new evaluator class that inherits the `DatasetEvaluator` and overwrites its `process` and `evaluation` functions to satisfy the needs.
 
