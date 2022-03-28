@@ -1,7 +1,7 @@
 # Evaluation
-Evaluation is a process that takes a number of inputs/outputs pairs and aggregates them. You can always use the model directly and just parse its inputs/outputs manually to perform evaluation. Alternatively, evaluation is implemented in LiBai using the `DatasetEvaluator` interface.
+Evaluation is a process that takes a number of inputs/outputs pairs and calculates them to get metrics. You can always use the model directly and just parse its inputs/outputs manually to perform evaluation. Alternatively, evaluation is implemented in LiBai using the `DatasetEvaluator` interface.
 
-LiBai includes a few `DatasetEvaluator` that computes metrics like top-N accuracy, PPL(Perplexity). You can also implement your own `DatasetEvaluator` that performs some other jobs using the inputs/outputs pairs. For example, to count how many instances are detected on the validation set:
+LiBai includes a few `DatasetEvaluator` that computes metrics like top-N accuracy, PPL(Perplexity), etc. You can also implement your own `DatasetEvaluator` that performs some other jobs using the inputs/outputs pairs. For example, to count how many instances are detected on the validation set:
 ``` Python
 class Counter(DatasetEvaluator):
   def reset(self):
@@ -15,7 +15,7 @@ class Counter(DatasetEvaluator):
 ```
 ## Evaluator Usage
 To evaluate using the methods of evaluators manually:
-```
+``` Python
 def get_all_inputs_outputs():
   for data in data_loader:
     yield data, model(data)
@@ -27,7 +27,7 @@ eval_results = evaluator.evaluate()
 ```
 
 Evaluators can also be used with `inference_on_dataset`. For example,
-```
+``` Python
 eval_results = inference_on_dataset(
     model,
     data_loader,
@@ -36,9 +36,9 @@ eval_results = inference_on_dataset(
 )
 ```
 ## Customize Evaluator using DatasetEvaluator
-`DatasetEvaluator` is the Base class for a dataset evaluator. This class will accumulate information of the inputs/outputs (by `process`), and produce evaluation results in the end (by `evaluate`).
+`DatasetEvaluator` is the Base class for a dataset evaluator. This class will accumulate information of the inputs/outputs (by `process`) after every batch inference, and produce evaluation results in the end (by `evaluate`). The inputs is from the `trainer.get_data()`, which converts the outputs of `dataset.__getitem__()` to dict. The Outputs is from the dict return of `model.forward()`.
 
-Firstly, create a new file in `libai/evaluation/`, and declare a new evaluator class that inherits the `DatasetEvaluator` and overwrites its `process` and `evaluation` functions to satisfy the needs.
+Firstly, declare a new evaluator class that inherits the `DatasetEvaluator` and overwrites its `process` and `evaluation` functions to satisfy the needs.
 
 For example, declare a `MyEvaluator` class in `libai/evaluator/myevaluator.py`.
 ``` Python
@@ -50,6 +50,7 @@ class MyEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
+        # the key of inputs/outputs can be customized
         pred_logits = outputs["prediction_scores"]
         labels = inputs["labels"]
 
@@ -72,16 +73,17 @@ class MyEvaluator(DatasetEvaluator):
         return copy.deepcopy(self._results)
 ```
 
-Secondly, import the customized class in `libai/evaluation/__init__.py`
+Secondly, import the customized class and set the evaluation in config.
 ``` Python
-from from .myevaluator import MyEvaluator
-```
-Lastly, set the evaluation in config.
-``` Python
-from libai.evaluation import MyEvaluator
+from libai.evaluation.myevaluator import MyEvaluator
 evaluation=dict(
-    enabled=True,
-    evaluator=LazyCall(MyEvaluator)(),  # calculate top-k acc
-    eval_metric="acc",
+      enabled=True,
+      # evaluator for calculating top-k acc
+      evaluator=LazyCall(MyEvaluator)(),
+      eval_period=5000,
+      eval_iter=1e9,  # running steps for validation/test
+      # Metrics to be used for best model checkpoint.
+      eval_metric="acc", # your returned metric key in MyEvaluator.evaluate()
+      eval_mode="max", # set `max` or `min` for saving best model according to your metric
 )
 ```
