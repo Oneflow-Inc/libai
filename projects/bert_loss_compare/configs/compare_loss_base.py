@@ -24,11 +24,14 @@ model.cfg.num_attention_heads = 16
 model.cfg.max_position_embeddings = 512
 
 train.train_iter = 1000
-train.micro_batch_size = 16
+train.global_batch_size = 16
+train.train_micro_batch_size = None
+train.num_accumulation_steps = 1
 train.log_period = 20
 train.warmup_ratio = 0.01
 train.evaluation.enabled = False
 
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
 
 # Set a constant lr scheduler after warmup
 optim.lr = 0.0001
@@ -68,6 +71,5 @@ data = dict(
     num_workers=4,
 )
 
-
 today = date.today()
-train.output_dir = f"loss_align/bert_loss_compare/{today}"
+train.output_dir = f"loss_align/bert_loss_compare/{today}_base"
