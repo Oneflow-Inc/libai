@@ -62,8 +62,7 @@ html_theme = "sphinx_rtd_theme"
 
 
 def setup(app):
-    app.add_css_file("css/sidebar.css")
-    app.add_js_file("collapse.js")
+    app.add_css_file("css/line_space.css")
 
 
 # Add any paths that contain custom static files (such as style sheets) here,
