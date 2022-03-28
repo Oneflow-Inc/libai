@@ -6,4 +6,4 @@ libai.tokenizer
     :members:
         BertTokenizer,
         GPT2Tokenizer,
-        T5Tokenizer
+        GoogleT5Tokenizer

@@ -218,6 +218,50 @@ class BertLoss(nn.Module):
 class BertModel(nn.Module):
     """The bare Bert Model transformer outputting raw hidden-states without
     any specific head on top.
+
+    Args:
+        vocab_size (int): The size of vocabulary file.
+        hidden_size (int): The size of hidden states.
+        hidden_layers (_type_): The number of ``TransformerLayer`` in encoder.
+        num_attention_heads (int):
+            The number of attention heads for each attention layer of ``TransformerLayer``.
+        intermediate_size (int):
+            The size of intermediate layer in feed-forward network for each ``TransformerLayer``.
+        hidden_dropout_prob  (float, optional):
+            The dropout ratio for the output for each TransformerLayer. Defaults to 0.0.
+        attention_probs_dropout_prob  (float, optional):
+            The dropout ratio for the output of each attention layer in ``TransformerLayer``.
+            Defaults to 0.0.
+        max_position_embeddings (int):
+            Max sequence length of input, defines the shape of Position Embeddings
+            in ``BertEmbedding``.
+        num_tokentypes (int, optional):
+            Number of segment token indices. Defaults to 2.
+        add_pooling_layer (bool, optional):
+            Whether or not averaging or pooling the sequence of hidden-states for the
+            whole input sequence. Defaults to ``True``.
+        initializer_range (float, optional):
+            Sigma of the normal distribution in the initialization method. Defaults to 0.02.
+        layernorm_epsilon (float, optional):
+            The epsilon of LayerNorm layer. Defaults to 1e-5.
+        bias_gelu_fusion (bool, optional):
+            Whether or not to fuse the computing of bias and gelu. Defaults to ``False``.
+        bias_dropout_fusion (bool, optional):
+            Whether or not to fuse the computing of dropout and bias. Defaults to ``False``.
+        scale_mask_softmax_fusion (bool, optional):
+            Whether to fuse the computing of mask and softmax in attention layers.
+            Defaults to ``False``.
+        apply_query_key_layer_scaling (bool, optional):
+            Whether or not to use layer index related scaling in computing attention scores.
+            If ``True``, the scaling factor equals to sqrt(d) * (layer_index + 1).
+            Defaults to ``True``.
+        apply_residual_post_layernorm (bool, optional):
+            If set ``True``, use original BERT residual connection ordering otherwise use Megatron
+            BERT residual connection which is more stable when scaling model size introduced in
+            https://arxiv.org/pdf/1909.08053.pdf.
+            Default: ``False``.
+        amp_enabled (bool, optional):
+            Whether or not to set fp16 for embedding weight in T5 model. Defaults to ``False``.
     """
 
     @configurable
@@ -239,6 +283,7 @@ class BertModel(nn.Module):
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
         apply_query_key_layer_scaling=True,
+        apply_residual_post_layernorm=False,
         amp_enabled=False,
     ):
         super().__init__()
@@ -275,6 +320,7 @@ class BertModel(nn.Module):
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
+                    apply_residual_post_layernorm=apply_residual_post_layernorm,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -303,6 +349,7 @@ class BertModel(nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
         }
 
