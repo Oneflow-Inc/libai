@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tokenization class for T5 (sentence piece)."""
+"""Tokenization class for Google T5 (sentence piece)."""
 
 import logging
 import os
@@ -39,7 +39,7 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 
 
 @TOKENIZER_REGISTRY.register()
-class T5Tokenizer(PreTrainedTokenizer):
+class GoogleT5Tokenizer(PreTrainedTokenizer):
     """
     Construct a T5 tokenizer. Based on `SentencePiece <https://github.com/google/sentencepiece>`.
 
@@ -148,8 +148,8 @@ class T5Tokenizer(PreTrainedTokenizer):
                 current_sub_tokens = []
             else:
                 current_sub_tokens.append(token)
-        out_string += self.sp_mode.decode_pieces(current_sub_tokens)
-        return out_string.string()
+        out_string += self.sp_model.decode_pieces(current_sub_tokens)
+        return out_string.strip()
 
     def save_vocabulary(self, save_directory, filename_prefix=None):
         """Save the tokenizer vocabulary to a directory or file."""
@@ -165,4 +165,4 @@ class T5Tokenizer(PreTrainedTokenizer):
             copyfile(self.vocab_file, out_vocab_file)
             logger.info(f"Copy vocab file to {out_vocab_file}")
 
-        return out_vocab_file
+        return (out_vocab_file,)

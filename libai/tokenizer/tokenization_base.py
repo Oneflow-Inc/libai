@@ -18,6 +18,7 @@ This class only focus on tokenization, converting token to id and their inverse 
 It does not construct inputs using special symbols."""
 
 import copy
+import itertools
 import json
 import logging
 import os
@@ -25,6 +26,7 @@ import unicodedata
 from io import open
 from typing import Dict, List, Optional, Union
 
+from libai.utils.file_io import PathManager
 from libai.utils.file_utils import cached_path
 
 logger = logging.getLogger(__name__)
@@ -82,42 +84,50 @@ TOKENIZER_CONFIG_FILE = "tokenizer_config.json"
 class PreTrainedTokenizer(object):
     """
     Base class for all tokenizers.
+
     Handle all the shared methods for tokenization and special tokens as well as methods
     dowloading/caching/loading pretrained tokenizers as well as adding tokens to the vocabulary.
     This class also contain the added tokens in a unified way on top of all tokenizers so we don't
     have to handle the specific vocabulary augmentation methods of the various underlying
     dictionary structures (BPE, sentencepiece...).
+
     Class attributes (overridden by derived classes):
-        - ``vocab_files_names``: a python ``dict`` with, as keys, the ``__init__`` keyword name of
+
+        ``vocab_files_names``: a python ``dict`` with, as keys, the ``__init__`` keyword name of
         each vocabulary file required by the model, and as associated values, the filename for
         saving the associated file (string).
-        - ``pretrained_vocab_files_map``: a python ``dict of dict`` the high-level keys being the
+
+        ``pretrained_vocab_files_map``: a python ``dict of dict`` the high-level keys being the
         ``__init__`` keyword name of each vocabulary file required by the model, the low-level
         being the `short-cut-names` (string) of the pretrained models with, as associated values,
         the `url` (string) to the associated pretrained vocabulary file.
-        - ``max_model_input_sizes``: a python ``dict`` with, as keys, the `short-cut-names` (string)
+
+        ``max_model_input_sizes``: a python ``dict`` with, as keys, the `short-cut-names` (string)
         of the pretrained models, and as associated values, the maximum length of the sequence
         inputs of this model, or None if the model has no maximum input size.
-        - ``pretrained_init_configuration``: a python ``dict`` with, as keys, the `short-cut-names`
+
+        ``pretrained_init_configuration``: a python ``dict`` with, as keys, the `short-cut-names`
         (string) of the pretrained models, and as associated values, a dictionnary of specific
-        arguments to pass to the ``__init__``method of the tokenizer class for this pretrained
+        arguments to pass to the ``__init__`` method of the tokenizer class for this pretrained
         model when loading the tokenizer with the ``from_pretrained()`` method.
+
     Args:
         bos_token (:obj:`str`, `optional`): A special token representing the beginning of a
-        sentence.
+            sentence.
         eos_token (:obj:`str`, `optional`): A special token representing the end of a sentence.
         unk_token (:obj:`str`, `optional`): A special token representing an out-of-vocabulary token.
         sep_token (:obj:`str`, `optional`): A special token separating two different sentences in
-        the same input (used by BERT for instance).
+            the same input (used by BERT for instance).
         pad_token (:obj:`str`, `optional`): A special token used to make arrays of tokens the same
-        size for batching purpose. Will then be ignored by attention mechanisms or loss computation.
+            size for batching purpose.
+            Will then be ignored by attention mechanisms or loss computation.
         cls_token (:obj:`str`, `optional`): A special token representing the class of the input
-        (used by BERT for instance).
+            (used by BERT for instance).
         mask_token (:obj:`str`, `optional`): A special token representing a masked token (used by
-        masked-language modeling pretraining objectives, like BERT).
+            masked-language modeling pretraining objectives, like BERT).
         eod_token (:obj:`str`, `optional`): A special token representing the end of a document.
-        additional_special_tokens (tuple or list of :obj:`str`, `optional`): A tuple or a list of
-        additional special tokens.
+            additional_special_tokens (tuple or list of :obj:`str`, `optional`):
+            A tuple or a list of additional special tokens.
     """
 
     vocab_files_names = {}
@@ -153,6 +163,7 @@ class PreTrainedTokenizer(object):
         # until the serialization of Fast tokenizers is updated
         self.added_tokens_encoder: Dict[str, int] = {}
         self.added_tokens_decoder: Dict[int, str] = {}
+        self.unique_no_split_tokens: List[str] = []
 
         # inputs and kwargs for saving and re-loading
         # (see ``from_pretrained`` and ``save_pretrained``)
@@ -178,18 +189,24 @@ class PreTrainedTokenizer(object):
     @classmethod
     def from_pretrained(cls, *inputs, **kwargs):
         r"""
-        Instantiate a :class:`~transformers.PreTrainedTokenizer` (or a derived class) from a
+        Instantiate a :class:`~PreTrainedTokenizer` (or a derived class) from a
         predefined tokenizer.
+
         Args:
-            pretrained_model_name_or_path: either:
-              - a string with the `shortcut name` of a predefined tokenizer to load from cache
-              or download, e.g.: ``bert-base-uncased``.
-              - a path to a `directory` containing vocabulary files required by the tokenizer,
-              for instance saved using the :func:`~transformers.PreTrainedTokenizer.save_pretrained`
-              method, e.g.: ``./my_model_directory/``.
-              - (not applicable to all derived classes) a path or url to a single saved vocabulary
-              file if and only if the tokenizer only requires a single vocabulary file
-              (e.g. Bert, XLNet), e.g.: ``./my_model_directory/vocab.txt``.
+            pretrained_model_name_or_path(`str` or `os.PathLike`):
+                Can be either:
+
+                - a string with the `shortcut name` of a predefined tokenizer to load from cache
+                  or download, e.g.: ``bert-base-uncased``.
+
+                - a path to a `directory` containing vocabulary files required by the tokenizer,
+                  for instance saved using the :func:`~PreTrainedTokenizer.save_pretrained`
+                  method, e.g., ``./my_model_directory/``.
+
+                - (not applicable to all derived classes) a path or url to a single saved
+                  vocabulary file if and only if the tokenizer only requires a single vocabulary
+                  file (e.g. Bert, XLNet), e.g., ``./my_model_directory/vocab.txt``.
+
             cache_dir: (`optional`) string:
                 Path to a directory in which a downloaded predefined tokenizer vocabulary files
                 should be cached if the standard cache should not be used.
@@ -201,14 +218,18 @@ class PreTrainedTokenizer(object):
                 e.g.: {'http': 'foo.bar:3128', 'http://hostname': 'foo.bar:4012'}.
                 The proxies are used on each request.
             inputs: (`optional`) positional arguments: will be passed to the
-            Tokenizer ``__init__`` method.
+                Tokenizer ``__init__`` method.
             kwargs: (`optional`) keyword arguments: will be passed to the
-            Tokenizer ``__init__`` method. Can be used to set special tokens
-            like ``bos_token``, ``eos_token``, ``unk_token``, ``sep_token``,
-            ``pad_token``, ``cls_token``, ``mask_token``, ``additional_special_tokens``.
-            See parameters in the doc string of :class:`~transformers.PreTrainedTokenizer`
-            for details.
-        Examples::
+                Tokenizer ``__init__`` method. Can be used to set special tokens
+                like ``bos_token``, ``eos_token``, ``unk_token``, ``sep_token``,
+                ``pad_token``, ``cls_token``, ``mask_token``, ``additional_special_tokens``.
+                See parameters in the doc string of :class:`~PreTrainedTokenizer`
+                for details.
+
+        Examples:
+
+        .. code-block:: python
+
             # We can't instantiate directly the base class `PreTrainedTokenizer` so let's
             # show our examples on a derived class: BertTokenizer
             # Download vocabulary from S3 and cache.
@@ -355,20 +376,13 @@ class PreTrainedTokenizer(object):
         # Update with newly provided kwargs
         init_kwargs.update(kwargs)
 
-        # Set max length if needed
-        if pretrained_model_name_or_path in cls.max_model_input_sizes:
-            # if we're using a pretrained model, ensure the tokenizer
-            # wont index sequences longer than the number of positional embeddings
-            max_len = cls.max_model_input_sizes[pretrained_model_name_or_path]
-            if max_len is not None and isinstance(max_len, (int, float)):
-                init_kwargs["max_len"] = min(init_kwargs.get("max_len", int(1e12)), max_len)
-
         # Merge resolved_vocab_files arguments in init_kwargs.
         added_tokens_file = resolved_vocab_files.pop("added_tokens_file", None)
         special_tokens_map_file = resolved_vocab_files.pop("special_tokens_map_file", None)
         for args_name, file_path in resolved_vocab_files.items():
             if args_name not in init_kwargs:
                 init_kwargs[args_name] = file_path
+
         if special_tokens_map_file is not None:
             special_tokens_map = json.load(open(special_tokens_map_file, encoding="utf-8"))
             for key, value in special_tokens_map.items():
@@ -383,36 +397,58 @@ class PreTrainedTokenizer(object):
         tokenizer.init_kwargs = init_kwargs
 
         # Add supplementary tokens.
+        special_tokens = tokenizer.all_special_tokens
         if added_tokens_file is not None:
-            added_tok_encoder = json.load(open(added_tokens_file, encoding="utf-8"))
-            added_tok_decoder = {v: k for k, v in added_tok_encoder.items()}
-            tokenizer.added_tokens_encoder.update(added_tok_encoder)
-            tokenizer.added_tokens_decoder.update(added_tok_decoder)
+            with open(added_tokens_file, encoding="utf-8") as added_tokens_handle:
+                added_tok_encoder = json.load(added_tokens_handle)
+
+            # Sort added tokens by index
+            added_tok_encoder_sorted = list(sorted(added_tok_encoder.items(), key=lambda x: x[1]))
+
+            for token, index in added_tok_encoder_sorted:
+                assert index == len(tokenizer), (
+                    f"Non-consecutive added token '{token}' found. "
+                    f"Should have index {len(tokenizer)} but has index {index} in saved vocabulary."
+                )
+                tokenizer.add_tokens(token, special_tokens=bool(token in special_tokens))
+
+        # Check all our special tokens are registered as "no split" token
+        # (we don't cut them) and are in the vocab
+        added_tokens = tokenizer.sanitize_special_tokens()
+        if added_tokens:
+            logger.warning(
+                "Special tokens have been added in the vocabulary,"
+                "make sure the associated word embedding are fine-tuned or trained."
+            )
 
         return tokenizer
 
     def save_pretrained(self, save_directory):
-        """Save the tokenizer vocabulary files together with:
+        """
+        Save the tokenizer vocabulary files together with:
+
             - added tokens,
             - special-tokens-to-class-attributes-mapping,
-            - tokenizer instantiation positional and keywords inputs
-            (e.g. do_lower_case for Bert).
-        This won't save modifications other than (added tokens and special token mapping)
+            - tokenizer instantiation positional and keywords inputs (e.g. do_lower_case for Bert).
+
+        This won't save modifications other than ``added tokens`` and ``special token mapping``,
         you may have applied to the tokenizer after the instantiation (e.g. modifying
         tokenizer.do_lower_case after creation).
         This method make sure the full tokenizer can then be re-loaded using the
-        :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
+        :func:`~PreTrainedTokenizer.from_pretrained` class method.
         """
-        if not os.path.isdir(save_directory):
+        if not PathManager.isdir(save_directory):
             logger.error("Saving directory ({}) should be a directory".format(save_directory))
             return
+        PathManager.mkdirs(save_directory)
 
         special_tokens_map_file = os.path.join(save_directory, SPECIAL_TOKENS_MAP_FILE)
         added_tokens_file = os.path.join(save_directory, ADDED_TOKENS_FILE)
         tokenizer_config_file = os.path.join(save_directory, TOKENIZER_CONFIG_FILE)
 
         tokenizer_config = copy.deepcopy(self.init_kwargs)
-        tokenizer_config["init_inputs"] = copy.deepcopy(self.init_inputs)
+        if len(self.init_inputs) > 0:
+            tokenizer_config["init_inputs"] = copy.deepcopy(self.init_inputs)
         for file_id in self.vocab_files_names.keys():
             tokenizer_config.pop(file_id, None)
 
@@ -422,12 +458,11 @@ class PreTrainedTokenizer(object):
         with open(special_tokens_map_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(self.special_tokens_map, ensure_ascii=False))
 
-        with open(added_tokens_file, "w", encoding="utf-8") as f:
-            if self.added_tokens_encoder:
-                out_str = json.dumps(self.added_tokens_encoder, ensure_ascii=False)
-            else:
-                out_str = "{}"
-            f.write(out_str)
+        added_vocab = self.get_added_vocab()
+        if added_vocab:
+            with open(added_tokens_file, "w", encoding="utf-8") as f:
+                out_str = json.dumps(added_vocab, ensure_ascii=False)
+                f.write(out_str)
 
         vocab_files = self.save_vocabulary(save_directory)
 
@@ -436,9 +471,9 @@ class PreTrainedTokenizer(object):
     def save_vocabulary(self, save_directory):
         """Save the tokenizer vocabulary to a directory. This method does *NOT* save added tokens
         and special token mappings.
-        Please use :func:`~transformers.PreTrainedTokenizer.save_pretrained` `()` to save the
+        Please use :func:`~PreTrainedTokenizer.save_pretrained` to save the
         full Tokenizer state if you want to reload it using the
-        :func:`~transformers.PreTrainedTokenizer.from_pretrained` class method.
+        :func:`~PreTrainedTokenizer.from_pretrained` class method.
         """
         raise NotImplementedError
 
@@ -464,6 +499,7 @@ class PreTrainedTokenizer(object):
         :obj:`tokenizer.get_vocab()[token]` is equivalent to
         :obj:`tokenizer.convert_tokens_to_ids(token)`
         when :obj:`token` is in the vocab.
+
         Returns:
             :obj:`Dict[str, int]`: The vocabulary.
         """
@@ -472,6 +508,7 @@ class PreTrainedTokenizer(object):
     def get_added_vocab(self) -> Dict[str, int]:
         """
         Returns the added tokens in the vocabulary as a dictionary of token to index.
+
         Returns:
             :obj:`Dict[str, int]`: The added tokens.
         """
@@ -480,14 +517,16 @@ class PreTrainedTokenizer(object):
     def add_tokens(self, new_tokens: Union[str, List[str]], special_tokens: bool = False) -> int:
         """
         Add a list of new tokens to the tokenizer class. If the new tokens are not in the
-        vocabulary, they are added to it with indices starting from length of
+        vocabulary, they are added to it with indices starting from the length of
         the current vocabulary.
+
         .. Note::
             When adding new tokens to the vocabulary, you should make sure to also resize
             the token embedding matrix of the model so that its embedding matrix matches
             the tokenizer.
             In order to do that, please use the
-            :meth:`~transformers.PreTrainedModel.resize_token_embeddings` method.
+            :meth:`~PreTrainedModel.resize_token_embeddings` method.
+
         Args:
             new_tokens (:obj:`str`, or a list of `str`):
                 Tokens are only added if they are not already in the vocabulary.
@@ -495,9 +534,14 @@ class PreTrainedTokenizer(object):
                 Can be used to specify if the token is a special token. This mostly change
                 the normalization behavior
                 (special tokens like CLS or [MASK] are usually not lower-cased for instance).
+
         Returns:
             :obj:`int`: Number of tokens added to the vocabulary.
-        Examples::
+
+        Examples:
+
+        .. code-block:: python
+
             # Let's see how to increase the vocabulary of Bert model and tokenizer
             tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
             model = BertModel.from_pretrained('bert-base-uncased')
@@ -533,26 +577,51 @@ class PreTrainedTokenizer(object):
         self.added_tokens_encoder.update(added_tok_encoder)
         self.added_tokens_decoder.update(added_tok_decoder)
 
+        if special_tokens:
+            self.unique_no_split_tokens = sorted(
+                set(self.unique_no_split_tokens).union(set(new_tokens))
+            )
+        else:
+            self.unique_no_split_tokens = sorted(
+                set(self.unique_no_split_tokens).union(set(tokens_to_add))
+            )
+
         return len(tokens_to_add)
+
+    def sanitize_special_tokens(self) -> int:
+        """
+        Make sure that all the special tokens attributes of the tokenizer
+        (:obj:`tokenizer.mask_token`, :obj:`tokenizer.cls_token`, etc.)
+        are in the vocabulary.
+
+        Add the missing ones to the vocabulary if needed.
+
+        Return:
+            :obj:`int`: The number of tokens added in the vocaulary during the operation.
+        """
+        return self.add_tokens(self.all_special_tokens, special_tokens=True)
 
     def add_special_tokens(self, special_tokens_dict: Dict[str, str]) -> int:
         """
         Add a dictionary of special tokens (eos, pad, cls, etc.) to the encoder and link them to
         class attributes. If special tokens are NOT in the vocabulary, they are added to it
         (indexed starting from the last index of the current vocabulary).
+
         .. Note::
             When adding new tokens to the vocabulary, you should make sure to also resize the
             token embedding matrix of the model so that its embedding matrix matches the tokenizer.
             In order to do that, please use the
-            :meth:`~transformers.PreTrainedModel.resize_token_embeddings` method.
+            :meth:`~PreTrainedModel.resize_token_embeddings` method.
+
         Using :obj:`add_special_tokens` will ensure your special tokens can be used in several ways:
         - Special tokens are carefully handled by the tokenizer (they are never split).
         - You can easily refer to special tokens using tokenizer class attributes like
         :obj:`tokenizer.cls_token`. This makes it easy to develop model-agnostic training and
         fine-tuning scripts.
         When possible, special tokens are already registered for provided pretrained models
-        (for instance :class:`~transformers.BertTokenizer` :obj:`cls_token` is already registered
+        (for instance :class:`~BertTokenizer` :obj:`cls_token` is already registered
         to be :obj`'[CLS]'` and XLM's one is also registered to be :obj:`'</s>'`).
+
         Args:
             special_tokens_dict (dictionary `str` to `str`):
                 Keys should be in the list of predefined special attributes: [``bos_token``,
@@ -561,9 +630,14 @@ class PreTrainedTokenizer(object):
                 ``additional_special_tokens``].
                 Tokens are only added if they are not already in the vocabulary (tested by
                 checking if the tokenizer assign the index of the ``unk_token`` to them).
+
         Returns:
             :obj:`int`: Number of tokens added to the vocabulary.
-        Examples::
+
+        Examples:
+
+        .. code-block:: python
+
             # Let's see how to add a new classification token to GPT-2
             tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
             model = GPT2Model.from_pretrained('gpt2')
@@ -601,13 +675,15 @@ class PreTrainedTokenizer(object):
         """
         Converts a string in a sequence of tokens, using the tokenizer.
         Split in words for word-based vocabulary or sub-words for sub-word-based vocabularies
-        (BPE/SentencePieces/WordPieces). Takes care of added tokens.
+        (BPE/SentencePieces/WordPieces). Take care of added tokens.
+
         Args:
             text (:obj:`str`):
                 The sequence to be encoded.
             **kwargs (additional keyword arguments):
                 Passed along to the model-specific ``prepare_for_tokenization``
                 preprocessing method.
+
         Returns:
             :obj:`List[str]`: The list of tokens.
         """
@@ -641,27 +717,24 @@ class PreTrainedTokenizer(object):
             for tok in tok_list:
                 tokenized_text = []
                 for sub_text in text_list:
-                    if (
-                        sub_text not in self.added_tokens_encoder
-                        and sub_text not in self.all_special_tokens
-                    ):
+                    if sub_text not in self.unique_no_split_tokens:
                         tokenized_text += split_on_token(tok, sub_text)
                     else:
                         tokenized_text += [sub_text]
                 text_list = tokenized_text
-            return sum(
-                (
-                    self._tokenize(token, **kwargs)
-                    if token not in self.added_tokens_encoder
-                    and token not in self.all_special_tokens
-                    else [token]
-                    for token in tokenized_text
-                ),
-                [],
+            return list(
+                itertools.chain.from_iterable(
+                    (
+                        self._tokenize(token)
+                        if token not in self.unique_no_split_tokens
+                        else [token]
+                        for token in tokenized_text
+                    )
+                )
             )
 
-        added_tokens = list(self.added_tokens_encoder.keys()) + self.all_special_tokens
-        tokenized_text = split_on_tokens(added_tokens, text)
+        no_split_token = self.unique_no_split_tokens
+        tokenized_text = split_on_tokens(no_split_token, text)
         return tokenized_text
 
     def _tokenize(self, text, **kwargs):
@@ -720,6 +793,7 @@ class PreTrainedTokenizer(object):
         """
         Converts a single index or a sequence of indices in a token or a sequence of tokens,
         using the vocabulary and added tokens.
+
         Args:
             ids (:obj:`int` or :obj:`List[int]`):
                 The token id (or token ids) to convert to tokens.
@@ -751,8 +825,10 @@ class PreTrainedTokenizer(object):
         Converts a sequence of tokens in a single string. The most simple way to do it is
         ``" ".join(tokens)`` but we often want to remove sub-word tokenization artifacts
         at the same time.
+
         Args:
             tokens (:obj:`List[str]`): The token to join in a string.
+
         Returns:
             :obj:`str`: The joined tokens.
         """
@@ -769,6 +845,7 @@ class PreTrainedTokenizer(object):
         Converts a sequence of ids (integer) in a string, using the tokenizer and vocabulary
         with options to remove special tokens and clean up tokenization spaces.
         Similar to doing ``self.convert_tokens_to_string(self.convert_ids_to_tokens(token_ids))``.
+
         Args:
             token_ids: list of tokenized input ids. Can be obtained using the `encode` or
             `encode_plus` methods.
@@ -891,6 +968,45 @@ class PreTrainedTokenizer(object):
             logger.error("Using eod_token, but it is not set yet.")
             return None
         return str(self._eod_token)
+
+    @property
+    def start_token(self) -> str:
+        """
+        :obj:`str`: Start token of sentence. Common name for bos_token and cls_token.
+        """
+        if self._bos_token is not None and self._cls_token is not None:
+            if self._bos_token == self._cls_token:
+                return str(self._bos_token)
+            else:
+                logger.error("Conflict between bos_token and cls_token.")
+                return None
+        elif self._bos_token is None and self._cls_token is not None:
+            return str(self._cls_token)
+        elif self._bos_token is not None and self._cls_token is None:
+            return str(self._bos_token)
+        else:
+            logger.error("Using start_token, but it is not set yet.")
+            return None
+
+    @property
+    def end_token(self) -> str:
+        """
+        :obj:`str`: End token of sentence. Common name for eos_token and sep_token.
+        Note: eod_token is not considered, because it is often same with eos_token.
+        """
+        if self._eos_token is not None and self._sep_token is not None:
+            if self._eos_token == self._sep_token:
+                return str(self._eos_token)
+            else:
+                logger.error("Conflict between eos_token and _sep_token.")
+                return None
+        elif self._eos_token is None and self._sep_token is not None:
+            return str(self._sep_token)
+        elif self._eos_token is not None and self._sep_token is None:
+            return str(self._eos_token)
+        else:
+            logger.error("Using end_token, but it is not set yet.")
+            return None
 
     @property
     def additional_special_tokens(self) -> List[str]:
@@ -1021,6 +1137,30 @@ class PreTrainedTokenizer(object):
         if self._eod_token is None:
             return None
         return self.convert_tokens_to_ids(self.eod_token)
+
+    @property
+    def start_token_id(self) -> Optional[int]:
+        """
+        :obj:`Optional[int]`: Id of the start token in the vocabulary.
+        Returns :obj:`None` if the token has not been set.
+        """
+        start_token = self.start_token
+        if start_token is None:
+            return None
+        else:
+            return self.convert_tokens_to_ids(start_token)
+
+    @property
+    def end_token_id(self) -> Optional[int]:
+        """
+        :obj:`Optional[int]`: Id of the end token in the vocabulary.
+        Returns :obj:`None` if the token has not been set.
+        """
+        end_token = self.end_token
+        if end_token is None:
+            return None
+        else:
+            return self.convert_tokens_to_ids(end_token)
 
     @property
     def additional_special_tokens_ids(self) -> List[int]:

@@ -118,13 +118,23 @@ class _DistributeUtil(object):
             for i in range(0, self.world_size, num_devices_per_stage)
         ]
 
-        assert cfg.pipeline_num_layers % self._pipeline_parallel_size == 0, (
-            f"number of layers ({cfg.pipeline_num_layers}) is not divisible by"
+        assert cfg.pipeline_num_layers >= self._pipeline_parallel_size, (
+            f"number of layers ({cfg.pipeline_num_layers}) is less than"
             f" pipeline model parallel size ({self._pipeline_parallel_size})"
         )
         num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
+        stage_offset = cfg.pipeline_num_layers % self._pipeline_parallel_size
 
-        self._layer_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
+        # stage_offset can make the later stages contain more layers when pipeline_num_layers
+        # cannot be divided by pipeline_parallel_size.
+        # This can make pipeline parallel more memory efficient.
+        self._layer_stage_ids = []
+        for i in range(0, cfg.pipeline_num_layers - stage_offset, num_layers_per_stage):
+            stage_id = i // num_layers_per_stage
+            if stage_id >= (self._pipeline_parallel_size - stage_offset):
+                self._layer_stage_ids.append(stage_id)
+            self._layer_stage_ids.extend([stage_id] * num_layers_per_stage)
+
         self._layer_ranks = [stages_devices[stage_id] for stage_id in self._layer_stage_ids]
 
     def _init_parallel_hierarchy(self):
@@ -240,8 +250,9 @@ def get_dist_util():
 
 
 def get_layer_placement(layer_idx, device_type="cuda"):
-    """Get `flow.placement` object with the initialized distributed environment
-        according to the layer_idx.
+    """
+    Get ``flow.placement`` object with the initialized distributed environment
+    according to the ``layer_idx``.
 
     Args:
         layer_idx (int): layer index indicating the rank groups. This is very useful for pipeline
@@ -338,7 +349,7 @@ def get_num_nodes():
 def convert_to_distributed_default_setting(module):
     """
     Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
-        global tensor with data parallelism as default.
+    global tensor with data parallelism as default.
     """
     for param in module.parameters():
         if not param.is_global:

@@ -59,11 +59,14 @@ class BertEmbeddings(nn.Module):
         embedding_dropout_prob,
         num_tokentypes=0,
         init_method=nn.init.xavier_normal_,
+        amp_enabled=False,
     ):
         super().__init__()
-        self.vocab_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
+        self.vocab_embeddings = VocabEmbedding(
+            vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled
+        )
         self.position_embeddings = Embedding(
-            max_sequence_length, hidden_size, init_method=init_method
+            max_sequence_length, hidden_size, init_method=init_method, amp_enabled=amp_enabled
         )
 
         # NOTE(l1aoxingyu): Set position_ids sbp sign to [B, B] initially, because position_ids is a
@@ -78,7 +81,7 @@ class BertEmbeddings(nn.Module):
 
         if num_tokentypes > 0:
             self.tokentype_embeddings = Embedding(
-                num_tokentypes, hidden_size, init_method=init_method
+                num_tokentypes, hidden_size, init_method=init_method, amp_enabled=amp_enabled
             )
             self.tokentype_ids = flow.zeros(
                 self.position_ids.size(),
@@ -215,6 +218,50 @@ class BertLoss(nn.Module):
 class BertModel(nn.Module):
     """The bare Bert Model transformer outputting raw hidden-states without
     any specific head on top.
+
+    Args:
+        vocab_size (int): The size of vocabulary file.
+        hidden_size (int): The size of hidden states.
+        hidden_layers (_type_): The number of ``TransformerLayer`` in encoder.
+        num_attention_heads (int):
+            The number of attention heads for each attention layer of ``TransformerLayer``.
+        intermediate_size (int):
+            The size of intermediate layer in feed-forward network for each ``TransformerLayer``.
+        hidden_dropout_prob  (float, optional):
+            The dropout ratio for the output for each TransformerLayer. Defaults to 0.0.
+        attention_probs_dropout_prob  (float, optional):
+            The dropout ratio for the output of each attention layer in ``TransformerLayer``.
+            Defaults to 0.0.
+        max_position_embeddings (int):
+            Max sequence length of input, defines the shape of Position Embeddings
+            in ``BertEmbedding``.
+        num_tokentypes (int, optional):
+            Number of segment token indices. Defaults to 2.
+        add_pooling_layer (bool, optional):
+            Whether or not averaging or pooling the sequence of hidden-states for the
+            whole input sequence. Defaults to ``True``.
+        initializer_range (float, optional):
+            Sigma of the normal distribution in the initialization method. Defaults to 0.02.
+        layernorm_epsilon (float, optional):
+            The epsilon of LayerNorm layer. Defaults to 1e-5.
+        bias_gelu_fusion (bool, optional):
+            Whether or not to fuse the computing of bias and gelu. Defaults to ``False``.
+        bias_dropout_fusion (bool, optional):
+            Whether or not to fuse the computing of dropout and bias. Defaults to ``False``.
+        scale_mask_softmax_fusion (bool, optional):
+            Whether to fuse the computing of mask and softmax in attention layers.
+            Defaults to ``False``.
+        apply_query_key_layer_scaling (bool, optional):
+            Whether or not to use layer index related scaling in computing attention scores.
+            If ``True``, the scaling factor equals to sqrt(d) * (layer_index + 1).
+            Defaults to ``True``.
+        apply_residual_post_layernorm (bool, optional):
+            If set ``True``, use original BERT residual connection ordering otherwise use Megatron
+            BERT residual connection which is more stable when scaling model size introduced in
+            https://arxiv.org/pdf/1909.08053.pdf.
+            Default: ``False``.
+        amp_enabled (bool, optional):
+            Whether or not to set fp16 for embedding weight in T5 model. Defaults to ``False``.
     """
 
     @configurable
@@ -236,6 +283,8 @@ class BertModel(nn.Module):
         bias_dropout_fusion=True,
         scale_mask_softmax_fusion=True,
         apply_query_key_layer_scaling=True,
+        apply_residual_post_layernorm=False,
+        amp_enabled=False,
     ):
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -249,6 +298,7 @@ class BertModel(nn.Module):
             hidden_dropout_prob,
             num_tokentypes,
             init_method,
+            amp_enabled,
         )
 
         # Mask generation
@@ -270,6 +320,7 @@ class BertModel(nn.Module):
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
+                    apply_residual_post_layernorm=apply_residual_post_layernorm,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -298,6 +349,8 @@ class BertModel(nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
+            "amp_enabled": cfg.amp_enabled,
         }
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
@@ -356,7 +409,7 @@ class BertPreTrainingHeads(nn.Module):
         seq_relationship_score = self.seq_relationship(pooled_output)
         prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
 
-        if self.training and lm_labels is not None:
+        if lm_labels is not None:
             return self.loss_func(
                 prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
             )
