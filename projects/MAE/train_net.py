@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
-        assert try_get_key(cfg, "graph.enable") == False, "LiBai MAE only support eager global mode now, please set cfg.graph.enable=False"
+        assert try_get_key(cfg, "graph.enabled") == False, "LiBai MAE only support eager global mode now, please set cfg.graph.enabled=False"
 
         model = super().build_model(cfg)
         if try_get_key(cfg, "finetune") is not None:

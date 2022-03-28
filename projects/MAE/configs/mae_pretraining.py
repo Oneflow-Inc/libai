@@ -22,8 +22,8 @@ dataloader.test[0].dataset.root = "/dataset/extract"
 # No test data for pretraining
 del dataloader.test
 
-# Graph training
-graph.enabled = True
+# MAE do not support Graph training
+graph.enabled = False
 
 # Refine data transform to MAE's default settings
 transform_train = LazyCall(transforms.Compose)(
