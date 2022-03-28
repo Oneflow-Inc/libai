@@ -28,24 +28,14 @@ def filter_keys(key, value):
         key = key.replace("norm1", "input_layernorm")
     elif "attn.qkv" in key:
         key = key.replace("attn.qkv", "self_attention.query_key_value")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
     elif "attn.proj" in key:
         key = key.replace("attn.proj", "self_attention.dense")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
     elif "norm2" in key:
         key = key.replace("norm2", "post_attention_layernorm")
     elif "mlp.fc1" in key:
         key = key.replace("mlp.fc1", "mlp.dense_h_to_4h")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
     elif "mlp.fc2" in key:
         key = key.replace("mlp.fc2", "mlp.dense_4h_to_h")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
-    elif "head.weight" in key:
-            value = value.transpose((-1, -2))
     elif "fc_norm" in key:
         key = key.replace("fc_norm", "norm")
     

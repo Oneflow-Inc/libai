@@ -17,21 +17,7 @@
 import time
 from typing import Callable
 
-from libai.engine import DefaultTrainer
 from libai.engine.trainer import EagerTrainer
-
-
-class MoCoPretrainingTrainer(DefaultTrainer):
-
-    def __init__(self, cfg):
-
-        super().__init__(cfg)
-
-        self.model.max_iter = cfg.train.train_epoch
-
-        self._trainer = MoCoEagerTrainer(
-                self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
-            )
 
 
 class MoCoEagerTrainer(EagerTrainer):

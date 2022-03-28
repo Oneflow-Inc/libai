@@ -40,9 +40,4 @@ train.scheduler.warmup_factor = 0.001
 train.scheduler.alpha = 1.5e-4
 train.scheduler.warmup_method = "linear"
 
-# Set fp16 ON
-train.amp.enabled = True
-
 graph.enabled = False
-
-graph['enabled'] = False

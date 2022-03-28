@@ -3,7 +3,7 @@ from omegaconf import OmegaConf
 from libai.config import get_config, LazyCall
 
 from .models.vit_small_patch16 import model
-from projects.MOCOV3.configs.build_finetune_model import build_model
+from projects.MOCOV3.modeling.build_finetune_model import build_model
 
 dataloader = get_config("common/data/imagenet.py").dataloader
 train = get_config("common/train.py").train
@@ -41,8 +41,5 @@ train.log_period  =1
 train.scheduler.warmup_factor = 0.001
 train.scheduler.alpha = 1.5e-4
 train.scheduler.warmup_method = "linear"
-
-# Set fp16 ON
-train.amp.enabled = True
 
 graph.enabled = False

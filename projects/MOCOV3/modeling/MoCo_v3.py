@@ -133,8 +133,7 @@ class MoCo(nn.Module):
 
 class MoCo_ViT(MoCo):
     def _build_projector_and_predictor_mlps(self, dim, mlp_dim):
-        hidden_dim = self.base_encoder.head.weight.shape[0]
-        
+        hidden_dim = self.base_encoder.head.weight.shape[1]
         # projectors
         self.base_encoder.head = self._build_mlp(3, hidden_dim, mlp_dim, dim)
         self.momentum_encoder.head = self._build_mlp(3, hidden_dim, mlp_dim, dim)
