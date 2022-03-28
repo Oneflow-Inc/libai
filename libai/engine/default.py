@@ -518,6 +518,10 @@ class DefaultTrainer(TrainerBase):
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         model.apply(dist.convert_to_distributed_default_setting)
+
+        # flow.load(model.state_dict(), "alexnet_init_model", global_dst_rank=0)
+        # model.load_state_dict(flow.load("alexnet_init_model", global_src_rank=0))
+
         return model
 
     @classmethod

@@ -298,7 +298,7 @@ def build_image_train_loader(
         sampler = CyclicSampler(
             dataset=dataset,
             micro_batch_size=train_batch_size,
-            shuffle=True,
+            shuffle=False,
             consumed_samples=consumed_samples,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
