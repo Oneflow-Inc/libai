@@ -18,7 +18,7 @@ You can refer to oneflow official [tutorial](https://docs.oneflow.org/en/master/
 
 ## Supported Model in LiBai
 
-For more details about the supported parallelism training on different models, please refer to the following tables:
+For more details about the supported parallelism training on different models, please refer the following tables:
 
 <table class="docutils">
   <tbody>
