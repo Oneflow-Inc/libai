@@ -1,4 +1,4 @@
-from flowvision.transforms import transforms
+from flowvision.transforms import transforms, InterpolationMode
 from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 from libai.config import LazyCall, get_config
@@ -31,7 +31,7 @@ transform_train = LazyCall(transforms.Compose)(
         LazyCall(transforms.RandomResizedCrop)(
             size=(224, 224),
             scale=(0.2, 1.0),
-            interpolation=3
+            interpolation=InterpolationMode.BICUBIC
         ),
         LazyCall(transforms.RandomHorizontalFlip)(),
         LazyCall(transforms.ToTensor)(),

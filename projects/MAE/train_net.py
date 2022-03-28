@@ -45,7 +45,7 @@ class Trainer(DefaultTrainer):
                 if cfg.finetune.weight_style == "oneflow":
                     model.load_state_dict(flow.load(cfg.finetune.path))
                 else:
-                    model = load_torch_checkpoint(model, path=cfg.finetune.path)
+                    model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path)
         return model
     
     @classmethod

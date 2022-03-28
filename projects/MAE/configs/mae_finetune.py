@@ -30,6 +30,12 @@ dataloader.test[0].dataset.root = "/dataset/extract"
 graph.enabled = False
 
 
+# Refine model cfg for vit training on imagenet
+model.num_classes = 1000
+model.depth = 3
+model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+
+
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
     mixup_alpha=0.8,
@@ -38,16 +44,11 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     switch_prob=0.5,
     mode="batch",
     label_smoothing=0.1,
-    num_classes=1000,
+    num_classes=model.num_classes,
 )
 
-# Refine model cfg for vit training on imagenet
-model.num_classes = 1000
-model.depth = 3
-model.loss_func = LazyCall(SoftTargetCrossEntropy)()
-
 # Refine training settings for MAE finetune
-train.train_micro_batch_size = 64
+train.train_micro_batch_size = 16
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
 train.log_period = 1

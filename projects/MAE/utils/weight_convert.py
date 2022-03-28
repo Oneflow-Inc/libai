@@ -20,7 +20,37 @@ import oneflow as flow
 
 logger = logging.getLogger(__name__)
 
-def filter_keys(key, value):
+def convert_qkv_weight(cfg, value):
+    """
+    convert qkv.weight to be compatible with LiBai transformer layer
+    
+    Args:
+        cfg: config file
+        value: qkv.weight in the loaded checkpoint
+    """
+    num_heads = cfg.model.num_heads
+    hidden_size = cfg.model.embed_dim
+    head_size = int(hidden_size / num_heads)
+    qkv_weight = value.view([num_heads, 3, head_size, hidden_size])
+    qkv_weight = qkv_weight.permute(1, 0, 2, 3).contiguous().view(hidden_size*3, hidden_size)
+    return qkv_weight
+
+def convert_qkv_bias(cfg, value):
+    """
+    convert qkv.bias to be compatible with LiBai transformer layer
+    
+    Args:
+        cfg: config file
+        value: qkv.bias in the loaded checkpoint
+    """
+    num_heads = cfg.model.num_heads
+    hidden_size = cfg.model.embed_dim
+    head_size = int(hidden_size / num_heads)
+    qkv_bias = value.view([num_heads, 3, head_size])
+    qkv_bias = qkv_bias.permute(1, 0, 2).contiguous().view(hidden_size*3)
+    return qkv_bias
+
+def filter_keys(key, value, cfg):
     """Filtering the state_dict keys and values to match LiBai's MAE model
     """
     if "norm1" in key:
@@ -28,41 +58,37 @@ def filter_keys(key, value):
     elif "attn.qkv" in key:
         key = key.replace("attn.qkv", "self_attention.query_key_value")
         if "weight" in key:
-            value = value.transpose((-1, -2))
+            value = convert_qkv_weight(cfg, value)
+        if "bias" in key:
+            value = convert_qkv_bias(cfg, value)
     elif "attn.proj" in key:
         key = key.replace("attn.proj", "self_attention.dense")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
     elif "norm2" in key:
         key = key.replace("norm2", "post_attention_layernorm")
     elif "mlp.fc1" in key:
         key = key.replace("mlp.fc1", "mlp.dense_h_to_4h")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
     elif "mlp.fc2" in key:
         key = key.replace("mlp.fc2", "mlp.dense_4h_to_h")
-        if "weight" in key:
-            value = value.transpose((-1, -2))
-    elif "head.weight" in key:
-            value = value.transpose((-1, -2))
     elif "fc_norm" in key:
         key = key.replace("fc_norm", "norm")
     
     return key, value
 
-def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth", strict=False):
-    """Load checkpoint from the given torch weights.
-    Torch weight from: https://github.com/facebookresearch/mae
+def load_torch_checkpoint(model, cfg, path="./mae_finetuned_vit_base.pth", strict=False):
+    """
+    Load checkpoint from the given torch weights.
+    Torch weight can be downloaded from the original repo: 
+        https://github.com/facebookresearch/mae
     """
     torch_dict = torch.load(path)["model"]
     parameters = torch_dict
     new_parameters = dict()
     for key, value in parameters.items():
         if "num_batches_tracked" not in key:
-          val = value.detach().cpu().numpy()
           # to global tensor
-          key, val = filter_keys(key, val)
-          val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
+          key, val = filter_keys(key, value, cfg)
+          val = value.detach().cpu().numpy()
+          val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
           new_parameters[key] = val
     model.load_state_dict(new_parameters, strict=strict)
     print("Successfully load torch mae checkpoint.")
