@@ -1,0 +1,4 @@
+.rst-content .section ol li>*, .rst-content .section ul li>* {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
