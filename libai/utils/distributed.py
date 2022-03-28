@@ -162,7 +162,7 @@ class _DistributeUtil(object):
 
     @property
     def model_parallel_size(self):
-        return self._tensor_parallel_size * self._pipeline_parallel_size
+        return self._tensor_parallel_size# * self._pipeline_parallel_size
 
     @property
     def data_parallel_size(self):
@@ -289,7 +289,7 @@ def get_hidden_sbp():
 
 def get_data_parallel_rank():
     dist_util = get_dist_util()
-    return flow.env.get_rank() // dist_util.model_parallel_size
+    return (flow.env.get_rank() // dist_util.model_parallel_size) % dist_util.data_parallel_size
 
 
 def get_data_parallel_size():
