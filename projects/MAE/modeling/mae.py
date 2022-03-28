@@ -234,10 +234,20 @@ class MaskedAutoencoderViT(nn.Module):
         ids_keep = ids_shuffle[:, :len_keep]
         x_masked = flow.gather(x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
 
+        # 错误的写法
         # generate the binary mask: 0 is keep, 1 is remove
         mask = dist.ttol(flow.ones([N, L], dtype=x.dtype))
         mask[:, :len_keep] = 0
         mask.to_global(sbp=x.sbp, placement=x.placement)
+        # 报错1: graph不支持local to global
+        # 报错2: inconsistent attributes: inputs.at(1)->is_local() Got input tensors with inconsistent attributes!
+        # mask = flow.gather(mask, dim=1, index=ids_restore)
+
+        # 正确的写法
+        # generate the binary mask: 0 is keep, 1 is remove
+        mask = flow.ones([N, L], sbp=x.sbp, placement=x.placement)
+        mask[:, :len_keep] = 0
+
         # unshuffle to get binary mask
         mask = flow.gather(mask, dim=1, index=ids_restore)
 
