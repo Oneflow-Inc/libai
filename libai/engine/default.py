@@ -368,11 +368,6 @@ class DefaultTrainer(TrainerBase):
         assert isinstance(
             weight_path, str
         ), f"cfg.train.load_weight:{self.cfg.train.load_weight} must be string"
-        if len(weight_path) == 0:
-            return
-        assert os.path.isdir(
-            weight_path
-        ), f"cfg.train.load_weight:{self.cfg.train.load_weight} must be directory"
         if resume:
             assert self.checkpointer.has_checkpoint()
             # The checkpoint stores the training iteration that just finished, thus we start
@@ -380,7 +375,10 @@ class DefaultTrainer(TrainerBase):
             assert self.start_iter == (
                 self.checkpointer.resume_or_load(None, resume=True).get("iter", -1) + 1
             )
-        else:
+        elif len(weight_path) != 0:
+            assert os.path.isdir(
+                weight_path
+            ), f"cfg.train.load_weight:{self.cfg.train.load_weight} must be directory"
             self.checkpointer.load(weight_path, checkpointables=[])
 
     def build_hooks(self):
