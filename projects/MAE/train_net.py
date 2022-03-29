@@ -17,6 +17,8 @@
 import sys
 import logging
 
+from libai.config.instantiate import instantiate
+
 sys.path.append(".")
 
 import oneflow as flow
@@ -43,30 +45,31 @@ class Trainer(DefaultTrainer):
                 logger.info("Loading pretrained weight for finetuning")
                 assert cfg.finetune.weight_style in ["oneflow", "pytorch"]
                 if cfg.finetune.weight_style == "oneflow":
-                    model.load_state_dict(flow.load(cfg.finetune.path))
+                    model.load_state_dict(flow.load(cfg.finetune.path, strict=False))
                 else:
-                    model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path, strict=True)
+                    model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path, strict=False)
         return model
     
-    @classmethod
-    def build_optimizer(cls, cfg, model):
-        if try_get_key(cfg, "train.layer_decay") is not None:
-            param_groups = param_groups_lrd(
-                model, 
-                weight_decay=cfg.optim.weight_decay, 
-                no_weight_decay_list=model.no_weight_decay(), 
-                layer_decay=cfg.train.layer_decay
-            )
-            optim = flow.optim.AdamW(
-                parameters=param_groups,
-                lr=cfg.optim.lr,
-                weight_decay=cfg.optim.weight_decay,
-                betas=cfg.optim.betas,
-                eps=cfg.optim.eps,
-                do_bias_correction=cfg.optim.do_bias_correction
-            )
-            return optim
-        return build_optimizer(cfg.optim, model)
+    # @classmethod
+    # def build_optimizer(cls, cfg, model):
+    #     if try_get_key(cfg, "train.layer_decay") is not None:
+    #         param_groups = param_groups_lrd(
+    #             model, 
+    #             weight_decay=cfg.optim.weight_decay, 
+    #             no_weight_decay_list=model.no_weight_decay(), 
+    #             layer_decay=cfg.train.layer_decay
+    #         )
+    #         cfg.optim.params = param_groups
+    #         # optim = flow.optim.AdamW(
+    #         #     params=param_groups,
+    #         #     lr=cfg.optim.lr,
+    #         #     weight_decay=cfg.optim.weight_decay,
+    #         #     betas=tuple(cfg.optim.betas),
+    #         #     eps=cfg.optim.eps,
+    #         #     do_bias_correction=cfg.optim.do_bias_correction
+    #         # )
+    #         # return optim
+    #     return instantiate(cfg.optim)
 
 
 DefaultTrainer = Trainer
@@ -78,7 +81,8 @@ def main(args):
 
     if args.fast_dev_run:
         cfg.train.train_epoch = 0
-        cfg.train.train_iter = 20
+        cfg.train.checkpointer.period = 5
+        cfg.train.train_iter = 10
         cfg.train.evaluation.eval_period = 10
         cfg.train.log_period = 1
 

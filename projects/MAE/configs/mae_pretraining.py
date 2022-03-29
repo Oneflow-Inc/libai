@@ -2,22 +2,18 @@ from flowvision.transforms import transforms, InterpolationMode
 from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 from libai.config import LazyCall, get_config
-
-from configs.common.data.imagenet import dataloader
 from .models.mae_vit_base_patch16 import model
 from ..data.pretraining_imagenet import PretrainingImageNetDataset
 
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
+dataloader = get_config("common/data/imagenet.py").dataloader
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 dataloader.train.dataset[0]._target_ = PretrainingImageNetDataset
-
-dataloader.train.dataset[0].root = "/dataset/extract"
-dataloader.test[0].dataset.root = "/dataset/extract"
 
 # No test data for pretraining
 del dataloader.test

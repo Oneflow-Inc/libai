@@ -6,6 +6,7 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 from libai.config import LazyCall, get_config
 from .models.vit_base_patch16 import model
 from ..utils.scheduler import warmup_layerscale_cosine_lr_scheduler
+from ..utils.lr_decay import param_groups_lrd
 
 
 # Path to the weight for fine-tune
@@ -13,7 +14,7 @@ finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
 finetune.weight_style = "pytorch"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
 # finetune.path = "/path/to/pretrained_mae_weight"
-finetune.path = "/home/rentianhe/code/OneFlow-Models/libai/mae_finetuned_vit_base.pth"
+finetune.path = "/home/rentianhe/code/OneFlow-Models/libai/mae_pretrain_vit_base.pth"
 
 # Get train, optim and graph configs
 train = get_config("common/train.py").train
@@ -48,12 +49,12 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 )
 
 # Refine training settings for MAE finetune
-train.train_micro_batch_size = 1
-train.test_micro_batch_size = 16
+train.train_micro_batch_size = 64
+train.test_micro_batch_size = 32
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
 train.log_period = 1
-train.eval_period = 1000
+train.evaluation.eval_period = 1000
 
 # Set layer decay for MAE fine-tune
 train.layer_decay = 0.75
@@ -67,13 +68,17 @@ actual_lr = base_lr * (train.train_micro_batch_size * 8 / 256)
 
 
 # Refine optim settings
-optim.params.clip_grad_max_norm = None
-optim.params.clip_grad_norm_type = None
-optim.params.weight_decay_norm = None
-optim.params.weight_decay_bias = None
+optim.params._target_ = param_groups_lrd
+optim.params.weight_decay = 0.05
+optim.params.layer_decay = 0.75
 optim.lr = actual_lr
 optim.weight_decay = 0.05
 optim.betas = (0.9, 0.999)
+
+del optim.params.clip_grad_max_norm
+del optim.params.clip_grad_norm_type
+del optim.params.weight_decay_norm
+del optim.params.weight_decay_bias
 
 
 # Refine scheduler
