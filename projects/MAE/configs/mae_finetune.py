@@ -33,7 +33,6 @@ graph.enabled = False
 
 # Refine model cfg for vit training on imagenet
 model.num_classes = 1000
-model.depth = 12
 model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 

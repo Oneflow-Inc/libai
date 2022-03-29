@@ -31,8 +31,7 @@ def convert_qkv_weight(cfg, value):
     num_heads = cfg.model.num_heads
     hidden_size = cfg.model.embed_dim
     head_size = int(hidden_size / num_heads)
-    qkv_weight = value.view([num_heads, 3, head_size, hidden_size])
-    qkv_weight = qkv_weight.permute(1, 0, 2, 3).contiguous().view(hidden_size*3, hidden_size)
+    qkv_weight = value.view([3, num_heads, head_size, hidden_size]).permute(1, 0, 2, 3).contiguous().view(hidden_size*3, hidden_size)
     return qkv_weight
 
 def convert_qkv_bias(cfg, value):
@@ -46,8 +45,7 @@ def convert_qkv_bias(cfg, value):
     num_heads = cfg.model.num_heads
     hidden_size = cfg.model.embed_dim
     head_size = int(hidden_size / num_heads)
-    qkv_bias = value.view([num_heads, 3, head_size])
-    qkv_bias = qkv_bias.permute(1, 0, 2).contiguous().view(hidden_size*3)
+    qkv_bias = value.view(3, num_heads, head_size).permute(1, 0, 2).contiguous().view(hidden_size*3)
     return qkv_bias
 
 def filter_keys(key, value, cfg):
@@ -80,16 +78,17 @@ def load_torch_checkpoint(model, cfg, path="./mae_finetuned_vit_base.pth", stric
     Torch weight can be downloaded from the original repo: 
         https://github.com/facebookresearch/mae
     """
-    torch_dict = torch.load(path)["model"]
+    torch_dict = torch.load(path, map_location="cpu")["model"]
     parameters = torch_dict
     new_parameters = dict()
     for key, value in parameters.items():
         if "num_batches_tracked" not in key:
           # to global tensor
           key, val = filter_keys(key, value, cfg)
-          val = value.detach().cpu().numpy()
+          val = val.detach().cpu().numpy()
           val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
           new_parameters[key] = val
     model.load_state_dict(new_parameters, strict=strict)
     print("Successfully load torch mae checkpoint.")
     return model
+
