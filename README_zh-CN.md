@@ -55,10 +55,10 @@ LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支�
 </details>
 
 ## 安装
-请参考[LiBai安装文档](https://libai.readthedocs.io/en/latest/tutorials/Installation.html)进行安装。
+请参考[LiBai安装文档](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html)进行安装。
 
 ## 快速入门
-请参考[快速入门文档](https://libai.readthedocs.io/en/latest/tutorials/Getting_Started.html)了解和学习LiBai的基本使用，后续我们将提供丰富的教程与完整的使用指南。
+请参考[快速入门文档](https://libai.readthedocs.io/en/latest/tutorials/get_started/quick_run.html)了解和学习LiBai的基本使用，后续我们将提供丰富的教程与完整的使用指南。
 
 ## 使用文档
 请参考[LiBai使用文档](https://libai.readthedocs.io/en/latest/index.html)了解LiBai中相关接口的使用。

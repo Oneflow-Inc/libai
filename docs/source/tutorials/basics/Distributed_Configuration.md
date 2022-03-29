@@ -45,7 +45,7 @@ from .common.train import train
 train.dist.pipeline_parallel_size = 8
 ```
 
-**Note:** For models which have been configured with pipeline parallelism(e.g., BERT, GPT-2, T5 and ViT), you can simply update the distributed config to execute pipeline parallel training on them. If you need to train your own model with pipeline parallel strategy, please refer to [Write Models]() for more details about configuring your own model with pipeline parallelism.
+**Note:** For models which have been configured with pipeline parallelism(e.g., BERT, GPT-2, T5 and ViT), you can simply update the distributed config to execute pipeline parallel training on them. If you need to train your own model with pipeline parallel strategy, please refer to [Write Models](https://libai.readthedocs.io/en/latest/tutorials/basics/Write_Models.html) for more details about configuring your own model with pipeline parallelism.
 
 #### **Data Parallel + Tensor Parallel for 2D Parallel Training on 8 GPUs**
 

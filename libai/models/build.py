@@ -26,7 +26,7 @@ and expected to return a `nn.Module` object.
 
 
 def build_model(cfg):
-    """Build the whole model architecture, defined by ``cfg.model.model_name``.
+    """Build the whole model architecture, defined by ``cfg.model``.
     Note that is does not load any weights from ``cfg``.
     """
     if "_target_" in cfg:  # LazyCall
