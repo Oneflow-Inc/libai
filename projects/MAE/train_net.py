@@ -45,7 +45,7 @@ class Trainer(DefaultTrainer):
                 if cfg.finetune.weight_style == "oneflow":
                     model.load_state_dict(flow.load(cfg.finetune.path))
                 else:
-                    model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path)
+                    model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path, strict=True)
         return model
     
     @classmethod
@@ -79,7 +79,7 @@ def main(args):
     if args.fast_dev_run:
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 20
-        cfg.train.eval_period = 10
+        cfg.train.evaluation.eval_period = 10
         cfg.train.log_period = 1
 
     if args.eval_only:
@@ -90,9 +90,12 @@ def main(args):
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=args.resume
         )
-        graph = DefaultTrainer.build_graph(cfg, model, is_train=False)
+        if try_get_key(cfg, "train.graph.enabled", default=False):
+            model = DefaultTrainer.build_graph(cfg, model, is_train=False)
         test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
-        res = DefaultTrainer.test(cfg, test_loader, graph)  # noqa
+        if len(test_loader) == 0:
+            logger.info("No dataset in dataloader.test, please set dataset for dataloader.test")
+        _ = DefaultTrainer.test(cfg, test_loader, model)
         return
 
     trainer = DefaultTrainer(cfg)

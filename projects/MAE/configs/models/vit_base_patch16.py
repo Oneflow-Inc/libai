@@ -1,7 +1,4 @@
-from functools import partial
-
 from libai.config import LazyCall
-from libai.layers import LayerNorm
 
 from modeling.vit import VisionTransformer
 

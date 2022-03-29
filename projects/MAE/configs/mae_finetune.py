@@ -1,24 +1,25 @@
 from omegaconf import OmegaConf
 
+from flowvision.data import Mixup
+from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
+
 from libai.config import LazyCall, get_config
-from configs.common.data.imagenet import dataloader
 from .models.vit_base_patch16 import model
 from ..utils.scheduler import warmup_layerscale_cosine_lr_scheduler
 
-from flowvision.data import Mixup
-from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 # Path to the weight for fine-tune
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
 finetune.weight_style = "pytorch"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
 # finetune.path = "/path/to/pretrained_mae_weight"
-finetune.path = "/home/rentianhe/code/OneFlow-Models/libai/mae_pretrain_vit_base.pth"
+finetune.path = "/home/rentianhe/code/OneFlow-Models/libai/mae_finetuned_vit_base.pth"
 
 # Get train, optim and graph configs
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
+dataloader = get_config("common/data/imagenet.py").dataloader
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
@@ -32,7 +33,7 @@ graph.enabled = False
 
 # Refine model cfg for vit training on imagenet
 model.num_classes = 1000
-model.depth = 3
+model.depth = 12
 model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 
@@ -48,7 +49,8 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 )
 
 # Refine training settings for MAE finetune
-train.train_micro_batch_size = 16
+train.train_micro_batch_size = 1
+train.test_micro_batch_size = 16
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
 train.log_period = 1

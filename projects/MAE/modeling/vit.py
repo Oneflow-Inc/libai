@@ -31,7 +31,7 @@ from libai.layers import LayerNorm, Linear, PatchEmbedding, TransformerLayer
 
 
 class VisionTransformer(nn.Module):
-    """Vision Transformer
+    """Vision Transformer for MAE
     LiBai impl of: `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`
         - https://arxiv.org/abs/2010.11929
     """
@@ -155,7 +155,7 @@ class VisionTransformer(nn.Module):
         pos_embed = self.pos_embed.expand(B, -1, -1)
         pos_embed = pos_embed.to_global(sbp=x.sbp, placement=pos_embed.placement)
         x = self.pos_drop(x + pos_embed)
-
+        
         # transformer block
         x = self.blocks(x)
 
