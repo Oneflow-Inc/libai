@@ -1,6 +1,5 @@
 from libai.config import LazyCall
 from .common.models.swin.swin_tiny_patch4_window7_224 import model
-# from .common.models.vit.vit_tiny_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
@@ -44,26 +43,18 @@ train.scheduler.warmup_factor = 5e-7
 train.scheduler.alpha = 0.0
 train.scheduler.warmup_method = "linear"
 
-# different parallel strategy settings
-
-# data parallel
-# train.dist.data_parallel_size = 2
-# train.dist.tensor_parallel_size = 4
-# train.dist.pipeline_parallel_size = 1
-
-# pipeline + data parallel
-# train.dist.data_parallel_size=2
-# train.dist.tensor_parallel_size=1
-# train.dist.pipeline_parallel_size=4
-
-train.dist.data_parallel_size=2
-train.dist.tensor_parallel_size=2
-train.dist.pipeline_parallel_size=2
+# parallel strategy settings
+train.dist.data_parallel_size = 8
+train.dist.tensor_parallel_size = 1
+train.dist.pipeline_parallel_size = 1
 train.dist.pipeline_num_layers = sum(model.depths)
 train.output_dir="./output"
 
 # Set fp16 ON
 train.amp.enabled = False
+train.activation_checkpoint.enabled = False
+# train.zero_optimization.enabled = True
+# train.zero_optimization.stage = 1
 graph.enabled = False
 
 

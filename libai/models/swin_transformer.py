@@ -704,3 +704,9 @@ class SwinTransformer(nn.Module):
         model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
         model.avgpool.config.stage_id = dist_utils.get_layer_stage_id(-1)
         model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            if isinstance(module_block.origin, SwinTransformerBlock):
+                module_block.config.activation_checkpointing = True
