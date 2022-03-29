@@ -122,7 +122,7 @@ class VisionTransformer(nn.Module):
         for name, param in self.named_parameters():
             if name not in ['%s.weight' % linear_keyword, '%s.bias' % linear_keyword]:
                 param.requires_grad = False
-
+        assert weight_style in ["pytorch", "oneflow"]
         if weight_style == "pytorch":
             params = load_torch_checkpoint_finetune(num_heads, embed_dim, path=finetune)
         else:

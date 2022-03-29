@@ -2,7 +2,7 @@ from flowvision import transforms
 
 from libai.config import get_config, LazyCall
 
-from .models.MoCo_v3_vit_small_patch16 import model
+from .models.MoCo_v3_vit_base_patch16 import model
 from transform.pretraining_transform import TwoCropsTransform, augmentation1, augmentation2
 
 dataloader = get_config("common/data/imagenet.py").dataloader
@@ -28,8 +28,8 @@ optim.eps = 1e-8
 optim.weight_decay = .1
 
 # Refine train cfg for moco v3 model
-train.train_micro_batch_size=32
-train.test_micro_batch_size= 32
+train.train_micro_batch_size=4
+train.test_micro_batch_size= 4
 train.train_epoch = 90
 train.warmup_ratio = 5 / 90
 train.eval_period = 1

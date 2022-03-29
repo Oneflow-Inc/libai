@@ -13,5 +13,5 @@ model = LazyCall(VisionTransformer)(
         drop_path_rate=0.1,
         global_pool=False,
         finetune=None,
-        weight_style="pytorch"
+        weight_style=None
 )
