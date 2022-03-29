@@ -47,22 +47,12 @@ class TransformerLayer(nn.Module):
         scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
         apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
             Default: ``False``.
+        apply_residual_post_layernorm: if ``true``, use original BERT residual
+            connection ordering. Otherwise, use Megatron BERT residual connection which
+            is more stable when scaling model size introduced in
+            https://arxiv.org/pdf/1909.08053.pdf.
+            Default: ``False``.
         layer_idx: the layer index, which determines the placement.
-
-    Inputs:
-        * **hidden_states**: [bsz, seq_length, hidden_size], (S(0), B).
-        * **attention_mask**: [bsz, 1, seq_length, seq_length], (S(0), B),
-          the combination of key padding mask and casual mask of hidden states.
-        * **encoder_states**: [bsz, seq_length, hidden_size], (S(0), B), encoder output,
-          this will be used in cross attention.
-        * **encoder_attention_mask**: [bsz, 1, seq_length, seq_length],
-          (S(0), B) key padding mask of encoder states.
-        * **past_key_value**: tuple of key and value, each shape is
-          [src_len, bsz, num_heads, head_size], For decoder layer,
-          the past_key_value contains the states both from
-          self attention and cross attention.
-        * **use_cache**: it will be set to `True`, when the model is in the inference phase and
-          used for incremental decoding.
     """
 
     def __init__(
@@ -81,6 +71,7 @@ class TransformerLayer(nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
+        apply_residual_post_layernorm=False,
         *,
         layer_idx=0
     ):
@@ -99,6 +90,7 @@ class TransformerLayer(nn.Module):
         self.bias_dropout_fusion = bias_dropout_fusion
         self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
         self.apply_query_key_layer_scaling = apply_query_key_layer_scaling
+        self.apply_residual_post_layernorm = apply_residual_post_layernorm
 
         self.init_method = init_method
         if output_layer_init_method is None:
@@ -142,6 +134,24 @@ class TransformerLayer(nn.Module):
         past_key_value=None,
         use_cache=False,
     ):
+        """
+        Args:
+            hidden_states: shape is (batch_size, seq_length, hidden_size),
+                sbp signature is (S(0), B).
+            attention_mask: the combination of key padding mask and casual mask of hidden states
+                with shape (batch_size, 1, seq_length, seq_length) and the sbp
+                signature is (S(0), B),
+            encoder_states: encoder output with shape (batch_size, seq_length, hidden_size)
+                and the sbp signature is (S(0), B), which will be used in cross attention.
+            encoder_attention_mask: key padding mask of encoder states with shape
+                (batch_size, 1, seq_length, seq_length) and the sbp signature is (S(0), B).
+            past_key_value: tuple of key and value, each shape is
+                (seq_length, bsz, num_heads, head_size), For decoder layer,
+                the past_key_value contains the states both from self attention
+                and cross attention.
+            use_cache: it will be set to `True` when the model is in the inference phase and
+                used for incremental decoding.
+        """
         # Change placement for pipeline parallelsim
         hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
 
@@ -173,12 +183,17 @@ class TransformerLayer(nn.Module):
 
         if use_cache:
             attention_output, presents = attention_output
-        hidden_states = hidden_states + attention_output
+
+        if self.apply_residual_post_layernorm:
+            residual = layernorm_output
+        else:
+            residual = hidden_states
+
+        hidden_states = residual + attention_output
 
         layernorm_output = self.post_attention_layernorm(hidden_states)
 
         if self.is_decoder:
-            # todo: use key-value to pass the arguments
             attention_output = self.cross_attention(
                 layernorm_output,
                 encoder_states,
@@ -192,12 +207,23 @@ class TransformerLayer(nn.Module):
                 presents += decoder_presents
 
             attention_output = self.drop_path(attention_output)
-            hidden_states = hidden_states + attention_output
+            if self.apply_residual_post_layernorm:
+                residual = layernorm_output
+            else:
+                residual = hidden_states
+
+            hidden_states = residual + attention_output
             layernorm_output = self.post_cross_attention_layernorm(hidden_states)
 
         mlp_output = self.mlp(layernorm_output)
         mlp_output = self.drop_path(mlp_output)
-        output = hidden_states + mlp_output
+
+        if self.apply_residual_post_layernorm:
+            residual = layernorm_output
+        else:
+            residual = hidden_states
+
+        output = residual + mlp_output
 
         if use_cache:
             output = (output, presents)
