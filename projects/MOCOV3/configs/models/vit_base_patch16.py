@@ -1,3 +1,4 @@
+from torch import is_inference
 from libai.config import LazyCall
 from modeling.vit import VisionTransformer
 
@@ -11,4 +12,6 @@ model = LazyCall(VisionTransformer)(
         mlp_ratio=4,
         drop_path_rate=0.1,
         global_pool=False,
+        finetune=None,
+        weight_style="pytorch"
 )

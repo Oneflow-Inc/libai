@@ -27,9 +27,8 @@ from flowvision.layers.weight_init import trunc_normal_
 
 import libai.utils.distributed as dist
 from libai.config.config import configurable
-from libai.layers import LayerNorm, Linear, PatchEmbedding
-from .transformer_layer import TransformerLayer
-
+from libai.layers import LayerNorm, Linear, PatchEmbedding, TransformerLayer
+from utils.weight_convert import load_torch_checkpoint_finetune
 
 class VisionTransformer(nn.Module):
     """Vision Transformer
@@ -53,6 +52,8 @@ class VisionTransformer(nn.Module):
         global_pool=False,
         num_classes=1000,
         loss_func=None,
+        finetune=None,
+        weight_style="pytorch"
     ):
         super().__init__()
         self.global_pool = global_pool
@@ -109,9 +110,28 @@ class VisionTransformer(nn.Module):
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
         # weight init
-        trunc_normal_(self.pos_embed, std=0.02)
-        trunc_normal_(self.cls_token, std=0.02)
-        self.apply(self._init_weights)
+        if finetune:
+            self.load_checkpoint(finetune, weight_style, num_heads, embed_dim)
+        else:
+            trunc_normal_(self.pos_embed, std=0.02)
+            trunc_normal_(self.cls_token, std=0.02)
+            self.apply(self._init_weights)
+
+    def load_checkpoint(self, finetune, weight_style, num_heads, embed_dim):
+        linear_keyword = "head"
+        for name, param in self.named_parameters():
+            if name not in ['%s.weight' % linear_keyword, '%s.bias' % linear_keyword]:
+                param.requires_grad = False
+
+        if weight_style == "pytorch":
+            params = load_torch_checkpoint_finetune(num_heads, embed_dim, path=finetune)
+        else:
+            params = flow.load(finetune)
+
+        self.head.weight.data.normal_(mean=0.0, std=0.01)
+        self.head.bias.data.zeros_()
+
+        self.load_state_dict(params, strict=False)
 
     def _init_weights(self, m):
         if isinstance(m, Linear):

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+from curses import newpad
 import logging
 
 import torch
@@ -21,13 +22,46 @@ import oneflow as flow
 
 logger = logging.getLogger(__name__)
 
-def filter_keys(key, value):
+
+def convert_qkv_weight(value, num_heads, hidden_size):
+    """
+    convert qkv.weight to be compatible with LiBai transformer layer
+    
+    Args:
+        cfg: config file
+        value: qkv.weight in the loaded checkpoint
+    """
+
+    head_size = int(hidden_size / num_heads)
+    qkv_weight = value.view(3, num_heads, head_size, hidden_size).permute(1, 0, 2, 3).contiguous().view(hidden_size*3, hidden_size)
+
+    return qkv_weight
+
+def convert_qkv_bias(value, num_heads, hidden_size):
+    """
+    convert qkv.bias to be compatible with LiBai transformer layer
+    
+    Args:
+        cfg: config file
+        value: qkv.bias in the loaded checkpoint
+    """
+
+    head_size = int(hidden_size / num_heads)
+    qkv_bias = value.view(3, num_heads, head_size).permute(1, 0, 2).contiguous().view(hidden_size*3)
+
+    return qkv_bias
+
+def filter_keys(key, value, num_heads, hidden_size):
     """Filtering the state_dict keys and values to match LiBai's MAE model
     """
     if "norm1" in key:
         key = key.replace("norm1", "input_layernorm")
     elif "attn.qkv" in key:
         key = key.replace("attn.qkv", "self_attention.query_key_value")
+        if "weight" in key:
+            value = convert_qkv_weight(value, num_heads, hidden_size)
+        if "bias" in key:
+            value = convert_qkv_bias(value, num_heads, hidden_size)
     elif "attn.proj" in key:
         key = key.replace("attn.proj", "self_attention.dense")
     elif "norm2" in key:
@@ -38,46 +72,41 @@ def filter_keys(key, value):
         key = key.replace("mlp.fc2", "mlp.dense_4h_to_h")
     elif "fc_norm" in key:
         key = key.replace("fc_norm", "norm")
-    
+
     return key, value
 
-def load_torch_checkpoint(model, path="./mae_finetuned_vit_base.pth", strict=False, linear_keyword="head"):
+
+def load_torch_checkpoint_inference(num_heads, hidden_size, path="./mae_finetuned_vit_base.pth"):
     """Load checkpoint from the given torch weights.
     Torch weight from: xxx
     """
-    torch_dict = torch.load(path)["state_dict"]
+    torch_dict = torch.load(path, map_location="cpu")["state_dict"]
+    parameters = torch_dict
+    new_parameters = dict()
+    for key, value in parameters.items():
+        if "num_batches_tracked" not in key:
+            # to global tensor
+            key, val = filter_keys(key, value, num_heads, hidden_size)
+            val = val.detach().cpu().numpy()
+            val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
+            new_parameters[key[len("module."):]] = val
+
+    return new_parameters
+
+
+def load_torch_checkpoint_finetune(num_heads, hidden_size, path="./mae_finetuned_vit_base.pth", linear_keyword="head"):
+    """Load checkpoint from the given torch weights.
+    Torch weight from: xxx
+    """
+    torch_dict = torch.load(path, map_location="cpu")["state_dict"]
     parameters = torch_dict
     new_parameters = dict()
     for key, value in parameters.items():
         if "num_batches_tracked" not in key:
             if key.startswith('module.base_encoder') and not key.startswith('module.base_encoder.%s' % linear_keyword):
-                val = value.detach().cpu().numpy()
                 # to global tensor
-                key, val = filter_keys(key, val)
+                key, val = filter_keys(key, value, num_heads, hidden_size)
+                val = val.detach().cpu().numpy()
                 val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
                 new_parameters[key[len("module.base_encoder."):]] = val
-
-    model.load_state_dict(new_parameters, strict=strict)
-
-    print("Successfully load torch mocov3 checkpoint.")
-    return model
-
-
-def load_torch_checkpoint_linear(model, path="./mae_finetuned_vit_base.pth", strict=False):
-    """Load checkpoint from the given torch weights.
-    Torch weight from: xxx
-    """
-    torch_dict = torch.load(path)["state_dict"]
-    parameters = torch_dict
-    new_parameters = dict()
-    for key, value in parameters.items():
-        if "num_batches_tracked" not in key:
-            val = value.detach().cpu().numpy()
-            # to global tensor
-            key, val = filter_keys(key, val)
-            val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
-            new_parameters[key[len("module."):]] = val
-
-    model.load_state_dict(new_parameters, strict=strict)
-    print("Successfully load torch mocov3 checkpoint.")
-    return model
+    return new_parameters
