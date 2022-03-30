@@ -1,11 +1,11 @@
-# Load/Save a Checkpoint in LiBai
+# Load and Save a Checkpoint in LiBai
 
-Instead of directly using [`flow.save()`](https://oneflow.readthedocs.io/en/master/oneflow.html?highlight=save#oneflow.save) and [`flow.load()`](https://oneflow.readthedocs.io/en/master/oneflow.html?highlight=oneflow.load#oneflow.load), LiBai provides a [`checkpoint module`](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) dealing with complex situations for saving/loading model.
+Instead of directly using [`flow.save()`](https://oneflow.readthedocs.io/en/master/oneflow.html?highlight=save#oneflow.save) and [`flow.load()`](https://oneflow.readthedocs.io/en/master/oneflow.html?highlight=oneflow.load#oneflow.load), LiBai provides the [`checkpoint module`](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) to deal with the complex situations when saving/loading model.
 
 
-Typically, users don't need to write load/save weights trained from LiBai when using LiBai's `DefaultTrainer` and `LazyConfig`.[Training & Evaluation in Command Line](https://libai.readthedocs.io/en/latest/tutorials/basics/Train_and_Eval_Command_Line.html) introduces `load weight` and `resume training` settings in `config.py` or in command line for standard training.
+Typically, users don't need to write code to load/save weights trained from LiBai when using LiBai's `DefaultTrainer` and `LazyConfig`.[Training & Evaluation in Command Line](https://libai.readthedocs.io/en/latest/tutorials/basics/Train_and_Eval_Command_Line.html) introduces `load weight` and `resume training` settings in `config.py` or in command line for standard training.
 
-Here we introduce how to load/save weights for your custom usage, suppose you have a model trained with LiBai
+Here we introduce how to load&save weights according to your custom needs, suppose you have a model trained with LiBai
 
 ```shell
 # your model directory
@@ -35,9 +35,10 @@ output/finetune_qqp
     └── model
 ```
 
-Load/Save model weights in your code
+The following code shows how to load/save model weights:
 ```python
 from libai.utils.checkpoint import Checkpointer
+from path.to.your.build_model import build_model
 
 model = build_model(cfg.model)
 # load model weights
@@ -48,4 +49,4 @@ checkpointer = Checkpointer(model, save_dir="output/")
 checkpointer.save("model_999")  # save to output/model_999
 ```
 
-You can also save more information(e.g. `optim`, `scheduler`) by Using `checkpointer`, see [Api doc](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) for more details.
+You can also save other informations(e.g. `optim`, `scheduler`) other than model weights by using `checkpointer`, see [libai.utils.checkpoint](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) for more details.
