@@ -23,7 +23,7 @@ dataloader.train.dataset[0].transform=LazyCall(TwoCropsTransform)(
 
 
 # the momentum of MOCOV3
-model.m = 10
+model.m = 0.99
 
 # Refine optimizer cfg for moco v3 model
 optim.lr = 1.5e-4
