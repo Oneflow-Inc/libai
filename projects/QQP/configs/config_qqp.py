@@ -15,7 +15,6 @@ tokenization.tokenizer = LazyCall(_BertCNWWMTokenizer)(
     vocab_file="projects/QQP/QQP_DATA/bert-base-chinese-vocab.txt",
     lower_case=True,
 )
-tokenization.setup = True
 tokenization.append_eod = False
 tokenization.make_vocab_size_divisible_by = 128
 
