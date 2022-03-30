@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def convert_qkv_weight(cfg, value):
     """
-    convert qkv.weight to be compatible with LiBai transformer layer
+    Convert qkv.weight to be compatible with LiBai transformer layer
     
     Args:
         cfg: config file
@@ -36,7 +36,7 @@ def convert_qkv_weight(cfg, value):
 
 def convert_qkv_bias(cfg, value):
     """
-    convert qkv.bias to be compatible with LiBai transformer layer
+    Convert qkv.bias to be compatible with LiBai transformer layer
     
     Args:
         cfg: config file
@@ -49,7 +49,8 @@ def convert_qkv_bias(cfg, value):
     return qkv_bias
 
 def filter_keys(key, value, cfg):
-    """Filtering the state_dict keys and values to match LiBai's MAE model
+    """
+    Filtering the state_dict keys and values to match LiBai's MAE model
     """
     if "norm1" in key:
         key = key.replace("norm1", "input_layernorm")

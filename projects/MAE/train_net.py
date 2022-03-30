@@ -26,9 +26,7 @@ import oneflow as flow
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-from libai.optim import build_optimizer
 from utils.weight_convert import load_torch_checkpoint
-from utils.lr_decay import param_groups_lrd
 
 
 logger = logging.getLogger(__name__)
@@ -50,27 +48,6 @@ class Trainer(DefaultTrainer):
                     model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path, strict=False)
         return model
     
-    # @classmethod
-    # def build_optimizer(cls, cfg, model):
-    #     if try_get_key(cfg, "train.layer_decay") is not None:
-    #         param_groups = param_groups_lrd(
-    #             model, 
-    #             weight_decay=cfg.optim.weight_decay, 
-    #             no_weight_decay_list=model.no_weight_decay(), 
-    #             layer_decay=cfg.train.layer_decay
-    #         )
-    #         cfg.optim.params = param_groups
-    #         # optim = flow.optim.AdamW(
-    #         #     params=param_groups,
-    #         #     lr=cfg.optim.lr,
-    #         #     weight_decay=cfg.optim.weight_decay,
-    #         #     betas=tuple(cfg.optim.betas),
-    #         #     eps=cfg.optim.eps,
-    #         #     do_bias_correction=cfg.optim.do_bias_correction
-    #         # )
-    #         # return optim
-    #     return instantiate(cfg.optim)
-
 
 DefaultTrainer = Trainer
 
