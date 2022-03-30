@@ -364,7 +364,9 @@ class PatchEmbed(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer. Default: None
     """
 
-    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None, layer_idx=0):
+    def __init__(
+        self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None, layer_idx=0
+    ):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
@@ -463,7 +465,7 @@ class BasicLayer(nn.Module):
                     attn_drop=attn_drop,
                     drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
                     norm_layer=norm_layer,
-                    layer_idx=layer_id_offset+i,
+                    layer_idx=layer_id_offset + i,
                 )
                 for i in range(depth)
             ]
@@ -471,7 +473,12 @@ class BasicLayer(nn.Module):
 
         # patch merging layer
         if downsample is not None:
-            self.downsample = downsample(input_resolution, dim=dim, norm_layer=norm_layer, layer_idx=layer_id_offset+depth-1)
+            self.downsample = downsample(
+                input_resolution,
+                dim=dim,
+                norm_layer=norm_layer,
+                layer_idx=layer_id_offset + depth - 1,
+            )
         else:
             self.downsample = None
 
@@ -561,7 +568,7 @@ class SwinTransformer(nn.Module):
             in_chans=in_chans,
             embed_dim=embed_dim,
             norm_layer=norm_layer if self.patch_norm else None,
-            layer_idx=0
+            layer_idx=0,
         )
         num_patches = self.patch_embed.num_patches
         patches_resolution = self.patch_embed.patches_resolution
@@ -572,7 +579,8 @@ class SwinTransformer(nn.Module):
             self.absolute_pos_embed = nn.Parameter(
                 flow.zeros(1, num_patches, embed_dim),
                 placement=dist.get_layer_placement(0),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),)
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            )
             trunc_normal_(self.absolute_pos_embed, std=0.02)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
@@ -611,7 +619,11 @@ class SwinTransformer(nn.Module):
 
         self.norm = norm_layer(self.num_features, layer_idx=-1)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.head = Linear(self.num_features, num_classes, layer_idx=-1) if num_classes > 0 else nn.Identity()
+        self.head = (
+            Linear(self.num_features, num_classes, layer_idx=-1)
+            if num_classes > 0
+            else nn.Identity()
+        )
 
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func

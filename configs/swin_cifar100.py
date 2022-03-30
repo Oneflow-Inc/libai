@@ -48,7 +48,7 @@ train.dist.data_parallel_size = 8
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
 train.dist.pipeline_num_layers = sum(model.depths)
-train.output_dir="./output"
+train.output_dir = "./output"
 
 # Set fp16 ON
 train.amp.enabled = False
@@ -56,5 +56,3 @@ train.activation_checkpoint.enabled = False
 # train.zero_optimization.enabled = True
 # train.zero_optimization.stage = 1
 graph.enabled = False
-
-
