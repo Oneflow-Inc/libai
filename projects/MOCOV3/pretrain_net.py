@@ -35,7 +35,7 @@ class MoCoPretrainingTrainer(DefaultTrainer):
 
         super().__init__(cfg)
 
-        self.model.max_iter = cfg.train.train_epoch
+        self.model.max_iter = cfg.train.train_iter
 
         self._trainer = MoCoEagerTrainer(
                 self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
