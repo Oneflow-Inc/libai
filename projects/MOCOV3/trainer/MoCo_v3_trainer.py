@@ -26,8 +26,6 @@ class MoCoEagerTrainer(EagerTrainer):
 
         super().__init__(model, data_loader, optimizer, grad_acc_steps)
 
-        self.m = self.model.m
-
     def run_step(self, get_batch: Callable):
 
         assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
@@ -39,9 +37,8 @@ class MoCoEagerTrainer(EagerTrainer):
         data_time = time.perf_counter() - start
 
         # update the moco_momentum per step
-        loss_dict, m_dict = self.model(**data, cu_iter=self.iter, m=self.m)
-        self.m = m_dict["m"]
-
+        loss_dict, m_dict = self.model(**data, cu_iter=self.iter, m=self.model.m)
+        self.model.m = m_dict["m"]
         losses = sum(loss_dict.values()) / self.grad_acc_steps
         losses.backward()
         self.write_metrics(loss_dict, data_time)
