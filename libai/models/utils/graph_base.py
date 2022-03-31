@@ -17,6 +17,7 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
+from libai.utils import distributed as dist
 
 
 class GraphBase(nn.Graph):
@@ -56,6 +57,10 @@ class GraphBase(nn.Graph):
                 self.set_activation_checkpoint()
 
             if zero_optim:
+                dist_util = dist.get_dist_util()
+                assert (
+                    not dist_util.is_tensor_model_parallel()
+                ), "ZeRO don't support tensor_model_parallel!"
                 self.config.set_zero_redundancy_optimizer_mode("distributed_split")
                 if zero_stage > 1:
                     flow.boxing.nccl.enable_use_compute_stream(True)

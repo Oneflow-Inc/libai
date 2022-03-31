@@ -151,7 +151,8 @@ class Linear1D(nn.Module):
             x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
             x = flow.matmul(x, self.weight, transpose_b=True)
         else:
-            raise NotImplementedError(f"Not support weight with sbp: {self.weight.sbp}")
+            # Not supported weight_sbp, deduce sbp and communicate with nccl automatically.
+            x = flow.matmul(x, self.weight, transpose_b=True)
 
         if self.bias is not None:
             if self.skip_bias_add:
