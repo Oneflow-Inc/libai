@@ -1,6 +1,6 @@
 # Training & Evaluation in Command Line 
 
-LiBai provides multiple arguments for covering a variety of situations.
+LiBai provides multiple arguments covering a variety of situations.
 
 ## Training
 
@@ -10,7 +10,7 @@ You can modify `tools/train_net.py` according to your own needs.
 
 ### Training & Evaluation
 
-For completely train and test, you can run: 
+To completely train and test, run: 
 
 ```shell
 bash tools/train.sh \
@@ -21,9 +21,9 @@ path_to_your_config.py # config.py for your task
 
 ### Training & Partial Evaluation 
 
-If the evaluation process is time consuming, you can set the parameter `train.evaluation.eval_iter` in your `config.py` to a smaller number such as 20, which can make the evaluation process faster by only using part of the testset. You can also set the parameter by the command line directly :
+If the evaluation process is time consuming, you can set the parameter `train.evaluation.eval_iter` in your `config.py` to a smaller number such as 20, which can make the evaluation process faster by using only part of the testset. You can also set the parameter by the command line directly :
 
-> NOTE: the eval metric will be calculated by part of testing dataset
+**Note:** the eval metric will be calculated by part of testing dataset.
 
 ```shell
 bash tools/train.sh \
@@ -47,9 +47,9 @@ train.evaluation.enabled=False   # set no evaluation
 
 ### Resume Training
 
-If you want to resume training, you should set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
+If you want to resume training, set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
 
-For example: your training was interrupted unexpectly, your lastest model path is `output/demo/model_0000019/`. you should set `train.output_dir=output/demo` for resume trainig.
+For example, if your training is interrupted unexpectly, and your lastest model path is `output/demo/model_0000019/`, then you should set `train.output_dir=output/demo` to resume trainig.
 
 ```shell
 bash tools/train.sh \
@@ -63,9 +63,9 @@ train.output_dir=path/task       # set resume path, it should be parent director
 
 ## Evaluation
 
-If you want to evaluate your model without training,  you should set `--eval-only` in your command line, and set `train.load_weight`.
+If you want to evaluate your model without training, set `--eval-only` in your command line, and set `train.load_weight`.
 
-Besides, `train.evaluation.eval_iter=20` will be valid in `--eval-only` if you set it, you can set `eval_iter` according to your own needs.
+Besides, `train.evaluation.eval_iter=20` will be valid in `--eval-only` if you set it. You can set `eval_iter` according to your own needs.
 
 ```shell
 bash tools/train.sh \
@@ -85,7 +85,7 @@ train.train_iter = 20
 train.evaluation.eval_period = 10
 train.log_period = 1
 ```
-Besides, `train.evaluation.eval_iter=20` will be valid in `--fast-dev-run` if you set it, you can set `eval_iter` according to your own needs.
+Besides, `train.evaluation.eval_iter=20` will be valid in `--fast-dev-run` if you set it. You can set `eval_iter` according to your own needs.
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 

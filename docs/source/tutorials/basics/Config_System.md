@@ -2,7 +2,7 @@
 
 We found the traditional yacs-based config system or python argparse command-line options suffer from providing enough flexibility for the development of new project. So we borrowed the [lazy config system](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) design from detectron2 which forms the non-intrusive config system for LiBai.
 
-You can refer to the [d2 tutorial](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) for more details of the syntax and basic usage of lazy config. We will show you some example usage in LiBai in the following section.
+You can refer to the [d2 tutorial](https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html) for more details about the syntax and basic usage of lazy config. We will show you some examples of usage in LiBai in this section.
 
 ## Configs in LiBai
 
@@ -12,7 +12,7 @@ In summary, this set of namespaces is `model, graph, train, optim, dataloader, t
 
 ### model
 
-The configuration for model definition. You can refer to `configs/common/models` for more examples.
+This is the configuration for model definition. You can refer to `configs/common/models` for more examples.
 
 A model config file can be loaded like this:
 
@@ -49,15 +49,15 @@ assert model.hidden_size == 768
 model.hidden_layers = 12 # change hidden layers
 ```
 
-After you define the model config in a python file, you can `import` it in the global scope of the config file. Note that you need to rename it as `model` regardless of the name used in model config.
+After defining the model config in a python file, you can `import` it in the global scope of the config file. Note that you need to rename it as `model` regardless of the name used in the model config.
 
 You can access and change all keys in the model config after import.
 
 ### graph
 
-The configuration for static `nn.Graph` mode. You can learn more information about the static graph mode from the official [nn.Graph docs](https://docs.oneflow.org/master/basics/08_nn_graph.html).
+This is the configuration for static `nn.Graph` mode. For more information about the static graph mode, refer to the official [nn.Graph docs](https://docs.oneflow.org/master/basics/08_nn_graph.html).
 
-LiBai has already defined a `GraphBase` class for almost all models use. You can simply turn on this option converting eager mode to graph mode. 
+LiBai has already defined a `GraphBase` class for almost all models used. You can simply turn on this option converting eager mode to graph mode. 
 
 The graph config can be found in [graph.py](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/models/graph.py), and two useful options are shown as follows:
 
@@ -73,9 +73,9 @@ graph.debug = -1
 
 ### train
 
-This is the config for training and evaluation. You can find the default train config in `configs/common/train.py`.
+This is the configuration for training and evaluation. The default training config can be found in `configs/common/train.py`.
 
-We will show you the convention about training / test specific parameters as follows:
+The convention of training / test specific parameters is as follows:
 
 ```python
 from libai.config import LazyCall
@@ -199,7 +199,7 @@ train = dict(
     seed=1234,
 )
 ```
-**Note:** ``warmup_ratio`` is the ratio of warmup iterations to the total training iterations, and the real ``warmup iterations`` will be calculated by ``wramup_ratio * train_iter`` automatically.
+**Note:** ``warmup_ratio`` is the ratio of warmup iterations of the total training iterations, and the real ``warmup iterations`` will be calculated by ``wramup_ratio * train_iter`` automatically.
 
 **Example:** If you need to train 300 epochs with 5 warmup epochs, you can update the config as follows:
 ```python
@@ -217,11 +217,11 @@ train.warmup_ratio = 200 / 1000
 
 ### optim
 
-This is the config for optimizer. You can see the default configuration in `configs/common/optim.py`.
+This is the configuration for optimizer. The default configuration can be found in `configs/common/optim.py`.
 
 We utilize the function `get_default_optimizer_params` in LiBai. It needs the `nn.Module` as the argument and returns the parameter groups.
 
-With `LazyConfig`, we can set the other arguments in advance and pass the `model` argument later. You can see more detail in [API docs of libai optim](../libai.optim.html#libai.optim.get_default_optimizer_params).
+With `LazyConfig`, we can set other arguments in advance and pass the `model` argument later. For more details, refer to [API docs of libai optim](../libai.optim.html#libai.optim.get_default_optimizer_params).
 
 ```python
 # optim.py:
@@ -258,11 +258,11 @@ optim.momentum = 0.9
 
 ### dataloader
 
-This is the config for dataset/dataloader. It is the component that provides data to model. A dataloader usually takes raw information and process them into a format needed by the model.
+This is the configuration for dataset/dataloader. It is the component that provides data to the model. A dataloader usually takes raw information and process it into the format needed by the model.
 
 You can see some example datasets in `configs/common/data/`, such as `cifar100`, `imagenet`, `bert_dataset` and so on. You can also define your customized dataset config as you like.
 
-Here we use `bert_dataset.py` as example:
+Here we use `bert_dataset.py` as an example:
 
 ```python
 # bert_dataset.py:
@@ -298,15 +298,15 @@ dataloader.train.dataset[0].max_seq_length = 256
 dataloader.train.num_workers = 2
 ```
 
-LiBai provides two functions `build_nlp_train_val_test_loader` and `build_image_train_loader` that create a default train data loader from a given config. It takes the list of `dataset_class`(e.g., `BertDataset`) and combines them using `flow.utils.data.dataset.ConcatDataset`. 
+LiBai provides two functions `build_nlp_train_val_test_loader` and `build_image_train_loader` to create a default train data loader from a given config. It takes the list of `dataset_class`(e.g., `BertDataset`) and combines them using `flow.utils.data.dataset.ConcatDataset`. 
 
-It's recommended to check out [API docs of libai.data](../libai.data.html#libai.data.build.build_nlp_train_loader) to learn more about the APIs of `build_nlp_train_val_test_loader`.
+It is recommended to check out [API docs of libai.data](../libai.data.html#libai.data.build.build_nlp_train_loader) to learn more about the APIs of `build_nlp_train_val_test_loader`.
 
 ### tokenization (optional)
 
 You need to configure a tokenizer if you want to train a NLP task. Each NLP dataset has its own tokenizer config in the corresponding data config file.
 
-Here we use 
+Here we use:
 
 ```python
 # bert_dataset.py:
@@ -334,7 +334,7 @@ Tokenization config must contain a tokenizer(e.g., `BertTokenizer`). `append_eod
 
 ## Get the Default Config
 
-You don't need to rewrite all contents in config every time, and you can import a config file as a python file or use function [`get_config`](../libai.config.html#libai.config.get_config).
+You don't need to rewrite all contents in config every time. You can import a config file as a python file or use function [`get_config`](../libai.config.html#libai.config.get_config).
 
 If you build LiBai from source, you can get all default config files in `configs/*`. Then you can import the config files as follows:
 
@@ -368,7 +368,7 @@ train.train_iter = 100
 ...
 ```
 
-## Best Practice with LazyConfig
+## LazyConfig Best Practice
 
 1. Treat the configs you write as actual "code": avoid copying them or duplicating them; import the common parts between configs.
 2. Keep the configs you write simple: don't include keys that do not affect the experimental setting.

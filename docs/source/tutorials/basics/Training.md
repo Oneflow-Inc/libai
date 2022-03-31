@@ -1,19 +1,19 @@
 # Training
 
-To run training, we highly recommend users to use the standardized `trainer` in LiBai.
+To run training, we highly recommend you to use the standardized `trainer` in LiBai.
 
 ## Trainer Abstraction
 
-We provide a standardized `trainer` abstraction with a hook system that helps to simplify the standard training behavior.
+We provide a standardized `trainer` abstraction with a hook system to help simplify the standard training behavior.
 
-`DefaultTrainer` is initialized from the lazy config system, used by `tools/train_net.py` and many scripts. It includes many standard default behaviors that one might want to opt in, including default configurations for the optimizer, learning rate scheduler, logging, evaluation, model checkpointing and etc.
+`DefaultTrainer` is initialized from the lazy config system, used by `tools/train_net.py` and many scripts. It includes many standard default behaviors that you might want to opt in, including default configurations for the optimizer, learning rate scheduler, logging, evaluation, model checkpointing, etc.
 
 
 For simple customizations (e.g. change optimizer, evaluator, LR scheduler, data loader, etc.), you can just modify the corresponding configuration in `config.py` according to your own needs (refer to [Config_System](https://libai.readthedocs.io/en/latest/tutorials/Config_System.html#configs-in-libai)).
 
 ## Customize a DefaultTrainer
 
-For complicated customizations, we recommend users to overwrite function in [DefaultTrainer](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/default.py).
+For complicated customizations, we recommend you to overwrite function in [DefaultTrainer](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/default.py).
 
 In `DefaultTrainer`, the training process consists of `run_step in trainer` and `hooks` which can be modified according to your own needs. 
 
@@ -39,7 +39,7 @@ class DefaultTrainer(TrainerBase):
 
 ```
 
-Refer to `tools/train_net.py`, you can rewrite `tools/my_train_net.py` with your modified `_trainer` and `hooks`. We will introduce how to modify them in the next subsection.
+Referring to `tools/train_net.py`, you can rewrite `tools/my_train_net.py` with your modified `_trainer` and `hooks`. We will introduce how to modify them in the next subsection.
 
 ```python
 # tools/my_train_net.py
@@ -93,7 +93,7 @@ Using ``trainer & hook`` system means there will always be some non-standard beh
 
 You can customize your own hooks for some extra tasks during training.
 
-[HookBase](https://github.com/Oneflow-Inc/libai/blob/ffe5ca0e46544d1cbb4fbe88d9185f96c0dc2c95/libai/engine/trainer.py#L28) in `libai/engine/trainer.py` provides a standard behavior for users to use hook. You can overwirte its function according to your own needs. Please refer to [libai/engine/hooks.py](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/hooks.py) for more details.
+[HookBase](https://github.com/Oneflow-Inc/libai/blob/ffe5ca0e46544d1cbb4fbe88d9185f96c0dc2c95/libai/engine/trainer.py#L28) in `libai/engine/trainer.py` provides a standard behavior for you to use hook. You can overwirte its function according to your own needs. Please refer to [libai/engine/hooks.py](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/hooks.py) for more details.
 ```python 
 class HookBase:
     def before_train(self):
@@ -117,7 +117,7 @@ class HookBase:
         """
 ```
 
-Depending on the functionality of the hook, users can specify what the hook will do at each stage of the training in ``before_train``, ``after_train``, ``before_step``, ``after_step``. For example, to print `iter` in trainer during training:
+Depending on the functionality of the hook, you can specify what the hook will do at each stage of the training in ``before_train``, ``after_train``, ``before_step``, ``after_step``. For example, to print `iter` in trainer during training:
 
 ```python
 class InfoHook(HookBase):
@@ -136,11 +136,11 @@ Then you can import your `hook` in `tools/my_train_net.py`
 
 ### Modify train_step in Trainer
 
-LiBai provides `EagerTrainer` and `GraphTrainer` in `libai/engine/trainer.py` by default. `EagerTrainer` is used in `eager` mode while `GraphTrainer` is used in `graph` mode, and the mode is determined by the `graph.enabled` parameter in your `config.py`.
+LiBai provides `EagerTrainer` and `GraphTrainer` in `libai/engine/trainer.py` by default. `EagerTrainer` is used in `eager` mode, while `GraphTrainer` is used in `graph` mode, and the mode is determined by the `graph.enabled` parameter in your `config.py`.
 
-> more details about `eager` and `graph` mode, please refer to [oneflow doc](https://docs.oneflow.org/en/master/basics/08_nn_graph.html).
+> For more details about `eager` and `graph` mode, please refer to [oneflow doc](https://docs.oneflow.org/en/master/basics/08_nn_graph.html).
 
-As an example, using a temp variable to keep the model's output in run_step:
+For example, using a temp variable to keep the model's output in run_step:
 
 ```python
 class MyEagerTrainer(EagerTrainer):
@@ -160,7 +160,7 @@ Then you can set your `MyEagerTrainer` as `self.trainer` in `tools/my_train_net.
 
 ## Logging of Metrics
 
-During training, trainer put metrics to a centralized [EventStorage](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.events). You can use the following code to access it and log metrics to it:
+During training, the trainer put metrics to a centralized [EventStorage](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.events). The following code can be used to access it and log metrics to it:
 
 ```python
 from libai.utils.events import get_event_storage

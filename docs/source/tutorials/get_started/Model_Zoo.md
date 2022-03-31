@@ -16,9 +16,9 @@ A collection of parallel training strategies is supported in LiBai:
 You can refer to oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) for a better understanding of the basic conception of parallelization techniques.
 
 
-## Supported Model in LiBai
+## Supported Models in LiBai
 
-For more details about the supported parallelism training on different models, please refer the following tables:
+For more details about the supported parallelism training on different models, please refer to the following table:
 
 <table class="docutils">
   <tbody>
