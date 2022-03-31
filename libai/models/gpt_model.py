@@ -26,7 +26,6 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
-from libai.models.build import MODEL_ARCH_REGISTRY
 from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
@@ -319,7 +318,6 @@ class GPTLoss(nn.Module):
         return {"lm_loss": lm_loss}
 
 
-@MODEL_ARCH_REGISTRY.register()
 class GPTForPreTraining(nn.Module):
     """
     GPT Model with classification head on top.
