@@ -3,7 +3,7 @@
 Instead of directly using [`flow.save()`](https://oneflow.readthedocs.io/en/master/oneflow.html?highlight=save#oneflow.save) and [`flow.load()`](https://oneflow.readthedocs.io/en/master/oneflow.html?highlight=oneflow.load#oneflow.load), LiBai provides the [`checkpoint module`](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) to deal with the complex situations when saving/loading model.
 
 
-Typically, users don't need to write code to load/save weights trained from LiBai when using LiBai's `DefaultTrainer` and `LazyConfig`.[Training & Evaluation in Command Line](https://libai.readthedocs.io/en/latest/tutorials/basics/Train_and_Eval_Command_Line.html) introduces `load weight` and `resume training` settings in `config.py` or in command line for standard training.
+Typically, users don't need to write the relative code to load/save weights trained from LiBai when using LiBai's `DefaultTrainer` and `LazyConfig`. For more details, please see [Training & Evaluation in Command Line](https://libai.readthedocs.io/en/latest/tutorials/basics/Train_and_Eval_Command_Line.html) which introduces `weight load` and `resume training` settings in `config.py` or in command line for standard training.
 
 Here we introduce how to load&save weights according to your custom needs, suppose you have a model trained with LiBai
 
