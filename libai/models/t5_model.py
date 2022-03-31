@@ -24,7 +24,6 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
-from libai.models.build import MODEL_ARCH_REGISTRY
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 
@@ -321,7 +320,6 @@ class T5Loss(flow.nn.Module):
         return {"masked_lm_loss": masked_lm_loss}
 
 
-@MODEL_ARCH_REGISTRY.register()
 class T5ForPreTraining(flow.nn.Module):
     """
     T5 Model with classification head on top.

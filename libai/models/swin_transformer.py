@@ -22,8 +22,6 @@ from libai.config.config import configurable
 from libai.layers import MLP, DropPath, LayerNorm, Linear
 from libai.utils import distributed as dist
 
-from .build import MODEL_ARCH_REGISTRY
-
 
 def window_partition(x, window_size):
     B, H, W, C = x.shape
@@ -496,7 +494,6 @@ class BasicLayer(nn.Module):
         return x
 
 
-@MODEL_ARCH_REGISTRY.register()
 class SwinTransformer(nn.Module):
     """Swin Transformer in LiBai.
 
