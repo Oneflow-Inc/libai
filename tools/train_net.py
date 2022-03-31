@@ -38,7 +38,7 @@ def main(args):
 
     if args.eval_only:
         tokenizer = None
-        if try_get_key(cfg, "tokenization.setup", default=False):
+        if try_get_key(cfg, "tokenization") is not None:
             tokenizer = DefaultTrainer.build_tokenizer(cfg)
         model = DefaultTrainer.build_model(cfg)
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
