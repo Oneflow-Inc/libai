@@ -27,7 +27,8 @@ value = value.view(value.size(0), value.size(1), num_heads, -1).permute(0, 2, 1,
 
 
 ## QKV weight loading method
-Just rearrange the weights to load correctly.
+- Just rearrange the weights to load correctly. 
+
 ```python
 import oneflow as flow
 import oneflow.nn.functional as F
@@ -67,4 +68,9 @@ v2 = v2.view(v2.size(0), v2.size(1), num_heads, -1).transpose(1,2)
 print((q1==q2).all())     # tensor(True)
 print((k1==k2).all())     # tensor(True)
 print((v1==v2).all())     # tensor(True)
+```
+
+- For detailed examples, please refer to [load-huggingface-bert](https://github.com/Oneflow-Inc/libai/tree/test_bert_load_huggingface_weight/projects/test_bert_load_huggingface_weight), you can verify this by running:
+```bash
+bash test.sh
 ```
