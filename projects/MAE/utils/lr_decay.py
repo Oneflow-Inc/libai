@@ -20,7 +20,7 @@
 # --------------------------------------------------------
 
 
-def param_groups_lrd(model, weight_decay=0.05, layer_decay=.75):
+def param_groups_lrd(model, weight_decay=0.05, layer_decay=0.75):
     """
     Parameter groups for layer-wise lr decay
     Modified from BEiT: https://github.com/microsoft/unilm/blob/master/beit/optim_factory.py#L58
@@ -30,14 +30,14 @@ def param_groups_lrd(model, weight_decay=0.05, layer_decay=.75):
     no_weight_decay_list = model.no_weight_decay()
     num_layers = len(model.blocks) + 1
     layer_scales = list(layer_decay ** (num_layers - i) for i in range(num_layers + 1))
-    
+
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
 
         if param.ndim == 1 or name in no_weight_decay_list:
             g_decay = "no_decay"
-            this_decay = 0.
+            this_decay = 0.0
         else:
             g_decay = "decay"
             this_decay = weight_decay
@@ -69,11 +69,11 @@ def get_layer_idx_for_vit(name, num_layers):
     Assign a parameter with its layer id
     Following BEiT: https://github.com/microsoft/unilm/blob/master/beit/optim_factory.py#L33
     """
-    if name in ['cls_token', 'pos_embed']:
+    if name in ["cls_token", "pos_embed"]:
         return 0
-    elif name.startswith('patch_embed'):
+    elif name.startswith("patch_embed"):
         return 0
-    elif name.startswith('blocks'):
-        return int(name.split('.')[1]) + 1
+    elif name.startswith("blocks"):
+        return int(name.split(".")[1]) + 1
     else:
         return num_layers

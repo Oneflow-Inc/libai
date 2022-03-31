@@ -165,7 +165,7 @@ class VisionTransformer(nn.Module):
         # transformer block
         x = self.blocks(x)
         return x
-    
+
     def forward_head(self, x):
         x = self.norm(x)
         outcome = x[:, 0]

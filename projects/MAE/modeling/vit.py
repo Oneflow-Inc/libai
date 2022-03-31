@@ -21,8 +21,6 @@
 # --------------------------------------------------------
 
 
-import oneflow as flow
-
 import libai.models.vision_transformer
 
 
@@ -60,12 +58,12 @@ class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
             attn_drop_rate=attn_drop_rate,
             drop_path_rate=drop_path_rate,
             num_classes=num_classes,
-            loss_func=loss_func
+            loss_func=loss_func,
         )
         self.global_pool = global_pool
 
     def no_weight_decay(self):
-        return {'pos_embed', 'cls_token'}
+        return {"pos_embed", "cls_token"}
 
     def forward_head(self, x):
         if self.global_pool:

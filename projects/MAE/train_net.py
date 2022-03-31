@@ -14,28 +14,30 @@
 # limitations under the License.
 
 
-import sys
 import logging
+import sys
 
-sys.path.append(".")
+from utils.weight_convert import load_torch_checkpoint
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-from utils.weight_convert import load_torch_checkpoint
 
-
+sys.path.append(".")
 logger = logging.getLogger(__name__)
 
 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
-        assert try_get_key(cfg, "graph.enabled") == False, "LiBai MAE only support eager global mode now, please set cfg.graph.enabled=False"
+        if try_get_key(cfg, "graph.enabled") is True:
+            raise NotImplementedError(
+                "LiBai MAE only support eager global mode now, please set cfg.graph.enabled=False"  # noqa
+            )
 
         model = super().build_model(cfg)
         if try_get_key(cfg, "finetune") is not None:
-            if cfg.finetune.enable == True:
+            if cfg.finetune.enable is True:
                 logger.info("Loading pretrained weight for finetuning")
                 assert cfg.finetune.weight_style in ["oneflow", "pytorch"]
                 if cfg.finetune.weight_style == "oneflow":
@@ -43,9 +45,11 @@ class Trainer(DefaultTrainer):
                 elif cfg.finetune.weight_style == "pytorch":
                     model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path, strict=True)
                 else:
-                    raise NotImplementedError("Only support loading oneflow & pytorch pretrained weight now.")
+                    raise NotImplementedError(
+                        "Only support loading oneflow & pytorch pretrained weight now."
+                    )
         return model
-    
+
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)

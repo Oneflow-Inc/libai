@@ -25,25 +25,32 @@ import oneflow as flow
 import oneflow.nn as nn
 
 import libai.utils.distributed as dist
-from libai.layers import (
-    PatchEmbedding, 
-    LayerNorm, 
-    Linear,
-    TransformerLayer,
-)
 from libai.config import configurable
+from libai.layers import LayerNorm, Linear, PatchEmbedding, TransformerLayer
+
 from .pos_embed import get_2d_sincos_pos_embed
 
 
 class MaskedAutoencoderViT(nn.Module):
-    """ Masked Autoencoder with VisionTransformer backbone
-    """
+    """Masked Autoencoder with VisionTransformer backbone"""
 
     @configurable
-    def __init__(self, img_size=224, patch_size=16, in_chans=3,
-                 embed_dim=1024, depth=24, num_heads=16,
-                 decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
-                 mlp_ratio=4., norm_layer=LayerNorm, norm_pix_loss=False, mask_ratio=0.75):
+    def __init__(
+        self,
+        img_size=224,
+        patch_size=16,
+        in_chans=3,
+        embed_dim=1024,
+        depth=24,
+        num_heads=16,
+        decoder_embed_dim=512,
+        decoder_depth=8,
+        decoder_num_heads=16,
+        mlp_ratio=4.0,
+        norm_layer=LayerNorm,
+        norm_pix_loss=False,
+        mask_ratio=0.75,
+    ):
         super().__init__()
 
         self.mask_ratio = mask_ratio
@@ -69,18 +76,21 @@ class MaskedAutoencoderViT(nn.Module):
                 placement=dist.get_layer_placement(0),
             )
         )
-        self.blocks = nn.ModuleList([
-            TransformerLayer(
-                hidden_size=embed_dim,
-                ffn_hidden_size=int(embed_dim * mlp_ratio),
-                num_attention_heads=num_heads,
-                layer_idx = i
-            ) for i in range(depth)
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                TransformerLayer(
+                    hidden_size=embed_dim,
+                    ffn_hidden_size=int(embed_dim * mlp_ratio),
+                    num_attention_heads=num_heads,
+                    layer_idx=i,
+                )
+                for i in range(depth)
+            ]
+        )
         # TODO: set norm layer placement stage id
         self.norm = norm_layer(embed_dim, layer_idx=depth)
         # --------------------------------------------------------------------------
-        
+
         # --------------------------------------------------------------------------
         # MAE decoder specifics
         self.decoder_embed = Linear(embed_dim, decoder_embed_dim, bias=True, layer_idx=depth)
@@ -105,50 +115,69 @@ class MaskedAutoencoderViT(nn.Module):
             )
         )
 
-        self.decoder_blocks = nn.ModuleList([
-            TransformerLayer(
-                hidden_size=decoder_embed_dim,
-                ffn_hidden_size=int(decoder_embed_dim * mlp_ratio),
-                num_attention_heads=decoder_num_heads,
-                layer_idx=(i + depth)
-            ) for i in range(decoder_depth)
-        ])
-        
+        self.decoder_blocks = nn.ModuleList(
+            [
+                TransformerLayer(
+                    hidden_size=decoder_embed_dim,
+                    ffn_hidden_size=int(decoder_embed_dim * mlp_ratio),
+                    num_attention_heads=decoder_num_heads,
+                    layer_idx=(i + depth),
+                )
+                for i in range(decoder_depth)
+            ]
+        )
+
         self.decoder_norm = norm_layer(decoder_embed_dim, layer_idx=-1)
-        self.decoder_pred = Linear(decoder_embed_dim, patch_size**2 * in_chans, bias=True, layer_idx=-1)  # decoder to patch
+        self.decoder_pred = Linear(
+            decoder_embed_dim, patch_size ** 2 * in_chans, bias=True, layer_idx=-1
+        )  # decoder to patch
         # --------------------------------------------------------------------------
 
         self.norm_pix_loss = norm_pix_loss
 
         self.initialize_weights()
 
-
     def initialize_weights(self):
         # initialization
         # initialize (and freeze) pos_embed by sin-cos embedding
-        pos_embed = get_2d_sincos_pos_embed(self.pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
-        self.pos_embed.data.copy_(flow.from_numpy(pos_embed).float().unsqueeze(0).to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=self.pos_embed.placement
-        ))
+        pos_embed = get_2d_sincos_pos_embed(
+            self.pos_embed.shape[-1], int(self.patch_embed.num_patches ** 0.5), cls_token=True
+        )
+        self.pos_embed.data.copy_(
+            flow.from_numpy(pos_embed)
+            .float()
+            .unsqueeze(0)
+            .to_global(
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=self.pos_embed.placement,
+            )
+        )
 
-        decoder_pos_embed = get_2d_sincos_pos_embed(self.decoder_pos_embed.shape[-1], int(self.patch_embed.num_patches**.5), cls_token=True)
-        self.decoder_pos_embed.data.copy_(flow.from_numpy(decoder_pos_embed).float().unsqueeze(0).to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=self.decoder_pos_embed.placement
-        ))
-        
+        decoder_pos_embed = get_2d_sincos_pos_embed(
+            self.decoder_pos_embed.shape[-1],
+            int(self.patch_embed.num_patches ** 0.5),
+            cls_token=True,
+        )
+        self.decoder_pos_embed.data.copy_(
+            flow.from_numpy(decoder_pos_embed)
+            .float()
+            .unsqueeze(0)
+            .to_global(
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=self.decoder_pos_embed.placement,
+            )
+        )
+
         # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
         w = self.patch_embed.proj.weight.data
         flow.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
 
         # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
-        flow.nn.init.normal_(self.cls_token, std=.02)
-        flow.nn.init.normal_(self.mask_token, std=.02)
+        flow.nn.init.normal_(self.cls_token, std=0.02)
+        flow.nn.init.normal_(self.mask_token, std=0.02)
 
         # initialize nn.Linear and nn.LayerNorm
         self.apply(self._init_weights)
-
 
     def _init_weights(self, m):
         if isinstance(m, Linear):
@@ -159,7 +188,6 @@ class MaskedAutoencoderViT(nn.Module):
         elif isinstance(m, LayerNorm):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
-
 
     @classmethod
     def from_config(cls, cfg):
@@ -179,7 +207,6 @@ class MaskedAutoencoderViT(nn.Module):
             "mask_ratio": cfg.mask_ratio,
         }
 
-
     def patchify(self, imgs):
         """
         imgs: (N, 3, H, W)
@@ -193,9 +220,8 @@ class MaskedAutoencoderViT(nn.Module):
         # TODO: replace permute with flow.einsum
         # (n c h p w q) -> (n h w p q c)
         x = x.permute(0, 2, 4, 3, 5, 1)
-        x = x.reshape(imgs.shape[0], h * w, p**2 * 3)
+        x = x.reshape(imgs.shape[0], h * w, p ** 2 * 3)
         return x
-    
 
     def unpatchify(self, x):
         """
@@ -203,16 +229,15 @@ class MaskedAutoencoderViT(nn.Module):
         imgs: (N, 3, H, W)
         """
         p = self.patch_embed.patch_size[0]
-        h = w = int(x.shape[1]**.5)
+        h = w = int(x.shape[1] ** 0.5)
         assert h * w == x.shape[1]
-        
+
         x = x.reshape(x.shape[0], h, w, p, p, 3)
         # TODO: replace permute with flow.einsum
         # (n h w p q c) -> (n c h p w q)
         x = x.permute(0, 5, 1, 3, 2, 4)
         imgs = x.reshape(x.shape[0], 3, h * p, h * p)
         return imgs
-
 
     def random_masking(self, x, mask_ratio):
         """
@@ -242,7 +267,6 @@ class MaskedAutoencoderViT(nn.Module):
 
         return x_masked, mask, ids_restore
 
-
     def forward_encoder(self, x, mask_ratio):
         # embed patches
         x = self.patch_embed(x)
@@ -265,7 +289,6 @@ class MaskedAutoencoderViT(nn.Module):
 
         return x, mask, ids_restore
 
-
     def forward_decoder(self, x, ids_restore):
         # embed tokens
         x = self.decoder_embed(x)
@@ -273,7 +296,9 @@ class MaskedAutoencoderViT(nn.Module):
         # append mask tokens to sequence
         mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
         x_ = flow.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
-        x_ = flow.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
+        x_ = flow.gather(
+            x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2])
+        )  # unshuffle
         x = flow.cat([x[:, :1, :], x_], dim=1)  # append cls token
 
         # add pos embed
@@ -292,18 +317,17 @@ class MaskedAutoencoderViT(nn.Module):
 
         return x
 
-
     def forward_loss(self, imgs, pred, mask):
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
-        mask: [N, L], 0 is keep, 1 is remove, 
+        mask: [N, L], 0 is keep, 1 is remove,
         """
         target = self.patchify(imgs)
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
-            target = (target - mean) / (var + 1.e-6)**.5
+            target = (target - mean) / (var + 1.0e-6) ** 0.5
 
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch

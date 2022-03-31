@@ -1,4 +1,3 @@
-
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 #
@@ -14,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
 import logging
+import math
 
 import oneflow as flow
 from oneflow.optim.lr_scheduler import CosineDecayLR
@@ -25,22 +24,23 @@ logger = logging.getLogger(__name__)
 
 class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
     def __init__(
-        self, 
+        self,
         optimizer: flow.optim.Optimizer,
         warmup_steps: int,
         decay_steps: int,
         alpha: float = 0.0,
         last_step: int = -1,
-        verbose: bool = False):
+        verbose: bool = False,
+    ):
         self.warmup_steps = warmup_steps
         super().__init__(
             optimizer=optimizer,
             decay_steps=decay_steps,
             alpha=alpha,
             last_step=last_step,
-            verbose=verbose
+            verbose=verbose,
         )
-    
+
     def get_lr(self, base_lr, step):
         if step < self.warmup_steps:
             lr = base_lr * step / self.warmup_steps
@@ -50,7 +50,7 @@ class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
             decay_factor = (1 - self.alpha) * cos_decay + self.alpha
         else:
             decay_factor = self.alpha
-        
+
         return base_lr * decay_factor
 
     def update_lrs(self, lrs):
@@ -65,7 +65,6 @@ class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
                 self.print_lr(i, lr)
 
 
-
 def warmup_layerscale_cosine_lr_scheduler(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
@@ -75,9 +74,6 @@ def warmup_layerscale_cosine_lr_scheduler(
     warmup_method: str = "linear",
 ):
     layer_scale_cosine_decay_lr = WarmupLayerScaleCosineDecayLR(
-        optimizer, 
-        warmup_steps=warmup_iter,
-        decay_steps=max_iter, 
-        alpha=alpha
+        optimizer, warmup_steps=warmup_iter, decay_steps=max_iter, alpha=alpha
     )
     return layer_scale_cosine_decay_lr

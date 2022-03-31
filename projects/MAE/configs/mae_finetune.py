@@ -12,7 +12,9 @@ from ..utils.lr_decay import param_groups_lrd
 # Path to the weight for fine-tune
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
-finetune.weight_style = "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+finetune.weight_style = (
+    "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+)
 finetune.path = "/path/to/pretrained_mae_weight"
 
 
@@ -60,7 +62,8 @@ train.evaluation.eval_period = 1000
 train.layer_decay = 0.75
 
 # Base learning in MAE is set to 1.5e-4
-# The actually learning rate should be computed by linear scaling rule: lr = base_lr * batch_size / 256
+# The actually learning rate should be computed by linear scaling rule as follows:
+# lr = base_lr * batch_size / 256
 # In LiBai, you should refine the actually learning rate due to your on settings
 # Here we use 8 GPUs, 128 batch_size per GPU for training, batch_size equals to 1024
 base_lr = 1e-3
@@ -84,7 +87,7 @@ del optim.params.weight_decay_bias
 # Refine scheduler
 train.scheduler._target_ = warmup_layerscale_cosine_lr_scheduler
 train.scheduler.warmup_factor = 0.001
-train.scheduler.alpha = 0.
+train.scheduler.alpha = 0.0
 train.scheduler.warmup_method = "linear"
 
 

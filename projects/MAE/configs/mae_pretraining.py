@@ -1,4 +1,3 @@
-from configparser import Interpolation
 from flowvision.transforms import transforms, InterpolationMode
 from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
@@ -37,7 +36,7 @@ transform_train = LazyCall(transforms.Compose)(
         LazyCall(transforms.Normalize)(
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD,
-        )
+        ),
     ]
 )
 dataloader.train.dataset[0].transform = transform_train
@@ -50,7 +49,8 @@ train.warmup_ratio = 40 / 800
 train.log_period = 10
 
 # Base learning in MAE is set to 1.5e-4
-# The actually learning rate should be computed by linear scaling rule: lr = base_lr * batch_size / 256
+# The actually learning rate should be computed by linear scaling rule as follows:
+# lr = base_lr * batch_size / 256
 # In LiBai, you should refine the actually learning rate due to your on settings
 # Here we use 8 GPUs, 128 batch_size per GPU for training, batch_size equals to 1024
 base_lr = 1.5e-4
@@ -70,5 +70,5 @@ optim.betas = (0.9, 0.95)
 # Refine scheduler
 # Default scheduler in LiBai training config is WarmupCosineLR
 train.scheduler.warmup_factor = 0.001
-train.scheduler.alpha = 0.
+train.scheduler.alpha = 0.0
 train.scheduler.warmup_method = "linear"
