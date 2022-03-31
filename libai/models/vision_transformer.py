@@ -164,9 +164,13 @@ class VisionTransformer(nn.Module):
 
         # transformer block
         x = self.blocks(x)
+        return x
+    
+    def forward_head(self, x):
         x = self.norm(x)
-
-        return x[:, 0]
+        outcome = x[:, 0]
+        outcome = self.head(outcome)
+        return outcome
 
     def forward(self, images, labels=None):
         """
@@ -183,7 +187,7 @@ class VisionTransformer(nn.Module):
                 :code:`{"prediction_scores": logits}` when evaluating.
         """
         x = self.forward_features(images)
-        x = self.head(x)
+        x = self.forward_head(x)
 
         if labels is not None and self.training:
             losses = self.loss_func(x, labels)

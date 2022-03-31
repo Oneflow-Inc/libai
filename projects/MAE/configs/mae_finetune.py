@@ -13,8 +13,8 @@ from ..utils.lr_decay import param_groups_lrd
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
 finetune.weight_style = "pytorch"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
-# finetune.path = "/path/to/pretrained_mae_weight"
-finetune.path = "/home/rentianhe/code/OneFlow-Models/libai/mae_pretrain_vit_base.pth"
+finetune.path = "/path/to/pretrained_mae_weight"
+finetune.path = "/home/rentianhe/code/OneFlow-Models/libai/mae_finetuned_vit_base.pth"
 
 # Get train, optim and graph configs
 train = get_config("common/train.py").train
@@ -25,6 +25,8 @@ dataloader = get_config("common/data/imagenet.py").dataloader
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
+dataloader.train.dataset[0].root = "/dataset/extract"
+dataloader.test[0].dataset.root = "/dataset/extract"
 
 # Graph training
 graph.enabled = False
@@ -47,7 +49,7 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 )
 
 # Refine training settings for MAE finetune
-train.train_micro_batch_size = 64
+train.train_micro_batch_size = 128
 train.test_micro_batch_size = 32
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
@@ -88,3 +90,9 @@ train.scheduler.warmup_method = "linear"
 
 # Set fp16 ON
 train.amp.enabled = True
+
+# Distributed Settings
+train.dist.pipeline_num_layers = model.depth
+train.dist.data_parallel_size = 1
+train.dist.tensor_parallel_size = 1
+train.dist.pipeline_parallel_size = 1
