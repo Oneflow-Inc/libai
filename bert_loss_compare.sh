@@ -1,6 +1,5 @@
 today=$(date +%Y-%m-%d)
 
-export CUDA_VISIBLE_DEVICES="4,5,6,7"
 # bert loss compare
 
 # single GPU
