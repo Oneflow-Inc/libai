@@ -28,14 +28,14 @@ graph.enabled = False
 # Refine data transform to MAE's default settings
 transform_train = LazyCall(transforms.Compose)(
     transforms=[
-        transforms.RandomResizedCrop(
+        LazyCall(transforms.RandomResizedCrop)(
             size=(224, 224),
             scale=(0.2, 1.0),
-            interpolation=InterpolationMode.BICUBIC
+            interpolation=InterpolationMode.BICUBIC,
         ),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(
+        LazyCall(transforms.RandomHorizontalFlip)(),
+        LazyCall(transforms.ToTensor)(),
+        LazyCall(transforms.Normalize)(
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD,
         )
