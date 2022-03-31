@@ -17,11 +17,7 @@
 import sys
 import logging
 
-from libai.config.instantiate import instantiate
-
 sys.path.append(".")
-
-import oneflow as flow
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
@@ -51,8 +47,6 @@ class Trainer(DefaultTrainer):
         return model
     
 
-DefaultTrainer = Trainer
-
 def main(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
@@ -68,20 +62,20 @@ def main(args):
     if args.eval_only:
         tokenizer = None
         if try_get_key(cfg, "tokenization.setup", default=False):
-            tokenizer = DefaultTrainer.build_tokenizer(cfg)
-        model = DefaultTrainer.build_model(cfg)
+            tokenizer = Trainer.build_tokenizer(cfg)
+        model = Trainer.build_model(cfg)
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=args.resume
         )
         if try_get_key(cfg, "train.graph.enabled", default=False):
-            model = DefaultTrainer.build_graph(cfg, model, is_train=False)
-        test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
+            model = Trainer.build_graph(cfg, model, is_train=False)
+        test_loader = Trainer.build_test_loader(cfg, tokenizer)
         if len(test_loader) == 0:
             logger.info("No dataset in dataloader.test, please set dataset for dataloader.test")
-        _ = DefaultTrainer.test(cfg, test_loader, model)
+        _ = Trainer.test(cfg, test_loader, model)
         return
 
-    trainer = DefaultTrainer(cfg)
+    trainer = Trainer(cfg)
     return trainer.train()
 
 
