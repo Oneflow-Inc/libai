@@ -29,7 +29,6 @@ from libai.layers import (
 )
 from libai.utils import distributed as dist
 
-from .build import MODEL_ARCH_REGISTRY
 from .utils import init_method_normal, scaled_init_method_normal
 
 
@@ -419,7 +418,6 @@ class BertPreTrainingHeads(nn.Module):
         }
 
 
-@MODEL_ARCH_REGISTRY.register()
 class BertForPreTraining(nn.Module):
     """Bert Model with two heads on top as done during the pretraining: a
     `masked language modeling` head and a `next sentence prediction (classification)` head.
