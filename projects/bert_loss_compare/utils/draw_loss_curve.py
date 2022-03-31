@@ -30,31 +30,53 @@ def draw_result(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Draw loss curve.")
-    parser.add_argument("--torch-loss-path", type=str, help="torch loss file path")
+    parser.add_argument(
+        "--torch-loss-path",
+        type=str,
+        default="projects/bert_loss_compare/torch_loss.txt",
+        help="torch loss file path",
+    )
+    parser.add_argument(
+        "--of-loss-path",
+        type=str,
+        default="loss_align/bert_loss_compare",
+        help="oneflow loss file path",
+    )
     parser.add_argument(
         "--compare-item", type=int, default=1000, help="number of loss items to be compared"
     )
     args = parser.parse_args()
 
-    project_name = args.torch_loss_path.split("/")[1]
-    of_loss_path = os.path.join("loss_align", project_name, f"{date.today()}", "of_loss.txt")
-
-    with open(of_loss_path, "r") as f:
-        flow_total_loss = [float(line) for line in f.readlines()][: args.compare_item]
     with open(args.torch_loss_path, "r") as f:
         torch_total_loss = [float(line) for line in f.readlines()][: args.compare_item]
 
-    draw_result(
-        os.path.dirname(of_loss_path),
-        "of_torch_loss",
-        "steps",
-        "loss",
-        {
-            "oneflow": flow_total_loss,
-            "torch": torch_total_loss,
-        },
-    )
+    import glob
 
-    diff = [flow_total_loss[i] - torch_total_loss[i] for i in range(len(flow_total_loss))]
+    of_loss_pathes = glob.glob(os.path.join(args.of_loss_path, f"{date.today()}_*"))
 
-    draw_result(os.path.dirname(of_loss_path), "of_torch_diff", "steps", "diff", {"diff": diff})
+    for of_loss_path in of_loss_pathes:
+        of_loss_path = os.path.join(of_loss_path, "of_loss.txt")
+
+        with open(of_loss_path, "r") as f:
+            flow_total_loss = [float(line) for line in f.readlines()][: args.compare_item]
+
+        draw_result(
+            os.path.dirname(of_loss_path),
+            f"loss_{args.compare_item}",
+            "steps",
+            "loss",
+            {
+                "oneflow": flow_total_loss,
+                "torch": torch_total_loss,
+            },
+        )
+
+        diff = [flow_total_loss[i] - torch_total_loss[i] for i in range(len(flow_total_loss))]
+
+        draw_result(
+            os.path.dirname(of_loss_path),
+            f"loss_diff_{args.compare_item}",
+            "steps",
+            "diff",
+            {"diff": diff},
+        )
