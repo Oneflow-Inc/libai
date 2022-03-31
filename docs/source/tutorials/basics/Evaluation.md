@@ -13,28 +13,7 @@ class Counter(DatasetEvaluator):
     # save self.count somewhere, or print it, or return it.
     return {"count": self.count}
 ```
-## Evaluator Usage
-To evaluate using the methods of evaluators manually:
-``` Python
-def get_all_inputs_outputs():
-  for data in data_loader:
-    yield data, model(data)
 
-evaluator.reset()
-for inputs, outputs in get_all_inputs_outputs():
-  evaluator.process(inputs, outputs)
-eval_results = evaluator.evaluate()
-```
-
-Evaluators can also be used with `inference_on_dataset`. For example,
-``` Python
-eval_results = inference_on_dataset(
-    model,
-    data_loader,
-    evaluator,
-    ...
-)
-```
 ## Customize Evaluator using DatasetEvaluator
 `DatasetEvaluator` is the Base class for a dataset evaluator. This class will accumulate information of the inputs/outputs (by `process`) after every batch inference, and produce evaluation results in the end (by `evaluate`). The input is from the `trainer.get_batch()`, which converts the outputs of `dataset.__getitem__()` to dict. The output is from the dict return of `model.forward()`.
 
@@ -85,5 +64,28 @@ evaluation=dict(
       # Metrics to be used for best model checkpoint.
       eval_metric="acc", # your returned metric key in MyEvaluator.evaluate()
       eval_mode="max", # set `max` or `min` for saving best model according to your metric
+)
+```
+
+## Run Evaluator Manually
+For checking your evaluator code outside `LiBai`, use the methods of evaluators manually:
+``` Python
+def get_all_inputs_outputs():
+  for data in data_loader:
+    yield data, model(data)
+
+evaluator.reset()
+for inputs, outputs in get_all_inputs_outputs():
+  evaluator.process(inputs, outputs)
+eval_results = evaluator.evaluate()
+```
+
+Evaluators can also be used with `inference_on_dataset`. For example,
+``` Python
+eval_results = inference_on_dataset(
+    model,
+    data_loader,
+    evaluator,
+    ...
 )
 ```

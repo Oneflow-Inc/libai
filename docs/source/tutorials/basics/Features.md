@@ -112,6 +112,8 @@ Unlike normal data parallelism, where model states and gradients are replicated 
 
 - Level 2: The reduced 32-bit gradients for updating the model weights are also partitioned so that each process retains only the gradients corresponding to its portion of the optimizer states.
 
+> NOTE: ZeRO only supports data parallel and pipeline parallel, or combine of them. If you use tensor parallel in your training, make sure ZeRO is disabled.
+
 ### Usage 
 
 ```python

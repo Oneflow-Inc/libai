@@ -21,10 +21,7 @@ import libai.utils.distributed as dist
 from libai.config.config import configurable
 from libai.layers import LayerNorm, Linear, PatchEmbedding, TransformerLayer
 
-from .build import MODEL_ARCH_REGISTRY
 
-
-@MODEL_ARCH_REGISTRY.register()
 class VisionTransformer(nn.Module):
     """Vision Transformer in LiBai.
 
