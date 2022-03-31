@@ -12,9 +12,9 @@ from ..utils.lr_decay import param_groups_lrd
 # Path to the weight for fine-tune
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
-finetune.weight_style = "pytorch"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+finetune.weight_style = "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
 finetune.path = "/path/to/pretrained_mae_weight"
-finetune.path = "/home/rentianhe/code/OneFlow-Models/libai/mae_finetuned_vit_base.pth"
+
 
 # Get train, optim and graph configs
 train = get_config("common/train.py").train
@@ -22,11 +22,13 @@ optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
 dataloader = get_config("common/data/imagenet.py").dataloader
 
+
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 dataloader.train.dataset[0].root = "/dataset/extract"
 dataloader.test[0].dataset.root = "/dataset/extract"
+
 
 # Graph training
 graph.enabled = False

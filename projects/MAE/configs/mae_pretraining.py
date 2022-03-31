@@ -15,11 +15,14 @@ dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 dataloader.train.dataset[0]._target_ = PretrainingImageNetDataset
 
+
 # No test data for pretraining
 del dataloader.test
 
+
 # MAE do not support Graph training
 graph.enabled = False
+
 
 # Refine data transform to MAE's default settings
 transform_train = LazyCall(transforms.Compose)(

@@ -44,8 +44,10 @@ class Trainer(DefaultTrainer):
                 assert cfg.finetune.weight_style in ["oneflow", "pytorch"]
                 if cfg.finetune.weight_style == "oneflow":
                     Checkpointer(model).load(cfg.finetune.path)
-                else:
+                elif cfg.finetune.weight_style == "pytorch":
                     model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path, strict=True)
+                else:
+                    raise NotImplementedError("Only support loading oneflow & pytorch pretrained weight now.")
         return model
     
 
