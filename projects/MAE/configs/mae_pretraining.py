@@ -1,3 +1,4 @@
+from configparser import Interpolation
 from flowvision.transforms import transforms, InterpolationMode
 from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
@@ -27,16 +28,16 @@ graph.enabled = False
 # Refine data transform to MAE's default settings
 transform_train = LazyCall(transforms.Compose)(
     transforms=[
-        LazyCall(transforms.RandomResizedCrop)(
+        transforms.RandomResizedCrop(
             size=(224, 224),
             scale=(0.2, 1.0),
             interpolation=InterpolationMode.BICUBIC
         ),
-        LazyCall(transforms.RandomHorizontalFlip)(),
-        LazyCall(transforms.ToTensor)(),
-        LazyCall(transforms.Normalize)(
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(
             mean=IMAGENET_DEFAULT_MEAN,
-            std=IMAGENET_DEFAULT_STD
+            std=IMAGENET_DEFAULT_STD,
         )
     ]
 )
@@ -72,7 +73,3 @@ optim.betas = (0.9, 0.95)
 train.scheduler.warmup_factor = 0.001
 train.scheduler.alpha = 0.
 train.scheduler.warmup_method = "linear"
-
-
-# Set fp16 ON
-train.amp.enabled = True

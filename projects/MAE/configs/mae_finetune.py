@@ -26,8 +26,6 @@ dataloader = get_config("common/data/imagenet.py").dataloader
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
-dataloader.train.dataset[0].root = "/dataset/extract"
-dataloader.test[0].dataset.root = "/dataset/extract"
 
 
 # Graph training
