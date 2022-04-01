@@ -12,6 +12,7 @@ dist=dict(
 For example, you can set `data_parallel_size=2` which will automatically split the input data into two groups for data parallel training.
 
 ## Distributed Setting Example
+
 Here we provide simple examples for users to understand the basic configuration of LiBai's distributed settings. LiBai's **BERT** model supports three parallelism techniques (**data parallel training**, **tensor parallel training** and **pipeline parallel training**), and here we use 1 node with 8 GPUs as an example. If you do not change any default settings, LiBai will execute **data parallel training** by default. You can try out different combinations of parallelism training techniques by updating [bert config file](https://github.com/Oneflow-Inc/libai/blob/main/configs/bert_large_pretrain.py) as follows:
 
 #### **Pure Data Parallel Training on 8 GPUs**
@@ -33,6 +34,7 @@ from .common.train import train
 
 train.dist.tensor_parallel_size = 8
 ```
+
 **Note:** Only work for models built with ``libai.layers``.
 
 #### **Pure Pipeline Parallel Training on 8 GPUs**
@@ -43,9 +45,15 @@ from .common.train import train
 ...
 
 train.dist.pipeline_parallel_size = 8
+
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
 ```
 
-**Note:** For models which have been configured with pipeline parallelism(e.g., BERT, GPT-2, T5 and ViT), you can simply update the distributed config to execute pipeline parallel training on them. If you need to train your own model with pipeline parallel strategy, please refer to [Write Models](https://libai.readthedocs.io/en/latest/tutorials/basics/Write_Models.html) for more details about configuring your own model with pipeline parallelism.
+**Note:** 
+- `train.dist.pipeline_num_layers` must be set consistent with the model layers. If unset, it will use the default value `1000`,
+which might trigger unexpected behavior.
+
+- For models which have been configured with pipeline parallelism(e.g., BERT, GPT-2, T5 and ViT), you can simply update the distributed config to execute pipeline parallel training on them. If you need to train your own model with pipeline parallel strategy, please refer to [Write Models](https://libai.readthedocs.io/en/latest/tutorials/basics/Write_Models.html) for more details about configuring your own model with pipeline parallelism.
 
 #### **Data Parallel + Tensor Parallel for 2D Parallel Training on 8 GPUs**
 
@@ -69,6 +77,8 @@ from .common.train import train
 
 train.dist.data_parallel_size = 2
 train.dist.pipeline_parallel_size = 4
+
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
 ```
 
 #### **Tensor Parallel + Pipeline Parallel for 2D Parallel Training on 8 GPUs**
@@ -81,6 +91,8 @@ from .common.train import train
 
 train.dist.tensor_parallel_size = 2
 train.dist.pipeline_parallel_size = 4
+
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
 ```
 
 #### **Data Parallel + Tensor Parallel + Pipeline Parallel for 3D Parallel Training on 8 GPUs**
@@ -94,17 +106,21 @@ from .common.train import train
 train.dist.data_parallel_size = 2
 train.dist.tensor_parallel_size = 2
 train.dist.pipeline_parallel_size = 2
+
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
 ```
 
-**Note:** `train.dist.data_parallel_size` will be automatically calculated by `(gpu_nums / (tensor_parallel_size * pipeline_parallel_size))` if only `train.dist.tensor_parallel_size` and `train.dist.pipeline_parallel_size` are setted, for example:
+**Note:** `train.dist.data_parallel_size` will be automatically calculated by `(gpu_nums / (tensor_parallel_size * pipeline_parallel_size))` if only `train.dist.tensor_parallel_size` and `train.dist.pipeline_parallel_size` are set, for example:
 ```python
 from .common.train import train
 ...
 # only set tensor_parallel_size and pipeline_parallel_size
 train.dist.tensor_parallel_size = 2
 train.dist.pipeline_parallel_size = 2
+
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
 ```
-And the `data_parallel_size` will be automatically setted to `(8 / (2 * 2)) = 2`
+And the `data_parallel_size` will be automatically set to `(8 / (2 * 2)) = 2`
 
 
 ## Update Distributed Config with Command Line
