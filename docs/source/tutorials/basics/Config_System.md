@@ -57,7 +57,7 @@ You can access and change all keys in the model config after import.
 
 This is the configuration for static `nn.Graph` mode. For more information about the static graph mode, refer to the official [nn.Graph docs](https://docs.oneflow.org/master/basics/08_nn_graph.html).
 
-LiBai has already defined a `GraphBase` class for almost all models used. You can simply turn on this option converting eager mode to graph mode. 
+LiBai has already defined a `GraphBase` class for almost all models to use. You can simply turn on this option to convert eager mode to graph mode. 
 
 The graph config can be found in [graph.py](https://github.com/Oneflow-Inc/libai/blob/main/configs/common/models/graph.py), and two useful options are shown as follows:
 
@@ -330,7 +330,7 @@ tokenization.tokenizer.do_lower_case = False
 
 Tokenization config must contain a tokenizer(e.g., `BertTokenizer`). `append_eod` and `make_vocab_size_divisible_by` are not necessary. 
 
-`make_vocab_size_divisible_by` is used for padding the vocab size to be divisible by this value. This is added for computational efficiency when tensor parallelism.
+`make_vocab_size_divisible_by` is used for padding the vocab size to be divisible by this value. This is added for computational efficiency for tensor parallelism.
 
 ## Get the Default Config
 

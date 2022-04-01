@@ -68,7 +68,7 @@ evaluation=dict(
 ```
 
 ## Run Evaluator Manually
-For checking your evaluator code outside `LiBai`, use the methods of evaluators manually:
+To check your evaluator code outside `LiBai`, use the methods of evaluators manually:
 ``` Python
 def get_all_inputs_outputs():
   for data in data_loader:
@@ -80,7 +80,7 @@ for inputs, outputs in get_all_inputs_outputs():
 eval_results = evaluator.evaluate()
 ```
 
-Evaluators can also be used with `inference_on_dataset`. For example,
+Evaluators can also be used with `inference_on_dataset`. For example:
 ``` Python
 eval_results = inference_on_dataset(
     model,
