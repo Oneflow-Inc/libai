@@ -94,10 +94,8 @@ dataloader.test[0].dataset.root = "/path/to/imagenet"
 ```bash
 bash tools/train.sh configs/vit_imagenet.py 8
 ```
-- The default vit model in LiBai is set to `vit_tiny_patch16_224`. To train other vit models, you can update the [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file by importing other vit models in the config file as follows:
+- The default vit model in LiBai is set to `vit_tiny_patch16_224`. To train other vit models, update the [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file by importing other vit models in the config file as follows:
 ```python
 # from .common.models.vit.vit_tiny_patch16_224 import model
 from .common.models.vit.vit_base_patch16_224 import model
 ```
-
-

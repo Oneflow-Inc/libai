@@ -6,7 +6,7 @@
 
 Suppose you have a huge fully-connected-layer for large-scale classification (e.g., 1000w classes), which makes it impossible to fit into a single GPU.
 
-Don't worry. With the help of `LiBai.layers`, you can write models in a familiar way that you used to write for a single GPU. Here is a simple example showing how to write a tensor-parallel fully-connected-layer with 2 GPUs.
+Don't worry, with the help of `LiBai.layers`, you can write models in a familiar way that you used to write for a single GPU. Here is a simple example showing how to write a tensor-parallel fully-connected-layer with 2 GPUs.
 
 ```python
 # huge_fc_example.py
@@ -114,7 +114,7 @@ For your convenience, we provide some prevalent models such as BERT, GPT-2, and 
 
 ## Write your own pipeline parallel model
 
-In this tutorial, you will learn how to use pipeline parallel in your own model. In LiBai, we have two pipeline-parallel modes: naive pipeline parallel and (similar) 1F1B pipeline parallel introduced by [Megatron-LM](https://arxiv.org/abs/1909.08053).
+This tutorial describes how to use pipeline parallel in your own model. LiBai has two pipeline-parallel modes: naive pipeline parallel and (similar) 1F1B pipeline parallel introduced by [Megatron-LM](https://arxiv.org/abs/1909.08053).
 
 ### Introduction of naive pipeline parallel
 
@@ -142,7 +142,7 @@ self.head = Linear(embed_dim, num_classes, layer_idx=-1).to_global(placement=dis
 self.head = Linear(embed_dim, num_classes, layer_idx=-1)
 ```
 
-After configuring models placement, add the input placement transition across different stages. In LiBai, we set a `layer_idx` attribute in each `nn.Module`, so you can simply add `to_global` in `forward` to implement input placement transition.
+After configuring models placement, add the input placement transition across different stages. LiBai sets a `layer_idx` attribute in each `nn.Module`, so you can simply add `to_global` in `forward` to implement input placement transition.
 
 ```python
 class MyModule(nn.Module):
@@ -168,7 +168,7 @@ train.dist.pipeline_num_layers = hidden_layers
 
 ### Introduction of 1F1B pipeline parallel
 
-First, we will introduce GPipe to you for your better understanding. In GPipe, when the forward passes of all microbatches finish, the backward passes would be executed (as shown in below).
+First, we will introduce GPipe to you to get a better understanding. In GPipe, when the forward passes of all microbatches finish, the backward passes would be executed (as shown in below).
 
 ![gpipe](../assets/gpipe.png)
 
@@ -182,7 +182,7 @@ In LiBai, the non-interleaved schedule is supported currently, and this mode is 
 
 You only need to set models stage id except that placement configuration in naive pipeline parallel, and stage id can help create stashed buffers for activation.
 
-This example shows how to configure bert model stage id.
+This example shows how to configure bert model stage id:
 
 ```python
 class BertForPreTraining(nn.Module):
@@ -215,7 +215,7 @@ class BertForPreTraining(nn.Module):
 
 In `set_pipeline_stage_id`, `BertEmbeddings` and `BertExtendedAttnMask` are placed in the first stage, then each `TransformerLayer` is uniformly placed in each stages. At last, place `BertPooler` and `BertPreTrainingHeads` in the last stage. But don't forget to place the last `layernorm` in `BertEncoder` which does not belong to any `TransformerLayer` in the last stage.
 
-After adding the `set_pipeline_stage_id` function in a pre-defined `nn.Module`, `GraphBase` will invoke it automatically as below.
+After adding the `set_pipeline_stage_id` function in a pre-defined `nn.Module`, `GraphBase` will invoke it automatically as below:
 
 ```python
 def set_pipeline_stage_id(self):
@@ -223,7 +223,7 @@ def set_pipeline_stage_id(self):
         type(self.model.origin).set_pipeline_stage_id(self.model)
 ```
 
-The last thing left is to set the training configuration as below.
+The last thing left is to set the training configuration as below:
 
 ```python
 # set pipeline stages to 2

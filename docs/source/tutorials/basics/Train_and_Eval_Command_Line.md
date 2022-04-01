@@ -35,7 +35,7 @@ train.evaluation.eval_iter=20   # set eval_iter for testing
 
 ### Training & No Evaluation
 
-If you want to train without evaluation, you can set `train.evaluation.enabled=False` in your `config.py` or in the command line:
+To train without evaluation, set `train.evaluation.enabled=False` in your `config.py` or in the command line:
 
 ```shell
 bash tools/train.sh \
@@ -47,9 +47,9 @@ train.evaluation.enabled=False   # set no evaluation
 
 ### Resume Training
 
-If you want to resume training, set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
+To resume training, set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
 
-For example, if your training is interrupted unexpectly, and your lastest model path is `output/demo/model_0000019/`, then you should set `train.output_dir=output/demo` to resume trainig.
+For example, if your training is interrupted unexpectly, and your lastest model path is `output/demo/model_0000019/`, then set `train.output_dir=output/demo` to resume trainig:
 
 ```shell
 bash tools/train.sh \
@@ -63,7 +63,7 @@ train.output_dir=path/task       # set resume path, it should be parent director
 
 ## Evaluation
 
-If you want to evaluate your model without training, set `--eval-only` in your command line, and set `train.load_weight`.
+To evaluate your model without training, set `--eval-only` in your command line, and set `train.load_weight`.
 
 Besides, `train.evaluation.eval_iter=20` will be valid in `--eval-only` if you set it. You can set `eval_iter` according to your own needs.
 
@@ -78,7 +78,7 @@ train.load_weight=path/task/model_final      # set model path
 
 ## Quickly check in the respective loop
 
-If you want to find out whether there are any bugs in your program, you can pass `--fast-dev-run` to the command line, which will change config settings to:
+To find out whether there are any bugs in your program, pass `--fast-dev-run` to the command line, which will change config settings to:
 ```python
 train.train_epoch = 0
 train.train_iter = 20

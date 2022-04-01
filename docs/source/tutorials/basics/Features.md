@@ -1,10 +1,10 @@
 # Features in LiBai
 
-LiBai provides many features out of the box. We will show you how to configure them easily step by step.
+LiBai provides many features out of the box. This section shows how to configure them step by step.
 
 ## Automatic Mixed Precision Training
 
-AMP stands for automatic mixed precision training. You can simply add `train.amp.enabled=True` in your configuration file to enable AMP in LiBai.
+AMP stands for automatic mixed precision training. To enable AMP in LiBaiYou, add `train.amp.enabled=True` in your configuration file .
 
 ### Usage
 
@@ -28,7 +28,7 @@ Gradient clipping is a technique that tackles exploding gradients. The idea of g
 
 LiBai supports gradient clipping in a convenient way, and you don't have to implement it by yourself. You just need to add some settings to your configuration file to enable gradient clipping.
 
-**Note:** We do not recommend users to write gradient clipping by themselves, because naive gradient clipping may fail when using tensor parallel or pipeline parallel.
+**Note:** We do not recommend writing gradient clipping by yourself, because naive gradient clipping may fail when using tensor parallel or pipeline parallel.
 
 ### Usage
 
@@ -53,7 +53,7 @@ optim.params.clip_grad_norm_type = None
 
 ## Gradient Accumulation
 
-Gradient accumulation is a common strategy to train large-scale models when memory becomes the bottleneck. This technique will split the mini-batch into several micro-batches, then perform normal forward and backward operations. Models will only be updated after accumulating the gradients of all these micro-batches. 
+Gradient accumulation is a common strategy to train large-scale models when memory becomes the bottleneck. This technique splits the mini-batch into several micro-batches, then performs normal forward and backward operations. Models will only be updated after accumulating the gradients of all these micro-batches.
 
 Besides, when training with pipeline parallel, gradient accumulation makes different stages executed in different micro-batch in parallel. Therefore, the calculation of each stage can be overlapped.
 
@@ -76,9 +76,9 @@ train.num_accumulation_steps = None
 
 ## Activation Checkpointing
 
-To reduce GPU memory usage and deploy a large model to a training system, LiBai supports activation checkpointing. We use a Transformer layer as the unit of checkpointing because the activation size bloats in the middle of a Transformer layer so checkpointing the input of a Transformer layer is storage-efficient.
+To reduce GPU memory usage and deploy a large model to a training system, LiBai supports activation checkpointing. LiBai uses a Transformer layer as the unit of checkpointing, because the activation size bloats in the middle of a Transformer layer, so checkpointing the input of a Transformer layer is storage-efficient.
 
-LiBai supports [activation checkpointing](https://arxiv.org/abs/1604.06174) by `set_activation_checkpoint` in `GraphBase`. So models using `libai.layers.TransformerLayer` supports activation checkpointing by default. If you want to set activation checkpointing for customized layers, you need to override this function. 
+LiBai supports [activation checkpointing](https://arxiv.org/abs/1604.06174) by `set_activation_checkpoint` in `GraphBase`. So models using `libai.layers.TransformerLayer` support activation checkpointing by default. If you want to set activation checkpointing for customized layers, you need to override this function.
 
 ```python
 def set_activation_checkpoint(self):
@@ -106,13 +106,13 @@ train.activation_checkpoint.enabled = False
 
 ## ZeRO 
 
-Unlike normal data parallelism, where model states and gradients are replicated across data-parallel processes, Zero Redundancy Optimizer (ZeRO) partitions them across data-parallel processes which can reduce memory footprint significantly.
+Unlike normal data parallelism, where model states and gradients are replicated across data-parallel processes, Zero Redundancy Optimizer (ZeRO) partitions them across data-parallel processes, which can reduce memory footprint significantly.
 
 - Level 1: The optimizer states (e.g., for Adam optimizer, 32-bit weights, and the first and second moment estimates) are partitioned across the processes so that each process will only update its own partition.
 
 - Level 2: The reduced 32-bit gradients for updating the model weights are also partitioned so that each process retains only the gradients corresponding to its portion of the optimizer states.
 
-> NOTE: ZeRO only supports data parallel and pipeline parallel, or combine of them. If you use tensor parallel in your training, make sure ZeRO is disabled.
+> **Note:** ZeRO only supports data parallel and pipeline parallel, or the combination of them. If you use tensor parallel in your training, make sure ZeRO is disabled.
 
 ### Usage 
 

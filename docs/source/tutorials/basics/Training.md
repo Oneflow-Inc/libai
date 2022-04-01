@@ -1,13 +1,12 @@
 # Training
 
-To run training, we highly recommend you to use the standardized `trainer` in LiBai.
+To run training, we highly recommend using the standardized `trainer` in LiBai.
 
 ## Trainer Abstraction
 
-We provide a standardized `trainer` abstraction with a hook system to help simplify the standard training behavior.
+LiBai provides a standardized `trainer` abstraction with a hook system to help simplify the standard training behavior.
 
 `DefaultTrainer` is initialized from the lazy config system, used by `tools/train_net.py` and many scripts. It includes many standard default behaviors that you might want to opt in, including default configurations for the optimizer, learning rate scheduler, logging, evaluation, model checkpointing, etc.
-
 
 For simple customizations (e.g. change optimizer, evaluator, LR scheduler, data loader, etc.), you can just modify the corresponding configuration in `config.py` according to your own needs (refer to [Config_System](https://libai.readthedocs.io/en/latest/tutorials/Config_System.html#configs-in-libai)).
 
@@ -15,7 +14,7 @@ For simple customizations (e.g. change optimizer, evaluator, LR scheduler, data 
 
 For complicated customizations, we recommend you to overwrite function in [DefaultTrainer](https://github.com/Oneflow-Inc/libai/blob/main/libai/engine/default.py).
 
-In `DefaultTrainer`, the training process consists of `run_step in trainer` and `hooks` which can be modified according to your own needs. 
+In `DefaultTrainer`, the training process consists of `run_step in trainer` and `hooks` which can be modified according to your own needs.
 
 The following code indicates how `run_step` and `hooks` work during training:
 ```python
@@ -39,7 +38,7 @@ class DefaultTrainer(TrainerBase):
 
 ```
 
-Referring to `tools/train_net.py`, you can rewrite `tools/my_train_net.py` with your modified `_trainer` and `hooks`. We will introduce how to modify them in the next subsection.
+Refer to `tools/train_net.py` to rewrite `tools/my_train_net.py` with your modified `_trainer` and `hooks`. The next subsection will introduce how to modify them.
 
 ```python
 # tools/my_train_net.py
@@ -87,7 +86,7 @@ if __name__ == "__main__":
     main(args)
 ```
 
-Using ``trainer & hook`` system means there will always be some non-standard behaviors which is hard to support in LiBai, especially for research. For this reason, we intentionally keep the ``trainer & hook`` system minimal, rather than powerful.
+Using ``trainer & hook`` system means there will always be some non-standard behaviors which is hard to support in LiBai, especially for research. Therefore, we intentionally keep the ``trainer & hook`` system minimal, rather than powerful.
 
 ### Customize Hooks in Trainer
 
