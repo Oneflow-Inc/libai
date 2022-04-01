@@ -1,16 +1,16 @@
 # How to impllement huggingface's weights in LiBai
-Because Libai's model structure has undergone rigorous parallel mode derivation, Libai'model structure is more suitable for parallel training. Next, we introduces how to correctly load huggingface's weights with Libai model from several aspects, and takes Bert as an example.
+Because Libai's model structure has undergone rigorous parallel mode derivation, Libai'model structure is more suitable for parallel training. In this tutorial, we introduces how to correctly load huggingface's weights with Libai model, let's take BERT as an example.
 
 
-## Model architecture difference
-You can see the subtle differences in the Bert structure from the following figure (left: LiBai, right: huggingface):
+## LiBai Transformer vs Huggingface Transformer
+You can see the subtle differences in the BERT structure from the following figure (left: LiBai, right: huggingface):
 - Location of layernorm: The location of layernorm is different, but the calculation order is the same.
-- Shape of query, key and value: Just splice.
-- Libai uses the order of the layer normalization and the residual connections of Megatron by default, relevant experiments have proved this order eliminates instabilities and also has a lower training loss. But LiBai also supports the original BERT architecture, just set `apply_residual_post_layernorm=True`.
+- Division mode of query, key and value: Just splice.
+- Libai uses the order of the layer normalization and the residual connections of [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) by default, recent research shows that this structure will eliminate instabilities and bring a lower training loss. But LiBai also supports the original BERT architecture mentioned in [Paper](https://arxiv.org/pdf/1810.04805.pdf), just set `apply_residual_post_layernorm=True`.
 ![architecture](./assets/architecture.png)
 
 
-## QKV calculation logic difference
+## QKV slice logic difference
 LiBai's QKV calculation logic is difference from huggingface.
 ```python
 # LiBai's QKV calculation logic
