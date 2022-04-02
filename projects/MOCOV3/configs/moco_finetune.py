@@ -1,11 +1,13 @@
-from libai.config import get_config
-from .optim.optim_finetune import optim
-
+from libai.config import get_config, LazyCall
 from .models.vit_small_patch16 import model
+from transform.finetune_transform import train_aug
+from oneflow.optim import SGD
+from flowvision.transforms import transforms
 
 dataloader = get_config("common/data/imagenet.py").dataloader
 train = get_config("common/train.py").train
 graph = get_config("common/models/graph.py").graph
+optim = get_config("common/optim.py").optim
 
 # Path to the weight for fine-tune
 model.finetune = "projects/MOCOV3/output/vit-s-300ep.pth.tar"
@@ -15,15 +17,27 @@ model.weight_style = "pytorch"
 dataloader.train.dataset[0].root = "/dataset/extract"
 dataloader.test[0].dataset.root = "/dataset/extract"
 
+# Add augmentation Func
+dataloader.train.dataset[0].transform=LazyCall(transforms.Compose)(transforms=train_aug)
+
 # Refine train cfg for moco v3 model
 train.train_micro_batch_size = 128
 train.test_micro_batch_size = 32
-train.train_epoch = 100
-train.warmup_ratio = 5 / 100
+train.train_epoch = 90
 train.log_period = 1
 train.evaluation.eval_period = 1000
 
-# Refine optimizer cfg for moco v3 model
+optim._target_ = SGD
+optim.params.clip_grad_max_norm = None
+optim.params.clip_grad_norm_type = None
+optim.params.weight_decay_norm = None
+optim.params.weight_decay_bias = None
+
+del optim.betas
+del optim.eps
+del optim.do_bias_correction
+
+# Refine optimizer cfg for moco v3 model 
 # Reference:
 # https://github.com/facebookresearch/moco-v3/blob/main/CONFIG.md
 # https://github.com/facebookresearch/moco-v3/blob/main/main_lincls.py
@@ -34,8 +48,7 @@ optim.weight_decay = 0.
 optim.momentum = .9
 
 # Scheduler
-train.scheduler.warmup_factor = 0.001
-train.scheduler.alpha = 1.5e-4
-train.scheduler.warmup_method = "linear"
+train.scheduler.warmup_iter = 0
+train.scheduler.alpha = 0
 
 graph.enabled = False

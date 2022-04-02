@@ -5,10 +5,10 @@ from libai.config import LazyCall
 
 optim = LazyCall(flow.optim.SGD)(
     params=LazyCall(get_default_optimizer_params)(
-        clip_grad_max_norm=1.0,
-        clip_grad_norm_type=2.0,
-        weight_decay_norm=0.0,
-        weight_decay_bias=0.0,
+        clip_grad_max_norm=None,
+        clip_grad_norm_type=None,
+        weight_decay_norm=None,
+        weight_decay_bias=None,
     ),
     lr=1e-4,
     weight_decay=0.01,
