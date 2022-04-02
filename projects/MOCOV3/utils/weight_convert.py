@@ -94,7 +94,7 @@ def load_torch_checkpoint_inference(num_heads, hidden_size, path="projects/MOCOV
     return new_parameters
 
 
-def load_torch_checkpoint_finetune(num_heads, hidden_size, path="projects/MOCOV3/output/vit-b-300ep.pth.tar", linear_keyword="head"):
+def load_torch_checkpoint_linear_prob(num_heads, hidden_size, path="projects/MOCOV3/output/vit-b-300ep.pth.tar", linear_keyword="head"):
     """Load checkpoint from the given torch weights.
     Torch weight from: xxx
     """
