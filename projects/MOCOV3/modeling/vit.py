@@ -24,7 +24,6 @@ import oneflow as flow
 from flowvision.layers.weight_init import trunc_normal_
 
 import libai.models.vision_transformer
-
 from utils.weight_convert import load_torch_checkpoint_finetune
 
 
