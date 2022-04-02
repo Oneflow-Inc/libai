@@ -65,4 +65,29 @@ For more details about the supported parallelism training on different models, p
 &#10004; means you can train this model under specific parallelism techniques or combine two or three of them with &#10004; for 2D or 3D paralleism training.
 
 ## Benchmarks (coming soon)
-Here we provided our benchmark test results of the supported models in LiBai.
+Here we provided our benchmark test results of the supported models in LiBai. Due to our resource constraints, we will gradually release the training results in the future.
+
+### Main Results on ImageNet with Pretrained Models
+
+**ImageNet-1K Pretrained Models**
+<table class="docutils">
+  <tbody>
+    <tr>
+      <th width="80"> Model </th>
+      <th valign="bottom" align="center" width="120">Pretrain</th>
+      <th valign="bottom" align="center" width="120">Resolution</th>
+      <th valign="bottom" align="center" width="120">Acc@1</th>
+      <th valign="bottom" align="center" width="120">Acc@5</th>
+      <th valign="bottom" align="center" width="120">Download</th>
+    </tr>
+    <tr>
+      <td align="center"> ViT-Tiny </td>
+      <td align="center"> ImageNet-1K </td>
+      <td align="center"> 224x224 </td>
+      <td align="center"> 72.7 </td>
+      <td align="center"> 91.0 </td>
+      <td align="center"> <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/config.yaml">Config</a> | <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/model_best.zip">Checkpoint</a> </td>
+    </tr>
+    </tr>
+  </tbody>
+</table>
