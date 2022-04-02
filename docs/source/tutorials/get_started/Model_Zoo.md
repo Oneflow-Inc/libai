@@ -70,6 +70,24 @@ Here we provided our benchmark test results of the supported models in LiBai. Du
 ### Main Results on ImageNet with Pretrained Models
 
 **ImageNet-1K Pretrained Models**
-| Model | Pretrain | Resolution | Acc@1 | Acc@5 | Download |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| ViT-Tiny | ImageNet-1K | 224x224 | 72.7 | 91.0 | [Config](https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/config.yaml) \| [Checkpoint](https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/model_best.zip) |
+<table class="docutils">
+  <tbody>
+    <tr>
+      <th width="80"> Model </th>
+      <th valign="bottom" align="center" width="120">Pretrain</th>
+      <th valign="bottom" align="center" width="120">Resolution</th>
+      <th valign="bottom" align="center" width="120">Acc@1</th>
+      <th valign="bottom" align="center" width="120">Acc@5</th>
+      <th valign="bottom" align="center" width="120">Download</th>
+    </tr>
+    <tr>
+      <td align="center"> ViT-Tiny </td>
+      <td align="center"> ImageNet-1K </td>
+      <td align="center"> 224x224 </td>
+      <td align="center"> 72.7 </td>
+      <td align="center"> 91.0 </td>
+      <td align="center"> <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/config.yaml">Config</a> | <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/model_best.zip">Checkpoint</a> </td>
+    </tr>
+    </tr>
+  </tbody>
+</table>
