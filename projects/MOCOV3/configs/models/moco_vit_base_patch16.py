@@ -14,7 +14,7 @@ base_encoder = LazyCall(VisionTransformer)(
                 mlp_ratio=4,
                 drop_path_rate=0.1,
                 global_pool=False,
-                stop_grad_conv1=False
+                stop_grad_conv1=True
             )
 
 momentum_encoder = LazyCall(VisionTransformer)(
@@ -27,7 +27,7 @@ momentum_encoder = LazyCall(VisionTransformer)(
                 mlp_ratio=4,
                 drop_path_rate=0.1,
                 global_pool=False,
-                stop_grad_conv1=False
+                stop_grad_conv1=True
             )
 
 
