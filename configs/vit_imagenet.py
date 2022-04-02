@@ -32,7 +32,7 @@ optim.eps = 1e-8
 optim.weight_decay = 0.05
 optim.params.clip_grad_max_norm = None
 optim.params.clip_grad_norm_type = None
-optim.params.overrides = {"pos_embed": {"weight_decay": 0.}, "cls_token": {"weight_decay": 0.}}
+optim.params.overrides = {"pos_embed": {"weight_decay": 0.0}, "cls_token": {"weight_decay": 0.0}}
 
 # Refine train cfg for vit model
 train.train_micro_batch_size = 128
