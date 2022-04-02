@@ -22,8 +22,6 @@ from libai.config.config import configurable
 from libai.layers import MLP, DropPath, LayerNorm, Linear
 from libai.utils import distributed as dist
 
-from .build import MODEL_ARCH_REGISTRY
-
 
 def window_partition(x, window_size):
     B, H, W, C = x.shape
@@ -62,6 +60,7 @@ class WindowAttention(nn.Module):
         attn_drop=0.0,
         proj_drop=0.0,
         fused_bias_add_dropout=False,
+        layer_idx=0,
     ):
 
         super().__init__()
@@ -76,7 +75,7 @@ class WindowAttention(nn.Module):
             flow.zeros(
                 (2 * window_size[0] - 1) * (2 * window_size[1] - 1),
                 num_heads,
-                placement=dist.get_layer_placement(0),
+                placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )  # 2*Wh-1 * 2*Ww-1, nH
@@ -96,14 +95,14 @@ class WindowAttention(nn.Module):
         self.register_buffer(
             "relative_position_index",
             relative_position_index.to_global(
-                placement=dist.get_layer_placement(0),
+                placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             ),
         )
 
-        self.qkv = Linear(dim, dim * 3, bias=qkv_bias)
+        self.qkv = Linear(dim, dim * 3, bias=qkv_bias, layer_idx=layer_idx)
         self.attn_drop = nn.Dropout(attn_drop)
-        self.proj = Linear(dim, dim)
+        self.proj = Linear(dim, dim, layer_idx=layer_idx)
         self.proj_drop = nn.Dropout(proj_drop)
         self.softmax = nn.Softmax(dim=-1)
         self.fused_bias_add_dropout = fused_bias_add_dropout
@@ -191,6 +190,7 @@ class SwinTransformerBlock(nn.Module):
         drop_path=0.0,
         act_layer=nn.GELU,
         norm_layer=LayerNorm,
+        layer_idx=0,
     ):
         super().__init__()
         self.dim = dim
@@ -199,13 +199,14 @@ class SwinTransformerBlock(nn.Module):
         self.window_size = window_size
         self.shift_size = shift_size
         self.mlp_ratio = mlp_ratio
+        self.layer_idx = layer_idx
         if min(self.input_resolution) <= self.window_size:
             # if window size is larger than input resolution, we don't partition windows
             self.shift_size = 0
             self.window_size = min(self.input_resolution)
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
-        self.norm1 = norm_layer(dim)
+        self.norm1 = norm_layer(dim, layer_idx=layer_idx)
         self.attn = WindowAttention(
             dim,
             window_size=to_2tuple(self.window_size),
@@ -215,10 +216,11 @@ class SwinTransformerBlock(nn.Module):
             attn_drop=attn_drop,
             proj_drop=drop,
             fused_bias_add_dropout=True,
+            layer_idx=layer_idx,
         )
 
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
-        self.norm2 = norm_layer(dim)
+        self.norm2 = norm_layer(dim, layer_idx=layer_idx)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = MLP(
             hidden_size=dim,
@@ -226,6 +228,7 @@ class SwinTransformerBlock(nn.Module):
             output_dropout_prob=drop,
             bias_gelu_fusion=True,
             bias_dropout_fusion=True,
+            layer_idx=layer_idx,
         )
 
         if self.shift_size > 0:
@@ -257,7 +260,7 @@ class SwinTransformerBlock(nn.Module):
                 attn_mask == 0, float(0.0)
             )
             attn_mask = attn_mask.to_global(
-                placement=dist.get_layer_placement(0),
+                placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         else:
@@ -317,12 +320,13 @@ class PatchMerging(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer.  Default: libai.layers.LayerNorm
     """
 
-    def __init__(self, input_resolution, dim, norm_layer=LayerNorm):
+    def __init__(self, input_resolution, dim, norm_layer=LayerNorm, layer_idx=0):
         super().__init__()
         self.input_resolution = input_resolution
         self.dim = dim
-        self.reduction = Linear(4 * dim, 2 * dim, bias=False)
-        self.norm = norm_layer(4 * dim)
+        self.reduction = Linear(4 * dim, 2 * dim, bias=False, layer_idx=layer_idx)
+        self.norm = norm_layer(4 * dim, layer_idx=layer_idx)
+        self.layer_idx = layer_idx
 
     def forward(self, x):
         """
@@ -358,7 +362,9 @@ class PatchEmbed(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer. Default: None
     """
 
-    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None):
+    def __init__(
+        self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None, layer_idx=0
+    ):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
@@ -377,11 +383,11 @@ class PatchEmbed(nn.Module):
         self.proj = nn.Conv2d(
             in_chans, embed_dim, kernel_size=patch_size, stride=patch_size
         ).to_global(
-            placement=dist.get_layer_placement(0),
+            placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
         if norm_layer is not None:
-            self.norm = norm_layer(embed_dim)
+            self.norm = norm_layer(embed_dim, layer_idx=layer_idx)
         else:
             self.norm = None
 
@@ -432,6 +438,7 @@ class BasicLayer(nn.Module):
         norm_layer=LayerNorm,
         downsample=None,
         use_checkpoint=False,
+        layer_id_offset=0,
     ):
 
         super().__init__()
@@ -439,7 +446,7 @@ class BasicLayer(nn.Module):
         self.input_resolution = input_resolution
         self.depth = depth
         self.use_checkpoint = use_checkpoint
-
+        self.layer_id_offset = layer_id_offset
         # build blocks
         self.blocks = nn.ModuleList(
             [
@@ -456,6 +463,7 @@ class BasicLayer(nn.Module):
                     attn_drop=attn_drop,
                     drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
                     norm_layer=norm_layer,
+                    layer_idx=layer_id_offset + i,
                 )
                 for i in range(depth)
             ]
@@ -463,22 +471,29 @@ class BasicLayer(nn.Module):
 
         # patch merging layer
         if downsample is not None:
-            self.downsample = downsample(input_resolution, dim=dim, norm_layer=norm_layer)
+            self.downsample = downsample(
+                input_resolution,
+                dim=dim,
+                norm_layer=norm_layer,
+                layer_idx=layer_id_offset + depth - 1,
+            )
         else:
             self.downsample = None
 
     def forward(self, x):
-        for blk in self.blocks:
+        layer_idx = self.layer_id_offset
+        for i in range(len(self.blocks)):
+            x = x.to_global(placement=dist.get_layer_placement(layer_idx))
             if self.use_checkpoint:
                 raise Exception("Not Support Checkpointing yet!")
             else:
-                x = blk(x)
+                x = self.blocks[i](x)
+            layer_idx += 1
         if self.downsample is not None:
             x = self.downsample(x)
         return x
 
 
-@MODEL_ARCH_REGISTRY.register()
 class SwinTransformer(nn.Module):
     """Swin Transformer in LiBai.
 
@@ -550,6 +565,7 @@ class SwinTransformer(nn.Module):
             in_chans=in_chans,
             embed_dim=embed_dim,
             norm_layer=norm_layer if self.patch_norm else None,
+            layer_idx=0,
         )
         num_patches = self.patch_embed.num_patches
         patches_resolution = self.patch_embed.patches_resolution
@@ -557,7 +573,11 @@ class SwinTransformer(nn.Module):
 
         # absolute position embedding
         if self.ape:
-            self.absolute_pos_embed = nn.Parameter(flow.zeros(1, num_patches, embed_dim))
+            self.absolute_pos_embed = nn.Parameter(
+                flow.zeros(1, num_patches, embed_dim),
+                placement=dist.get_layer_placement(0),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            )
             trunc_normal_(self.absolute_pos_embed, std=0.02)
 
         self.pos_drop = nn.Dropout(p=drop_rate)
@@ -569,6 +589,7 @@ class SwinTransformer(nn.Module):
 
         # build layers
         self.layers = nn.ModuleList()
+        layer_id_offset = 0
         for i_layer in range(self.num_layers):
             layer = BasicLayer(
                 dim=int(embed_dim * 2 ** i_layer),
@@ -588,12 +609,18 @@ class SwinTransformer(nn.Module):
                 norm_layer=norm_layer,
                 downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
                 use_checkpoint=use_checkpoint,
+                layer_id_offset=layer_id_offset,
             )
+            layer_id_offset += depths[i_layer]
             self.layers.append(layer)
 
-        self.norm = norm_layer(self.num_features)
+        self.norm = norm_layer(self.num_features, layer_idx=-1)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.head = Linear(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
+        self.head = (
+            Linear(self.num_features, num_classes, layer_idx=-1)
+            if num_classes > 0
+            else nn.Identity()
+        )
 
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
@@ -666,3 +693,29 @@ class SwinTransformer(nn.Module):
             return {"losses": losses}
         else:
             return {"prediction_scores": x}
+
+    @staticmethod
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+
+        model.patch_embed.config.stage_id = dist_utils.get_layer_stage_id(0)
+        model.pos_drop.config.stage_id = dist_utils.get_layer_stage_id(0)
+
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, SwinTransformerBlock):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+            elif isinstance(module_block.origin, PatchMerging):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+
+        model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.avgpool.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            if isinstance(module_block.origin, SwinTransformerBlock):
+                module_block.config.activation_checkpointing = True

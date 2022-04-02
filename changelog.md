@@ -22,5 +22,5 @@
 - Support 3D parallel [T5](https://arxiv.org/abs/1910.10683) model
 - Support 3D parallel [Vision Transformer](https://arxiv.org/abs/2010.11929)
 - Support Data parallel [Swin Transformer](https://arxiv.org/abs/2103.14030) model
-- Support finetune task in [projects](/projects/)
-- Support text classification task in [projects](/projects/)
+- Support finetune task in [QQP project](/projects/QQP/)
+- Support text classification task in [text classification project](/projects/text_classification/)

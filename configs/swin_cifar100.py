@@ -26,21 +26,33 @@ model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 optim.lr = 5e-4
 optim.eps = 1e-8
 optim.weight_decay = 0.05
-optim.params.clip_grad_max_norm = 5.0
+optim.params.clip_grad_max_norm = None
+optim.params.clip_grad_norm_type = None
 
 # Refine train cfg for swin model
 train.train_micro_batch_size = 32
+train.num_accumulation_steps = 1
 train.test_micro_batch_size = 32
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300
 train.evaluation.eval_period = 200
-train.log_period = 1
+train.log_period = 20
 
 # Scheduler
 train.scheduler.warmup_factor = 5e-7
 train.scheduler.alpha = 0.0
 train.scheduler.warmup_method = "linear"
 
+# parallel strategy settings
+train.dist.data_parallel_size = 8
+train.dist.tensor_parallel_size = 1
+train.dist.pipeline_parallel_size = 1
+train.dist.pipeline_num_layers = sum(model.depths)
+train.output_dir = "./output"
+
 # Set fp16 ON
 train.amp.enabled = False
+train.activation_checkpoint.enabled = False
+# train.zero_optimization.enabled = True
+# train.zero_optimization.stage = 1
 graph.enabled = False

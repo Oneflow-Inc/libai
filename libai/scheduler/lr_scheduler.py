@@ -17,12 +17,9 @@ import logging
 
 import oneflow as flow
 
-from .build import SCHEDULER_REGISTRY
-
 logger = logging.getLogger(__name__)
 
 
-@SCHEDULER_REGISTRY.register()
 def WarmupCosineLR(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
@@ -63,7 +60,6 @@ def WarmupCosineLR(
     return warmup_cosine_lr
 
 
-@SCHEDULER_REGISTRY.register()
 def WarmupCosineAnnealingLR(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
@@ -102,7 +98,6 @@ def WarmupCosineAnnealingLR(
     return warmup_cosine_annealing_lr
 
 
-@SCHEDULER_REGISTRY.register()
 def WarmupMultiStepLR(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
@@ -142,7 +137,6 @@ def WarmupMultiStepLR(
     return warmup_multistep_lr
 
 
-@SCHEDULER_REGISTRY.register()
 def WarmupExponentialLR(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
@@ -179,7 +173,6 @@ def WarmupExponentialLR(
     return warmup_exponential_lr
 
 
-@SCHEDULER_REGISTRY.register()
 def WarmupPolynomialLR(
     optimizer: flow.optim.Optimizer,
     max_iter: int,

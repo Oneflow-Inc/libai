@@ -8,6 +8,7 @@ libai.layers
         VocabEmbedding,
         SinePositionalEmbedding,
         PatchEmbedding,
+        drop_path,
         DropPath,
         build_activation,
         Linear,

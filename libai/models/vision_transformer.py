@@ -21,10 +21,7 @@ import libai.utils.distributed as dist
 from libai.config.config import configurable
 from libai.layers import LayerNorm, Linear, PatchEmbedding, TransformerLayer
 
-from .build import MODEL_ARCH_REGISTRY
 
-
-@MODEL_ARCH_REGISTRY.register()
 class VisionTransformer(nn.Module):
     """Vision Transformer in LiBai.
 
@@ -167,9 +164,13 @@ class VisionTransformer(nn.Module):
 
         # transformer block
         x = self.blocks(x)
-        x = self.norm(x)
+        return x
 
-        return x[:, 0]
+    def forward_head(self, x):
+        x = self.norm(x)
+        outcome = x[:, 0]
+        outcome = self.head(outcome)
+        return outcome
 
     def forward(self, images, labels=None):
         """
@@ -186,7 +187,7 @@ class VisionTransformer(nn.Module):
                 :code:`{"prediction_scores": logits}` when evaluating.
         """
         x = self.forward_features(images)
-        x = self.head(x)
+        x = self.forward_head(x)
 
         if labels is not None and self.training:
             losses = self.loss_func(x, labels)
