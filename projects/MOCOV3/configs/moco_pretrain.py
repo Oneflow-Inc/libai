@@ -21,6 +21,8 @@ dataloader.train.dataset[0].transform=LazyCall(TwoCropsTransform)(
 
 # the momentum of MOCOV3
 model.m = .99
+
+# the temperature coefficient of MOCOV3
 model.T = .2
 
 # Refine optimizer cfg for moco v3 model
