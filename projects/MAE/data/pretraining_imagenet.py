@@ -13,8 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .build import build_tokenizer
-from .tokenization_bert import BertTokenizer
-from .tokenization_gpt2 import GPT2Tokenizer
-from .tokenization_t5 import GoogleT5Tokenizer
-from .tokenization_base import PreTrainedTokenizer
+
+from libai.data.datasets.imagenet import ImageNetDataset
+from libai.data.structures import Instance
+
+
+class PretrainingImageNetDataset(ImageNetDataset):
+    """ImageNet Dataset in LiBai for Pretraining
+    Return:
+        images: ImageNet train set images
+    """
+
+    def __getitem__(self, index: int):
+        data_sample = super().__getitem__(index)
+        return Instance(images=data_sample.get("images"))

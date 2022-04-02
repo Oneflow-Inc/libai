@@ -15,8 +15,8 @@ For completely train and test, you can run:
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
-4 \                    # number of gpus
-path_to_your_config.py # config.py for your task
+path_to_your_config.py \ # config.py for your task
+4                        # number of gpus
 ```
 
 ### Training & Partial Evaluation 
@@ -28,8 +28,8 @@ If the evaluation process is time consuming, you can set the parameter `train.ev
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
-4 \                             # number of gpus
 path_to_your_config.py \        # config.py for your task
+4 \                             # number of gpus
 train.evaluation.eval_iter=20   # set eval_iter for testing
 ```
 
@@ -40,8 +40,8 @@ If you want to train without evaluation, you can set `train.evaluation.enabled=F
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
-4 \                              # number of gpus
 path_to_your_config.py \         # config.py for your task
+4 \                              # number of gpus
 train.evaluation.enabled=False   # set no evaluation 
 ```
 
@@ -54,8 +54,8 @@ For example: your training was interrupted unexpectly, your lastest model path i
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
-4 \                              # number of gpus
 path_to_your_config.py \         # config.py for your task
+4 \                              # number of gpus
 --resume \                       # set resume training
 train.output_dir=path/task       # set resume path, it should be parent directory of model path
 ```
@@ -70,8 +70,8 @@ Besides, `train.evaluation.eval_iter=20` will be valid in `--eval-only` if you s
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
-4 \                                          # number of gpus
 path_to_your_config.py \                     # config.py for your task
+4 \                                          # number of gpus
 --eval-only \                                # set eval without train
 train.load_weight=path/task/model_final      # set model path
 ```
@@ -89,7 +89,7 @@ Besides, `train.evaluation.eval_iter=20` will be valid in `--fast-dev-run` if yo
 ```shell
 bash tools/train.sh \
 tools/train_net.py \ 
-4 \                                          # number of gpus
 path_to_your_config.py \                     # config.py for your task
+4 \                                          # number of gpus
 --fast-dev-run                               # set for quickly check
 ``` 
