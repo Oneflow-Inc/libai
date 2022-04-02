@@ -25,13 +25,6 @@ model.m = .99
 # the temperature coefficient of MOCOV3
 model.T = .2
 
-# Refine optimizer cfg for moco v3 model
-base_lr = 1.5e-4
-actual_lr = base_lr * (train.train_micro_batch_size * 8 / 256)
-optim.lr = actual_lr
-optim.weight_decay = .1
-
-
 # Refine train cfg for moco v3 model
 train.train_micro_batch_size=128
 train.test_micro_batch_size= 32
@@ -39,6 +32,12 @@ train.train_epoch = 300
 train.warmup_ratio = 40 / 300
 train.eval_period = 5
 train.log_period  =1
+
+# Refine optimizer cfg for moco v3 model
+base_lr = 1.5e-4
+actual_lr = base_lr * (train.train_micro_batch_size * 8 / 256)
+optim.lr = actual_lr
+optim.weight_decay = .1
 
 # Scheduler
 train.scheduler.warmup_factor = 0.001
