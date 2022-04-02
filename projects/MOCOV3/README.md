@@ -27,13 +27,13 @@ Based on [libai.layers](https://libai.readthedocs.io/en/latest/modules/libai.lay
       <th valign="bottom" align="left" width="120">Pipeline Parallel</th>
     </tr>
     <tr>
-      <td align="left"> <b> MAE pretrain </b> </td>
+      <td align="left"> <b> MOCOv3 pretrain </b> </td>
       <td align="left">&#10004;</td>
       <td align="left">-</td>
       <td align="left">-</td>
     </tr>
     <tr>
-      <td align="left"> <b> MAE finetune </b> </td>
+      <td align="left"> <b> MOCOv3 finetune </b> </td>
       <td align="left">&#10004;</td>
       <td align="left">&#10004;</td>
       <td align="left">&#10004;</td>
