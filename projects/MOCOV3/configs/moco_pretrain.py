@@ -14,20 +14,16 @@ optim = get_config("common/optim.py").optim
 dataloader.train.dataset[0].root = "/dataset/extract"
 dataloader.test[0].dataset.root = "/dataset/extract"
 
-dataloader.train.mixup_func = None
-
 # Add augmentation Func
 dataloader.train.dataset[0].transform=LazyCall(TwoCropsTransform)(
                                                base_transform1=LazyCall(transforms.Compose)(transforms=augmentation1),
                                                base_transform2=LazyCall(transforms.Compose)(transforms=augmentation2))
 
-
 # the momentum of MOCOV3
 model.m = .99
 model.T = .2
+
 # Refine optimizer cfg for moco v3 model
-
-
 base_lr = 1.5e-4
 actual_lr = base_lr * (train.train_micro_batch_size * 8 / 256)
 optim.lr = actual_lr
