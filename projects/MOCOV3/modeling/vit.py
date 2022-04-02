@@ -33,7 +33,7 @@ from functools import reduce
 
 import libai.models.vision_transformer
 from libai.layers import Linear, PatchEmbedding
-from utils.weight_convert import load_torch_checkpoint_finetune
+from utils.weight_convert import load_torch_checkpoint_linear_prob
 
 
 class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
@@ -144,7 +144,7 @@ class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
                 param.requires_grad = False
         assert weight_style in ["pytorch", "oneflow"]
         if weight_style == "pytorch":
-            params = load_torch_checkpoint_finetune(num_heads, embed_dim, path=finetune)
+            params = load_torch_checkpoint_linear_prob(num_heads, embed_dim, path=finetune)
         else:
             params = flow.load(finetune)
 
