@@ -1,6 +1,6 @@
 from libai.config import get_config, LazyCall
 from .models.vit_small_patch16 import model
-from transform.finetune_transform import train_aug
+from projects.MOCOV3.transform.linear_prob_transform import train_aug
 from oneflow.optim import SGD
 from flowvision.transforms import transforms
 

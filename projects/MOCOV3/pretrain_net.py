@@ -23,7 +23,7 @@ sys.path.append(".")
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import default_setup, DefaultTrainer
 from libai.utils.checkpoint import Checkpointer
-from trainer.MoCo_v3_trainer import MoCoEagerTrainer
+from projects.MOCOV3.trainer.moco_trainer import MoCoEagerTrainer
 
 
 logger = logging.getLogger(__name__)

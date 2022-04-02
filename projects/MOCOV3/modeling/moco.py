@@ -73,7 +73,7 @@ class MoCo(nn.Module):
                 # follow SimCLR's design: https://github.com/google-research/simclr/blob/master/model_util.py#L157
                 # for simplicity, we further removed gamma in BN
 
-                # mlp.append(nn.BatchNorm1d(dim2, affine=False)) # for oneflow, it returns bug: gamma need to be tensor, not NoneType
+                # TODO: affine should be False (bug here)
                 mlp.append(nn.BatchNorm1d(dim2, affine=True))
 
         return nn.Sequential(*mlp)

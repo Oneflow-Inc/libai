@@ -2,8 +2,8 @@ from flowvision import transforms
 
 from libai.config import get_config, LazyCall
 
-from .models.MoCo_v3_vit_small_patch16 import model
-from transform.pretraining_transform import TwoCropsTransform, augmentation1, augmentation2
+from .models.moco_vit_small_patch16 import model
+from projects.MOCOV3.transform.pretrain_transform import TwoCropsTransform, augmentation1, augmentation2
 
 dataloader = get_config("common/data/imagenet.py").dataloader
 train = get_config("common/train.py").train
