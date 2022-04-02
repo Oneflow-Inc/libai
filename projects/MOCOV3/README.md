@@ -6,7 +6,7 @@ Xinlei Chen, Saining Xie, Kaiming He
 [[`arXiv`](https://arxiv.org/abs/2104.02057)] [[`BibTeX`](#Citation)]
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/11435359/146857310-f258c86c-fde6-48e8-9cee-badd2b21bd2c.png" width="480">
+  <img src="https://user-images.githubusercontent.com/34954782/161363870-eb672518-deee-4754-b30f-be59ea91ac7e.png" width="480">
 </p>
 
 This is the OneFlow re-implementation of MOCOv3 based on [LiBai](https://libai.readthedocs.io/).
