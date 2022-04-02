@@ -72,4 +72,4 @@ Here we provided our benchmark test results of the supported models in LiBai. Du
 **ImageNet-1K Pretrained Models**
 | Model | Pretrain | Resolution | Acc@1 | Acc@5 | Download |
 |:---:|:---:|:---:|:---:|:---:|:---:|
-| ViT-Tiny | ImageNet-1K | 224x224 | 72.7 | 91.0 | [Config](https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/config.yaml) \| [Checkpoint](https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/model_best.zip)
+| ViT-Tiny | ImageNet-1K | 224x224 | 72.7 | 91.0 | [Config](https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/config.yaml) \| [Checkpoint](https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/model_best.zip) |
