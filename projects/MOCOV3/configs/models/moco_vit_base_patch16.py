@@ -1,10 +1,10 @@
 from libai.config import LazyCall
 
 from projects.MOCOV3.modeling.moco import MoCo_ViT
-from modeling.vit_moco import VisionTransformerMoCo
+from modeling.vit import VisionTransformer
 
 
-base_encoder = LazyCall(VisionTransformerMoCo)(
+base_encoder = LazyCall(VisionTransformer)(
                 img_size=224,
                 patch_size=16,
                 in_chans=3,
@@ -17,7 +17,7 @@ base_encoder = LazyCall(VisionTransformerMoCo)(
                 stop_grad_conv1=False
             )
 
-momentum_encoder = LazyCall(VisionTransformerMoCo)(
+momentum_encoder = LazyCall(VisionTransformer)(
                 img_size=224,
                 patch_size=16,
                 in_chans=3,

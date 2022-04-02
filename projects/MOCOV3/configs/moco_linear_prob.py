@@ -10,7 +10,7 @@ graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim
 
 # Path to the weight for fine-tune
-model.finetune = "projects/MOCOV3/output/vit-s-300ep.pth.tar"
+model.linear_prob = "projects/MOCOV3/output/vit-s-300ep.pth.tar"
 model.weight_style = "pytorch"
 
 # Refine data path to imagenet
