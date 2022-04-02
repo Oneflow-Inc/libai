@@ -156,7 +156,7 @@ class MyModule(nn.Module):
         ...
 ```
 
-After configuring models and data placement, you only need to set the distributed configuration.
+After configuring models and data placement, you only need to set the distributed configuration before training.
 
 ```python
 # set pipeline stages to 2
@@ -168,7 +168,7 @@ train.dist.pipeline_num_layers = hidden_layers
 
 ### Introduction of 1F1B pipeline parallel
 
-First, we will introduce GPipe to you to get a better understanding. In GPipe, when the forward passes of all microbatches finish, the backward passes would be executed (as shown in below).
+First, we will introduce GPipe to you to get a better understanding of pipeline parallelism. In GPipe, when the forward passes of all microbatches finish, the backward passes would be executed (as shown in below).
 
 ![gpipe](../assets/gpipe.png)
 
