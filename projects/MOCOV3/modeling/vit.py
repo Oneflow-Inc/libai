@@ -28,7 +28,7 @@ from utils.weight_convert import load_torch_checkpoint_finetune
 
 
 class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
-    """Vision Transformer for MAE
+    """Vision Transformer for MOCO
     LiBai impl of: `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`
         - https://arxiv.org/abs/2010.11929
     """
