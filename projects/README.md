@@ -5,3 +5,4 @@ Here are projects built based on LiBai, which show you how to use LiBai as a lib
 - [QQP: Quora Question Pairs](./QQP)
 - [Text Classification](./text_classification)
 - [Masked Autoencoders Are Scalable Vision Learners](./MAE)
+- [OneCls: OneFlow image classification toolbox based on LiBai](./OneCls)

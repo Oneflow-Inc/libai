@@ -1,4 +1,4 @@
-## OneCls: OneFlow Classification
+## OneCls: OneFlow image classification toolbox based on LiBai
 In this project, we try to combine [flowvision](https://github.com/Oneflow-Inc/vision) and [LiBai](https://github.com/Oneflow-Inc/libai) together and the users can easily write their own models in a torch-like way and enjoy the main features of [LiBai](https://github.com/Oneflow-Inc/libai), e.g., `nn.Graph`, `Data Parallel Training`, `ZeRO`, `FP16 Training` and so on.
 
 ## Usage
