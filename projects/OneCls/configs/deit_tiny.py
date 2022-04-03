@@ -21,8 +21,6 @@ model = LazyCall(VisionModel)(
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
-dataloader.train.dataset[0].root = "/dataset/extract"
-dataloader.test[0].dataset.root = "/dataset/extract"
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
