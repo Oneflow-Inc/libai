@@ -1,0 +1,39 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import oneflow as flow
+import oneflow.nn as nn
+
+from flowvision.models import ModelCreator
+
+class ToyModel(nn.Module):
+    def __init__(self, 
+        num_classes=1000, 
+    ):
+        super().__init__()
+        self.features = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Linear(64, num_classes)
+    
+    def forward(self, x):
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = flow.flatten(x, 1)
+        x = self.classifier(x)
+        return x
+
+@ModelCreator.register_model
+def toy_model(pretrained=False, progress=True, **kwargs):
+    return ToyModel()

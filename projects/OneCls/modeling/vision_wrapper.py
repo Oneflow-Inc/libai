@@ -18,6 +18,7 @@ import oneflow.nn as nn
 
 from flowvision.models import ModelCreator
 
+
 class VisionModel(nn.Module):
     """
     Wrap the model from flowvision to be compatible in LiBai
