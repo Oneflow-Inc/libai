@@ -30,44 +30,12 @@ value = value.view(value.size(0), value.size(1), num_heads, -1).permute(0, 2, 1,
 - Just rearrange the weights to load correctly. 
 
 ```python
-import oneflow as flow
-import oneflow.nn.functional as F
-
-bsz = 32
-seq_len = 5
-num_heads = 12
-head_size = 64
-hidden_size = num_heads*head_size
-
-x = flow.rand(bsz, seq_len, hidden_size)
-weight = flow.rand(hidden_size*3, hidden_size)
-bias = flow.rand(2304)
-
-weight1 = weight.view([3, num_heads, head_size, hidden_size])
-weight1 = weight1.permute(1,0,2,3).contiguous().view(3*hidden_size, hidden_size)
-bias1 = bias.view(3, num_heads, head_size)
-bias1 = bias1.permute(1,0,2).contiguous().view(-1)
-
-weight2 = weight
-bias2 = bias
-
-qkv1 = F.linear(x, weight1, bias=bias1)
-qkv2 = F.linear(x, weight2, bias=bias2)
-
-# LiBai's qkv
-qkv1 = qkv1.view(bsz, seq_len, num_heads, 3*head_size)
-qkv1 = qkv1.permute(0, 2, 1, 3)
-q1, k1, v1 = flow.chunk(qkv1, chunks=3, dim=-1)
-
-# huggingface's qkv
-q2, k2, v2 = flow.chunk(qkv2, chunks=3, dim=-1)
-q2 = q2.view(q2.size(0), q2.size(1), num_heads, -1).transpose(1,2)
-k2 = k2.view(k2.size(0), k2.size(1), num_heads, -1).transpose(1,2)
-v2 = v2.view(v2.size(0), v2.size(1), num_heads, -1).transpose(1,2)
-
-print((q1==q2).all())     # tensor(True)
-print((k1==k2).all())     # tensor(True)
-print((v1==v2).all())     # tensor(True)
+def convert_qkv_weight(cfg, qkv_weight, qkv_bias):
+    qkv_weight = qkv_weight.view([3, cfg.num_heads, cfg.head_size, cfg.hidden_size])
+    qkv_weight = qkv_weight.permute(1, 0, 2, 3).contiguous().view(3*cfg.hidden_size, cfg.hidden_size)
+    qkv_bias = qkv_bias.view(3, cfg.num_heads, cfg.head_size)
+    qkv_bias = qkv_bias.permute(1,0,2).contiguous().view(-1)
+    return qkv_weight, qkv_bias
 ```
 
 - For detailed examples, please refer to [load-huggingface-bert](https://github.com/Oneflow-Inc/libai/tree/test_bert_load_huggingface_weight/projects/test_bert_load_huggingface_weight), you can verify this by running:
