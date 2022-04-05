@@ -15,11 +15,10 @@
 
 
 import oneflow.nn as nn
-
-from flowvision.models import ModelCreator
 from flowvision.layers import DropPath as vision_DropPath
+from flowvision.models import ModelCreator
 
-from libai.layers import DropPath, Linear, LayerNorm
+from libai.layers import DropPath, LayerNorm, Linear
 
 
 class VisionModel(nn.Module):
@@ -31,18 +30,16 @@ class VisionModel(nn.Module):
         pretrained (bool): load the pretrained weight or not.
         num_classes (int): number of classes to be predicted.
     """
+
     def __init__(self, model_name, pretrained=False, num_classes=1000, loss_func=None, **kwargs):
         super().__init__()
         model = ModelCreator.create_model(
-            model_name = model_name,
-            pretrained=pretrained,
-            num_classes=num_classes,
-            **kwargs
+            model_name=model_name, pretrained=pretrained, num_classes=num_classes, **kwargs
         )
         self.model = self.libai_wrapper(model)
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
-    
+
     def libai_wrapper(self, module):
         res = module
         if isinstance(module, vision_DropPath):
@@ -50,33 +47,27 @@ class VisionModel(nn.Module):
         elif isinstance(module, nn.Linear):
             has_bias = True if module.bias is not None else False
             res = Linear(
-                in_features=module.in_features, 
-                out_features=module.out_features, 
-                bias=has_bias
+                in_features=module.in_features, out_features=module.out_features, bias=has_bias
             )
             if has_bias:
                 res.bias.data = module.bias.data.clone().to_global(
-                    sbp=res.bias.sbp, 
-                    placement=res.bias.placement
+                    sbp=res.bias.sbp, placement=res.bias.placement
                 )
             res.weight.data = module.weight.data.clone().to_global(
-                sbp=res.weight.sbp, 
-                placement=res.weight.placement
+                sbp=res.weight.sbp, placement=res.weight.placement
             )
         elif isinstance(module, nn.LayerNorm):
             res = LayerNorm(
-                normalized_shape=module.normalized_shape, 
-                eps=module.eps, 
-                elementwise_affine=module.elementwise_affine
+                normalized_shape=module.normalized_shape,
+                eps=module.eps,
+                elementwise_affine=module.elementwise_affine,
             )
             if module.elementwise_affine:
                 res.weight.data = module.weight.data.clone().to_global(
-                    sbp=res.weight.sbp, 
-                    placement=res.weight.placement
+                    sbp=res.weight.sbp, placement=res.weight.placement
                 )
                 res.bias.data = module.bias.data.clone().to_global(
-                    sbp=res.bias.sbp, 
-                    placement=res.bias.placement
+                    sbp=res.bias.sbp, placement=res.bias.placement
                 )
             res.eps = module.eps
         else:
@@ -85,7 +76,7 @@ class VisionModel(nn.Module):
                 if new_child is not child:
                     res.add_module(name, new_child)
         return res
-    
+
     def forward(self, images, labels=None):
         """
 

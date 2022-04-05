@@ -15,10 +15,10 @@ dataloader = get_config("common/data/imagenet.py").dataloader
 
 # Add model for training
 model = LazyCall(VisionModel)(
-    model_name = "toy_model",
-    pretrained = False,
-    num_classes = 1000,
-    loss_func = LazyCall(SoftTargetCrossEntropy)()
+    model_name="toy_model",
+    pretrained=False,
+    num_classes=1000,
+    loss_func=LazyCall(SoftTargetCrossEntropy)(),
 )
 
 # Refine data path to imagenet

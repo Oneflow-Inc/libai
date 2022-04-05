@@ -28,10 +28,12 @@ logger = logging.getLogger(__name__)
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
-        assert try_get_key(cfg, "train.dist.tensor_parallel_size") == 1, \
-            f"OneCls do not support tensor parallel training now. but got tensor_parallel_size={cfg.dist.tensor_parallel_size}"  # noqa
-        assert try_get_key(cfg, "train.dist.pipeline_parallel_size") == 1, \
-            f"OneCls do not support pipeline parallel training now, but got pipeline_parallel_size={cfg.dist.pipeline_parallel_size}"  # noqa
+        assert (
+            try_get_key(cfg, "train.dist.tensor_parallel_size") == 1
+        ), f"OneCls do not support tensor parallel training now. but got tensor_parallel_size={cfg.dist.tensor_parallel_size}"  # noqa
+        assert (
+            try_get_key(cfg, "train.dist.pipeline_parallel_size") == 1
+        ), f"OneCls do not support pipeline parallel training now, but got pipeline_parallel_size={cfg.dist.pipeline_parallel_size}"  # noqa
         model = super().build_model(cfg)
         return model
 
