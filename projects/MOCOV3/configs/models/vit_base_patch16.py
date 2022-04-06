@@ -1,6 +1,7 @@
 from libai.config import LazyCall
 from modeling.vit import VisionTransformer
 
+
 model = LazyCall(VisionTransformer)(
         img_size=224,
         patch_size=16,

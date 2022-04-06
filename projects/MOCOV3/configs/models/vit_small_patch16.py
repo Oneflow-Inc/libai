@@ -1,5 +1,6 @@
 from .vit_base_patch16 import model
 
+
 model.embed_dim=384
 model.depth=12
 model.num_heads=12

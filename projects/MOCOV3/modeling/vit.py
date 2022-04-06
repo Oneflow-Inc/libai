@@ -17,23 +17,21 @@
 # --------------------------------------------------------
 # ViT Model
 # References:
-# mae: https://github.com/facebookresearch/mae/blob/main/models_vit.py
+# moco-v3: https://github.com/facebookresearch/moco-v3/blob/main/vits.py
 # --------------------------------------------------------
 
 
 import math
-
-import oneflow as flow
-import oneflow.nn as nn
-
-from flowvision.layers.weight_init import trunc_normal_
-
 from operator import mul
 from functools import reduce
 
+import oneflow as flow
+import oneflow.nn as nn
+from flowvision.layers.weight_init import trunc_normal_
+
 import libai.models.vision_transformer
 from libai.layers import Linear, PatchEmbedding
-from utils.weight_convert import load_torch_checkpoint_linear_prob
+from ..utils.weight_convert import load_torch_checkpoint_linear_prob
 
 
 class VisionTransformer(libai.models.vision_transformer.VisionTransformer):

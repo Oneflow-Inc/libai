@@ -14,18 +14,15 @@
 # limitations under the License.
 
 
-from ast import arg
 import sys
 import logging
-
-sys.path.append(".")
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import default_setup, DefaultTrainer
 from libai.utils.checkpoint import Checkpointer
-from projects.MOCOV3.trainer.moco_trainer import MoCoEagerTrainer
+from .trainer.moco_trainer import MoCoEagerTrainer
 
-
+sys.path.append(".")
 logger = logging.getLogger(__name__)
 
 

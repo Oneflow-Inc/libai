@@ -1,6 +1,5 @@
 from libai.config import LazyCall
-
-from projects.MOCOV3.modeling.moco import MoCo_ViT
+from modeling.moco import MoCo_ViT
 from modeling.vit import VisionTransformer
 
 

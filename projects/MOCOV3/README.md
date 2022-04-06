@@ -71,7 +71,7 @@ If you feel confused about the checkpoint format here, please refer to [Load and
 2. Finetune MOCOv3 on 8 GPUs using data parallelism.
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MOCOV3/finetune_net.py projects/MAE/moco_finetune.py 8
+bash tools/train.sh projects/MOCOV3/finetune_net.py projects/MOCOV3/moco_finetune.py 8
 ```
 **Notes:** if you want to finetune MOCOv3 models using different parallel strategies, please refer to the [Distributed Configuration Tutorial](https://libai.readthedocs.io/en/latest/tutorials/basics/Distributed_Configuration.html)
 

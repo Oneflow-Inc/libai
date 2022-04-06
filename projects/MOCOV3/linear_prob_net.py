@@ -17,13 +17,12 @@
 import sys
 import logging
 
-sys.path.append(".")
-
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import default_setup
 from libai.engine.default import DefaultTrainer
 from libai.utils.checkpoint import Checkpointer
 
+sys.path.append(".")
 logger = logging.getLogger(__name__)
 
 

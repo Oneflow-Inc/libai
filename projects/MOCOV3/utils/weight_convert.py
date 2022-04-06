@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-from curses import newpad
 import logging
 
 import torch
@@ -52,7 +51,7 @@ def convert_qkv_bias(value, num_heads, hidden_size):
     return qkv_bias
 
 def filter_keys(key, value, num_heads, hidden_size):
-    """Filtering the state_dict keys and values to match LiBai's MAE model
+    """Filtering the state_dict keys and values to match LiBai's MOCOV3 model
     """
     if "norm1" in key:
         key = key.replace("norm1", "input_layernorm")

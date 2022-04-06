@@ -1,8 +1,10 @@
-from libai.config import get_config, LazyCall
-from .models.vit_small_patch16 import model
-from projects.MOCOV3.transform.linear_prob_transform import train_aug
 from oneflow.optim import SGD
 from flowvision.transforms import transforms
+
+from libai.config import get_config, LazyCall
+from .models.vit_small_patch16 import model
+from ..transform.linear_prob_transform import train_aug
+
 
 dataloader = get_config("common/data/imagenet.py").dataloader
 train = get_config("common/train.py").train
