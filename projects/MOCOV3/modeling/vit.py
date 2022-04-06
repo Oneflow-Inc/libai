@@ -31,7 +31,7 @@ from flowvision.layers.weight_init import trunc_normal_
 
 import libai.models.vision_transformer
 from libai.layers import Linear, PatchEmbedding
-from ..utils.weight_convert import load_torch_checkpoint_linear_prob
+from utils.weight_convert import load_torch_checkpoint_linear_prob
 
 
 class VisionTransformer(libai.models.vision_transformer.VisionTransformer):

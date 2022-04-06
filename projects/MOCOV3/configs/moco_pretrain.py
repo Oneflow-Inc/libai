@@ -12,8 +12,8 @@ graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/dataset/extract"
-dataloader.test[0].dataset.root = "/dataset/extract"
+dataloader.train.dataset[0].root = "/path/to/imagenet/"
+dataloader.test[0].dataset.root = "/path/to/imagenet/"
 
 # Add augmentation Func
 dataloader.train.dataset[0].transform=LazyCall(TwoCropsTransform)(
