@@ -1,17 +1,17 @@
-# How to impllement huggingface's weights in LiBai
-Because Libai's model structure has undergone rigorous parallel mode derivation, Libai'model structure is more suitable for parallel training. In this tutorial, we introduces how to correctly load huggingface's weights with Libai model, let's take BERT as an example.
+# How to use Huggingface's pretrained weights in LiBai
+LiBai adopts the model structures which are more suitable for parallel training, so they are a little bit different from Huggingface's ones. In this tutorial, we introduce how to correctly load Huggingface's pretrained weights with LiBai model, let's take BERT as an example.
 
 
 ## LiBai Transformer vs Huggingface Transformer
-You can see the subtle differences in the BERT structure from the following figure (left: LiBai, right: huggingface):
+You can see the subtle differences in the BERT structure from the following figure (left: LiBai, right: Huggingface):
 - Location of layernorm: The location of layernorm is different, but the calculation order is the same.
 - Division mode of query, key and value: Just splice.
-- Libai uses the order of the layer normalization and the residual connections of [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) by default, recent research shows that this structure will eliminate instabilities and bring a lower training loss. But LiBai also supports the original BERT architecture mentioned in [Paper](https://arxiv.org/pdf/1810.04805.pdf), just set `apply_residual_post_layernorm=True`.
+- LiBai follows [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) to use the order of the layernorm and the residual connections by default. Megatron-LM shows that this structure will eliminate instabilities and bring a lower training loss. LiBai can also support the original BERT architecture mentioned in [Paper](https://arxiv.org/pdf/1810.04805.pdf), just set `apply_residual_post_layernorm=True`.
 ![architecture](./assets/architecture.png)
 
 
-## QKV slice logic difference
-LiBai's QKV calculation logic is difference from huggingface.
+## Difference of QKV slice logic
+LiBai's QKV calculation logic is different from huggingface.
 ```python
 # LiBai's QKV calculation logic
 query_key_value = query_key_value.view(batch_size, -1, num_heads, 3 * head_size)
