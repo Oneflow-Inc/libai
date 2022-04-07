@@ -22,10 +22,6 @@ from libai.engine.trainer import EagerTrainer
 
 class MoCoEagerTrainer(EagerTrainer):
 
-    def __init__(self, model, data_loader, optimizer, grad_acc_steps=1):
-
-        super().__init__(model, data_loader, optimizer, grad_acc_steps)
-
     def run_step(self, get_batch: Callable):
 
         assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
