@@ -33,7 +33,7 @@ Based on [libai.layers](https://libai.readthedocs.io/en/latest/modules/libai.lay
       <td align="left">-</td>
     </tr>
     <tr>
-      <td align="left"> <b> MOCOv3 finetune </b> </td>
+      <td align="left"> <b> MOCOv3 linear prob </b> </td>
       <td align="left">&#10004;</td>
       <td align="left">&#10004;</td>
       <td align="left">&#10004;</td>
@@ -54,48 +54,48 @@ Please see [Prepare the Data](https://libai.readthedocs.io/en/latest/tutorials/g
 Pretraining MOCOv3 on 8 GPUs using data parallelism.
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MOCOV3/pretrain_net.py projects/MOCOV3/moco_pretraining.py 8
+bash tools/train.sh projects/MOCOV3/pretrain_net.py projects/MOCOV3/configs/moco_pretrain.py 8
 ```
 
 ### Linear Prob
-1. Setup the weights for finetuning in [moco_finetune.py](./configs/moco_finetune.py) as follows:
+1. Setup the weights for linear prob in [moco_linear_prob.py](./configs/moco_linear_prob.py) as follows:
 
 ```python
-# moco_funetune.py
-finetune.enable = True  # only load weight if enable is True
-finetune.weight_style = "oneflow"  # Set "oneflow" for loading oneflow checkpoints
-finetune.path = "/path/to/checkpoint"  # the checkpoint directory
+# moco_linear_prob.py
+# Path to the weight for linear prob
+model.linear_prob = "path/to/pretrained_weight"
+model.weight_style = "oneflow"
 ```
 If you feel confused about the checkpoint format here, please refer to [Load and Save a Checkpoint in LiBai](https://libai.readthedocs.io/en/latest/tutorials/basics/Load_and_Save_Checkpoint.html) for more details.
 
-2. Finetune MOCOv3 on 8 GPUs using data parallelism.
+2. The MOCOv3 linear prob on 8 GPUs using data parallelism.
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MOCOV3/finetune_net.py projects/MOCOV3/moco_finetune.py 8
+bash tools/train.sh tools/train_net.py projects/MOCOV3/configs/moco_linear_prob.py 8
 ```
-**Notes:** if you want to finetune MOCOv3 models using different parallel strategies, please refer to the [Distributed Configuration Tutorial](https://libai.readthedocs.io/en/latest/tutorials/basics/Distributed_Configuration.html)
+**Notes:** if you want to run the MOCOv3 linear prob models using different parallel strategies, please refer to the [Distributed Configuration Tutorial](https://libai.readthedocs.io/en/latest/tutorials/basics/Distributed_Configuration.html)
 
 
 ### Evaluation
 Evaluate MOCOv3 model under LiBai on 8 GPUs:
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MOCOV3/finetune_net.py projects/MOCOV3/moco_finetune.py 8 --eval-only
+bash tools/train.sh tools/train_net.py projects/MOCOV3/configs/moco_linear_prob.py 8 --eval-only
 ```
 
 
 ## Advanced Usage
-### Finetune MOCOv3 with pytorch pretrained checkpoint
-You can download pytorch pretrained weight from [MOCOv3 official repo](https://github.com/facebookresearch/moco-v3/blob/main/CONFIG.md) and finetune them in LiBai by updating the [moco_finetune.py](./configs/moco_finetune.py) as follows:
+### The MOCOv3 linear prob with pytorch pretrained checkpoint
+You can download pytorch pretrained weight from [MOCOv3 official repo](https://github.com/facebookresearch/moco-v3/blob/main/CONFIG.md) and run linear prob in LiBai by updating the [moco_linear_prob.py](./configs/moco_linear_prob.py) as follows:
 ```python
-finetune.enable = True  # only load weight if enable is True
-finetune.weight_style = "pytorch"  # Set "pytorch" for loading torch checkpoints
-finetune.path = "/path/to/vit-s-300ep.pth.tar"
+# Path to the weight for linear prob 
+model.linear_prob =  "/path/to/vit-s-300ep.pth.tar"
+model.weight_style = "pytorch"
 ```
-Run finetuning on 8 GPUs:
+Run linear prob on 8 GPUs:
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MOCOV3/finetune_net.py projects/MOCOV3/moco_finetune.py 8
+bash tools/train.sh tools/train_net.py projects/MOCOV3/configs/moco_linear_prob.py 8
 ```
 
 

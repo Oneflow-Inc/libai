@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append("projects/MOCOV3")
+
 from libai.config import LazyCall
 from modeling.vit import VisionTransformer
 
