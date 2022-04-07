@@ -127,7 +127,7 @@ class VisionTransformer(vision_transformer.VisionTransformer):
         assert self.embed_dim % 4 == 0, 'Embed dimension must be divisible by 4 for 2D sin-cos position embedding'
         pos_dim = self.embed_dim // 4
         omega = (flow.arange(pos_dim, dtype=flow.float32) / pos_dim).to_global(sbp=sbp, placement=placement)
-        omega = (1. / flow.tensor(temperature).cuda().to_global(sbp=sbp, placement=placement)**omega)
+        omega = (1. / flow.tensor(temperature).to_global(sbp=sbp, placement=placement)**omega)
         out_w = flow.einsum('m,d->md', grid_w.flatten(), omega)
         out_h = flow.einsum('m,d->md', grid_h.flatten(), omega)
         pos_emb = flow.cat([flow.sin(out_w), flow.cos(out_w), flow.sin(out_h), flow.cos(out_h)], dim=1)[None, :, :]
