@@ -121,17 +121,17 @@ class VisionTransformer(vision_transformer.VisionTransformer):
         placement = self.pos_embed.placement
 
         h, w = self.patch_embed.grid_size
-        grid_w = flow.arange(w, dtype=flow.float32).cuda().to_global(sbp=sbp, placement=placement)
-        grid_h = flow.arange(h, dtype=flow.float32).cuda().to_global(sbp=sbp, placement=placement)
+        grid_w = flow.arange(w, dtype=flow.float32).to_global(sbp=sbp, placement=placement)
+        grid_h = flow.arange(h, dtype=flow.float32).to_global(sbp=sbp, placement=placement)
         grid_w, grid_h = flow.meshgrid(grid_w, grid_h)
         assert self.embed_dim % 4 == 0, 'Embed dimension must be divisible by 4 for 2D sin-cos position embedding'
         pos_dim = self.embed_dim // 4
-        omega = (flow.arange(pos_dim, dtype=flow.float32) / pos_dim).cuda().to_global(sbp=sbp, placement=placement)
+        omega = (flow.arange(pos_dim, dtype=flow.float32) / pos_dim).to_global(sbp=sbp, placement=placement)
         omega = (1. / flow.tensor(temperature).cuda().to_global(sbp=sbp, placement=placement)**omega)
         out_w = flow.einsum('m,d->md', grid_w.flatten(), omega)
         out_h = flow.einsum('m,d->md', grid_h.flatten(), omega)
         pos_emb = flow.cat([flow.sin(out_w), flow.cos(out_w), flow.sin(out_h), flow.cos(out_h)], dim=1)[None, :, :]
-        pe_token = flow.zeros([1, 1, self.embed_dim], dtype=flow.float32).cuda().to_global(sbp=sbp, placement=placement)
+        pe_token = flow.zeros([1, 1, self.embed_dim], dtype=flow.float32).to_global(sbp=sbp, placement=placement)
         self.pos_embed = nn.Parameter(flow.cat([pe_token, pos_emb], dim=1))
         self.pos_embed.requires_grad = False
 
