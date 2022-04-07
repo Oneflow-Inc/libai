@@ -1,16 +1,16 @@
 # How to use Huggingface's pretrained weights in LiBai
-LiBai adopts the model structures which are more suitable for parallel training, so they are a little bit different from Huggingface's ones. In this tutorial, we introduce how to correctly load Huggingface's pretrained weights with LiBai model, let's take BERT as an example.
+The built-in layers in [LiBai](https://github.com/Oneflow-Inc/libai) adopts the structure which is more suitable for parallel training, therefore there may be little bit different from the Huggingface's implementation. In this tutorial, we will introduce users how to correctly load Huggingface's pretrained weights into LiBai's model, let's take BERT as an example.
 
 
 ## LiBai Transformer vs Huggingface Transformer
-You can see the subtle differences in the BERT structure from the following figure (left: LiBai, right: Huggingface):
+There are subtle differences in the BERT structure in the following figure (left: LiBai, right: Huggingface), which can be summarized as:
 - Location of layernorm: The location of layernorm is different, but the calculation order is the same.
 - Division mode of query, key and value: Just splice.
 - LiBai follows [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) to use the order of the layernorm and the residual connections by default. Megatron-LM shows that this structure will eliminate instabilities and bring a lower training loss. LiBai can also support the original BERT architecture mentioned in [Paper](https://arxiv.org/pdf/1810.04805.pdf), just set `apply_residual_post_layernorm=True`.
 ![architecture](./assets/architecture.png)
 
 
-## Difference of QKV slice logic
+## QKV slicing logic
 LiBai's QKV calculation logic is different from huggingface.
 ```python
 # LiBai's QKV calculation logic
@@ -26,8 +26,8 @@ value = value.view(value.size(0), value.size(1), num_heads, -1).permute(0, 2, 1,
 ```
 
 
-## QKV weight loading method
-- Just rearrange the weights to load correctly. 
+## How to correctly load QKV weights
+- To correctly load huggingface's transformer weights, the only thing you need to do is to rearrange the loaded weights as follows:
 
 ```python
 def convert_qkv_weight(cfg, qkv_weight, qkv_bias):
