@@ -74,25 +74,6 @@ def filter_keys(key, value, num_heads, hidden_size):
 
     return key, value
 
-
-def load_torch_checkpoint_inference(num_heads, hidden_size, path="projects/MOCOV3/output/linear-vit-b-300ep.pth.tar"):
-    """Load checkpoint from the given torch weights.
-    Torch weight from: xxx
-    """
-    torch_dict = torch.load(path, map_location="cpu")["state_dict"]
-    parameters = torch_dict
-    new_parameters = dict()
-    for key, value in parameters.items():
-        if "num_batches_tracked" not in key:
-            # to global tensor
-            key, val = filter_keys(key, value, num_heads, hidden_size)
-            val = val.detach().cpu().numpy()
-            val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
-            new_parameters[key[len("module."):]] = val
-
-    return new_parameters
-
-
 def load_torch_checkpoint_linear_prob(num_heads, hidden_size, path="projects/MOCOV3/output/vit-b-300ep.pth.tar", linear_keyword="head"):
     """Load checkpoint from the given torch weights.
     Torch weight from: xxx

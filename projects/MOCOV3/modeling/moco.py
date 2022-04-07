@@ -94,12 +94,13 @@ class MoCo(nn.Module):
         k = nn.functional.normalize(k, dim=1)
         
         # gather all targets
-        k = concat_all_gather(k).to_global(sbp=q.sbp, placement=q.placement)
+        # k = concat_all_gather(k).to_global(sbp=q.sbp, placement=q.placement)
+        k = k.to_global(sbp=flow.sbp.broadcast)
 
         # Einstein sum is more intuitive
         logits = flow.einsum('nc,mc->nm', q, k) / self.T  
         N = logits.shape[0] // get_world_size() 
-        labels = (flow.arange(N, dtype=flow.long) + N * flow.env.get_rank()).cuda().to_global(sbp=flow.sbp.split(0), placement=logits.placement)
+        labels = (flow.arange(N, dtype=flow.long) + N * flow.env.get_rank()).to_global(sbp=flow.sbp.split(0), placement=logits.placement)
 
         return nn.CrossEntropyLoss()(logits, labels) * (2 * self.T)
 
@@ -142,21 +143,20 @@ class MoCo_ViT(MoCo):
         self.predictor = self._build_mlp(2, dim, mlp_dim, dim)
 
 
-# utils
-@flow.no_grad()
-def concat_all_gather(tensor):
-    """
-    Performs all_gather operation on the provided tensors.
-    *** Warning ***: flow.distributed.all_gather has no gradient.
-    """
+# # utils
+# @flow.no_grad()
+# def concat_all_gather(tensor):
+#     """
+#     Performs all_gather operation on the provided tensors.
+#     *** Warning ***: flow.distributed.all_gather has no gradient.
+#     """
 
-    tensor = tensor.to_local()
+#     tensor = tensor.to_local()
 
-    tensors_gather = [flow.ones_like(tensor)
-        for _ in range(get_world_size())]
+#     tensors_gather = [flow.ones_like(tensor)
+#         for _ in range(get_world_size())]
 
-    # flow.distributed.all_gather(tensors_gather, tensor, async_op=False)
-    flow.comm.all_gather(tensors_gather, tensor) # all tensors are consistent here, thus .device is unavailable
+#     flow.comm.all_gather(tensors_gather, tensor) # all tensors are consistent here, thus .device is unavailable
 
-    output = flow.cat(tensors_gather, dim=0)
-    return output
+#     output = flow.cat(tensors_gather, dim=0)
+#     return output

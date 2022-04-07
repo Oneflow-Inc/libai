@@ -17,7 +17,7 @@
 import logging
 
 from libai.utils.checkpoint import Checkpointer, get_missing_parameters_message, get_unexpected_parameters_message
-from utils.weight_convert import load_torch_checkpoint_linear_prob, load_torch_checkpoint_inference    
+from utils.weight_convert import load_torch_checkpoint_linear_prob    
     
 logger = logging.getLogger("libai." + __name__)
     
@@ -29,8 +29,7 @@ def load_checkpoint(model, path, weight_style, num_heads, embed_dim):
             param.requires_grad = False
     assert weight_style in ["pytorch", "oneflow"]
     if weight_style == "pytorch":
-        # params = load_torch_checkpoint_linear_prob(num_heads, embed_dim, path=finetune)
-        params = load_torch_checkpoint_inference(num_heads, embed_dim, path=path)
+        params = load_torch_checkpoint_linear_prob(num_heads, embed_dim, path=path)
     else:
         params = Checkpointer(model).load(path)
             

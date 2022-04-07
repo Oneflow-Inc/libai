@@ -29,11 +29,12 @@ import oneflow as flow
 import oneflow.nn as nn
 from flowvision.layers.weight_init import trunc_normal_
 
-import libai.models.vision_transformer
+from libai.models import vision_transformer
 from libai.layers import Linear, PatchEmbedding
 from utils.load_checkpoint import load_checkpoint
 
-class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
+
+class VisionTransformer(vision_transformer.VisionTransformer):
     """Vision Transformer for MOCO
     LiBai impl of: `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`
         - https://arxiv.org/abs/2010.11929
@@ -77,8 +78,8 @@ class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
         # weight init
         if linear_prob:
             load_checkpoint(self, linear_prob, weight_style, num_heads, embed_dim)
-            # self.head.weight.data.normal_(mean=0.0, std=0.01)
-            # self.head.bias.data.zeros_()
+            self.head.weight.data.normal_(mean=0.0, std=0.01)
+            self.head.bias.data.zeros_()
         else:
             trunc_normal_(self.pos_embed, std=0.02)
             trunc_normal_(self.cls_token, std=0.02)
@@ -133,9 +134,6 @@ class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
         pe_token = flow.zeros([1, 1, self.embed_dim], dtype=flow.float32).cuda().to_global(sbp=sbp, placement=placement)
         self.pos_embed = nn.Parameter(flow.cat([pe_token, pos_emb], dim=1))
         self.pos_embed.requires_grad = False
-
-    def no_weight_decay(self):
-        return {"pos_embed", "cls_token"}
 
     def forward_head(self, x):
         if self.global_pool:
