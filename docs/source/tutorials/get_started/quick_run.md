@@ -52,7 +52,7 @@ train.dist.tensor_parallel_size=2
 **Step 3. Invoke parallel training**
 - To train `BertForPreTraining` model on a single node with 8 GPUs, run:
 ```bash
-bash tools/train.sh configs/bert_large_pretrain.py 8
+bash tools/train.sh tools/train_net.py configs/bert_large_pretrain.py 8
 ```
 
 
@@ -92,7 +92,7 @@ dataloader.test[0].dataset.root = "/path/to/imagenet"
 ```
 - To train `vit_tiny_patch16_224` model on ImageNet on a single node with 8 GPUs for 300 epochs, run:
 ```bash
-bash tools/train.sh configs/vit_imagenet.py 8
+bash tools/train.sh tools/train_net.py configs/vit_imagenet.py 8
 ```
 - The default vit model in LiBai is set to `vit_tiny_patch16_224`. To train other vit models, update the [vit_imagenet](https://github.com/Oneflow-Inc/libai/blob/main/configs/vit_imagenet.py) config file by importing other vit models in the config file as follows:
 ```python
