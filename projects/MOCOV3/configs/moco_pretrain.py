@@ -27,7 +27,7 @@ model.m = .99
 model.T = .2
 
 # Refine train cfg for moco v3 model
-train.train_micro_batch_size=32
+train.train_micro_batch_size=128
 train.test_micro_batch_size= 32
 train.train_epoch = 300
 train.warmup_ratio = 40 / 300
