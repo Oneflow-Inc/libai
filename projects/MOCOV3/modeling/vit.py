@@ -31,8 +31,7 @@ from flowvision.layers.weight_init import trunc_normal_
 
 import libai.models.vision_transformer
 from libai.layers import Linear, PatchEmbedding
-from utils.weight_convert import load_torch_checkpoint_linear_prob
-
+from utils.load_checkpoint import load_checkpoint
 
 class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
     """Vision Transformer for MOCO
@@ -77,9 +76,9 @@ class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
 
         # weight init
         if linear_prob:
-            self.load_checkpoint(linear_prob, weight_style, num_heads, embed_dim)
-            self.head.weight.data.normal_(mean=0.0, std=0.01)
-            self.head.bias.data.zeros_()
+            load_checkpoint(self, linear_prob, weight_style, num_heads, embed_dim)
+            # self.head.weight.data.normal_(mean=0.0, std=0.01)
+            # self.head.bias.data.zeros_()
         else:
             trunc_normal_(self.pos_embed, std=0.02)
             trunc_normal_(self.cls_token, std=0.02)
@@ -134,19 +133,6 @@ class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
         pe_token = flow.zeros([1, 1, self.embed_dim], dtype=flow.float32).cuda().to_global(sbp=sbp, placement=placement)
         self.pos_embed = nn.Parameter(flow.cat([pe_token, pos_emb], dim=1))
         self.pos_embed.requires_grad = False
-
-    def load_checkpoint(self, finetune, weight_style, num_heads, embed_dim):
-        linear_keyword = "head"
-        for name, param in self.named_parameters():
-            if name not in ['%s.weight' % linear_keyword, '%s.bias' % linear_keyword]:
-                param.requires_grad = False
-        assert weight_style in ["pytorch", "oneflow"]
-        if weight_style == "pytorch":
-            params = load_torch_checkpoint_linear_prob(num_heads, embed_dim, path=finetune)
-        else:
-            params = flow.load(finetune)
-
-        self.load_state_dict(params, strict=False)
 
     def no_weight_decay(self):
         return {"pos_embed", "cls_token"}
