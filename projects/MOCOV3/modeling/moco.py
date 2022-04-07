@@ -131,7 +131,6 @@ class MoCo(nn.Module):
             return self.base_encoder(images)
 
 
-
 class MoCo_ViT(MoCo):
     def _build_projector_and_predictor_mlps(self, dim, mlp_dim):
         hidden_dim = self.base_encoder.head.weight.shape[1]
@@ -141,22 +140,3 @@ class MoCo_ViT(MoCo):
 
         # predictor
         self.predictor = self._build_mlp(2, dim, mlp_dim, dim)
-
-
-# # utils
-# @flow.no_grad()
-# def concat_all_gather(tensor):
-#     """
-#     Performs all_gather operation on the provided tensors.
-#     *** Warning ***: flow.distributed.all_gather has no gradient.
-#     """
-
-#     tensor = tensor.to_local()
-
-#     tensors_gather = [flow.ones_like(tensor)
-#         for _ in range(get_world_size())]
-
-#     flow.comm.all_gather(tensors_gather, tensor) # all tensors are consistent here, thus .device is unavailable
-
-#     output = flow.cat(tensors_gather, dim=0)
-#     return output
