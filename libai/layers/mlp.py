@@ -65,7 +65,7 @@ class MLP(nn.Module):
         self.dense_h_to_4h = Linear(
             hidden_size,
             ffn_hidden_size,
-            bias=True,
+            bias=False,
             parallel="col",
             skip_bias_add=bias_gelu_fusion,
             init_method=init_method,
@@ -78,7 +78,7 @@ class MLP(nn.Module):
         self.dense_4h_to_h = Linear(
             ffn_hidden_size,
             hidden_size,
-            bias=True,
+            bias=False,
             parallel="row",
             skip_bias_add=bias_dropout_fusion,
             init_method=output_layer_init_method,

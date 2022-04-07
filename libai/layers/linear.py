@@ -58,7 +58,7 @@ class Linear1D(nn.Module):
         self,
         in_features,
         out_features,
-        bias=True,
+        bias=False,
         parallel="data",
         init_method=nn.init.xavier_normal_,
         skip_bias_add=False,
