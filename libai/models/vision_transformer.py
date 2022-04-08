@@ -114,7 +114,7 @@ class VisionTransformer(nn.Module):
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
-        # weight init
+        # Weight init
         trunc_normal_(self.pos_embed, std=0.02)
         trunc_normal_(self.cls_token, std=0.02)
         self.apply(self._init_weights)
