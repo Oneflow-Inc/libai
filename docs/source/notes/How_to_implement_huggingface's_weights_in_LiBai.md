@@ -5,7 +5,7 @@ The built-in layers in [LiBai](https://github.com/Oneflow-Inc/libai) adopts the 
 ## LiBai Transformer vs Huggingface Transformer
 There are subtle differences in the BERT structure in the following figure (left: LiBai, right: Huggingface), which can be summarized as:
 - Location of layernorm: The location of layernorm is different, but the calculation order is the same.
-- Division mode of query, key and value: Just splice.
+- The different slicing way to get the `query`, `key` and `value` matrix.
 - LiBai follows [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) to use the order of the layernorm and the residual connections by default. Megatron-LM shows that this structure will eliminate instabilities and bring a lower training loss. LiBai can also support the original BERT architecture mentioned in [Paper](https://arxiv.org/pdf/1810.04805.pdf) by setting `apply_residual_post_layernorm=True`.
 
 ![architecture](./assets/architecture.jpg)
