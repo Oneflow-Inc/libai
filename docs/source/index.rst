@@ -11,4 +11,5 @@ Welcome to libai's documentation!
 
    tutorials/index
    modules/index
+   notes/index
    changelog.md
