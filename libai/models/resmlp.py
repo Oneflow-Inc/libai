@@ -39,21 +39,22 @@ class Affine(nn.Module):
         self.alpha = nn.Parameter(
             flow.ones(
                 dim,
+                placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=dist.get_layer_placement(layer_idx)
             )
         )
         self.beta = nn.Parameter(
             flow.ones(
                 dim,
+                placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=dist.get_layer_placement(layer_idx)
             ), 
         )
         
         self.layer_idx = layer_idx
     
     def forward(self, x):
+        x = x.to_global(placement=dist.get_layer_placement(self.layer_idx))
         return self.alpha * x + self.beta
 
 
@@ -71,7 +72,7 @@ class layers_scale_mlp_blocks(nn.Module):
     ):
         super().__init__()
         self.norm1 = Affine(dim, layer_idx=layer_idx)
-        self.attn = Linear(num_patches, num_patches)
+        self.attn = Linear(num_patches, num_patches, layer_idx=layer_idx)
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = Affine(dim, layer_idx=layer_idx)
         self.mlp = MLP(hidden_size=dim, ffn_hidden_size=int(4.0 * dim), layer_idx=layer_idx)
@@ -87,12 +88,18 @@ class layers_scale_mlp_blocks(nn.Module):
         self.layer_idx = layer_idx
 
     def forward(self, x):
+        x = x.to_global(placement=dist.get_layer_placement(self.layer_idx))
         x = x + self.drop_path(self.gamma_1 * self.attn(self.norm1(x).transpose(1,2)).transpose(1,2))
         x = x + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x)))
         return x 
 
 
 class ResMLP(nn.Module):
+    """ResMLP in LiBai
+
+    LiBai implementation of 
+    
+    """
     def __init__(
         self, 
         img_size=224, 
