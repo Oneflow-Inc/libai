@@ -2,8 +2,8 @@ import sys
 
 sys.path.append("projects/MOCOV3")
 
-from libai.config import LazyCall
-from modeling.vit import VisionTransformer
+from libai.config import LazyCall  # noqa: E402
+from modeling.vit import VisionTransformer  # noqa: E402
 
 
 model = LazyCall(VisionTransformer)(

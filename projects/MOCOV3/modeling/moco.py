@@ -74,7 +74,8 @@ class MoCo(nn.Module):
                 mlp.append(nn.BatchNorm1d(dim2))
                 mlp.append(nn.ReLU(inplace=True))
             elif last_bn:
-                # follow SimCLR's design: https://github.com/google-research/simclr/blob/master/model_util.py#L157
+                # follow SimCLR's design:
+                # https://github.com/google-research/simclr/blob/master/model_util.py#L157
                 # for simplicity, we further removed gamma in BN
 
                 # TODO: affine should be False (bug here)
