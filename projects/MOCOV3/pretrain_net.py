@@ -14,20 +14,20 @@
 # limitations under the License.
 
 
-import sys
 import logging
+import sys
+
+from trainer.moco_trainer import MoCoEagerTrainer
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.engine import default_setup, DefaultTrainer
+from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-from trainer.moco_trainer import MoCoEagerTrainer
 
 sys.path.append(".")
 logger = logging.getLogger(__name__)
 
 
 class MoCoPretrainingTrainer(DefaultTrainer):
-
     def __init__(self, cfg):
 
         super().__init__(cfg)
@@ -35,8 +35,8 @@ class MoCoPretrainingTrainer(DefaultTrainer):
         self.model.max_iter = cfg.train.train_iter
 
         self._trainer = MoCoEagerTrainer(
-                self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
-            )
+            self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
+        )
 
 
 def main(args):
@@ -45,7 +45,7 @@ def main(args):
 
     if try_get_key(cfg, "graph.enabled") is True:
         raise NotImplementedError(
-            "LiBai MOCO only support eager global mode now, please set cfg.graph.enabled=False"  
+            "LiBai MOCO only support eager global mode now, please set cfg.graph.enabled=False"
         )
 
     default_setup(cfg, args)

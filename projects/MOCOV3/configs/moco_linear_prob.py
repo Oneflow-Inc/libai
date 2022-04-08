@@ -20,7 +20,7 @@ dataloader.train.dataset[0].root = "/path/to/imagenet/"
 dataloader.test[0].dataset.root = "/path/to/imagenet/"
 
 # Add augmentation Func
-dataloader.train.dataset[0].transform=LazyCall(transforms.Compose)(transforms=train_aug)
+dataloader.train.dataset[0].transform = LazyCall(transforms.Compose)(transforms=train_aug)
 
 # Refine train cfg for moco v3 model
 train.train_micro_batch_size = 128
@@ -39,15 +39,15 @@ del optim.betas
 del optim.eps
 del optim.do_bias_correction
 
-# Refine optimizer cfg for moco v3 model 
+# Refine optimizer cfg for moco v3 model
 # Reference:
 # https://github.com/facebookresearch/moco-v3/blob/main/CONFIG.md
 # https://github.com/facebookresearch/moco-v3/blob/main/main_lincls.py
-base_lr = 3.
+base_lr = 3.0
 actual_lr = base_lr * (train.train_micro_batch_size * 8 / 256)
 optim.lr = actual_lr
-optim.weight_decay = 0.
-optim.momentum = .9
+optim.weight_decay = 0.0
+optim.momentum = 0.9
 
 # Scheduler
 train.scheduler.warmup_iter = 0

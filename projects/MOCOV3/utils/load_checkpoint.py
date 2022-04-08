@@ -16,23 +16,28 @@
 
 import logging
 
-from libai.utils.checkpoint import Checkpointer, get_missing_parameters_message, get_unexpected_parameters_message
-from utils.weight_convert import load_torch_checkpoint_linear_prob    
-    
+from utils.weight_convert import load_torch_checkpoint_linear_prob
+
+from libai.utils.checkpoint import (
+    Checkpointer,
+    get_missing_parameters_message,
+    get_unexpected_parameters_message,
+)
+
 logger = logging.getLogger("libai." + __name__)
-    
-    
+
+
 def load_checkpoint(model, path, weight_style, num_heads, embed_dim):
     linear_keyword = "head"
     for name, param in model.named_parameters():
-        if name not in ['%s.weight' % linear_keyword, '%s.bias' % linear_keyword]:
+        if name not in ["%s.weight" % linear_keyword, "%s.bias" % linear_keyword]:
             param.requires_grad = False
     assert weight_style in ["pytorch", "oneflow"]
     if weight_style == "pytorch":
         params = load_torch_checkpoint_linear_prob(num_heads, embed_dim, path=path)
     else:
         params = Checkpointer(model).load(path)
-            
+
     model_state_dict = model.state_dict()
 
     # check the incorrect shape and unexpected keys
@@ -48,9 +53,9 @@ def load_checkpoint(model, path, weight_style, num_heads, embed_dim):
             model_state_dict.pop(k)
         else:
             unexpected_keys.append(k)
-            
+
     missing_keys = list(model_state_dict.keys())
-        
+
     for k, shape_checkpoint, shape_model in incorrect_shapes:
         logger.warning(
             "Skip loading parameter '{}' to the model due to incompatible "
