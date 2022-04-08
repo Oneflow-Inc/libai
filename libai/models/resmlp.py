@@ -37,14 +37,14 @@ class Affine(nn.Module):
     def __init__(self, dim, layer_idx):
         super().__init__()
         self.alpha = nn.Parameter(
-            flow.ones(dim), 
+            flow.ones(dim,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=dist.get_layer_placement(layer_idx)
+            placement=dist.get_layer_placement(layer_idx))
         )
         self.beta = nn.Parameter(
-            flow.ones(dim), 
+            flow.ones(dim,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=dist.get_layer_placement(layer_idx)
+            placement=dist.get_layer_placement(layer_idx)), 
         )
     
     def forward(self, x):
@@ -67,7 +67,7 @@ class layers_scale_mlp_blocks(nn.Module):
         self.attn = Linear(num_patches, num_patches)
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = Affine(dim, layer_idx=layer_idx)
-        self.mlp = MLP(hidden_size=dim, ffn_hidden_size=(4.0 * dim), layer_idx=layer_idx)
+        self.mlp = MLP(hidden_size=dim, ffn_hidden_size=int(4.0 * dim), layer_idx=layer_idx)
         self.gamma_1 = nn.Parameter(
             init_values * flow.ones(dim, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=dist.get_layer_placement(layer_idx)), 
             requires_grad=True
