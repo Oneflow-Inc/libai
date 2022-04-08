@@ -5,7 +5,7 @@ from libai.config import LazyCall, get_config
 from ..modeling.vision_wrapper import VisionModel
 
 # Please use absolute path here
-from projects.OneCls.modeling.example import toy_model
+from projects.OneCls.modeling.example_model import toy_model
 
 # Get train, optim and graph configs
 train = get_config("common/train.py").train
