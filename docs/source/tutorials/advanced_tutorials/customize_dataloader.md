@@ -1,16 +1,16 @@
 # How to Customize Dataloader
 
-Dataloader is the component that provides data to models. A dataloader usually (but not necessarily) takes raw information from [datasets](), and process them into a format needed by the model.
+Dataloader is the component that provides data to models. Dataloader usually (but not necessarily) takes raw information from [datasets](), and processes them into the format needed by the model.
 
-## How the Existing Dataloader works 
+## How the Existing Dataloader Works 
 
-LiBai contains a builtin data loading pipeline. It's good to understand how it works, in case you need to write a custom one.
+LiBai contains a built-in data loading pipeline. It's beneficial to understand how it works, in case you need to write a custom one.
 
-LiBai provides some functions [build_{image,nlp}_{train,test}_loader](https://libai.readthedocs.io/en/latest/modules/libai.data.html#libai.data.build.build_nlp_train_loader) that create a default data loader from a given config. Here is how `build_{image,nlp}_{train,test}_loader` work:
+LiBai provides some functions [build_{image,nlp}_{train,test}_loader](https://libai.readthedocs.io/en/latest/modules/libai.data.html#libai.data.build.build_nlp_train_loader) that create a default dataloader from a given config. Here is how `build_{image,nlp}_{train,test}_loader` work:
 
-1. It instantiates the `list[flow.utils.Dataset]` (e.g., `BertDataset`) by loading a some dataset items with lightweight format. These dataset items are not yet ready to be used by the model (e.g., images are not loaded into memory, random augmentation have not been applied, etc.). 
+1. It instantiates the `list[flow.utils.Dataset]` (e.g., `BertDataset`) by loading some dataset items with lightweight format. These dataset items are not yet ready to be used by the model (e.g., images are not loaded into memory, random augmentation have not been applied, etc.). 
 
-2. The output format of dataset (`__getitem__(...)`) must be a dict whose keys must be consistent with consumer of the dataloader (usually the `model.forward(...)`). The role of the process is to transform the lightweight representation of a dataset item into a format that is ready for the model to consume (including, e.g., read images, perform random data augmentation and convert to oneflow Tensors). If you would like to perform custom transformations to data, you often want to rewrite it. Details about the dataset format can be found in [datasets]().
+2. The output format of dataset (`__getitem__(...)`) must be a dict whose keys must be consistent with argument names of the dataloader's consumer (usually the `model.forward(...)`). The role of the process is to transform the lightweight representation of a dataset item into a format that is ready for the model to consume (including, e.g., read images, perform random data augmentation and convert to oneflow Tensors). If you would like to perform custom transformations to data, you often want to rewrite it. Details about the dataset format can be found in [datasets]().
 
 3. The outputs of the dataset are simply batched with the following function.
 
@@ -36,13 +36,13 @@ def get_batch(cls, data, mixup_func = None):
 ```
 
 
-## Use a Custom Dataloader
+## Use Custom Dataloader
 
 If you use `DefaultTrainer`, you can overwrite its `build_train_loader` method to use your own dataloader which can be implemented with any tools you like. But you need to handle data read of different ranks under different parallelisms properly.
 
 Then you need to overwrite `get_batch` method. `data` argument in `get_batch` is the output of your dataloader. You need to change the local tensors to global tensors manually, which means you should set the `sbp` and `placement` correctly.
 
-Here is an example. Process of rank0 gets all data and redistributes them into different ranks.
+Here is an example. Process of rank0 gets all data and redistributes them into the other ranks.
 
 ```python
 @classmethod
