@@ -1,14 +1,14 @@
 # Write Dataloaders
 
-This tutorial explains how the dataset APIs work, and how to use them to add custom datasets.
+This tutorial explains how the dataset APIs work, and how to customize your own datasets with them.
 
 # Build Common Dataloaders 
 
-In most cases, the default `build_nlp_train_val_test_loader`, `build_nlp_train_loader`, `build_nlp_test_loader`, `build_image_train_loader` and `build_image_test_loader` defined in [`libai/data/build.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/data/build.py) are highly recommended to build dataloaders in LiBai.
+To build dataloaders in LiBai, we highly recommend users to use the default `build_nlp_train_val_test_loader`, `build_nlp_train_loader`, `build_nlp_test_loader`, `build_image_train_loader` and `build_image_test_loader` which are defined in [`libai/data/build.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/data/build.py) in most cases.
 
-The only thing you should do is writing `Dataset` like torch, and return `Instance` structure in `__getitem__`. The `Instance` structure stores the attributes of an instance (e.g., image, tokens) as "fields", and the `DistTensorData` structure provides a standard `to_global()`(called in `get_batch()`) function for local tensors.
+The only thing you need to do is to write pytorch style `Dataset`, and return `Instance` structure in `__getitem__`. The `Instance` structure stores the attributes of an instance (e.g., image, tokens) as "fields", and the `DistTensorData` structure provides a standard `to_global()`(called in `get_batch()`) function to convert local tensors to global tensors.
 
-In `__getitem__` function, the `key` returned by the method must be consistent with the parameter name of the `forward` function in the `model`. Here is an example code: 
+The returned instance by `__getitem__` function must contain the same keys with the parameter names of the `forward` function of the `model`. The following shows an example: 
 
 > NOTE: Set `placement_idx=-1` in `DistTensorData` when the `tensor` is **only** used in `loss_function`, it is used for pipeline parallel training.
 
@@ -52,7 +52,7 @@ class MyModel(nn.Module):
         ...
 ```
 
-In particular, if you need to generate your own `attention_mask`, the `attention_mask` can only be `{0, 1}`. Because LiBai has already processed `attention_mask` in `libai/layers/attention.py`
+In particular, the values of `attention_mask` can only be `0` or `1` if you need to generate your own `attention_mask`. Because LiBai has already processed `attention_mask` in `libai/layers/attention.py`
 
 ```python
 attention_scores = flow.mul(attention_scores, attention_mask)
