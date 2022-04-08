@@ -34,18 +34,24 @@ from libai.layers import (
 
 
 class Affine(nn.Module):
-    def __init__(self, dim, layer_idx):
+    def __init__(self, dim, *, layer_idx=0):
         super().__init__()
         self.alpha = nn.Parameter(
-            flow.ones(dim,
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=dist.get_layer_placement(layer_idx))
+            flow.ones(
+                dim,
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=dist.get_layer_placement(layer_idx)
+            )
         )
         self.beta = nn.Parameter(
-            flow.ones(dim,
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=dist.get_layer_placement(layer_idx)), 
+            flow.ones(
+                dim,
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=dist.get_layer_placement(layer_idx)
+            ), 
         )
+        
+        self.layer_idx = layer_idx
     
     def forward(self, x):
         return self.alpha * x + self.beta
@@ -60,6 +66,7 @@ class layers_scale_mlp_blocks(nn.Module):
         drop_path=0., 
         init_values=1e-4, 
         num_patches=196,
+        *,
         layer_idx = 0
     ):
         super().__init__()
@@ -76,7 +83,9 @@ class layers_scale_mlp_blocks(nn.Module):
             init_values * flow.ones(dim, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=dist.get_layer_placement(layer_idx)), 
             requires_grad=True
             )
-    
+
+        self.layer_idx = layer_idx
+
     def forward(self, x):
         x = x + self.drop_path(self.gamma_1 * self.attn(self.norm1(x).transpose(1,2)).transpose(1,2))
         x = x + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x)))
@@ -103,7 +112,10 @@ class ResMLP(nn.Module):
         self.num_features = self.embed_dim = embed_dim
 
         self.patch_embed = PatchEmbedding(
-            img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim
+            img_size=img_size, 
+            patch_size=patch_size, 
+            in_chans=in_chans, 
+            embed_dim=embed_dim,
         )
 
         num_patches = self.patch_embed.num_patches
@@ -120,7 +132,7 @@ class ResMLP(nn.Module):
         ])
 
         self.norm = Affine(embed_dim, layer_idx=-1)
-        self.head = Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+        self.head = Linear(embed_dim, num_classes, layer_idx=-1) if num_classes > 0 else nn.Identity()
         
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
@@ -173,3 +185,20 @@ class ResMLP(nn.Module):
             return {"losses": losses}
         else:
             return {"prediction_scores": x}
+
+    @staticmethod
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, PatchEmbedding):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, layers_scale_mlp_blocks):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+        
+        # Set norm and head stage id
+        model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)

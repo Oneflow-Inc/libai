@@ -55,4 +55,4 @@ train.amp.enabled = True
 train.dist.pipeline_num_layers = model.depth
 train.dist.data_parallel_size = 1
 train.dist.tensor_parallel_size = 1
-train.dist.pipeline_parallel_size = 1
+train.dist.pipeline_parallel_size = 8
