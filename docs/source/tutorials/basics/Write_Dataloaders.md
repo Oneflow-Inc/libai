@@ -1,12 +1,14 @@
 # Write Dataloaders
 
-In this section, we will introduce how to implement a custom Dataloader in LiBai.
+This tutorial explains how the dataset APIs work, and how to use them to add custom datasets.
 
 # Build Common Dataloaders 
 
-In most cases, we highly recommend you use default `build_nlp_train_val_test_loader`, `build_nlp_train_loader`, `build_nlp_test_loader`, `build_image_train_loader` and `build_image_test_loader` defined in [`libai/data/build.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/data/build.py) to build dataloaders in LiBai.
+In most cases, the default `build_nlp_train_val_test_loader`, `build_nlp_train_loader`, `build_nlp_test_loader`, `build_image_train_loader` and `build_image_test_loader` defined in [`libai/data/build.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/data/build.py) are highly recommended to build dataloaders in LiBai.
 
-The only thing you should do is writing `Dataset` like torch, and return `Instance` structure in `__getitem__`. In `__getitem__` function, the `key` returned by the method must be consistent with the parameter name of the `forward` function in the `model`. Here is an example code: 
+The only thing you should do is writing `Dataset` like torch, and return `Instance` structure in `__getitem__`. The `Instance` structure stores the attributes of an instance (e.g., image, tokens) as "fields", and the `DistTensorData` structure provides a standard `to_global()`(called in `get_batch()`) function for local tensors.
+
+In `__getitem__` function, the `key` returned by the method must be consistent with the parameter name of the `forward` function in the `model`. Here is an example code: 
 
 > NOTE: Set `placement_idx=-1` in `DistTensorData` when the `tensor` is **only** used in `loss_function`, it is used for pipeline parallel training.
 
@@ -50,45 +52,15 @@ class MyModel(nn.Module):
         ...
 ```
 
-In particular, if you need to generate your own `attention_mask`, the `attention_mask` must be a [0, 1] metric. Cause LiBai has already process `attention_mask` in `libai/layers/attention.py`
+In particular, if you need to generate your own `attention_mask`, the `attention_mask` can only be `{0, 1}`. Because LiBai has already processed `attention_mask` in `libai/layers/attention.py`
 
 ```python
-class MultiheadAttention(nn.Module):
-    ...
-
-    def forward(
-        self,
-        hidden_states: flow.Tensor,
-        encoder_states: flow.Tensor = None,
-        attention_mask: flow.Tensor = None,
-        past_key_value: Tuple[flow.Tensor, flow.Tensor] = None,
-        use_cache: bool = False,
-    ):
-        ...
-
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
-
-        # your passed attention_mask
-        if attention_mask is not None:
-            if self.scale_mask_softmax_fusion:
-                attention_weights = flow._C.fused_scale_mask_softmax(
-                    attention_scores, attention_mask, fill_value=-10000.0
-                )
-            else:
-                if self.coeff is not None:
-                    attention_scores *= self.coeff
-                attention_scores = flow.mul(attention_scores, attention_mask)
-                attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-                attention_weights = flow.softmax(attention_scores, dim=-1)
-        else:
-            attention_weights = flow.softmax(attention_scores, dim=-1)
-
-        attention_weights = self.dropout(attention_weights)
-        context = flow.matmul(attention_weights, value)
-
+attention_scores = flow.mul(attention_scores, attention_mask)
+attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
+attention_weights = flow.softmax(attention_scores, dim=-1)
 ```
 
-After finish your `MyDataset`, set `dataloader` in your `config.py` according to your own needs. If you only have one training dataset for nlp task and you want to split it to `train`, `valid` and `test` dataset automatically, you can choose `build_nlp_train_val_test_loader`, the evaluation will be calculated in `valid` and `test` dataset. 
+After finishing your `MyDataset`, set `dataloader` in your `config.py` depending on your needs. If you have only one training dataset for nlp task and want to split it into `train`, `valid` and `test` datasets automatically, you can choose `build_nlp_train_val_test_loader`, the evaluation will be calculated in `valid` and `test` dataset. 
 
 Otherwise, you can choose `build_nlp_train_loader` && `build_nlp_test_loader` or  `build_image_train_loader` && `build_image_test_loader` in `config.py` according to your own needs.
 see [`libai/data/build.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/data/build.py) for more details.
