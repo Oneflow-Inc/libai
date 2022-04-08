@@ -12,10 +12,9 @@ from projects.QQP.modeling.model import Classification
 from projects.QQP.tokenizer.tokenizer import _BertCNWWMTokenizer
 
 tokenization.tokenizer = LazyCall(_BertCNWWMTokenizer)(
-    vocab_file="/home/chengpeng/data/PrimeLM/data/bert-base-chinese-vocab.txt",
+    vocab_file="projects/QQP/QQP_DATA/bert-base-chinese-vocab.txt",
     lower_case=True,
 )
-tokenization.setup = True
 tokenization.append_eod = False
 tokenization.make_vocab_size_divisible_by = 128
 
@@ -25,7 +24,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
         LazyCall(QQPDataset)(
             dataset_name="QQP_TRAIN",
             data_paths=[
-                "/home/chengpeng/train.tsv",
+                "projects/QQP/QQP_DATA/train.tsv",
             ],
             max_seq_length=512,
         ),
@@ -37,7 +36,7 @@ dataloader.test = [
         dataset=LazyCall(QQPDataset)(
             dataset_name="QQP_TEST",
             data_paths=[
-                "/home/chengpeng/dev.tsv",
+                "projects/QQP/QQP_DATA/dev.tsv",
             ],
             max_seq_length=512,
         ),
@@ -54,7 +53,7 @@ qqp_cfg.update(
         num_attention_heads=16,
         # new key
         num_classes=2,
-        pretrain_megatron_weight="/home/chengpeng/model_optim_rng.pt",
+        pretrain_megatron_weight=None,  # "path/to/model_optim_rng.pt",
     )
 )
 model = LazyCall(Classification)(cfg=qqp_cfg)
@@ -64,7 +63,7 @@ optim.weight_decay = 0.1
 
 train.update(
     dict(
-        recompute_grad=dict(enabled=True),
+        activation_checkpoint=dict(enabled=True),
         amp=dict(enabled=True),
         output_dir="output/finetune_qqp/",
         train_micro_batch_size=16,

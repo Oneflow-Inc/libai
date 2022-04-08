@@ -19,7 +19,7 @@ train_aug = LazyCall(transforms.Compose)(
             size=224,
             scale=(0.08, 1.0),
             ratio=(3.0 / 4.0, 4.0 / 3.0),
-            interpolation=str_to_interp_mode("bicubic"),
+            interpolation=InterpolationMode.BICUBIC,
         ),
         LazyCall(transforms.RandomHorizontalFlip)(p=0.5),
         LazyCall(rand_augment_transform)(
@@ -68,9 +68,12 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
         LazyCall(ImageNetDataset)(
-            root="./dataset", train=True, transform=train_aug, dataset_name="imagenet train set"
+            root="./dataset",
+            train=True,
+            transform=train_aug,
         ),
     ],
+    num_workers=4,
     mixup_func=None,
 )
 
@@ -78,7 +81,10 @@ dataloader.train = LazyCall(build_image_train_loader)(
 dataloader.test = [
     LazyCall(build_image_test_loader)(
         dataset=LazyCall(ImageNetDataset)(
-            root="./dataset", train=False, transform=test_aug, dataset_name="imagenet test set"
+            root="./dataset",
+            train=False,
+            transform=test_aug,
         ),
+        num_workers=4,
     )
 ]

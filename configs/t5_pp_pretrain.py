@@ -1,3 +1,5 @@
+from libai.config import LazyCall
+from libai.evaluation import PPLEvaluator
 from .common.models.t5 import pretrain_model as model
 from .common.train import train
 from .common.optim import optim
@@ -17,7 +19,7 @@ model.cfg.num_attention_heads = 12
 model.cfg.hidden_size = 384
 model.cfg.hidden_layers = 6
 
-train.recompute_grad.enabled = True
+train.activation_checkpoint.enabled = True
 
 train.train_micro_batch_size = 32
 
@@ -25,5 +27,7 @@ train.dist.tensor_parallel_size = 2
 train.dist.pipeline_parallel_size = 2
 # encoder_layers + decoder_layers
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
+
+train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 
 train.output_dir = "./output/t5_pipeline_output"

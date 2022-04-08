@@ -1,3 +1,5 @@
+from libai.config import LazyCall
+from libai.evaluation import PPLEvaluator
 from .common.models.bert import pretrain_model as model
 from .common.models.graph import graph
 from .common.train import train
@@ -19,6 +21,8 @@ model.cfg.hidden_layers = 8
 train.train_micro_batch_size = 16
 
 train.amp.enabled = True
-train.recompute_grad.enabled = True
+train.activation_checkpoint.enabled = True
+
+train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 
 train.output_dir = "output/bert_output"

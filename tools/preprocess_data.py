@@ -23,7 +23,9 @@ import sys
 import time
 
 import oneflow as flow
-from omegaconf import DictConfig
+from omegaconf import OmegaConf
+
+from libai.config import LazyCall
 
 try:
     import nltk
@@ -34,6 +36,7 @@ except ImportError:
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
+from libai import tokenizer
 from libai.data.data_utils import indexed_dataset
 from libai.tokenizer import build_tokenizer
 
@@ -175,26 +178,22 @@ def get_args():
 
 
 def parse_args_to_config(args):
-    default_cfg = dict(
-        tokenizer=dict(
-            name="BertTokenizer",
-            vocab_file="bert-base-chinese-vocab.txt",
-            do_lower_case=True,
-        ),
-        append_eod=False,
-        make_vocab_size_divisible_by=1,
+
+    tokenization = OmegaConf.create()
+
+    tokenization.tokenizer = LazyCall(getattr(tokenizer, args.tokenizer_name))(
+        vocab_file="bert-base-chinese-vocab.txt",
+        do_lower_case=True,
+        do_chinese_wwm=True,
     )
 
-    cfg = DictConfig(default_cfg)
-    cfg.tokenizer.name = args.tokenizer_name
-    cfg.tokenizer.vocab_file = args.vocab_file
-    cfg.tokenizer.merges_file = args.merges_file
-    cfg.tokenizer.do_lower_case = args.do_lower_case
-    cfg.tokenizer.extra_id = args.extra_ids
-    cfg.tokenizer.do_chinese_wwm = args.do_chinese_wwm
-    cfg.append_eod = args.append_eod
+    tokenization.tokenizer.vocab_file = args.vocab_file
+    tokenization.tokenizer.do_lower_case = args.do_lower_case
+    tokenization.tokenizer.extra_id = args.extra_ids
+    tokenization.tokenizer.do_chinese_wwm = args.do_chinese_wwm
+    tokenization.append_eod = args.append_eod
 
-    return cfg
+    return tokenization
 
 
 def main():

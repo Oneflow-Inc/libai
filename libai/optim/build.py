@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import copy
-import inspect
 from collections import defaultdict
 from typing import Any, Dict, List
 
@@ -22,41 +21,15 @@ import oneflow as flow
 
 from libai.config import instantiate
 from libai.layers import LayerNorm
-from libai.utils.registry import Registry
-
-OPTIMIZER_REGISTRY = Registry("Optimizer")
-OPTIMIZER_REGISTRY.__doc__ = """
-Registry for optimizer, i.e. SGD, AdamW
-
-The registered object will be called with `obj(cfg)`
-and expected to return a `flow.optim.Optimizer` object.
-"""
-
-
-def register_optimizer():
-    flow_optimizers = []
-    for module_name in dir(flow.optim):
-        if module_name.startswith("__"):
-            continue
-        _optim = getattr(flow.optim, module_name)
-        if inspect.isclass(_optim) and issubclass(_optim, flow.optim.Optimizer):
-            OPTIMIZER_REGISTRY.register(_optim)
-            flow_optimizers.append(module_name)
-    return flow_optimizers
-
-
-FLOW_OPTIMIZERS = register_optimizer()
 
 
 def build_optimizer(cfg, model):
-    if "_target_" in cfg:
-        cfg.parameters.model = model
-        optim = instantiate(cfg)
-    else:
-        optim_name = cfg.optim_name
-        optim = OPTIMIZER_REGISTRY.get(optim_name)(
-            get_default_optimizer_params(model, **cfg.param_cfg), **cfg.optim_cfg
-        )
+    """
+    Build an optimizer from config.
+    """
+
+    cfg.params.model = model
+    optim = instantiate(cfg)
     return optim
 
 
@@ -84,12 +57,18 @@ def get_default_optimizer_params(
             (LR, weight decay) for module parameters with a given name; e.g.
             ``{"embedding": {"lr": 0.01, "weight_decay": 0.1}}`` will set the LR and
             weight decay values for all module parameters named `embedding`.
-    For common transformer models, ``weight_decay_norm,weight_decay_bias`` is usually set to 0.
+
+    For common transformer models, ``weight_decay_norm`` and ``weight_decay_bias``
+    are usually set to 0.
+
     Example:
     ::
+
         flow.optim.AdamW(
             get_default_optimizer_params(model, weight_decay_norm=0, weight_decay_bias=0),
-                       lr=0.01, weight_decay=1e-4)
+            lr=0.01,
+            weight_decay=1e-4
+        )
     """
     if overrides is None:
         overrides = {}
@@ -159,7 +138,7 @@ def reduce_param_groups(params: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Reorganize the parameter groups and merge duplicated groups.
     The number of parameter groups needs to be as small as possible in order
-    to efficiently use the PyTorch multi-tensor optimizer. Therefore instead
+    to efficiently use the OneFlow multi-tensor optimizer. Therefore instead
     of using a parameter_group per single parameter, we reorganize the
     parameter groups and merge duplicated groups. This approach speeds
     up multi-tensor optimizer significantly.

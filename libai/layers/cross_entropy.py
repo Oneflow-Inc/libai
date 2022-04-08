@@ -19,11 +19,18 @@ from oneflow import nn
 
 
 class ParallelCrossEntropyLoss(nn.Module):
-    def forward(self, logits, target):
-        """Function for the distributed cross entropy
-        vocab_parallel_logits with shape (batch_size, seq_length, vocab_size)
-        and sbp sign [S(0), S(2)].
-        target with shape (batch_size, seq_length) and sbp sign [S(0), B].
+    """This criterion acts like :class:`~flow.nn.CrossEntropyLoss` except it will
+    execute distributed cross entropy loss computation cross different GPUs.
+    """
+
+    def forward(self, logits: flow.Tensor, target: flow.Tensor):
+        """Function for the distributed cross entropy.
+
+        Args:
+            logits (flow.Tensor): vocab_parallel_logits with shape
+                (batch_size, seq_length, vocab_size) and sbp signature is [S(0), S(2)].
+            target (flow.Tensor): target with shape (batch_size, seq_length) and
+                sbp signature is [S(0), B].
         """
         assert logits.ndim == 3
         assert target.ndim == 2

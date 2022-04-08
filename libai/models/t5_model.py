@@ -24,7 +24,6 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
-from libai.models.build import MODEL_ARCH_REGISTRY
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 
@@ -42,6 +41,7 @@ class T5Embedding(flow.nn.Module):
         max_sequence_length,
         embedding_dropout_prob,
         init_method=flow.nn.init.xavier_normal_,
+        amp_enabled=False,
     ) -> None:
         super().__init__()
         self.hidden_size = hidden_size
@@ -51,11 +51,13 @@ class T5Embedding(flow.nn.Module):
             num_embeddings=vocab_size,
             embedding_dim=hidden_size,
             init_method=init_method,
+            amp_enabled=amp_enabled,
         )
         self.position_embeddings = Embedding(
             num_embeddings=max_sequence_length,
             embedding_dim=hidden_size,
             init_method=init_method,
+            amp_enabled=amp_enabled,
         )
         self.position_ids = flow.arange(
             max_sequence_length,
@@ -82,6 +84,46 @@ class T5Embedding(flow.nn.Module):
 
 
 class T5Model(flow.nn.Module):
+    """T5 Model that outputs logits.
+
+    Args:
+        vocab_size (int): The size of vocabulary file.
+        hidden_size (int): The size of hidden states.
+        hidden_layers (int): The number of ``TransformerLayer`` in the encoder and decoder.
+        num_attention_heads (int):
+            The number of attention heads for each attention layer of ``TransformerLayer``.
+        intermediate_size (int):
+            The size of intermediate layer in feed-forward network for each ``TransformerLayer``.
+        embedding_dropout_prob (float): The dropout ratio for the output of T5Embedding Layer.
+        hidden_dropout_prob (float): The dropout ratio for the output for each ``TransformerLayer``.
+        attention_probs_dropout_prob (float):
+            The dropout ratio for the output of each attention layer in ``TransformerLayer``.
+        max_position_embeddings (int):
+            Max sequence length of input, defines the shape of Position Embeddings
+            in ``T5Emebedding``.
+        initializer_range (float, optional):
+            Sigma of the normal distribution in the initialization method. Defaults to 0.02.
+        layernorm_eps (float, optional): The epsilon of LayerNorm layer. Defaults to 1e-12.
+        bias_gelu_fusion (bool, optional):
+            Whether or not to fuse the computing of bias and gelu. Defaults to ``False``.
+        bias_dropout_fusion (bool, optional):
+            Whether or not to fuse the computing of dropout and bias. Defaults to ``False``.
+        scale_mask_softmax_fusion (bool, optional):
+            Whether to fuse the computing of mask and softmax in attention layers.
+            Defaults to ``False``.
+        apply_query_key_layer_scaling (bool, optional):
+            Whether or not to use layer index related scaling in computing attention scores.
+            If ``True``, the scaling factor equals to sqrt(d) * (layer_index + 1).
+            Defaults to ``True``.
+        apply_residual_post_layernorm (bool, optional):
+            If set ``True``, use original BERT residual connection ordering otherwise use Megatron
+            BERT residual connection which is more stable when scaling model size introduced in
+            https://arxiv.org/pdf/1909.08053.pdf.
+            Default: ``False``.
+        amp_enabled (bool, optional):
+            Whether or not to set fp16 for embedding weight in T5 model. Defaults to ``False``.
+    """
+
     @configurable
     def __init__(
         self,
@@ -100,6 +142,8 @@ class T5Model(flow.nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=True,
+        apply_residual_post_layernorm=False,
+        amp_enabled=False,
     ) -> None:
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -110,6 +154,7 @@ class T5Model(flow.nn.Module):
             max_sequence_length=max_position_embeddings,
             embedding_dropout_prob=embedding_dropout_prob,
             init_method=init_method,
+            amp_enabled=amp_enabled,
         )
         self.extended_attn_mask = ExtendedMask()
 
@@ -129,6 +174,7 @@ class T5Model(flow.nn.Module):
                     bias_dropout_fusion=bias_dropout_fusion,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+                    apply_residual_post_layernorm=apply_residual_post_layernorm,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -197,6 +243,8 @@ class T5Model(flow.nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
+            "amp_enabled": cfg.amp_enabled,
         }
 
     def forward(
@@ -207,6 +255,30 @@ class T5Model(flow.nn.Module):
         decoder_attn_mask,
         encoder_decoder_attn_mask,
     ):
+        """
+
+        Args:
+            encoder_input_ids (flow.LongTensor):
+                Indices of input sequence tokens in vocabulary for encoder.
+            decoder_input_ids (flow.LongTensor):
+                Indices of input sequence tokens in vocabulary for decoder.
+            encoder_attn_mask (flow.LongTensor):
+                Mask for encoder to avoid performing attention on
+                padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+
+            decoder_attn_mask (flow.LongTensor):
+                Mask for decoder to avoid performing attention on subsequent token indices.
+                Mask values have the same meaning as encoder_attn_mask.
+            encoder_decoder_attn_mask (flow.LongTensor):
+                Mask for decoder to avoid performing attention on encoder padded token indices.
+                Mask values have the same meaning as encoder_attn_mask.
+
+        Returns:
+            flow.Tensor: logits
+        """
         encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
         decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
@@ -248,8 +320,11 @@ class T5Loss(flow.nn.Module):
         return {"masked_lm_loss": masked_lm_loss}
 
 
-@MODEL_ARCH_REGISTRY.register()
 class T5ForPreTraining(flow.nn.Module):
+    """
+    T5 Model with classification head on top.
+    """
+
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
@@ -265,6 +340,42 @@ class T5ForPreTraining(flow.nn.Module):
         lm_labels=None,
         loss_mask=None,
     ):
+        """
+
+        Args:
+            encoder_input_ids (flow.LongTensor):
+                Indices of input sequence tokens in vocabulary for encoder.
+            decoder_input_ids (flow.LongTensor):
+                Indices of input sequence tokens in vocabulary for decoder.
+            encoder_attn_mask (flow.LongTensor):
+                Mask for encoder to avoid performing attention on
+                padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+
+            decoder_attn_mask (flow.LongTensor):
+                Mask for decoder to avoid performing attention on subsequent token indices.
+                Mask values have the same meaning as encoder_attn_mask.
+            encoder_decoder_attn_mask (flow.LongTensor):
+                Mask for decoder to avoid performing attention on encoder padded token indices.
+                Mask values have the same meaning as encoder_attn_mask.
+            lm_labels (flow.LongTensor, optional): Labels for computing the masked
+                language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
+                None for evaluating.
+            loss_mask (flow.Tensor, optional):
+                Mask to avoid performing loss computing on ignored tokens.
+                Tokens with indices set to `-1` are ignored (masked), the loss is only computed
+                for the tokens with labels in `[0, ..., config.vocab_size]`.
+                None for evaluating.
+
+        Returns:
+            dict:
+                A dict containing :code:`loss_value` or :code:`logits`
+                depending on training or evaluation mode.
+                :code:`{"masked_lm_loss": loss_value}` when training,
+                :code:`{"prediction_scores": logits}` when evaluating.
+        """
         logits = self.t5_model(
             encoder_input_ids,
             decoder_input_ids,
@@ -273,7 +384,7 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask,
         )
 
-        if self.training and lm_labels is not None:
+        if lm_labels is not None:
             lm_loss = self.loss_func(logits, lm_labels, loss_mask)
             return lm_loss
         else:

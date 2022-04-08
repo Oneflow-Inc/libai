@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .build import TOKENIZER_REGISTRY, build_tokenizer
+from .build import build_tokenizer
 from .tokenization_bert import BertTokenizer
 from .tokenization_gpt2 import GPT2Tokenizer
-from .tokenization_t5 import T5Tokenizer
+from .tokenization_t5 import GoogleT5Tokenizer
+from .tokenization_base import PreTrainedTokenizer

@@ -22,7 +22,6 @@ import re
 import unicodedata
 from io import open
 
-from .build import TOKENIZER_REGISTRY
 from .tokenization_base import PreTrainedTokenizer, _is_control, _is_punctuation, _is_whitespace
 
 logger = logging.getLogger(__name__)
@@ -80,7 +79,6 @@ def _is_chinese_substr(char):
     return re.findall("##[\u4E00-\u9FA5]", char)
 
 
-@TOKENIZER_REGISTRY.register()
 class BertTokenizer(PreTrainedTokenizer):
     """
     Construct a BERT tokenizer. Based on WordPiece.
@@ -285,7 +283,7 @@ class BasicTokenizer(object):
             if self.do_lower_case and token not in never_split:
                 token = token.lower()
                 token = self._run_strip_accents(token)
-            split_tokens.extend(self._run_split_on_punc(token))
+            split_tokens.extend(self._run_split_on_punc(token, never_split))
 
         output_tokens = whitespace_tokenize(" ".join(split_tokens))
         return output_tokens

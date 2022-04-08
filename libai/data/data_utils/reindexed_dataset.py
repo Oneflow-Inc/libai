@@ -21,7 +21,6 @@ import time
 import numpy as np
 import oneflow as flow
 
-from libai.data.data_utils import helpers
 from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
@@ -51,6 +50,9 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_
         verbose = flow.env.get_rank() == 0
         start_time = time.time()
         logger.info("building samples index mapping for {} ...".format(data_prefix))
+
+        from libai.data.data_utils import helpers
+
         samples_mapping = helpers.build_mapping(
             documents,
             sizes,
@@ -151,6 +153,9 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
 
         # sample-idx.
         start_time = time.time()
+
+        from libai.data.data_utils import helpers
+
         sample_idx = helpers.build_sample_idx(documents, sizes, max_seq_length, num_tokens)
         np.save(indexmap_filename, sample_idx, allow_pickle=True)
         logger.info(

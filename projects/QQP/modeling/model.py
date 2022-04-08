@@ -23,8 +23,6 @@ from libai.models.bert_model import BertModel
 from libai.models.utils import init_method_normal
 from libai.utils import distributed as dist
 
-from .load_megatron_weight import load_megatron_bert
-
 logger = logging.getLogger("libai." + __name__)
 
 
@@ -46,6 +44,8 @@ class Classification(nn.Module):
         self.num_classes = cfg.num_classes
         self.language_model = BertModel(cfg)
         if cfg.pretrain_megatron_weight is not None:
+            from .load_megatron_weight import load_megatron_bert
+
             logger.info(f"loading pretraining: {cfg.pretrain_megatron_weight}")
             load_megatron_bert(self.language_model, cfg.pretrain_megatron_weight)
             logger.info("load succeed")
