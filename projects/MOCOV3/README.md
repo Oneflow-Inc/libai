@@ -80,7 +80,7 @@ bash tools/train.sh tools/train_net.py projects/MOCOV3/configs/moco_linear_prob.
 Evaluate MOCOv3 model under LiBai on 8 GPUs:
 ```bash
 cd /path/to/libai
-bash tools/train.sh tools/train_net.py projects/MOCOV3/configs/moco_linear_prob.py 8 --eval-only
+bash tools/train.sh tools/train_net.py projects/MOCOV3/configs/moco_linear_prob.py 8 --eval-only train.load_weight="path/to/pretrained_weight"
 ```
 
 
