@@ -12,26 +12,27 @@ Copyright 2021 The Microsoft DeepSpeed Team
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-from deepspeed.utils.timer import ThroughputTimer, SynchronizedWallClockTimer
-from deepspeed.utils import logger, log_dist
-from typing import Callable, Dict, TYPE_CHECKING, Any, Optional, Tuple, Union, cast
-
 import time
-from time import perf_counter
-import torch
-from torch import Tensor
-import torch.distributed as dist
-from torch.nn import Module, ModuleList
-import torch.nn.functional as F
+import logging
+from typing import Callable, Dict, TYPE_CHECKING, Any, Optional, Tuple, Union, cast
+from libai.utils.timer import SynchronizedWallClockTimer
+
+import oneflow as flow
+from oneflow import Tensor
+from oneflow.nn import Module, ModuleList
+import oneflow.nn.functional as F
+import libai.utils.distributed as dist
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     Base = Module[Tensor]
 else:
     Base = Module
 
-uniform_map: Dict[torch.device, Callable] = {}
-gumbel_map: Dict[torch.device, Callable] = {}
-exp_selection_uniform_map: Dict[torch.device, Callable] = {}
+uniform_map: Dict[flow.device, Callable] = {}
+gumbel_map: Dict[flow.device, Callable] = {}
+exp_selection_uniform_map: Dict[flow.device, Callable] = {}
 
 try:
     # To enable Tutel MoE optimizations:
@@ -44,15 +45,15 @@ except:
     pass
 
 
-def multiplicative_jitter(x, device: torch.device, epsilon=1e-2):
+def multiplicative_jitter(x, device: flow.device, epsilon=1e-2):
     """
     Modified from switch transformer paper. mesh transformers
     Multiply values by a random number between 1-epsilon and 1+epsilon.
     Makes models more resilient to rounding errors introduced by bfloat16.
     This seems particularly important for logits.
     Args:
-        x: a torch.tensor
-        device: torch.device
+        x: a oneflow.tensor
+        device: oneflow.device
         epsilon: a floating point value
     Returns:
         a jittered x.
@@ -61,34 +62,34 @@ def multiplicative_jitter(x, device: torch.device, epsilon=1e-2):
         return x
     uniform = uniform_map.get(device)
     if uniform is None:
-        uniform = torch.distributions.uniform.Uniform(
-            low=torch.tensor(1.0 - epsilon,
+        uniform = flow.distributions.uniform.Uniform(
+            low=flow.tensor(1.0 - epsilon,
                              device=device),
-            high=torch.tensor(1.0 + epsilon,
+            high=flow.tensor(1.0 + epsilon,
                               device=device)).rsample  # type: ignore
         uniform_map[device] = uniform
     return x * uniform(x.shape)
 
 
-def gumbel_rsample(shape: Tuple, device: torch.device) -> Tensor:
+def gumbel_rsample(shape: Tuple, device: flow.device) -> Tensor:
     gumbel = gumbel_map.get(device)
     if gumbel is None:
-        one = torch.tensor(1.0, device=device)
-        zero = torch.tensor(0.0, device=device)
-        gumbel = torch.distributions.gumbel.Gumbel(zero, one).rsample  # type: ignore
+        one = flow.tensor(1.0, device=device)
+        zero = flow.tensor(0.0, device=device)
+        gumbel = flow.distributions.gumbel.Gumbel(zero, one).rsample  # type: ignore
         gumbel_map[device] = gumbel
     return gumbel(shape)
 
 
 # Based on https://github.com/pytorch/pytorch/pull/40762
-class _AllToAll(torch.autograd.Function):
+class _AllToAll(flow.autograd.Function):
     @staticmethod
     def forward(ctx: Any,
                 group: dist.ProcessGroup,
                 input: Tensor) -> Tensor:  # type: ignore
         ctx.group = group
         input = input.contiguous()
-        output = torch.empty_like(input)
+        output = flow.empty_like(input)
         dist.all_to_all_single(output, input, group=group)
         return output
 
@@ -106,21 +107,21 @@ USE_EINSUM = True
 # See https://arxiv.org/pdf/2006.16668.pdf for details.
 def einsum(rule, a, b):
     if USE_EINSUM:
-        return torch.einsum(rule, a, b)
+        return flow.einsum(rule, a, b)
     elif rule == 's,se->se':
         return a.reshape(a.shape[0], -1) * b
     elif rule == 'se,sc->sec':
         return a.unsqueeze(2) * b.unsqueeze(1)
     elif rule == 'se,se->s':
-        return torch.bmm(a.unsqueeze(1), b.unsqueeze(2)).reshape(-1)
+        return flow.bmm(a.unsqueeze(1), b.unsqueeze(2)).reshape(-1)
     elif rule == 'sec,sm->ecm':
         s = a.shape[0]
         e = a.shape[1]
         c = a.shape[2]
         m = b.shape[1]
-        return torch.matmul(a.reshape(s, -1).t(), b).reshape(e, c, m)
+        return flow.matmul(a.reshape(s, -1).t(), b).reshape(e, c, m)
     elif rule == 'sec,ecm->sm':
-        return torch.matmul(a.reshape(a.shape[0], -1), b.reshape(-1, b.shape[-1]))
+        return flow.matmul(a.reshape(a.shape[0], -1), b.reshape(-1, b.shape[-1]))
     elif rule == 'ks,ksm->sm':
         k = b.shape[0]
         s = b.shape[1]
@@ -130,9 +131,9 @@ def einsum(rule, a, b):
         # [k,s,m] -> [k, sm] -> [sm, k] -> [s, m, k]
         b = b.reshape(k, -1).t().reshape(s, m, k)
         # bmm([s, 1, k], [s, m, k]^t) -> [s, m, 1]
-        return torch.bmm(a, b.transpose(1, 2)).squeeze(2)
+        return flow.bmm(a, b.transpose(1, 2)).squeeze(2)
     else:
-        return torch.einsum(rule, a, b)
+        return flow.einsum(rule, a, b)
 
 
 # The following functions are extracted and scripted
@@ -144,25 +145,26 @@ def einsum(rule, a, b):
 # includes stateful caching logic which is incompatible with ONNX.
 
 
-@torch.jit.script
+# 还需要研究一下
+@flow.jit.script
 def _capacity(gates: Tensor, capacity_factor: Tensor, min_capacity: Tensor) -> Tensor:
     # gates has shape of SE
     num_tokens = gates.shape[0]
     num_experts = gates.shape[1]
-    # to(torch.int64) works around a bug in torch.onnx.export:
-    # it should cast k to int64 when converting torch.topk but it doesn't.
-    capacity = torch.ceil((num_tokens / num_experts) * capacity_factor).to(torch.int64)
+    # to(flow.int64) works around a bug in flow.onnx.export:
+    # it should cast k to int64 when converting flow.topk but it doesn't.
+    capacity = flow.ceil((num_tokens / num_experts) * capacity_factor).to(flow.int64)
     if capacity < min_capacity:
-        capacity = min_capacity.to(torch.int64)
+        capacity = min_capacity.to(flow.int64)
     return capacity
 
 
-@torch.jit.script
+@flow.jit.script
 def _top_idx(source, k):
-    return torch.topk(source, k=k, dim=0)[1]
+    return flow.topk(source, k=k, dim=0)[1]
 
 
-@torch.jit.script
+@flow.jit.script
 def _one_hot_to_float(x, num_classes):
     return F.one_hot(x, num_classes=num_classes).float()
 
@@ -185,12 +187,12 @@ def top1gating(logits: Tensor,
     gates = F.softmax(logits, dim=1)
 
     capacity = _capacity(gates,
-                         torch.tensor(capacity_factor),
-                         torch.tensor(min_capacity))
+                         flow.tensor(capacity_factor),
+                         flow.tensor(min_capacity))
 
     # Create a mask for 1st's expert per token
     # noisy gating
-    indices1_s = torch.argmax(
+    indices1_s = flow.argmax(
         logits_w_noise if noisy_gate_policy == 'RSample' else gates,
         dim=1)
     num_experts = int(gates.shape[1])
@@ -201,27 +203,27 @@ def top1gating(logits: Tensor,
         mask1 = einsum("s,se->se", used_token, mask1)
 
     # gating decisions
-    exp_counts = torch.sum(mask1, dim=0).detach().to('cpu')
+    exp_counts = flow.sum(mask1, dim=0).detach().to('cpu')
 
     # if we don't want to drop any tokens
     if not drop_tokens:
-        new_capacity = torch.max(exp_counts).to(logits.device)
+        new_capacity = flow.max(exp_counts).to(logits.device)
         dist.all_reduce(new_capacity, op=dist.ReduceOp.MAX, group=dist.group.WORLD)
         capacity = new_capacity
 
     # Compute l_aux
-    me = torch.mean(gates, dim=0)
-    ce = torch.mean(mask1.float(), dim=0)
-    l_aux = torch.sum(me * ce) * num_experts
+    me = flow.mean(gates, dim=0)
+    ce = flow.mean(mask1.float(), dim=0)
+    l_aux = flow.sum(me * ce) * num_experts
 
     # Random Token Selection
     if use_rts:
         uniform = exp_selection_uniform_map.get(logits.device)
         if uniform is None:
-            uniform = torch.distributions.uniform.Uniform(
-                low=torch.tensor(0.0,
+            uniform = flow.distributions.uniform.Uniform(
+                low=flow.tensor(0.0,
                                  device=logits.device),
-                high=torch.tensor(1.0,
+                high=flow.tensor(1.0,
                                   device=logits.device)).rsample
             exp_selection_uniform_map[logits.device] = uniform
 
@@ -233,28 +235,28 @@ def top1gating(logits: Tensor,
 
     top_idx = _top_idx(mask1_rand, capacity)
 
-    new_mask1 = mask1 * torch.zeros_like(mask1).scatter_(0, top_idx, 1)
+    new_mask1 = mask1 * flow.zeros_like(mask1).scatter_(0, top_idx, 1)
     mask1 = new_mask1
 
     if use_tutel:
         # Tutel doesn't support index values masked with zero
         # so we need to replace masked indices with -1
         indices_mask = mask1.sum(dim=1) * num_experts - 1
-        indices1_s = torch.min(indices1_s, indices_mask)
+        indices1_s = flow.min(indices1_s, indices_mask)
 
     # Compute locations in capacity buffer
     if use_tutel:
         locations1 = tutel_moe.fast_cumsum_sub_one(mask1)
     else:
-        locations1 = torch.cumsum(mask1, dim=0) - 1
+        locations1 = flow.cumsum(mask1, dim=0) - 1
 
     if use_tutel:
         gates1_s = (gates * mask1).sum(dim=1)
-        locations1_s = torch.sum(locations1 * mask1, dim=1)
+        locations1_s = flow.sum(locations1 * mask1, dim=1)
         return l_aux, capacity, num_experts, [indices1_s,], [locations1_s,], [gates1_s,], exp_counts
 
     # Store the capacity location for each token
-    locations1_s = torch.sum(locations1 * mask1, dim=1)
+    locations1_s = flow.sum(locations1 * mask1, dim=1)
 
     # Normalize gate probabilities
     mask1_float = mask1.float()
@@ -279,11 +281,11 @@ def top2gating(logits: Tensor,
     gates = F.softmax(logits, dim=1)
 
     capacity = _capacity(gates,
-                         torch.tensor(capacity_factor * 2),
-                         torch.tensor(min_capacity))
+                         flow.tensor(capacity_factor * 2),
+                         flow.tensor(min_capacity))
 
     # Create a mask for 1st's expert per token
-    indices1_s = torch.argmax(gates, dim=1)
+    indices1_s = flow.argmax(gates, dim=1)
     num_experts = int(gates.shape[1])
     mask1 = F.one_hot(indices1_s, num_classes=num_experts)
 
@@ -292,30 +294,30 @@ def top2gating(logits: Tensor,
     logits_w_noise = logits + gumbel_rsample(logits.shape, device=logits.device)
     # Replace top-expert with min value
     logits_except1 = logits_w_noise.masked_fill(mask1.bool(), float("-inf"))
-    indices2_s = torch.argmax(logits_except1, dim=1)
+    indices2_s = flow.argmax(logits_except1, dim=1)
     mask2 = F.one_hot(indices2_s, num_classes=num_experts)
 
     # Compute locations in capacity buffer
-    locations1 = torch.cumsum(mask1, dim=0) - 1
-    locations2 = torch.cumsum(mask2, dim=0) - 1
+    locations1 = flow.cumsum(mask1, dim=0) - 1
+    locations2 = flow.cumsum(mask2, dim=0) - 1
     # Update 2nd's location by accounting for locations of 1st
-    locations2 += torch.sum(mask1, dim=0, keepdim=True)
+    locations2 += flow.sum(mask1, dim=0, keepdim=True)
 
     # gating decisions
-    exp_counts = torch.sum(mask1, dim=0).detach().to('cpu')
+    exp_counts = flow.sum(mask1, dim=0).detach().to('cpu')
 
     # Compute l_aux
-    me = torch.mean(gates, dim=0)
-    ce = torch.mean(mask1.float(), dim=0)
-    l_aux = torch.mean(me * ce) * num_experts * num_experts
+    me = flow.mean(gates, dim=0)
+    ce = flow.mean(mask1.float(), dim=0)
+    l_aux = flow.mean(me * ce) * num_experts * num_experts
 
     # Remove locations outside capacity from mask
-    mask1 *= torch.lt(locations1, capacity)
-    mask2 *= torch.lt(locations2, capacity)
+    mask1 *= flow.lt(locations1, capacity)
+    mask2 *= flow.lt(locations2, capacity)
 
     # Store the capacity location for each token
-    locations1_s = torch.sum(locations1 * mask1, dim=1)
-    locations2_s = torch.sum(locations2 * mask2, dim=1)
+    locations1_s = flow.sum(locations1 * mask1, dim=1)
+    locations2_s = flow.sum(locations2 * mask2, dim=1)
 
     # Normalize gate probabilities
     mask1_float = mask1.float()
@@ -324,7 +326,7 @@ def top2gating(logits: Tensor,
     gates2_s = einsum("se,se->s", gates, mask2_float)
     denom_s = gates1_s + gates2_s
     # Avoid divide-by-zero
-    denom_s = torch.clamp(denom_s, min=torch.finfo(denom_s.dtype).eps)
+    denom_s = flow.clamp(denom_s, min=flow.finfo(denom_s.dtype).eps)
     gates1_s /= denom_s
     gates2_s /= denom_s
 
@@ -357,7 +359,7 @@ class TopKGate(Module):
             number of experts in model
     """
 
-    wg: torch.nn.Linear
+    wg: flow.nn.Linear
 
     def __init__(self,
                  model_dim: int,
@@ -374,7 +376,7 @@ class TopKGate(Module):
         # Only top-1 and top-2 are supported at the moment.
         if k != 1 and k != 2:
             raise ValueError('Only top-1 and top-2 gatings are supported.')
-        self.wg = torch.nn.Linear(model_dim, num_experts, bias=False).float()
+        self.wg = flow.nn.Linear(model_dim, num_experts, bias=False).float()
         self.k = k
         self.capacity_factor = capacity_factor
         self.eval_capacity_factor = eval_capacity_factor
@@ -388,8 +390,8 @@ class TopKGate(Module):
 
     def forward(
             self,
-            input: torch.Tensor,
-            used_token: torch.Tensor = None,
+            input: flow.Tensor,
+            used_token: flow.Tensor = None,
             use_tutel: bool = False) -> Tuple[Tensor,
                                               Tensor,
                                               Tensor]:  # type: ignore
@@ -397,7 +399,7 @@ class TopKGate(Module):
         if self.wall_clock_breakdown:
             self.timers('TopKGate').start()
 
-        if self.wg.weight.dtype != torch.float32:
+        if self.wg.weight.dtype != flow.float32:
             self.wg = self.wg.float()
         input_fp32 = input.float()
         # input jittering
@@ -441,9 +443,9 @@ class MOELayer(Base):
     .. Gshard_: https://arxiv.org/pdf/2006.16668.pdf
 
     Args:
-        gate (torch.nn.Module):
+        gate (oneflow.nn.Module):
             gate network
-        expert (torch.nn.Module):
+        expert (oneflow.nn.Module):
             expert network
     """
     def __init__(self,

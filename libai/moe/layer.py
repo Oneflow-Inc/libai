@@ -2,20 +2,20 @@
 Copyright 2020 The Microsoft DeepSpeed Team
 '''
 
-import torch.nn.init as init
-import torch
-import torch.distributed as dist
-
-from deepspeed.utils import logger, log_dist
-
-import deepspeed.utils.groups as groups
-from .sharded_moe import MOELayer, TopKGate
-from .experts import Experts
 import copy
 import typing
 
+import oneflow as flow
+import oneflow.nn.init as init
+import libai.utils.distributed as dist
 
-class MoE(torch.nn.Module):
+import deepspeed.utils.groups as groups
+import libai.utils.distributed as dist
+from .sharded_moe import MOELayer, TopKGate
+from .experts import Experts
+
+
+class MoE(flow.nn.Module):
     def __init__(self,
                  hidden_size,
                  expert,
@@ -34,7 +34,7 @@ class MoE(torch.nn.Module):
 
         Arguments:
             hidden_size (int): the hidden dimension of the model, importantly this is also the input and output dimension.
-            expert (torch.nn.Module): the torch module that defines the expert (e.g., MLP, torch.linear).
+            expert (oneflow.nn.Module): the torch module that defines the expert (e.g., MLP, oneflow.linear).
             num_experts (int, optional): default=1, the total number of experts per layer.
             ep_size (int, optional): default=1, number of ranks in the expert parallel world or group.
             k (int, optional): default=1, top-k gating value, only supports k=1 or k=2.
@@ -58,15 +58,11 @@ class MoE(torch.nn.Module):
         self.num_experts = num_experts
         self.num_local_experts = 1 if num_experts < ep_size else num_experts // ep_size
 
-        log_dist(
-            f'Creating MoE layer with num_experts: {num_experts} | num_local_experts: {self.num_local_experts} | expert_parallel_size: {ep_size}',
-            [0])
-
         assert noisy_gate_policy is None or noisy_gate_policy in ['None', 'Jitter', 'RSample'], \
             'Unsupported noisy_gate_policy: ' + noisy_gate_policy
 
         experts = Experts(expert, self.num_local_experts, self.expert_group_name)
-        self.deepspeed_moe = MOELayer(TopKGate(hidden_size,
+        self.libai_moe = MOELayer(TopKGate(hidden_size,
                                                num_experts,
                                                k,
                                                capacity_factor,
@@ -83,9 +79,9 @@ class MoE(torch.nn.Module):
         if self.use_residual:
             self.mlp = expert
             # coefficient is used for weighted sum of the output of expert and mlp
-            self.coefficient = torch.nn.Linear(hidden_size, 2)
+            self.coefficient = flow.nn.Linear(hidden_size, 2)
 
-    def set_deepspeed_parallelism(self):
+    def set_libai_parallelism(self):
         self._create_process_groups()
 
     def _create_process_groups(self):
@@ -99,8 +95,8 @@ class MoE(torch.nn.Module):
             else:
                 groups._create_expert_data_and_model_parallel(self.ep_size,
                                                               mpu=groups.mpu)
-        # Set the group handle for the MOELayer (deepspeed_moe) object
-        self.deepspeed_moe._set_ep_group(
+        # Set the group handle for the MOELayer (libai_moe) object
+        self.libai_moe._set_ep_group(
             groups._get_expert_parallel_group(self.expert_group_name))
 
     def forward(self, hidden_states, used_token=None):
@@ -119,13 +115,13 @@ class MoE(torch.nn.Module):
 
             * exp_counts (int): expert count
         """
-        output = self.deepspeed_moe(hidden_states, used_token)
+        output = self.libai_moe(hidden_states, used_token)
         if self.use_residual:
             # Residual MoE
             output_mlp = self.mlp(hidden_states)
             if type(output_mlp) is tuple:
                 output_mlp = output_mlp[0]  # Ignore the bias term for now
             coef = self.coefficient(hidden_states)
-            coef = torch.nn.functional.softmax(coef, dim=1)
+            coef = flow.nn.functional.softmax(coef, dim=1)
             output = output * coef[..., 0:1] + output_mlp * coef[..., 1:]
-        return output, self.deepspeed_moe.l_aux, self.deepspeed_moe.exp_counts
+        return output, self.libai_moe.l_aux, self.libai_moe.exp_counts
