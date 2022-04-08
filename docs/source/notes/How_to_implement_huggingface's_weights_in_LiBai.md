@@ -6,19 +6,20 @@ The built-in layers in [LiBai](https://github.com/Oneflow-Inc/libai) adopts the 
 There are subtle differences in the BERT structure in the following figure (left: LiBai, right: Huggingface), which can be summarized as:
 - Location of layernorm: The location of layernorm is different, but the calculation order is the same.
 - Division mode of query, key and value: Just splice.
-- LiBai follows [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) to use the order of the layernorm and the residual connections by default. Megatron-LM shows that this structure will eliminate instabilities and bring a lower training loss. LiBai can also support the original BERT architecture mentioned in [Paper](https://arxiv.org/pdf/1810.04805.pdf), just set `apply_residual_post_layernorm=True`.
-![architecture](./assets/architecture.png)
+- LiBai follows [Megatron-LM](https://github.com/NVIDIA/Megatron-LM) to use the order of the layernorm and the residual connections by default. Megatron-LM shows that this structure will eliminate instabilities and bring a lower training loss. LiBai can also support the original BERT architecture mentioned in [Paper](https://arxiv.org/pdf/1810.04805.pdf) by setting `apply_residual_post_layernorm=True`.
+
+![architecture](./assets/architecture.jpg)
 
 
 ## QKV slicing logic
-LiBai's QKV calculation logic is different from huggingface.
+LiBai's QKV slicing logic is different from huggingface.
 ```python
-# LiBai's QKV calculation logic
+# LiBai's QKV slicing logic
 query_key_value = query_key_value.view(batch_size, -1, num_heads, 3 * head_size)
 query_key_value = query_key_value.permute(0, 2, 1, 3)
 query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
 
-# Huggingface's QKV calculation logic
+# Huggingface's QKV slicing logic
 query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
 query = query.view(query.size(0), query.size(1), num_heads, -1).permute(0, 2, 1, 3)
 key = key.view(key.size(0), key.size(1), num_heads, -1).permute(0, 2, 1, 3)
