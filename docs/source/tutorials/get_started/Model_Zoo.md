@@ -1,5 +1,5 @@
 # LiBai Model Zoo
-To date, LiBai implements the following models:
+To date, LiBai has implemented the following models:
 - [Vision Transformer](https://arxiv.org/abs/2010.11929)
 - [Swin Transformer](https://arxiv.org/abs/2103.14030)
 - [BERT](https://arxiv.org/abs/1810.04805)
@@ -13,12 +13,12 @@ A collection of parallel training strategies is supported in LiBai:
 - **Tensor Parallel Training**
 - **Pipeline Parallel Training**
 
-You can refer to oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) for a better understanding of the basic conception of parallelization techniques.
+You can refer to OneFlow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) to better understand the basic conception of parallelization techniques.
 
 
-## Supported Model in LiBai
+## Supported Models in LiBai
 
-For more details about the supported parallelism training on different models, please refer the following tables:
+For more details about the supported parallelism training on different models, please refer to the following table:
 
 <table class="docutils">
   <tbody>
