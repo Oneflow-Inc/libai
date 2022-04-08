@@ -4,12 +4,14 @@ Supported models in LiBai(李白)
 
 - `VisionTransformer`_
 - `SwinTransformer`_
+- `ResMLP`_
 - `BERT`_
 - `T5`_
 - `GPT-2`_
 
 .. _VisionTransformer: https://arxiv.org/abs/2010.11929
 .. _SwinTransformer: https://arxiv.org/abs/2103.14030
+.. _ResMLP: https://arxiv.org/abs/2105.03404
 .. _BERT: https://arxiv.org/abs/1810.04805
 .. _T5: https://arxiv.org/abs/1910.10683
 .. _GPT-2: https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf
@@ -34,6 +36,12 @@ SwinTransformer
 .. automodule:: libai.models.swin_transformer
     :members: 
         SwinTransformer,
+
+ResMLP
+-------
+.. automodule:: libai.models.resmlp
+    :members:
+        ResMLP,
 
 BERT
 ----

@@ -25,7 +25,7 @@ from libai.layers import LayerNorm, Linear, PatchEmbedding, TransformerLayer
 class VisionTransformer(nn.Module):
     """Vision Transformer in LiBai.
 
-    LiBai implement of:
+    LiBai's implementation of:
     `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale
     <https://arxiv.org/abs/2010.11929>`_
 
@@ -111,10 +111,10 @@ class VisionTransformer(nn.Module):
         self.norm = LayerNorm(embed_dim, layer_idx=-1)
         self.head = Linear(embed_dim, num_classes, layer_idx=-1)
 
-        # Loss func
+        # loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
-        # Weight init
+        # weight init
         trunc_normal_(self.pos_embed, std=0.02)
         trunc_normal_(self.cls_token, std=0.02)
         self.apply(self._init_weights)

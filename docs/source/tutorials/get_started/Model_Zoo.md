@@ -2,6 +2,7 @@
 To date, LiBai has implemented the following models:
 - [Vision Transformer](https://arxiv.org/abs/2010.11929)
 - [Swin Transformer](https://arxiv.org/abs/2103.14030)
+- [ResMLP](https://arxiv.org/abs/2105.03404)
 - [BERT](https://arxiv.org/abs/1810.04805)
 - [T5](https://arxiv.org/abs/1910.10683)
 - [GPT-2](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
@@ -39,6 +40,13 @@ For more details about the supported parallelism training on different models, p
       <td align="left">&#10004;</td>
       <td align="left">-</td>
       <td align="left">-</td>
+    <tr>
+    <tr>
+      <td align="left"> <b> ResMLP </b> </td>
+      <td align="left">&#10004;</td>
+      <td align="left">&#10004;</td>
+      <td align="left">&#10004;</td>
+    </tr>
     <tr>
       <td align="left"> <b> BERT </b> </td>
       <td align="left">&#10004;</td>

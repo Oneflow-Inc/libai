@@ -97,7 +97,22 @@ class layers_scale_mlp_blocks(nn.Module):
 class ResMLP(nn.Module):
     """ResMLP in LiBai
 
-    LiBai implementation of 
+    LiBai's implementation of:
+    `ResMLP: Feedforward networks for image classification with data-efficient training
+    <https://arxiv.org/abs/2105.03404>`_
+
+    Args:
+        img_size (int, tuple(int)): input image size
+        patch_size (int, tuple(int)): patch size
+        in_chans (int): number of input channels
+        embed_dim (int): embedding dimension
+        depth (int): depth of transformer
+        drop_rate (float): dropout rate
+        drop_path_rate (float): stochastic depth rate
+        init_scale (float): the layer scale ratio
+        num_classes (int): number of classes for classification head
+        loss_func (callable, optional): loss function for computing the total loss
+                                        between logits and labels
     
     """
     def __init__(
@@ -105,12 +120,12 @@ class ResMLP(nn.Module):
         img_size=224, 
         patch_size=16, 
         in_chans=3, 
-        num_classes=1000, 
         embed_dim=768, 
         depth=12, 
         drop_rate=0.,
         drop_path_rate=0.,
         init_scale=1e-4,
+        num_classes=1000, 
         loss_func=None,
     ):
         super().__init__()
@@ -141,10 +156,10 @@ class ResMLP(nn.Module):
         self.norm = Affine(embed_dim, layer_idx=-1)
         self.head = Linear(embed_dim, num_classes, layer_idx=-1) if num_classes > 0 else nn.Identity()
         
-        # Loss func
+        # loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
         
-        # Weight init
+        # weight init
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -159,6 +174,7 @@ class ResMLP(nn.Module):
     def forward_features(self, x):
         x = self.patch_embed(x)
 
+        # layer scale mlp blocks
         for i, blk in enumerate(self.blocks):
             x = blk(x)
     
