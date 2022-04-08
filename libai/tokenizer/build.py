@@ -16,26 +16,13 @@
 import logging
 
 from libai.config import instantiate
-from libai.utils.registry import Registry
 
 logger = logging.getLogger(__name__)
-
-TOKENIZER_REGISTRY = Registry("tokenizer")
-TOKENIZER_REGISTRY.__doc__ = """
-Registry for tokenizer, i.e. BertTokenizer.
-The registered object will be called with `obj(cfg)`
-and expected to return a `PreTrainedTokenizer` object.
-"""
 
 
 def build_tokenizer(cfg):
     """Initialize tokenizer."""
-    # NOTE(lxy): Maybe there is no need for tokenizer between tensor parallel group.
-    if "_target_" in cfg.tokenizer:
-        tokenizer = instantiate(cfg.tokenizer)
-    else:
-        tokenizer_name = cfg.tokenizer.name
-        tokenizer = TOKENIZER_REGISTRY.get(tokenizer_name)(**cfg.tokenizer)
+    tokenizer = instantiate(cfg.tokenizer)
 
     if cfg.append_eod and tokenizer.eod_token is None:
         if tokenizer.eos_token is not None:

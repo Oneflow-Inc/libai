@@ -1,5 +1,5 @@
 # Evaluation
-Evaluation is a process that takes a number of inputs/outputs pairs and calculates them to get metrics. You can always use the model directly and just parse its inputs/outputs manually to perform evaluation. Alternatively, evaluation is implemented in LiBai using the `DatasetEvaluator` interface.
+Evaluation is a process that takes a number of inputs/outputs pairs and calculates them to get metrics. You can always use the model directly and parse its inputs/outputs manually to perform evaluation. Alternatively, evaluation can be implemented in LiBai using the `DatasetEvaluator` interface.
 
 LiBai includes a few `DatasetEvaluator` that computes metrics like top-N accuracy, PPL(Perplexity), etc. You can also implement your own `DatasetEvaluator` that performs some other jobs using the inputs/outputs pairs. For example, to count how many instances are detected on the validation set:
 ``` Python
@@ -15,11 +15,11 @@ class Counter(DatasetEvaluator):
 ```
 
 ## Customize Evaluator using DatasetEvaluator
-`DatasetEvaluator` is the Base class for a dataset evaluator. This class will accumulate information of the inputs/outputs (by `process`) after every batch inference, and produce evaluation results in the end (by `evaluate`). The inputs is from the `trainer.get_batch()`, which converts the outputs of `dataset.__getitem__()` to dict. The Outputs is from the dict return of `model.forward()`.
+`DatasetEvaluator` is the Base class for a dataset evaluator. This class accumulates information of the inputs/outputs (by `process`) after every batch inference, and produces evaluation results in the end (by `evaluate`). The input is from the `trainer.get_batch()`, which converts the outputs of `dataset.__getitem__()` to dict. The output is from the dict return of `model.forward()`.
 
 Firstly, declare a new evaluator class that inherits the `DatasetEvaluator` and overwrites its `process` and `evaluation` functions to satisfy the needs.
 
-For example, declare a `MyEvaluator` class in `libai/evaluator/myevaluator.py`.
+For example, declare a `MyEvaluator` class in `libai/evaluator/myevaluator.py`:
 ``` Python
 class MyEvaluator(DatasetEvaluator):
     def __init__(self):
@@ -52,7 +52,7 @@ class MyEvaluator(DatasetEvaluator):
         return copy.deepcopy(self._results)
 ```
 
-Secondly, import the customized class and set the evaluation in config.
+Secondly, import the customized class and set the evaluation in config:
 ``` Python
 from libai.evaluation.myevaluator import MyEvaluator
 evaluation=dict(
@@ -68,7 +68,7 @@ evaluation=dict(
 ```
 
 ## Run Evaluator Manually
-For checking your evaluator code outside `LiBai`, use the methods of evaluators manually:
+To check your evaluator code outside `LiBai`, use the methods of evaluators manually:
 ``` Python
 def get_all_inputs_outputs():
   for data in data_loader:
@@ -80,7 +80,7 @@ for inputs, outputs in get_all_inputs_outputs():
 eval_results = evaluator.evaluate()
 ```
 
-Evaluators can also be used with `inference_on_dataset`. For example,
+Evaluators can also be used with `inference_on_dataset`. For example:
 ``` Python
 eval_results = inference_on_dataset(
     model,

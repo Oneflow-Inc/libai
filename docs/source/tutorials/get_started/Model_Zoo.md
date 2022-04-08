@@ -1,5 +1,5 @@
 # LiBai Model Zoo
-To date, LiBai implements the following models:
+To date, LiBai has implemented the following models:
 - [Vision Transformer](https://arxiv.org/abs/2010.11929)
 - [Swin Transformer](https://arxiv.org/abs/2103.14030)
 - [BERT](https://arxiv.org/abs/1810.04805)
@@ -13,12 +13,12 @@ A collection of parallel training strategies is supported in LiBai:
 - **Tensor Parallel Training**
 - **Pipeline Parallel Training**
 
-You can refer to oneflow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) for a better understanding of the basic conception of parallelization techniques.
+You can refer to OneFlow official [tutorial](https://docs.oneflow.org/en/master/parallelism/01_introduction.html) to better understand the basic conception of parallelization techniques.
 
 
-## Supported Model in LiBai
+## Supported Models in LiBai
 
-For more details about the supported parallelism training on different models, please refer the following tables:
+For more details about the supported parallelism training on different models, please refer to the following table:
 
 <table class="docutils">
   <tbody>
@@ -65,4 +65,29 @@ For more details about the supported parallelism training on different models, p
 &#10004; means you can train this model under specific parallelism techniques or combine two or three of them with &#10004; for 2D or 3D paralleism training.
 
 ## Benchmarks (coming soon)
-Here we provided our benchmark test results of the supported models in LiBai.
+Here we provided our benchmark test results of the supported models in LiBai. Due to our resource constraints, we will gradually release the training results in the future.
+
+### Main Results on ImageNet with Pretrained Models
+
+**ImageNet-1K Pretrained Models**
+<table class="docutils">
+  <tbody>
+    <tr>
+      <th width="80"> Model </th>
+      <th valign="bottom" align="center" width="120">Pretrain</th>
+      <th valign="bottom" align="center" width="120">Resolution</th>
+      <th valign="bottom" align="center" width="120">Acc@1</th>
+      <th valign="bottom" align="center" width="120">Acc@5</th>
+      <th valign="bottom" align="center" width="120">Download</th>
+    </tr>
+    <tr>
+      <td align="center"> ViT-Tiny </td>
+      <td align="center"> ImageNet-1K </td>
+      <td align="center"> 224x224 </td>
+      <td align="center"> 72.7 </td>
+      <td align="center"> 91.0 </td>
+      <td align="center"> <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/config.yaml">Config</a> | <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/model_best.zip">Checkpoint</a> </td>
+    </tr>
+    </tr>
+  </tbody>
+</table>
