@@ -13,17 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import oneflow as flow
 import oneflow.nn as nn
 from flowvision.layers import DropPath as vision_DropPath
 from flowvision.models import ModelCreator
 
+import libai.utils.distributed as dist
 from libai.layers import DropPath, LayerNorm, Linear
 
 
 class VisionModel(nn.Module):
     """
-    Wrap the model from flowvision to be compatible in LiBai
+    Wrap the model from flowvision to be compatible with LiBai
 
     Args:
         model_name (str): model to be used for training.
@@ -51,10 +52,12 @@ class VisionModel(nn.Module):
             )
             if has_bias:
                 res.bias.data = module.bias.data.clone().to_global(
-                    sbp=res.bias.sbp, placement=res.bias.placement
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
+                    placement=res.bias.placement,
                 )
             res.weight.data = module.weight.data.clone().to_global(
-                sbp=res.weight.sbp, placement=res.weight.placement
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
+                placement=res.weight.placement,
             )
         elif isinstance(module, nn.LayerNorm):
             res = LayerNorm(
@@ -64,10 +67,12 @@ class VisionModel(nn.Module):
             )
             if module.elementwise_affine:
                 res.weight.data = module.weight.data.clone().to_global(
-                    sbp=res.weight.sbp, placement=res.weight.placement
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
+                    placement=res.weight.placement,
                 )
                 res.bias.data = module.bias.data.clone().to_global(
-                    sbp=res.bias.sbp, placement=res.bias.placement
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
+                    placement=res.bias.placement,
                 )
             res.eps = module.eps
         else:
