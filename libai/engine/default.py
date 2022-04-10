@@ -477,7 +477,9 @@ class DefaultTrainer(TrainerBase):
         if mixup_func is not None:
             images_dist_data = data.get("images")
             labels_dist_data = data.get("labels")
-            images, labels = mixup_func(images_dist_data.tensor.cuda(), labels_dist_data.tensor.cuda())
+            images, labels = mixup_func(
+                images_dist_data.tensor.cuda(), labels_dist_data.tensor.cuda()
+            )
             images_dist_data.tensor = images
             labels_dist_data.tensor = labels
             images_dist_data.to_global()
