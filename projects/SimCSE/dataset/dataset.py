@@ -82,7 +82,7 @@ def load_data(name, path):
         return load_sts_to_train(path)
 
 
-def padding_for_ids(data, pad_id=0, max_len=512):
+def padding_for_ids(data, pad_id=0, max_len=64):
     data["input_ids"] = data["input_ids"] + [pad_id] * (max_len - len(data["input_ids"]))
     data["attention_mask"] = data["attention_mask"] + [pad_id] * (
         max_len - len(data["attention_mask"])
@@ -102,8 +102,9 @@ class TrainDataset(Dataset):
     def __init__(self, name, path, tokenizer, max_len, path2=None):
         self.name = name
         self.data = load_data(name, path) + load_data('add', path2)
+        random.shuffle(self.data)
         self.tokenizer = tokenizer
-        self.max_len = 64
+        self.max_len = max_len
         self.pad_id = self.tokenizer.pad_token_id
         self.cls_id = self.tokenizer.cls_token_id
         self.sep_id = self.tokenizer.sep_token_id
