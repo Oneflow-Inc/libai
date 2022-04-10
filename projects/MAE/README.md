@@ -54,7 +54,7 @@ Please see [Prepare the Data](https://libai.readthedocs.io/en/latest/tutorials/g
 Pretraining MAE on 8 GPUs using data parallelism.
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MAE/train_net.py projects/MAE/mae_pretraining.py 8
+bash tools/train.sh projects/MAE/train_net.py projects/MAE/configs/mae_pretraining.py 8
 ```
 
 ### Finetuning
@@ -71,7 +71,7 @@ If you feel confused about the checkpoint format here, please refer to [Load and
 1. Finetune MAE on 8 GPUs using data parallelism.
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MAE/train_net.py projects/MAE/mae_finetune.py 8
+bash tools/train.sh projects/MAE/train_net.py projects/MAE/configs/mae_finetune.py 8
 ```
 **Notes:** if you want to finetune MAE models using different parallel strategies, please refer to the [Distributed Configuration Tutorial](https://libai.readthedocs.io/en/latest/tutorials/basics/Distributed_Configuration.html)
 
@@ -80,7 +80,7 @@ bash tools/train.sh projects/MAE/train_net.py projects/MAE/mae_finetune.py 8
 Evaluate MAE model under LiBai on 8 GPUs:
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MAE/train_net.py projects/MAE/mae_finetune.py 8 --eval-only
+bash tools/train.sh projects/MAE/train_net.py projects/MAE/configs/mae_finetune.py 8 --eval-only
 ```
 
 
@@ -95,7 +95,7 @@ finetune.path = "/path/to/mae_finetuned_vit_base.pth"
 Run finetuning on 8 GPUs:
 ```bash
 cd /path/to/libai
-bash tools/train.sh projects/MAE/train_net.py projects/MAE/mae_finetune.py 8
+bash tools/train.sh projects/MAE/train_net.py projects/MAE/configs/mae_finetune.py 8
 ```
 
 

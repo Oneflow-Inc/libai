@@ -3,9 +3,9 @@
 Instead of directly using [`flow.save()`](https://oneflow.readthedocs.io/en/master/oneflow.html?highlight=save#oneflow.save) and [`flow.load()`](https://oneflow.readthedocs.io/en/master/oneflow.html?highlight=oneflow.load#oneflow.load), LiBai provides the [`checkpoint module`](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) to deal with the complex situations when saving/loading model.
 
 
-Typically, users don't need to write the relative code to load/save weights trained from LiBai when using LiBai's `DefaultTrainer` and `LazyConfig`. For more details, please see [Training & Evaluation in Command Line](https://libai.readthedocs.io/en/latest/tutorials/basics/Train_and_Eval_Command_Line.html) which introduces `weight load` and `resume training` settings in `config.py` or in command line for standard training.
+Typically, you don't need to write the relative code to load/save weights trained from LiBai when using LiBai's `DefaultTrainer` and `LazyConfig`. For more details, see [Training & Evaluation in Command Line](https://libai.readthedocs.io/en/latest/tutorials/basics/Train_and_Eval_Command_Line.html) which introduces `weight load` and `resume training` settings in `config.py` or in command line for standard training.
 
-Here we introduce how to load&save weights according to your custom needs, suppose you have a model trained with LiBai
+Here we introduce how to load&save weights according to your custom needs. Suppose you have a model trained with LiBai.
 
 ```shell
 # your model directory
@@ -49,4 +49,4 @@ checkpointer = Checkpointer(model, save_dir="output/")
 checkpointer.save("model_999")  # save to output/model_999
 ```
 
-You can also save other informations(e.g. `optim`, `scheduler`) other than model weights by using `checkpointer`, see [libai.utils.checkpoint](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) for more details.
+You can also save other informations (e.g. `optim`, `scheduler`) other than model weights by using `checkpointer`. See [libai.utils.checkpoint](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) for more details.
