@@ -5,14 +5,40 @@ from .common.train import train
 from .common.optim import optim
 from .common.data.imagenet import dataloader
 
+import oneflow as flow
+import flowvision.transforms as transforms
+from flowvision.transforms import InterpolationMode
+from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
+
+# Refine output dir
+train.output_dir = "./output_right_hyperparam"
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 dataloader.train.dataset[0].root = "/dataset/extract"
 dataloader.test[0].dataset.root = "/dataset/extract"
+
+# Refine test data augmentation
+resmlp_test_aug = LazyCall(transforms.Compose)(
+    transforms=[
+        LazyCall(transforms.Resize)(
+            size=int(224 / 0.9),
+            interpolation=InterpolationMode.BICUBIC,
+        ),
+        LazyCall(transforms.CenterCrop)(
+            size=224,
+        ),
+        LazyCall(transforms.ToTensor)(),
+        LazyCall(transforms.Normalize)(
+            mean=IMAGENET_DEFAULT_MEAN,
+            std=IMAGENET_DEFAULT_STD,
+        ),
+    ]
+)
+dataloader.test[0].dataset.transform = resmlp_test_aug
 
 # Refine model cfg for vit training on imagenet
 model.num_classes = 1000
@@ -29,18 +55,19 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 )
 
 # Refine optimizer cfg for vit model
-optim.lr = 1e-3  # 5e-4 * 1024 (batchsize) / 512
+optim._target_ = flow.optim.LAMB  # use lamb optimizer
+optim.lr = 5e-3  # default batch size equals to 2048 = 256 * 8
 optim.eps = 1e-8
-optim.weight_decay = 0.05
+optim.weight_decay = 0.2
 optim.params.clip_grad_max_norm = None
 optim.params.clip_grad_norm_type = None
 
 # Refine train cfg for vit model
-train.train_micro_batch_size = 128
-train.test_micro_batch_size = 128
-train.train_epoch = 300
-train.warmup_ratio = 5 / 300
-train.evaluation.eval_period = 1000
+train.train_micro_batch_size = 256
+train.test_micro_batch_size = 64
+train.train_epoch = 400
+train.warmup_ratio = 5 / 400
+train.evaluation.eval_period = 1250
 train.log_period = 1
 
 # Scheduler

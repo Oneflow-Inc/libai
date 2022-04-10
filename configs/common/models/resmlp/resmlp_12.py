@@ -10,7 +10,7 @@ model = LazyCall(ResMLP)(
     embed_dim=384,
     depth=12,
     drop_rate=0.0,
-    drop_path_rate=0.1,
+    drop_path_rate=0.05,
     init_scale=0.1,
     num_classes=1000,
 )
