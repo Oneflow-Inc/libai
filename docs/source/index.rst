@@ -10,5 +10,6 @@ Welcome to libai's documentation!
    :maxdepth: 3
 
    tutorials/index
+   notes/index
    modules/index
    changelog.md
