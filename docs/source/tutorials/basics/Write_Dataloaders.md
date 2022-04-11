@@ -4,11 +4,11 @@ This tutorial explains how the dataset APIs work, and how to customize your own 
 
 # Build Common Dataloaders 
 
-To build dataloaders in LiBai, we highly recommend users to use the default `build_nlp_train_val_test_loader`, `build_nlp_train_loader`, `build_nlp_test_loader`, `build_image_train_loader` and `build_image_test_loader` which are defined in [`libai/data/build.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/data/build.py) in most cases.
+To build dataloaders in LiBai, we highly recommend users to use the default `build_nlp_train_val_test_loader`, `build_nlp_train_loader`, `build_nlp_test_loader`, `build_image_train_loader` and `build_image_test_loader` which are defined in [`libai/data/build.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/data/build.py) for most of the common cases.
 
 The only thing you need to do is to write pytorch style `Dataset`, and return `Instance` structure in `__getitem__`. The `Instance` structure stores the attributes of an instance (e.g., image, tokens) as "fields", and the `DistTensorData` structure provides a standard `to_global()`(called in `get_batch()`) function to convert local tensors to global tensors.
 
-The returned instance by `__getitem__` function must contain the same keys with the parameter names of the `forward` function of the `model`. The following shows an example: 
+The returned instance by `__getitem__` function must contain the same keys with the `args` passed in `forward` function of the `model`. The following shows an example:
 
 > NOTE: Set `placement_idx=-1` in `DistTensorData` when the `tensor` is **only** used in `loss_function`, it is used for pipeline parallel training.
 
@@ -52,7 +52,7 @@ class MyModel(nn.Module):
         ...
 ```
 
-In particular, the values of `attention_mask` can only be `0` or `1` if you need to generate your own `attention_mask`. Because LiBai has already processed `attention_mask` in `libai/layers/attention.py`
+In particular, the values of `attention_mask` can only be `0` or `1` if you need to generate your own `attention_mask`. Because LiBai has already processed `attention_mask` in [`libai/layers/attention.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/layers/attention.py) as follows:
 
 ```python
 attention_scores = flow.mul(attention_scores, attention_mask)
