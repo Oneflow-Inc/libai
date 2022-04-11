@@ -13,6 +13,7 @@ from libai.tokenizer import BertTokenizer
 from projects.SomeBug.dataset import TrainDataset_sup, TestDataset_sup
 from projects.SomeBug.simcse_sup1 import Simcse
 
+optim["lr"] = 1e-5
 
 tokenization.tokenizer = LazyCall(BertTokenizer)(
     vocab_file="./data/vocab.txt",

@@ -13,58 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
+import logging
 import os
 import sys
-from collections import OrderedDict
-
-import numpy as np
-from scipy.stats import spearmanr
-
-from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.evaluation import DatasetEvaluator
-from libai.trainer import DefaultTrainer, default_setup
-from libai.utils import distributed as dist
-from libai.utils.checkpoint import Checkpointer
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from libai.config import LazyConfig, default_argument_parser, try_get_key
+from libai.engine import DefaultTrainer, default_setup
+from libai.utils.checkpoint import Checkpointer
 
-
-def spearman_target(cos_sim, labels):
-    return spearmanr(cos_sim, labels).correlation
-
-
-class SimcseEvaluator(DatasetEvaluator):
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self._predictions = []
-
-    def reset(self):
-        self._predictions = []
-
-    def process(self, inputs, outputs):
-        sim = outputs["sim"]
-        labels = inputs["labels"]
-        self._predictions.append({"sim": sim, "labels": labels})
-
-    def evaluate(self):
-        if not dist.is_main_process():
-            return {}
-        else:
-            predictions = self._predictions
-        sim_array = np.array([])
-        label_array = np.array([])
-        for prediction in predictions:
-            sim_array = np.append(sim_array, dist.tton(prediction["sim"]))
-            label_array = np.append(label_array, dist.tton(prediction["labels"]))
-        self._results = spearman_target(sim_array, label_array)
-        return {"spearman": self._results}
-
-
-class Trainer(DefaultTrainer):
-    @classmethod
-    def build_evaluator(cls, cfg):
-        return SimcseEvaluator(cfg)
+logger = logging.getLogger("libai." + __name__)
 
 
 def main(args):
@@ -75,23 +33,26 @@ def main(args):
     if args.fast_dev_run:
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 20
-        cfg.train.eval_period = 10
+        cfg.train.evaluation.eval_period = 10
         cfg.train.log_period = 1
 
     if args.eval_only:
         tokenizer = None
         if try_get_key(cfg, "tokenization.setup", default=False):
-            tokenizer = Trainer.build_tokenizer(cfg)
-        model = Trainer.build_model(cfg)
+            tokenizer = DefaultTrainer.build_tokenizer(cfg)
+        model = DefaultTrainer.build_model(cfg)
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=args.resume
         )
-        graph = Trainer.build_graph(cfg, model, is_train=False)
-        test_loader = Trainer.build_test_loader(cfg, tokenizer)
-        res = Trainer.test(cfg, test_loader, graph)  # noqa
+        if try_get_key(cfg, "train.graph.enabled", default=False):
+            model = DefaultTrainer.build_graph(cfg, model, is_train=False)
+        test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
+        if len(test_loader) == 0:
+            logger.info("No dataset in dataloader.test, please set dataset for dataloader.test")
+        _ = DefaultTrainer.test(cfg, test_loader, model)
         return
 
-    trainer = Trainer(cfg)
+    trainer = DefaultTrainer(cfg)
     return trainer.train()
 
 
