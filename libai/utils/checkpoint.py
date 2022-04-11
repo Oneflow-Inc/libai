@@ -85,6 +85,7 @@ class Checkpointer(object):
     def save(self, name: str, **kwargs: Dict[str, str]):
         """
         Dump model and checkpointables to a file.
+
         Args:
             name (str): name of the file.
             kwargs (dict): extra arbitrary data to save.
@@ -113,17 +114,20 @@ class Checkpointer(object):
 
             flow.save(data[save_name], save_file, global_dst_rank=0)
 
-        self.tag_last_checkpoint(basename)
+        if basename != "model_best":
+            self.tag_last_checkpoint(basename)
 
     def load(self, path: str, checkpointables: Optional[List[str]] = None) -> object:
         """
         Load from the given checkpoint. When path points to network file, this
         function has to be called on all ranks.
+
         Args:
             path (str): path or url to the checkpoint. If empty, will not load
                 anything.
             checkpointables (list): List of checkpointable names to load. If not
                 specified (None), will load all the possible checkpointables.
+
         Returns:
             dict:
                 extra data loaded from the checkpoint that has not been
@@ -209,13 +213,17 @@ class Checkpointer(object):
         Returns:
             dict: with keys "model" and optionally others that are saved by
                 the checkpointer dict["model"] must be a dict which maps strings
-                to torch.Tensor or numpy arrays.
+                to flow.Tensor or numpy arrays.
         """
         data = {}
         keys = self.path_manager.ls(f)
         for key in keys:
-            data[key] = flow.load(os.path.join(f, key))
-        data["iter"] = int(f.split("_")[-1])
+            data[key] = flow.load(os.path.join(f, key), global_src_rank=0)
+        try:
+            data["iter"] = int(f.split("_")[-1])
+        except:  # noqa
+            self.logger.info(f"iter info in {f} not found, set iter to 0")
+            data["iter"] = 0
         return data
 
     def _load_model(self, checkpoint: Any):
@@ -270,12 +278,12 @@ class Checkpointer(object):
 
     def _convert_ndarray_to_tensor(self, state_dict: dict):
         """
-        In-place convert all numpy arrays in the state_dict to torch tensor.
+        In-place convert all numpy arrays in the state_dict to flow tensor.
         Args:
             state_dict (dict): a state-dict to be loaded to the model.
         """
         # model could be an OrderedDict with _metadata attribute
-        # (as returned by Pytorch's state_dict()). We should preserve these
+        # (as returned by oneflow's state_dict()). We should preserve these
         # properties.
         for k in list(state_dict.keys()):
             v = state_dict[k]
@@ -286,8 +294,6 @@ class Checkpointer(object):
                 if k in self.model.state_dict():
                     model_v = self.model.state_dict()[k]
                     state_dict[k] = v.to_global(sbp=model_v.sbp, placement=model_v.placement)
-            # if not isinstance(v, flow.Tensor):
-            #     state_dict[k] = flow.tensor(v)
 
 
 class PeriodicCheckpointer:
@@ -326,6 +332,7 @@ class PeriodicCheckpointer:
     def step(self, iteration: int, **kwargs: Any):
         """
         Perform the appropriate action at the given iteration.
+
         Args:
             iteration (int): the current epoch, ranged in [0, max_iter-1].
             kwargs (Any): extra data to save, same as in
@@ -357,6 +364,7 @@ class PeriodicCheckpointer:
         """
         Same argument as :meth:`Checkpointer.save`.
         Use this method to manually save checkpoints outside the schedule.
+
         Args:
             name (str): file name.
             kwargs (Any): extra data to save, same as in

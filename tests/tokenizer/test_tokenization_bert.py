@@ -13,21 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import os
-import tempfile
 import unittest
-from unittest import TestCase
 
-from omegaconf import DictConfig, OmegaConf
+from libai.tokenizer.tokenization_base import _is_control, _is_punctuation, _is_whitespace
+from libai.tokenizer.tokenization_bert import (
+    VOCAB_FILES_NAMES,
+    BasicTokenizer,
+    BertTokenizer,
+    WordpieceTokenizer,
+)
+from tests.tokenizer.test_tokenization_common import TokenizerTesterMixin
 
-from libai.config import LazyCall
-from libai.tokenizer import BertTokenizer, build_tokenizer
 
+class BertTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
+    tokenizer_class = BertTokenizer
 
-class TestTokenizer(TestCase):
     def setUp(self):
         super().setUp()
-        self.tmpdirname = tempfile.mkdtemp()
 
         vocab_tokens = [
             "[UNK]",
@@ -45,66 +49,108 @@ class TestTokenizer(TestCase):
             ",",
             "low",
             "lowest",
-            "",
-            "今",
-            "天",
-            "气",
-            "真",
-            "不",
-            "错",
         ]
-        self.vocab_file = os.path.join(self.tmpdirname, "vocab_file.txt")
+        self.vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["vocab_file"])
         with open(self.vocab_file, "w", encoding="utf-8") as vocab_writer:
             vocab_writer.write("".join([x + "\n" for x in vocab_tokens]))
 
-    def test_tokenizer_build_with_register(self):
-        # build_tokenizer for register
-        token_cfg = dict(
-            tokenizer=dict(
-                name="BertTokenizer",
-                vocab_file=self.vocab_file,
-                do_lower_case=True,
-                additional_special_tokens=[
-                    "<special_id_0>",
-                    "<special_id_1>",
-                    "<special_id_2>",
-                    "<special_id_3>",
-                ],
-                # do_chinese_wwm=True,
-            ),
-            append_eod=False,
-            make_vocab_size_divisible_by=128,
+    def get_input_output_texts(self, tokenizer):
+        input_text = "UNwant\u00E9d,running"
+        output_text = "unwanted, running"
+        return input_text, output_text
+
+    def test_full_tokenizer(self):
+        tokenizer = self.tokenizer_class(self.vocab_file)
+
+        tokens = tokenizer.tokenize("UNwant\u00E9d,running")
+        self.assertListEqual(tokens, ["un", "##want", "##ed", ",", "runn", "##ing"])
+        self.assertListEqual(tokenizer.convert_tokens_to_ids(tokens), [9, 6, 7, 12, 10, 11])
+
+    def test_chinese(self):
+        tokenizer = BasicTokenizer()
+
+        self.assertListEqual(
+            tokenizer.tokenize("ah\u535A\u63A8zz"), ["ah", "\u535A", "\u63A8", "zz"]
         )
 
-        register_cfg = DictConfig(token_cfg)
+    def test_basic_tokenizer_lower(self):
+        tokenizer = BasicTokenizer(do_lower_case=True)
 
-        tokenizer = build_tokenizer(register_cfg)
-        self.assertTrue(len(tokenizer) == 22)
-
-    def test_tokenizer_build_with_lazy(self):
-        lazy_cfg = OmegaConf.create()
-        lazy_cfg.tokenizer = LazyCall(BertTokenizer)(
-            vocab_file=self.vocab_file,
-            do_lower_case=True,
+        self.assertListEqual(
+            tokenizer.tokenize(" \tHeLLo!how  \n Are yoU?  "),
+            ["hello", "!", "how", "are", "you", "?"],
         )
-        lazy_cfg.append_eod = False
-        lazy_cfg.make_vocab_size_divisible_by = 1
+        self.assertListEqual(tokenizer.tokenize("H\u00E9llo"), ["hello"])
 
-        tokenizer = build_tokenizer(lazy_cfg)
-        self.assertTrue(len(tokenizer) == 22)
+    def test_basic_tokenizer_no_lower(self):
+        tokenizer = BasicTokenizer(do_lower_case=False)
 
-        inputs = "今天天气真不错"
-        print(tokenizer.tokenize(inputs))
+        self.assertListEqual(
+            tokenizer.tokenize(" \tHeLLo!how  \n Are yoU?  "),
+            ["HeLLo", "!", "how", "Are", "yoU", "?"],
+        )
 
-        tokens = tokenizer.encode(inputs)
-        print(tokens)
+    def test_basic_tokenizer_respects_never_split_tokens(self):
+        tokenizer = BasicTokenizer(do_lower_case=False, never_split=["[UNK]"])
 
-        print(tokenizer.decode(tokens))
+        self.assertListEqual(
+            tokenizer.tokenize(" \tHeLLo!how  \n Are yoU? [UNK]"),
+            ["HeLLo", "!", "how", "Are", "yoU", "?", "[UNK]"],
+        )
 
-        print(tokenizer.vocab_size)
-        print(len(tokenizer))
-        print(tokenizer.additional_special_tokens)
-        print(tokenizer.added_tokens_encoder)
+    def test_wordpiece_tokenizer(self):
+        vocab_tokens = [
+            "[UNK]",
+            "[CLS]",
+            "[SEP]",
+            "want",
+            "##want",
+            "##ed",
+            "wa",
+            "un",
+            "runn",
+            "##ing",
+        ]
+
+        vocab = {}
+        for (i, token) in enumerate(vocab_tokens):
+            vocab[token] = i
+        tokenizer = WordpieceTokenizer(vocab=vocab, unk_token="[UNK]")
+
+        self.assertListEqual(tokenizer.tokenize(""), [])
+
+        self.assertListEqual(
+            tokenizer.tokenize("unwanted running"), ["un", "##want", "##ed", "runn", "##ing"]
+        )
+
+        self.assertListEqual(tokenizer.tokenize("unwantedX running"), ["[UNK]", "runn", "##ing"])
+
+    def test_is_whitespace(self):
+        self.assertTrue(_is_whitespace(" "))
+        self.assertTrue(_is_whitespace("\t"))
+        self.assertTrue(_is_whitespace("\r"))
+        self.assertTrue(_is_whitespace("\n"))
+        self.assertTrue(_is_whitespace("\u00A0"))
+
+        self.assertFalse(_is_whitespace("A"))
+        self.assertFalse(_is_whitespace("-"))
+
+    def test_is_control(self):
+        self.assertTrue(_is_control("\u0005"))
+
+        self.assertFalse(_is_control("A"))
+        self.assertFalse(_is_control(" "))
+        self.assertFalse(_is_control("\t"))
+        self.assertFalse(_is_control("\r"))
+
+    def test_is_punctuation(self):
+        self.assertTrue(_is_punctuation("-"))
+        self.assertTrue(_is_punctuation("$"))
+        self.assertTrue(_is_punctuation("`"))
+        self.assertTrue(_is_punctuation("."))
+
+        self.assertFalse(_is_punctuation("A"))
+        self.assertFalse(_is_punctuation(" "))
 
 
 if __name__ == "__main__":

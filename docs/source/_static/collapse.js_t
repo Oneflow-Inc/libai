@@ -1,8 +1,0 @@
-$(document).ready(function()
-   {
-	   $(".toc-tree ul li ul li ul").hide();
-	   $(".toc-tree ul li ul li").click(function()
-	   {
-           $(".toc-tree ul li ul li ul").toggle();
-	   });
-   });

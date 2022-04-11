@@ -14,26 +14,13 @@
 # limitations under the License.
 
 from libai.config import instantiate, try_get_key
-from libai.utils.registry import Registry
-
-MODEL_ARCH_REGISTRY = Registry("model_arch")
-MODEL_ARCH_REGISTRY.__doc__ = """
-Registry for modeling, i.e. Bert or GPT model.
-
-The registered object will be called with `obj(cfg)`
-and expected to return a `nn.Module` object.
-"""
 
 
 def build_model(cfg):
-    """Build the whole model architecture, defined by ``cfg.model.model_name``.
+    """Build the whole model architecture, defined by ``cfg.model``.
     Note that is does not load any weights from ``cfg``.
     """
-    if "_target_" in cfg:  # LazyCall
-        model = instantiate(cfg)
-    else:
-        model_name = cfg.model_name
-        model = MODEL_ARCH_REGISTRY.get(model_name)(cfg.model_cfg)
+    model = instantiate(cfg)
     return model
 
 
@@ -48,7 +35,9 @@ def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
         graph.optimizer = optimizer
         graph.lr_scheduler = lr_scheduler
         graph.fp16 = try_get_key(cfg, "train.amp.enabled", default=False)
-        graph.recompute_grad = try_get_key(cfg, "train.recompute_grad.enabled", default=False)
+        graph.activation_checkpoint = try_get_key(
+            cfg, "train.activation_checkpoint.enabled", default=False
+        )
         graph.zero_optim = try_get_key(cfg, "train.zero_optimization.enabled", default=False)
         graph.zero_stage = try_get_key(cfg, "train.zero_optimization.stage", default=1)
         graph.grad_acc_steps = try_get_key(cfg, "train.num_accumulation_steps", default=1)

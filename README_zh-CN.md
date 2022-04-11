@@ -2,9 +2,6 @@
 
 <h2 align="center">LiBai</h2>
 <p align="center">
-    <a href="https://pypi.org/project/LiBai/">
-        <img alt="PyPI" src="https://img.shields.io/pypi/v/libai">
-    </a>
     <a href="https://libai.readthedocs.io/en/latest/index.html">
         <img alt="docs" src="https://img.shields.io/badge/docs-latest-blue">
     </a>
@@ -16,6 +13,12 @@
     </a>
     <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-pink.svg">
+    </a>
+    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+        <img alt="Python Checks" src="https://github.com/Oneflow-Inc/libai/workflows/Python checks/badge.svg">
+    </a>
+    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+        <img alt="Docs Release Status" src="https://github.com/Oneflow-Inc/libai/workflows/Document Release/badge.svg">
     </a>
 </p>
 
@@ -52,19 +55,41 @@ LiBai是一个基于OneFlow的大规模模型训练开源工具箱，主分支�
 </details>
 
 ## 安装
-请参考[LiBai安装文档](https://libai.readthedocs.io/en/latest/tutorials/Installation.html)进行安装。
+请参考[LiBai安装文档](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html)进行安装。
 
 ## 快速入门
-请参考[快速入门文档](https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html)了解和学习LiBai的基本使用，后续我们将提供丰富的教程与完整的使用指南。
+请参考[快速入门文档](https://libai.readthedocs.io/en/latest/tutorials/get_started/quick_run.html)了解和学习LiBai的基本使用，后续我们将提供丰富的教程与完整的使用指南。
 
 ## 使用文档
 请参考[LiBai使用文档](https://libai.readthedocs.io/en/latest/index.html)了解LiBai中相关接口的使用。
 
 ## 更新日志
 
-最新的**Beta 0.1.0**版本已经在 2022.02.15 发布：
-- 支持2D并行ViT模型在ImageNet上的完整训练
-- 支持3D并行的BERT模型预训练
+最新的 **Beta 0.1.0** 版本已经在 2022.03.22 发布, 目前 **0.1.0** 版本主要支持以下特性及模型:
+
+**相关特性:**
+- 数据并行 (Data Parallelism)
+- 1维张量并行 (1D Tensor Parallelism)
+- 流水并行 (Pipeline Parallelism)
+- 单卡和多卡统一的分布式神经网络层 (Unified Distributed Layers)
+- 可灵活扩展新的并行方式 (Extensible for new parallelism)
+- 混合精度训练 (Mixed Precision Training)
+- 后向重计算 (Activation Checkpointing)
+- 梯度累加 (Gradient Accumulation)
+- 梯度裁剪 (Gradient Clip)
+- 零冗余优化器 (ZeRO)
+- 更灵活的 `LazyConfig` 配置系统
+- 易于使用的 `Trainer` 和 `Evaluator`
+- 同时支持图像和文本的数据预处理
+
+**支持的模型:**
+- 支持3D并行的[BERT](https://arxiv.org/abs/1810.04805)模型
+- 支持3D并行的[GPT-2](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)模型
+- 支持3D并行的[T5](https://arxiv.org/abs/1910.10683)模型
+- 支持3D并行的[Vision Transformer](https://arxiv.org/abs/2010.11929)模型
+- 支持数据并行的[Swin Transformer](https://arxiv.org/abs/2103.14030)模型
+- 在[QQP project](/projects/QQP/)中支持相关的finetune任务
+- 在[text classification project](/projects/text_classification/)中支持文本分类任务
 
 历史版本的发布与更新细节请参考[更新日志](./changelog.md)。
 

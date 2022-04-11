@@ -26,7 +26,6 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
-from libai.models.build import MODEL_ARCH_REGISTRY
 from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
@@ -71,23 +70,47 @@ class CasualMask(nn.Module):
 class GPTModel(nn.Module):
     """GPT-2 language model. The output of the forward method is logits.
 
-    Arguments:
-        num_layers: number of layers.
-        vocab_size: size of vocabulary.
-        hidden_size: size of hidden state.
-        num_attention_heads: number of attention heads.
-        max_seq_length: maximum size of sequence, which is used for positional embedding.
-        embedding_dropout_prob: dropout probability of embedding.
-        attention_dropout_prob: dropout probability of attention weights.
-        output_dropout_prob: dropout probability of output.
-        layernorm_epsilon: epsilon used in layernorm.
-        enable_amp: whether apply auto mixed precision (amp).
-        checkpoint_activations: if `true`, checkpoint activations.
-        use_scaled_init_for_output_weights:
-            If `true`, use 1 / sqrt(2 * num_layers) scaling for the output weights.
-        apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
-        bias_gelu_fusion: whether fuse add bias and gelu.
-        bias_dropout_fusion: whether fuse add bias and dropout.
+    Args:
+        num_layers (int): The number of ``TransformerLayer`` in the gpt model.
+        vocab_size (int): The size of vocabulary file.
+        hidden_size (int): The size of hidden states.
+        ffn_hidden_size (int):
+            The size of intermediate layer in feed-forward network for each ``TransformerLayer``.
+        num_attention_heads (int):
+            The number of attention heads for each attention layer of ``TransformerLayer``.
+        max_seq_length (int, optional):
+            Max sequence length of input, defines the shape of Position Embeddings in GPTEmebedding.
+            Defaults to 1024.
+        embedding_dropout_prob (float, optional):
+            The dropout ratio for the output of GPTEmbedding Layer. Defaults to 0.0.
+        attention_dropout_prob (float, optional):
+            The dropout ratio for the output of each attention layer in ``TransformerLayer``.
+            Defaults to 0.0.
+        output_dropout_prob (float, optional):
+            The dropout ratio for the output for each TransformerLayer. Defaults to 0.0.
+        layernorm_epsilon (float, optional):
+            The epsilon of LayerNorm layer. Defaults to 1e-5.
+        initializer_range (float, optional):
+            Sigma of the normal distribution in the initialization method. Defaults to 0.02.
+        use_scaled_init_for_output_weights (bool, optional): Defaults to ``True``.
+        bias_gelu_fusion (bool, optional):
+            Whether or not to fuse the computing of bias and gelu. Defaults to ``False``.
+        bias_dropout_fusion (bool, optional):
+            Whether or not to fuse the computing of dropout and bias. Defaults to ``False``.
+        scale_mask_softmax_fusion (bool, optional):
+            Whether to fuse the computing of mask and softmax in attention layers.
+            Defaults to ``False``.
+        apply_query_key_layer_scaling (bool, optional):
+            Whether or not to use layer index related scaling in computing attention scores.
+            If ``True``, the scaling factor equals to sqrt(d) * (layer_index + 1).
+            Defaults to ``False``.
+        apply_residual_post_layernorm (bool, optional):
+            If set ``True``, use original BERT residual connection ordering otherwise use Megatron
+            BERT residual connection which is more stable when scaling model size introduced in
+            https://arxiv.org/pdf/1909.08053.pdf.
+            Default: ``False``.
+        amp_enabled (bool, optional):
+            Whether or not to set fp16 for embedding weight in T5 model. Defaults to ``False``.
     """
 
     @configurable
@@ -109,6 +132,8 @@ class GPTModel(nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
+        apply_residual_post_layernorm=False,
+        amp_enabled=False,
     ):
         super().__init__()
         init_method = init_method_normal(sigma=initializer_range)
@@ -123,6 +148,7 @@ class GPTModel(nn.Module):
             max_seq_length,
             init_method=init_method,
             embedding_dropout_prob=embedding_dropout_prob,
+            amp_enabled=amp_enabled,
         )
 
         self.casual_mask = CasualMask()
@@ -141,6 +167,7 @@ class GPTModel(nn.Module):
             bias_dropout_fusion=bias_dropout_fusion,
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+            apply_residual_post_layernorm=apply_residual_post_layernorm,
         )
 
         self.lm_head = LMLogits(vocab_size, bias=False)
@@ -164,9 +191,19 @@ class GPTModel(nn.Module):
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
+            "amp_enabled": cfg.amp_enabled,
         }
 
     def forward(self, input_ids):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+
+        Returns:
+            flow.Tensor: logits
+        """
 
         input_embeds = self.embeddings(input_ids, 0)
 
@@ -186,10 +223,15 @@ class GPTEmbedding(nn.Module):
         max_seq_length,
         init_method=init.xavier_normal_,
         embedding_dropout_prob=0.0,
+        amp_enabled=False,
     ):
         super().__init__()
-        self.token_embeddings = VocabEmbedding(vocab_size, hidden_size, init_method=init_method)
-        self.position_embeddings = Embedding(max_seq_length, hidden_size, init_method=init_method)
+        self.token_embeddings = VocabEmbedding(
+            vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled
+        )
+        self.position_embeddings = Embedding(
+            max_seq_length, hidden_size, init_method=init_method, amp_enabled=amp_enabled
+        )
         self.dropout = nn.Dropout(embedding_dropout_prob)
 
         self.position_ids = flow.arange(
@@ -228,6 +270,7 @@ class Transformer(nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
+        apply_residual_post_layernorm=False,
     ):
         super().__init__()
         self.num_layers = num_layers
@@ -246,6 +289,7 @@ class Transformer(nn.Module):
                 bias_dropout_fusion=bias_dropout_fusion,
                 scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                 apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+                apply_residual_post_layernorm=apply_residual_post_layernorm,
                 layer_idx=layer_number,
             )
 
@@ -274,8 +318,11 @@ class GPTLoss(nn.Module):
         return {"lm_loss": lm_loss}
 
 
-@MODEL_ARCH_REGISTRY.register()
 class GPTForPreTraining(nn.Module):
+    """
+    GPT Model with classification head on top.
+    """
+
     def __init__(self, cfg) -> None:
         super().__init__()
         self.GPT_model = GPTModel(cfg)
@@ -286,9 +333,37 @@ class GPTForPreTraining(nn.Module):
         input_ids,
         labels=None,
     ):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            labels (flow.LongTensor, optional): Labels for computing language modeling loss.
+                None for evaluating. Defaults to None.
+
+        Returns:
+            dict:
+                A dict containing :code:`loss_value` or :code:`logits`
+                depending on training or evaluation.
+                :code:`{"masked_lm_loss": loss_value}` when training,
+                :code:`{"prediction_scores": logits}` when evaluating.
+        """
         logits = self.GPT_model(input_ids)
-        if self.training and labels is not None:
+        if labels is not None:
             lm_loss = self.loss_func(logits, labels)
             return lm_loss
         else:
             return {"prediction_scores": logits}
+
+    @staticmethod
+    def set_pipeline_stage_id(model: nn.Module):
+        dist_utils = dist.get_dist_util()
+
+        for module_block in model.modules():
+            if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+            elif isinstance(module_block.origin, (LMLogits, GPTLoss)):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+        model.GPT_model.transformer.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(-1)

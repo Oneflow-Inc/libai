@@ -22,9 +22,9 @@ from omegaconf import OmegaConf
 
 from libai.config import LazyCall, default_argument_parser
 from libai.data.build import build_nlp_test_loader, build_nlp_train_val_test_loader
+from libai.engine import DefaultTrainer, default_setup
 from libai.optim import get_default_optimizer_params
 from libai.scheduler import WarmupMultiStepLR
-from libai.trainer import DefaultTrainer, default_setup
 from tests.data.datasets.demo_dataset import DemoNlpDataset
 from tests.layers.test_evaluator_model import GraphModel, build_model
 

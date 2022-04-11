@@ -1,19 +1,12 @@
+## Read LiBai Documentation
+The latest documentation built from this directory is available at [libai.readthedocs.io](https://libai.readthedocs.io/).
 
-## Steps for Build Docs
 
-Before generating the doc, you need to install libai by:
-
-```bash
-cd ${libai-path}
-pip install -e .
-```
-
-Then build docs by:
-
+## Build LiBai Documentation
+1. Install LiBai according to [Installation](https://libai.readthedocs.io/en/latest/tutorials/Installation.html).
+2. Install additional libraries and run `make html` for building the docs:
 ```bash
 cd ${libai-path}/docs
 pip install -r requirements.txt --user
 make html
 ```
-
-
