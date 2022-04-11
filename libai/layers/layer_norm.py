@@ -57,7 +57,7 @@ class LayerNorm(nn.Module):
                     dtype=flow.float32,
                     placement=dist.get_layer_placement(layer_idx),
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                )
+                ), requires_grad=False
             )
         else:
             self.weight = None
