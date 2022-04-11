@@ -9,10 +9,10 @@ PORT=${PORT:-12345}
 DATA_PATH="data"
 
 if [ ! -d "$DATA_PATH" ]; then
-    wget http://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/projects/simcse/data.zip
+    wget http://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/SimCSE/data.zip
     unzip data.zip
-    wget https://huggingface.co/bert-base-chinese/resolve/main/vocab.txt -P ./data
-    wget https://huggingface.co/bert-base-chinese/resolve/main/pytorch_model.bin -P ./data
+    wget https://huggingface.co/bert-base-chinese/resolve/main/vocab.txt -P ./data/
+    wget https://huggingface.co/bert-base-chinese/resolve/main/pytorch_model.bin -P ./data/
 fi
 
 python3 -m oneflow.distributed.launch \
