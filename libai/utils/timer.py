@@ -13,13 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 from time import perf_counter
 from numpy import mean
 from typing import Optional
 
-import oneflow as flow
-from libai.utils import distributed as dist
+
 class Timer:
     """
     A timer which computes the time elapsed since the start/reset of the timer.
