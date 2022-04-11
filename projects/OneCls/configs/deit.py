@@ -52,3 +52,6 @@ train.scheduler.warmup_method = "linear"
 
 # Set fp16 ON
 train.amp.enabled = True
+
+# Set checkpointing on
+train.activation_checkpoint.enabled = True
