@@ -81,13 +81,14 @@ class Simcse_sup(nn.Module):
             
             labels = np.arange(out.size(0))
             use_row = np.where((labels + 1) % 3 != 0)[0]
+            use_row = flow.tensor(use_row, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=out.placement)
             labels = (use_row - use_row % 3 * 2) + 1
             labels = flow.tensor(labels, dtype=flow.long, sbp=out.sbp, placement=out.placement)
-            use_row = use_row.tolist()
             
             sim = cosine_similarity(out.unsqueeze(1), out.unsqueeze(0))
             sim = sim - flow.eye(out.size(0), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=out.placement) * 1e12
-            sim = sim[use_row, :]
+            
+            sim = flow.index_select(sim, 0, use_row)
             sim = sim / 0.05
             
             loss = nn.CrossEntropyLoss()(sim, labels)

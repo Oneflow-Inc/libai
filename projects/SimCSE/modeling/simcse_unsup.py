@@ -80,8 +80,10 @@ class Simcse_unsup(nn.Module):
             out = self.bert(input_ids, attention_mask)
             out = self.pooler(out, attention_mask)
             out = self.mlp(out)
-            labels = flow.arange(out.size(0), sbp=out.sbp, placement=out.placement)
+            labels = np.arange(out.size(0))
+            # labels = flow.arange(out.size(0), sbp=out.sbp, placement=out.placement)
             labels = (labels - labels % 2 * 2) + 1
+            labels = flow.tensor(labels, sbp=out.sbp, placement=out.placement)
             sim = cosine_similarity(out.unsqueeze(1), out.unsqueeze(0))
             sim = sim - flow.eye(out.size(0), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=out.placement) * 1e12
             sim = sim / 0.05

@@ -7,7 +7,7 @@ SimCSE is a sentence representation learning method, in which there are two trai
 - Official GitHub: https://github.com/princeton-nlp/SimCSE
 
 ## Evaluation(single GPU)
-Dataset: SNLI+STS
+Dataset: SNLI+STS, lr=3e-5, batch_size=64
 |      Unsupervised-Model        |STS-B dev |STS-B test|Pool type |
 |:-------------------------------|:--------:|:--------:|:--------:|
 |unsup-simcse-bert-base-chinese  |74.64     |68.15     |cls           |
@@ -15,7 +15,7 @@ Dataset: SNLI+STS
 |unsup-simcse-bert-base-chinese  |64.33     |54.82     |pooled        |
 |unsup-simcse-bert-base-chinese  |74.32     |67.55     |first-last-avg|
 
-Dataset: SNLI
+Dataset: SNLI, lr=1e-5, batch_size=64
 |       Supervised-Model         |STS-B dev |STS-B test|Pool type |
 |:-------------------------------|:--------:|:--------:|:--------:|
 |unsup-simcse-bert-base-chinese  |80.93     |77.24     |cls         |
