@@ -38,7 +38,7 @@ def get_batch(cls, data, mixup_func = None):
 
 ## Use Custom Dataloader
 
-If you use `DefaultTrainer`, you can overwrite its `build_train_loader` method to use your own dataloader which can be implemented with any tools you like. But you need to handle data read of different ranks under different parallelisms properly.
+If you use `DefaultTrainer`, you can overwrite its `build_train_loader` method to use your own dataloader which can be implemented with any tools you like. But you need to make sure that each rank is reading the data correctly under different parallelism circumstances.
 
 Then you need to overwrite `get_batch` method. `data` argument in `get_batch` is the output of your dataloader. You need to change the local tensors to global tensors manually, which means you should set the `sbp` and `placement` correctly.
 
@@ -49,6 +49,7 @@ Here is an example. Process of rank0 gets all data and redistributes them into t
 def get_batch(cls, data, mixup_func=None):
     if data is None: 
         # not rank0, set placeholders for data
+        # Note: make sure imgs and labels have the same shape and dtype on all ranks
         imgs = flow.empty(16, 3, 224, 224, dtype=flow.float32)
         labels = flow.empty(16, dtype=flow.int64)
     else: 
