@@ -6,8 +6,8 @@ import oneflow as flow
 import oneflow.nn.functional as F
 import oneflow.nn as nn
 
-from util import box_ops
-from util.misc import (NestedTensor, nested_tensor_from_tensor_list,
+from utils import box_ops
+from utils.misc import (NestedTensor, nested_tensor_from_tensor_list,
                        accuracy, get_world_size, interpolate,
                        is_dist_avail_and_initialized)
 

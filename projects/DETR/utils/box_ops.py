@@ -3,7 +3,7 @@
 Utilities for bounding box manipulation and GIoU.
 """
 import oneflow as flow
-from flowvision.ops.boxes import box_area
+# from flowvision.ops.boxes import box_area
 
 
 def box_cxcywh_to_xyxy(x):

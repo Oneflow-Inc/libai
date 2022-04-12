@@ -28,7 +28,7 @@ import math
 import oneflow as flow
 import oneflow.nn as nn
 
-from util.misc import NestedTensor
+from utils.misc import NestedTensor
 
 
 class PositionEmbeddingSine(nn.Module):

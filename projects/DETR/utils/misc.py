@@ -2,7 +2,7 @@
 """
 Misc functions, including distributed helpers.
 
-Mostly copy-paste from torchvision references.
+Mostly copy-paste from flowvision references.
 """
 import os
 import subprocess
@@ -49,7 +49,7 @@ class SmoothedValue(object):
         """
         if not is_dist_avail_and_initialized():
             return
-        t = torch.tensor([self.count, self.total], dtype=torch.float64, device='cuda')
+        t = flow.tensor([self.count, self.total], dtype=flow.float64, device='cuda')
         dist.barrier()
         dist.all_reduce(t)
         t = t.tolist()
@@ -58,12 +58,12 @@ class SmoothedValue(object):
 
     @property
     def median(self):
-        d = torch.tensor(list(self.deque))
+        d = flow.tensor(list(self.deque))
         return d.median().item()
 
     @property
     def avg(self):
-        d = torch.tensor(list(self.deque), dtype=torch.float32)
+        d = flow.tensor(list(self.deque), dtype=flow.float32)
         return d.mean().item()
 
     @property
@@ -101,25 +101,25 @@ def all_gather(data):
 
     # serialized to a Tensor
     buffer = pickle.dumps(data)
-    storage = torch.ByteStorage.from_buffer(buffer)
-    tensor = torch.ByteTensor(storage).to("cuda")
+    storage = flow.ByteStorage.from_buffer(buffer)
+    tensor = flow.ByteTensor(storage).to("cuda")
 
     # obtain Tensor size of each rank
-    local_size = torch.tensor([tensor.numel()], device="cuda")
-    size_list = [torch.tensor([0], device="cuda") for _ in range(world_size)]
+    local_size = flow.tensor([tensor.numel()], device="cuda")
+    size_list = [flow.tensor([0], device="cuda") for _ in range(world_size)]
     dist.all_gather(size_list, local_size)
     size_list = [int(size.item()) for size in size_list]
     max_size = max(size_list)
 
     # receiving Tensor from all ranks
-    # we pad the tensor because torch all_gather does not support
+    # we pad the tensor because flow all_gather does not support
     # gathering tensors of different shapes
     tensor_list = []
     for _ in size_list:
-        tensor_list.append(torch.empty((max_size,), dtype=torch.uint8, device="cuda"))
+        tensor_list.append(flow.empty((max_size,), dtype=flow.uint8, device="cuda"))
     if local_size != max_size:
-        padding = torch.empty(size=(max_size - local_size,), dtype=torch.uint8, device="cuda")
-        tensor = torch.cat((tensor, padding), dim=0)
+        padding = flow.empty(size=(max_size - local_size,), dtype=flow.uint8, device="cuda")
+        tensor = flow.cat((tensor, padding), dim=0)
     dist.all_gather(tensor_list, tensor)
 
     data_list = []
@@ -142,14 +142,14 @@ def reduce_dict(input_dict, average=True):
     world_size = get_world_size()
     if world_size < 2:
         return input_dict
-    with torch.no_grad():
+    with flow.no_grad():
         names = []
         values = []
         # sort the keys so that they are consistent across processes
         for k in sorted(input_dict.keys()):
             names.append(k)
             values.append(input_dict[k])
-        values = torch.stack(values, dim=0)
+        values = flow.stack(values, dim=0)
         dist.all_reduce(values)
         if average:
             values /= world_size
@@ -164,7 +164,7 @@ class MetricLogger(object):
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
-            if isinstance(v, torch.Tensor):
+            if isinstance(v, flow.Tensor):
                 v = v.item()
             assert isinstance(v, (float, int))
             self.meters[k].update(v)
@@ -201,7 +201,7 @@ class MetricLogger(object):
         iter_time = SmoothedValue(fmt='{avg:.4f}')
         data_time = SmoothedValue(fmt='{avg:.4f}')
         space_fmt = ':' + str(len(str(len(iterable)))) + 'd'
-        if torch.cuda.is_available():
+        if flow.cuda.is_available():
             log_msg = self.delimiter.join([
                 header,
                 '[{0' + space_fmt + '}/{1}]',
@@ -228,12 +228,12 @@ class MetricLogger(object):
             if i % print_freq == 0 or i == len(iterable) - 1:
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
-                if torch.cuda.is_available():
+                if flow.cuda.is_available():
                     print(log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time),
-                        memory=torch.cuda.max_memory_allocated() / MB))
+                        memory=flow.cuda.max_memory_allocated() / MB))
                 else:
                     print(log_msg.format(
                         i, len(iterable), eta=eta_string,
@@ -308,7 +308,7 @@ class NestedTensor(object):
 def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
     # TODO make this more general
     if tensor_list[0].ndim == 3:
-        if torchvision._is_tracing():
+        if flowvision._is_tracing():
             # nested_tensor_from_tensor_list() does not export well to ONNX
             # call _onnx_nested_tensor_from_tensor_list() instead
             return _onnx_nested_tensor_from_tensor_list(tensor_list)
@@ -320,8 +320,8 @@ def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
         b, c, h, w = batch_shape
         dtype = tensor_list[0].dtype
         device = tensor_list[0].device
-        tensor = torch.zeros(batch_shape, dtype=dtype, device=device)
-        mask = torch.ones((b, h, w), dtype=torch.bool, device=device)
+        tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
+        mask = flow.ones((b, h, w), dtype=flow.bool, device=device)
         for img, pad_img, m in zip(tensor_list, tensor, mask):
             pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
             m[: img.shape[1], :img.shape[2]] = False
@@ -332,11 +332,12 @@ def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
 
 # _onnx_nested_tensor_from_tensor_list() is an implementation of
 # nested_tensor_from_tensor_list() that is supported by ONNX tracing.
-@torch.jit.unused
+
+# @flow.jit.unused
 def _onnx_nested_tensor_from_tensor_list(tensor_list: List[Tensor]) -> NestedTensor:
     max_size = []
     for i in range(tensor_list[0].dim()):
-        max_size_i = torch.max(torch.stack([img.shape[i] for img in tensor_list]).to(torch.float32)).to(torch.int64)
+        max_size_i = flow.max(flow.stack([img.shape[i] for img in tensor_list]).to(flow.float32)).to(flow.int64)
         max_size.append(max_size_i)
     max_size = tuple(max_size)
 
@@ -348,15 +349,15 @@ def _onnx_nested_tensor_from_tensor_list(tensor_list: List[Tensor]) -> NestedTen
     padded_masks = []
     for img in tensor_list:
         padding = [(s1 - s2) for s1, s2 in zip(max_size, tuple(img.shape))]
-        padded_img = torch.nn.functional.pad(img, (0, padding[2], 0, padding[1], 0, padding[0]))
+        padded_img = flow.nn.functional.pad(img, (0, padding[2], 0, padding[1], 0, padding[0]))
         padded_imgs.append(padded_img)
 
-        m = torch.zeros_like(img[0], dtype=torch.int, device=img.device)
-        padded_mask = torch.nn.functional.pad(m, (0, padding[2], 0, padding[1]), "constant", 1)
-        padded_masks.append(padded_mask.to(torch.bool))
+        m = flow.zeros_like(img[0], dtype=flow.int, device=img.device)
+        padded_mask = flow.nn.functional.pad(m, (0, padding[2], 0, padding[1]), "constant", 1)
+        padded_masks.append(padded_mask.to(flow.bool))
 
-    tensor = torch.stack(padded_imgs)
-    mask = torch.stack(padded_masks)
+    tensor = flow.stack(padded_imgs)
+    mask = flow.stack(padded_masks)
 
     return NestedTensor(tensor, mask=mask)
 
@@ -402,7 +403,7 @@ def is_main_process():
 
 def save_on_master(*args, **kwargs):
     if is_main_process():
-        torch.save(*args, **kwargs)
+        flow.save(*args, **kwargs)
 
 
 def init_distributed_mode(args):
@@ -412,7 +413,7 @@ def init_distributed_mode(args):
         args.gpu = int(os.environ['LOCAL_RANK'])
     elif 'SLURM_PROCID' in os.environ:
         args.rank = int(os.environ['SLURM_PROCID'])
-        args.gpu = args.rank % torch.cuda.device_count()
+        args.gpu = args.rank % flow.cuda.device_count()
     else:
         print('Not using distributed mode')
         args.distributed = False
@@ -420,21 +421,21 @@ def init_distributed_mode(args):
 
     args.distributed = True
 
-    torch.cuda.set_device(args.gpu)
+    flow.cuda.set_device(args.gpu)
     args.dist_backend = 'nccl'
     print('| distributed init (rank {}): {}'.format(
         args.rank, args.dist_url), flush=True)
-    torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
+    flow.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                          world_size=args.world_size, rank=args.rank)
-    torch.distributed.barrier()
+    flow.distributed.barrier()
     setup_for_distributed(args.rank == 0)
 
 
-@torch.no_grad()
+@flow.no_grad()
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
     if target.numel() == 0:
-        return [torch.zeros([], device=output.device)]
+        return [flow.zeros([], device=output.device)]
     maxk = max(topk)
     batch_size = target.size(0)
 
@@ -453,12 +454,12 @@ def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corne
     # type: (Tensor, Optional[List[int]], Optional[float], str, Optional[bool]) -> Tensor
     """
     Equivalent to nn.functional.interpolate, but with support for empty batch sizes.
-    This will eventually be supported natively by PyTorch, and this
+    This will eventually be supported natively by Pyflow, and this
     class can go away.
     """
-    if version.parse(torchvision.__version__) < version.parse('0.7'):
+    if version.parse(flowvision.__version__) < version.parse('0.7'):
         if input.numel() > 0:
-            return torch.nn.functional.interpolate(
+            return flow.nn.functional.interpolate(
                 input, size, scale_factor, mode, align_corners
             )
 
@@ -466,4 +467,4 @@ def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corne
         output_shape = list(input.shape[:-2]) + list(output_shape)
         return _new_empty_tensor(input, output_shape)
     else:
-        return torchvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)
+        return flowvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)

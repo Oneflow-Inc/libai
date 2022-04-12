@@ -27,9 +27,9 @@ import oneflow as flow
 import oneflow.nn as nn 
 import oneflow.nn.functional as F
 import flowvision
-from flowvision.models._utils import IntermediateLayerGetter
+# from flowvision.models._utils import IntermediateLayerGetter
 
-from projects.DETR.utils.box_ops import NestedTensor, is_main_process
+from utils.misc import NestedTensor
 
 from .position_encoding import build_position_encoding
 
