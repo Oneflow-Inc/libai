@@ -1,5 +1,5 @@
 # How to build vision transformer model in LiBai
-It's easy for the users to use libai's built-in layers, e.g., [libai.layers](https://libai.readthedocs.io/en/latest/modules/libai.layers.html), to build the `transformer-based` models. Let's take a deep look into the process of building vision transformer model in LiBai.
+It's easy for users to build the `transformer-based` models by using the libai's built-in [layers](https://libai.readthedocs.io/en/latest/modules/libai.layers.html). Let's take a deep dive into the building process of vision transformer model in LiBai.
 
 ## Model Architecture
 **Vision Transformer** was released with paper [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929) by Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, Neil Houlsby.
@@ -9,7 +9,7 @@ It's easy for the users to use libai's built-in layers, e.g., [libai.layers](htt
 ![](./assets/vision_transformer.png)
 
 ## A simple torch implementation of Vision Transformer
-Let's take a look at the pytorch implementation of ViT models, this code is modified from [timm.models.vision_transformer](https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py):
+The following code shows the pytorch implementation of ViT models which is modified from [timm.models.vision_transformer](https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py):
 
 ```python
 import torch
@@ -182,14 +182,14 @@ class VisionTransformer(nn.Module):
         x = self.forward_head(x)
         return x
 ```
-We further decoupled the forward function into `forward_features` and `forward_head`:
+We have further decoupled the forward function into `forward_features` and `forward_head`:
 - `forward_features`: extract the image features using `patch_embed` layer and a stack of `transformer` block
 - `forward_head`: take the `cls_token` of each sample and use `nn.Linear` for classification
 
 ## Implement 3D parallel Vision Transformer in LiBai
 In this section, we will show users how to use [libai.layers](https://libai.readthedocs.io/en/latest/modules/libai.layers.html) to build 3D parallel Vision Transformer model with only 100+ lines of code, which is modified from [libai.models.vision_transformer](https://github.com/Oneflow-Inc/libai/blob/main/libai/models/vision_transformer.py)
 
-Here is the LiBai implementation of Vision Transformer models, users only need to replace the pytorch modules with libai.layers as follows:
+Here is the LiBai implementation of Vision Transformer models, users only need to replace the pytorch modules with the corresponding `libai.layers` as follows:
 
 ```python
 # LiBai's implementation of Vision Transformer
@@ -356,7 +356,7 @@ LiBai has already implemented `PatchEmbedding`, `TransformerLayer`, `Linear`, `L
 
 **2. Manually set the sbp signature of `cls_token` and `pos_embed`**
 
-In order to fit different parallel mode in LiBai, users need to manually set the **sbp signature** of the layers built with `nn.Parameter` which are not implemented in LiBai, like `cls_token` and `pos_embed` in Vision Transformer:
+In order to fit different parallel mode in LiBai, users must manually set the **sbp signature** for all the parameters and buffers of those layers not implemented in LiBai, like `cls_token` and `pos_embed` in Vision Transformer:
 ```python
 import oneflow as flow
 import oneflow.nn as nn
@@ -376,7 +376,7 @@ self.pos_embed = nn.Parameter(
         placement=dist.get_layer_placement(0),)
 )
 ```
-- use `dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])` to make the `cls_token` and `pos_embed` broadcast in each GPU groups.
+- The sbp signature returned by `dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])` means to broadcast `cls_token` and `pos_embed` across each GPU groups.
 
 **3. Use `to_global()` function to update the sbp signature of `cls_token` and `pos_embed` during forward function**
 
