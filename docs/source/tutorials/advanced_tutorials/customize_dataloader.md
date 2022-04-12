@@ -1,6 +1,6 @@
 # How to Customize Dataloader
 
-Dataloader is the component that provides data to models. Dataloader usually (but not necessarily) takes raw information from [datasets](https://libai.readthedocs.io/en/latest/tutorials/basics/Write_Dataloaders.html), and processes them into the format needed by the model.
+Dataloader is the component that provides data to models. Dataloader usually (but not necessarily) takes raw information from [write dataloaders](https://libai.readthedocs.io/en/latest/tutorials/basics/Write_Dataloaders.html), and processes them into the format needed by the model.
 
 ## How the Existing Dataloader Works 
 
@@ -10,7 +10,7 @@ LiBai provides some functions [build_{image,nlp}_{train,test}_loader](https://li
 
 1. It instantiates the `list[flow.utils.Dataset]` (e.g., `BertDataset`) by loading some dataset items with lightweight format. These dataset items are not yet ready to be used by the model (e.g., images are not loaded into memory, random augmentation have not been applied, etc.). 
 
-2. The output format of dataset (`__getitem__(...)`) must be a dict whose keys must be consistent with argument names of the dataloader's consumer (usually the `model.forward(...)`). The role of the process is to transform the lightweight representation of a dataset item into a format that is ready for the model to consume (including, e.g., read images, perform random data augmentation and convert to oneflow Tensors). If you would like to perform custom transformations to data, you often want to rewrite it. Details about the dataset format can be found in [datasets](https://libai.readthedocs.io/en/latest/tutorials/basics/Write_Dataloaders.html).
+2. The output format of dataset (`__getitem__(...)`) must be a dict whose keys must be consistent with argument names of the dataloader's consumer (usually the `model.forward(...)`). The role of the process is to transform the lightweight representation of a dataset item into a format that is ready for the model to consume (including, e.g., read images, perform random data augmentation and convert to oneflow Tensors). If you would like to perform custom transformations to data, you often want to rewrite it. Details about the dataset format can be found in [write dataloaders](https://libai.readthedocs.io/en/latest/tutorials/basics/Write_Dataloaders.html).
 
 3. The outputs of the dataset are simply batched with the following function.
 
