@@ -5,14 +5,12 @@ from configs.common.models.bert import cfg as simcse_cfg
 from configs.common.models.graph import graph
 from configs.common.optim import optim
 from configs.common.train import train
-
-from libai.scheduler import WarmupExponentialLR
 from libai.config import LazyCall
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
+from libai.scheduler import WarmupExponentialLR
 from libai.tokenizer import BertTokenizer
-
+from projects.SimCSE.dataset.dataset import TestDataset, TrainDataset
 from projects.SimCSE.evaluator import SimcseEvaluator
-from projects.SimCSE.dataset.dataset import TrainDataset, TestDataset
 from projects.SimCSE.modeling.simcse_unsup import Simcse_unsup
 
 optim["lr"] = 3e-5
@@ -28,11 +26,9 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
         LazyCall(TrainDataset)(
             name="snli-unsup",
             path="./data/SNLI/train.txt",
-            tokenizer=LazyCall(BertTokenizer)(
-                vocab_file="./data/vocab.txt"
-            ),
+            tokenizer=LazyCall(BertTokenizer)(vocab_file="./data/vocab.txt"),
             max_len=64,
-            path2="./data/STS/cnsd-sts-train.txt"
+            path2="./data/STS/cnsd-sts-train.txt",
         )
     ],
 )
@@ -42,9 +38,7 @@ dataloader.test = [
         dataset=LazyCall(TestDataset)(
             name="cnsd_sts",
             path="./data/STS/cnsd-sts-test.txt",
-            tokenizer=LazyCall(BertTokenizer)(
-                vocab_file="./data/vocab.txt"
-            ),
+            tokenizer=LazyCall(BertTokenizer)(vocab_file="./data/vocab.txt"),
         ),
     ),
     # LazyCall(build_nlp_test_loader)(
@@ -93,17 +87,14 @@ train.update(
         ),
         evaluation=dict(
             enabled=True,
-            evaluator=LazyCall(SimcseEvaluator)(),  
+            evaluator=LazyCall(SimcseEvaluator)(),
             eval_period=10,
-            eval_iter=1e5, 
+            eval_iter=1e5,
             eval_metric="Spearman",
             eval_mode="max",
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
-            warmup_factor=0.000,
-            gamma = 1.0,
-            warmup_method="linear",
-            warmup_iter=0
+            warmup_factor=0.000, gamma=1.0, warmup_method="linear", warmup_iter=0
         ),
     )
 )

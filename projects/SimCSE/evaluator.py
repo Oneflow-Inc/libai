@@ -14,9 +14,10 @@
 # limitations under the License.
 
 import numpy as np
-from libai.utils import distributed as dist
 from scipy.stats import spearmanr
+
 from libai.evaluation import DatasetEvaluator
+from libai.utils import distributed as dist
 
 
 def spearman_target(cos_sim, labels):
@@ -26,7 +27,7 @@ def spearman_target(cos_sim, labels):
 class SimcseEvaluator(DatasetEvaluator):
     def __init__(self):
         self._predictions = []
-    
+
     def reset(self):
         self._predictions = []
 

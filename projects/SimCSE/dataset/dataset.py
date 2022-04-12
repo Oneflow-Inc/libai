@@ -13,15 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import csv
 import random
 
 import jsonlines
 import oneflow as flow
-from oneflow.utils.data import DataLoader, Dataset
+from oneflow.utils.data import Dataset
 
 from libai.data.structures import DistTensorData, Instance
-from libai.tokenizer import BertTokenizer
 
 
 def load_data(name, path):
@@ -32,8 +30,8 @@ def load_data(name, path):
             return [line.get("origin") for line in f]
 
     def load_snli_data_sup(path):
-        with jsonlines.open(path, 'r') as f:
-            return [(line['origin'], line['entailment'], line['contradiction']) for line in f]
+        with jsonlines.open(path, "r") as f:
+            return [(line["origin"], line["entailment"], line["contradiction"]) for line in f]
 
     def load_lqcmc_data(path):
         with open(path, "r", encoding="utf8") as f:
@@ -58,11 +56,15 @@ def load_data(name, path):
                 line = line.strip().split("\t")
                 data.append(line)
         return data
-    
+
     def load_sts_to_train(path):
         if path is None:
             return []
-        with open(path, "r", encoding="utf8",) as f:
+        with open(
+            path,
+            "r",
+            encoding="utf8",
+        ) as f:
             data = [line.split("||")[1] for line in f]
         return data
 
@@ -101,7 +103,7 @@ class TrainDataset(Dataset):
     # unsup
     def __init__(self, name, path, tokenizer, max_len, path2=None):
         self.name = name
-        self.data = load_data(name, path) + load_data('add', path2)
+        self.data = load_data(name, path) + load_data("add", path2)
         random.shuffle(self.data)
         self.tokenizer = tokenizer
         self.max_len = max_len
@@ -191,7 +193,7 @@ class TrainDataset_sup(Dataset):
         self.pad_id = self.tokenizer.pad_token_id
         self.cls_id = self.tokenizer.cls_token_id
         self.sep_id = self.tokenizer.sep_token_id
-    
+
     def __len__(self):
         return len(self.data)
 
@@ -200,7 +202,7 @@ class TrainDataset_sup(Dataset):
         ids = ids + [self.pad_id] * (self.max_len - len(ids))
         attention_mask = attention_mask + [self.pad_id] * (self.max_len - len(attention_mask))
         return ids, attention_mask
-    
+
     def text2id(self, text):
         tokens = self.tokenizer.tokenize(text)
         ids = self.tokenizer.convert_tokens_to_ids(tokens)
@@ -208,19 +210,16 @@ class TrainDataset_sup(Dataset):
         ids = [self.cls_id] + ids + [self.sep_id]
         ids, attention_mask = self.pad_text(ids)
         return ids, attention_mask
-    
+
     def __getitem__(self, index):
         ids0, mask0 = self.text2id(self.data[index][0])
         ids1, mask1 = self.text2id(self.data[index][1])
         ids2, mask2 = self.text2id(self.data[index][2])
         return Instance(
-            input_ids = DistTensorData(
-                flow.tensor([ids0, ids1, ids2], dtype=flow.long)
-            ),
-            attention_mask = DistTensorData(
-                flow.tensor([mask0, mask1, mask2], dtype=flow.long)
-            )
+            input_ids=DistTensorData(flow.tensor([ids0, ids1, ids2], dtype=flow.long)),
+            attention_mask=DistTensorData(flow.tensor([mask0, mask1, mask2], dtype=flow.long)),
         )
+
 
 class TestDataset_sup(TrainDataset_sup):
     def __getitem__(self, index):
@@ -228,13 +227,7 @@ class TestDataset_sup(TrainDataset_sup):
         ids0, mask0 = self.text2id(self.data[index][0])
         ids1, mask1 = self.text2id(self.data[index][1])
         return Instance(
-            input_ids = DistTensorData(
-                flow.tensor([ids0, ids1], dtype=flow.long)
-            ),
-            attention_mask = DistTensorData(
-                flow.tensor([mask0, mask1], dtype=flow.long)
-            ),
-            labels = DistTensorData(
-                flow.tensor(label, dtype=flow.int)
-            ),
+            input_ids=DistTensorData(flow.tensor([ids0, ids1], dtype=flow.long)),
+            attention_mask=DistTensorData(flow.tensor([mask0, mask1], dtype=flow.long)),
+            labels=DistTensorData(flow.tensor(label, dtype=flow.int)),
         )
