@@ -356,7 +356,7 @@ LiBai has already implemented `PatchEmbedding`, `TransformerLayer`, `Linear`, `L
 
 **2. Manually set the sbp signature of `cls_token` and `pos_embed`**
 
-In order to fit different parallel mode in LiBai, users must manually set the **sbp signature** for all the parameters and buffers of those layers not implemented in LiBai, like `cls_token` and `pos_embed` in Vision Transformer:
+In order to fit different parallel mode in LiBai, users must manually set the [sbp signature](https://docs.oneflow.org/en/master/parallelism/02_sbp.html#spb-signature) for all the parameters and buffers of those layers not implemented in LiBai, like `cls_token` and `pos_embed` in Vision Transformer:
 ```python
 import oneflow as flow
 import oneflow.nn as nn
@@ -396,7 +396,7 @@ def forward_features(self, x):
 ```
 
 **4. Manually set the stage id for pipeline parallel training**
-Most of the built-in layers in LiBai has the arg named `layer_idx` for pipeline parallel settings, to configure a 1F1B pipeline parallel model, users should manually set the stage id for each layers in the models, with the help of `layer_idx` we can simply get a pipeline parallel Vision Transformer models like:
+Most of the built-in layers in LiBai has the arg named `layer_idx` for pipeline parallel settings, to configure a **1F1B pipeline parallel** model, users should manually set the stage id for each layers in the models, which will automatically assign different layers on different stages and insert buffer in the process of forward & backward computation for 1F1B pipeline parallel training, with the help of `layer_idx` we can simply get a pipeline parallel Vision Transformer models like:
 ```python
 import libai.utils.distributed as dist
 
