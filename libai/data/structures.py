@@ -47,11 +47,26 @@ class DistTensorData:
             self.sbp = dist.get_nd_sbp(sbp_list)
 
         if placement is not None:
-            self.placement = placement
+            self.tensor = self.tensor.to_global(sbp=self.sbp, placement=placement)
         else:
-            self.placement = dist.get_layer_placement(self.placement_idx)
-
-        self.tensor = self.tensor.to_global(sbp=self.sbp, placement=self.placement)
+            # Convert local tensor to global tensor with default setting,
+            # if the placement parameter is not provided.
+            # When enable pipeline parallel training,
+            # all the devices will be grouped into several device groups
+            # and the model will be split into several stages.
+            # Each stage will be placed on the corresponding device group.
+            # For those tensors to be used in the last stage,
+            # we first convert them to global tensor by only retain those on the device group 0,
+            # then transfer the result to the last stage.
+            # We do that to make sure that all the tensors used by the model are all generated
+            # by the fist device group, in case that each device group containg
+            # some random augmentations to the tensors without setting the same global seed.
+            main_placement = dist.get_layer_placement(0)
+            self.tensor = self.tensor.to_global(sbp=self.sbp, placement=main_placement)
+            if self.placement_idx != 0:
+                self.tensor = self.tensor.to_global(
+                    placement=dist.get_layer_placement(self.placement_idx)
+                )
 
     @staticmethod
     def stack(distTensor_lists: List["DistTensorData"]) -> "DistTensorData":
