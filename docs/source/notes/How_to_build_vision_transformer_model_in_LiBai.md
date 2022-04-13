@@ -396,6 +396,7 @@ def forward_features(self, x):
 ```
 
 **4. Manually set the stage id for pipeline parallel training**
+
 Most of the built-in layers in LiBai has the arg named `layer_idx` for pipeline parallel settings, to configure a **1F1B pipeline parallel** model, users should manually set the stage id for each layers in the models, which will automatically assign different layers on different stages and insert buffer in the process of forward & backward computation for 1F1B pipeline parallel training, with the help of `layer_idx` we can simply get a pipeline parallel Vision Transformer models like:
 ```python
 import libai.utils.distributed as dist
