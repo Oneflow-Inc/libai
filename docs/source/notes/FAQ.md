@@ -36,7 +36,7 @@ We list some common problems encountered by users and their corresponding soluti
   value = value.view(value.size(0), value.size(1), self.num_heads, -1).permute(0, 2, 1, 3)
   ```
   In tensor parallelism, `chunk` dimension and `flow.sbp.split` dimension will be the same in Huggingface's implementation which will occur some unexpected behaviors(i.e., changing the tensor's SBP unexpectedly). 
-  We also provide a tutorial about how to load Huggingface weights correctly, and please refer to [How to use Huggingface's pretrained weights in LiBai](https://libai.readthedocs.io/en/latest/notes/How_to_implement_huggingface%27s_weights_in_LiBai.html) for more details
+  We also provide a tutorial about how to load Huggingface weights correctly, and please refer to [How to use Huggingface's pretrained weights in LiBai](https://libai.readthedocs.io/en/latest/notes/How_to_implement_huggingface%27s_weights_in_LiBai.html) for more details.
   
 - "the order of layer normalization and the residual connection"
   This is critical to enable the scaling of the BERT-style models beyond BERT-Large. The architecture with `apply_residual_post_layernorm=False` eliminates instabilities observed using the origin BERT architecture with `apply_residual_post_layernorm=True` and also has a lower training loss according to [Megatron-LM](https://arxiv.org/pdf/1909.08053.pdf).
