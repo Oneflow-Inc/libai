@@ -46,15 +46,15 @@ class DistTensorData:
                     sbp_list.append(getattr(flow.sbp, sbp_sign))
             self.sbp = dist.get_nd_sbp(sbp_list)
 
-        main_placement = placement
         if placement is not None:
-            self.placement = placement
+            self.tensor = self.tensor.to_global(sbp=self.sbp, placement=placement)
         else:
             main_placement = dist.get_layer_placement(0)
-            self.placement = dist.get_layer_placement(self.placement_idx)
-
-        self.tensor = self.tensor.to_global(sbp=self.sbp, placement=main_placement)
-        self.tensor = self.tensor.to_global(sbp=self.sbp, placement=self.placement)
+            self.tensor = self.tensor.to_global(sbp=self.sbp, placement=main_placement)
+            if self.placement_idx != 0:
+                self.tensor = self.tensor.to_global(
+                    placement=dist.get_layer_placement(self.placement_idx)
+                )
 
     @staticmethod
     def stack(distTensor_lists: List["DistTensorData"]) -> "DistTensorData":
