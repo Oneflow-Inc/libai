@@ -13,11 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# --------------------------------------------------------
-# References:
-# https://github.com/facebookresearch/detectron2/blob/main/detectron2/config/lazy.py
-# --------------------------------------------------------
-
 
 import argparse
 import sys
