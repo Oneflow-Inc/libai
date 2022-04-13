@@ -39,6 +39,10 @@ from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter
 from libai.utils.logger import setup_logger
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/defaults.py
+# --------------------------------------------------------
 
 def _highlight(code, filename):
     try:
