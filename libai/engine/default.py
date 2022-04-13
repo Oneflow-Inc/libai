@@ -473,24 +473,18 @@ class DefaultTrainer(TrainerBase):
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
 
-        ret_dict = {}
         if mixup_func is not None:
-            images_dist_data = data.get("images")
-            labels_dist_data = data.get("labels")
             images, labels = mixup_func(
-                images_dist_data.tensor.cuda(), labels_dist_data.tensor.cuda()
+                data.get("images").tensor.cuda(),
+                data.get("labels").tensor.cuda(),
             )
-            images_dist_data.tensor = images
-            labels_dist_data.tensor = labels
-            images_dist_data.to_global()
-            ret_dict["images"] = images_dist_data.tensor
-            labels_dist_data.to_global(placement=ret_dict["images"].placement)
-            labels_dist_data.to_global()
-            ret_dict["labels"] = labels_dist_data.tensor
-        else:
-            for key, value in data.get_fields().items():
-                value.to_global()
-                ret_dict[key] = value.tensor
+            data.get("images").tensor = images
+            data.get("labels").tensor = labels
+
+        ret_dict = {}
+        for key, value in data.get_fields().items():
+            value.to_global()
+            ret_dict[key] = value.tensor
         return ret_dict
 
     @classmethod
