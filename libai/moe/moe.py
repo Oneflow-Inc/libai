@@ -7,12 +7,22 @@
 # The code is based on the TensorFlow implementation:
 # https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/expert_utils.py
 
+import math 
 
 import oneflow as flow
 import oneflow.nn as nn
-from oneflow.distributions.normal import Normal
-from mlp import MLP
 import numpy as np
+
+from .mlp import MLP
+class Normal(object):
+    def __init__(self, loc, scale):
+        self.loc = loc
+        self.scale = scale
+
+    def cdf(self, value):
+        return 0.5 * (1 + flow.erf((value - self.loc) * self.scale.reciprocal() / math.sqrt(2)))
+
+
 class SparseDispatcher(object):
     """Helper for implementing a mixture of experts.
     The purpose of this class is to create input minibatches for the
