@@ -106,13 +106,13 @@ class Simcse_unsup(nn.Module):
             loss = nn.CrossEntropyLoss()(sim, labels)
             return {"loss": loss}
         else:
-            bs = input_ids.size(0)
-            input_ids = input_ids.view(bs * 2, -1)
-            attention_mask = attention_mask.view(bs * 2, -1)
+            bs, num_sent = input_ids.size(0), input_ids.size(1)
+            input_ids = input_ids.view(bs * num_sent, -1)
+            attention_mask = attention_mask.view(bs * num_sent, -1)
             out = self.bert(input_ids, attention_mask)
             out = self.pooler(out, attention_mask)
             self.mlp(out)
-            out = out.view(bs, 2, -1)
+            out = out.view(bs, num_sent, -1)
             sent1 = out[:, 0]
             sent2 = out[:, 1]
             sim = cosine_similarity(sent1, sent2)
