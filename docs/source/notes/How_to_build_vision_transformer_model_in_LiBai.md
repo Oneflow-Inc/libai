@@ -1,4 +1,4 @@
-# Detailed instruction on how to build vision transformer model from scratch in LiBai
+# Detailed instruction on vision transformer model in LiBai
 It's easy for users to build the `transformer-based` models by using the libai's built-in [layers](https://libai.readthedocs.io/en/latest/modules/libai.layers.html). Let's take a deep dive into the building process of vision transformer model in LiBai.
 
 ## Model Architecture
