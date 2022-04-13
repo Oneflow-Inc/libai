@@ -56,7 +56,7 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 
 # Refine optimizer cfg for vit model
 optim._target_ = flow.optim.LAMB  # use lamb optimizer
-optim.lr = 5e-3  # default batch size equals to 2048 = 256 * 8
+optim.lr = 5e-3  # default batch size equals to 256 * 8 = 2048
 optim.eps = 1e-8
 optim.weight_decay = 0.2
 optim.params.clip_grad_max_norm = None
