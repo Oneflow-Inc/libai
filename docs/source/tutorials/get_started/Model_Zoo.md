@@ -72,8 +72,8 @@ For more details about the supported parallelism training on different models, p
 **Additions:**
 &#10004; means you can train this model under specific parallelism techniques or combine two or three of them with &#10004; for 2D or 3D paralleism training.
 
-## Benchmarks (coming soon)
-Here we provided our benchmark test results of the supported models in LiBai. Due to our resource constraints, we will gradually release the training results in the future.
+## Baselines
+Here is the collection of baselines trained with LiBai. Due to our resource constraints, we will gradually release the training results in the future.
 
 ### Main Results on ImageNet with Pretrained Models
 
@@ -89,13 +89,23 @@ Here we provided our benchmark test results of the supported models in LiBai. Du
       <th valign="bottom" align="center" width="120">Download</th>
     </tr>
     <tr>
-      <td align="center"> ViT-Tiny </td>
+      <td align="center"> ViT-Tiny w/o EMA </td>
       <td align="center"> ImageNet-1K </td>
       <td align="center"> 224x224 </td>
       <td align="center"> 72.7 </td>
       <td align="center"> 91.0 </td>
       <td align="center"> <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/config.yaml">Config</a> | <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_tiny_patch16_224/model_best.zip">Checkpoint</a> </td>
     </tr>
+    <tr>
+      <td align="center"> ViT-Small w/o EMA</td>
+      <td align="center"> ImageNet-1K </td>
+      <td align="center"> 224x224 </td>
+      <td align="center"> 79.3 </td>
+      <td align="center"> 94.5 </td>
+      <td align="center"> <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_small_patch16_224/config.yaml">Config</a> | <a href="https://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/ImageNet/vit_small_patch16_224/model_best.zip">Checkpoint</a> </td>
+    </tr>
     </tr>
   </tbody>
 </table>
+
+**Notes:** `w/o EMA` denotes to models pretrained without **Exponential Moving Average** (EMA).
