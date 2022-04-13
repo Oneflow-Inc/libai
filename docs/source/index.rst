@@ -10,14 +10,6 @@ Welcome to libai's documentation!
    :maxdepth: 3
 
    tutorials/index
-
-.. toctree::
-   :maxdepth: 2
-
    notes/index
-
-.. toctree::
-   :maxdepth: 3
-
    modules/index
    changelog.md
