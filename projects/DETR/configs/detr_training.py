@@ -1,8 +1,15 @@
+from ast import arg
+import sys
+
 from flowvision import transforms
 
 from libai.config import get_config, LazyCall
 
-from models.detr_res50 import model, criterion, postprocessors
+sys.path.append("projects/DETR")
+
+from modeling.detr import build
+
+from .models.configs_detr import model, criterion, postprocessors
 
 
 dataloader = get_config("common/data/coco.py").dataloader
@@ -10,11 +17,9 @@ train = get_config("common/train.py").train
 graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim
 
-print(dataloader)
-
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/DATA/disk1/datasets/mscoco_2017/test2017"
-dataloader.test[0].dataset.root = "/DATA/disk1/datasets/mscoco_2017/test2017"
+dataloader.train.dataset[0]= "/DATA/disk1/datasets/mscoco_2017/test2017"
+dataloader.test[0].dataset = "/DATA/disk1/datasets/mscoco_2017/test2017"
 
 
 # Refine train cfg for moco v3 model

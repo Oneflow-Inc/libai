@@ -14,7 +14,7 @@ from typing import Optional, List
 import oneflow as flow
 import oneflow.nn.functional as F
 from oneflow import nn, Tensor
-
+from libai.layers.attention import MultiheadAttention
 
 class Transformer(nn.Module):
 
@@ -130,7 +130,8 @@ class TransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False):
         super().__init__()
-        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        # self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout) 
+        self.self_attn = MultiheadAttention(hidden_size=d_model, num_attention_heads=nhead, attention_dropout_prob=dropout)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
@@ -190,8 +191,11 @@ class TransformerDecoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False):
         super().__init__()
-        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        # self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        # self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        self.self_attn = MultiheadAttention(hidden_size=d_model, num_attention_heads=nhead, attention_dropout_prob=dropout)
+        self.multihead_attn = MultiheadAttention(hidden_size=d_model, num_attention_heads=nhead, attention_dropout_prob=dropout)
+
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)

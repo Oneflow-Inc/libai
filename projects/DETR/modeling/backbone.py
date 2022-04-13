@@ -27,12 +27,13 @@ import oneflow as flow
 import oneflow.nn as nn 
 import oneflow.nn.functional as F
 import flowvision
-# from flowvision.models._utils import IntermediateLayerGetter
+from flowvision.models.layer_getter import IntermediateLayerGetter
+
 
 from utils.misc import NestedTensor
 
 from .position_encoding import build_position_encoding
-
+from utils.misc import NestedTensor, is_main_process
 
 class FrozenBatchNorm2d(nn.Module):
     """
@@ -104,9 +105,16 @@ class Backbone(BackboneBase):
                  train_backbone: bool,
                  return_interm_layers: bool,
                  dilation: bool):
+
         backbone = getattr(flowvision.models, name)(
             replace_stride_with_dilation=[False, False, dilation],
-            pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d)
+            pretrained=True, norm_layer=FrozenBatchNorm2d)
+
+        # TODO: figure out is_main_process()
+        # backbone = getattr(flowvision.models, name)(
+        #     replace_stride_with_dilation=[False, False, dilation],
+        #     pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d)
+
         num_channels = 512 if name in ('resnet18', 'resnet34') else 2048
         super().__init__(backbone, train_backbone, num_channels, return_interm_layers)
 

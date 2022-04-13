@@ -6,6 +6,8 @@ import oneflow as flow
 import oneflow.nn.functional as F
 import oneflow.nn as nn
 
+from libai.config import LazyCall
+
 from utils import box_ops
 from utils.misc import (NestedTensor, nested_tensor_from_tensor_list,
                        accuracy, get_world_size, interpolate,
@@ -317,13 +319,13 @@ def build(args):
         num_classes = 250
     device = flow.device(args.device)
 
-    backbone = build_backbone(args)
+    backbone = LazyCall(build_backbone)(args=args)
 
-    transformer = build_transformer(args)
+    transformer = LazyCall(build_transformer)(args=args)
 
-    model = DETR(
-        backbone,
-        transformer,
+    model = LazyCall(DETR)(
+        backbone=backbone,
+        transformer=transformer,
         num_classes=num_classes,
         num_queries=args.num_queries,
         aux_loss=args.aux_loss,
