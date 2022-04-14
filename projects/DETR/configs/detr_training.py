@@ -22,8 +22,8 @@ dataloader.train.dataset[0].img_folder= "/DATA/disk1/datasets/mscoco_2017/train"
 dataloader.train.dataset[0].ann_file = "/DATA/disk1/datasets/mscoco_2017/annotations/instances_train2017.json"
 
 
-dataloader.test[0].dataset.img_folder = "/DATA/disk1/datasets/mscoco_2017/test"
-dataloader.test[0].dataset.ann_file = "/DATA/disk1/datasets/mscoco_2017/annotations/instances_train2017.json"
+dataloader.test[0].dataset.img_folder = "/DATA/disk1/datasets/mscoco_2017/val"
+dataloader.test[0].dataset.ann_file = "/DATA/disk1/datasets/mscoco_2017/annotations/instances_val2017.json"
 
 
 # Refine train cfg for moco v3 model

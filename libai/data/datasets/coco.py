@@ -110,12 +110,16 @@ class CocoDetection(flowvision.datasets.CocoDetection):
         if self._transforms is not None:
             img, target = self._transforms(img, target)
 
+
+        for k,v in target.items():
+            target[k] = DistTensorData(flow.tensor(target[k]).long(), placement_idx=-1)
+
+        # TODO: target is type dict here
         data_sample = Instance(
             images = DistTensorData(img, placement_idx=0),
-            labels = DistTensorData(flow.tensor(target, dtype.flow.long), placement_idx=-1)
+            labels = target
         )
-        import pdb
-        pdb.set_trace()
+
         return data_sample
 
 
