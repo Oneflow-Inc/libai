@@ -22,6 +22,11 @@ from libai.config.lazy import _convert_target_to_string, locate
 
 __all__ = ["dump_dataclass", "instantiate"]
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/config/instantiate.py
+# --------------------------------------------------------
+
 
 def dump_dataclass(obj: Any):
     """
