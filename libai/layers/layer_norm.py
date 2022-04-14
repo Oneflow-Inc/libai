@@ -50,41 +50,19 @@ class LayerNorm(nn.Module):
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 )
             )
-
-            self.bias = flow.nn.Parameter(
-                flow.zeros(
-                    normalized_shape,
-                    dtype=flow.float32,
-                    placement=dist.get_layer_placement(layer_idx),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                ), requires_grad=False
-            )
         else:
             self.weight = None
-            self.bias = None
 
     def forward(self, x):
         assert x.shape[-len(self.normalized_shape) :] == self.normalized_shape
-        begin_norm_axis = x.ndim - len(self.normalized_shape)
-        begin_params_axis = x.ndim - len(self.normalized_shape)
-        if self.elementwise_affine:
-            y = flow._C.layer_norm_affine(
-                x,
-                self.weight,
-                self.bias,
-                begin_norm_axis=begin_norm_axis,
-                begin_params_axis=begin_params_axis,
-                epsilon=self.eps,
-            )
-        else:
-            y = flow._C.layer_norm(
-                x,
-                begin_norm_axis=self.begin_norm_axis,
-                begin_params_axis=self.begin_params_axis,
-                epsilon=self.eps,
-            )
-        return y
-
+        
+        variance = x.to(flow.float32).pow(2).mean(-1, keepdim=True)
+        x = x * flow.rsqrt(variance + self.eps)
+        
+        if self.weight.dtype in [flow.float16]:
+            x = x.to(self.weight.dtype)
+        return self.weight * x
+        
     def extra_repr(self) -> str:
         return "{normalized_shape}, eps={eps}, elementwise_affine={elementwise_affine}".format(
             **self.__dict__
