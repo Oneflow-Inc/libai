@@ -32,6 +32,7 @@ from .utils import pad_batch
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/evaluation/evaluator.py
 # --------------------------------------------------------
 
+
 class DatasetEvaluator:
     """
     Base class for a dataset evaluator.

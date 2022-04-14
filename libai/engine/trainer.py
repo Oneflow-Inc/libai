@@ -29,6 +29,7 @@ from libai.utils.events import EventStorage, get_event_storage
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/train_loop.py
 # --------------------------------------------------------
 
+
 class HookBase:
     """
     Base class for hooks that can be registered with :class:`TrainerBase`.
