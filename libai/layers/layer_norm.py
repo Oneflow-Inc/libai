@@ -55,14 +55,14 @@ class LayerNorm(nn.Module):
 
     def forward(self, x):
         assert x.shape[-len(self.normalized_shape) :] == self.normalized_shape
-        
+
         variance = x.to(flow.float32).pow(2).mean(-1, keepdim=True)
         x = x * flow.rsqrt(variance + self.eps)
-        
+
         if self.weight.dtype in [flow.float16]:
             x = x.to(self.weight.dtype)
         return self.weight * x
-        
+
     def extra_repr(self) -> str:
         return "{normalized_shape}, eps={eps}, elementwise_affine={elementwise_affine}".format(
             **self.__dict__

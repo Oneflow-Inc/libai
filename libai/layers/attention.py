@@ -19,6 +19,9 @@ from typing import Tuple
 import oneflow as flow
 from oneflow import nn
 
+from libai.utils import distributed as dist
+
+from .embedding import Embedding
 from .linear import Linear
 
 
@@ -59,8 +62,9 @@ class MultiheadAttention(nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
+        has_relative_attention_bias=True,
         *,
-        layer_idx=0
+        layer_idx=0,
     ):
         super().__init__()
         self.hidden_size = hidden_size
@@ -123,12 +127,105 @@ class MultiheadAttention(nn.Module):
             layer_idx=layer_idx,
         )
 
+        self.relative_attention_num_buckets = 32
+        self.relative_attention_max_distance = 128
+        self.has_relative_attention_bias = has_relative_attention_bias
+
+        if self.has_relative_attention_bias:
+            self.relative_attention_bias = Embedding(
+                self.relative_attention_num_buckets, self.num_heads
+            ).to_global(placement=dist.get_layer_placement(layer_idx))
+
+    def _relative_position_bucket(
+        self, relative_position, bidirectional=True, num_buckets=32, max_distance=128
+    ):
+        """
+        Adapted from Mesh Tensorflow:
+        https://github.com/tensorflow/mesh/blob/0cb87fe07da627bf0b7e60475d59f95ed6b5be3d/mesh_tensorflow/transformer/transformer_layers.py#L593 # noqa: E501
+
+        Translate relative position to a bucket number for relative attention. The relative position is defined as  # noqa: E501
+        memory_position - query_position, i.e. the distance in tokens from the attending position to the attended-to # noqa: E501
+        position. If bidirectional=False, then positive relative positions are invalid. We use smaller buckets for # noqa: E501
+        small absolute relative_position and larger buckets for larger absolute relative_positions. All relative # noqa: E501
+        positions >=max_distance map to the same bucket. All relative positions <=-max_distance map to the same bucket. # noqa: E501
+        This should allow for more graceful generalization to longer sequences than the model has been trained on # noqa: E501
+
+        Args:
+            relative_position: an int32 Tensor
+            bidirectional: a boolean - whether the attention is bidirectional
+            num_buckets: an integer
+            max_distance: an integer
+
+        Returns:
+            a Tensor with the same shape as relative_position, containing int32 values in the range [0, num_buckets)
+        """
+        relative_buckets = 0
+        if bidirectional:
+            num_buckets //= 2
+            relative_buckets += (relative_position > 0).to(flow.int64) * num_buckets
+            relative_position = flow.abs(relative_position)
+        else:
+            relative_position = -flow.min(relative_position, flow.zeros_like(relative_position))
+            relative_position = relative_position.to(flow.int64)
+        # now relative_position is in the range [0, inf)
+
+        # half of the buckets are for exact increments in positions
+        max_exact = num_buckets // 2
+        is_small = relative_position < max_exact
+
+        # The other half of the buckets are for logarithmically bigger bins in
+        # positions up to max_distance
+        relative_postion_if_large = max_exact + (
+            flow.log(relative_position.float() / max_exact)
+            / math.log(max_distance / max_exact)
+            * (num_buckets - max_exact)
+        ).to(flow.int64)
+        relative_postion_if_large = flow.min(
+            relative_postion_if_large,
+            flow.zeros_like(relative_postion_if_large) + (num_buckets - 1),
+        )
+
+        relative_buckets += flow.where(is_small, relative_position, relative_postion_if_large)
+        return relative_buckets
+
+    def compute_bias(self, query_length, key_length):
+        """Compute binned relative position bias"""
+        context_position = flow.arange(
+            query_length,
+            dtype=flow.int64,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=self.relative_attention_bias.weight.placement,
+        )[:, None]
+
+        memory_position = flow.arange(
+            key_length,
+            dtype=flow.int64,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=self.relative_attention_bias.weight.placement,
+        )[None, :]
+
+        relative_position = memory_position - context_position  # shape (query_length, key_length)
+        relative_position_bucket = self._relative_position_bucket(
+            relative_position,  # shape (query_length, key_length)
+            bidirectional=(not self.is_cross_attention),
+            num_buckets=self.relative_attention_num_buckets,
+            max_distance=self.relative_attention_max_distance,
+        )
+        values = self.relative_attention_bias(
+            relative_position_bucket
+        )  # shape (query_length, key_length, num_heads)
+        values = values.permute([2, 0, 1]).unsqueeze(
+            0
+        )  # shape (1, num_heads, query_length, key_length)
+        return values
+
     def forward(
         self,
         hidden_states: flow.Tensor,
         encoder_states: flow.Tensor = None,
         attention_mask: flow.Tensor = None,
         past_key_value: Tuple[flow.Tensor, flow.Tensor] = None,
+        position_bias: flow.Tensor = None,
         use_cache: bool = False,
     ):
         """
@@ -160,6 +257,18 @@ class MultiheadAttention(nn.Module):
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
         bsz, tgt_len = hidden_states.size()[:2]
+
+        real_seq_length = tgt_len
+
+        if past_key_value is not None:
+            assert (
+                len(past_key_value) == 2
+            ), "past_key_value should be 2 past states: keys and values. "
+            f"Got { len(past_key_value)} past states."
+            real_seq_length += past_key_value[0].shape[2]
+
+        key_length = real_seq_length
+        key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
 
         if self.is_cross_attention:
             # if it is cross attention, key and value should be calculated only once, and the
@@ -201,6 +310,22 @@ class MultiheadAttention(nn.Module):
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
 
+        if position_bias is None:
+            if not self.has_relative_attention_bias:
+                position_bias = flow.zeros(
+                    (1, self.num_heads, real_seq_length, key_length),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=attention_scores.placement,
+                )
+            else:
+                position_bias = self.compute_bias(real_seq_length, key_length)
+
+            if past_key_value is not None:
+                position_bias = position_bias[:, :, -hidden_states.size(1) :, :]
+
+            if attention_mask is not None:
+                position_bias = position_bias + attention_mask
+
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
             if self.scale_mask_softmax_fusion:
@@ -210,6 +335,7 @@ class MultiheadAttention(nn.Module):
             else:
                 if self.coeff is not None:
                     attention_scores *= self.coeff
+                attention_scores += position_bias
                 attention_scores = flow.mul(attention_scores, attention_mask)
                 attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
                 # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
