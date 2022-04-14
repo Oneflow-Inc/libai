@@ -1,19 +1,41 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-"""
-Transforms and data augmentation for both image + bbox.
-"""
-import sys
+from omegaconf import OmegaConf
+from flowvision.data.constants import (
+    IMAGENET_DEFAULT_MEAN,
+    IMAGENET_DEFAULT_STD,
+)
+
+from libai.config import LazyCall
+from libai.data.datasets import CocoDetection
+from libai.data.build import build_image_train_loader, build_image_test_loader
 import random
 
 import PIL
 import oneflow as flow
-import flowvision.transforms as T
 import flowvision.transforms.functional as F
 
-sys.path.append("projects/DETR")
 
-from utils.box_ops import box_xyxy_to_cxcywh
-from utils.misc import interpolate
+from packaging import version
+from typing import Optional, List
+
+import oneflow as flow
+from oneflow import Tensor
+
+# needed due to empty tensor bug in pytorch and torchvision 0.5
+import flowvision
+
+
+
+def box_xyxy_to_cxcywh(x):
+    x0, y0, x1, y1 = x.unbind(-1)
+    b = [(x0 + x1) / 2, (y0 + y1) / 2,
+         (x1 - x0), (y1 - y0)]
+    return flow.stack(b, dim=-1)
+
+
+def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corners=None):
+    # type: (Tensor, Optional[List[int]], Optional[float], str, Optional[bool]) -> Tensor
+
+    return flowvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)
 
 
 def crop(image, target, region):
@@ -165,7 +187,7 @@ class RandomSizeCrop(object):
     def __call__(self, img: PIL.Image.Image, target: dict):
         w = random.randint(self.min_size, min(img.width, self.max_size))
         h = random.randint(self.min_size, min(img.height, self.max_size))
-        region = T.RandomCrop.get_params(img, [h, w])
+        region = RandomCrop.get_params(img, [h, w])
         return crop(img, target, region)
 
 
@@ -277,3 +299,62 @@ class Compose(object):
             format_string += "    {0}".format(t)
         format_string += "\n)"
         return format_string
+
+
+def make_coco_transforms(image_set):
+
+    normalize = Compose([
+        ToTensor(),
+        Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+
+    if image_set == 'train':
+        return Compose([
+            RandomHorizontalFlip(),
+            RandomSelect(
+                RandomResize(scales, max_size=1333),
+                Compose([
+                    RandomResize([400, 500, 600]),
+                    RandomSizeCrop(384, 600),
+                    RandomResize(scales, max_size=1333),
+                ])
+            ),
+            normalize,
+        ])
+
+    if image_set == 'val':
+        return Compose([
+            RandomResize([800], max_size=1333),
+            normalize,
+        ])
+
+    raise ValueError(f'unknown {image_set}')
+
+
+dataloader = OmegaConf.create()
+dataloader.train = LazyCall(build_image_train_loader)(
+    dataset=[
+        LazyCall(CocoDetection)(
+            img_folder="./dataset",
+            ann_file="./dataset/annotations",
+            return_masks=False,
+            transforms=make_coco_transforms("train"),
+        ),
+    ],
+    num_workers=4,
+    mixup_func=None,
+)
+
+dataloader.test = [
+    LazyCall(build_image_test_loader)(
+        dataset=LazyCall(CocoDetection)(
+            img_folder="./dataset",
+            ann_file="./dataset/annotations",
+            return_masks=False,
+            transforms=make_coco_transforms("val"),
+        ),
+        num_workers=4,
+    )
+]

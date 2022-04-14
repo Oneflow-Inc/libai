@@ -18,8 +18,12 @@ graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim
 
 # Refine data path to imagenet
-dataloader.train.dataset[0]= "/DATA/disk1/datasets/mscoco_2017/test2017"
-dataloader.test[0].dataset = "/DATA/disk1/datasets/mscoco_2017/test2017"
+dataloader.train.dataset[0].img_folder= "/DATA/disk1/datasets/mscoco_2017/train"
+dataloader.train.dataset[0].ann_file = "/DATA/disk1/datasets/mscoco_2017/annotations/instances_train2017.json"
+
+
+dataloader.test[0].dataset.img_folder = "/DATA/disk1/datasets/mscoco_2017/test"
+dataloader.test[0].dataset.ann_file = "/DATA/disk1/datasets/mscoco_2017/annotations/instances_train2017.json"
 
 
 # Refine train cfg for moco v3 model
