@@ -24,6 +24,11 @@ import oneflow as flow
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/train_loop.py
+# --------------------------------------------------------
+
 
 class HookBase:
     """

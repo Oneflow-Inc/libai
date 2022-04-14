@@ -17,6 +17,11 @@ from typing import List, Tuple
 
 import numpy as np
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/fvcore/blob/main/fvcore/common/history_buffer.py
+# --------------------------------------------------------
+
 
 class HistoryBuffer:
     """

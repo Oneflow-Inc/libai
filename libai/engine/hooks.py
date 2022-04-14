@@ -31,6 +31,11 @@ from libai.utils.timer import Timer
 
 from .trainer import HookBase
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/hooks.py
+# --------------------------------------------------------
+
 """
 Implement some common hooks.
 """
