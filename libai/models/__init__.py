@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from .bert_model import BertForPreTraining, BertModel
+from .roberta_model import RobertaForMaskedLM, RobertaForCausalLM, RobertaModel
 from .build import build_graph, build_model
 from .t5_model import T5ForPreTraining, T5Model
 from .gpt_model import GPTForPreTraining, GPTModel

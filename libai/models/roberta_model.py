@@ -62,7 +62,7 @@ class RobertaEmbeddings(nn.Module):
         amp_enabled=False,
     ):
         super().__init__()
-        self.word_embeddings = VocabEmbedding(
+        self.vocab_embeddings = VocabEmbedding(
             vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled, padding_idx=pad_token_id
         )
         self.position_embeddings = Embedding(
@@ -88,7 +88,7 @@ class RobertaEmbeddings(nn.Module):
     def forward(self, input_ids, token_type_ids=None, position_ids=None, past_key_values_length=0):
         seq_length = input_ids.size()[1]
 
-        word_embeddings = self.word_embeddings(input_ids)
+        word_embeddings = self.vocab_embeddings(input_ids)
         if position_ids is None:
             position_ids = self.create_position_ids_from_input_ids(input_ids, self.padding_idx, past_key_values_length)
 
@@ -108,9 +108,9 @@ class RobertaEmbeddings(nn.Module):
         return embeddings
 
     def word_embeddings(self):
-        return self.word_embeddings.weight
+        return self.vocab_embeddings.weight
 
-    def create_position_ids_from_input_ids(input_ids, padding_idx, past_key_values_length=0):
+    def create_position_ids_from_input_ids(self, input_ids, padding_idx, past_key_values_length=0):
         mask = input_ids.ne(padding_idx).int()
         incremental_indices = (flow.cumsum(mask, dim=1).type_as(mask) + past_key_values_length) * mask
         incremental_indices = incremental_indices.long() + padding_idx
@@ -163,7 +163,7 @@ class RobertaModel(nn.Module):
         type_vocab_size=2,
         add_pooling_layer=True,
         initializer_range=0.02,
-        layernorm_eps=1e-5,
+        layer_norm_eps=1e-5,
         pad_token_id=1,
         bias_gelu_fusion=False,
         bias_dropout_fusion=False,
@@ -200,7 +200,7 @@ class RobertaModel(nn.Module):
                     num_attention_heads,
                     attention_dropout_prob=attention_probs_dropout_prob,
                     output_dropout_prob=hidden_dropout_prob,
-                    layernorm_epsilon=layernorm_eps,
+                    layernorm_epsilon=layer_norm_eps,
                     bias_gelu_fusion=bias_gelu_fusion,
                     bias_dropout_fusion=bias_dropout_fusion,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
@@ -213,7 +213,7 @@ class RobertaModel(nn.Module):
                 for i in range(hidden_layers)
             ]
         )
-        self.final_layernorm = LayerNorm((hidden_size,), eps=layernorm_eps, layer_idx=-1)
+        self.final_layernorm = LayerNorm((hidden_size,), eps=layer_norm_eps, layer_idx=-1)
 
         self.pooler = RobertaPooler(hidden_size, init_method) if add_pooling_layer else None
 
@@ -231,7 +231,7 @@ class RobertaModel(nn.Module):
             "type_vocab_size": cfg.type_vocab_size,
             "add_pooling_layer": cfg.add_pooling_layer,
             "initializer_range": cfg.initializer_range,
-            "layernorm_eps": cfg.layernorm_eps,
+            "layer_norm_eps": cfg.layer_norm_eps,
             "bias_gelu_fusion": cfg.bias_gelu_fusion,
             "bias_dropout_fusion": cfg.bias_dropout_fusion,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
@@ -242,7 +242,7 @@ class RobertaModel(nn.Module):
 
     def forward(self, input_ids, attention_mask, token_type_ids=None):
         extended_attention_mask = self.extended_attn_mask(attention_mask)
-        embedding_output = self.embeddings(input_ids, tokentype_ids)
+        embedding_output = self.embeddings(input_ids, token_type_ids)
 
         hidden_states = embedding_output
         for layer in self.encoders:
@@ -378,7 +378,7 @@ class RobertaForCausalLM(RobertaForPreTraining):
             )
             shifted_labels = labels[:, 1:].contiguous()
             shifted_labels = shifted_labels.to_global(
-                sbp=shifted_labels
+                sbp=shifted_labels.sbp
             )
             lm_loss = self.loss_fc(shifted_prediction_scores, shifted_labels).mean()
             lm_loss = lm_loss.to_global(
