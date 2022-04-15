@@ -13,15 +13,13 @@ from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 # Refine output dir
-train.output_dir = "./output_right_hyperparam"
+train.output_dir = "./output_resmlp"
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
-dataloader.train.dataset[0].root = "/dataset/extract"
-dataloader.test[0].dataset.root = "/dataset/extract"
 
-# Refine test data augmentation
+# Refine test data augmentation for resmlp model
 resmlp_test_aug = LazyCall(transforms.Compose)(
     transforms=[
         LazyCall(transforms.Resize)(
@@ -40,7 +38,7 @@ resmlp_test_aug = LazyCall(transforms.Compose)(
 )
 dataloader.test[0].dataset.transform = resmlp_test_aug
 
-# Refine model cfg for vit training on imagenet
+# Refine model cfg for resmlp training on imagenet
 model.num_classes = 1000
 model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
@@ -54,7 +52,7 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     num_classes=model.num_classes,
 )
 
-# Refine optimizer cfg for vit model
+# Refine optimizer cfg for resmlp model
 optim._target_ = flow.optim.LAMB  # use lamb optimizer
 optim.lr = 5e-3  # default batch size equals to 256 * 8 = 2048
 optim.eps = 1e-8
@@ -68,12 +66,12 @@ optim.params.overrides = {
     "gamma_2": {"weight_decay": 0.0},
 }
 
-# Refine train cfg for vit model
+# Refine train cfg for resmlp model
 train.train_micro_batch_size = 256
 train.test_micro_batch_size = 64
 train.train_epoch = 400
 train.warmup_ratio = 5 / 400
-train.evaluation.eval_period = 1250
+train.evaluation.eval_period = 1000
 train.log_period = 1
 
 # Scheduler

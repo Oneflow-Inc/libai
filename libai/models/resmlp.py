@@ -44,7 +44,7 @@ class Affine(nn.Module):
             )
         )
         self.beta = nn.Parameter(
-            flow.ones(
+            flow.zeros(
                 dim,
                 placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
