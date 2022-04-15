@@ -1,4 +1,4 @@
-# How to customize Parallelism
+# How to Customize Parallelism
 
 Common parallelisms have already been implemented in LiBai, such as data parallel, tensor parallel and pipeline parallel. But there is also a need for user customized parallel. In this tutorial, we will show you how to customize your own parallelism.
 

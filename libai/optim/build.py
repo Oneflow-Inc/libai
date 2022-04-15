@@ -22,6 +22,11 @@ import oneflow as flow
 from libai.config import instantiate
 from libai.layers import LayerNorm
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/solver/build.py
+# --------------------------------------------------------
+
 
 def build_optimizer(cfg, model):
     """
