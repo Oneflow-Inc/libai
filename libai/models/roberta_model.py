@@ -284,7 +284,31 @@ class RobertaLMHead(nn.Module):
         return hidden_states   
 
 
-class RobertaForMaskedLM(nn.Module):
+class RobertaForPreTraining(nn.Module):
+    @staticmethod
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, RobertaEmbeddings):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, RobertaExtendedAttnMask):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+            # `add_pooling_layer` in RobertaForMaskedLM and RobertaForCausalLM default to False.
+            elif isinstance(module_block.origin, RobertaPooler):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            elif isinstance(module_block.origin, RobertaLMHead):
+                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+        # Set the last layernorm stage id
+        model.roberta.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+
+class RobertaForMaskedLM(RobertaForPreTraining):
     def __init__(self, cfg):
         super().__init__()
         
@@ -318,9 +342,9 @@ class RobertaForMaskedLM(nn.Module):
             return {'lm_loss': masked_lm_loss}
         
         return {'prediction_scores': prediction_scores}
+    
 
-
-class RobertaForCausalLM(nn.Module):
+class RobertaForCausalLM(RobertaForPreTraining):
     def __init__(self, cfg):
         super().__init__()
         
