@@ -2,7 +2,7 @@
 
 This tutorial explains how the dataset APIs work, and how to customize your own datasets with them.
 
-# Build Common Dataloaders 
+## Build Common Dataloaders 
 
 To build dataloaders in LiBai, we highly recommend users to use the default `build_nlp_train_val_test_loader`, `build_nlp_train_loader`, `build_nlp_test_loader`, `build_image_train_loader` and `build_image_test_loader` which are defined in [`libai/data/build.py`](https://github.com/Oneflow-Inc/libai/blob/main/libai/data/build.py) for most of the common cases.
 
@@ -10,7 +10,7 @@ The only thing you need to do is to write pytorch style `Dataset`, and return `I
 
 The returned instance by `__getitem__` function must contain the same keys with the `args` passed in `forward` function of the `model`. The following shows an example:
 
-> NOTE: Set `placement_idx=-1` in `DistTensorData` when the `tensor` is **only** used in `loss_function`, it is used for pipeline parallel training.
+**NOTE:** Set `placement_idx=-1` in `DistTensorData` when the `tensor` is **only** used in `loss_function`, it is used for pipeline parallel training.
 
 ```python
 # my_dataset.py

@@ -25,6 +25,12 @@ from contextlib import contextmanager
 from libai.utils.file_io import PathManager
 from libai.utils.history_buffer import HistoryBuffer
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/events.py
+# --------------------------------------------------------
+
+
 __all__ = [
     "get_event_storage",
     "JSONWriter",
