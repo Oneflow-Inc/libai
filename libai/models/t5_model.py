@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from regex import T
 import oneflow as flow
 
 from libai.config import configurable
@@ -222,6 +223,7 @@ class T5Model(flow.nn.Module):
         self.decoder = flow.nn.Sequential()
         self.decoder.add_module("layers", decoder_layers)
         self.decoder.add_module("final_layernorm", decoder_final_layernorm)
+        self.past_key_values = [None] * len(self.decoder.layers)
 
         self.lm_head = LMLogits(vocab_size, bias=True)
 
@@ -254,6 +256,7 @@ class T5Model(flow.nn.Module):
         encoder_attn_mask,
         decoder_attn_mask,
         encoder_decoder_attn_mask,
+        use_cache=False,
     ):
         """
 
@@ -275,6 +278,9 @@ class T5Model(flow.nn.Module):
             encoder_decoder_attn_mask (flow.LongTensor):
                 Mask for decoder to avoid performing attention on encoder padded token indices.
                 Mask values have the same meaning as encoder_attn_mask.
+            use_cache (bool, optional):
+                It will be set to True, when the model is in the inference
+                phase and used for incremental decoding. Defaults to False.
 
         Returns:
             flow.Tensor: logits
@@ -290,16 +296,34 @@ class T5Model(flow.nn.Module):
 
         dec_embedding_output = self.embedding(decoder_input_ids)
         dec_hidden_states = dec_embedding_output
-        for layer in self.decoder.layers:
+        if use_cache:
+            presents = []
+        for layer, past_key_value in zip(self.decoder.layers, self.past_key_values):
             dec_hidden_states = layer(
                 dec_hidden_states,
                 decoder_attn_mask,
                 encoder_states,
                 encoder_decoder_attn_mask,
+                past_key_value=past_key_value,
+                use_cache=use_cache,
             )
+            if use_cache:
+                dec_hidden_states, present = dec_hidden_states
+                presents.append(present)
+        if use_cache:
+            self.set_past_key_values(past_key_values=presents)
+
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
         logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
         return logits
+
+    def set_past_key_values(self, past_key_values):
+        if past_key_values is None:
+            past_key_values = [None] * len(self.decoder.layers)
+        assert len(past_key_values) == len(self.decoder.layers), \
+            f"past_key_values's length {len(past_key_values)} doesn't match " \
+            f"decoder num_layers' length {self.decoder.layers}"
+        self.past_key_values = past_key_values
 
 
 class T5Loss(flow.nn.Module):
@@ -330,6 +354,9 @@ class T5ForPreTraining(flow.nn.Module):
         self.t5_model = T5Model(cfg)
         self.loss_func = T5Loss()
 
+    def set_past_key_values(self, past_key_values):
+        self.t5_model.set_past_key_values(past_key_values)
+
     def forward(
         self,
         encoder_input_ids,
@@ -339,6 +366,7 @@ class T5ForPreTraining(flow.nn.Module):
         encoder_decoder_attn_mask,
         lm_labels=None,
         loss_mask=None,
+        use_cache=False,
     ):
         """
 
@@ -368,6 +396,9 @@ class T5ForPreTraining(flow.nn.Module):
                 Tokens with indices set to `-1` are ignored (masked), the loss is only computed
                 for the tokens with labels in `[0, ..., config.vocab_size]`.
                 None for evaluating.
+            use_cache (bool, optional):
+                It will be set to True, when the model is in the inference
+                phase and used for incremental decoding. Defaults to False.
 
         Returns:
             dict:
@@ -382,6 +413,7 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_attn_mask,
             decoder_attn_mask,
             encoder_decoder_attn_mask,
+            use_cache=use_cache,
         )
 
         if lm_labels is not None:
