@@ -225,3 +225,9 @@ class ResMLP(nn.Module):
         model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
         model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
         model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            if isinstance(module_block.origin, layers_scale_mlp_blocks):
+                module_block.config.activation_checkpointing = True
