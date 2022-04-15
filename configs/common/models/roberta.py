@@ -26,3 +26,6 @@ cfg = dict(
 
 roberta_model = LazyCall(RobertaModel)(cfg=cfg)
 
+roberta_causal_lm = LazyCall(RobertaForCausalLM)(cfg=cfg)
+
+roberta_masked_lm = LazyCall(RobertaForMaskedLM)(cfg=cfg)
