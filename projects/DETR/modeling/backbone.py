@@ -30,10 +30,10 @@ import flowvision
 from flowvision.models.layer_getter import IntermediateLayerGetter
 
 
-from utils.misc import NestedTensor
+from libai.config.configs.common.data.coco import NestedTensor
+
 
 from .position_encoding import build_position_encoding
-from utils.misc import NestedTensor, is_main_process
 
 class FrozenBatchNorm2d(nn.Module):
     """

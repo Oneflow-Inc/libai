@@ -28,7 +28,7 @@ import math
 import oneflow as flow
 import oneflow.nn as nn
 
-from utils.misc import NestedTensor
+from libai.config.configs.common.data.coco import NestedTensor
 
 
 class PositionEmbeddingSine(nn.Module):

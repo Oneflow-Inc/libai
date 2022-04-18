@@ -9,9 +9,10 @@ import oneflow.nn as nn
 from libai.config import LazyCall
 
 from utils import box_ops
-from utils.misc import (NestedTensor, nested_tensor_from_tensor_list,
-                       accuracy, get_world_size, interpolate,
+from utils.misc import (accuracy, get_world_size, interpolate,
                        is_dist_avail_and_initialized)
+
+from libai.config.configs.common.data.coco import NestedTensor, nested_tensor_from_tensor_list
 
 from .backbone import build_backbone
 from .matcher import build_matcher
