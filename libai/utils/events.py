@@ -22,8 +22,7 @@ import time
 from collections import defaultdict
 from contextlib import contextmanager
 
-from torch import log_
-
+import libai.utils.distributed as dist
 from libai.utils.file_io import PathManager
 from libai.utils.history_buffer import HistoryBuffer
 
@@ -159,6 +158,7 @@ class TensorboardXWriter(EventWriter):
         storage = get_event_storage()
         new_last_write = self._last_write
         for k, (v, iter) in storage.latest_with_smoothing_hint(self._window_size).items():
+            print(k, v, iter, self._last_write)
             if iter > self._last_write:
                 self._writer.add_scalar(k, v, iter)
                 new_last_write = max(new_last_write, iter)
