@@ -132,6 +132,7 @@ if __name__ == "__main__":
             "isort==5.10.1",
             "black==21.4b ",
             "autoflake",
+            "tensorboardX",
         ],
         packages=find_packages(),
         package_data={"libai.config": get_libai_configs()},
