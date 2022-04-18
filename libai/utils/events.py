@@ -22,6 +22,8 @@ import time
 from collections import defaultdict
 from contextlib import contextmanager
 
+from torch import log_
+
 from libai.utils.file_io import PathManager
 from libai.utils.history_buffer import HistoryBuffer
 
@@ -132,6 +134,46 @@ class JSONWriter(EventWriter):
 
     def close(self):
         self._file_handle.close()
+
+
+class TensorboardXWriter(EventWriter):
+    """
+    Write all scalars to a tensorboard file
+    """
+
+    def __init__(self, log_dir: str, window_size: int = 20, **kwargs):
+        """
+        Args:
+            log_dir (str): the directory to save the output events
+            window_size (int): the scalars will be median-smoothed by this window size
+            
+            kwargs: other arguments passed to `torch.utils.tensorboard.SummaryWriter(...)`
+        """
+        self._window_size = window_size
+        from tensorboardX import SummaryWriter
+
+        self._writer = SummaryWriter(log_dir=log_dir, **kwargs)
+        self._last_write = -1
+    
+    def write(self):
+        storage = get_event_storage()
+        new_last_write = self._last_write
+        for k, (v, iter) in storage.latest_with_smoothing_hint(self._window_size).items():
+            if iter > self._last_write:
+                self._writer.add_scalar(k, v, iter)
+                new_last_write = max(new_last_write, iter)
+        self._last_write = new_last_write
+    
+        # TODO: add write image
+
+        if len(storage._histograms) >= 1:
+            for params in storage._histograms:
+                self._writer.add_histogram_raw(**params)
+            storage.clear_histograms()
+    
+    def close(self):
+        if hasattr(self, "_writer"):  # doesn't exist when the code fails at import
+            self._writer.close()
 
 
 class CommonMetricPrinter(EventWriter):

@@ -36,7 +36,7 @@ from libai.scheduler import build_lr_scheduler
 from libai.tokenizer import build_tokenizer
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
-from libai.utils.events import CommonMetricPrinter, JSONWriter
+from libai.utils.events import CommonMetricPrinter, JSONWriter, TensorboardXWriter
 from libai.utils.logger import setup_logger
 
 # --------------------------------------------------------
@@ -443,8 +443,8 @@ class DefaultTrainer(TrainerBase):
 
             return [
                 CommonMetricPrinter(self.global_batch_size, self.max_iter),
-                JSONWriter(os.path.join(self.cfg.OUTPUT_DIR, "metrics.json")),
-                TensorboardXWriter(self.cfg.OUTPUT_DIR),
+                JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
+                TensorboardXWriter(self.cfg.train.output_dir),
             ]
         """
         # Assume the default print/log frequency.
@@ -452,6 +452,7 @@ class DefaultTrainer(TrainerBase):
             # It may not always print what you want to see, since it prints "common" metrics only.
             CommonMetricPrinter(self.global_batch_size, self.max_iter),
             JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
+            TensorboardXWriter(self.cfg.train.output_dir),
         ]
 
     def train(self):
