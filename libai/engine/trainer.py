@@ -165,13 +165,12 @@ class TrainerBase:
             h.after_train()
 
     def before_step(self):
+        self.storage.iter = self.iter
         for h in self._hooks:
             h.before_step()
 
     def after_step(self):
-        self.storage.iter = self.iter + 1
         self.storage.samples = (self.iter + 1) * self.cfg.train.global_batch_size
-
         for h in self._hooks:
             h.after_step()
 
