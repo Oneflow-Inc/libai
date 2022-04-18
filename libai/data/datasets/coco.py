@@ -109,9 +109,6 @@ class CocoDetection(flowvision.datasets.CocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-        # NOTE: img size: (3, 480, 497) orig_size: (480, 640)
-        for k,v in target.items():
-            target[k] = DistTensorData(flow.tensor(target[k]).long(), placement_idx=-1)
         # TODO: use Instance
         # data_sample = Instance(
         #     images = DistTensorData(img, placement_idx=0),

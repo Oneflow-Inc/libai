@@ -3,6 +3,8 @@ from flowvision.data.constants import (
     IMAGENET_DEFAULT_MEAN,
     IMAGENET_DEFAULT_STD,
 )
+import flowvision.transforms as T
+import flowvision.transforms.functional as F
 
 from libai.config import LazyCall
 from libai.data.datasets import CocoDetection
@@ -13,8 +15,6 @@ import PIL
 import oneflow as flow
 import flowvision.transforms.functional as F
 
-
-from packaging import version
 from typing import Optional, List
 
 import oneflow as flow
@@ -24,9 +24,14 @@ from oneflow import Tensor
 import flowvision
 
 
-
 def box_xyxy_to_cxcywh(x):
-    x0, y0, x1, y1 = x.unbind(-1)
+
+    # NOTE: oneflow does not support unbind op
+    # x0, y0, x1, y1 = x.unbind(-1)
+
+    x0, y0, x1, y1 = x.split(1,-1)
+    x0, y0, x1, y1 = x0.squeeze(-1), y0.squeeze(-1), x1.squeeze(-1), y1.squeeze(-1)
+
     b = [(x0 + x1) / 2, (y0 + y1) / 2,
          (x1 - x0), (y1 - y0)]
     return flow.stack(b, dim=-1)
@@ -51,8 +56,12 @@ def crop(image, target, region):
 
     if "boxes" in target:
         boxes = target["boxes"]
-        max_size = flow.as_tensor([w, h], dtype=flow.float32)
+        # NOTE: oneflow does not support min/max between different dtype, such as float32 and float64
+        # max_size = flow.as_tensor([w, h], dtype=flow.float32)
+        max_size = flow.as_tensor([w, h], dtype=flow.float64)
+
         cropped_boxes = boxes - flow.as_tensor([j, i, j, i])
+
         cropped_boxes = flow.min(cropped_boxes.reshape(-1, 2, 2), max_size)
         cropped_boxes = cropped_boxes.clamp(min=0)
         area = (cropped_boxes[:, 1, :] - cropped_boxes[:, 0, :]).prod(dim=1)
@@ -187,7 +196,7 @@ class RandomSizeCrop(object):
     def __call__(self, img: PIL.Image.Image, target: dict):
         w = random.randint(self.min_size, min(img.width, self.max_size))
         h = random.randint(self.min_size, min(img.height, self.max_size))
-        region = RandomCrop.get_params(img, [h, w])
+        region = T.RandomCrop.get_params(img, [h, w])
         return crop(img, target, region)
 
 
@@ -278,7 +287,9 @@ class Normalize(object):
         if "boxes" in target:
             boxes = target["boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
-            boxes = boxes / flow.tensor([w, h, w, h], dtype=flow.float32)
+            # NOTE: oneflow does not support min/max between different dtype, such as float32 and float64
+            # boxes = boxes / flow.tensor([w, h, w, h], dtype=flow.float32)
+            boxes = boxes / flow.tensor([w, h, w, h], dtype=flow.float64)
             target["boxes"] = boxes
         return image, target
 
@@ -333,6 +344,94 @@ def make_coco_transforms(image_set):
     raise ValueError(f'unknown {image_set}')
 
 
+def _max_by_axis(the_list):
+    # type: (List[List[int]]) -> List[int]
+    maxes = the_list[0]
+    for sublist in the_list[1:]:
+        for index, item in enumerate(sublist):
+            maxes[index] = max(maxes[index], item)
+    return maxes
+
+
+class NestedTensor(object):
+    def __init__(self, tensors, mask: Optional[Tensor]):
+        self.tensors = tensors
+        self.mask = mask
+
+    def to(self, device):
+        # type: (Device) -> NestedTensor # noqa
+        cast_tensor = self.tensors.to(device)
+        mask = self.mask
+        if mask is not None:
+            assert mask is not None
+            cast_mask = mask.to(device)
+        else:
+            cast_mask = None
+        return NestedTensor(cast_tensor, cast_mask)
+
+    def decompose(self):
+        return self.tensors, self.mask
+
+    def __repr__(self):
+        return str(self.tensors)
+
+def _onnx_nested_tensor_from_tensor_list(tensor_list: List[Tensor]) -> NestedTensor:
+    max_size = []
+    for i in range(tensor_list[0].dim()):
+        max_size_i = flow.max(flow.stack([img.shape[i] for img in tensor_list]).to(flow.float32)).to(flow.int64)
+        max_size.append(max_size_i)
+    max_size = tuple(max_size)
+
+    # work around for
+    # pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
+    # m[: img.shape[1], :img.shape[2]] = False
+    # which is not yet supported in onnx
+    padded_imgs = []
+    padded_masks = []
+    for img in tensor_list:
+        padding = [(s1 - s2) for s1, s2 in zip(max_size, tuple(img.shape))]
+        padded_img = flow.nn.functional.pad(img, (0, padding[2], 0, padding[1], 0, padding[0]))
+        padded_imgs.append(padded_img)
+
+        m = flow.zeros_like(img[0], dtype=flow.int, device=img.device)
+        padded_mask = flow.nn.functional.pad(m, (0, padding[2], 0, padding[1]), "constant", 1)
+        padded_masks.append(padded_mask.to(flow.bool))
+
+    tensor = flow.stack(padded_imgs)
+    mask = flow.stack(padded_masks)
+
+    return NestedTensor(tensor, mask=mask)
+
+def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
+
+    # TODO: flowvision does not support _is_tracing()
+    if tensor_list[0].ndim == 3:
+    #     if flowvision._is_tracing():
+    #         # nested_tensor_from_tensor_list() does not export well to ONNX
+    #         # call _onnx_nested_tensor_from_tensor_list() instead
+    #         return _onnx_nested_tensor_from_tensor_list(tensor_list)
+
+        # TODO make it support different-sized images
+        max_size = _max_by_axis([list(img.shape) for img in tensor_list])
+        # min_size = tuple(min(s) for s in zip(*[img.shape for img in tensor_list]))
+        batch_shape = [len(tensor_list)] + max_size
+        b, c, h, w = batch_shape
+        dtype = tensor_list[0].dtype
+        device = tensor_list[0].device
+        tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
+        mask = flow.ones((b, h, w), dtype=flow.bool, device=device)
+        for img, pad_img, m in zip(tensor_list, tensor, mask):
+            pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
+            m[: img.shape[1], :img.shape[2]] = False
+    else:
+        raise ValueError('not supported')
+    return NestedTensor(tensor, mask)
+
+def collate_fn(batch):
+    batch = list(zip(*batch))
+    batch[0] = nested_tensor_from_tensor_list(batch[0])
+    return tuple(batch)
+
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
@@ -343,8 +442,10 @@ dataloader.train = LazyCall(build_image_train_loader)(
             transforms=make_coco_transforms("train"),
         ),
     ],
-    num_workers=4,
+    # NOTE: num_workers=4 as default
+    num_workers=0,
     mixup_func=None,
+    collate_fn = collate_fn
 )
 
 dataloader.test = [
@@ -355,6 +456,9 @@ dataloader.test = [
             return_masks=False,
             transforms=make_coco_transforms("val"),
         ),
-        num_workers=4,
+        # NOTE: num_workers=4 as default
+        num_workers=0,
+        collate_fn = collate_fn
+
     )
 ]
