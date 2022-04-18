@@ -8,3 +8,4 @@ Get Started
    Installation.md
    quick_run.md
    Model_Zoo.md
+   Benchmark.md

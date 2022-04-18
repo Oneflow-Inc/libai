@@ -185,8 +185,7 @@ train = dict(
     ),
 
     # Distributed arguments
-    # FIXME(lxy): When distributed config is ready, replace it!
-    # See https://libai.readthedocs.io/en/latest/tutorials/Getting%20Started.html for more detail.
+    # See https://libai.readthedocs.io/en/latest/tutorials/basics/Distributed_Configuration.html for more details.
     dist=dict(
         data_parallel_size=1,
         tensor_parallel_size=1,

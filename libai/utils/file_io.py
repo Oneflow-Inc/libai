@@ -14,12 +14,6 @@
 # limitations under the License.
 
 
-"""
-Code are mainly adopted from
-https://github.com/facebookresearch/iopath/blob/main/iopath/common/file_io.py
-"""
-
-
 import base64
 import concurrent.futures
 import errno
@@ -36,6 +30,13 @@ import portalocker
 
 from libai.utils.download import download
 from libai.utils.non_blocking_io import NonBlockingIOManager
+
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/iopath/blob/main/iopath/common/file_io.py
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/file_io.py
+# --------------------------------------------------------
+
 
 __all__ = ["LazyPath", "PathManager", "get_cache_dir", "file_lock"]
 
