@@ -26,6 +26,7 @@ from libai import scheduler
 from libai import tokenizer
 from libai import engine
 from libai import utils
+from libai import moe
 
 try:
     from .version import __version__  # noqa: F401

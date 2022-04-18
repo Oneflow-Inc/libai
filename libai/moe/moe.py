@@ -8,6 +8,7 @@
 # https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/expert_utils.py
 
 import math 
+import pdb
 
 import oneflow as flow
 import oneflow.nn as nn
@@ -108,9 +109,12 @@ class SparseDispatcher(object):
 
         if multiply_by_gates:
             stitched = stitched.mul(self._nonzero_gates)
-        zeros = flow.zeros(self._gates.size(0), expert_out[-1].size(1), requires_grad=True).to(self.device)
+        zeros = flow.zeros(self._gates.size(0), expert_out[-1].size(1)).to(self.device)
         # combine samples that have been processed by the same k experts
-        combined = zeros.index_add(0, self._batch_index, stitched.float()).to(self.device)
+        for src,index in enumerate(self._batch_index):
+            zeros[index.item()] = zeros[index] + stitched[src]
+        combined = zeros.to(self.device)
+
         # add eps to all zero values in order to avoid nans when going back to log space
         combined[combined == 0] = np.finfo(float).eps
         # back to log space
@@ -240,7 +244,7 @@ class MoE(nn.Module):
         if self.noisy_gating and train:
             raw_noise_stddev = x @ self.w_noise
             noise_stddev = ((self.softplus(raw_noise_stddev) + noise_epsilon))
-            noisy_logits = clean_logits + ( flow.randn_like(clean_logits).to(self.device) * noise_stddev)
+            noisy_logits = clean_logits + ( flow.randn(*clean_logits.shape).to(self.device) * noise_stddev)
             logits = noisy_logits
         else:
             logits = clean_logits
@@ -251,8 +255,8 @@ class MoE(nn.Module):
         top_k_indices = top_indices[:, :self.k]
         top_k_gates = self.softmax(top_k_logits)
 
-        zeros = flow.zeros_like(logits, requires_grad=True).to(self.device)
-        gates = zeros.scatter(1, top_k_indices, top_k_gates).to(self.device)
+        zeros = flow.zeros(*logits.shape, requires_grad=True).to(self.device)
+        gates = flow.scatter(zeros, 1, top_k_indices, top_k_gates).to(self.device)
 
         if self.noisy_gating and self.k < self.num_experts and train:
             load = (self._prob_in_top_k(clean_logits, noisy_logits, noise_stddev, top_logits)).sum(0)
@@ -284,6 +288,6 @@ class MoE(nn.Module):
         dispatcher = SparseDispatcher(self.num_experts, gates, device=self.device)
         expert_inputs = dispatcher.dispatch(x)
         gates = dispatcher.expert_to_gates()
-        expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts)]
+        expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts) if gates[i].shape[0] != 0]
         y = dispatcher.combine(expert_outputs)
         return y, loss
