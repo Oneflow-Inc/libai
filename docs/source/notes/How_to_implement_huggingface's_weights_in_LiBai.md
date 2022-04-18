@@ -1,5 +1,5 @@
 # How to use Huggingface's pretrained weights in LiBai
-The built-in layers in [LiBai](https://github.com/Oneflow-Inc/libai) adopts the structure which is more suitable for parallel training, therefore there may be little bit different from the Huggingface's implementation. In this tutorial, we will introduce users how to correctly load Huggingface's pretrained weights into LiBai's model, let's take BERT as an example.
+The built-in layers in [LiBai](https://github.com/Oneflow-Inc/libai) adopts the structure which is more suitable for parallel training, therefore there may be little bit different from the Huggingface's implementation. In this tutorial, we will introduce users how to correctly load Huggingface's pretrained weights into LiBai's model, let's take BERT as an example. 
 
 
 ## LiBai Transformer vs Huggingface Transformer
