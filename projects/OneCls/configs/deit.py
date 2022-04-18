@@ -2,7 +2,7 @@ from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 from libai.config import LazyCall, get_config
-from ..modeling.vision_wrapper import VisionModel
+from .models.model import model
 
 # Get train, optim and graph configs
 train = get_config("common/train.py").train
@@ -10,13 +10,13 @@ optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
 dataloader = get_config("common/data/imagenet.py").dataloader
 
-# Add model for training
-model = LazyCall(VisionModel)(
-    model_name="vit_tiny_patch16_224",
-    pretrained=False,
-    num_classes=1000,
-    loss_func=LazyCall(SoftTargetCrossEntropy)(),
-)
+# Refine model config for training
+model.model_name = "vit_tiny_patch16_224"
+model.num_classes = 1000
+model.pretrained = False
+
+# Use SoftTargetCrossEntropy for label-smoothing and mixup func
+model.loss_func = loss_func=LazyCall(SoftTargetCrossEntropy)()
 
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
@@ -53,5 +53,3 @@ train.scheduler.warmup_method = "linear"
 # Set fp16 ON
 train.amp.enabled = True
 
-# Set checkpointing on
-train.activation_checkpoint.enabled = True
