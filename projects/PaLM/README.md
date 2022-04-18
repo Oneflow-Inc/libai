@@ -15,6 +15,7 @@ You are very welcome to contribute to help us enhance the usability of this proj
 2. Download the gpt dataset as demo dataset.
 
 ```shell
+cd projects/PaLM
 python tools/download_demo_dataset.py -o </PATH/TO/DATA>
 ```
 
