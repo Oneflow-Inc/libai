@@ -19,3 +19,4 @@ from .mnist import MNISTDataset
 from .bert_dataset import BertDataset
 from .gpt_dataset import GPT2Dataset
 from .t5_dataset import T5Dataset
+from .coco import CocoDetection
