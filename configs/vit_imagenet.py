@@ -1,10 +1,10 @@
 from libai.config import LazyCall
-from .common.models.vit.vit_base_patch16_224 import model
+from libai.data.samplers.ra_samplers import RASampler
+from .common.models.vit.vit_tiny_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
-from .common.data.dataset.imagenet import dataloader
-from .common.data.sampler.cyclic import sampler
+from .common.data.imagenet import dataloader
 
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
@@ -12,6 +12,8 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
+dataloader.train.dataset[0].root = "/DATA/disk1/ImageNet/extract"
+dataloader.test[0].dataset.root = "/DATA/disk1/ImageNet/extract"
 
 # Refine model cfg for vit training on imagenet
 model.num_classes = 1000
@@ -57,5 +59,8 @@ train.dist.data_parallel_size = 1
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
 
-# Refine dataset sampler for vit training
-dataloader.train.sampler_cfg = sampler
+dataloader.train.sampler_cfg = LazyCall(RASampler)(
+    micro_batch_size = train.train_micro_batch_size,
+    shuffle=True,
+    num_repeats = 3
+)

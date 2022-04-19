@@ -15,7 +15,7 @@
 
 from libai.config import instantiate
 
-def build_sampler(cfg, dataset):
+def build_sampler(cfg):
     """
     Build dataset sampler from config.
     """
