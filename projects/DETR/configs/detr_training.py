@@ -18,12 +18,12 @@ graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].img_folder= "/dataset/mscoco_2017/train2017"
-dataloader.train.dataset[0].ann_file = "/dataset/mscoco_2017/annotations/instances_train2017.json"
+dataloader.train.dataset[0].img_folder= "/DATA/disk1/datasets/mscoco_2017/train"
+dataloader.train.dataset[0].ann_file = "/DATA/disk1/datasets/mscoco_2017/annotations/instances_train2017.json"
 
 
-dataloader.test[0].dataset.img_folder = "/dataset/mscoco_2017/val2017"
-dataloader.test[0].dataset.ann_file = "/dataset/mscoco_2017/annotations/instances_val2017.json"
+dataloader.test[0].dataset.img_folder = "/DATA/disk1/datasets/mscoco_2017/val"
+dataloader.test[0].dataset.ann_file = "/DATA/disk1/datasets/mscoco_2017/annotations/instances_val2017.json"
 
 
 # Refine train cfg for detr model
