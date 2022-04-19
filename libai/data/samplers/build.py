@@ -13,5 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .samplers import CyclicSampler, SingleRoundSampler
-from .build import build_sampler
+from libai.config import instantiate
+
+def build_sampler(cfg, dataset):
+    """
+    Build dataset sampler from config.
+    """
+
+    optim = instantiate(cfg)
+    return optim

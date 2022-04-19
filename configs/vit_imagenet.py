@@ -3,7 +3,8 @@ from .common.models.vit.vit_base_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
-from .common.data.imagenet import dataloader
+from .common.data.dataset.imagenet import dataloader
+from .common.data.sampler.cyclic import sampler
 
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
@@ -55,3 +56,6 @@ train.dist.pipeline_num_layers = model.depth
 train.dist.data_parallel_size = 1
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
+
+# Refine dataset sampler for vit training
+dataloader.train.sampler_cfg = sampler

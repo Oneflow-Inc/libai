@@ -73,6 +73,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
             transform=train_aug,
         ),
     ],
+    sampler_cfg=None,
     num_workers=4,
     mixup_func=None,
 )
@@ -85,6 +86,7 @@ dataloader.test = [
             train=False,
             transform=test_aug,
         ),
+        sampler_cfg=None,
         num_workers=4,
     )
 ]

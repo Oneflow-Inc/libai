@@ -21,7 +21,7 @@ from oneflow.utils.data.dataset import ConcatDataset
 from libai.utils import distributed as dist
 
 from .data_utils import split_ds
-from .samplers import CyclicSampler, SingleRoundSampler
+from .samplers import CyclicSampler, SingleRoundSampler, build_sampler
 from .structures import Instance
 
 
@@ -246,12 +246,12 @@ def build_image_train_loader(
     dataset,
     train_batch_size,
     test_batch_size=None,
-    sampler=None,
     num_workers=4,
     consumed_samples=0,
     seed=0,
     collate_fn=None,
     dataset_mixer=ConcatDataset,
+    sampler_cfg=None,
     mixup_func=None,
     **kwargs
 ):
@@ -269,9 +269,6 @@ def build_image_train_loader(
         dataset: dataset from which to load the data. e.g.: dataset or [dataset1, dataset2, ...]
         train_batch_size: how many samples per batch to load in training (micro-batch-size per GPU).
         test_batch_size: no use, set it to None.
-        sampler:  defines the strategy to draw
-            samples from the dataset. Can be any ``Iterable`` with ``__len__``
-            implemented.
         num_workers: how many subprocesses to use for data
             loading. ``0`` means that the data will be loaded in the main process.
             (default: ``4``).
@@ -282,6 +279,8 @@ def build_image_train_loader(
             mini-batch of Tensor(s).  Used when using batched loading from a
             map-style dataset.
         dataset_mixer: function for concating list dataset.
+        sampler_cfg (dict): sampler configuration to override the default
+            sampler
         mixup_func: function for data argumentation.
     """
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
@@ -294,7 +293,15 @@ def build_image_train_loader(
     else:
         dataset = dataset[0]
 
-    if sampler is None:
+
+    if sampler_cfg:
+        sampler_cfg.dataset = dataset
+        sampler_cfg.consumed_samples = consumed_samples
+        sampler_cfg.data_parallel_rank = dist.get_data_parallel_rank()
+        sampler_cfg.data_parallel_size = dist.get_data_parallel_size()
+        sampler = build_sampler(sampler_cfg)
+    
+    elif sampler_cfg is None:
         sampler = CyclicSampler(
             dataset=dataset,
             micro_batch_size=train_batch_size,
@@ -304,6 +311,7 @@ def build_image_train_loader(
             data_parallel_size=dist.get_data_parallel_size(),
             seed=seed,
         )
+    
 
     dataloader = DataLoader(
         dataset,
