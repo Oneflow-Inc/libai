@@ -77,6 +77,17 @@ class Simcse_sup(nn.Module):
                 1
             ) / attention_mask.sum(-1).unsqueeze(-1)
             return res
+    
+    def create_use_row(self, labels):
+        count = 0
+        use_row = []
+        for row in range(labels.size(0)):
+            if count % 2 == 0 and count != 0:
+                count = 0
+                continue
+            use_row.append(row)
+            count += 1
+        return flow.tensor(use_row, sbp=labels.sbp, placement=labels.placement) 
 
     def forward(self, input_ids, attention_mask, token_type_ids=None, labels=None):
         if self.training:
@@ -91,7 +102,7 @@ class Simcse_sup(nn.Module):
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=out.placement,
             )
-            use_row = flow.where((labels + 1) % 3 != 0)[0]
+            use_row = self.create_use_row(labels)
             labels = (use_row - use_row % 3 * 2) + 1
             sim = cosine_similarity(out.unsqueeze(1), out.unsqueeze(0))
             sim = (

@@ -13,7 +13,6 @@ from projects.SimCSE.dataset.dataset import TestDataset_sup, TrainDataset_sup
 from projects.SimCSE.evaluator import SimcseEvaluator
 from projects.SimCSE.modeling.simcse_sup import Simcse_sup
 
-graph["enabled"] = False
 optim["lr"] = 1e-5
 
 tokenization.tokenizer = LazyCall(BertTokenizer)(
