@@ -77,6 +77,4 @@ class DetrDefaultTrainer(DefaultTrainer):
             "images": images,
             "labels": labels
         }
-        import pdb
-        pdb.set_trace()
         return ret_dict 

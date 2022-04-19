@@ -31,7 +31,8 @@ from flowvision.models.layer_getter import IntermediateLayerGetter
 
 
 from libai.config.configs.common.data.coco import NestedTensor
-
+from libai.config import get_config, LazyCall
+import libai.utils.distributed as dist 
 
 from .position_encoding import build_position_encoding
 
@@ -64,10 +65,14 @@ class FrozenBatchNorm2d(nn.Module):
     def forward(self, x):
         # move reshapes to the beginning
         # to make it fuser-friendly
-        w = self.weight.reshape(1, -1, 1, 1)
-        b = self.bias.reshape(1, -1, 1, 1)
-        rv = self.running_var.reshape(1, -1, 1, 1)
-        rm = self.running_mean.reshape(1, -1, 1, 1)
+        sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        placement = x.placement
+        
+        w = self.weight.reshape(1, -1, 1, 1).to_global(sbp=sbp, placement=placement)
+        b = self.bias.reshape(1, -1, 1, 1).to_global(sbp=sbp, placement=placement)
+        rv = self.running_var.reshape(1, -1, 1, 1).to_global(sbp=sbp, placement=placement)
+        rm = self.running_mean.reshape(1, -1, 1, 1).to_global(sbp=sbp, placement=placement)
+        
         eps = 1e-5
         scale = w * (rv + eps).rsqrt()
         bias = b - rm * scale
@@ -89,15 +94,13 @@ class BackboneBase(nn.Module):
         self.num_channels = num_channels
 
     def forward(self, tensor_list: NestedTensor):
-        import pdb
-        pdb.set_trace()
-        
+
         xs = self.body(tensor_list.tensors.tensor)
         out: Dict[str, NestedTensor] = {}
         for name, x in xs.items():
-            m = tensor_list["images"].mask
+            m = tensor_list.mask
             assert m is not None
-            mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
+            mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
             out[name] = NestedTensor(x, mask)
         return out
 
@@ -142,7 +145,9 @@ def build_backbone(args):
     position_embedding = build_position_encoding(args)
     train_backbone = args.lr_backbone > 0
     return_interm_layers = args.masks
-    backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
-    model = Joiner(backbone, position_embedding)
+    backbone = Backbone(
+        name=args.backbone, train_backbone=train_backbone, 
+        return_interm_layers=return_interm_layers, dilation=args.dilation)
+    model = Joiner(backbone=backbone, position_embedding=position_embedding)
     model.num_channels = backbone.num_channels
     return model

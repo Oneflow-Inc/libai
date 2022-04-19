@@ -27,8 +27,8 @@ dataloader.test[0].dataset.ann_file = "/DATA/disk1/datasets/mscoco_2017/annotati
 
 
 # Refine train cfg for detr model
-train.train_micro_batch_size = 32
-train.test_micro_batch_size = 32
+train.train_micro_batch_size = 2
+train.test_micro_batch_size = 2
 train.train_epoch = 300
 train.warmup_ratio = 40 / 300
 train.eval_period = 5

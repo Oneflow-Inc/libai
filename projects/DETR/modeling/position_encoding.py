@@ -46,20 +46,37 @@ class PositionEmbeddingSine(nn.Module):
         if scale is None:
             scale = 2 * math.pi
         self.scale = scale
+        
+    def cumsum(self, x, dim):
+        size = x.size(dim)
+        for i in range(1, size):
+            x[:,i,:] = x[:,i,:] + x[:,i-1,:]
+        return x
 
     def forward(self, tensor_list: NestedTensor):
         x = tensor_list.tensors
         mask = tensor_list.mask
         assert mask is not None
         not_mask = ~mask
-        y_embed = not_mask.cumsum(1, dtype=flow.float32)
-        x_embed = not_mask.cumsum(2, dtype=flow.float32)
+
+        # NOTE: oneflow does note support cumsum op
+        # TODO: check the correctness of cumsum imlp
+        # y_embed = not_mask.cumsum(1, dtype=flow.float32)
+        y_embed = not_mask
+        for i in range(1, y_embed.size(1)):
+            y_embed[:,i,:] = y_embed[:,i,:] + y_embed[:,i-1,:]
+
+        x_embed = not_mask
+        # x_embed = not_mask.cumsum(2, dtype=flow.float32)
+        for i in range(1, x_embed.size(2)):
+            x_embed[:,:,i] = x_embed[:,:,i] + x_embed[:,:,i-1]
+            
         if self.normalize:
             eps = 1e-6
             y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
             x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
 
-        dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32, device=x.device)
+        dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32).to_global(sbp=x.sbp, placement=x.placement)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
         pos_x = x_embed[:, :, :, None] / dim_t
