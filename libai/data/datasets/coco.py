@@ -96,6 +96,7 @@ class ConvertCocoPolysToMask(object):
 
         return image, target
 
+
 class CocoDetection(flowvision.datasets.CocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks):
         super(CocoDetection, self).__init__(img_folder, ann_file)
@@ -109,9 +110,13 @@ class CocoDetection(flowvision.datasets.CocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-        # TODO: use Instance
+
+        # img = DistTensorData(img, placement_idx=-1)
+        # for k,v in target.items():
+        #     target[k] = DistTensorData(flow.tensor(target[k]).long(), placement_idx=-1)
+
         # data_sample = Instance(
-        #     images = DistTensorData(img, placement_idx=0),
+        #     images = img,
         #     labels = target
         # )
 

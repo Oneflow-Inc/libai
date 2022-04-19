@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from email.mime import image
 from typing import Callable, Optional
 
 import oneflow as flow
 from libai.config.configs.common.data.coco import NestedTensor
 
 from libai.data import Instance
+from libai.data.structures import DistTensorData, Instance
 
 
 from libai.engine.default import DefaultTrainer
@@ -48,21 +50,30 @@ class DetrDefaultTrainer(DefaultTrainer):
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
 
-        if mixup_func is not None:
-            images, labels = mixup_func(
-                data.get("images").tensor.cuda(),
-                data.get("labels").tensor.cuda(),
-            )
-            data.get("images").tensor = images
-            data.get("labels").tensor = labels
+        # TODO: impl the mixup_func
+        # if mixup_func is not None:
+        #     images, labels = mixup_func(
+        #         data.get("images").tensor.cuda(),
+        #         data.get("labels").tensor.cuda(),
+        #     )
+        #     data.get("images").tensor = images
+        #     data.get("labels").tensor = labels
 
-        ret_dict = {}
-        for key, value in data.get_fields().items():
-            # NOTE: deal with nestedtensor
-            import pdb
-            pdb.set_trace()
-            tensors, mask = value.tensors, value.mask
-            tensors.to_global()
-            mask.to_global()
-            ret_dict[key] = NestedTensor(tensors, mask)
-        return ret_dict
+        images, labels = data
+        labels = labels[0]
+        tensors = DistTensorData(images.tensors, placement_idx=-1).to_global()
+        mask = DistTensorData(images.mask, placement_idx=-1).to_global()
+        images = NestedTensor(tensors,mask)
+        import pdb
+        pdb.set_trace()
+        for k,v in labels.items():
+            print(k)
+            labels[k] = DistTensorData(flow.tensor(v.long(), placement_idx=-1)).to_global()
+
+            
+        ret_dict = {
+            "images": images,
+            "labels": labels
+        }
+        pdb.set_trace()
+        return ret_dict 
