@@ -61,19 +61,22 @@ class DetrDefaultTrainer(DefaultTrainer):
 
         images, labels = data
         labels = labels[0]
-        tensors = DistTensorData(images.tensors, placement_idx=-1).to_global()
-        mask = DistTensorData(images.mask, placement_idx=-1).to_global()
-        images = NestedTensor(tensors,mask)
-        import pdb
-        pdb.set_trace()
-        for k,v in labels.items():
-            print(k)
-            labels[k] = DistTensorData(flow.tensor(v.long(), placement_idx=-1)).to_global()
 
-            
+        tensors = DistTensorData(images.tensors, placement_idx=-1)
+        tensors.to_global()
+
+        mask = DistTensorData(images.mask, placement_idx=-1)
+        mask.to_global()
+
+        images = NestedTensor(tensors,mask)
+
+        for k,v in labels.items():
+            labels[k] = DistTensorData(flow.tensor(v), placement_idx=-1)
+            labels[k].to_global()
         ret_dict = {
             "images": images,
             "labels": labels
         }
+        import pdb
         pdb.set_trace()
         return ret_dict 
