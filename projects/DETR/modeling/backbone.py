@@ -92,7 +92,7 @@ class BackboneBase(nn.Module):
         import pdb
         pdb.set_trace()
         
-        xs = self.body(tensor_list["images"].tensors.tensor)
+        xs = self.body(tensor_list.tensors.tensor)
         out: Dict[str, NestedTensor] = {}
         for name, x in xs.items():
             m = tensor_list["images"].mask
