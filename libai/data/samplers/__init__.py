@@ -14,4 +14,3 @@
 # limitations under the License.
 
 from .samplers import CyclicSampler, SingleRoundSampler
-from .build import build_sampler
