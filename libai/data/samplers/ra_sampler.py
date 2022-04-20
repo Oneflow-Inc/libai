@@ -31,7 +31,7 @@ class RASampler(Sampler):
     Sampler that restricts data loading to a subset of the dataset for distributed,
     with repeated augmentation.
     It ensures that different each augmented version of a sample will be visible to a
-    different process (GPU)
+    different process (GPU).
     Heavily based on flow.utils.data.DistributedSampler
 
     Arguments:
