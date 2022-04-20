@@ -1,3 +1,4 @@
+from libai.data.samplers.ra_samplers import RASampler
 from omegaconf import OmegaConf
 from flowvision import transforms
 from flowvision.transforms import InterpolationMode
@@ -73,7 +74,10 @@ dataloader.train = LazyCall(build_image_train_loader)(
             transform=train_aug,
         ),
     ],
-    sampler_cfg=None,
+    sampler_cfg=LazyCall(RASampler)(
+        shuffle=True,
+        num_repeats = 3,
+    ),
     num_workers=4,
     mixup_func=None,
 )

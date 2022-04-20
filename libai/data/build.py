@@ -296,9 +296,11 @@ def build_image_train_loader(
 
     if sampler_cfg:
         sampler_cfg.dataset = dataset
+        sampler_cfg.micro_batch_size = train_batch_size
         sampler_cfg.consumed_samples = consumed_samples
         sampler_cfg.data_parallel_rank = dist.get_data_parallel_rank()
         sampler_cfg.data_parallel_size = dist.get_data_parallel_size()
+        sampler_cfg.seed = seed
         sampler = build_sampler(sampler_cfg)
     
     elif sampler_cfg is None:

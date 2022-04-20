@@ -58,9 +58,3 @@ train.dist.pipeline_num_layers = model.depth
 train.dist.data_parallel_size = 1
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
-
-dataloader.train.sampler_cfg = LazyCall(RASampler)(
-    micro_batch_size = train.train_micro_batch_size,
-    shuffle=True,
-    num_repeats = 3
-)
