@@ -18,7 +18,6 @@ import math
 import oneflow as flow
 from oneflow.utils.data import Sampler
 
-
 # --------------------------------------------------------
 # References:
 # https://github.com/facebookresearch/deit/blob/0c4b8f60/samplers.py
@@ -64,21 +63,25 @@ class RASampler(Sampler):
         self.num_repeats = num_repeats
         self.micro_batch_size = micro_batch_size
         self.actual_batch_size = self.micro_batch_size * self.data_parallel_size
-        
+
         # samples for each rank: dataset size * repeat nums / rank nums
         self.num_samples = int(
             math.ceil(len(self.dataset) * self.num_repeats / self.data_parallel_size)
         )
-        
+
         # the total samples after repeat sampling
         self.total_size = self.num_samples * self.data_parallel_size
 
         # the real samples nums for each rank without repeat samples
         if selected_round:
-            self.data_size = int(math.floor(len(self.dataset) // selected_round * selected_round / self.data_parallel_size))
+            self.data_size = int(
+                math.floor(
+                    len(self.dataset) // selected_round * selected_round / self.data_parallel_size
+                )
+            )
         else:
             self.data_size = int(math.ceil(len(self.dataset) / self.data_parallel_size))
-        
+
         self.shuffle = shuffle
         self.consumed_samples = consumed_samples
 
@@ -123,7 +126,7 @@ class RASampler(Sampler):
 
     def set_consumed_samples(self, consumed_samples):
         """you can recover the training iteration by setting `consumed_samples`."""
-        self.consumed_samples = consumed_samples 
+        self.consumed_samples = consumed_samples
 
     def set_epoch(self, epoch):
         """used for restoring training status."""
