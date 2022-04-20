@@ -27,6 +27,8 @@ from .structures import Instance
 
 def build_nlp_train_val_test_loader(
     dataset,
+    splits,
+    weights,
     train_batch_size,
     test_batch_size,
     sampler=None,

@@ -600,6 +600,14 @@ class DefaultTrainer(TrainerBase):
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
 
+        # Set tokenizer for each dataset
+        if tokenizer:
+            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
+                for dataset in cfg.dataloader.train.dataset:
+                    dataset.tokenizer = tokenizer
+            else:
+                cfg.dataloader.train.dataset.tokenizer = tokenizer
+
         dataset = instantiate(cfg.dataloader.train.dataset)
 
         splits = try_get_key(cfg, "dataloader.train.splits")
@@ -616,15 +624,7 @@ class DefaultTrainer(TrainerBase):
             cfg.dataloader.train.sampler.seed = cfg.dataloader.train.seed
 
         cfg.dataloader.train.dataset = dataset
-
-        # Set tokenizer for each dataset
-        if tokenizer:
-            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
-                for dataset in cfg.dataloader.train.dataset:
-                    dataset.tokenizer = tokenizer
-            else:
-                cfg.dataloader.train.dataset.tokenizer = tokenizer
-
+        
         train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
         return train_loader, valid_loader, test_loader
 
