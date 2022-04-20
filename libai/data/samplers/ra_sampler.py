@@ -19,6 +19,13 @@ import oneflow as flow
 from oneflow.utils.data import Sampler
 
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/deit/blob/0c4b8f60/samplers.py
+# https://github.com/open-mmlab/mmclassification/blob/master/mmcls/datasets/samplers/repeat_aug.py
+# --------------------------------------------------------
+
+
 class RASampler(Sampler):
     """
     Sampler that restricts data loading to a subset of the dataset for distributed,
@@ -29,22 +36,27 @@ class RASampler(Sampler):
 
     Arguments:
         dataset: dataset to be sampled.
+        micro_batch_size: batch size for per model instance.
+        global_batch_size is micro_batch_size times data_parallel_size.
         shuffle: whether to shuffle the dataset.
         data_parallel_rank: local rank for data parallelism.
         data_parallel_size: the size of data parallelism.
+        num_repeats: repeat sampling nums for each sample.
+        selected_round: determine the number of samples to select per epoch for each rank
         seed: random seed, used for reproducing experiments (default: ``0``).
     """
 
     def __init__(
-        self, 
+        self,
         dataset,
         micro_batch_size,
-        shuffle = True,
+        shuffle=True,
         consumed_samples=0,
         data_parallel_rank=0,
         data_parallel_size=1,
         num_repeats=3,
-        seed = 0,
+        selected_round=256,
+        seed=0,
     ):
         self.data_parallel_size = data_parallel_size
         self.dataset = dataset
@@ -52,16 +64,24 @@ class RASampler(Sampler):
         self.num_repeats = num_repeats
         self.micro_batch_size = micro_batch_size
         self.actual_batch_size = self.micro_batch_size * self.data_parallel_size
-        # 重复采样后每个rank的样本数量: 数据集 * 采样次数 / data rank总量
-        self.num_samples = int(math.ceil(len(self.dataset) * self.num_repeats / self.data_parallel_size))
-        # 重复采样后的总样本量
+        
+        # samples for each rank: dataset size * repeat nums / rank nums
+        self.num_samples = int(
+            math.ceil(len(self.dataset) * self.num_repeats / self.data_parallel_size)
+        )
+        
+        # the total samples after repeat sampling
         self.total_size = self.num_samples * self.data_parallel_size
-        # self.num_selected_samples = int(math.ceil(len(self.dataset) / self.num_replicas))
-        # 每个replica实际样本量，即不重复采样时的每个replica的样本量
-        self.data_size = int(math.floor(len(self.dataset) // 256 * 256 / self.data_parallel_size))
+
+        # the real samples nums for each rank without repeat samples
+        if selected_round:
+            self.data_size = int(math.floor(len(self.dataset) // selected_round * selected_round / self.data_parallel_size))
+        else:
+            self.data_size = int(math.ceil(len(self.dataset) / self.data_parallel_size))
+        
         self.shuffle = shuffle
         self.consumed_samples = consumed_samples
-        
+
         self.seed = seed
 
     def __iter__(self):
@@ -78,17 +98,18 @@ class RASampler(Sampler):
                 indices = flow.arange(start=0, end=len(self.dataset))
 
             # add extra samples to make it evenly divisible
+            # produce repeats e.g. [0, 0, 0, 1, 1, 1, 2, 2, 2....]
             indices = [ele for ele in indices for i in range(self.num_repeats)]
             padding_size: int = self.total_size - len(indices)
             if padding_size > 0:
                 indices += indices[:padding_size]
             assert len(indices) == self.total_size
 
-            # subsample: 使得同一个样本的重复版本进入不同的进程（GPU）
-            indices = indices[self.rank:self.total_size:self.data_parallel_size]
+            # subsample: force the repeated samples being put into different rank
+            indices = indices[self.rank : self.total_size : self.data_parallel_size]
             assert len(indices) == self.num_samples
 
-            indices = iter(indices[:self.data_size])
+            indices = iter(indices[: self.data_size])
 
             for idx in indices:
                 batch.append(idx)
