@@ -11,7 +11,7 @@ from flowvision.data.random_erasing import RandomErasing
 
 from libai.config import LazyCall
 from libai.data.datasets import ImageNetDataset
-from libai.data.samplers.ra_samplers import RASampler
+from libai.data.samplers.ra_samplers_new import RASampler
 from libai.data.build import build_image_train_loader, build_image_test_loader
 
 train_aug = LazyCall(transforms.Compose)(
@@ -74,10 +74,6 @@ dataloader.train = LazyCall(build_image_train_loader)(
             transform=train_aug,
         ),
     ],
-    sampler = LazyCall(RASampler)(
-        shuffle=True,
-        num_repeats=3,
-    ),
     num_workers=4,
     mixup_func=None,
 )

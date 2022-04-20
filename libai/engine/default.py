@@ -605,7 +605,7 @@ class DefaultTrainer(TrainerBase):
         splits = try_get_key(cfg, "dataloader.train.splits")
         weights = try_get_key(cfg, "dataloader.train.weights")
         dataset = build_dataset(dataset, splits=splits, weights=weights)
-        
+
         # Set customize sampler
         if try_get_key(cfg, "dataloader.train.sampler") is not None:
             cfg.dataloader.train.sampler.dataset = dataset

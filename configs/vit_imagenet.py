@@ -1,5 +1,4 @@
 from libai.config import LazyCall
-from libai.data.samplers.ra_samplers import RASampler
 from .common.models.vit.vit_tiny_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train

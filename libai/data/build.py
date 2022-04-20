@@ -327,12 +327,7 @@ def trivial_batch_collator(batch):
     return batch
 
 
-def build_dataset(
-    dataset, 
-    dataset_mixer=ConcatDataset, 
-    splits=None,
-    weights=None
-):
+def build_dataset(dataset, dataset_mixer=ConcatDataset, splits=None, weights=None):
     if isinstance(dataset, omegaconf.listconfig.ListConfig):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
@@ -344,10 +339,10 @@ def build_dataset(
         assert len(dataset) == len(weights), "datasets length must equal weights length"
         train_datasets, val_datasets, test_datasets = [], [], []
         for dst, split in zip(dataset, splits):
-                train_dataset, val_dataset, test_dataset = split_ds(dst, split)
-                train_datasets.append(train_dataset)
-                val_datasets.append(val_dataset)
-                test_datasets.append(test_dataset)
+            train_dataset, val_dataset, test_dataset = split_ds(dst, split)
+            train_datasets.append(train_dataset)
+            val_datasets.append(val_dataset)
+            test_datasets.append(test_dataset)
         # [dataset, dataset] -> dataset -> dataloader
         train_dataset = dataset_mixer(train_datasets)
         val_dataset = dataset_mixer(val_datasets)
@@ -358,5 +353,5 @@ def build_dataset(
         dataset = dataset_mixer(dataset)
     else:
         dataset = dataset[0]
-    
+
     return dataset
