@@ -636,7 +636,7 @@ class DefaultTrainer(TrainerBase):
             if tokenizer:
                 cfg.dataloader.test[i].dataset.tokenizer = tokenizer
         # list[dataloader1, dataloader2, ...]
-        test_loader = instantiate(cfg.dataloader.test)
+        test_loader = instantiate(cfg.dataloader.test, _recursive_=False)
         return test_loader
 
     @classmethod

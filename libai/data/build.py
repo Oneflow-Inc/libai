@@ -245,7 +245,7 @@ def build_image_train_loader(
     dataset,
     train_batch_size,
     test_batch_size=None,
-    sampler=None,
+    sampler=LazyCall(CyclicSampler)(shuffle=True),
     num_workers=4,
     consumed_samples=0,
     seed=0,
@@ -295,16 +295,13 @@ def build_image_train_loader(
     else:
         dataset = dataset[0]
 
-    if sampler is None:
-        sampler = CyclicSampler(
-            dataset=dataset,
-            micro_batch_size=train_batch_size,
-            shuffle=True,
-            consumed_samples=consumed_samples,
-            data_parallel_rank=dist.get_data_parallel_rank(),
-            data_parallel_size=dist.get_data_parallel_size(),
-            seed=seed,
-        )
+    sampler.dataset = dataset
+    sampler.micro_batch_size = train_batch_size
+    sampler.consumed_samples = consumed_samples
+    sampler.data_parallel_rank = dist.get_data_parallel_rank()
+    sampler.data_parallel_size = dist.get_data_parallel_size()
+    sampler.seed = seed
+    sampler = instantiate(sampler)
 
     dataloader = DataLoader(
         dataset,
