@@ -20,7 +20,7 @@ from oneflow.utils.data import Sampler
 class CyclicSampler(Sampler):
     """
     This sampler supports cyclic sampling, and it is also compatible with
-    non data parallelism and data parallelism.
+    non-data parallelism and data parallelism.
 
     Arguments:
         dataset: dataset to be sampled.
@@ -98,11 +98,11 @@ class CyclicSampler(Sampler):
         return self.data_size
 
     def set_consumed_samples(self, consumed_samples):
-        """you can recover the training iteration by setting `consumed_samples`."""
+        """You can recover the training iteration by setting `consumed_samples`."""
         self.consumed_samples = consumed_samples
 
     def set_epoch(self, epoch):
-        """used for restoring training status."""
+        """Used for restoring training status."""
         self.epoch = epoch
 
 

@@ -45,7 +45,7 @@ def get_event_storage():
     """
     Returns:
         The :class:`EventStorage` object that's currently being used.
-        Throws an error if no :class:`EventStorage` is currently enabled.
+        Throw an error if no :class:`EventStorage` is currently enabled.
     """
     assert len(
         _CURRENT_STORAGE_STACK
@@ -69,7 +69,7 @@ class JSONWriter(EventWriter):
     """
     Write scalars to a json file.
     It saves scalars as one json per line (instead of a big json) for easy parsing.
-    Examples parsing such a json file:
+    Example of parsing such a json file:
 
     ::
 
@@ -281,7 +281,7 @@ class EventStorage:
 
     def put_image(self, img_name, img_tensor):
         """
-        Add an `img_tensor` associated with `img_name`, to be shown on
+        Add an `img_tensor` associated with `img_name` to be shown on
         tensorboard.
 
         Args:
@@ -324,7 +324,7 @@ class EventStorage:
         """
         Put multiple scalars from keyword arguments.
 
-        Examples:
+        Example:
 
         .. code-block:: python
 
@@ -363,7 +363,7 @@ class EventStorage:
         Similar to :meth:`latest`, but the returned values
         are either the un-smoothed original latest value,
         or a median of the given window_size,
-        depend on whether the smoothing_hint is True.
+        depending on whether the smoothing_hint is True.
         This provides a default behavior that other writers can use.
         """
         result = {}
@@ -384,8 +384,8 @@ class EventStorage:
 
     def step(self):
         """
-        User should either: (1) Call this function to increment storage.iter when needed. Or
-        (2) Set `storage.iter` to the correct iteration number before each iteration.
+        User should either: (1) Call this function to increment storage.iter when needed. 
+        Or (2) Set `storage.iter` to the correct iteration number before each iteration.
 
         The storage will then be able to associate the new data with an iteration number.
         """

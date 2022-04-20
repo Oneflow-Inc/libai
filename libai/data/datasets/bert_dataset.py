@@ -163,7 +163,7 @@ class BertDataset(flow.utils.data.Dataset):
         return tokens_a, tokens_b, is_next_random
 
     def truncate_seq_pair(self, tokens_a, tokens_b, max_num_tokens, np_rng):
-        """truncate sequence pair to a maximum sequence length"""
+        """Truncate sequence pair to a maximum sequence length."""
 
         len_a, len_b = len(tokens_a), len(tokens_b)
         while True:
@@ -185,7 +185,7 @@ class BertDataset(flow.utils.data.Dataset):
         return tokens_a, tokens_b
 
     def create_tokens_and_token_types(self, tokens_a, tokens_b):
-        """merge segments A and B, add [CLS] and [SEP] and build token types."""
+        """Merge segments A and B, add [CLS] and [SEP] and build token types."""
         tokens = [self.cls_id] + tokens_a + [self.sep_id]
         token_types = [0] * (len(tokens_a) + 2)
         if len(tokens_b) > 0:
@@ -196,7 +196,7 @@ class BertDataset(flow.utils.data.Dataset):
 
     def mask_token(self, idx, tokens, np_rng):
         """
-        helper function to mask `idx` token from `tokens` according to
+        Helper function to mask `idx` token from `tokens` according to
         section 3.3.1 of https://arxiv.org/pdf/1810.04805.pdf
         """
         label = tokens[idx]
@@ -221,7 +221,7 @@ class BertDataset(flow.utils.data.Dataset):
         favor_longer_ngram=False,
         geometric_dist=False,
     ):
-        """Creates the predictions for the masked LM objective.
+        """Creates the predictions for the masked LM objective.  
         Note: Tokens here are vocab ids and not text tokens."""
 
         cand_indexes = []
@@ -355,7 +355,7 @@ class BertDataset(flow.utils.data.Dataset):
         return output_tokens, masked_positions, masked_labels
 
     def pad_and_convert_to_tensor(self, tokens, token_types, masked_positions, masked_labels):
-        """pad sequences and convert them to tensor"""
+        """Pad sequences and convert them to tensor."""
 
         # check
         num_tokens = len(tokens)

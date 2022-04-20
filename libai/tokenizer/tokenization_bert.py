@@ -87,7 +87,7 @@ class BertTokenizer(PreTrainedTokenizer):
         vocab_file (:obj:`str`):
             Path to a one-wordpiece-per-line vocabulary file.
         do_lower_case (:obj:`bool`, `optional`, defaults to :obj:`True`):
-            Whether to lower case the input
+            Whether to lower case the input. 
             Only has an effect when do_basic_tokenize=True.
         do_basic_tokenize (:obj:`bool`, `optional`, defaults to :obj:`True`):
             Whether to do basic tokenization before wordpiece.
@@ -199,7 +199,7 @@ class BertTokenizer(PreTrainedTokenizer):
         return token
 
     def convert_tokens_to_string(self, tokens):
-        """Converts a sequence of tokens (string) in a single string."""
+        """Converts a sequence of tokens (string) to a single string."""
         out_string = " ".join(tokens).replace(" ##", "").strip()
         return out_string
 

@@ -520,7 +520,7 @@ class SwinTransformer(nn.Module):
         ape (bool): If True, add absolute position embedding to the patch embedding. Default: False
         patch_norm (bool): If True, add normalization after patch embedding. Default: True
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
-        loss_func (callable, optional): loss function for computing the total loss
+        loss_func (callable, optional): Loss function for computing the total loss
                                     between logits and labels
     """
 

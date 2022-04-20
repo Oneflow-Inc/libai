@@ -53,7 +53,7 @@ def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
 
 def print_csv_format(results):
     """
-    Print main metrics in a particular format,
+    Print main metrics in a particular format
     so that they are easy to copypaste into a spreadsheet.
 
     Args:

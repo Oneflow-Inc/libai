@@ -149,7 +149,7 @@ def default_setup(cfg, args):
     1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
     3. Setup the distributed environment
-    4. Setup tokenizer if it's NLP related task
+    4. Setup tokenizer if it's an NLP related task
     5. Check batch_size
     6. Backup the config to the output directory
     7. Compile dependencies
@@ -202,14 +202,14 @@ def default_setup(cfg, args):
 class DefaultTrainer(TrainerBase):
     """
     A trainer with default training logic. Compared to `TrainerBase`, it
-    contains the following logic in addition:
+    also contains the following logic:
 
     1. Create model, optimizer, scheduler, dataloader from the given config.
     2. Load a checkpoint or `cfg.MODEL.WEIGHTS`, if exists.
     3. Register a few common hooks defined by the config.
 
-    It is created to simplify the **standard model training workflow** and reduce code boilerplate
-    for users who only need the standard training workflow, with standard features.
+    With standard features, it is created to simplify the **standard model training workflow** and
+    reduce code boilerplate for users who only need the standard training workflow.
 
     It means this class makes **many assumptions** about your training logic that
     may easily become invalid in a new research. In fact, any assumptions beyond those made in the
