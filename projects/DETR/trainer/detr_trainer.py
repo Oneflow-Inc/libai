@@ -85,12 +85,13 @@ class DetrEagerTrainer(TrainerBase):
         # )
         data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
-        import pdb
-        pdb.set_trace()
         loss_dict = self.model(data["images"])
+        
+        # TODO: continue here
         losses = sum(loss_dict.values()) / self.grad_acc_steps
 
         losses.backward()
+
         self.write_metrics(loss_dict, data_time)
 
         if (self.iter + 1) % self.grad_acc_steps == 0:

@@ -54,11 +54,12 @@ class PositionEmbeddingSine(nn.Module):
         not_mask = ~mask
 
         # NOTE: oneflow does note support tensor.cumsum, support flow.cumsum 
+        # NOTE: flow.cumsum has no dtype args
         # y_embed = not_mask.cumsum(1, dtype=flow.float32)
-        y_embed = flow.cumsum(not_mask, dim=1, dtype=flow.float32)
+        y_embed = flow.cumsum(not_mask, dim=1)
 
         # x_embed = not_mask.cumsum(2, dtype=flow.float32)
-        x_embed = flow.cumsum(not_mask, dim=2, dtpye=flow.float32)
+        x_embed = flow.cumsum(not_mask, dim=2)
 
         if self.normalize:
             eps = 1e-6

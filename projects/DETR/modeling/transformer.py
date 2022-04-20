@@ -48,8 +48,6 @@ class Transformer(nn.Module):
     def forward(self, src, mask, query_embed, pos_embed):
         # flatten NxCxHxW to HWxNxC
         bs, c, h, w = src.shape
-        import pdb
-        pdb.set_trace()
         src = src.flatten(2).permute(2, 0, 1)
         pos_embed = pos_embed.flatten(2).permute(2, 0, 1)
         query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)
@@ -79,7 +77,6 @@ class TransformerEncoder(nn.Module):
         for layer in self.layers:
             output = layer(output, src_mask=mask,
                            src_key_padding_mask=src_key_padding_mask, pos=pos)
-
         if self.norm is not None:
             output = self.norm(output)
 
@@ -114,7 +111,6 @@ class TransformerDecoder(nn.Module):
                            pos=pos, query_pos=query_pos)
             if self.return_intermediate:
                 intermediate.append(self.norm(output))
-
         if self.norm is not None:
             output = self.norm(output)
             if self.return_intermediate:
@@ -146,6 +142,7 @@ class TransformerEncoderLayer(nn.Module):
 
         self.activation = _get_activation_fn(activation)
         self.normalize_before = normalize_before
+        self.nhead = nhead
 
     def with_pos_embed(self, tensor, pos: Optional[Tensor]):
         return tensor if pos is None else tensor + pos
@@ -155,11 +152,15 @@ class TransformerEncoderLayer(nn.Module):
                      src_mask: Optional[Tensor] = None,
                      src_key_padding_mask: Optional[Tensor] = None,
                      pos: Optional[Tensor] = None):
-        import pdb
-        pdb.set_trace()
+
         q = k = self.with_pos_embed(src, pos)
-        src2 = self.self_attn(q, k, value=src, attention_mask=src_mask,
-                              key_padding_mask=src_key_padding_mask)[0]
+        # src2 = self.self_attn(q, k, value=src, attention_mask=src_mask,
+        #                       key_padding_mask=src_key_padding_mask)[0]
+        
+        # NOTE: error here
+        # TODO: fit libai transformer 
+        src2 = self.self_attn(q.permute(1,0,2)).permute(1,0,2)
+        
         src = src + self.dropout1(src2)
         src = self.norm1(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
@@ -173,8 +174,12 @@ class TransformerEncoderLayer(nn.Module):
                     pos: Optional[Tensor] = None):
         src2 = self.norm1(src)
         q = k = self.with_pos_embed(src2, pos)
-        src2 = self.self_attn(q, k, value=src2, attn_mask=src_mask,
-                              key_padding_mask=src_key_padding_mask)[0]
+        # src2 = self.self_attn(q, k, value=src2, attn_mask=src_mask,
+        #                       key_padding_mask=src_key_padding_mask)[0]
+        # NOTE: error here
+        # TODO: fit libai transformer 
+        src2 = self.self_attn(q.permute(1,0,2)).permute(1,0,2)
+        
         src = src + self.dropout1(src2)
         src2 = self.norm2(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src2))))
@@ -185,8 +190,6 @@ class TransformerEncoderLayer(nn.Module):
                 src_mask: Optional[Tensor] = None,
                 src_key_padding_mask: Optional[Tensor] = None,
                 pos: Optional[Tensor] = None):
-        import pdb
-        pdb.set_trace()
         if self.normalize_before:
             return self.forward_pre(src, src_mask, src_key_padding_mask, pos)
         return self.forward_post(src, src_mask, src_key_padding_mask, pos)
@@ -228,14 +231,22 @@ class TransformerDecoderLayer(nn.Module):
                      pos: Optional[Tensor] = None,
                      query_pos: Optional[Tensor] = None):
         q = k = self.with_pos_embed(tgt, query_pos)
-        tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
-                              key_padding_mask=tgt_key_padding_mask)[0]
+        # tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
+        #                       key_padding_mask=tgt_key_padding_mask)[0]
+        # NOTE: error here
+        # TODO: fit libai transformer 
+        tgt2 = self.self_attn(q.permute(1,0,2)).permute(1,0,2)
+        
         tgt = tgt + self.dropout1(tgt2)
         tgt = self.norm1(tgt)
-        tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
-                                   key=self.with_pos_embed(memory, pos),
-                                   value=memory, attn_mask=memory_mask,
-                                   key_padding_mask=memory_key_padding_mask)[0]
+        # tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
+        #                            key=self.with_pos_embed(memory, pos),
+        #                            value=memory, attn_mask=memory_mask,
+        #                            key_padding_mask=memory_key_padding_mask)[0]
+        # NOTE: error here
+        # TODO: fit libai transformer 
+        tgt2 = self.self_attn(self.with_pos_embed(tgt, query_pos).permute(1,0,2)).permute(1,0,2)
+        
         tgt = tgt + self.dropout2(tgt2)
         tgt = self.norm2(tgt)
         tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt))))
@@ -252,14 +263,22 @@ class TransformerDecoderLayer(nn.Module):
                     query_pos: Optional[Tensor] = None):
         tgt2 = self.norm1(tgt)
         q = k = self.with_pos_embed(tgt2, query_pos)
-        tgt2 = self.self_attn(q, k, value=tgt2, attn_mask=tgt_mask,
-                              key_padding_mask=tgt_key_padding_mask)[0]
+        # tgt2 = self.self_attn(q, k, value=tgt2, attn_mask=tgt_mask,
+        #                       key_padding_mask=tgt_key_padding_mask)[0]
+        # NOTE: error here
+        # TODO: fit libai transformer 
+        tgt2 = self.self_attn(self.with_pos_embed(tgt2, query_pos).permute(1,0,2)).permute(1,0,2)
+        
         tgt = tgt + self.dropout1(tgt2)
         tgt2 = self.norm2(tgt)
-        tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt2, query_pos),
-                                   key=self.with_pos_embed(memory, pos),
-                                   value=memory, attn_mask=memory_mask,
-                                   key_padding_mask=memory_key_padding_mask)[0]
+        # tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt2, query_pos),
+        #                            key=self.with_pos_embed(memory, pos),
+        #                            value=memory, attn_mask=memory_mask,
+        #                            key_padding_mask=memory_key_padding_mask)[0]
+        # NOTE: error here
+        # TODO: fit libai transformer 
+        tgt2 = self.self_attn(self.with_pos_embed(tgt2, query_pos).permute(1,0,2)).permute(1,0,2)
+        
         tgt = tgt + self.dropout2(tgt2)
         tgt2 = self.norm3(tgt)
         tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt2))))
