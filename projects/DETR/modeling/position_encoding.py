@@ -46,12 +46,6 @@ class PositionEmbeddingSine(nn.Module):
         if scale is None:
             scale = 2 * math.pi
         self.scale = scale
-        
-    def cumsum(self, x, dim):
-        size = x.size(dim)
-        for i in range(1, size):
-            x[:,i,:] = x[:,i,:] + x[:,i-1,:]
-        return x
 
     def forward(self, tensor_list: NestedTensor):
         x = tensor_list.tensors

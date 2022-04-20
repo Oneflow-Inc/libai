@@ -156,7 +156,7 @@ class TransformerEncoderLayer(nn.Module):
         import pdb
         pdb.set_trace()
         q = k = self.with_pos_embed(src, pos)
-        src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
+        src2 = self.self_attn(q, k, value=src, attention_mask=src_mask,
                               key_padding_mask=src_key_padding_mask)[0]
         src = src + self.dropout1(src2)
         src = self.norm1(src)
