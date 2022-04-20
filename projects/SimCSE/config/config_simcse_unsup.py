@@ -9,7 +9,7 @@ from libai.config import LazyCall
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 from libai.scheduler import WarmupExponentialLR
 from libai.tokenizer import BertTokenizer
-from projects.SimCSE.dataset.dataset import TestDataset, TrainDataset
+from projects.SimCSE.dataset.dataset import TestDataset_unsup, TrainDataset_unsup
 from projects.SimCSE.evaluator import SimcseEvaluator
 from projects.SimCSE.modeling.simcse_unsup import Simcse_unsup
 
@@ -23,7 +23,7 @@ tokenization.make_vocab_size_divisible_by = 1
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
-        LazyCall(TrainDataset)(
+        LazyCall(TrainDataset_unsup)(
             name="snli-unsup",
             path="./data/SNLI/train.txt",
             tokenizer=LazyCall(BertTokenizer)(vocab_file="./data/vocab.txt"),
@@ -35,14 +35,14 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
 
 dataloader.test = [
     LazyCall(build_nlp_test_loader)(
-        dataset=LazyCall(TestDataset)(
+        dataset=LazyCall(TestDataset_unsup)(
             name="cnsd_sts",
             path="./data/STS/cnsd-sts-test.txt",
             tokenizer=LazyCall(BertTokenizer)(vocab_file="./data/vocab.txt"),
         ),
     ),
     # LazyCall(build_nlp_test_loader)(
-    #     dataset=LazyCall(TestDataset)(
+    #     dataset=LazyCall(TestDataset_unsup)(
     #         name="cnsd_sts",
     #         path="./data/STS/cnsd-sts-dev.txt",
     #         tokenizer=LazyCall(BertTokenizer)(

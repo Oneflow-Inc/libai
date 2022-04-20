@@ -86,7 +86,7 @@ def load_data(name, path):
 
 def padding_for_ids(data, pad_id=0, max_len=64):
     data["input_ids"] = data["input_ids"] + [pad_id] * (max_len - len(data["input_ids"]))
-    data["attention_mask"] = data["attention_mask"] + [pad_id] * (
+    data["attention_mask"] = data["attention_mask"] + [0] * (
         max_len - len(data["attention_mask"])
     )
 
@@ -99,7 +99,7 @@ def padding_for_ids(data, pad_id=0, max_len=64):
     )
 
 
-class TrainDataset(Dataset):
+class TrainDataset_unsup(Dataset):
     # unsup
     def __init__(self, name, path, tokenizer, max_len, path2=None):
         self.name = name
@@ -133,11 +133,10 @@ class TrainDataset(Dataset):
         )
 
     def __getitem__(self, index):
-        # {"input_ids":ids, "attention_mask":attention_mask}
         return self.text2id(self.data[index])
 
 
-class TestDataset(Dataset):
+class TestDataset_unsup(Dataset):
     # sts datasets
     def __init__(self, name, path, tokenizer):
         self.data = load_data(name, path)
@@ -159,7 +158,7 @@ class TestDataset(Dataset):
         length = len(ids)
 
         ids = ids + [self.pad_id] * (self.max_len - length)
-        attention_mask = [1] * length + [self.pad_id] * (self.max_len - length)
+        attention_mask = [1] * length + [0] * (self.max_len - length)
 
         return {
             "input_ids": ids,
@@ -200,7 +199,7 @@ class TrainDataset_sup(Dataset):
     def pad_text(self, ids):
         attention_mask = [1] * len(ids)
         ids = ids + [self.pad_id] * (self.max_len - len(ids))
-        attention_mask = attention_mask + [self.pad_id] * (self.max_len - len(attention_mask))
+        attention_mask = attention_mask + [0] * (self.max_len - len(attention_mask))
         return ids, attention_mask
 
     def text2id(self, text):
