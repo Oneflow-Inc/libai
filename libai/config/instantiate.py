@@ -15,10 +15,15 @@
 
 import dataclasses
 import logging
-from collections import abc
-from typing import Any
+from enum import Enum
+from typing import Any, Callable, Dict, List, Union
+
+from hydra.errors import InstantiationException
+from omegaconf import OmegaConf
 
 from libai.config.lazy import _convert_target_to_string, locate
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["dump_dataclass", "instantiate"]
 
@@ -26,6 +31,21 @@ __all__ = ["dump_dataclass", "instantiate"]
 # References:
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/config/instantiate.py
 # --------------------------------------------------------
+
+
+class _Keys(str, Enum):
+    """Special keys in configs used by instantiate."""
+
+    TARGET = "_target_"
+    RECURSIVE = "_recursive_"
+
+
+def _is_target(x: Any) -> bool:
+    if isinstance(x, dict):
+        return _Keys.TARGET in x
+    if OmegaConf.is_dict(x):
+        return _Keys.TARGET in x
+    return False
 
 
 def dump_dataclass(obj: Any):
@@ -52,7 +72,52 @@ def dump_dataclass(obj: Any):
     return ret
 
 
-def instantiate(cfg):
+def _prepare_input_dict_or_list(d: Union[Dict[Any, Any], List[Any]]) -> Any:
+    res: Any
+    if isinstance(d, dict):
+        res = {}
+        for k, v in d.items():
+            if k == "_target_":
+                v = _convert_target_to_string(d["_target_"])
+            elif isinstance(v, (dict, list)):
+                v = _prepare_input_dict_or_list(v)
+            res[k] = v
+    elif isinstance(d, list):
+        res = []
+        for v in d:
+            if isinstance(v, (list, dict)):
+                v = _prepare_input_dict_or_list(v)
+            res.append(v)
+    else:
+        assert False
+    return res
+
+
+def _resolve_target(target):
+    if isinstance(target, str):
+        try:
+            target = locate(target)
+        except Exception as e:
+            msg = f"Error locating target '{target}', see chained exception above."
+            raise InstantiationException(msg) from e
+
+    if not callable(target):
+        msg = f"Expected a callable target, got '{target}' of type '{type(target).__name__}'"
+        raise InstantiationException(msg)
+    return target
+
+
+def _call_target(_target_: Callable[..., Any], kwargs: Dict[str, Any]):
+    """Call target (type) with kwargs"""
+
+    try:
+        return _target_(**kwargs)
+    except Exception as e:
+        msg = f"Error in call to target '{_convert_target_to_string(_target_)}':\n{repr(e)}"
+        raise InstantiationException(msg) from e
+
+
+def instantiate(cfg, **kwargs: Any) -> Any:
     """
     Recursively instantiate objects defined in dictionaries by
     "_target_" and arguments.
@@ -64,38 +129,67 @@ def instantiate(cfg):
     Returns:
         object instantiated by cfg
     """
-    from omegaconf import ListConfig
+    if cfg is None:
+        return None
 
-    if isinstance(cfg, ListConfig):
-        lst = [instantiate(x) for x in cfg]
-        return ListConfig(lst, flags={"allow_objects": True})
-    if isinstance(cfg, list):
+    if isinstance(cfg, (dict, list)):
+        cfg = _prepare_input_dict_or_list(cfg)
+
+    kwargs = _prepare_input_dict_or_list(kwargs)
+
+    if OmegaConf.is_dict(cfg):
+        if kwargs:
+            cfg = OmegaConf.merge(cfg, kwargs)
+
+        OmegaConf.resolve(cfg)
+        _recursive_ = kwargs.pop(_Keys.RECURSIVE, True)
+        return instantiate_cfg(cfg, recursive=_recursive_)
+
+    elif OmegaConf.is_list(cfg):
+        OmegaConf.resolve(cfg)
+        _recursive_ = kwargs.pop(_Keys.RECURSIVE, True)
+        return instantiate_cfg(cfg, recursive=_recursive_)
+    else:
+        return cfg  # return as-is if don't know what to do
+
+
+def instantiate_cfg(cfg: Any, recursive: bool = True):
+    if cfg is None:
+        return cfg
+
+    if not OmegaConf.is_config(cfg):
+        return cfg
+
+    if OmegaConf.is_dict(cfg):
+        recursive = cfg[_Keys.RECURSIVE] if _Keys.RECURSIVE in cfg else recursive
+
+    if not isinstance(recursive, bool):
+        msg = f"Instantiation: _recursive_ flag must be a bool, got {type(recursive)}"
+        raise TypeError(msg)
+
+    # If OmegaConf list, create new list of instances if recursive
+    if OmegaConf.is_list(cfg):
+        items = [instantiate_cfg(item, recursive=recursive) for item in cfg._iter_ex(resolve=True)]
+        lst = OmegaConf.create(items, flags={"allow_objects": True})
+        return lst
+
+    elif isinstance(cfg, list):
         # Specialize for list, because many classes take
         # list[objects] as arguments, such as ResNet, DatasetMapper
-        return [instantiate(x) for x in cfg]
+        return [instantiate(item, recursive=recursive) for item in cfg]
 
-    if isinstance(cfg, abc.Mapping) and "_target_" in cfg:
-        # conceptually equivalent to hydra.utils.instantiate(cfg) with _convert_=all,
-        # but faster: https://github.com/facebookresearch/hydra/issues/1200
-        cfg = {k: instantiate(v) for k, v in cfg.items()}
-        cls = cfg.pop("_target_")
-        cls = instantiate(cls)
-
-        if isinstance(cls, str):
-            cls_name = cls
-            cls = locate(cls_name)
-            assert cls is not None, cls_name
+    elif OmegaConf.is_dict(cfg):
+        exclude_keys = set({"_target_", "_recursive_"})
+        if _is_target(cfg):
+            _target_ = _resolve_target(cfg.get(_Keys.TARGET))
+            kwargs = {}
+            for key, value in cfg.items():
+                if key not in exclude_keys:
+                    if recursive:
+                        value = instantiate_cfg(value, recursive=recursive)
+                    kwargs[key] = value
+            return _call_target(_target_, kwargs)
         else:
-            try:
-                cls_name = cls.__module__ + "." + cls.__qualname__
-            except Exception:
-                # target could be anything, so the above could fail
-                cls_name = str(cls)
-        assert callable(cls), f"_target_ {cls} does not define a callable object"
-        try:
-            return cls(**cfg)
-        except TypeError:
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error when instantiating {cls_name}!")
-            raise
-    return cfg  # return as-is if don't know what to do
+            return cfg
+    else:
+        assert False, f"Unexpected config type: {type(cfg).__name__}"

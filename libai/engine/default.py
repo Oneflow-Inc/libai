@@ -20,8 +20,8 @@ import time
 from collections import OrderedDict
 from typing import Callable, Optional
 
-import omegaconf
 import oneflow as flow
+from omegaconf import OmegaConf
 from termcolor import colored
 
 from libai.config import LazyConfig, try_get_key
@@ -601,13 +601,15 @@ class DefaultTrainer(TrainerBase):
 
         # Set tokenizer for each dataset
         if tokenizer:
-            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
+            if OmegaConf.is_list(cfg.dataloader.train.dataset):
                 for dataset in cfg.dataloader.train.dataset:
                     dataset.tokenizer = tokenizer
             else:
                 cfg.dataloader.train.dataset.tokenizer = tokenizer
 
-        train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
+        train_loader, valid_loader, test_loader = instantiate(
+            cfg.dataloader.train, _recursive_=False
+        )
         return train_loader, valid_loader, test_loader
 
     @classmethod
@@ -625,8 +627,8 @@ class DefaultTrainer(TrainerBase):
             return []
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
-        assert isinstance(
-            cfg.dataloader.test, omegaconf.listconfig.ListConfig
+        assert OmegaConf.is_list(
+            cfg.dataloader.test
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
