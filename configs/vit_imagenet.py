@@ -12,8 +12,6 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
-dataloader.train.dataset[0].root = "/DATA/disk1/ImageNet/extract"
-dataloader.test[0].dataset.root = "/DATA/disk1/ImageNet/extract"
 
 # Refine model cfg for vit training on imagenet
 model.num_classes = 1000

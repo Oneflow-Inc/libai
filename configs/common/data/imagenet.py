@@ -1,4 +1,3 @@
-from libai.data.samplers.ra_samplers import RASampler
 from omegaconf import OmegaConf
 from flowvision import transforms
 from flowvision.transforms import InterpolationMode
@@ -12,6 +11,7 @@ from flowvision.data.random_erasing import RandomErasing
 
 from libai.config import LazyCall
 from libai.data.datasets import ImageNetDataset
+from libai.data.samplers.ra_samplers import RASampler
 from libai.data.build import build_image_train_loader, build_image_test_loader
 
 train_aug = LazyCall(transforms.Compose)(
@@ -74,9 +74,9 @@ dataloader.train = LazyCall(build_image_train_loader)(
             transform=train_aug,
         ),
     ],
-    sampler_cfg=LazyCall(RASampler)(
+    sampler = LazyCall(RASampler)(
         shuffle=True,
-        num_repeats = 3,
+        num_repeats=3,
     ),
     num_workers=4,
     mixup_func=None,
@@ -90,7 +90,6 @@ dataloader.test = [
             train=False,
             transform=test_aug,
         ),
-        sampler_cfg=None,
         num_workers=4,
     )
 ]

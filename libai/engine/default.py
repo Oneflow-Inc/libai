@@ -27,6 +27,7 @@ from termcolor import colored
 from libai.config import LazyConfig, try_get_key
 from libai.config.instantiate import instantiate
 from libai.data import Instance
+from libai.data.build import build_dataset
 from libai.engine import hooks
 from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase
 from libai.evaluation import inference_on_dataset, print_csv_format
@@ -598,6 +599,23 @@ class DefaultTrainer(TrainerBase):
             cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
+
+        dataset = instantiate(cfg.dataloader.train.dataset)
+
+        splits = try_get_key(cfg, "dataloader.train.splits")
+        weights = try_get_key(cfg, "dataloader.train.weights")
+        dataset = build_dataset(dataset, splits=splits, weights=weights)
+        
+        # Set customize sampler
+        if try_get_key(cfg, "dataloader.train.sampler") is not None:
+            cfg.dataloader.train.sampler.dataset = dataset
+            cfg.dataloader.train.sampler.micro_batch_size = cfg.dataloader.train.train_batch_size
+            cfg.dataloader.train.sampler.consumed_samples = cfg.dataloader.consumed_samples
+            cfg.dataloader.train.sampler.data_parallel_rank = dist.get_data_parallel_rank()
+            cfg.dataloader.train.sampler.data_parallel_size = dist.get_data_parallel_size()
+            cfg.dataloader.train.sampler.seed = cfg.dataloader.train.seed
+
+        cfg.dataloader.train.dataset = dataset
 
         # Set tokenizer for each dataset
         if tokenizer:

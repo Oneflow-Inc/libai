@@ -21,14 +21,12 @@ from oneflow.utils.data.dataset import ConcatDataset
 from libai.utils import distributed as dist
 
 from .data_utils import split_ds
-from .samplers import CyclicSampler, SingleRoundSampler, build_sampler
+from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
 
 def build_nlp_train_val_test_loader(
     dataset,
-    splits,
-    weights,
     train_batch_size,
     test_batch_size,
     sampler=None,
@@ -36,7 +34,6 @@ def build_nlp_train_val_test_loader(
     consumed_samples=0,
     seed=0,
     collate_fn=None,
-    dataset_mixer=ConcatDataset,
 ):
     """
     Build nlp train_val_test dataloader, it's used for dataset lack of valid/test dataset
@@ -68,26 +65,7 @@ def build_nlp_train_val_test_loader(
             map-style dataset.
         dataset_mixer: function for concating list dataset.
     """
-    # TODO: add dataset_weights sampler
-    if isinstance(dataset, omegaconf.listconfig.ListConfig):
-        dataset = list(dataset)
-    elif not isinstance(dataset, list):
-        dataset = [dataset]
-
-    assert len(dataset) == len(splits), "datasets length must equal splits length"
-    assert len(dataset) == len(weights), "datasets length must equal weights length"
-
-    train_datasets, val_datasets, test_datasets = [], [], []
-    for dst, split in zip(dataset, splits):
-        train_dataset, val_dataset, test_dataset = split_ds(dst, split)
-        train_datasets.append(train_dataset)
-        val_datasets.append(val_dataset)
-        test_datasets.append(test_dataset)
-
-    # [dataset, dataset] -> dataset -> dataloader
-    train_dataset = dataset_mixer(train_datasets)
-    val_dataset = dataset_mixer(val_datasets)
-    test_dataset = dataset_mixer(test_datasets)
+    train_dataset, val_dataset, test_dataset = dataset
 
     collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
 
@@ -132,7 +110,6 @@ def build_nlp_train_loader(
     consumed_samples=0,
     seed=0,
     collate_fn=None,
-    dataset_mixer=ConcatDataset,
     **kwargs
 ):
     """
@@ -163,15 +140,6 @@ def build_nlp_train_loader(
             map-style dataset.
         dataset_mixer: function for concating list dataset.
     """
-    if isinstance(dataset, omegaconf.listconfig.ListConfig):
-        dataset = list(dataset)
-    elif not isinstance(dataset, list):
-        dataset = [dataset]
-
-    if len(dataset) > 1:
-        dataset = dataset_mixer(dataset)
-    else:
-        dataset = dataset[0]
 
     if sampler is None:
         sampler = CyclicSampler(
@@ -250,8 +218,7 @@ def build_image_train_loader(
     consumed_samples=0,
     seed=0,
     collate_fn=None,
-    dataset_mixer=ConcatDataset,
-    sampler_cfg=None,
+    sampler=None,
     mixup_func=None,
     **kwargs
 ):
@@ -283,27 +250,8 @@ def build_image_train_loader(
             sampler
         mixup_func: function for data argumentation.
     """
-    if isinstance(dataset, omegaconf.listconfig.ListConfig):
-        dataset = list(dataset)
-    elif not isinstance(dataset, list):
-        dataset = [dataset]
 
-    if len(dataset) > 1:
-        dataset = dataset_mixer(dataset)
-    else:
-        dataset = dataset[0]
-
-
-    if sampler_cfg:
-        sampler_cfg.dataset = dataset
-        sampler_cfg.micro_batch_size = train_batch_size
-        sampler_cfg.consumed_samples = consumed_samples
-        sampler_cfg.data_parallel_rank = dist.get_data_parallel_rank()
-        sampler_cfg.data_parallel_size = dist.get_data_parallel_size()
-        sampler_cfg.seed = seed
-        sampler = build_sampler(sampler_cfg)
-    
-    elif sampler_cfg is None:
+    if sampler is None:
         sampler = CyclicSampler(
             dataset=dataset,
             micro_batch_size=train_batch_size,
@@ -313,7 +261,6 @@ def build_image_train_loader(
             data_parallel_size=dist.get_data_parallel_size(),
             seed=seed,
         )
-    
 
     dataloader = DataLoader(
         dataset,
@@ -322,6 +269,7 @@ def build_image_train_loader(
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )
+
     # Bind up mixup_func to dataloader, and this will be used in Trainer.step
     dataloader.mixup_func = mixup_func
 
@@ -377,3 +325,38 @@ def trivial_batch_collator(batch):
     assert isinstance(batch[0], Instance), "batch[0] must be `instance` for trivial batch collator"
     batch = Instance.stack(batch)
     return batch
+
+
+def build_dataset(
+    dataset, 
+    dataset_mixer=ConcatDataset, 
+    splits=None,
+    weights=None
+):
+    if isinstance(dataset, omegaconf.listconfig.ListConfig):
+        dataset = list(dataset)
+    elif not isinstance(dataset, list):
+        dataset = [dataset]
+
+    # for nlp task, return train/val/test dataset
+    if splits is not None and weights is not None:
+        assert len(dataset) == len(splits), "datasets length must equal splits length"
+        assert len(dataset) == len(weights), "datasets length must equal weights length"
+        train_datasets, val_datasets, test_datasets = [], [], []
+        for dst, split in zip(dataset, splits):
+                train_dataset, val_dataset, test_dataset = split_ds(dst, split)
+                train_datasets.append(train_dataset)
+                val_datasets.append(val_dataset)
+                test_datasets.append(test_dataset)
+        # [dataset, dataset] -> dataset -> dataloader
+        train_dataset = dataset_mixer(train_datasets)
+        val_dataset = dataset_mixer(val_datasets)
+        test_dataset = dataset_mixer(test_datasets)
+        return [train_dataset, val_dataset, test_dataset]
+
+    if len(dataset) > 1:
+        dataset = dataset_mixer(dataset)
+    else:
+        dataset = dataset[0]
+    
+    return dataset
