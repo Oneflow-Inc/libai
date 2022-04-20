@@ -20,7 +20,7 @@ import libai
 from libai.utils import distributed as dist
 
 from .bert_for_simcse import BertForSimCSE
-from .load_huggingface_weight import load_huggingface_bert
+from projects.SimCSE.utils.load_huggingface_weight import load_huggingface_bert
 
 
 def cosine_similarity(x, y, dim=-1):
