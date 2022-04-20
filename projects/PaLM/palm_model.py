@@ -155,8 +155,6 @@ class PalmTransformerLayer(nn.Module):
         query = query.permute(0, 2, 1, 3)
 
         key_value = self.to_kv(layernorm_output)
-        # key_value = key_value.view(bsz, -1, 2 * self.dim_head)
-        # key_value = key_value.permute(0, 1, 2)
         key, value = flow.chunk(key_value, chunks=2, dim=-1)
 
         # apply position embedding
