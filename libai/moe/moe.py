@@ -1,26 +1,35 @@
-# Sparsely-Gated Mixture-of-Experts Layers.
-# See "Outrageously Large Neural Networks"
-# https://arxiv.org/abs/1701.06538
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
 #
-# Author: David Rau
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # The code is based on the TensorFlow implementation:
 # https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/expert_utils.py
 
 import math 
-import pdb
+import numpy as np
 
 import oneflow as flow
 import oneflow.nn as nn
-import numpy as np
 
-from .mlp import MLP
 class Normal(object):
     def __init__(self, loc, scale):
         self.loc = loc
         self.scale = scale
 
     def cdf(self, value):
+        self.loc.to(value.device)
+        self.scale.to(value.device)
         return 0.5 * (1 + flow.erf((value - self.loc) * self.scale.reciprocal() / math.sqrt(2)))
 
 
@@ -85,7 +94,6 @@ class SparseDispatcher(object):
         """
 
         # assigns samples to experts whose gate is nonzero
-
         # expand according to batch index so we can just split by _part_sizes
         inp_exp = inp[self._batch_index].squeeze(1)
         return flow.split(inp_exp, self._part_sizes, dim=0)
@@ -109,7 +117,9 @@ class SparseDispatcher(object):
 
         if multiply_by_gates:
             stitched = stitched.mul(self._nonzero_gates)
+        
         zeros = flow.zeros(self._gates.size(0), expert_out[-1].size(1)).to(self.device)
+
         # combine samples that have been processed by the same k experts
         for src,index in enumerate(self._batch_index):
             zeros[index.item()] = zeros[index] + stitched[src]
@@ -131,8 +141,6 @@ class SparseDispatcher(object):
         return flow.split(self._nonzero_gates, self._part_sizes, dim=0)
 
 
-
-
 class MoE(nn.Module):
 
     """Call a Sparsely gated mixture of experts layer with 1-layer Feed-Forward networks as experts.
@@ -145,7 +153,7 @@ class MoE(nn.Module):
     k: an integer - how many experts to use for each batch element
     """
 
-    def __init__(self, input_size, output_size, num_experts, hidden_size, noisy_gating=True, k=4, device='cpu'):
+    def __init__(self, expert, input_size, output_size, num_experts, hidden_size, noisy_gating=True, k=4, device='cpu'):
         super(MoE, self).__init__()
         self.device = device
         self.noisy_gating = noisy_gating
@@ -155,7 +163,7 @@ class MoE(nn.Module):
         self.hidden_size = hidden_size
         self.k = k
         # instantiate experts
-        self.experts = nn.ModuleList([MLP(self.input_size, self.output_size, self.hidden_size) for i in range(self.num_experts)])
+        self.experts = nn.ModuleList([ expert for i in range(self.num_experts)])
         self.w_gate = nn.Parameter(flow.zeros(input_size, num_experts), requires_grad=True).to(self.device)
         self.w_noise = nn.Parameter(flow.zeros(input_size, num_experts), requires_grad=True).to(self.device)
 
@@ -177,7 +185,6 @@ class MoE(nn.Module):
         eps = 1e-10
         # if only num_experts = 1
 
-
         if x.shape[0] == 1:
             return flow.Tensor([0]).to(self.device)
         return x.float().var() / (x.float().mean()**2 + eps)
@@ -192,7 +199,6 @@ class MoE(nn.Module):
         a float32 `Tensor` of shape [n]
         """
         return (gates > 0).sum(0)
-
 
 
 
@@ -220,6 +226,7 @@ class MoE(nn.Module):
         threshold_positions_if_in = flow.arange(batch).to(self.device) * m + self.k
         threshold_if_in = flow.unsqueeze(flow.gather(top_values_flat, 0, threshold_positions_if_in), 1)
         is_in = flow.gt(noisy_values, threshold_if_in)
+
         threshold_positions_if_out = threshold_positions_if_in - 1
         threshold_if_out = flow.unsqueeze(flow.gather(top_values_flat,0 , threshold_positions_if_out), 1)
         # is each value currently in the top k.
@@ -241,6 +248,7 @@ class MoE(nn.Module):
             load: a Tensor with shape [num_experts]
         """
         clean_logits = x @ self.w_gate
+
         if self.noisy_gating and train:
             raw_noise_stddev = x @ self.w_noise
             noise_stddev = ((self.softplus(raw_noise_stddev) + noise_epsilon))
@@ -281,13 +289,14 @@ class MoE(nn.Module):
         gates, load = self.noisy_top_k_gating(x, self.training)
         # calculate importance loss
         importance = gates.sum(0)
-        #
+
         loss = self.cv_squared(importance) + self.cv_squared(load)
         loss *= loss_coef
 
         dispatcher = SparseDispatcher(self.num_experts, gates, device=self.device)
         expert_inputs = dispatcher.dispatch(x)
         gates = dispatcher.expert_to_gates()
+        # fix the 0 dim bug when a expert receive no input
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts) if gates[i].shape[0] != 0]
         y = dispatcher.combine(expert_outputs)
         return y, loss
