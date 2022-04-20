@@ -27,7 +27,7 @@ RUN wget https://bootstrap.pypa.io/pip/3.6/get-pip.py && \
 RUN pip install --user pybind11 cmake   # cmake from apt-get is too old
 RUN python3 -m pip install --user --pre oneflow -f https://staging.oneflow.info/branch/master/cu112
 
-# install detectron2
+# install libai
 RUN git clone https://github.com/Oneflow-Inc/libai.git libai_repo
 
 RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple --user -e  libai_repo
