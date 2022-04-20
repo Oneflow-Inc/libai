@@ -53,18 +53,13 @@ class PositionEmbeddingSine(nn.Module):
         assert mask is not None
         not_mask = ~mask
 
-        # NOTE: oneflow does note support cumsum op
-        # TODO: check the correctness of cumsum imlp
+        # NOTE: oneflow does note support tensor.cumsum, support flow.cumsum 
         # y_embed = not_mask.cumsum(1, dtype=flow.float32)
-        y_embed = not_mask
-        for i in range(1, y_embed.size(1)):
-            y_embed[:,i,:] = y_embed[:,i,:] + y_embed[:,i-1,:]
+        y_embed = flow.cumsum(not_mask, dim=1, dtype=flow.float32)
 
-        x_embed = not_mask
         # x_embed = not_mask.cumsum(2, dtype=flow.float32)
-        for i in range(1, x_embed.size(2)):
-            x_embed[:,:,i] = x_embed[:,:,i] + x_embed[:,:,i-1]
-            
+        x_embed = flow.cumsum(not_mask, dim=2, dtpye=flow.float32)
+
         if self.normalize:
             eps = 1e-6
             y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
