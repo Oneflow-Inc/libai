@@ -7,9 +7,8 @@ from libai.config import get_config, LazyCall
 
 sys.path.append("projects/DETR")
 
-from modeling.detr import build
 
-from .models.configs_detr import model, criterion, postprocessors
+from .models.configs_detr import model, postprocessors
 
 
 dataloader = get_config("common/data/coco.py").dataloader

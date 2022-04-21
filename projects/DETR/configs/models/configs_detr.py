@@ -1,6 +1,6 @@
 from omegaconf import OmegaConf
 
-from modeling.detr import build
+from modeling.build_detr import build
 from libai.config import get_config, LazyCall
 
 # args for detr build_model
@@ -56,5 +56,4 @@ detr_args.giou_loss_coef = 1
 # Relative classification weight of the no-object class
 detr_args.eos_coef = 1
 
-
-model, criterion, postprocessors = build(args=detr_args)
+model, postprocessors = build(args=detr_args)
