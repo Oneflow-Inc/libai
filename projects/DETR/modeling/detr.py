@@ -60,6 +60,10 @@ class DETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
+        import pdb
+        pdb.set_trace()
+        samples, targets = samples["images"], samples["labels"]
+        
         if isinstance(samples, (list, flow.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
@@ -72,7 +76,10 @@ class DETR(nn.Module):
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
         if self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
-        return out
+            
+        loss_dict = self.criterion(out, targets)    
+        
+        return loss_dict
 
     # @torch.jit.unused
     def _set_aux_loss(self, outputs_class, outputs_coord):
