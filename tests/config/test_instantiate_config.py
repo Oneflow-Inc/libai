@@ -109,14 +109,6 @@ class TestConstruction(unittest.TestCase):
         self.assertEqual(a.y, "s")
 
     def test_instantiate_no_recursive(self):
-        # objconf = LazyCall(TestClass)(int_arg=LazyCall(TestClass)(int_arg=3))
-        # obj = instantiate(objconf, _recursive_=False)
-        # self.assertNotIsInstance(obj.int_arg, TestClass)
-
-        # obj.int_arg = instantiate(obj.int_arg)
-
-        # self.assertEqual(instantiate(objconf), 7)
-
         def helper_func(obj):
             self.assertNotIsInstance(obj, TestClass)
             obj = instantiate(obj)

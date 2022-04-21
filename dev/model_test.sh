@@ -5,7 +5,6 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 export TEST_OUTPUT=output_unittest
 export ONEFLOW_TEST_DEVICE_NUM=4
-export CUDA_VISIBLE_DEVICES=4,5,6,7
 
 python3 -m oneflow.distributed.launch --nproc_per_node 4 -m pytest -s --disable-warnings tests/models/test_bert.py
 
