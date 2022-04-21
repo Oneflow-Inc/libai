@@ -93,7 +93,7 @@ class layers_scale_mlp_blocks(nn.Module):
 
 
 class ResMLP(nn.Module):
-    """ResMLP in LiBai
+    """ResMLP in LiBai.
 
     LiBai's implementation of:
     `ResMLP: Feedforward networks for image classification with data-efficient training

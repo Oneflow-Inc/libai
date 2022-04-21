@@ -42,4 +42,4 @@ We list some common problems encountered by users and the corresponding solution
 - "the order of layer normalization and the residual connection"  
   This is critical to enable the scaling of the BERT-style models beyond BERT-Large. The architecture with `apply_residual_post_layernorm=False` eliminates instabilities observed using the origin BERT architecture with `apply_residual_post_layernorm=True` and also has a lower training loss according to [Megatron-LM](https://arxiv.org/pdf/1909.08053.pdf).
 
-If you find troubles in understanding, feel free to open an issue to collect feedbacks in [OneFlow](https://github.com/Oneflow-Inc/oneflow).
+If you find some troubles hard to understand, feel free to open an issue to collect feedbacks in [OneFlow](https://github.com/Oneflow-Inc/oneflow).
