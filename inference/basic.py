@@ -35,7 +35,8 @@ class BasePipeline(metaclass=ABCMeta):
         **kwargs,
     ):
         self.cfg = LazyConfig.load(config_file)
-        self.model = self.load_model(self.cfg)
+        self.model = DefaultTrainer.build_model(self.cfg).eval()
+        self.load_pretrain_weight(self.model, self.cfg)
         self.tokenizer = self.build_tokenizer(self.cfg)
         (
             self._preprocess_params,
@@ -45,12 +46,10 @@ class BasePipeline(metaclass=ABCMeta):
             **kwargs
         )  # noqa
 
-    def load_model(self, cfg):
-        model = DefaultTrainer.build_model(cfg).eval()
+    def load_pretrain_weight(self, model, cfg):
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
             cfg.train.load_weight, resume=False
         )
-        return model
 
     def build_tokenizer(self, cfg):
         tokenizer = None
