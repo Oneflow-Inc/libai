@@ -479,6 +479,7 @@ class DefaultTrainer(TrainerBase):
             data.reraise()
 
         if mixup_func is not None:
+            mixup_func = instantiate(mixup_func)
             images, labels = mixup_func(
                 data.get("images").tensor.cuda(),
                 data.get("labels").tensor.cuda(),
