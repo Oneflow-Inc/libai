@@ -35,6 +35,7 @@ class BasePipeline(metaclass=ABCMeta):
         **kwargs,
     ):
         self.cfg = LazyConfig.load(config_file)
+        dist.setup_dist_util(self.cfg.train.dist)
         self.model = DefaultTrainer.build_model(self.cfg).eval()
         self.load_pretrain_weight(self.model, self.cfg)
         self.tokenizer = self.build_tokenizer(self.cfg)
