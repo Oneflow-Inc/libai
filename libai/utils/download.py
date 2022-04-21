@@ -13,16 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Code are mainly adopted from
-https://github.com/facebookresearch/iopath/blob/main/iopath/common/download.py
-"""
 
 import logging
 import os
 import shutil
 from typing import Callable, List, Optional
 from urllib import request
+
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/iopath/blob/main/iopath/common/download.py
+# --------------------------------------------------------
 
 
 def download(url: str, dir: str, *, filename: Optional[str] = None, progress: bool = True) -> str:

@@ -38,7 +38,7 @@ MERGE_FILE_MD5 = "75a37753dd7a28a2c5df80c28bf06e4e"
 BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 
-TEST_OUTPUT = "output_unittest/test_gpt"
+TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_gpt")
 
 
 setup_logger(distributed_rank=dist.get_rank())
