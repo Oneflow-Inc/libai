@@ -23,7 +23,7 @@ from typing import List, Optional, Tuple
 
 import regex as re
 
-from .tokenization_base import PreTrainedTokenizer, _is_control, _is_punctuation, _is_whitespace
+from .tokenization_base import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +37,11 @@ PRETRAINED_VOCAB_FILES_MAP = {
         "roberta-base": "https://huggingface.co/roberta-base/resolve/main/vocab.json",
         "roberta-large": "https://huggingface.co/roberta-large/resolve/main/vocab.json",
         "roberta-large-mnli": "https://huggingface.co/roberta-large-mnli/resolve/main/vocab.json",
-        "distilroberta-base": "https://huggingface.co/distilroberta-base/resolve/main/vocab.json",
-        "roberta-base-openai-detector": "https://huggingface.co/roberta-base-openai-detector/resolve/main/vocab.json",
-        "roberta-large-openai-detector": "https://huggingface.co/roberta-large-openai-detector/resolve/main/vocab.json",
     },
     "merges_file": {
         "roberta-base": "https://huggingface.co/roberta-base/resolve/main/merges.txt",
         "roberta-large": "https://huggingface.co/roberta-large/resolve/main/merges.txt",
         "roberta-large-mnli": "https://huggingface.co/roberta-large-mnli/resolve/main/merges.txt",
-        "distilroberta-base": "https://huggingface.co/distilroberta-base/resolve/main/merges.txt",
-        "roberta-base-openai-detector": "https://huggingface.co/roberta-base-openai-detector/resolve/main/merges.txt",
-        "roberta-large-openai-detector": "https://huggingface.co/roberta-large-openai-detector/resolve/main/merges.txt",
     },
 }
 
@@ -55,32 +49,32 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
     "roberta-base": 512,
     "roberta-large": 512,
     "roberta-large-mnli": 512,
-    "distilroberta-base": 512,
-    "roberta-base-openai-detector": 512,
-    "roberta-large-openai-detector": 512,
 }
 
 
 @lru_cache()
 def bytes_to_unicode():
     """
-    Returns list of utf-8 byte and a mapping to unicode strings. We specifically avoids mapping to whitespace/control
-    characters the bpe code barfs on.
+    Returns list of utf-8 byte and a mapping to unicode strings. We specifically avoids mapping to
+    whitespace/control characters the bpe code barfs on.
 
-    The reversible bpe codes work on unicode strings. This means you need a large # of unicode characters in your vocab
-    if you want to avoid UNKs. When you're at something like a 10B token dataset you end up needing around 5K for
-    decent coverage. This is a significant percentage of your normal, say, 32K bpe vocab. To avoid that, we want lookup
-    tables between utf-8 bytes and unicode strings.
+    The reversible bpe codes work on unicode strings. This means you need a large # of unicode
+    characters in your vocab if you want to avoid UNKs. When you're at something like a 10B token
+    dataset you end up needing around 5K for decent coverage. This is a significant percentage of
+    your normal, say, 32K bpe vocab. To avoid that, we want lookup tables between utf-8 bytes and
+    unicode strings.
     """
     bs = (
-        list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
+        list(range(ord("!"), ord("~") + 1))
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
     )
     cs = bs[:]
     n = 0
-    for b in range(2**8):
+    for b in range(2 ** 8):
         if b not in bs:
             bs.append(b)
-            cs.append(2**8 + n)
+            cs.append(2 ** 8 + n)
             n += 1
     cs = [chr(n) for n in cs]
     return dict(zip(bs, cs))
@@ -118,7 +112,7 @@ class RobertaTokenizer(PreTrainedTokenizer):
         unk_token="<unk>",
         pad_token="<pad>",
         mask_token="<mask>",
-        **kwargs
+        **kwargs,
     ):
         super(RobertaTokenizer, self).__init__(
             errors=errors,
@@ -129,29 +123,31 @@ class RobertaTokenizer(PreTrainedTokenizer):
             unk_token=unk_token,
             pad_token=pad_token,
             mask_token=mask_token,
-            **kwargs
+            **kwargs,
         )
 
-        with open(vocab_file, encoding='utf-8') as file:
+        with open(vocab_file, encoding="utf-8") as file:
             self.encoder = json.load(file)
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.errors = errors
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
-        with open(merges_file, encoding='utf-8') as file:
+        with open(merges_file, encoding="utf-8") as file:
             bpe_merges = file.read().split("\n")[1:-1]
         bpe_merges = [tuple(merge.split()) for merge in bpe_merges]
         self.bpe_ranks = dict(zip(bpe_merges, range(len(bpe_merges))))
         self.cache = {}
-        self.pat = re.compile(r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
-    
+        self.pat = re.compile(
+            r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+        )
+
     @property
     def vocab_size(self):
         return len(self.encoder)
-    
+
     def get_vocab(self):
         return dict(self.encoder, **self.added_tokens_encoder)
-    
+
     def bpe(self, token):
         if token in self.cache:
             return self.cache[token]
@@ -198,12 +194,10 @@ class RobertaTokenizer(PreTrainedTokenizer):
         """Tokenize a string."""
         bpe_tokens = []
         for token in re.findall(self.pat, text):
-            token = "".join(
-                self.byte_encoder[b] for b in token.encode("utf-8")
-            )  # Maps all our bytes to unicode strings, avoiding control tokens of the BPE (spaces in our case)
+            token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
             bpe_tokens.extend(bpe_token for bpe_token in self.bpe(token).split(" "))
         return bpe_tokens
-    
+
     def _convert_token_to_id(self, token):
         """Converts a token (str) in an id using the vocab."""
         return self.encoder.get(token, self.encoder.get(self.unk_token))
@@ -217,16 +211,20 @@ class RobertaTokenizer(PreTrainedTokenizer):
         text = "".join(tokens)
         text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
         return text
-    
-    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
+
+    def save_vocabulary(
+        self, save_directory: str, filename_prefix: Optional[str] = None
+    ) -> Tuple[str]:
         if not os.path.isdir(save_directory):
             logger.error(f"Vocabulary path ({save_directory}) should be a directory")
             return
         vocab_file = os.path.join(
-            save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["vocab_file"]
+            save_directory,
+            (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["vocab_file"],
         )
         merge_file = os.path.join(
-            save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["merges_file"]
+            save_directory,
+            (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["merges_file"],
         )
 
         with open(vocab_file, "w", encoding="utf-8") as f:
@@ -251,8 +249,9 @@ class RobertaTokenizer(PreTrainedTokenizer):
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
     ) -> List[int]:
         """
-        Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
-        adding special tokens. A RoBERTa sequence has the following format:
+        Build model inputs from a sequence or a pair of sequence for sequence classification
+        tasks by concatenating and adding special tokens. A RoBERTa sequence has the following
+        format:
 
         - single sequence: `<s> X </s>`
         - pair of sequences: `<s> A </s></s> B </s>`
@@ -260,11 +259,12 @@ class RobertaTokenizer(PreTrainedTokenizer):
         Args:
             token_ids_0 (`List[int]`):
                 List of IDs to which the special tokens will be added.
-            token_ids_1 (`List[int]`, *optional*):
+            token_ids_1 (`List[int]`, `optional`):
                 Optional second list of IDs for sequence pairs.
 
         Returns:
-            `List[int]`: List of [input IDs](../glossary#input-ids) with the appropriate special tokens.
+            `List[int]`: List of [input IDs](../glossary#input-ids) with the
+            appropriate special tokens.
         """
         if token_ids_1 is None:
             return [self.cls_token_id] + token_ids_0 + [self.sep_token_id]
@@ -276,13 +276,14 @@ class RobertaTokenizer(PreTrainedTokenizer):
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
     ) -> List[int]:
         """
-        Create a mask from the two sequences passed to be used in a sequence-pair classification task. RoBERTa does not
-        make use of token type ids, therefore a list of zeros is returned.
+        Create a mask from the two sequences passed to be used in a sequence-pair
+        classification task. RoBERTa does not make use of token type ids, therefore
+        a list of zeros is returned.
 
         Args:
             token_ids_0 (`List[int]`):
                 List of IDs.
-            token_ids_1 (`List[int]`, *optional*):
+            token_ids_1 (`List[int]`, `optional`):
                 Optional second list of IDs for sequence pairs.
 
         Returns:

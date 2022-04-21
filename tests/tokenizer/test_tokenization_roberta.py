@@ -53,7 +53,7 @@ class RobertaTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         vocab_tokens = dict(zip(vocab, range(len(vocab))))
         merges = ["#version: 0.2", "\u0120 l", "\u0120l o", "\u0120lo w", "e r", ""]
         self.special_tokens_map = {"unk_token": "<unk>"}
-        
+
         self.vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["vocab_file"])
         self.merges_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["merges_file"])
         with open(self.vocab_file, "w", encoding="utf-8") as fp:
@@ -69,7 +69,7 @@ class RobertaTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         input_text = "lower newer"
         output_text = "lower newer"
         return input_text, output_text
-    
+
     def test_full_tokenizer(self):
         tokenizer = RobertaTokenizer(self.vocab_file, self.merges_file, **self.special_tokens_map)
         text = "lower newer"
@@ -84,11 +84,14 @@ class RobertaTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
     def roberta_dict_integration_testing(self):
         tokenizer = self.get_tokenizer()
 
-        self.assertListEqual(tokenizer.encode("Hello world!", add_special_tokens=False), [0, 31414, 232, 328, 2])
+        self.assertListEqual(
+            tokenizer.encode("Hello world!", add_special_tokens=False), [0, 31414, 232, 328, 2]
+        )
         self.assertListEqual(
             tokenizer.encode("Hello world! cécé herlolip 418", add_special_tokens=False),
             [0, 31414, 232, 328, 740, 1140, 12695, 69, 46078, 1588, 2],
         )
-    
+
+
 if __name__ == "__main__":
     unittest.main()

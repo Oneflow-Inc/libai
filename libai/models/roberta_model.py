@@ -63,10 +63,18 @@ class RobertaEmbeddings(nn.Module):
     ):
         super().__init__()
         self.vocab_embeddings = VocabEmbedding(
-            vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled, padding_idx=pad_token_id
+            vocab_size,
+            hidden_size,
+            init_method=init_method,
+            amp_enabled=amp_enabled,
+            padding_idx=pad_token_id,
         )
         self.position_embeddings = Embedding(
-            max_position_embeddings, hidden_size, init_method=init_method, amp_enabled=amp_enabled, padding_idx = pad_token_id
+            max_position_embeddings,
+            hidden_size,
+            init_method=init_method,
+            amp_enabled=amp_enabled,
+            padding_idx=pad_token_id,
         )
 
         if type_vocab_size > 0:
@@ -90,7 +98,9 @@ class RobertaEmbeddings(nn.Module):
 
         word_embeddings = self.vocab_embeddings(input_ids)
         if position_ids is None:
-            position_ids = self.create_position_ids_from_input_ids(input_ids, self.padding_idx, past_key_values_length)
+            position_ids = self.create_position_ids_from_input_ids(
+                input_ids, self.padding_idx, past_key_values_length
+            )
 
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = word_embeddings + position_embeddings
@@ -112,9 +122,13 @@ class RobertaEmbeddings(nn.Module):
 
     def create_position_ids_from_input_ids(self, input_ids, padding_idx, past_key_values_length=0):
         mask = input_ids.ne(padding_idx).int()
-        incremental_indices = (flow.cumsum(mask, dim=1).type_as(mask) + past_key_values_length) * mask
+        incremental_indices = (
+            flow.cumsum(mask, dim=1).type_as(mask) + past_key_values_length
+        ) * mask
         incremental_indices = incremental_indices.long() + padding_idx
-        return incremental_indices.to_global(sbp=input_ids.sbp, placement=dist.get_layer_placement(0))
+        return incremental_indices.to_global(
+            sbp=input_ids.sbp, placement=dist.get_layer_placement(0)
+        )
 
 
 class RobertaPooler(nn.Module):
@@ -126,6 +140,7 @@ class RobertaPooler(nn.Module):
     Args:
         hidden_size: hidden state feature dimension
     """
+
     def __init__(self, hidden_size, init_method):
         super().__init__()
         self.dense = Linear(
@@ -185,7 +200,7 @@ class RobertaModel(nn.Module):
             type_vocab_size,
             pad_token_id,
             init_method,
-            amp_enabled
+            amp_enabled,
         )
 
         # Mask generation
@@ -262,14 +277,14 @@ class RobertaLMHead(nn.Module):
             hidden_size,
             hidden_size,
             bias=True,
-            parallel='col',
+            parallel="col",
             init_method=init_method,
-            layer_idx=-1
+            layer_idx=-1,
         )
         self.activation_func = build_activation("gelu")
         self.layer_norm = LayerNorm((hidden_size,), eps=layer_norm_eps, layer_idx=-1)
-        
-        # NOTE(xzp): LMLogits as a decoder:nn.Linear(hidden_size, vocab_size), 
+
+        # NOTE(xzp): LMLogits as a decoder:nn.Linear(hidden_size, vocab_size),
         # it shares the roberta.word_embeddings.weight
         self.lm_logits = LMLogits(vocab_size, bias=True)
 
@@ -281,7 +296,7 @@ class RobertaLMHead(nn.Module):
         )
         hidden_states = self.layer_norm(hidden_states)
         hidden_states = self.lm_logits(hidden_states, word_embeddings_weight)
-        return hidden_states   
+        return hidden_states
 
 
 class RobertaForPreTraining(nn.Module):
@@ -311,60 +326,52 @@ class RobertaForPreTraining(nn.Module):
 class RobertaForMaskedLM(RobertaForPreTraining):
     def __init__(self, cfg):
         super().__init__()
-        
+
         cfg.add_pooling_layer = False
         self.roberta = RobertaModel(cfg)
         self.lm_head = RobertaLMHead(
             cfg.vocab_size,
             cfg.hidden_size,
             init_method_normal(cfg.initializer_range),
-            cfg.layer_norm_eps
+            cfg.layer_norm_eps,
         )
         self.loss_fc = ParallelCrossEntropyLoss()
-    
+
     def forward(
-        self, 
-        input_ids, 
-        attention_mask, 
-        token_type_ids=None, 
-        position_ids=None, 
-        labels=None
+        self, input_ids, attention_mask, token_type_ids=None, position_ids=None, labels=None
     ):
         outputs = self.roberta(input_ids, attention_mask, position_ids)
         sequence_output = outputs[0]
-        prediction_scores = self.lm_head(sequence_output, self.roberta.word_embeddings_weight())     # [S(0), S(0)]
-        
+        prediction_scores = self.lm_head(
+            sequence_output, self.roberta.word_embeddings_weight()
+        )  # [S(0), S(0)]
+
         if labels is not None:
-            masked_lm_loss = self.loss_fc(prediction_scores, labels).mean() 
+            masked_lm_loss = self.loss_fc(prediction_scores, labels).mean()
             masked_lm_loss = masked_lm_loss.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
             )
-            return {'lm_loss': masked_lm_loss}
-        
-        return {'prediction_scores': prediction_scores}
-    
+            return {"lm_loss": masked_lm_loss}
+
+        return {"prediction_scores": prediction_scores}
+
 
 class RobertaForCausalLM(RobertaForPreTraining):
     def __init__(self, cfg):
         super().__init__()
-        
+
         cfg.add_pooling_layer = False
         self.roberta = RobertaModel(cfg)
         self.lm_head = RobertaLMHead(
             cfg.vocab_size,
             cfg.hidden_size,
             init_method_normal(cfg.initializer_range),
-            cfg.layer_norm_eps
+            cfg.layer_norm_eps,
         )
         self.loss_fc = ParallelCrossEntropyLoss()
-    
+
     def forward(
-        self,
-        input_ids,
-        attention_mask,
-        token_type_ids=None,
-        position_ids=None,
-        labels=None
+        self, input_ids, attention_mask, token_type_ids=None, position_ids=None, labels=None
     ):
         outputs = self.roberta(input_ids, attention_mask, position_ids)
         sequence_output = outputs[0]
@@ -377,13 +384,11 @@ class RobertaForCausalLM(RobertaForPreTraining):
                 sbp=prediction_scores.sbp
             )
             shifted_labels = labels[:, 1:].contiguous()
-            shifted_labels = shifted_labels.to_global(
-                sbp=shifted_labels.sbp
-            )
+            shifted_labels = shifted_labels.to_global(sbp=shifted_labels.sbp)
             lm_loss = self.loss_fc(shifted_prediction_scores, shifted_labels).mean()
             lm_loss = lm_loss.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
             )
-            return {'lm_loss': lm_loss}
-        
-        return {'prediction_scores': prediction_scores}
+            return {"lm_loss": lm_loss}
+
+        return {"prediction_scores": prediction_scores}
