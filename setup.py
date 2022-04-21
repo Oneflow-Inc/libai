@@ -133,6 +133,7 @@ if __name__ == "__main__":
             "black==21.4b ",
             "autoflake",
             "tensorboardX",
+            "pytest",
         ],
         packages=find_packages(),
         package_data={"libai.config": get_libai_configs()},
