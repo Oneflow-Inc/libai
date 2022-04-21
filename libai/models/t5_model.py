@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from regex import T
 import oneflow as flow
 
 from libai.config import configurable
@@ -224,6 +223,7 @@ class T5Model(flow.nn.Module):
         self.decoder.add_module("layers", decoder_layers)
         self.decoder.add_module("final_layernorm", decoder_final_layernorm)
         self.past_key_values = [None] * len(self.decoder.layers)
+        self.encoder_states = None
 
         self.lm_head = LMLogits(vocab_size, bias=True)
 
@@ -285,15 +285,18 @@ class T5Model(flow.nn.Module):
         Returns:
             flow.Tensor: logits
         """
-        encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
+        if use_cache and self.encoder_states is not None:
+            encoder_states = self.encoder_states
+        else:
+            encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
+            enc_embedding_output = self.embedding(encoder_input_ids)
+            enc_hidden_states = enc_embedding_output
+            for layer in self.encoder.layers:
+                enc_hidden_states = layer(enc_hidden_states, encoder_attn_mask)
+            encoder_states = self.encoder.final_layernorm(enc_hidden_states)
+
         decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
-        enc_embedding_output = self.embedding(encoder_input_ids)
-        enc_hidden_states = enc_embedding_output
-        for layer in self.encoder.layers:
-            enc_hidden_states = layer(enc_hidden_states, encoder_attn_mask)
-        encoder_states = self.encoder.final_layernorm(enc_hidden_states)
-
         dec_embedding_output = self.embedding(decoder_input_ids)
         dec_hidden_states = dec_embedding_output
         if use_cache:
@@ -311,20 +314,22 @@ class T5Model(flow.nn.Module):
                 dec_hidden_states, present = dec_hidden_states
                 presents.append(present)
         if use_cache:
-            self.set_past_key_values(past_key_values=presents)
+            self.set_cache(encoder_states, past_key_values=presents)
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
         logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
         return logits
 
-    def set_past_key_values(self, past_key_values):
+    def set_cache(self, encoder_states, past_key_values):
+        self.encoder_states = encoder_states
+
         if past_key_values is None:
             past_key_values = [None] * len(self.decoder.layers)
-        assert len(past_key_values) == len(self.decoder.layers), \
-            f"past_key_values's length {len(past_key_values)} doesn't match " \
+        assert len(past_key_values) == len(self.decoder.layers), (
+            f"past_key_values's length {len(past_key_values)} doesn't match "
             f"decoder num_layers' length {self.decoder.layers}"
+        )
         self.past_key_values = past_key_values
-
 
 class T5Loss(flow.nn.Module):
     def __init__(self) -> None:
@@ -354,8 +359,8 @@ class T5ForPreTraining(flow.nn.Module):
         self.t5_model = T5Model(cfg)
         self.loss_func = T5Loss()
 
-    def set_past_key_values(self, past_key_values):
-        self.t5_model.set_past_key_values(past_key_values)
+    def set_cache(self, encoder_states, past_key_values):
+        self.t5_model.set_cache(encoder_states, past_key_values)
 
     def forward(
         self,
