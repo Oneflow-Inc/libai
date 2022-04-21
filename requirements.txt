@@ -24,3 +24,4 @@ isort==5.10.1
 black==21.4b2
 autoflake
 tensorboardX
+pytest
