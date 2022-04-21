@@ -310,8 +310,8 @@ def build_image_train_loader(
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )
-    # Bind up mixup_func to dataloader, and this will be used in Trainer.step
-    dataloader.mixup_func = mixup_func
+    # Bind up mixup_func to dataloader, and this will be used in Trainer.get_batch
+    dataloader.mixup_func = instantiate(mixup_func)
 
     return dataloader, None, None
 

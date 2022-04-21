@@ -20,7 +20,6 @@ from typing import Callable, List, Mapping
 
 import numpy as np
 import oneflow as flow
-from libai.config.instantiate import instantiate
 
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
@@ -278,7 +277,7 @@ class EagerTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data, instantiate(getattr(self.data_loader, "mixup_func", None)))
+        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
         loss_dict = self.model(**data)
@@ -315,7 +314,7 @@ class GraphTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data, instantiate(getattr(self.data_loader, "mixup_func", None)))
+        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
