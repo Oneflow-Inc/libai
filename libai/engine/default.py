@@ -24,8 +24,7 @@ import oneflow as flow
 from omegaconf import OmegaConf
 from termcolor import colored
 
-from libai.config import LazyConfig, try_get_key
-from libai.config.instantiate import instantiate
+from libai.config import LazyConfig, instantiate, try_get_key
 from libai.data import Instance
 from libai.engine import hooks
 from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase

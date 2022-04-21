@@ -15,6 +15,7 @@
 
 import dataclasses
 import logging
+from collections import abc
 from enum import Enum
 from typing import Any, Callable, Dict, List, Union
 
@@ -46,6 +47,14 @@ def _is_target(x: Any) -> bool:
     if OmegaConf.is_dict(x):
         return _Keys.TARGET in x
     return False
+
+
+def _is_dict(cfg: Any) -> bool:
+    return OmegaConf.is_dict(cfg) or isinstance(cfg, abc.Mapping)
+
+
+def _is_list(cfg: Any) -> bool:
+    return OmegaConf.is_list(cfg) or isinstance(cfg, list)
 
 
 def dump_dataclass(obj: Any):
@@ -137,16 +146,14 @@ def instantiate(cfg, **kwargs: Any) -> Any:
 
     kwargs = _prepare_input_dict_or_list(kwargs)
 
-    if OmegaConf.is_dict(cfg):
+    if _is_dict(cfg):
         if kwargs:
             cfg = OmegaConf.merge(cfg, kwargs)
 
-        OmegaConf.resolve(cfg)
         _recursive_ = kwargs.pop(_Keys.RECURSIVE, True)
         return instantiate_cfg(cfg, recursive=_recursive_)
 
-    elif OmegaConf.is_list(cfg):
-        OmegaConf.resolve(cfg)
+    elif _is_list(cfg):
         _recursive_ = kwargs.pop(_Keys.RECURSIVE, True)
         return instantiate_cfg(cfg, recursive=_recursive_)
     else:
@@ -157,10 +164,10 @@ def instantiate_cfg(cfg: Any, recursive: bool = True):
     if cfg is None:
         return cfg
 
-    if not OmegaConf.is_config(cfg):
-        return cfg
+    # if not OmegaConf.is_config(cfg):
+    # return cfg
 
-    if OmegaConf.is_dict(cfg):
+    if _is_dict(cfg):
         recursive = cfg[_Keys.RECURSIVE] if _Keys.RECURSIVE in cfg else recursive
 
     if not isinstance(recursive, bool):
@@ -178,10 +185,11 @@ def instantiate_cfg(cfg: Any, recursive: bool = True):
         # list[objects] as arguments, such as ResNet, DatasetMapper
         return [instantiate(item, recursive=recursive) for item in cfg]
 
-    elif OmegaConf.is_dict(cfg):
+    elif _is_dict(cfg):
         exclude_keys = set({"_target_", "_recursive_"})
         if _is_target(cfg):
-            _target_ = _resolve_target(cfg.get(_Keys.TARGET))
+            _target_ = instantiate(cfg.get(_Keys.TARGET))  # instantiate lazy target
+            _target_ = _resolve_target(_target_)
             kwargs = {}
             for key, value in cfg.items():
                 if key not in exclude_keys:
@@ -192,4 +200,4 @@ def instantiate_cfg(cfg: Any, recursive: bool = True):
         else:
             return cfg
     else:
-        assert False, f"Unexpected config type: {type(cfg).__name__}"
+        return cfg  # return as-is if don't know what to do
