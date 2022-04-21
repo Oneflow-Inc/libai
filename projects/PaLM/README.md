@@ -4,7 +4,7 @@
 
 Implementation of the model architecture of [Pathways Language Model (PaLM): Scaling to 540 Billion Parameters for Breakthrough Performance](https://ai.googleblog.com/2022/04/pathways-language-model-palm-scaling-to.html) with OneFlow in less than <a href="https://github.com/Oneflow-Inc/libai/tree/main/projects/PaLM/palm_model.py"> 300 lines of a code</a>.
 
-We take advantage of [LiBai](https://github.com/hpcaitech/ColossalAI) to exploit multiple parallelism strategies, e.g. data parallelism, tensor parallelism and pipeline parallelism. Besides, some advanced features such as mixed precision and ZeRO come here to help scale the training to multiple GPUs.
+We take advantage of [LiBai](https://github.com/Oneflow-Inc/libai) to exploit multiple parallelism strategies, e.g. data parallelism, tensor parallelism and pipeline parallelism. Besides, some advanced features such as mixed precision and ZeRO come here to help scale the training to multiple GPUs.
 
 We welcome contributions, to help us enhance the usability of this project.
 
