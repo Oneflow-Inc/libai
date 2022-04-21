@@ -164,9 +164,6 @@ def instantiate_cfg(cfg: Any, recursive: bool = True):
     if cfg is None:
         return cfg
 
-    # if not OmegaConf.is_config(cfg):
-    # return cfg
-
     if _is_dict(cfg):
         recursive = cfg[_Keys.RECURSIVE] if _Keys.RECURSIVE in cfg else recursive
 
