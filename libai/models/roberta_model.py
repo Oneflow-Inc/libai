@@ -255,7 +255,10 @@ class RobertaModel(nn.Module):
             "amp_enabled": cfg.amp_enabled,
         }
 
-    def forward(self, input_ids, attention_mask, token_type_ids=None):
+    def forward(self, input_ids, attention_mask, token_type_ids=None, position_ids=None, past_key_values=None):
+        # past_key_values: (batch_size, num_heads, sequence_length - 1, embed_size_per_head)
+        past_key_values_length = past_key_values[0][0].shape[2] if past_key_values is not None else 0
+        
         extended_attention_mask = self.extended_attn_mask(attention_mask)
         embedding_output = self.embeddings(input_ids, token_type_ids)
 
