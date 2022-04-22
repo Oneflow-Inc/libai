@@ -26,11 +26,17 @@ from libai.data.structures import DistTensorData, Instance
 class TextClassificationPipeline(BasePipeline):
     def __init__(self, config_file, **kwargs):
         super().__init__(config_file, **kwargs)
+        assert "num_labels" in self.cfg.model.cfg, f"The model's config must contain num_ labels"
+        if "label2id" not in self.cfg.model.cfg:
+            label2id = {"Label_" + str(i): i for i in range(self.cfg.model.cfg.num_labels)}
+            id2label = {ind: label for label, ind in label2id.items()}
+            self.cfg.model.cfg["label2id"] = label2id
+            self.cfg.model.cfg["id2label"] = id2label
 
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
         forward_params = {}
-        postprocess_params = {}
+        postprocess_params = {**pipeline_parameters}
         return preprocess_params, forward_params, postprocess_params
 
     def preprocess(
@@ -64,15 +70,41 @@ class TextClassificationPipeline(BasePipeline):
         return model_outputs_dict
 
     def postprocess(
-        self,
-        model_input_dict,
-        topk=5,
+        self, model_outputs_dict, function_to_apply=None, return_all_scores=False, **kwargs
     ) -> dict:
-        prediction_scores = model_input_dict["prediction_scores"]
-        print(prediction_scores)
-        # do something according to args
+        # prepare
+        num_labels = self.cfg.model.cfg.num_labels
+        if function_to_apply is not None:
+            function_to_apply = function_to_apply.lower()
+            assert function_to_apply in [
+                "sigmoid",
+                "softmax",
+                "none",
+            ], f"Unrecognized `function_to_apply` argument: {function_to_apply}"
+        else:
+            if num_labels == 1:
+                function_to_apply == "sigmoid"
+            elif num_labels > 1:
+                function_to_apply == "softmax"
 
+        # process, logits: [num_labels]
+        logits = model_outputs_dict["logits"][0]
 
-if __name__ == "__main__":
-    model = TextClassificationPipeline("configs/bert_large_pretrain.py")
-    a = model("dog" * 10)
+        if function_to_apply == "sigmoid":
+            scores = flow.sigmoid(logits)
+        elif function_to_apply == "softmax":
+            scores = flow.softmax(logits)
+        else:
+            scores = logits
+        scores = scores.detach().numpy()
+
+        if return_all_scores:
+            return [
+                {"label": self.cfg.model.cfg.id2label[i], "score": score.item()}
+                for i, score in enumerate(scores)
+            ]
+        else:
+            return {
+                "label": self.cfg.model.cfg.id2label[scores.argmax().item()],
+                "score": scores.max().item(),
+            }
