@@ -22,11 +22,15 @@ import oneflow as flow
 sys.path.append(".")  # noqa
 from inference.basic import BasePipeline
 from libai.data.structures import DistTensorData, Instance
-
+from libai.utils.checkpoint import Checkpointer
 
 class TextGenerationPipeline(BasePipeline):
     def __init__(self, config_file, **kwargs):
         super().__init__(config_file, **kwargs)
+
+    def update_cfg(self):
+        self.cfg.model.cfg.bias_dropout_fusion = False
+        self.cfg.model.cfg.hidden_layers = 1
 
     def _parse_parameters(
         self, 
@@ -74,6 +78,18 @@ class TextGenerationPipeline(BasePipeline):
         mask = mask.astype(np.int64)
         return mask
 
+    def make_history_mask(self, block):
+        length = block.shape[0]
+        arange = np.arange(length)
+        history_mask = (
+            arange[
+                None,
+            ]
+            < arange[:, None]
+        )
+        history_mask = history_mask.astype(np.int64)
+        return history_mask
+
     def generate(
         self, 
         encoder_input_dict: dict, 
@@ -88,10 +104,12 @@ class TextGenerationPipeline(BasePipeline):
 
         for _ in range(max_generate_length):
             # generate decoder input
-            if use_cache:
-                decoder_ids = decoder_ids[-1:]
-            decoder_input_ids = np.array(decoder_ids)
+            decoder_input_ids = decoder_ids[-1:] if use_cache else decoder_ids
+            # decoder_input_ids = decoder_ids
+            decoder_input_ids = np.array(decoder_input_ids)
             decoder_padding_mask = self.make_attention_mask(decoder_input_ids, decoder_input_ids)
+            if not use_cache:
+                decoder_padding_mask = decoder_padding_mask * self.make_history_mask(decoder_input_ids)
             encoder_decoder_padding_mask = self.make_attention_mask(
                 decoder_input_ids, 
                 encoder_nparray_ids
@@ -131,8 +149,9 @@ class TextGenerationPipeline(BasePipeline):
             _, next_word = flow.max(prob, dim=1)
             next_word = next_word.item()
             decoder_ids = decoder_ids + [next_word]
-            if next_word == self.tokenizer.eos_token_id:
-                break
+            # if next_word == self.tokenizer.eos_token_id:
+            #     break
+        print(decoder_ids)
         return decoder_ids
 
     def forward(
@@ -145,7 +164,7 @@ class TextGenerationPipeline(BasePipeline):
         self.model.set_cache(encoder_states=None, past_key_values=None)
         decoder_ids = self.generate(encoder_input_dict, use_cache, max_generate_length, **kwargs)
         return {
-            "decoder_ids": decoder_ids
+            "decoder_ids": flow.tensor(decoder_ids)
         }
 
     def postprocess(
@@ -153,11 +172,17 @@ class TextGenerationPipeline(BasePipeline):
         model_input_dict,
         **kwargs
     ) -> dict:
-        prediction_scores = model_input_dict["prediction_scores"]
-        print(prediction_scores)
+        pass
+        # prediction_scores = model_input_dict["prediction_scores"]
+        # print(prediction_scores)
         # do something according to args
 
 
 if __name__ == "__main__":
-    model = TextGenerationPipeline("configs/t5_large_pretrain.py")
-    a = model("dog" * 10, use_cache=True, max_generate_length=15)
+    # for i in range(10):
+        print("--------")
+        model = TextGenerationPipeline("configs/t5_large_pretrain.py")
+        print('---------------------------not cache----------------------------')
+        a = model("dog cat you " * 10, use_cache=False, max_generate_length=15)
+        print('---------------------------use cache----------------------------')
+        a = model("dog cat you " * 10, use_cache=True, max_generate_length=15)

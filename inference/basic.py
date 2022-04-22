@@ -35,6 +35,7 @@ class BasePipeline(metaclass=ABCMeta):
         **kwargs,
     ):
         self.cfg = LazyConfig.load(config_file)
+        self.update_cfg()
         dist.setup_dist_util(self.cfg.train.dist)
         self.model = DefaultTrainer.build_model(self.cfg).eval()
         self.load_pretrain_weight(self.model, self.cfg)
@@ -46,6 +47,9 @@ class BasePipeline(metaclass=ABCMeta):
         ) = self._parse_parameters(
             **kwargs
         )  # noqa
+
+    def update_cfg(self,):
+        pass
 
     def load_pretrain_weight(self, model, cfg):
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
@@ -81,11 +85,12 @@ class BasePipeline(metaclass=ABCMeta):
         return outputs_dict
 
     def to_local(self, model_outputs_dict):
-        model_outputs_dict = {
-            key: dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
-            for key, value in model_outputs_dict.items()
-        }
-
+        for key, value in model_outputs_dict.items():
+            if isinstance(value, flow.Tensor) and value.is_global:
+                model_outputs_dict[key] = dist.ttol(
+                    value, 
+                    ranks=[0] if value.placement.ranks.ndim == 1 else [[0]]
+                    )
         if flow.cuda.is_available():
             dist.synchronize()
         return model_outputs_dict
