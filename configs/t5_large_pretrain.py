@@ -7,8 +7,11 @@ from .common.data.t5_dataset import dataloader, tokenization
 
 from .common.models.graph import graph
 
-vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
-data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
+# vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
+# data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
+
+vocab_file = '/cognitive_comp/ganruyi/Megatron/vocab/bert-base-chinese-vocab.txt'
+data_prefix= '/cognitive_comp/gaoxinyu/data/output_data/loss_compara_content_sentence'
 
 tokenization.tokenizer.vocab_file = vocab_file
 dataloader.train.dataset[0].data_prefix = data_prefix
