@@ -68,15 +68,13 @@ class T5Embedding(flow.nn.Module):
 
         self.embedding_dropout = flow.nn.Dropout(embedding_dropout_prob)
 
-    def forward(self, input_ids, position_ids=None):
+    def forward(self, input_ids, past_length=0):
         seq_length = input_ids.size()[1]
-        word_embeddings = self.word_embeddings(input_ids)
 
-        if position_ids is None:
-            # Change position_ids sbp sign: [B, B] -> [S(0), B]
-            position_ids = (
-                self.position_ids[:, :seq_length].expand_as(input_ids).to_global(sbp=input_ids.sbp)
-            )
+        position_ids = self.position_ids[:, past_length : past_length + seq_length]
+        position_ids = position_ids.expand_as(input_ids).to_global(sbp=input_ids.sbp)
+
+        word_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = word_embeddings + position_embeddings
         embeddings = self.embedding_dropout(embeddings)
@@ -257,6 +255,7 @@ class T5Model(flow.nn.Module):
         decoder_attn_mask,
         encoder_decoder_attn_mask,
         use_cache=False,
+        past_length=0,
     ):
         """
 
@@ -281,6 +280,9 @@ class T5Model(flow.nn.Module):
             use_cache (bool, optional):
                 It will be set to True, when the model is in the inference
                 phase and used for incremental decoding. Defaults to False.
+            past_length (int, optional):
+                It will be set to the `len(past_sentence)-1`, when the model is in the inference
+                phase and used for incremental decoding. Defaults to 0.
 
         Returns:
             flow.Tensor: logits
@@ -297,7 +299,7 @@ class T5Model(flow.nn.Module):
 
         decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
-        dec_embedding_output = self.embedding(decoder_input_ids)
+        dec_embedding_output = self.embedding(decoder_input_ids, past_length)
         dec_hidden_states = dec_embedding_output
         if use_cache:
             presents = []
@@ -372,6 +374,7 @@ class T5ForPreTraining(flow.nn.Module):
         lm_labels=None,
         loss_mask=None,
         use_cache=False,
+        past_length=0,
     ):
         """
 
@@ -404,6 +407,10 @@ class T5ForPreTraining(flow.nn.Module):
             use_cache (bool, optional):
                 It will be set to True, when the model is in the inference
                 phase and used for incremental decoding. Defaults to False.
+            past_length (int, optional):
+                It will be set to the `len(past_sentence)-1`, when the model is in the inference
+                phase and used for incremental decoding. Defaults to 0.
+
 
         Returns:
             dict:
@@ -419,6 +426,7 @@ class T5ForPreTraining(flow.nn.Module):
             decoder_attn_mask,
             encoder_decoder_attn_mask,
             use_cache=use_cache,
+            past_length=past_length,
         )
 
         if lm_labels is not None:

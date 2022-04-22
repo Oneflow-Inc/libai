@@ -33,6 +33,9 @@ class TextClassificationPipeline(BasePipeline):
             self.cfg.model.cfg["label2id"] = label2id
             self.cfg.model.cfg["id2label"] = id2label
 
+    def update_cfg(self):
+        self.cfg.model.cfg.bias_dropout_fusion = False
+
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
         forward_params = {}

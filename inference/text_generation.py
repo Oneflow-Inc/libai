@@ -30,7 +30,6 @@ class TextGenerationPipeline(BasePipeline):
 
     def update_cfg(self):
         self.cfg.model.cfg.bias_dropout_fusion = False
-        self.cfg.model.cfg.hidden_layers = 1
 
     def _parse_parameters(
         self, 
@@ -85,7 +84,7 @@ class TextGenerationPipeline(BasePipeline):
             arange[
                 None,
             ]
-            < arange[:, None]
+            <= arange[:, None]
         )
         history_mask = history_mask.astype(np.int64)
         return history_mask
@@ -93,7 +92,7 @@ class TextGenerationPipeline(BasePipeline):
     def generate(
         self, 
         encoder_input_dict: dict, 
-        use_cache: bool=False,
+        use_cache: bool=True,
         max_generate_length: int=10,
         **kwargs
     ) -> dict:
@@ -105,7 +104,6 @@ class TextGenerationPipeline(BasePipeline):
         for _ in range(max_generate_length):
             # generate decoder input
             decoder_input_ids = decoder_ids[-1:] if use_cache else decoder_ids
-            # decoder_input_ids = decoder_ids
             decoder_input_ids = np.array(decoder_input_ids)
             decoder_padding_mask = self.make_attention_mask(decoder_input_ids, decoder_input_ids)
             if not use_cache:
@@ -136,7 +134,8 @@ class TextGenerationPipeline(BasePipeline):
 
             
             mdoel_input_dict = {
-                "use_cache": use_cache
+                "use_cache": use_cache,
+                "past_length": len(decoder_ids)-1 if use_cache else 0
             }
             for key, value in model_input.get_fields().items():
                 value.to_global()
@@ -149,15 +148,15 @@ class TextGenerationPipeline(BasePipeline):
             _, next_word = flow.max(prob, dim=1)
             next_word = next_word.item()
             decoder_ids = decoder_ids + [next_word]
-            # if next_word == self.tokenizer.eos_token_id:
-            #     break
+            if next_word == self.tokenizer.eos_token_id:
+                break
         print(decoder_ids)
         return decoder_ids
 
     def forward(
         self, 
         encoder_input_dict, 
-        use_cache=False,
+        use_cache=True,
         max_generate_length=10,
         **kwargs
     ) -> dict:
@@ -169,20 +168,20 @@ class TextGenerationPipeline(BasePipeline):
 
     def postprocess(
         self,
-        model_input_dict,
+        model_output_dict,
         **kwargs
     ) -> dict:
-        pass
-        # prediction_scores = model_input_dict["prediction_scores"]
-        # print(prediction_scores)
+        return model_output_dict        
         # do something according to args
+        # return_list = self.tokenizer.decode(model_output_dict["decoder_ids"])
 
 
 if __name__ == "__main__":
-    # for i in range(10):
-        print("--------")
+    for i in range(100):
         model = TextGenerationPipeline("configs/t5_large_pretrain.py")
         print('---------------------------not cache----------------------------')
         a = model("dog cat you " * 10, use_cache=False, max_generate_length=15)
         print('---------------------------use cache----------------------------')
-        a = model("dog cat you " * 10, use_cache=True, max_generate_length=15)
+        b = model("dog cat you " * 10, use_cache=True, max_generate_length=15)
+        if a["decoder_ids"].sum() != b["decoder_ids"].sum():
+            break
