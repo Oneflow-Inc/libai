@@ -26,15 +26,15 @@ from libai.data.structures import DistTensorData, Instance
 class TextClassificationPipeline(BasePipeline):
     def __init__(self, config_file, **kwargs):
         super().__init__(config_file, **kwargs)
+        
+    def update_cfg(self):
+        self.cfg.model.cfg.bias_dropout_fusion = False
         assert "num_labels" in self.cfg.model.cfg, f"The model's config must contain num_ labels"
         if "label2id" not in self.cfg.model.cfg:
             label2id = {"Label_" + str(i): i for i in range(self.cfg.model.cfg.num_labels)}
             id2label = {ind: label for label, ind in label2id.items()}
             self.cfg.model.cfg["label2id"] = label2id
             self.cfg.model.cfg["id2label"] = id2label
-
-    def update_cfg(self):
-        self.cfg.model.cfg.bias_dropout_fusion = False
 
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
