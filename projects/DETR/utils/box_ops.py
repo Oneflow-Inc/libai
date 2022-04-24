@@ -3,14 +3,16 @@
 Utilities for bounding box manipulation and GIoU.
 """
 import oneflow as flow
-# from flowvision.ops.boxes import box_area
-
+from flowvision.layers.blocks.boxes import box_area
 
 def box_cxcywh_to_xyxy(x):
-    x_c, y_c, w, h = x.unbind(-1)
+    # x_c, y_c, w, h = x.unbind(-1)
+    x_c, y_c, w, h = x.split(1, dim=-1)
+    x_c, y_c, w, h = x_c.squeeze(-1), y_c.squeeze(-1), w.squeeze(-1), h.squeeze(-1)
+    
     b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
          (x_c + 0.5 * w), (y_c + 0.5 * h)]
-    return flow.stack(b, dim=-1)
+    return flow.stack(b, dim=-1).to(dtype=flow.float64)
 
 
 def box_xyxy_to_cxcywh(x):
@@ -25,6 +27,7 @@ def box_iou(boxes1, boxes2):
     area1 = box_area(boxes1)
     area2 = box_area(boxes2)
 
+    # NOTE: flow.max cannot min/max between diff dtype
     lt = flow.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
     rb = flow.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
 

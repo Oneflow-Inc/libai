@@ -60,7 +60,6 @@ class DetrDefaultTrainer(DefaultTrainer):
         #     data.get("labels").tensor = labels
 
         images, labels = data
-        labels = labels[0]
 
         tensors = DistTensorData(images.tensors, placement_idx=-1)
         tensors.to_global()
@@ -69,10 +68,12 @@ class DetrDefaultTrainer(DefaultTrainer):
         mask.to_global()
 
         images = NestedTensor(tensors,mask)
-
-        for k,v in labels.items():
-            labels[k] = DistTensorData(flow.tensor(v), placement_idx=-1)
-            labels[k].to_global()
+        # TDOO: refine the code. to DistTensorData func should impl in class CocoDetection
+        for i in range(len(labels)):
+            for k,v in labels[i].items():
+                labels[i][k] = DistTensorData(flow.tensor(v), placement_idx=-1)
+                labels[i][k].to_global()
+            
         ret_dict = {
             "images": images,
             "labels": labels

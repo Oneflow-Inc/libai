@@ -405,6 +405,7 @@ def _onnx_nested_tensor_from_tensor_list(tensor_list: List[Tensor]) -> NestedTen
 def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
 
     # TODO: flowvision does not support _is_tracing()
+
     if tensor_list[0].ndim == 3:
     #     if flowvision._is_tracing():
     #         # nested_tensor_from_tensor_list() does not export well to ONNX

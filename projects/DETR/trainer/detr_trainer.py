@@ -68,7 +68,6 @@ class DetrEagerTrainer(TrainerBase):
         """
         assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
-
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
 

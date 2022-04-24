@@ -60,8 +60,6 @@ class DETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-        import pdb
-        pdb.set_trace()
         samples, targets = samples["images"], samples["labels"]
         
         if isinstance(samples, (list, flow.Tensor)):
