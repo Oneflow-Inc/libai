@@ -5,12 +5,12 @@ DETR model and criterion classes.
 import oneflow as flow
 import oneflow.nn.functional as F
 import oneflow.nn as nn
-
+from oneflow.env import get_world_size
 from libai.config import LazyCall
 
 from utils import box_ops
-from utils.misc import (accuracy, get_world_size, interpolate,
-                       is_dist_avail_and_initialized)
+from utils.misc import accuracy, interpolate
+                       
 
 from libai.config.configs.common.data.coco import NestedTensor, nested_tensor_from_tensor_list
 
@@ -53,13 +53,19 @@ class SetCriterion(nn.Module):
         assert 'pred_logits' in outputs
         src_logits = outputs['pred_logits']
 
-        idx = self._get_src_permutation_idx(indices)
-        target_classes_o = flow.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
-        target_classes = flow.full(src_logits.shape[:2], self.num_classes,
-                                    dtype=flow.int64, device=src_logits.device)
+        target_classes_o = flow.cat([t["labels"].tensor[J] for t, (_, J) in zip(targets, indices)])
+
+        target_classes = flow.full(src_logits.shape[:2], self.num_classes,dtype=flow.int64).to_global(sbp=src_logits.sbp, placement=src_logits.placement)
+        
+        batch_idx, src_idx = self._get_src_permutation_idx(indices)
+        idx = batch_idx.to_global(sbp=target_classes.sbp, placement=target_classes.placement), src_idx.to_global(sbp=target_classes.sbp, placement=target_classes.placement)
+        
         target_classes[idx] = target_classes_o
 
-        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
+        loss_ce = F.cross_entropy(
+            src_logits.transpose(1, 2), 
+            target_classes, 
+            self.empty_weight.to_global(sbp=target_classes.sbp, placement=target_classes.placement))
         losses = {'loss_ce': loss_ce}
 
         if log:
@@ -73,11 +79,15 @@ class SetCriterion(nn.Module):
         This is not really a loss, it is intended for logging purposes only. It doesn't propagate gradients
         """
         pred_logits = outputs['pred_logits']
-        device = pred_logits.device
-        tgt_lengths = flow.as_tensor([len(v["labels"]) for v in targets], device=device)
+        tgt_lengths = flow.as_tensor([len(v["labels"].tensor) for v in targets]).to_global(sbp=pred_logits.sbp, placement=pred_logits.placement)
         # Count the number of predictions that are NOT "no-object" (which is the last class)
         card_pred = (pred_logits.argmax(-1) != pred_logits.shape[-1] - 1).sum(1)
-        card_err = F.l1_loss(card_pred.float(), tgt_lengths.float())
+        
+        # *: flow.nn.functional does not support F.l1_loss
+        # card_err = F.l1_loss(card_pred.float(), tgt_lengths.float())
+        l1_loss = nn.L1Loss(reduction="mean")
+        card_err = l1_loss(card_pred.float(), tgt_lengths.float())
+        
         losses = {'cardinality_error': card_err}
         return losses
 
@@ -89,9 +99,10 @@ class SetCriterion(nn.Module):
         assert 'pred_boxes' in outputs
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
-        target_boxes = flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-
-        loss_bbox = F.l1_loss(src_boxes, target_boxes, reduction='none')
+        target_boxes = flow.cat([t['boxes'].tensor[i] for t, (_, i) in zip(targets, indices)], dim=0)
+        
+        l1_loss = nn.L1Loss(reduction="none")
+        loss_bbox = l1_loss(src_boxes, target_boxes)
 
         losses = {}
         losses['loss_bbox'] = loss_bbox.sum() / num_boxes
@@ -112,7 +123,7 @@ class SetCriterion(nn.Module):
         tgt_idx = self._get_tgt_permutation_idx(indices)
         src_masks = outputs["pred_masks"]
         src_masks = src_masks[src_idx]
-        masks = [t["masks"] for t in targets]
+        masks = [t["masks"].tensor for t in targets]
         # TODO use valid to mask invalid areas due to padding in loss
         target_masks, valid = nested_tensor_from_tensor_list(masks).decompose()
         target_masks = target_masks.to(src_masks)
@@ -133,7 +144,9 @@ class SetCriterion(nn.Module):
 
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
-        batch_idx = flow.cat([flow.full_like(src, i) for i, (src, _) in enumerate(indices)])
+        # NOTE: flow does not support flow.full_like
+        # batch_idx = flow.cat([flow.full_like(src, i) for i, (src, _) in enumerate(indices)])
+        batch_idx = flow.cat([flow.full(src.size(),i).to(dtype=src.dtype, device=src.device) for i, (src, _) in enumerate(indices)])
         src_idx = flow.cat([src for (src, _) in indices])
         return batch_idx, src_idx
 
@@ -166,12 +179,12 @@ class SetCriterion(nn.Module):
         indices = self.matcher(outputs_without_aux, targets)
 
         # Compute the average number of target boxes accross all nodes, for normalization purposes
-        num_boxes = sum(len(t["labels"]) for t in targets)
-        num_boxes = flow.as_tensor([num_boxes], dtype=flow.float, device=next(iter(outputs.values())).device)
-        if is_dist_avail_and_initialized():
-            flow.distributed.all_reduce(num_boxes)
+        num_boxes = sum(len(t["labels"].tensor) for t in targets)
+        # num_boxes = flow.as_tensor([num_boxes], dtype=flow.float, device=next(iter(outputs.values())).device)
+        num_boxes = flow.as_tensor([num_boxes], dtype=flow.float64).to_global(sbp=outputs["pred_logits"].sbp, placement=outputs["pred_logits"].placement)
+        # if is_dist_avail_and_initialized():
+        #     flow.distributed.all_reduce(num_boxes)
         num_boxes = flow.clamp(num_boxes / get_world_size(), min=1).item()
-
         # Compute all the requested losses
         losses = {}
         for loss in self.losses:
