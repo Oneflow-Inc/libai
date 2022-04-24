@@ -13,12 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
 from libai.utils import distributed as dist
-import logging
 
 logger = logging.getLogger(__name__)
 
