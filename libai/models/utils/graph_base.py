@@ -89,7 +89,8 @@ class GraphBase(nn.Graph):
     def build(self, **kwargs):
         if self.is_train:
             logger.info(
-                "Start compling the train graph which may take some time. Please wait for a moment ..."
+                "Start compling the train graph which may take some time. "
+                "Please wait for a moment ..."
             )
             loss_dict = self.model(**kwargs)
             losses = sum(loss_dict.values())
@@ -97,7 +98,8 @@ class GraphBase(nn.Graph):
             return loss_dict
         else:
             logger.info(
-                "Start compling the eval graph which may take some time. Please wait for a moment ..."
+                "Start compling the eval graph which may take some time. "
+                "Please wait for a moment ..."
             )
             return self.model(**kwargs)
 
