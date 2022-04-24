@@ -237,7 +237,7 @@ class CommonMetricPrinter(EventWriter):
 
         # NOTE: max_mem is parsed by grep in "dev/parse_results.sh"
         self.logger.info(
-            " {eta}{iter}  {sample}  {losses}  {time}{data_time}  lr: {lr}  {memory}".format(
+            " {eta}{iter}  {sample}  {losses}  {time}{data_time} {tpt} lr: {lr}  {memory}".format(
                 eta=f"eta: {eta_string}  " if eta_string else "",
                 iter=f"iteration: {iteration}/{self._max_iter}",
                 sample=f"consumed samples: {consumed_samples}",
@@ -248,10 +248,13 @@ class CommonMetricPrinter(EventWriter):
                         if "loss" in k
                     ]
                 ),
-                time="time: {:.4f}({:.2f})  ".format(iter_time, self._batch_size / iter_time)
+                time="time: {:.4f} s/iter  ".format(iter_time) if iter_time is not None else "",
+                data_time="data_time: {:.4f} s/iter".format(data_time)
+                if data_time is not None
+                else "",
+                tpt="total throughput: {:.2f} samples/s".format(self._batch_size / iter_time)
                 if iter_time is not None
                 else "",
-                data_time="data_time: {:.4f}".format(data_time) if data_time is not None else "",
                 lr=lr,
                 memory="max_mem: {:.0f}M".format(max_mem_mb) if max_mem_mb is not None else "",
             )
