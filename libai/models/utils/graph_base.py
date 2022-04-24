@@ -18,6 +18,9 @@ from oneflow import nn
 
 from libai.layers import TransformerLayer
 from libai.utils import distributed as dist
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GraphBase(nn.Graph):
@@ -84,11 +87,13 @@ class GraphBase(nn.Graph):
 
     def build(self, **kwargs):
         if self.is_train:
+            logger.info("Train Graph is building ...")
             loss_dict = self.model(**kwargs)
             losses = sum(loss_dict.values())
             losses.backward()
             return loss_dict
         else:
+            logger.info("Eval Graph is building ...")
             return self.model(**kwargs)
 
     def set_activation_checkpoint(self):
