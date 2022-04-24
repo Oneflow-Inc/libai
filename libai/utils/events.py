@@ -252,7 +252,7 @@ class CommonMetricPrinter(EventWriter):
                 data_time="data_time: {:.4f} s/iter".format(data_time)
                 if data_time is not None
                 else "",
-                tpt="throughput: {:.2f} samples/s".format(self._batch_size / iter_time)
+                tpt="total throughput: {:.2f} samples/s".format(self._batch_size / iter_time)
                 if iter_time is not None
                 else "",
                 lr=lr,
