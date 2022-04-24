@@ -41,15 +41,15 @@ dataloader.test = [
             tokenizer=LazyCall(BertTokenizer)(vocab_file="./data/vocab.txt"),
         ),
     ),
-    # LazyCall(build_nlp_test_loader)(
-    #     dataset=LazyCall(TestDataset_sup)(
-    #         name="cnsd_sts",
-    #         path="./data/STS/cnsd-sts-dev.txt",
-    #         tokenizer=LazyCall(BertTokenizer)(
-    #             vocab_file="./data/vocab.txt"
-    #         ),
-    #     )
-    # ),
+    LazyCall(build_nlp_test_loader)(
+        dataset=LazyCall(TestDataset_sup)(
+            name="cnsd_sts",
+            path="./data/STS/cnsd-sts-dev.txt",
+            tokenizer=LazyCall(BertTokenizer)(
+                vocab_file="./data/vocab.txt"
+            ),
+        )
+    ),
 ]
 
 simcse_cfg.update(

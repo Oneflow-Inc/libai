@@ -130,4 +130,4 @@ class Simcse_sup(nn.Module):
             sent2 = out[:, 1]
             sim = cosine_similarity(sent1, sent2)
             sim = sim.to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-            return {"sim": sim, "labels": labels}
+            return {"sim": sim.unsqueeze(1), "labels": labels}

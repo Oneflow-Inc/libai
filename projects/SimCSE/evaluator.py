@@ -33,7 +33,7 @@ class SimcseEvaluator(DatasetEvaluator):
 
     def process(self, inputs, outputs):
         sim = outputs["sim"]
-        labels = outputs["labels"]
+        labels = inputs["labels"]
         self._predictions.append({"sim": sim, "labels": labels})
 
     def evaluate(self):
@@ -46,5 +46,5 @@ class SimcseEvaluator(DatasetEvaluator):
         for prediction in predictions:
             sim_array = np.append(sim_array, dist.tton(prediction["sim"]))
             label_array = np.append(label_array, dist.tton(prediction["labels"]))
-        self._results = spearman_target(sim_array[:1361], label_array[:1361])
+        self._results = spearman_target(sim_array, label_array)
         return {"Spearman": self._results}
