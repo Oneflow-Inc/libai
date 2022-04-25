@@ -155,6 +155,7 @@ class TransformerEncoderLayer(nn.Module):
         self.nhead = nhead
 
     def with_pos_embed(self, tensor, pos: Optional[Tensor]):
+
         return tensor if pos is None else tensor + pos
 
     def forward_post(self,
@@ -162,7 +163,6 @@ class TransformerEncoderLayer(nn.Module):
                      src_mask: Optional[Tensor] = None,
                      src_key_padding_mask: Optional[Tensor] = None,
                      pos: Optional[Tensor] = None):
-
         q = k = self.with_pos_embed(src, pos)
         # src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
         #                       key_padding_mask=src_key_padding_mask)[0]

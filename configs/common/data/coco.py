@@ -375,42 +375,12 @@ class NestedTensor(object):
     def __repr__(self):
         return str(self.tensors)
 
-def _onnx_nested_tensor_from_tensor_list(tensor_list: List[Tensor]) -> NestedTensor:
-    max_size = []
-    for i in range(tensor_list[0].dim()):
-        max_size_i = flow.max(flow.stack([img.shape[i] for img in tensor_list]).to(flow.float32)).to(flow.int64)
-        max_size.append(max_size_i)
-    max_size = tuple(max_size)
-
-    # work around for
-    # pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
-    # m[: img.shape[1], :img.shape[2]] = False
-    # which is not yet supported in onnx
-    padded_imgs = []
-    padded_masks = []
-    for img in tensor_list:
-        padding = [(s1 - s2) for s1, s2 in zip(max_size, tuple(img.shape))]
-        padded_img = flow.nn.functional.pad(img, (0, padding[2], 0, padding[1], 0, padding[0]))
-        padded_imgs.append(padded_img)
-
-        m = flow.zeros_like(img[0], dtype=flow.int, device=img.device)
-        padded_mask = flow.nn.functional.pad(m, (0, padding[2], 0, padding[1]), "constant", 1)
-        padded_masks.append(padded_mask.to(flow.bool))
-
-    tensor = flow.stack(padded_imgs)
-    mask = flow.stack(padded_masks)
-
-    return NestedTensor(tensor, mask=mask)
 
 def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
 
     # TODO: flowvision does not support _is_tracing()
 
     if tensor_list[0].ndim == 3:
-    #     if flowvision._is_tracing():
-    #         # nested_tensor_from_tensor_list() does not export well to ONNX
-    #         # call _onnx_nested_tensor_from_tensor_list() instead
-    #         return _onnx_nested_tensor_from_tensor_list(tensor_list)
 
         # TODO make it support different-sized images
         max_size = _max_by_axis([list(img.shape) for img in tensor_list])
@@ -421,9 +391,16 @@ def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
         device = tensor_list[0].device
         tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
         mask = flow.ones((b, h, w), dtype=flow.bool, device=device)
-        for img, pad_img, m in zip(tensor_list, tensor, mask):
-            pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
-            m[: img.shape[1], :img.shape[2]] = False
+
+        # ! oneflow errors: m does not change mask value
+        # for img, pad_img, m in zip(tensor_list, tensor, mask):
+        #     pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
+        #     m[: img.shape[1], :img.shape[2]] = False
+        
+        for i, img in enumerate(tensor_list):
+            tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
+            mask[i, : img.shape[1], :img.shape[2]] = False
+            
     else:
         raise ValueError('not supported')
     return NestedTensor(tensor, mask)
