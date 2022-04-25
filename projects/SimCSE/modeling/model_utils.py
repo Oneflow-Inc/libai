@@ -1,6 +1,7 @@
-import libai
 import oneflow as flow
 from oneflow import nn
+
+import libai
 
 
 def cosine_similarity(x, y, dim=-1):

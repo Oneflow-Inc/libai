@@ -18,10 +18,10 @@ from oneflow import nn
 
 import libai
 from libai.utils import distributed as dist
+from projects.SimCSE.modeling.model_utils import MLPLayer, cosine_similarity
+from projects.SimCSE.utils.load_huggingface_weight import load_huggingface_bert
 
 from .bert_for_simcse import BertForSimCSE
-from projects.SimCSE.utils.load_huggingface_weight import load_huggingface_bert
-from projects.SimCSE.modeling.model_utils import MLPLayer, cosine_similarity
 
 
 class Simcse_sup(nn.Module):
@@ -60,7 +60,7 @@ class Simcse_sup(nn.Module):
                 1
             ) / attention_mask.sum(-1).unsqueeze(-1)
             return res
-    
+
     def create_use_row(self, labels):
         count = 0
         use_row = []
@@ -70,7 +70,7 @@ class Simcse_sup(nn.Module):
                 continue
             use_row.append(row)
             count += 1
-        return flow.tensor(use_row, sbp=labels.sbp, placement=labels.placement) 
+        return flow.tensor(use_row, sbp=labels.sbp, placement=labels.placement)
 
     def forward(self, input_ids, attention_mask, token_type_ids=None, labels=None):
         if self.training:

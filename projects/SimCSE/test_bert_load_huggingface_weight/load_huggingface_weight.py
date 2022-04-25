@@ -63,14 +63,14 @@ def convert_state_dict(state, layers, hidden_size, num_heads, head_size):
                 v_b = name.replace(name.split(".")[6], "value").replace(name.split(".")[7], "bias")
 
                 qkv_w = torch.cat((state[q_w], state[k_w], state[v_w]), dim=0)  # 【768*3， 768】
-                
+
                 # Rearrange the loaded weights for weight, you can refer:
                 # https://libai.readthedocs.io/en/latest/notes/How_to_implement_huggingface%27s_weights_in_LiBai.html
                 qkv_w = qkv_w.view([3, num_heads, head_size, hidden_size])
                 qkv_w = qkv_w.permute(1, 0, 2, 3).contiguous().view(3 * hidden_size, hidden_size)
 
                 qkv_b = torch.cat((state[q_b], state[k_b], state[v_b]), dim=-1)
-                
+
                 # # Rearrange the loaded weights for bias, you can refer:
                 # https://libai.readthedocs.io/en/latest/notes/How_to_implement_huggingface%27s_weights_in_LiBai.html
                 qkv_b = qkv_b.view(3, num_heads, head_size)
@@ -153,7 +153,7 @@ def load_tensor(tensor_lhs, tensor_rhs):
 
 
 def load_huggingface_bert(model, path, hidden_size, num_heads, layers=12):
-    """Load Huggingface's pretrained weights in LiBai 
+    """Load Huggingface's pretrained weights in LiBai
 
     Args:
         model: BRET in LiBai.

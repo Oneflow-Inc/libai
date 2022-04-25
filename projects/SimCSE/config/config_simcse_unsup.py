@@ -45,9 +45,7 @@ dataloader.test = [
         dataset=LazyCall(TestDataset_unsup)(
             name="cnsd_sts",
             path="./data/STS/cnsd-sts-dev.txt",
-            tokenizer=LazyCall(BertTokenizer)(
-                vocab_file="./data/vocab.txt"
-            ),
+            tokenizer=LazyCall(BertTokenizer)(vocab_file="./data/vocab.txt"),
         )
     ),
 ]

@@ -86,9 +86,7 @@ def load_data(name, path):
 
 def padding_for_ids(data, pad_id=0, max_len=64):
     data["input_ids"] = data["input_ids"] + [pad_id] * (max_len - len(data["input_ids"]))
-    data["attention_mask"] = data["attention_mask"] + [0] * (
-        max_len - len(data["attention_mask"])
-    )
+    data["attention_mask"] = data["attention_mask"] + [0] * (max_len - len(data["attention_mask"]))
 
     data["input_ids"] = [data["input_ids"], data["input_ids"]]
     data["attention_mask"] = [data["attention_mask"], data["attention_mask"]]
