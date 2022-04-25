@@ -162,10 +162,8 @@ class TextGenerationPipeline(BasePipeline):
     ) -> dict:
         self.model.set_cache(encoder_states=None, past_key_values=None)
         decoder_ids = self.generate(encoder_input_dict, use_cache, max_generate_length, **kwargs)
-        encoder_ids = encoder_input_dict['encoder_ids']
         input_text = encoder_input_dict.pop("input_text")
         return {
-            "encoder_ids": encoder_ids,
             "decoder_ids": flow.tensor(decoder_ids),
             "input_text": input_text
         }
