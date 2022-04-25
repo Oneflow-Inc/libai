@@ -1,6 +1,8 @@
-# How to customize your own parallel
+# How to Customize Parallelism
 
-## Define your own parallel model with LiBai.layers
+Common parallelisms have already been implemented in LiBai, such as data parallel, tensor parallel and pipeline parallel. But there is also a need for user customized parallel. In this tutorial, we will show you how to customize your own parallelism.
+
+## Define your own Parallel Model with LiBai.layers
 
 ### Large-scale FC
 
@@ -112,11 +114,11 @@ From above, you can see that the data are split into 2 groups for data parallel,
 
 For your convenience, we provide some prevalent models such as BERT, GPT-2, and ViT in Mode Zoo. Feel free to customize them into different sizes to fit into your special needs.
 
-## Write your own pipeline parallel model
+## Write your own Pipeline Parallel Model
 
 This tutorial describes how to use pipeline parallel in your own model. LiBai has two pipeline-parallel modes: naive pipeline parallel and (similar) 1F1B pipeline parallel introduced by [Megatron-LM](https://arxiv.org/abs/1909.08053).
 
-### Introduction of naive pipeline parallel
+### Introduction of Naive Pipeline Parallel
 
 In LiBai, naive pipeline parallel can be implemented by setting layers and parameters `placement`. 
 You can easily configure their `placement` by `dist.get_layer_placement(idx)`.
@@ -166,7 +168,7 @@ train.dist.pipeline_parallel_size = 2
 train.dist.pipeline_num_layers = hidden_layers
 ```
 
-### Introduction of 1F1B pipeline parallel
+### Introduction of 1F1B Pipeline Parallel
 
 First, we will introduce GPipe to you to get a better understanding of pipeline parallelism. In GPipe, when the forward passes of all microbatches finish, the backward passes would be executed (as shown in below).
 

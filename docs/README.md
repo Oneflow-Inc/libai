@@ -3,7 +3,7 @@ The latest documentation built from this directory is available at [libai.readth
 
 
 ## Build LiBai Documentation
-1. Install LiBai according to [Installation](https://libai.readthedocs.io/en/latest/tutorials/Installation.html).
+1. Install LiBai according to [Installation](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html).
 2. Install additional libraries and run `make html` for building the docs:
 ```bash
 cd ${libai-path}/docs

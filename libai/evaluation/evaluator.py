@@ -27,6 +27,11 @@ from libai.utils.logger import log_every_n_seconds
 
 from .utils import pad_batch
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/evaluation/evaluator.py
+# --------------------------------------------------------
+
 
 class DatasetEvaluator:
     """
@@ -61,7 +66,7 @@ class DatasetEvaluator:
 
     def evaluate(self):
         """
-        Evaluate/summarize the performance, after processing all input/output pairs.
+        Evaluate/summarize the performance after processing all input/output pairs.
 
         Returns:
             dict:

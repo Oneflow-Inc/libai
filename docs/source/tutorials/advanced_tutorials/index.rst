@@ -5,4 +5,5 @@ Advanced Tutorials
    :glob:
    :maxdepth: 2
 
+   customize_dataloader.md
    customize_parallel.md

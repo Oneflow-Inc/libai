@@ -25,6 +25,11 @@ from termcolor import colored
 
 from libai.utils.file_io import PathManager
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/logger.py
+# --------------------------------------------------------
+
 
 class _ColorfulFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):

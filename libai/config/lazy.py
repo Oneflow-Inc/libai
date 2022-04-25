@@ -33,6 +33,11 @@ from omegaconf import DictConfig, ListConfig, OmegaConf
 
 __all__ = ["LazyCall", "LazyConfig"]
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/config/lazy.py
+# --------------------------------------------------------
+
 
 def locate(name: str) -> Any:
     """
