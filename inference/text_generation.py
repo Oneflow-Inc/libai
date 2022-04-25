@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import sys
-from black import T
 
 import numpy as np
 import oneflow as flow
@@ -22,7 +21,6 @@ import oneflow as flow
 sys.path.append(".")  # noqa
 from inference.basic import BasePipeline
 from libai.data.structures import DistTensorData, Instance
-from libai.utils.checkpoint import Checkpointer
 
 class TextGenerationPipeline(BasePipeline):
     def __init__(self, config_file, **kwargs):
@@ -136,7 +134,6 @@ class TextGenerationPipeline(BasePipeline):
 
             mdoel_input_dict = {
                 "use_cache": use_cache,
-                "past_length": len(decoder_ids)-1 if use_cache else 0
             }
             for key, value in model_input.get_fields().items():
                 value.to_global()
@@ -194,7 +191,9 @@ if __name__ == "__main__":
     for i in range(100):
         model = TextGenerationPipeline("configs/t5_large_pretrain.py")
         print('---------------------------not cache----------------------------')
-        a = model("dog cat you " * 10, use_cache=False, max_generate_length=15,  return_type='full_text')
+        a = model("dog cat you " * 10, use_cache=False, max_generate_length=15,  return_type='new_text')
+        print(a)
         print('---------------------------use cache----------------------------')
-        b = model("dog cat you " * 10, use_cache=True, max_generate_length=15)
+        b = model("dog cat you " * 10, use_cache=True, max_generate_length=15, return_type="new_text")
+        print(b)
         

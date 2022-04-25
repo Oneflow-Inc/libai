@@ -222,6 +222,7 @@ class T5Model(flow.nn.Module):
         self.decoder.add_module("final_layernorm", decoder_final_layernorm)
         self.past_key_values = [None] * len(self.decoder.layers)
         self.encoder_states = None
+        self.past_length = 0
 
         self.lm_head = LMLogits(vocab_size, bias=True)
 
@@ -255,7 +256,6 @@ class T5Model(flow.nn.Module):
         decoder_attn_mask,
         encoder_decoder_attn_mask,
         use_cache=False,
-        past_length=0,
     ):
         """
 
@@ -280,9 +280,6 @@ class T5Model(flow.nn.Module):
             use_cache (bool, optional):
                 It will be set to True, when the model is in the inference
                 phase and used for incremental decoding. Defaults to False.
-            past_length (int, optional):
-                It will be set to the `len(past_sentence)-1`, when the model is in the inference
-                phase and used for incremental decoding. Defaults to 0.
 
         Returns:
             flow.Tensor: logits
@@ -290,6 +287,7 @@ class T5Model(flow.nn.Module):
         if use_cache and self.encoder_states is not None:
             encoder_states = self.encoder_states
         else:
+            self.set_cache(encoder_states=None, past_key_values=None)
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
             enc_embedding_output = self.embedding(encoder_input_ids)
             enc_hidden_states = enc_embedding_output
@@ -299,7 +297,7 @@ class T5Model(flow.nn.Module):
 
         decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
-        dec_embedding_output = self.embedding(decoder_input_ids, past_length)
+        dec_embedding_output = self.embedding(decoder_input_ids, self.past_length)
         dec_hidden_states = dec_embedding_output
         if use_cache:
             presents = []
@@ -324,6 +322,7 @@ class T5Model(flow.nn.Module):
 
     def set_cache(self, encoder_states, past_key_values):
         self.encoder_states = encoder_states
+        self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]
 
         if past_key_values is None:
             past_key_values = [None] * len(self.decoder.layers)
@@ -374,7 +373,6 @@ class T5ForPreTraining(flow.nn.Module):
         lm_labels=None,
         loss_mask=None,
         use_cache=False,
-        past_length=0,
     ):
         """
 
@@ -407,10 +405,6 @@ class T5ForPreTraining(flow.nn.Module):
             use_cache (bool, optional):
                 It will be set to True, when the model is in the inference
                 phase and used for incremental decoding. Defaults to False.
-            past_length (int, optional):
-                It will be set to the `len(past_sentence)-1`, when the model is in the inference
-                phase and used for incremental decoding. Defaults to 0.
-
 
         Returns:
             dict:
@@ -426,7 +420,6 @@ class T5ForPreTraining(flow.nn.Module):
             decoder_attn_mask,
             encoder_decoder_attn_mask,
             use_cache=use_cache,
-            past_length=past_length,
         )
 
         if lm_labels is not None:
