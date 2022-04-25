@@ -95,6 +95,32 @@ def get_pairs(word):
 
 
 class RobertaTokenizer(PreTrainedTokenizer):
+    """Constructs a RoBERTa tokenizer, derived from the GPT-2 tokenizer, using byte-level Byte-Pair-Encoding.
+
+    Args:
+        vocab_file (:obj:`str`):
+            Path to the vocabulary file.
+        merges_file (:obj:`str`):
+            Path to the merges file.
+        errors (:obj:`str`, `optional`, defaults to :obj:`"replace"`):
+            Paradigm to follow when decoding bytes to UTF-8. See `bytes.decode
+            <https://docs.python.org/3/library/stdtypes.html#bytes.decode>`__ for more information.
+        bos_token (:obj:`str`, `optional`, defaults to `<s>`):
+            The beginning of sequence token.
+        eos_token (:obj:`str`, `optional`, defaults to `</s>`):
+            The end of sequence token.
+        cls_token (:obj:`str`, `optional`, defaults to `<s>`):
+            The first token of the sequence when built with special tokens.
+        unk_token (:obj:`str`, `optional`, defaults to `<unk>`):
+            The unknown token. A token that is not in the vocabulary cannot be
+            converted to an ID and is set to be this token instead.
+        pad_token (:obj:`str`, `optional`, defaults to `<pad>`): A special token
+            used to make arrays of tokens the same size for batching purpose.
+            Will then be ignored by attention mechanisms or loss computation.
+        mask_token (:obj:`str`, `optional`, defaults to `<mask>`): A special token
+            representing a masked token (used by masked-language modeling pretraining 
+            objectives, like BERT).
+    """
     vocab_files_names = VOCAB_FILES_NAMES
     pretrained_vocab_files_map = PRETRAINED_VOCAB_FILES_MAP
     max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
