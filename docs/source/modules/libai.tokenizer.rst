@@ -6,6 +6,7 @@ libai.tokenizer
     :member-order: bysource
     :members:
         BertTokenizer,
+        RobertaTokenizer,
         GPT2Tokenizer,
         GoogleT5Tokenizer,
         PreTrainedTokenizer,
