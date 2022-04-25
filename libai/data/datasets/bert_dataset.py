@@ -221,7 +221,7 @@ class BertDataset(flow.utils.data.Dataset):
         favor_longer_ngram=False,
         geometric_dist=False,
     ):
-        """Creates the predictions for the masked LM objective.  
+        """Creates the predictions for the masked LM objective.
         Note: Tokens here are vocab ids and not text tokens."""
 
         cand_indexes = []

@@ -87,7 +87,7 @@ class BertTokenizer(PreTrainedTokenizer):
         vocab_file (:obj:`str`):
             Path to a one-wordpiece-per-line vocabulary file.
         do_lower_case (:obj:`bool`, `optional`, defaults to :obj:`True`):
-            Whether to lower case the input. 
+            Whether to lower case the input.
             Only has an effect when do_basic_tokenize=True.
         do_basic_tokenize (:obj:`bool`, `optional`, defaults to :obj:`True`):
             Whether to do basic tokenization before wordpiece.
