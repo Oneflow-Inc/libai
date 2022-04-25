@@ -163,7 +163,81 @@ class RobertaPooler(nn.Module):
         return pooled_output
 
 
+class RobertaLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.lm_loss = ParallelCrossEntropyLoss()
+    
+    def forward(self, lm_output, lm_labels, loss_mask):
+        lm_loss = self.lm_loss(lm_output, lm_labels)
+        loss_mask = loss_mask.float()
+        # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
+        # because (lm_loss * loss_mask) / loss_mask.sum() cannot accept P / P
+        denominator = loss_mask.sum().to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
+        masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
+        masked_lm_loss = masked_lm_loss.to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
+        )
+        loss_dict = {"lm_loss": masked_lm_loss}
+        return loss_dict
+
+
+
 class RobertaModel(nn.Module):
+    """The bare Roberta Model transformer outputting raw hidden-states without
+    any specific head on top.
+
+        Args:
+            vocab_size (int): 
+                The size of vocabulary file.
+            hidden_size (int): 
+                The size of hidden states.
+            hidden_layers (int): 
+                The number of ``TransformerLayer`` in encoder.
+            num_attention_heads (int): 
+                The number of attention heads for each attention layer of ``TransformerLayer``.
+            intermediate_size (int): 
+                The size of intermediate layer in feed-forward network for each ``TransformerLayer``.
+            hidden_dropout_prob (float, optional): 
+                The dropout ratio for the output for each TransformerLayer. Defaults to 0.0.
+            attention_probs_dropout_prob (float, optional): 
+                The dropout ratio for the output of each attention layer in ``TransformerLayer``.
+                Defaults to 0.0.
+            max_position_embeddings (int): 
+                Max sequence length of input, defines the shape of Position Embeddings
+                in ``BertEmbedding``.
+            type_vocab_size (int, optional): 
+                Number of segment token indices. Defaults to 2.
+            add_pooling_layer (bool, optional): 
+                Whether or not averaging or pooling the sequence of hidden-states for the
+                whole input sequence. Defaults to ``True``.
+            initializer_range (float, optional): 
+                Sigma of the normal distribution in the initialization method. Defaults to 0.02.
+            layer_norm_eps (float, optional): 
+                The epsilon of LayerNorm layer. Defaults to 1e-5.
+            pad_token_id (int, optional): 
+                The token id used for padding. Defaults to 1.
+            bias_gelu_fusion (bool, optional): 
+                Whether or not to fuse the computing of bias and gelu. Defaults to ``False``.
+            bias_dropout_fusion (bool, optional):
+                Whether or not to fuse the computing of dropout and bias. Defaults to ``False``.
+            scale_mask_softmax_fusion (bool, optional): 
+                Whether to fuse the computing of mask and softmax in attention layers.
+                Defaults to ``False``.
+            apply_query_key_layer_scaling (bool, optional): 
+                Whether or not to use layer index related scaling in computing attention scores.
+                If ``True``, the scaling factor equals to sqrt(d) * (layer_index + 1).
+                Defaults to ``True``.
+            apply_residual_post_layernorm (bool, optional): 
+                If set ``True``, use original BERT(Roberta) residual connection ordering otherwise use Megatron
+                BERT residual connection which is more stable when scaling model size introduced in
+                https://arxiv.org/pdf/1909.08053.pdf.
+                Default: ``False``.
+            amp_enabled (bool, optional): 
+                Whether or not to set fp16 for embedding weight in T5 model. Defaults to ``False``.
+    """
     @configurable
     def __init__(
         self,
@@ -188,6 +262,7 @@ class RobertaModel(nn.Module):
         amp_enabled=False,
     ):
         super().__init__()
+
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
 
@@ -255,10 +330,22 @@ class RobertaModel(nn.Module):
             "amp_enabled": cfg.amp_enabled,
         }
 
-    def forward(self, input_ids, attention_mask, token_type_ids=None, position_ids=None, past_key_values=None):
-        # past_key_values: (batch_size, num_heads, sequence_length - 1, embed_size_per_head)
-        past_key_values_length = past_key_values[0][0].shape[2] if past_key_values is not None else 0
-        
+    def forward(self, input_ids, attention_mask, token_type_ids=None, position_ids=None):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            attention_mask (flow.LongTensor): Mask to avoid performing attention
+                on padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+
+            tokentype_ids (flow.LongTensor, optional): Segment token indices to indicate first and
+                second portions of the inputs. Indices are selected in `[0, 1]`. Defaults to None.
+            position_ids (flow.LongTensor, optional): Indices of positions of each input sequence
+                tokens in the position embeddings. Defaults to None.
+        """
         extended_attention_mask = self.extended_attn_mask(attention_mask)
         embedding_output = self.embeddings(input_ids, token_type_ids)
 
@@ -316,7 +403,8 @@ class RobertaForPreTraining(nn.Module):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
             elif isinstance(module_block.origin, TransformerLayer):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
-            # `add_pooling_layer` in RobertaForMaskedLM and RobertaForCausalLM default to False.
+            # `add_pooling_layer` in RobertaForMaskedLM and RobertaForCausalLM.
+            # default to False.
             elif isinstance(module_block.origin, RobertaPooler):
                 module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
             elif isinstance(module_block.origin, RobertaLMHead):
@@ -338,22 +426,41 @@ class RobertaForMaskedLM(RobertaForPreTraining):
             init_method_normal(cfg.initializer_range),
             cfg.layer_norm_eps,
         )
-        self.loss_fc = ParallelCrossEntropyLoss()
+        self.loss_fc = RobertaLoss()
 
     def forward(
-        self, input_ids, attention_mask, token_type_ids=None, position_ids=None, labels=None
+        self, input_ids, attention_mask, token_type_ids=None, position_ids=None, labels=None, loss_mask=None
     ):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            attention_mask (flow.LongTensor): Mask to avoid performing attention on
+                padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+            token_type_ids (flow.LongTensor, optional): Segment token indices to indicate first
+                and second portions of the inputs. Indices are selected in `[0, 1]`.
+                Defaults to None.
+            position_ids (flow.LongTensor, optional): Indices of positions of each input sequence
+                tokens in the position embeddings. Defaults to None.
+            labels (flow.LongTensor, optional): Labels for computing the masked
+                language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
+                Defaults to None.
+            loss_mask (flow.LongTensor, optional): Mask to avoid performing loss computing
+                on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
+                loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
+                Defaults to None.
+        """
         outputs = self.roberta(input_ids, attention_mask, position_ids)
         sequence_output = outputs[0]
         prediction_scores = self.lm_head(
             sequence_output, self.roberta.word_embeddings_weight()
-        )  # [S(0), S(0)]
+        )
 
         if labels is not None:
-            masked_lm_loss = self.loss_fc(prediction_scores, labels).mean()
-            masked_lm_loss = masked_lm_loss.to_global(
-                sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
-            )
+            masked_lm_loss = self.loss_fc(prediction_scores, labels, loss_mask)
             return {"lm_loss": masked_lm_loss}
 
         return {"prediction_scores": prediction_scores}
@@ -371,11 +478,33 @@ class RobertaForCausalLM(RobertaForPreTraining):
             init_method_normal(cfg.initializer_range),
             cfg.layer_norm_eps,
         )
-        self.loss_fc = ParallelCrossEntropyLoss()
+        self.loss_fc = RobertaLoss()
 
     def forward(
-        self, input_ids, attention_mask, token_type_ids=None, position_ids=None, labels=None
+        self, input_ids, attention_mask, token_type_ids=None, position_ids=None, labels=None, loss_mask=None
     ):
+        """
+
+        Args:
+            input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
+            attention_mask (flow.LongTensor): Mask to avoid performing attention on
+                padding token indices. Mask values selected in `[0, 1]`:
+
+                - 1 for tokens that are **not masked**,
+                - 0 for tokens that are **masked**.
+            token_type_ids (flow.LongTensor, optional): Segment token indices to indicate first
+                and second portions of the inputs. Indices are selected in `[0, 1]`.
+                Defaults to None.
+            position_ids (flow.LongTensor, optional): Indices of positions of each input sequence
+                tokens in the position embeddings. Defaults to None.
+            labels (flow.LongTensor, optional): Labels for computing the masked
+                language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
+                Defaults to None.
+            loss_mask (flow.LongTensor, optional): Mask to avoid performing loss computing
+                on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
+                loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
+                Defaults to None.
+        """
         outputs = self.roberta(input_ids, attention_mask, position_ids)
         sequence_output = outputs[0]
         prediction_scores = self.lm_head(sequence_output, self.roberta.word_embeddings_weight())
@@ -388,10 +517,7 @@ class RobertaForCausalLM(RobertaForPreTraining):
             )
             shifted_labels = labels[:, 1:].contiguous()
             shifted_labels = shifted_labels.to_global(sbp=shifted_labels.sbp)
-            lm_loss = self.loss_fc(shifted_prediction_scores, shifted_labels).mean()
-            lm_loss = lm_loss.to_global(
-                sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
-            )
+            lm_loss = self.loss_fc(shifted_prediction_scores, shifted_labels, loss_mask)
             return {"lm_loss": lm_loss}
 
         return {"prediction_scores": prediction_scores}
