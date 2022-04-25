@@ -100,6 +100,10 @@ class BackboneBase(nn.Module):
             m = tensor_list.mask
             assert m is not None
             mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
+            if x.shape[-2:] != mask.shape[-2:]:
+                import pdb
+                pdb.set_trace()
+                print("error")
             out[name] = NestedTensor(x, mask)
         return out
 
@@ -136,7 +140,6 @@ class Joiner(nn.Sequential):
             out.append(x)
             # position encoding
             pos.append(self[1](x).to(x.tensors.dtype))
-
         return out, pos
 
 

@@ -378,13 +378,10 @@ class NestedTensor(object):
 
 def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
 
-    # TODO: flowvision does not support _is_tracing()
-
     if tensor_list[0].ndim == 3:
 
-        # TODO make it support different-sized images
         max_size = _max_by_axis([list(img.shape) for img in tensor_list])
-        # min_size = tuple(min(s) for s in zip(*[img.shape for img in tensor_list]))
+
         batch_shape = [len(tensor_list)] + max_size
         b, c, h, w = batch_shape
         dtype = tensor_list[0].dtype
