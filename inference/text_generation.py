@@ -174,9 +174,8 @@ class TextGenerationPipeline(BasePipeline):
         return_type = return_type.lower()
         assert return_type in ["new_text", "full_text", "tensors"]
         if return_type == "tensors":
-            record = {"generated_token_ids", model_output_dict['decoder_ids']}
+            records = {"generated_token_ids", model_output_dict['decoder_ids']}
         elif return_type in ["new_text", "full_text"]:
-            input_ids = model_output_dict['encoder_ids']
             generated_sequence = model_output_dict['decoder_ids'].tolist()
             text = self.tokenizer.decode(
                 generated_sequence, 
@@ -195,9 +194,9 @@ class TextGenerationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     for i in range(100):
-        model = TextGenerationPipeline("configs/t5_large_pretrain.py", return_type='full_text')
+        model = TextGenerationPipeline("configs/t5_large_pretrain.py")
         print('---------------------------not cache----------------------------')
-        a = model("dog cat you " * 10, use_cache=False, max_generate_length=15)
+        a = model("dog cat you " * 10, use_cache=False, max_generate_length=15,  return_type='full_text')
         print('---------------------------use cache----------------------------')
         b = model("dog cat you " * 10, use_cache=True, max_generate_length=15)
         
