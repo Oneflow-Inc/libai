@@ -15,6 +15,7 @@
 
 # This file is based on the `https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html`.
 
+import pdb
 import argparse
 
 import flowvision as vision
@@ -24,7 +25,7 @@ import oneflow.nn as nn
 import oneflow.nn.functional as F
 import oneflow.optim as optim
 
-from .mlp import MLP
+from mlp import MLP
 
 def _parse_args():
     parser = argparse.ArgumentParser("flags for train cifar10 example for moe layer")
@@ -66,10 +67,13 @@ def main(args):
     classes = ('plane', 'car', 'bird', 'cat',
                'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-
+    if flow.cuda.is_available():  
+        device = flow.device('cuda')
+    else:  
+        device = "cpu" 
     device = flow.device('cuda')
     expert_network = MLP(input_size=3072, output_size=10, hidden_size=256)
-    net = MoE(expert_network, 3072, 10, num_experts=10, noisy_gating=True, k=4)
+    net = MoE(expert_network, 3072, 10, num_experts=10, noisy_gating=True, k=4,device=device)
     net.to(device)
 
 
@@ -77,6 +81,7 @@ def main(args):
     criterion = nn.CrossEntropyLoss()
     criterion.to(device)
 
+    net.train()
     for epoch in range(args.epochs):  # loop over the dataset multiple times
 
         running_loss = 0.0
@@ -93,11 +98,11 @@ def main(args):
             outputs, aux_loss = net(inputs)
             loss = criterion(outputs, labels)
             total_loss = loss + aux_loss
-            total_loss.backward()
+            total_loss.backward(retain_graph=True)
             optimizer.step()       
 
             # print statistics
-            running_loss += loss.item()
+            running_loss += loss.cpu().item()
             if i % 100 == 99:    # print every 2000 mini-batches
                 print('[%d, %5d] loss: %.3f' %
                       (epoch + 1, i + 1, running_loss / 100))

@@ -16,6 +16,7 @@
 # The code is based on the TensorFlow implementation:
 # https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/expert_utils.py
 
+import pdb
 import math 
 import numpy as np
 
@@ -153,14 +154,13 @@ class MoE(nn.Module):
     k: an integer - how many experts to use for each batch element
     """
 
-    def __init__(self, expert, input_size, output_size, num_experts, hidden_size, noisy_gating=True, k=4, device='cpu'):
+    def __init__(self, expert, input_size, output_size, num_experts, noisy_gating=True, k=4, device='cpu'):
         super(MoE, self).__init__()
         self.device = device
         self.noisy_gating = noisy_gating
         self.num_experts = num_experts
         self.output_size = output_size
         self.input_size = input_size
-        self.hidden_size = hidden_size
         self.k = k
         # instantiate experts
         self.experts = nn.ModuleList([ expert for i in range(self.num_experts)])
@@ -251,7 +251,7 @@ class MoE(nn.Module):
 
         if self.noisy_gating and train:
             raw_noise_stddev = x @ self.w_noise
-            noise_stddev = ((self.softplus(raw_noise_stddev) + noise_epsilon))
+            noise_stddev = ((self.softplus(raw_noise_stddev) + noise_epsilon)).to(self.device)
             noisy_logits = clean_logits + ( flow.randn(*clean_logits.shape).to(self.device) * noise_stddev)
             logits = noisy_logits
         else:
