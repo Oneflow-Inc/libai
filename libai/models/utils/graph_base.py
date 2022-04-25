@@ -13,11 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
 from libai.utils import distributed as dist
+
+logger = logging.getLogger(__name__)
 
 
 class GraphBase(nn.Graph):
@@ -84,11 +88,19 @@ class GraphBase(nn.Graph):
 
     def build(self, **kwargs):
         if self.is_train:
+            logger.info(
+                "Start compling the train graph which may take some time. "
+                "Please wait for a moment ..."
+            )
             loss_dict = self.model(**kwargs)
             losses = sum(loss_dict.values())
             losses.backward()
             return loss_dict
         else:
+            logger.info(
+                "Start compling the eval graph which may take some time. "
+                "Please wait for a moment ..."
+            )
             return self.model(**kwargs)
 
     def set_activation_checkpoint(self):
