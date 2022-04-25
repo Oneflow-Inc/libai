@@ -29,12 +29,11 @@ import oneflow.nn.functional as F
 import flowvision
 from flowvision.models.layer_getter import IntermediateLayerGetter
 
-
 from libai.config.configs.common.data.coco import NestedTensor
-from libai.config import get_config, LazyCall
 import libai.utils.distributed as dist 
 
 from .position_encoding import build_position_encoding
+
 
 class FrozenBatchNorm2d(nn.Module):
     """

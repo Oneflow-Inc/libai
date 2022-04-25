@@ -20,9 +20,7 @@
 # https://github.com/facebookresearch/detr/blob/main/models/position_encoding.py
 # --------------------------------------------------------
 
-"""
-Various positional encodings for the transformer.
-"""
+
 import math
 
 import oneflow as flow

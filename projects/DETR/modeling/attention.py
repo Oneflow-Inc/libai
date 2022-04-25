@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import math
 from typing import Tuple
 
@@ -21,6 +22,7 @@ from oneflow import nn
 
 from libai.layers.attention import MultiheadAttention
 from libai.layers.linear import Linear
+
 
 class DetrMultiheadAttention(MultiheadAttention):
     """Multi-head attention layer, support self attention and cross attention.

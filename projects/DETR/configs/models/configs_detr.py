@@ -1,7 +1,7 @@
 from omegaconf import OmegaConf
 
 from modeling.build_detr import build
-from libai.config import get_config, LazyCall
+
 
 # args for detr build_model
 detr_args = OmegaConf.create()

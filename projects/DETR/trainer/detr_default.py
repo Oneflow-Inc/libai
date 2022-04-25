@@ -13,17 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from email.mime import image
 from typing import Callable, Optional
 
 import oneflow as flow
-from libai.config.configs.common.data.coco import NestedTensor
 
 from libai.data import Instance
+from libai.config.configs.common.data.coco import NestedTensor
 from libai.data.structures import DistTensorData, Instance
-
-
 from libai.engine.default import DefaultTrainer
+
 from trainer.detr_trainer import DetrEagerTrainer
 
 

@@ -1,14 +1,4 @@
-from ast import arg
-import sys
-
-from flowvision import transforms
-
-from libai.config import get_config, LazyCall
-
-sys.path.append("projects/DETR")
-
-
-from .models.configs_detr import model, postprocessors
+from libai.config import get_config
 
 
 dataloader = get_config("common/data/coco.py").dataloader

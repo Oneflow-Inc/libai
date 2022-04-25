@@ -16,9 +16,6 @@
 import time
 from typing import Callable
 
-import oneflow as flow
-
-from libai.data.structures import DistTensorData, Instance
 from libai.engine.trainer import TrainerBase
 
 
@@ -71,17 +68,6 @@ class DetrEagerTrainer(TrainerBase):
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
 
-        # NOTE: it is better to impl this in libai/data/datasets/coco.py, 
-        # data = list(data)
-        # images, labels = data[0], data[1][0]
-        # images.tensors = DistTensorData(images.tensors, placement_idx=-1)
-        # images.mask = DistTensorData(images.mask, placement_idx=-1)
-        # for k,v in labels.items():
-        #     labels[k] = DistTensorData(flow.tensor(labels[k]).long(), placement_idx=-1)
-        # data = Instance(
-        #     images = images,
-        #     labels = labels
-        # )
         data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
         loss_dict = self.model(data)
