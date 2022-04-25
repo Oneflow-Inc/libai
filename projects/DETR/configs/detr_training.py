@@ -1,5 +1,6 @@
 from libai.config import get_config
 
+from .models.configs_detr import model, postprocessors
 
 dataloader = get_config("common/data/coco.py").dataloader
 train = get_config("common/train.py").train

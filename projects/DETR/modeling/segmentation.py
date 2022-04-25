@@ -18,7 +18,6 @@ import io
 from collections import defaultdict
 from typing import List, Optional
 from PIL import Image
-from panopticapi.utils import id2rgb, rgb2id
 
 import oneflow as flow
 import oneflow.nn as nn
@@ -28,6 +27,11 @@ from oneflow import Tensor
 import utils.box_ops as box_ops
 from utils.misc import interpolate
 from libai.config.configs.common.data.coco import NestedTensor, nested_tensor_from_tensor_list
+
+try:
+    from panopticapi.utils import id2rgb, rgb2id
+except ImportError:
+    pass
 
 
 class DETRsegm(nn.Module):
