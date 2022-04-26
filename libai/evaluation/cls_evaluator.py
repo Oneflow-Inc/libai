@@ -35,10 +35,10 @@ def accuracy(output, target, topk=(1,)):
 
 class ClsEvaluator(DatasetEvaluator):
     """
-    Evaluate accuracy for classification,
-    The metrics range from 0 to 100 (instead of 0 to 1),
-    We support evaluate different topk accuracy,
-    you can reset `cfg.train.topk=(1, 5, N)` according to your needs.
+    Evaluate accuracy for classification.
+    The metrics range from 0 to 100 (instead of 0 to 1).
+    We support evaluate different topk accuracy.
+    You can reset `cfg.train.topk=(1, 5, N)` according to your needs.
     """
 
     def __init__(self, topk=(1, 5)):

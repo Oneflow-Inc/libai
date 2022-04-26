@@ -24,6 +24,6 @@ cfg = dict(
     amp_enabled=False,
 )
 
-bert_model = LazyCall(T5Model)(cfg=cfg)
+t5_model = LazyCall(T5Model)(cfg=cfg)
 
 pretrain_model = LazyCall(T5ForPreTraining)(cfg=cfg)
