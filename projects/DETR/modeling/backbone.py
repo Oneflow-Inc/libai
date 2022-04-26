@@ -100,10 +100,12 @@ class BackboneBase(nn.Module):
             m = tensor_list.mask
             assert m is not None
             mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
+            
+            # ! bugs in F.interpolate. Here is the temporary substitute
             if x.shape[-2:] != mask.shape[-2:]:
-                import pdb
-                pdb.set_trace()
-                print("error")
+                mask_ = flow.zeros((x.shape[0],x.shape[-2], x.shape[-1]), dtype=flow.bool).to_global(sbp=mask.sbp, placement=mask.placement)
+                mask_[:,:mask.shape[1], :mask.shape[2]]=mask
+                mask = mask_
             out[name] = NestedTensor(x, mask)
         return out
 
