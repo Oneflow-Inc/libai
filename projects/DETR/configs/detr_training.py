@@ -1,6 +1,7 @@
-from libai.config import get_config
+from libai.config import get_config, LazyCall
 
 from .models.configs_detr import model, postprocessors
+from ..datasets.coco_eval import CocoEvaluator
 
 dataloader = get_config("common/data/coco.py").dataloader
 train = get_config("common/train.py").train
@@ -23,6 +24,8 @@ train.train_epoch = 300
 train.warmup_ratio = 40 / 300
 train.eval_period = 5
 train.log_period = 1
+
+train.evaluation.evaluator = LazyCall(CocoEvaluator)
 
 # Refine optimizer cfg for detr model
 base_lr = 1.5e-4
