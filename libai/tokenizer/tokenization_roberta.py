@@ -118,9 +118,10 @@ class RobertaTokenizer(PreTrainedTokenizer):
             used to make arrays of tokens the same size for batching purpose.
             Will then be ignored by attention mechanisms or loss computation.
         mask_token (:obj:`str`, `optional`, defaults to `<mask>`): A special token
-            representing a masked token (used by masked-language modeling pretraining 
+            representing a masked token (used by masked-language modeling pretraining
             objectives, like BERT).
     """
+
     vocab_files_names = VOCAB_FILES_NAMES
     pretrained_vocab_files_map = PRETRAINED_VOCAB_FILES_MAP
     max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES

@@ -167,7 +167,7 @@ class RobertaLoss(nn.Module):
     def __init__(self):
         super().__init__()
         self.lm_loss = ParallelCrossEntropyLoss()
-    
+
     def forward(self, lm_output, lm_labels, loss_mask):
         lm_loss = self.lm_loss(lm_output, lm_labels)
         loss_mask = loss_mask.float()
@@ -184,60 +184,60 @@ class RobertaLoss(nn.Module):
         return loss_dict
 
 
-
 class RobertaModel(nn.Module):
     """The bare Roberta Model transformer outputting raw hidden-states without
     any specific head on top.
 
         Args:
-            vocab_size (int): 
+            vocab_size (int):
                 The size of vocabulary file.
-            hidden_size (int): 
+            hidden_size (int):
                 The size of hidden states.
-            hidden_layers (int): 
+            hidden_layers (int):
                 The number of ``TransformerLayer`` in encoder.
-            num_attention_heads (int): 
+            num_attention_heads (int):
                 The number of attention heads for each attention layer of ``TransformerLayer``.
-            intermediate_size (int): 
+            intermediate_size (int):
                 The size of intermediate layer in feed-forward network for each ``TransformerLayer``.
-            hidden_dropout_prob (float, optional): 
+            hidden_dropout_prob (float, optional):
                 The dropout ratio for the output for each TransformerLayer. Defaults to 0.0.
-            attention_probs_dropout_prob (float, optional): 
+            attention_probs_dropout_prob (float, optional):
                 The dropout ratio for the output of each attention layer in ``TransformerLayer``.
                 Defaults to 0.0.
-            max_position_embeddings (int): 
+            max_position_embeddings (int):
                 Max sequence length of input, defines the shape of Position Embeddings
                 in ``BertEmbedding``.
-            type_vocab_size (int, optional): 
+            type_vocab_size (int, optional):
                 Number of segment token indices. Defaults to 2.
-            add_pooling_layer (bool, optional): 
+            add_pooling_layer (bool, optional):
                 Whether or not averaging or pooling the sequence of hidden-states for the
                 whole input sequence. Defaults to ``True``.
-            initializer_range (float, optional): 
+            initializer_range (float, optional):
                 Sigma of the normal distribution in the initialization method. Defaults to 0.02.
-            layer_norm_eps (float, optional): 
+            layer_norm_eps (float, optional):
                 The epsilon of LayerNorm layer. Defaults to 1e-5.
-            pad_token_id (int, optional): 
+            pad_token_id (int, optional):
                 The token id used for padding. Defaults to 1.
-            bias_gelu_fusion (bool, optional): 
+            bias_gelu_fusion (bool, optional):
                 Whether or not to fuse the computing of bias and gelu. Defaults to ``False``.
             bias_dropout_fusion (bool, optional):
                 Whether or not to fuse the computing of dropout and bias. Defaults to ``False``.
-            scale_mask_softmax_fusion (bool, optional): 
+            scale_mask_softmax_fusion (bool, optional):
                 Whether to fuse the computing of mask and softmax in attention layers.
                 Defaults to ``False``.
-            apply_query_key_layer_scaling (bool, optional): 
+            apply_query_key_layer_scaling (bool, optional):
                 Whether or not to use layer index related scaling in computing attention scores.
                 If ``True``, the scaling factor equals to sqrt(d) * (layer_index + 1).
                 Defaults to ``True``.
-            apply_residual_post_layernorm (bool, optional): 
+            apply_residual_post_layernorm (bool, optional):
                 If set ``True``, use original BERT(Roberta) residual connection ordering otherwise use Megatron
                 BERT residual connection which is more stable when scaling model size introduced in
                 https://arxiv.org/pdf/1909.08053.pdf.
                 Default: ``False``.
-            amp_enabled (bool, optional): 
+            amp_enabled (bool, optional):
                 Whether or not to set fp16 for embedding weight in T5 model. Defaults to ``False``.
     """
+
     @configurable
     def __init__(
         self,
@@ -429,7 +429,13 @@ class RobertaForMaskedLM(RobertaForPreTraining):
         self.loss_fc = RobertaLoss()
 
     def forward(
-        self, input_ids, attention_mask, token_type_ids=None, position_ids=None, labels=None, loss_mask=None
+        self,
+        input_ids,
+        attention_mask,
+        token_type_ids=None,
+        position_ids=None,
+        labels=None,
+        loss_mask=None,
     ):
         """
 
@@ -455,9 +461,7 @@ class RobertaForMaskedLM(RobertaForPreTraining):
         """
         outputs = self.roberta(input_ids, attention_mask, position_ids)
         sequence_output = outputs[0]
-        prediction_scores = self.lm_head(
-            sequence_output, self.roberta.word_embeddings_weight()
-        )
+        prediction_scores = self.lm_head(sequence_output, self.roberta.word_embeddings_weight())
 
         if labels is not None:
             masked_lm_loss = self.loss_fc(prediction_scores, labels, loss_mask)
@@ -481,7 +485,13 @@ class RobertaForCausalLM(RobertaForPreTraining):
         self.loss_fc = RobertaLoss()
 
     def forward(
-        self, input_ids, attention_mask, token_type_ids=None, position_ids=None, labels=None, loss_mask=None
+        self,
+        input_ids,
+        attention_mask,
+        token_type_ids=None,
+        position_ids=None,
+        labels=None,
+        loss_mask=None,
     ):
         """
 
