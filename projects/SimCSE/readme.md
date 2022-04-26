@@ -6,11 +6,11 @@ SimCSE is a sentence representation learning method, in which there are two trai
 - 《SimCSE: Simple Contrastive Learning of Sentence Embeddings》: https://arxiv.org/pdf/2104.08821.pdf
 - Official GitHub: https://github.com/princeton-nlp/SimCSE
 
-## Evaluation(single GPU)
+## Modle List(single GPU)
 Dataset: SNLI+STS, lr=3e-5, batch_size=64
 |      Unsupervised-Model        |STS-B dev |STS-B test|Pool type |
 |:-------------------------------|:--------:|:--------:|:--------:|
-|unsup-simcse-bert-base-chinese  |74.64     |68.15     |cls           |
+|[unsup-simcse-bert-base-chinese](http://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/SimCSE/unsup-simcse-bert-base-chinese.zip)  |74.64     |68.67     |cls           |
 |unsup-simcse-bert-base-chinese  |74.86     |68.71     |last-avg      |
 |unsup-simcse-bert-base-chinese  |64.33     |54.82     |pooled        |
 |unsup-simcse-bert-base-chinese  |74.32     |67.55     |first-last-avg|
@@ -18,7 +18,21 @@ Dataset: SNLI+STS, lr=3e-5, batch_size=64
 Dataset: SNLI, lr=1e-5, batch_size=64
 |       Supervised-Model         |STS-B dev |STS-B test|Pool type |
 |:-------------------------------|:--------:|:--------:|:--------:|
-|unsup-simcse-bert-base-chinese  |80.93     |77.24     |cls         |
-|unsup-simcse-bert-base-chinese  |81.20     |77.09     |last-avg    |
-|unsup-simcse-bert-base-chinese  |76.61     |75.00     |pooled      |
-|unsup-simcse-bert-base-chinese  |80.64     |76.33     |first-last-avg|
+|[sup-simcse-bert-base-chinese](http://oneflow-public.oss-cn-beijing.aliyuncs.com/model_zoo/LiBai/SimCSE/sup-simcse-bert-base-chinese.zip)    |80.93     |77.32     |cls         |
+|sup-simcse-bert-base-chinese    |81.20     |77.09     |last-avg    |
+|sup-simcse-bert-base-chinese    |76.61     |75.00     |pooled      |
+|sup-simcse-bert-base-chinese    |80.64     |76.33     |first-last-avg|
+
+## Training
+Training SimCSE on 8 GPUs using data parallelism.
+```bash
+cd /path/to/libai
+bash projects/SimCSE/train.sh tools/train_net.py projects/SimCSE/configs/config_simcse_unsup.py 8
+```
+
+## Evaluation
+Evaluate SimCSE on 8 GPUs using data parallelism:
+```bash
+cd /path/to/libai
+bash projects/SimCSE/train.sh tools/train_net.py projects/SimCSE/configs/config_simcse_unsup.py 8 --eval-only
+```
