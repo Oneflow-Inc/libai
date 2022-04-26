@@ -13,22 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import os 
-from PIL import Image
-import numpy as np
-import oneflow as flow
+import os
 
-sys.path.append(".")  # noqa
-from inference.basic import BasePipeline
-from libai.data.structures import DistTensorData, Instance
+import oneflow as flow
+from PIL import Image
+
 from libai.config import instantiate
+from libai.data.structures import DistTensorData, Instance
+from libai.inference.basic import BasePipeline
 
 
 class ImageClassificationPipeline(BasePipeline):
     def __init__(self, config_file, **kwargs):
         super().__init__(config_file, **kwargs)
-        assert "num_classes" in self.cfg.model, f"The model's config must contain num_classes"
+        assert "num_classes" in self.cfg.model, "The model's config must contain num_classes"
         self.label2id = {"Label_" + str(i): i for i in range(self.cfg.model.num_classes)}
         self.id2label = {ind: label for label, ind in self.label2id.items()}
         self.transform = instantiate(self.cfg.dataloader.test[0].dataset.transform)
@@ -44,7 +42,7 @@ class ImageClassificationPipeline(BasePipeline):
         inputs,
         **kwargs,
     ) -> dict:
-        assert os.path.exists(inputs), f'inputs must be an existing image path!'
+        assert os.path.exists(inputs), "inputs must be an existing image path!"
         with open(inputs, "rb") as f:
             img = Image.open(f).convert("RGB")
         img = self.transform(img)
@@ -95,14 +93,14 @@ class ImageClassificationPipeline(BasePipeline):
 
         if return_all_scores:
             return [
-                {"label": self.id2label[i], "score": score.item()}
-                for i, score in enumerate(scores)
+                {"label": self.id2label[i], "score": score.item()} for i, score in enumerate(scores)
             ]
         else:
             return {
                 "label": self.id2label[scores.argmax().item()],
                 "score": scores.max().item(),
             }
+
 
 if __name__ == "__main__":
     for i in range(100):

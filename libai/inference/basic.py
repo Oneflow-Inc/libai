@@ -48,7 +48,9 @@ class BasePipeline(metaclass=ABCMeta):
             **kwargs
         )  # noqa
 
-    def update_cfg(self,):
+    def update_cfg(
+        self,
+    ):
         pass
 
     def load_pretrain_weight(self, model, cfg):
@@ -88,9 +90,8 @@ class BasePipeline(metaclass=ABCMeta):
         for key, value in model_outputs_dict.items():
             if isinstance(value, flow.Tensor) and value.is_global:
                 model_outputs_dict[key] = dist.ttol(
-                    value, 
-                    ranks=[0] if value.placement.ranks.ndim == 1 else [[0]]
-                    )
+                    value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]]
+                )
         if flow.cuda.is_available():
             dist.synchronize()
         return model_outputs_dict

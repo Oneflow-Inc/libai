@@ -13,23 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-
 import numpy as np
 import oneflow as flow
 
-sys.path.append(".")  # noqa
-from inference.basic import BasePipeline
 from libai.data.structures import DistTensorData, Instance
+from libai.inference.basic import BasePipeline
 
 
 class TextClassificationPipeline(BasePipeline):
     def __init__(self, config_file, **kwargs):
         super().__init__(config_file, **kwargs)
-        
+
     def update_cfg(self):
         self.cfg.model.cfg.bias_dropout_fusion = False
-        assert "num_labels" in self.cfg.model.cfg, f"The model's config must contain num_labels"
+        assert "num_labels" in self.cfg.model.cfg, "The model's config must contain num_labels"
         if "label2id" not in self.cfg.model.cfg:
             label2id = {"Label_" + str(i): i for i in range(self.cfg.model.cfg.num_labels)}
             id2label = {ind: label for label, ind in label2id.items()}

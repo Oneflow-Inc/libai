@@ -332,6 +332,7 @@ class T5Model(flow.nn.Module):
         )
         self.past_key_values = past_key_values
 
+
 class T5Loss(flow.nn.Module):
     def __init__(self) -> None:
         super().__init__()
