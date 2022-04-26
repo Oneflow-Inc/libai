@@ -40,7 +40,7 @@ def build_nlp_train_val_test_loader(
     dataset_mixer=ConcatDataset,
 ):
     """
-    Build nlp train_val_test dataloader, it's used for dataset lack of valid/test dataset
+    Build nlp train_val_test dataloader, used for dataset lack of valid/test dataset
 
     Returns:
         It will return train/valid/test dataloader
@@ -326,7 +326,7 @@ def build_image_test_loader(
     **kwargs
 ):
     """
-    Build image test dataloader, it's used for test dataset
+    Build image test dataloader, used for test dataset
 
     Returns:
         It will return test dataloader

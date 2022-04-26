@@ -30,10 +30,10 @@ class CIFAR10Dataset(datasets.CIFAR10):
             ``cifar-10-batches-py`` exists or will be saved to if download is set to True.
         train (bool, optional): If True, creates dataset from training set, otherwise
             creates from test set.
-        transform (callable, optional): A function/transform that takes in an PIL image
+        transform (callable, optional): A function/transform that takes in a PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
         download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
+            puts it in root directory. If the dataset is already downloaded, it will not be
             downloaded again.
     """
 
@@ -67,10 +67,10 @@ class CIFAR100Dataset(datasets.CIFAR100):
             ``cifar-10-batches-py`` exists or will be saved to if download is set to True.
         train (bool, optional): If True, creates dataset from training set, otherwise
             creates from test set.
-        transform (callable, optional): A function/transform that takes in an PIL image
+        transform (callable, optional): A function/transform that takes in a PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
         download (bool, optional): If true, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
+            puts it in root directory. If the dataset is already downloaded, it will not be
             downloaded again.
         dataset_name (str, optional): Name for the dataset as an identifier. E.g, ``cifar100``
     """

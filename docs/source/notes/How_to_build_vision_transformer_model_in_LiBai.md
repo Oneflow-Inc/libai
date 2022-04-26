@@ -1,15 +1,15 @@
-# Detailed instruction on building vision transformer model in LiBai
-It's easy for users to build the `transformer-based` models by using the libai's built-in [layers](https://libai.readthedocs.io/en/latest/modules/libai.layers.html). Let's take a deep dive into the building process of vision transformer model in LiBai.
+# Detailed instruction on building Vision Transformer models in LiBai
+It's easy for users to build the `transformer-based` models by using LiBai's built-in [layers](https://libai.readthedocs.io/en/latest/modules/libai.layers.html). Let's take a deep dive into the process of building a Vision Transformer model in LiBai.
 
 ## Model Architecture
-**Vision Transformer** was released with paper [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929) by Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, Neil Houlsby.
+**Vision Transformer** was released in the paper [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929) by Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, Neil Houlsby.
 
-**Vision Transformer** model contains three parts: `Patch Embedding` + `Transformer Block` + `Linear Classification Head`, which can be summarized as the following picture:
+A **Vision Transformer** model contains three parts: `Patch Embedding` + `Transformer Block` + `Linear Classification Head`, which can be summarized in the following picture:
 
 ![](./assets/vision_transformer.png)
 
-## A simple torch implementation of Vision Transformer
-The following code shows the pytorch implementation of ViT models which is modified from [timm.models.vision_transformer](https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py):
+## A simple Torch implementation of Vision Transformer
+The following code shows the PyTorch implementation of ViT models modified from [timm.models.vision_transformer](https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py):
 
 ```python
 import torch
@@ -18,7 +18,7 @@ import torch.nn as nn
 from timm.models.layers import trunc_normal_, PatchEmbed, Mlp, DropPath
 
 """
-1. Build self-attention module
+1. Build a self-attention module
 """
 class Attention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, attn_drop=0.0, proj_drop=0.0):
@@ -51,7 +51,7 @@ class Attention(nn.Module):
         return x
 
 """
-2. Build transformer block, which contains:
+2. Build a transformer block, which contains:
    self-attention layer + mlp layer
 """
 class Block(nn.Module):
@@ -93,7 +93,7 @@ class Block(nn.Module):
         return x
 
 """
-3. Build vision transformer model which contains 3 parts:
+3. Build a Vision Transformer model which contains three parts:
    patch embedding + transformer block + mlp classification head
 """
 class VisionTransformer(nn.Module):
@@ -183,13 +183,13 @@ class VisionTransformer(nn.Module):
         return x
 ```
 We have further decoupled the forward function into `forward_features` and `forward_head`:
-- `forward_features`: extract the image features using `patch_embed` layer and a stack of `transformer` block
+- `forward_features`: extract the image features using the `patch_embed` layer and a stack of `transformer` blocks
 - `forward_head`: take the `cls_token` of each sample and use `nn.Linear` for classification
 
 ## Implement 3D parallel Vision Transformer in LiBai
-In this section, we will show users how to use [libai.layers](https://libai.readthedocs.io/en/latest/modules/libai.layers.html) to build 3D parallel Vision Transformer model with only 100+ lines of code, which is modified from [libai.models.vision_transformer](https://github.com/Oneflow-Inc/libai/blob/main/libai/models/vision_transformer.py)
+In this section, we will show users how to use [libai.layers](https://libai.readthedocs.io/en/latest/modules/libai.layers.html) to build a 3D parallel Vision Transformer model with only 100+ lines of code, which is modified from [libai.models.vision_transformer](https://github.com/Oneflow-Inc/libai/blob/main/libai/models/vision_transformer.py)
 
-Here is the LiBai implementation of Vision Transformer models, users only need to replace the pytorch modules with the corresponding `libai.layers` as follows:
+Here is the LiBai implementation of Vision Transformer models, and users only need to replace the PyTorch modules with the corresponding `libai.layers` as follows:
 
 ```python
 # LiBai's implementation of Vision Transformer
@@ -206,7 +206,7 @@ LiBai has already implemented:
 1. PatchEmbedding Layer
 2. Transformer Layer: Self-Attention + MLP + DropPath + LayerNorm
 3. Linear Layer
-We can directly build vision transformer model with the built-in layers in LiBai as follows
+We can directly build a Vision Transformer model with the built-in layers in LiBai as follows:
 """
 
 class VisionTransformer(nn.Module):
@@ -344,19 +344,19 @@ class VisionTransformer(nn.Module):
         model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
 ```
 
-## Details about LiBai's implementation of Vision Transformer Model
+## Details about LiBai's implementation of the Vision Transformer model
 
 **1. Replace nn.Module with libai.layers**
 
-LiBai has already implemented `PatchEmbedding`, `TransformerLayer`, `Linear`, `LayerNorm` layers, users only need to replace the module in torch vision transformer models to convert a torch model into libai's style:
+LiBai has already implemented `PatchEmbedding`, `TransformerLayer`, `Linear`, `LayerNorm` layers, and users only need to replace the module in Torch Vision Transformer models to convert a Torch model into LiBai's style:
   - `Block` -> `libai.layers.TransformerLayer`
   - `nn.Linear` -> `libai.layers.Linear`
   - `nn.LayerNorm` -> `libai.layers.LayerNorm`
   - `PatchEmbed` -> `libai.layers.PatchEmbedding`
 
-**2. Manually set the sbp signature of `cls_token` and `pos_embed`**
+**2. Manually set the SBP signature of `cls_token` and `pos_embed`**
 
-In order to fit different parallel mode in LiBai, users must manually set the [sbp signature](https://docs.oneflow.org/en/master/parallelism/02_sbp.html#spb-signature) for all the parameters and buffers of those layers not implemented in LiBai, like `cls_token` and `pos_embed` in Vision Transformer:
+In order to fit different parallel modes in LiBai, users must manually set the [SBP signature](https://docs.oneflow.org/en/master/parallelism/02_sbp.html#spb-signature) for all the parameters and buffers of those layers not implemented in LiBai, like `cls_token` and `pos_embed` in Vision Transformer:
 ```python
 import oneflow as flow
 import oneflow.nn as nn
@@ -376,11 +376,11 @@ self.pos_embed = nn.Parameter(
         placement=dist.get_layer_placement(0),)
 )
 ```
-- The sbp signature returned by `dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])` means to broadcast `cls_token` and `pos_embed` across each GPU groups.
+- The SBP signature returned by `dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])` means to broadcast `cls_token` and `pos_embed` across each GPU group.
 
-**3. Use `to_global()` function to update the sbp signature of `cls_token` and `pos_embed` during forward function**
+**3. Use the `to_global()` function to update the SBP signature of `cls_token` and `pos_embed` during forward function**
 
-In forward function, `cls_token` and `pos_embed` will be expanded to fit the input size, for efficiency, we can use `to_global()` function to match the `cls_token` and `pos_embed` sbp signature with the input sbp signature like this:
+In forward function, `cls_token` and `pos_embed` will be expanded to fit the input size. For efficiency, we can use the `to_global()` function to match the `cls_token` and `pos_embed` SBP signature with the input SBP signature like this:
 ```python
 def forward_features(self, x):
     cls_token = self.cls_token.expand(
@@ -397,13 +397,13 @@ def forward_features(self, x):
 
 **4. Manually set the stage id for pipeline parallel training**
 
-Most of the built-in layers in LiBai has the arg named `layer_idx` for pipeline parallel settings, to configure a **1F1B pipeline parallel** model, users should manually set the stage id for each layers in the models, which will automatically assign different layers on different stages and insert buffer in the process of forward & backward computation for 1F1B pipeline parallel training, with the help of `layer_idx` we can simply get a pipeline parallel Vision Transformer models like:
+Most of the built-in layers in LiBai has the arg named `layer_idx` for pipeline parallel settings. To configure a **1F1B pipeline parallel** model, users should manually set the stage id for each layers in the model, which will automatically assign different layers on different stages and insert buffer in the process of forward & backward computation for 1F1B pipeline parallel training. With the help of `layer_idx`, we can simply get a pipeline parallel Vision Transformer model like:
 ```python
 import libai.utils.distributed as dist
 
 """
 This is a staticmethod for class inherited from nn.Module, 
-which use module.origin to get the original module.
+which uses module.origin to get the original module.
 """
 @staticmethod
 def set_pipeline_stage_id(model):

@@ -18,7 +18,7 @@ from libai.config import instantiate, try_get_key
 
 def build_model(cfg):
     """Build the whole model architecture, defined by ``cfg.model``.
-    Note that is does not load any weights from ``cfg``.
+    Note that it does not load any weights from ``cfg``.
     """
     model = instantiate(cfg)
     return model

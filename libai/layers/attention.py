@@ -43,7 +43,7 @@ class MultiheadAttention(nn.Module):
             Defaults to False.
         apply_query_key_layer_scaling: if `True`, scaling the attention score by layer index.
             Defaults to False.
-        layer_idx: A layer_idx sign which determines the placements.
+        layer_idx: a layer_idx sign which determines the placements.
             It will be used in pipeline parallelism. Defaults to 0.
     """
 

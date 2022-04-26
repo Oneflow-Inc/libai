@@ -96,7 +96,7 @@ class TrainerBase:
     We made no assumptions about the existence of dataloader, optimizer, model, etc.
 
     Attributes:
-        iter(int): the current iteration.
+        iter(int): The current iteration.
         start_iter(int): The iteration to start with.
             By convention the minimum possible value is 0.
         max_iter(int): The iteration to end training.
@@ -232,7 +232,7 @@ class EagerTrainer(TrainerBase):
     A simple eager trainer for the most common type of task:
     single-cost single-optimizer single-data-source iterative optimization,
     optionally using data-parallelism.
-    It assumes that every step, you:
+    It assumes that in every step, you:
 
     1. Compute the loss with a data from the data_loader.
     2. Compute the gradients with the above loss.
