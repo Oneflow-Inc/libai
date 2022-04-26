@@ -136,7 +136,7 @@ class GoogleT5Tokenizer(PreTrainedTokenizer):
         return token
 
     def convert_tokens_to_string(self, tokens):
-        """Converts a sequence of tokens (string) in a single string."""
+        """Converts a sequence of tokens (string) to a single string."""
         current_sub_tokens = []
         out_string = ""
         for token in tokens:
