@@ -14,27 +14,24 @@
 # limitations under the License.
 
 import sys
-
+import os 
+from PIL import Image
 import numpy as np
 import oneflow as flow
 
 sys.path.append(".")  # noqa
 from inference.basic import BasePipeline
 from libai.data.structures import DistTensorData, Instance
+from libai.config import instantiate
 
 
-class TextClassificationPipeline(BasePipeline):
+class ImageClassificationPipeline(BasePipeline):
     def __init__(self, config_file, **kwargs):
         super().__init__(config_file, **kwargs)
-        
-    def update_cfg(self):
-        self.cfg.model.cfg.bias_dropout_fusion = False
-        assert "num_labels" in self.cfg.model.cfg, f"The model's config must contain num_labels"
-        if "label2id" not in self.cfg.model.cfg:
-            label2id = {"Label_" + str(i): i for i in range(self.cfg.model.cfg.num_labels)}
-            id2label = {ind: label for label, ind in label2id.items()}
-            self.cfg.model.cfg["label2id"] = label2id
-            self.cfg.model.cfg["id2label"] = id2label
+        assert "num_classes" in self.cfg.model, f"The model's config must contain num_classes"
+        self.label2id = {"Label_" + str(i): i for i in range(self.cfg.model.num_classes)}
+        self.id2label = {ind: label for label, ind in self.label2id.items()}
+        self.transform = instantiate(self.cfg.dataloader.test[0].dataset.transform)
 
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
@@ -45,22 +42,17 @@ class TextClassificationPipeline(BasePipeline):
     def preprocess(
         self,
         inputs,
-        pad: bool = False,
         **kwargs,
     ) -> dict:
-        # tokenizer encoder
-        # inputs = self.tokenizer.tokenize(inputs)
-        # input_ids = self.tokenizer.convert_tokens_to_ids(inputs)
-        input_ids = flow.tensor(np.array(self.tokenizer.encode(inputs)))
-        padding_mask = flow.tensor(np.ones(input_ids.shape))
-        # set batch size = 1
-        input_ids = input_ids.unsqueeze(0)
-        padding_mask = padding_mask.unsqueeze(0)
+        assert os.path.exists(inputs), f'inputs must be an existing image path!'
+        with open(inputs, "rb") as f:
+            img = Image.open(f).convert("RGB")
+        img = self.transform(img)
+        img = img.unsqueeze(0)
 
         # to global tensor
         model_input = Instance(
-            input_ids=DistTensorData(input_ids),
-            attention_mask=DistTensorData(padding_mask),
+            images=DistTensorData(img),
         )
         mdoel_input_dict = {}
         for key, value in model_input.get_fields().items():
@@ -76,7 +68,7 @@ class TextClassificationPipeline(BasePipeline):
         self, model_outputs_dict, function_to_apply=None, return_all_scores=False, **kwargs
     ) -> dict:
         # prepare
-        num_labels = self.cfg.model.cfg.num_labels
+        num_labels = self.cfg.model.num_classes
         if function_to_apply is not None:
             function_to_apply = function_to_apply.lower()
             assert function_to_apply in [
@@ -91,7 +83,7 @@ class TextClassificationPipeline(BasePipeline):
                 function_to_apply == "softmax"
 
         # process, logits: [num_labels]
-        logits = model_outputs_dict["logits"][0]
+        logits = model_outputs_dict["prediction_scores"][0]
 
         if function_to_apply == "sigmoid":
             scores = flow.sigmoid(logits)
@@ -103,11 +95,18 @@ class TextClassificationPipeline(BasePipeline):
 
         if return_all_scores:
             return [
-                {"label": self.cfg.model.cfg.id2label[i], "score": score.item()}
+                {"label": self.id2label[i], "score": score.item()}
                 for i, score in enumerate(scores)
             ]
         else:
             return {
-                "label": self.cfg.model.cfg.id2label[scores.argmax().item()],
+                "label": self.id2label[scores.argmax().item()],
                 "score": scores.max().item(),
             }
+
+if __name__ == "__main__":
+    for i in range(100):
+        model = ImageClassificationPipeline("configs/swin_imagenet.py")
+        a = model("/DATA/disk1/ImageNet/extract/val/n01440764/ILSVRC2012_val_00000293.JPEG")
+        b = model("/DATA/disk1/ImageNet/extract/val/n01440764/ILSVRC2012_val_00000293.JPEG")
+        print(a, b)
