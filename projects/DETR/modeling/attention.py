@@ -30,8 +30,6 @@ class DetrMultiheadAttention(MultiheadAttention):
     Args:
         hidden_size: size of hidden state.
         num_attention_heads: number of attention heads.
-        is_cross_attention: used to specify whether it is self attention or cross attention.
-            Defaults to False.
         attention_dropout_prob: dropout probability of attention weights.
             Defaults to 0.0.
         output_dropout_prob: dropout probability of output. Defaults to 0.0.
@@ -53,7 +51,6 @@ class DetrMultiheadAttention(MultiheadAttention):
         self,
         hidden_size,
         num_attention_heads,
-        is_cross_attention=False,
         attention_dropout_prob=0.0,
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
@@ -85,7 +82,6 @@ class DetrMultiheadAttention(MultiheadAttention):
             self.coeff = layer_idx + 1
             self.norm_factor /= self.coeff
 
-        self.is_cross_attention = is_cross_attention
         self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
         self.bias_dropout_fusion = bias_dropout_fusion
 
@@ -94,43 +90,27 @@ class DetrMultiheadAttention(MultiheadAttention):
         else:
             self.output_dropout = nn.Dropout(p=output_dropout_prob)
 
-        if self.is_cross_attention:
-            self.query = Linear(
-                self.hidden_size,
-                self.hidden_size,
-                parallel="col",
-                init_method=init_method,
-                layer_idx=layer_idx,
-            )
-            self.key_value = Linear(
-                self.hidden_size,
-                self.hidden_size * 2,
-                parallel="col",
-                init_method=init_method,
-                layer_idx=layer_idx,
-            )
-        else:
-            self.query = Linear(
-                self.hidden_size,
-                self.hidden_size,
-                parallel="col",
-                init_method=init_method,
-                layer_idx=layer_idx,
-            )
-            self.key = Linear(
-                self.hidden_size,
-                self.hidden_size,
-                parallel="col",
-                init_method=init_method,
-                layer_idx=layer_idx,
-            )
-            self.value = Linear(
-                self.hidden_size,
-                self.hidden_size,
-                parallel="col",
-                init_method=init_method,
-                layer_idx=layer_idx,
-            )
+        self.query = Linear(
+            self.hidden_size,
+            self.hidden_size,
+            parallel="col",
+            init_method=init_method,
+            layer_idx=layer_idx,
+        )
+        self.key = Linear(
+            self.hidden_size,
+            self.hidden_size,
+            parallel="col",
+            init_method=init_method,
+            layer_idx=layer_idx,
+        )
+        self.value = Linear(
+            self.hidden_size,
+            self.hidden_size,
+            parallel="col",
+            init_method=init_method,
+            layer_idx=layer_idx,
+        )
 
         self.dense = Linear(
             self.hidden_size,
@@ -178,34 +158,15 @@ class DetrMultiheadAttention(MultiheadAttention):
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
             
-        # NOTE: for detr MultiHeadAttention
+        # *NOTE: for detr MultiHeadAttention
         query, key, value = hidden_states
         query, key, value = query.permute(1,0,2), key.permute(1,0,2), value.permute(1,0,2)
         
         bsz, tgt_len = query.size()[:2]
 
-        if self.is_cross_attention:
-            # if it is cross attention, key and value should be calculated only once, and the
-            # result can be reused.
-            query = self.query(hidden_states)
-            query = query.view(bsz, -1, self.num_heads, self.head_size)
-            query = query.permute(0, 2, 1, 3)
-            if past_key_value is not None:
-                key, value = past_key_value
-            elif encoder_states is not None:
-                key_value = self.key_value(encoder_states)
-                key_value = key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
-                key_value = key_value.permute(0, 2, 1, 3)
-                key, value = flow.chunk(key_value, chunks=2, dim=-1)
-            else:
-                raise ValueError(
-                    "past_key_value and encoder_states cannot be None at the same time."
-                )
-        else:
-            
-            query = self.query(query)
-            key = self.key(key)
-            value = self.value(value)
+        query = self.query(query)
+        key = self.key(key)
+        value = self.value(value)
             
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)

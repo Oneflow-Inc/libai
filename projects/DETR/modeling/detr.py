@@ -78,11 +78,8 @@ class DETR(nn.Module):
         
         return loss_dict
 
-    # @torch.jit.unused
     def _set_aux_loss(self, outputs_class, outputs_coord):
-        # this is a workaround to make flowscript happy, as flowscript
-        # doesn't support dictionary with non-homogeneous values, such
-        # as a dict having both a Tensor and a list.
+
         return [{'pred_logits': a, 'pred_boxes': b}
                 for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
 
