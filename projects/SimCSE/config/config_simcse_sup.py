@@ -72,13 +72,13 @@ model = LazyCall(Simcse_sup)(cfg=simcse_cfg)
 train.update(
     dict(
         output_dir="./result",
-        train_micro_batch_size=64,
-        test_micro_batch_size=64,
+        train_micro_batch_size=8,
+        test_micro_batch_size=8,
         train_epoch=1,
         train_iter=1000,
         log_period=10,
         dist=dict(
-            data_parallel_size=1,
+            data_parallel_size=8,
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
         ),
