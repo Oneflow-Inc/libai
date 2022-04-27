@@ -54,3 +54,5 @@ train.activation_checkpoint.enabled = False
 
 for ds in dataloader.train.dataset:
     ds.max_num_samples = train.train_iter * train.micro_batch_size
+
+train.output_dir = "./output/t5_output_megatron"

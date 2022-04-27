@@ -26,6 +26,27 @@ from .dataset_utils import create_masked_lm_predictions, get_samples_mapping
 
 
 class T5Dataset(flow.utils.data.Dataset):
+    """
+    Dataset containing sentences for T5 training.
+
+    Args:
+        name: Name of dataset.
+        tokenizer: Tokenizer to use.
+        data_prefix (str): Path to the training dataset.
+        indexed_dataset: Indexed dataset to use.
+        max_seq_length (int, optional): Maximum length of the sequence passing into encoder.
+            All values are padded to this length. Defaults to 512.
+        max_seq_length_dec (int, optional): Maximum length of the sequence passing into decoder.
+            All values are padded to this length. Defaults to 128.
+        mask_lm_prob (float, optional): Probability to mask tokens. Defaults to 0.15.
+        max_preds_per_seq (int, optional): Maximum number of masked tokens in each sentence.
+            Defaults to None.
+        short_seq_prob (float, optional):
+            Probability of producing a short sequence. Defaults to 0.0.
+        seed (int, optional):
+            Seed for random number generator for reproducibility. Defaults to 1234.
+    """
+
     def __init__(
         self,
         name,
@@ -157,7 +178,7 @@ def build_training_sample(
 
     # Truncate to `target_sequence_length`.
     max_num_tokens = target_seq_length
-    truncated = len(tokens) > max_num_tokens
+    len(tokens) > max_num_tokens
     tokens = tokens[:max_num_tokens]
 
     # Masking.
@@ -321,4 +342,3 @@ def make_history_mask(block):
     )
     history_mask = history_mask.astype(np.int64)
     return history_mask
-    
