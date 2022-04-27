@@ -39,4 +39,4 @@ class Model(flow.nn.Module):
             loss = self.loss(logits, labels)
             return {"loss": loss}
         else:
-            return {"prediction_scores": logits}
+            return {"embeddings": logits}

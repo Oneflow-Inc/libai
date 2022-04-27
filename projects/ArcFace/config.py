@@ -13,7 +13,7 @@ model = LazyCall(Model)(
 )
 
 dataloader = LazyCall(OFRecordDataLoader)(
-    ofrecord_root="/workspace/data/ms1m-retinaface-t1/ofrecord",
+    ofrecord_root="/workspace/data/insightface/ms1m-retinaface-t1/ofrecord",
     mode="train",  # "val"
     dataset_size=9469,
     batch_size=16,
@@ -32,4 +32,4 @@ optim = LazyConfig.load(
 graph = LazyConfig.load(
     "/workspace/projects/libai/configs/common/models/graph.py").graph
 
-graph.enabled = False
+# graph.enabled = False

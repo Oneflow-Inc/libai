@@ -120,6 +120,14 @@ class Trainer(DefaultTrainer):
                                   placement=dist.get_layer_placement(-1))
         return {"images": imgs, "labels": labels}
 
+    @classmethod
+    def test(cls, cfg, test_loaders, model, evaluator=None):
+        from evaluation.evaluate import load_bin_cv
+        datasets = [load_bin_cv(x) for x in cfg.valid]
+        pass
+        
+
+
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
