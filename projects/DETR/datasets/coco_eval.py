@@ -18,6 +18,7 @@ from libai.evaluation.evaluator import DatasetEvaluator
 from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
 
+from modeling.post_process import PostProcess
 
 def accuracy(output, target, topk=(1,)):
     maxk = min(max(topk), output.size()[1])
@@ -46,6 +47,23 @@ class CocoEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
+        """
+        Process the pair of inputs and outputs.
+
+        .. code-block:: python
+
+            pred_logits = outputs["prediction_scores"]
+            labels = inputs["labels"]
+            # do evaluation on pred_logits/labels pair
+            ...
+
+        Args:
+            inputs (dict): the inputs that's used to call the model.
+            outputs (dict): the return dict of `model(**inputs)`
+        """
+        import pdb
+        pdb.set_trace()
+        
         pred_logits = outputs["prediction_scores"]
         labels = inputs["labels"]
 
@@ -58,6 +76,18 @@ class CocoEvaluator(DatasetEvaluator):
         )
 
     def evaluate(self):
+        """
+        Evaluate/summarize the performance after processing all input/output pairs.
+
+        Returns:
+            dict:
+                A new evaluator class can return a dict of arbitrary format
+                as long as the user can process the results.
+                In our train_net.py, we expect the following format:
+
+                * key: the name of the task (e.g., Classification)
+                * value: a dict of {metric name: score}, e.g.: {"Acc@1": 75.0}
+        """
         if not dist.is_main_process():
             return {}
         else:
@@ -192,7 +222,7 @@ def inference_on_coco_dataset(
             is_last_batch = idx == len(data_loader) - 1
             # TODO: refine the last_batch situation in pad_batch
             paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
-            outputs = model(paded_data)
+            _, outputs = model(paded_data)
             
             # get valid samplen
             # key: images
@@ -200,8 +230,6 @@ def inference_on_coco_dataset(
             valid_data["images"] = dist.ttol(data["images"].tensors.tensor, ranks=[0] 
                                              if data["images"].tensors.tensor.placement.ranks.ndim == 1 
                                              else [[0]])[:valid_sample]
-            import pdb
-            pdb.set_trace()
             
             # *NOTE: dtype of detr label: tuple. len(labels)=bsz
             valid_data["labels"] = []
@@ -212,7 +240,10 @@ def inference_on_coco_dataset(
                 valid_data["labels"].append(label_dict)
             valid_data["labels"] = tuple(valid_data["labels"][:valid_sample])
                 
+            import pdb
+            pdb.set_trace()            
             valid_outputs = {}
+            # TODO: impl aux_outputs
             for key, value in outputs.items():
                 value = dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
                 if value.ndim > 1:

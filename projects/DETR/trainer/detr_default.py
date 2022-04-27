@@ -135,7 +135,8 @@ class DetrDefaultTrainer(DefaultTrainer):
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
             dataset_name = type(data_loader.dataset).__name__
-
+            import pdb
+            pdb.set_trace()
             results_i = inference_on_coco_dataset(
                 model,
                 data_loader,

@@ -76,7 +76,7 @@ class DETR(nn.Module):
             
         loss_dict = self.criterion(out, targets)    
         
-        return loss_dict
+        return loss_dict, out
 
     def _set_aux_loss(self, outputs_class, outputs_coord):
 
