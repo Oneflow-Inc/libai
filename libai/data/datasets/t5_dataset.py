@@ -274,7 +274,7 @@ class T5Dataset(flow.utils.data.Dataset):
         return output_tokens, masked_positions, masked_labels, masked_spans
 
     def pad_and_convert_to_numpy(self, tokens, masked_spans):
-        """pad sequences and convert them to numpy array"""
+        """Pad sequences and convert them to numpy array."""
 
         special_tokens = collections.deque(self.special_tokens)
         encoder_input, decoder_input, decoder_output = [], [], []

@@ -20,12 +20,11 @@ import time
 from collections import OrderedDict
 from typing import Callable, Optional
 
-import omegaconf
 import oneflow as flow
+from omegaconf import OmegaConf
 from termcolor import colored
 
-from libai.config import LazyConfig, try_get_key
-from libai.config.instantiate import instantiate
+from libai.config import LazyConfig, instantiate, try_get_key
 from libai.data import Instance
 from libai.engine import hooks
 from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase
@@ -36,8 +35,13 @@ from libai.scheduler import build_lr_scheduler
 from libai.tokenizer import build_tokenizer
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
-from libai.utils.events import CommonMetricPrinter, JSONWriter
+from libai.utils.events import CommonMetricPrinter, JSONWriter, TensorboardXWriter
 from libai.utils.logger import setup_logger
+
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/defaults.py
+# --------------------------------------------------------
 
 
 def _highlight(code, filename):
@@ -144,7 +148,7 @@ def default_setup(cfg, args):
     1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
     3. Setup the distributed environment
-    4. Setup tokenizer if it's NLP related task
+    4. Setup tokenizer if it's an NLP related task
     5. Check batch_size
     6. Backup the config to the output directory
     7. Compile dependencies
@@ -197,14 +201,14 @@ def default_setup(cfg, args):
 class DefaultTrainer(TrainerBase):
     """
     A trainer with default training logic. Compared to `TrainerBase`, it
-    contains the following logic in addition:
+    also contains the following logic:
 
     1. Create model, optimizer, scheduler, dataloader from the given config.
     2. Load a checkpoint or `cfg.MODEL.WEIGHTS`, if exists.
     3. Register a few common hooks defined by the config.
 
-    It is created to simplify the **standard model training workflow** and reduce code boilerplate
-    for users who only need the standard training workflow, with standard features.
+    With standard features, it is created to simplify the **standard model training workflow** and
+    reduce code boilerplate for users who only need the standard training workflow.
 
     It means this class makes **many assumptions** about your training logic that
     may easily become invalid in a new research. In fact, any assumptions beyond those made in the
@@ -438,8 +442,8 @@ class DefaultTrainer(TrainerBase):
 
             return [
                 CommonMetricPrinter(self.global_batch_size, self.max_iter),
-                JSONWriter(os.path.join(self.cfg.OUTPUT_DIR, "metrics.json")),
-                TensorboardXWriter(self.cfg.OUTPUT_DIR),
+                JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
+                TensorboardXWriter(self.cfg.train.output_dir),
             ]
         """
         # Assume the default print/log frequency.
@@ -447,6 +451,7 @@ class DefaultTrainer(TrainerBase):
             # It may not always print what you want to see, since it prints "common" metrics only.
             CommonMetricPrinter(self.global_batch_size, self.max_iter),
             JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
+            TensorboardXWriter(self.cfg.train.output_dir),
         ]
 
     def train(self):
@@ -595,13 +600,15 @@ class DefaultTrainer(TrainerBase):
 
         # Set tokenizer for each dataset
         if tokenizer:
-            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
+            if OmegaConf.is_list(cfg.dataloader.train.dataset):
                 for dataset in cfg.dataloader.train.dataset:
                     dataset.tokenizer = tokenizer
             else:
                 cfg.dataloader.train.dataset.tokenizer = tokenizer
 
-        train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
+        train_loader, valid_loader, test_loader = instantiate(
+            cfg.dataloader.train, _recursive_=False
+        )
         return train_loader, valid_loader, test_loader
 
     @classmethod
@@ -619,8 +626,8 @@ class DefaultTrainer(TrainerBase):
             return []
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
-        assert isinstance(
-            cfg.dataloader.test, omegaconf.listconfig.ListConfig
+        assert OmegaConf.is_list(
+            cfg.dataloader.test
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
@@ -628,7 +635,7 @@ class DefaultTrainer(TrainerBase):
             if tokenizer:
                 cfg.dataloader.test[i].dataset.tokenizer = tokenizer
         # list[dataloader1, dataloader2, ...]
-        test_loader = instantiate(cfg.dataloader.test)
+        test_loader = instantiate(cfg.dataloader.test, _recursive_=False)
         return test_loader
 
     @classmethod

@@ -180,7 +180,7 @@ class Checkpointer(object):
     def resume_or_load(self, path: str, *, resume: bool = True):
         """
         If `resume` is True, this method attempts to resume from the last
-        checkpoint, if exists. Otherwise, load checkpoint from the given path.
+        checkpoint (if exists). Otherwise, load checkpoint from the given path.
         This is useful when restarting an interrupted training job.
         Args:
             path (str): path to the checkpoint.
