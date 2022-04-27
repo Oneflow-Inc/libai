@@ -119,12 +119,7 @@ class Backbone(BackboneBase):
 
         backbone = getattr(flowvision.models, name)(
             replace_stride_with_dilation=[False, False, dilation],
-            pretrained=True, norm_layer=FrozenBatchNorm2d)
-
-        # TODO: figure out is_main_process()
-        # backbone = getattr(flowvision.models, name)(
-        #     replace_stride_with_dilation=[False, False, dilation],
-        #     pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d)
+            pretrained=dist.is_main_process(), norm_layer=FrozenBatchNorm2d)
 
         num_channels = 512 if name in ('resnet18', 'resnet34') else 2048
         super().__init__(backbone, train_backbone, num_channels, return_interm_layers)

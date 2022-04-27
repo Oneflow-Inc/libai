@@ -25,7 +25,7 @@ train.warmup_ratio = 40 / 300
 train.eval_period = 5
 train.log_period = 1
 
-train.evaluation.evaluator = LazyCall(CocoEvaluator)
+train.evaluation.evaluator = LazyCall(CocoEvaluator)(topk=(1, 5))
 
 # Refine optimizer cfg for detr model
 base_lr = 1.5e-4
