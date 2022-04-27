@@ -174,15 +174,20 @@ class TextGenerationPipeline(BasePipeline):
 
 
 if __name__ == "__main__":
+    import logging
+    logger = logging.getLogger("libai."+__name__)
+    texts = ["cat ", "you ", "dog ", "dragon ", "牛 ", "羊 "]
+    model = TextGenerationPipeline("configs/t5_pp_pretrain.py")
     for i in range(100):
-        model = TextGenerationPipeline("configs/t5_large_pretrain.py")
-        print("---------------------------not cache----------------------------")
+        text = list(np.random.randint(0, 5, 10))
+        text = "".join([texts[i] for i in text])
+        logger.info("---------------------------not cache----------------------------")
         a = model(
-            "dog cat you " * 10, use_cache=False, max_generate_length=15, return_type="new_text"
+            text, use_cache=False, max_generate_length=15, return_type="new_text"
         )
-        print(a)
-        print("---------------------------use cache----------------------------")
+        logger.info(a)
+        logger.info("---------------------------use cache----------------------------")
         b = model(
-            "dog cat you " * 10, use_cache=True, max_generate_length=15, return_type="new_text"
+            text, use_cache=True, max_generate_length=15, return_type="new_text"
         )
-        print(b)
+        logger.info(b)

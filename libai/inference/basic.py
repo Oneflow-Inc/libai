@@ -16,13 +16,18 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict
 
+import logging
 import oneflow as flow
 
-from libai.config import LazyConfig, try_get_key
-from libai.engine.default import DefaultTrainer
+from libai.config import LazyConfig, try_get_key, default_argument_parser
+from libai.engine import DefaultTrainer, default_setup
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
+from libai.utils.logger import setup_logger
 
+
+logger = setup_logger(distributed_rank=dist.get_rank())
+logger = logging.getLogger("libai.inference")
 
 class BasePipeline(metaclass=ABCMeta):
     """
@@ -34,19 +39,35 @@ class BasePipeline(metaclass=ABCMeta):
         config_file,
         **kwargs,
     ):
+        # init cfg
         self.cfg = LazyConfig.load(config_file)
+        args = default_argument_parser().parse_args()
+        self.cfg = LazyConfig.apply_overrides(self.cfg, args.opts)
+        flow.boxing.nccl.set_fusion_threshold_mbytes(
+            try_get_key(self.cfg, "train.nccl_fusion_threshold_mb", default=16)
+        )
+        flow.boxing.nccl.set_fusion_max_ops_num(
+            try_get_key(self.cfg, "train.nccl_fusion_max_ops", default=24)
+        )
         self.update_cfg()
         dist.setup_dist_util(self.cfg.train.dist)
+        logger.info(self.cfg.train.dist)
+
+        # initial and load model
         self.model = DefaultTrainer.build_model(self.cfg).eval()
         self.load_pretrain_weight(self.model, self.cfg)
+
+        # initial tokenizer
         self.tokenizer = self.build_tokenizer(self.cfg)
+
+        # set parameters
         (
             self._preprocess_params,
             self._forward_params,
             self._postprocess_params,
         ) = self._parse_parameters(
             **kwargs
-        )  # noqa
+        ) 
 
     def update_cfg(
         self,
