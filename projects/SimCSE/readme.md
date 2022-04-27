@@ -1,4 +1,6 @@
 # SimCSE
+Contributor{Xie Zipeng: xzpaiks@163.com}
+
 Reproduce Supervised-simcse and Unsupervised-simcse with OneFlow.
 
 ## Introduce
