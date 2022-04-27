@@ -20,7 +20,7 @@ model.cfg.hidden_size = 384
 model.cfg.hidden_layers = 6
 
 train.train_micro_batch_size = 16
-train.activation_checkpoint.enabled = True
+train.activation_checkpoint.enabled = False
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 

@@ -16,24 +16,30 @@ tokenization.tokenizer.vocab_file = vocab_file
 dataloader.train.dataset[0].data_prefix = data_prefix
 dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
-train.eval_iter = 10
+train.eval_iter = 100
+
+# T5-large model config
+model.cfg.num_attention_heads = 12
+model.cfg.hidden_size = 384
+model.cfg.hidden_layers = 6
+
 
 # Set all dropout to 0.
 
-model.cfg.hidden_dropout_prob = 0.1
-model.cfg.attention_probs_dropout_prob = 0.1
-model.cfg.embedding_dropout_prob = 0.1
-model.cfg.bias_gelu_fusion = True
-model.cfg.bias_dropout_fusion = True
+# model.cfg.hidden_dropout_prob = 0.1
+# model.cfg.attention_probs_dropout_prob = 0.1
+# model.cfg.embedding_dropout_prob = 0.1
+# model.cfg.bias_gelu_fusion = True
+# model.cfg.bias_dropout_fusion = True
 
 # Set matched model arguments
-model.cfg.hidden_layers = 6
-model.cfg.hidden_size = 384
-model.cfg.intermediate_size = 1536
-model.cfg.num_attention_heads = 12
-model.cfg.max_position_embeddings = 512
+# model.cfg.hidden_layers = 6
+# model.cfg.hidden_size = 384
+# model.cfg.intermediate_size = 1536
+# model.cfg.num_attention_heads = 12
+# model.cfg.max_position_embeddings = 512
 
-train.train_iter = 200
+train.train_iter = 10000
 train.micro_batch_size = 16
 train.train_micro_batch_size = 16
 train.log_period = 20
@@ -43,8 +49,8 @@ train.warmup_ratio = 0.01
 optim.lr = 0.0001
 train.scheduler = LazyCall(WarmupMultiStepLR)(warmup_factor=0.1, milestones=[0.99])
 
-train.amp.enabled = False
-train.recompute_grad.enabled = False
+train.amp.enabled = True
+train.activation_checkpoint.enabled = False
 
 for ds in dataloader.train.dataset:
     ds.max_num_samples = train.train_iter * train.micro_batch_size
