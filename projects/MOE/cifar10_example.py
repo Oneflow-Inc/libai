@@ -25,7 +25,7 @@ import oneflow.nn as nn
 import oneflow.nn.functional as F
 import oneflow.optim as optim
 
-from mlp import MLP
+from projects.MOE.model.mlp import MLP
 
 def _parse_args():
     parser = argparse.ArgumentParser("flags for train cifar10 example for moe layer")
@@ -64,18 +64,17 @@ def main(args):
     testloader = flow.utils.data.DataLoader(testset, batch_size=args.val_batch_size,
                                             shuffle=False, num_workers=1)
 
-    classes = ('plane', 'car', 'bird', 'cat',
-               'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+    classes = ('plane', 'car', 'bird', 'cat','deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
     if flow.cuda.is_available():  
         device = flow.device('cuda')
     else:  
         device = "cpu" 
     device = flow.device('cuda')
+
     expert_network = MLP(input_size=3072, output_size=10, hidden_size=256)
     net = MoE(expert_network, 3072, 10, num_experts=10, noisy_gating=True, k=4,device=device)
     net.to(device)
-
 
     optimizer = optim.SGD(net.parameters(), lr=args.learning_rate, momentum=args.mom)
     criterion = nn.CrossEntropyLoss()
@@ -83,7 +82,6 @@ def main(args):
 
     net.train()
     for epoch in range(args.epochs):  # loop over the dataset multiple times
-
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             # get the inputs; data is a list of [inputs, labels]
