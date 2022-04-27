@@ -14,6 +14,7 @@ from projects.SimCSE.evaluator import SimcseEvaluator
 from projects.SimCSE.modeling.simcse_sup import Simcse_sup
 
 optim["lr"] = 1e-5
+graph['enabled'] = True
 
 tokenization.tokenizer = LazyCall(BertTokenizer)(
     vocab_file="./data/vocab.txt",
