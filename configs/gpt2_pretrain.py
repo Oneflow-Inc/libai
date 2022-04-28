@@ -31,7 +31,8 @@ for ds in dataloader.train.dataset:
 optim.lr = 1.5e-4
 
 train.train_micro_batch_size = 4
-train.activation_checkpoint.enabled = True
+train.amp.enabled = True
+train.activation_checkpoint.enabled = False
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 

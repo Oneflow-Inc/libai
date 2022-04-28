@@ -147,7 +147,7 @@ py::array build_sample_idx(const py::array_t<int32_t>& sizes_, const py::array_t
         doc_offset = 0;
       }
     }
-    cout << "count: " << count << endl;
+    // cout << "count: " << count << endl;
     // Record the sequence.
     sample_idx[2 * sample_index] = doc_idx_index;
     sample_idx[2 * sample_index + 1] = doc_offset;

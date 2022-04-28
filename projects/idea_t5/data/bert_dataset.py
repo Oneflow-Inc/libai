@@ -101,8 +101,9 @@ class BertDataset(flow.utils.data.Dataset):
         sample = [self.indexed_dataset[i] for i in range(start_idx, end_idx)]
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
-        # Note(lxy): numpy requires the seed to be between 0 and 2**32 - 1
-        np_rng = np.random.RandomState(seed=(self.seed + idx))
+        # We % 2**32 since numpy requires the seed to be between 0 and 2**32 - 1
+        
+        np_rng = np.random.RandomState(seed=((self.seed + idx) % 2**32))
         return build_training_sample(
             sample,
             seq_length,
