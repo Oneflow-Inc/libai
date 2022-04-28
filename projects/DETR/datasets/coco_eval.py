@@ -95,7 +95,7 @@ class CocoEvaluator(DatasetEvaluator):
             coco_eval.cocoDt = coco_dt
             coco_eval.params.imgIds = list(img_ids)
 
-            # img_ids, eval_imgs = evaluate(coco_eval)
+            img_ids, eval_imgs = self.evaluate(coco_eval)
 
             # self.eval_imgs[iou_type].append(eval_imgs)
         
@@ -205,19 +205,48 @@ class CocoEvaluator(DatasetEvaluator):
             )
         return coco_results
 
-    def evaluate(self):
-        """
-        Evaluate/summarize the performance after processing all input/output pairs.
+    def evaluate(self, coco_eval):
+        import pdb
+        pdb.set_trace()
+        p = coco_eval.params
+        # add backward compatibility if useSegm is specified in params
+        if p.useSegm is not None:
+            p.iouType = 'segm' if p.useSegm == 1 else 'bbox'
+            print('useSegm (deprecated) is not None. Running {} evaluation'.format(p.iouType))
+        p.imgIds = list(np.unique(p.imgIds))
+        if p.useCats:
+            p.catIds = list(np.unique(p.catIds))
+        p.maxDets = sorted(p.maxDets)
+        coco_eval.params = p 
+        
+        coco_eval._prepare()
+        # loop through images, area range, max detection number
+        catIds = p.catIds if p.useCats else [-1]
 
-        Returns:
-            dict:
-                A new evaluator class can return a dict of arbitrary format
-                as long as the user can process the results.
-                In our train_net.py, we expect the following format:
+        if p.iouType == 'segm' or p.iouType == 'bbox':
+            computeIoU = coco_eval.computeIoU
+        elif p.iouType == 'keypoints':
+            computeIoU = coco_eval.computeOks
+        coco_eval.ious = {
+            (imgId, catId): computeIoU(imgId, catId)
+            for imgId in p.imgIds
+            for catId in catIds}
 
-                * key: the name of the task (e.g., Classification)
-                * value: a dict of {metric name: score}, e.g.: {"Acc@1": 75.0}
-        """
+        evaluateImg = coco_eval.evaluateImg
+        maxDet = p.maxDets[-1]
+        evalImgs = [
+            evaluateImg(imgId, catId, areaRng, maxDet)
+            for catId in catIds
+            for areaRng in p.areaRng
+            for imgId in p.imgIds
+        ]
+        # this is NOT in the pycocotools code, but could be done outside
+        evalImgs = np.asarray(evalImgs).reshape(len(catIds), len(p.areaRng), len(p.imgIds))
+        coco_eval._paramsEval = copy.deepcopy(coco_eval.params)
+        # toc = time.time()
+        # print('DONE (t={:0.2f}s).'.format(toc-tic))
+        return p.imgIds, evalImgs       
+                       
         if not dist.is_main_process():
             return {}
         else:
