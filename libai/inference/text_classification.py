@@ -21,10 +21,23 @@ from libai.inference.basic import BasePipeline
 
 
 class TextClassificationPipeline(BasePipeline):
-    def __init__(self, config_file, **kwargs):
-        super().__init__(config_file, **kwargs)
+    def __init__(
+        self,
+        config_file,
+        data_parallel=None,
+        tensor_parallel=None,
+        pipeline_parallel=None,
+        **kwargs,
+    ):
+        super().__init__(config_file, data_parallel, tensor_parallel, pipeline_parallel, **kwargs)
 
-    def update_cfg(self):
+    def update_cfg(
+        self,
+        data_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=1,
+    ):
+        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
         self.cfg.model.cfg.bias_dropout_fusion = False
         assert "num_labels" in self.cfg.model.cfg, "The model's config must contain num_labels"
         if "label2id" not in self.cfg.model.cfg:
@@ -108,3 +121,13 @@ class TextClassificationPipeline(BasePipeline):
                 "label": self.cfg.model.cfg.id2label[scores.argmax().item()],
                 "score": scores.max().item(),
             }
+
+
+if __name__ == "__main__":
+    texts = ["cat ", "you ", "dog ", "dragon ", "牛 ", "羊 "]
+    model = TextClassificationPipeline("configs/bert_large_pretrain.py")
+    for i in range(100):
+        text = list(np.random.randint(0, 5, 10))
+        text = "".join([texts[i] for i in text])
+        a = model(text)
+        print(a)

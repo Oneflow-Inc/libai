@@ -13,21 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict
 
-import logging
 import oneflow as flow
 
-from libai.config import LazyConfig, try_get_key, default_argument_parser
-from libai.engine import DefaultTrainer, default_setup
+from libai.config import LazyConfig, try_get_key
+from libai.engine import DefaultTrainer
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.logger import setup_logger
 
-
 logger = setup_logger(distributed_rank=dist.get_rank())
 logger = logging.getLogger("libai.inference")
+
 
 class BasePipeline(metaclass=ABCMeta):
     """
@@ -37,20 +37,24 @@ class BasePipeline(metaclass=ABCMeta):
     def __init__(
         self,
         config_file,
+        data_parallel=None,
+        tensor_parallel=None,
+        pipeline_parallel=None,
         **kwargs,
     ):
         # init cfg
         self.cfg = LazyConfig.load(config_file)
-        args = default_argument_parser().parse_args()
-        self.cfg = LazyConfig.apply_overrides(self.cfg, args.opts)
         flow.boxing.nccl.set_fusion_threshold_mbytes(
             try_get_key(self.cfg, "train.nccl_fusion_threshold_mb", default=16)
         )
         flow.boxing.nccl.set_fusion_max_ops_num(
             try_get_key(self.cfg, "train.nccl_fusion_max_ops", default=24)
         )
-        self.update_cfg()
+        self.update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
         dist.setup_dist_util(self.cfg.train.dist)
+        assert (
+            self.cfg.train.dist.data_parallel_size == 1
+        ), "not support data parallel yet, only support tensor and pipeline parallel"
         logger.info(self.cfg.train.dist)
 
         # initial and load model
@@ -65,14 +69,24 @@ class BasePipeline(metaclass=ABCMeta):
             self._preprocess_params,
             self._forward_params,
             self._postprocess_params,
-        ) = self._parse_parameters(
-            **kwargs
-        ) 
+        ) = self._parse_parameters(**kwargs)
 
     def update_cfg(
         self,
+        data_parallel=None,
+        tensor_parallel=None,
+        pipeline_parallel=None,
     ):
-        pass
+        if data_parallel is not None:
+            self.cfg.train.dist.data_parallel_size = data_parallel
+        if tensor_parallel is not None:
+            self.cfg.train.dist.tensor_parallel_size = tensor_parallel
+        if pipeline_parallel is not None:
+            self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
+        if self.cfg.train.dist.pipeline_parallel_size > 1:
+            assert (
+                try_get_key(self.cfg.train.dist, "pipeline_num_layers") is not None
+            ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
 
     def load_pretrain_weight(self, model, cfg):
         Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
@@ -104,7 +118,11 @@ class BasePipeline(metaclass=ABCMeta):
             model_inputs_dict = self.preprocess(inputs, **preprocess_params)
             model_outputs_dict = self.forward(model_inputs_dict, **forward_params)
             model_outputs_dict = self.to_local(model_outputs_dict)
-            outputs_dict = self.postprocess(model_outputs_dict, **postprocess_params)
+            if dist.is_main_process():
+                outputs_dict = self.postprocess(model_outputs_dict, **postprocess_params)
+            else:
+                outputs_dict = {}
+            dist.synchronize()
         return outputs_dict
 
     def to_local(self, model_outputs_dict):

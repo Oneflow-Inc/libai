@@ -24,8 +24,15 @@ from libai.inference.basic import BasePipeline
 
 
 class ImageClassificationPipeline(BasePipeline):
-    def __init__(self, config_file, **kwargs):
-        super().__init__(config_file, **kwargs)
+    def __init__(
+        self,
+        config_file,
+        data_parallel=None,
+        tensor_parallel=None,
+        pipeline_parallel=None,
+        **kwargs,
+    ):
+        super().__init__(config_file, data_parallel, tensor_parallel, pipeline_parallel, **kwargs)
         assert "num_classes" in self.cfg.model, "The model's config must contain num_classes"
         self.label2id = {"Label_" + str(i): i for i in range(self.cfg.model.num_classes)}
         self.id2label = {ind: label for label, ind in self.label2id.items()}
@@ -104,7 +111,7 @@ class ImageClassificationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     for i in range(100):
-        model = ImageClassificationPipeline("configs/swin_imagenet.py")
-        a = model("/DATA/disk1/ImageNet/extract/val/n01440764/ILSVRC2012_val_00000293.JPEG")
-        b = model("/DATA/disk1/ImageNet/extract/val/n01440764/ILSVRC2012_val_00000293.JPEG")
+        model = ImageClassificationPipeline("configs/vit_imagenet.py", 1, 2, 1)
+        a = model("data_test/inference_test_data/ILSVRC2012_val_00000293.JPEG")
+        b = model("data_test/inference_test_data/ILSVRC2012_val_00000293.JPEG")
         print(a, b)

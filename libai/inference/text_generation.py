@@ -21,10 +21,23 @@ from libai.inference.basic import BasePipeline
 
 
 class TextGenerationPipeline(BasePipeline):
-    def __init__(self, config_file, **kwargs):
-        super().__init__(config_file, **kwargs)
+    def __init__(
+        self,
+        config_file,
+        data_parallel=None,
+        tensor_parallel=None,
+        pipeline_parallel=None,
+        **kwargs,
+    ):
+        super().__init__(config_file, data_parallel, tensor_parallel, pipeline_parallel, **kwargs)
 
-    def update_cfg(self):
+    def update_cfg(
+        self,
+        data_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=1,
+    ):
+        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
         self.cfg.model.cfg.bias_dropout_fusion = False
 
     def _parse_parameters(self, use_cache=None, max_generate_length=10, **pipeline_parameters):
@@ -175,19 +188,16 @@ class TextGenerationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     import logging
-    logger = logging.getLogger("libai."+__name__)
+
+    logger = logging.getLogger("libai." + __name__)
     texts = ["cat ", "you ", "dog ", "dragon ", "牛 ", "羊 "]
-    model = TextGenerationPipeline("configs/t5_pp_pretrain.py")
+    model = TextGenerationPipeline("configs/t5_pp_pretrain.py", 1, 4, 1)
     for i in range(100):
         text = list(np.random.randint(0, 5, 10))
         text = "".join([texts[i] for i in text])
         logger.info("---------------------------not cache----------------------------")
-        a = model(
-            text, use_cache=False, max_generate_length=15, return_type="new_text"
-        )
+        a = model(text, use_cache=False, max_generate_length=15, return_type="new_text")
         logger.info(a)
         logger.info("---------------------------use cache----------------------------")
-        b = model(
-            text, use_cache=True, max_generate_length=15, return_type="new_text"
-        )
+        b = model(text, use_cache=True, max_generate_length=15, return_type="new_text")
         logger.info(b)
