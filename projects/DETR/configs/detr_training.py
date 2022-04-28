@@ -28,12 +28,11 @@ train.eval_period = 5
 train.log_period = 1
 
 # *TODO: refine it
-iou_types = tuple(k for k in ('segm', 'bbox') if k in postprocessors.keys())
-coco_detection = CocoDetection(img_folder="/dataset/mscoco_2017/val2017", 
+coco_detection = LazyCall(CocoDetection)(img_folder="/dataset/mscoco_2017/val2017", 
                                ann_file="/dataset/mscoco_2017/annotations/instances_val2017.json", 
                                return_masks=False, transforms=make_coco_transforms("val"))
 
-train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_gt=get_coco_api_from_dataset(coco_detection), iou_types=iou_types)
+train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detection)
 
 
 # Refine optimizer cfg for detr model

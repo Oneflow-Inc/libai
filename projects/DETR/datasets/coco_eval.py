@@ -18,8 +18,11 @@ import flowvision
 from libai.evaluation.evaluator import DatasetEvaluator
 from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
+from libai.config.configs.common.data.coco import make_coco_transforms
+from libai.data.datasets.coco import CocoDetection
 
 from configs.models.configs_detr import postprocessors
+
 
 def accuracy(output, target, topk=(1,)):
     maxk = min(max(topk), output.size()[1])
@@ -40,17 +43,18 @@ class CocoEvaluator(DatasetEvaluator):
     all of its :class:`DatasetEvaluator`.
     """
 
-    def __init__(self, coco_gt, iou_types):
+    def __init__(self, coco_detection):
         
-        coco_gt = copy.deepcopy(coco_gt)
-        self.coco_gt = coco_gt
-        
-        self.iou_types = iou_types
+        self.coco_gt = copy.deepcopy(get_coco_api_from_dataset(coco_detection))
+        self.iou_types = tuple(k for k in ('segm', 'bbox') if k in postprocessors.keys())
         
         self._predictions = []
         self.img_ids = []
+        self.coco_eval = {}
+        for iou_type in self.iou_types:
+            self.coco_eval[iou_type] = COCOeval(self.coco_gt, iouType=iou_type)
+        self.eval_imgs = {k: [] for k in self.iou_types}
         
-
     def reset(self):
         self._predictions = []
 
@@ -80,14 +84,14 @@ class CocoEvaluator(DatasetEvaluator):
 
         for iou_type in self.iou_types:
             results = self.prepare(predictions, iou_type)
-            import pdb
-            pdb.set_trace() 
+
             # suppress pycocotools prints
             with open(os.devnull, 'w') as devnull:
                 with contextlib.redirect_stdout(devnull):
                     coco_dt = COCO.loadRes(self.coco_gt, results) if results else COCO()
             coco_eval = self.coco_eval[iou_type]
-
+            import pdb
+            pdb.set_trace() 
             coco_eval.cocoDt = coco_dt
             coco_eval.params.imgIds = list(img_ids)
 
@@ -95,15 +99,15 @@ class CocoEvaluator(DatasetEvaluator):
 
             # self.eval_imgs[iou_type].append(eval_imgs)
         
-        pred_logits = outputs["prediction_scores"]
-        labels = inputs["labels"]
-        # measure accuracy
-        topk_acc = accuracy(pred_logits, labels, topk=self.topk)
-        num_correct_acc_topk = [acc * labels.size(0) / 100 for acc in topk_acc]
+        # pred_logits = outputs["prediction_scores"]
+        # labels = inputs["labels"]
+        # # measure accuracy
+        # topk_acc = accuracy(pred_logits, labels, topk=self.topk)
+        # num_correct_acc_topk = [acc * labels.size(0) / 100 for acc in topk_acc]
 
-        self._predictions.append(
-            {"num_correct_topk": num_correct_acc_topk, "num_samples": labels.size(0)}
-        )
+        # self._predictions.append(
+        #     {"num_correct_topk": num_correct_acc_topk, "num_samples": labels.size(0)}
+        # )
         
         
     def prepare(self, predictions, iou_type):
@@ -378,7 +382,7 @@ def inference_on_coco_dataset(
             if flow.cuda.is_available():
                 dist.synchronize()
             total_compute_time += time.perf_counter() - start_compute_time
-            
+
             start_eval_time = time.perf_counter()
             if dist.is_main_process():
                 evaluator.process(valid_data, valid_outputs)
