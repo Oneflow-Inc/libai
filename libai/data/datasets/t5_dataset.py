@@ -13,27 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""dataset for t5."""
+"""T5 Style dataset."""
 
 import collections
-import math
 
 import numpy as np
 import oneflow as flow
 
-from libai.data.data_utils import SentenceIndexedDataset
 from libai.data.structures import DistTensorData, Instance
 
-MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
-
-
-def is_start_piece(piece):
-    """Check if the current word piece is the starting piece (BERT)."""
-    # When a word has been split into
-    # WordPieces, the first token does not have any marker and any subsequence
-    # tokens are prefixed with ##. So whenever we see the ## token, we
-    # append it to the previous set of word indexes.
-    return not piece.startswith("##")
+from ..data_utils import create_masked_lm_predictions, get_samples_mapping
 
 
 class T5Dataset(flow.utils.data.Dataset):
@@ -41,6 +30,7 @@ class T5Dataset(flow.utils.data.Dataset):
     Dataset containing sentences for T5 training.
 
     Args:
+        name: Name of dataset.
         tokenizer: Tokenizer to use.
         data_prefix (str): Path to the training dataset.
         indexed_dataset: Indexed dataset to use.
@@ -59,321 +49,296 @@ class T5Dataset(flow.utils.data.Dataset):
 
     def __init__(
         self,
+        name,
         tokenizer,
-        data_prefix,
         indexed_dataset,
-        max_seq_length=512,
-        max_seq_length_dec=128,
-        mask_lm_prob=0.15,
-        max_preds_per_seq=None,
-        short_seq_prob=0.0,
-        seed=1234,
+        data_prefix,
+        num_epochs,
+        max_num_samples,
+        masked_lm_prob,
+        max_seq_length,
+        max_seq_length_dec,
+        short_seq_prob,
+        seed,
     ):
+        # Params to store.
+        self.name = name
         self.seed = seed
-        self.mask_lm_prob = mask_lm_prob
+        self.masked_lm_prob = masked_lm_prob
         self.max_seq_length = max_seq_length
         self.max_seq_length_dec = max_seq_length_dec
-        self.short_seq_prob = short_seq_prob
-        if max_preds_per_seq is None:
-            max_preds_per_seq = math.ceil(max_seq_length * mask_lm_prob / 10) * 10
-        self.max_preds_per_seq = max_preds_per_seq
 
-        self.dataset = SentenceIndexedDataset(
+        # Dataset.
+        self.indexed_dataset = indexed_dataset
+
+        # Build the samples mapping.
+        self.samples_mapping = get_samples_mapping(
+            self.indexed_dataset,
             data_prefix,
-            indexed_dataset,
-            max_seq_length=self.max_seq_length - 2,
-            short_seq_prob=self.short_seq_prob,
+            num_epochs,
+            max_num_samples,
+            self.max_seq_length - 2,  # account for added tokens
+            short_seq_prob,
+            self.seed,
+            self.name,
+            False,
         )
 
-        self.tokenizer = tokenizer
-        self.bos_id = tokenizer.bos_token_id
-        self.eos_id = tokenizer.eos_token_id
-        self.pad_id = tokenizer.pad_token_id
-        self.cls_id = tokenizer.cls_token_id
-        self.sep_id = tokenizer.sep_token_id
-        self.special_tokens = tokenizer.additional_special_tokens_ids
+        # Vocab stuff.
+        tokenizer.add_tokens(
+            [tokenizer._bos_token, tokenizer._eos_token, *tokenizer._additional_special_tokens]
+        )
+        vocab = tokenizer.get_vocab()
+        inv_vocab = {v: k for k, v in vocab.items()}
+        self.vocab_id_list = list(inv_vocab.keys())
+        self.vocab_id_to_token_dict = inv_vocab
+        self.cls_id = vocab[tokenizer._cls_token]
+        self.sep_id = vocab[tokenizer._sep_token]
+        self.mask_id = vocab[tokenizer._mask_token]
+        self.pad_id = vocab[tokenizer._pad_token]
+        self.bos_id = vocab[tokenizer._bos_token]
+        self.eos_id = vocab[tokenizer._eos_token]
+        self.sentinel_tokens = [vocab[x] for x in tokenizer._additional_special_tokens]
+        assert len(self.sentinel_tokens) > 0
 
     def __len__(self):
-        return len(self.dataset)
+        return self.samples_mapping.shape[0]
 
     def __getitem__(self, idx):
-        sents = self.dataset[idx]
 
+        start_index, end_index, seq_length = self.samples_mapping[idx]
+        sample = []
+        for index in range(start_index, end_index):
+            sample.append(self.indexed_dataset[index])
         # Note that this rng state should be numpy and not python since
         # python randint is inclusive whereas the numpy one is exclusive.
         np_rng = np.random.RandomState(seed=(self.seed + idx))
-
-        tokens = [token for sent in sents for token in sent]
-        tokens = tokens[: self.max_seq_length - 2]
-
-        (
-            tokens,
-            masked_positions,
-            masked_labels,
-            masked_spans,
-        ) = self.create_masked_lm_predictions(tokens, np_rng, geometric_dist=True, max_ngrams=10)
-
-        (
-            encoder_input,
-            decoder_input,
-            lm_labels,
-            encoder_padding_mask,
-            decoder_padding_mask,
-            encoder_decoder_padding_mask,
-            loss_mask,
-        ) = self.pad_and_convert_to_numpy(tokens, masked_spans)
-
-        sample = Instance(
-            encoder_input_ids=DistTensorData(encoder_input),
-            decoder_input_ids=DistTensorData(decoder_input),
-            encoder_attn_mask=DistTensorData(encoder_padding_mask),
-            decoder_attn_mask=DistTensorData(decoder_padding_mask),
-            encoder_decoder_attn_mask=DistTensorData(encoder_decoder_padding_mask),
-            lm_labels=DistTensorData(lm_labels, placement_idx=-1),
-            loss_mask=DistTensorData(loss_mask, placement_idx=-1),
+        return build_training_sample(
+            sample,
+            seq_length,
+            self.max_seq_length,  # needed for padding
+            self.max_seq_length_dec,
+            self.vocab_id_list,
+            self.vocab_id_to_token_dict,
+            self.cls_id,
+            self.sep_id,
+            self.mask_id,
+            self.pad_id,
+            self.masked_lm_prob,
+            np_rng,
+            self.bos_id,
+            self.eos_id,
+            self.sentinel_tokens,
         )
-        return sample
 
-    def create_masked_lm_predictions(
-        self,
+
+def build_training_sample(
+    sample,
+    target_seq_length,
+    max_seq_length,
+    max_seq_length_dec,
+    vocab_id_list,
+    vocab_id_to_token_dict,
+    cls_id,
+    sep_id,
+    mask_id,
+    pad_id,
+    masked_lm_prob,
+    np_rng,
+    bos_id=None,
+    eos_id=None,
+    sentinel_tokens=None,
+):
+    """Build training sample.
+
+    Arguments:
+        sample: A list of sentences in which each sentence is a list token ids.
+        target_seq_length: Desired sequence length.
+        max_seq_length: Maximum length of the sequence. All values are padded to
+            this length.
+        vocab_id_list: List of vocabulary ids. Used to pick a random id.
+        vocab_id_to_token_dict: A dictionary from vocab ids to text tokens.
+        cls_id: Start of example id.
+        sep_id: Separator id.
+        mask_id: Mask token id.
+        pad_id: Padding token id.
+        masked_lm_prob: Probability to mask tokens.
+        np_rng: Random number genenrator. Note that this rng state should be
+              numpy and not python since python randint is inclusive for
+              the opper bound whereas the numpy one is exclusive.
+        bos_id: start of decoder example id
+        eos_id: end of generation id
+        sentinel_tokens: unique value to be substituted for every replaced span
+    """
+
+    assert target_seq_length <= max_seq_length
+
+    # flatten sentences into one list
+    tokens = [token for sentence in sample for token in sentence]
+
+    # Truncate to `target_sequence_length`.
+    max_num_tokens = target_seq_length
+    len(tokens) > max_num_tokens
+    tokens = tokens[:max_num_tokens]
+
+    # Masking.
+    max_predictions_per_seq = masked_lm_prob * max_num_tokens
+    (tokens, masked_positions, masked_labels, _, masked_spans) = create_masked_lm_predictions(
         tokens,
+        vocab_id_list,
+        vocab_id_to_token_dict,
+        masked_lm_prob,
+        cls_id,
+        sep_id,
+        mask_id,
+        max_predictions_per_seq,
         np_rng,
-        max_ngrams=3,
-        do_whole_word_mask=True,
-        favor_longer_ngram=False,
-        geometric_dist=False,
-    ):
-        """Creates the predictions for the masked LM objective.
-        Note: Tokens here are vocab ids and not text tokens."""
+        max_ngrams=10,
+        geometric_dist=True,
+        masking_style="t5",
+    )
 
-        cand_indexes = []
-        token_boundary = [0] * len(tokens)
-        new_tokens = []
+    # Padding.
+    (
+        tokens_enc,
+        tokens_dec_in,
+        labels,
+        enc_mask,
+        dec_mask,
+        enc_dec_mask,
+        loss_mask,
+    ) = pad_and_convert_to_numpy(
+        tokens,
+        masked_positions,
+        masked_labels,
+        pad_id,
+        max_seq_length,
+        max_seq_length_dec,
+        masked_spans,
+        bos_id,
+        eos_id,
+        sentinel_tokens,
+    )
 
-        for (i, token) in enumerate(tokens):
-            new_tokens.append(token % len(self.tokenizer))
+    sample = Instance(
+        encoder_input_ids=DistTensorData(tokens_enc),
+        decoder_input_ids=DistTensorData(tokens_dec_in),
+        encoder_attn_mask=DistTensorData(enc_mask),
+        decoder_attn_mask=DistTensorData(dec_mask),
+        encoder_decoder_attn_mask=DistTensorData(enc_dec_mask),
+        lm_labels=DistTensorData(labels, placement_idx=-1),
+        loss_mask=DistTensorData(loss_mask, placement_idx=-1),
+    )
+    return sample
 
-            if token == self.cls_id or token == self.sep_id:
-                token_boundary[i] = 1
-                continue
-            # Whole Word Masking means that if we mask all of the wordpieces
-            # corresponding to an original word.
-            #
-            # Note that Whole Word Masking does *not* change the training code
-            # at all -- we still predict each WordPiece independently, softmaxed
-            # over the entire vocabulary.
-            if (
-                do_whole_word_mask
-                and len(cand_indexes) >= 1
-                and not is_start_piece(self.tokenizer._convert_id_to_token(token))
-            ):
-                cand_indexes[-1].append(i)
-            else:
-                cand_indexes.append([i])
-                if is_start_piece(self.tokenizer._convert_id_to_token(token)):
-                    token_boundary[i] = 1
 
-        tokens = new_tokens
+def pad_and_convert_to_numpy(
+    tokens,
+    masked_positions,
+    masked_labels,
+    pad_id,
+    max_seq_length,
+    max_seq_length_dec,
+    masked_spans=None,
+    bos_id=None,
+    eos_id=None,
+    sentinel_tokens=None,
+):
+    """Pad sequences and convert them to numpy."""
 
-        masked_positions = []
-        masked_labels = []
-        masked_spans = []
+    sentinel_tokens = collections.deque(sentinel_tokens)
+    t5_input = []
+    (t5_decoder_in, t5_decoder_out) = ([bos_id], [])
+    (start_index, end_index) = (0, None)
+    for span in masked_spans:
+        flag = sentinel_tokens.popleft()
 
-        output_tokens = list(tokens)
+        # Append the same tokens in decoder input and output
+        t5_decoder_in.append(flag)
+        t5_decoder_in.extend(span.label)
+        t5_decoder_out.append(flag)
+        t5_decoder_out.extend(span.label)
 
-        if self.mask_lm_prob == 0:
-            return output_tokens, masked_positions, masked_labels, masked_spans
+        end_index = span.index[0]
+        t5_input.extend(tokens[start_index:end_index])
+        t5_input.append(flag)
 
-        cand_indexes = []
-        for (i, token) in enumerate(tokens):
-            if do_whole_word_mask and len(cand_indexes) >= 1 and token_boundary[i] == 0:
-                cand_indexes[-1].append(i)
-            else:
-                cand_indexes.append([i])
+        # the next start index is the token after the last span token
+        start_index = span.index[-1] + 1
 
-        num_to_predict = min(
-            self.max_preds_per_seq, max(1, int(round(len(tokens) * self.mask_lm_prob)))
-        )
+    # Add <eos> token to the t5_decoder_out
+    t5_decoder_out.append(eos_id)
 
-        ngrams = np.arange(1, max_ngrams + 1, dtype=np.int64)
-        if not geometric_dist:
-            # By default, we set the probilities to favor shorter ngram sequences.
-            pvals = 1.0 / np.arange(1, max_ngrams + 1)
-            pvals /= pvals.sum(keepdims=True)
-            if favor_longer_ngram:
-                pvals = pvals[::-1]
+    # Add the remaining tokens to the t5 input
+    t5_input.extend(tokens[start_index:])
 
-        ngram_indexes = []
-        for idx in range(len(cand_indexes)):
-            ngram_index = []
-            for n in ngrams:
-                ngram_index.append(cand_indexes[idx : idx + n])
-            ngram_indexes.append(ngram_index)
+    # assert (len(t5_input) - len(masked_spans)) + \
+    #        (len(t5_decoder_in) - (len(masked_spans) + 1)) == len(tokens)
 
-        np_rng.shuffle(ngram_indexes)
+    # Some checks.
 
-        masked_lms = []
-        covered_indexes = set()
-        for cand_index_set in ngram_indexes:
-            if len(masked_lms) >= num_to_predict:
-                break
-            if not cand_index_set:
-                continue
-            # Skip current piece if they are covered in lm masking or previous ngrams.
-            for index_set in cand_index_set[0]:
-                for index in index_set:
-                    if index in covered_indexes:
-                        continue
+    # Encoder-side padding mask.
+    num_tokens = len(t5_input)
+    padding_length = max_seq_length - num_tokens
+    assert padding_length >= 0
+    assert len(masked_positions) == len(masked_labels)
 
-            if not geometric_dist:
-                n = np_rng.choice(
-                    ngrams[: len(cand_index_set)],
-                    p=pvals[: len(cand_index_set)]
-                    / pvals[: len(cand_index_set)].sum(keepdims=True),
-                )
-            else:
-                # Sampling "n" from the geometric distribution and clipping it to
-                # the max_ngrams. Using p=0.2 default from the SpanBERT paper
-                # https://arxiv.org/pdf/1907.10529.pdf (Sec 3.1)
-                n = min(np_rng.geometric(0.2), max_ngrams)
+    # Tokens..
+    filler = [pad_id] * padding_length
+    tokens_enc = np.array(t5_input + filler, dtype=np.int64)
 
-            index_set = sum(cand_index_set[n - 1], [])
-            n -= 1
-            # Repeatedly looking for a candidate that does not exceed the
-            # maximum number of predictions by trying shorter ngrams.
-            while len(masked_lms) + len(index_set) > num_to_predict:
-                if n == 0:
-                    break
-                index_set = sum(cand_index_set[n - 1], [])
-                n -= 1
-            # If adding a whole-word mask would exceed the maximum number of
-            # predictions, then just skip this candidate.
-            if len(masked_lms) + len(index_set) > num_to_predict:
-                continue
-            is_any_index_covered = False
-            for index in index_set:
-                if index in covered_indexes:
-                    is_any_index_covered = True
-                    break
-            if is_any_index_covered:
-                continue
-            for index in index_set:
-                covered_indexes.add(index)
-                masked_lms.append(MaskedLmInstance(index=index, label=tokens[index]))
+    # Decoder-side padding mask.
+    num_tokens_dec = len(t5_decoder_in)
+    padding_length_dec = max_seq_length_dec - num_tokens_dec
+    assert padding_length_dec >= 0
+    filler_dec = [pad_id] * padding_length_dec
+    tokens_dec_in = np.array(t5_decoder_in + filler_dec, dtype=np.int64)
 
-            masked_spans.append(
-                MaskedLmInstance(index=index_set, label=[tokens[index] for index in index_set])
-            )
+    # Create attention masks
+    enc_mask = make_attention_mask(tokens_enc, tokens_enc)
+    enc_dec_mask = make_attention_mask(tokens_dec_in, tokens_enc)
+    dec_mask = make_attention_mask(tokens_dec_in, tokens_dec_in)
+    dec_mask = dec_mask * make_history_mask(tokens_dec_in)
 
-        masked_lms = sorted(masked_lms, key=lambda x: x.index)
-        masked_spans = sorted(masked_spans, key=lambda x: x.index[0])
+    # Labels mask.
+    labels = t5_decoder_out + ([-1] * padding_length_dec)
+    labels = np.array(labels, dtype=np.int64)
 
-        for p in masked_lms:
-            masked_positions.append(p.index)
-            masked_labels.append(p.label)
+    # Loss mask
+    loss_mask = ([1] * num_tokens_dec) + ([0] * padding_length_dec)
+    loss_mask = np.array(loss_mask, dtype=np.int64)
 
-        return output_tokens, masked_positions, masked_labels, masked_spans
+    tokens_enc = flow.tensor(tokens_enc, dtype=flow.long)
+    tokens_dec_in = flow.tensor(tokens_dec_in, dtype=flow.long)
+    labels = flow.tensor(labels, dtype=flow.long)
+    enc_mask = flow.tensor(enc_mask, dtype=flow.long)
+    dec_mask = flow.tensor(dec_mask, dtype=flow.long)
+    enc_dec_mask = flow.tensor(enc_dec_mask, dtype=flow.long)
+    loss_mask = flow.tensor(loss_mask, dtype=flow.long)
 
-    def pad_and_convert_to_numpy(self, tokens, masked_spans):
-        """Pad sequences and convert them to numpy array."""
+    return tokens_enc, tokens_dec_in, labels, enc_mask, dec_mask, enc_dec_mask, loss_mask
 
-        special_tokens = collections.deque(self.special_tokens)
-        encoder_input, decoder_input, decoder_output = [], [], []
 
-        decoder_input.append(self.bos_id)
-        start_index, end_index = 0, None
+def make_attention_mask(source_block, target_block):
+    """
+    Returns a 2-dimensional (2-D) attention mask
+    :param source_block: 1-D array
+    :param target_block: 1-D array
+    """
+    mask = (target_block[None, :] >= 1) * (source_block[:, None] >= 1)
+    mask = mask.astype(np.int64)
+    # (source_length, target_length)
+    return mask
 
-        for span in masked_spans:
-            flag = special_tokens.popleft()
 
-            decoder_input.append(flag)
-            decoder_input.extend(span.label)
-            decoder_output.append(flag)
-            decoder_output.extend(span.label)
-
-            end_index = span.index[0]
-            encoder_input.extend(tokens[start_index:end_index])
-            encoder_input.append(flag)
-
-            start_index = span.index[-1] + 1
-
-        decoder_output.append(self.eos_id)
-        encoder_input.extend(tokens[start_index:])
-
-        # check
-        num_tokens = len(encoder_input)
-        num_pad = self.max_seq_length - num_tokens
-        assert num_pad >= 0
-
-        filler = [self.pad_id] * num_pad
-        encoder_input = np.array(encoder_input + filler, dtype=np.int64)
-
-        num_tokens_dec = len(decoder_input)
-        num_pad_dec = self.max_seq_length_dec - num_tokens_dec
-        assert num_pad_dec >= 0
-
-        # tokens and token types
-        filler_dec = [self.pad_id] * num_pad_dec
-        decoder_input = np.array(decoder_input + filler_dec, dtype=np.int64)
-
-        # Create attention masks
-        encoder_padding_mask = self.make_attention_mask(encoder_input, encoder_input)
-        decoder_padding_mask = self.make_attention_mask(decoder_input, decoder_input)
-        encoder_decoder_padding_mask = self.make_attention_mask(decoder_input, encoder_input)
-        decoder_padding_mask = decoder_padding_mask * self.make_history_mask(decoder_input)
-
-        # Labels mask.
-        labels = decoder_output + ([-1] * num_pad_dec)
-        labels = np.array(labels, dtype=np.int64)
-
-        # Loss mask
-        loss_mask = ([1] * num_tokens_dec) + ([0] * num_pad_dec)
-        loss_mask = np.array(loss_mask, dtype=np.int64)
-
-        encoder_input = flow.tensor(encoder_input, dtype=flow.long)
-        decoder_input = flow.tensor(decoder_input, dtype=flow.long)
-        labels = flow.tensor(labels, dtype=flow.long)
-        encoder_padding_mask = flow.tensor(encoder_padding_mask, dtype=flow.long)
-        decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.long)
-        encoder_decoder_padding_mask = flow.tensor(encoder_decoder_padding_mask, dtype=flow.long)
-        loss_mask = flow.tensor(loss_mask, dtype=flow.long)
-
-        return (
-            encoder_input,
-            decoder_input,
-            labels,
-            encoder_padding_mask,
-            decoder_padding_mask,
-            encoder_decoder_padding_mask,
-            loss_mask,
-        )
-
-    def make_attention_mask(self, source_block, target_block):
-        """
-        Returns a 2-dimensional (2-D) attention mask
-        :param source_block: 1-D array
-        :param target_block: 1-D array
-        """
-        mask = (target_block[None, :] >= 1) * (source_block[:, None] >= 1)
-        mask = mask.astype(np.int64)
-        # (source_length, target_length)
-        return mask
-
-    def make_history_mask(self, block):
-        length = block.shape[0]
-        arange = np.arange(length)
-        history_mask = (
-            arange[
-                None,
-            ]
-            <= arange[:, None]
-        )
-        history_mask = history_mask.astype(np.int64)
-        return history_mask
-
-    @property
-    def supports_prefetch(self):
-        return self.dataset.supports_prefetch
-
-    def prefetch(self, indices):
-        self.dataset.prefetch(indices)
+def make_history_mask(block):
+    length = block.shape[0]
+    arange = np.arange(length)
+    history_mask = (
+        arange[
+            None,
+        ]
+        <= arange[:, None]
+    )
+    history_mask = history_mask.astype(np.int64)
+    return history_mask

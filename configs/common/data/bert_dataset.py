@@ -22,12 +22,14 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
     dataset=[
         LazyCall(BertDataset)(
+            name="bert",
             data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
             indexed_dataset=LazyCall(get_indexed_dataset)(
                 data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
                 data_impl="mmap",
                 skip_warmup=False,
             ),
+            max_num_samples=None,
             max_seq_length=512,
             mask_lm_prob=0.15,
             short_seq_prob=0.1,

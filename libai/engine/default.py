@@ -114,6 +114,8 @@ def _check_batch_size(cfg):
         )
     else:
         raise ValueError("train_micro_batch_size and global_batch_size must be set either")
+    # Set total training samples.
+    cfg.train.samples = cfg.train.train_iter * cfg.train.global_batch_size
 
 
 def _compile_dependencies():
@@ -597,6 +599,11 @@ class DefaultTrainer(TrainerBase):
             cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
+
+        if OmegaConf.is_list(cfg.dataloader.train.dataset):
+            for dataset in cfg.dataloader.train.dataset:
+                if try_get_key(dataset, "max_num_samples", default=-1) != -1:
+                    dataset.max_num_samples = cfg.train.samples
 
         # Set tokenizer for each dataset
         if tokenizer:
