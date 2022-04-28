@@ -13,12 +13,13 @@ from typing import Callable, List, Union
 from collections import OrderedDict, abc
 
 import oneflow as flow
+import flowvision
 
 from libai.evaluation.evaluator import DatasetEvaluator
 from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
 
-from modeling.post_process import PostProcess
+from configs.models.configs_detr import postprocessors
 
 def accuracy(output, target, topk=(1,)):
     maxk = min(max(topk), output.size()[1])
@@ -39,9 +40,16 @@ class CocoEvaluator(DatasetEvaluator):
     all of its :class:`DatasetEvaluator`.
     """
 
-    def __init__(self, topk=(1, 5)):
-        self.topk = topk
+    def __init__(self, coco_gt, iou_types):
+        
+        coco_gt = copy.deepcopy(coco_gt)
+        self.coco_gt = coco_gt
+        
+        self.iou_types = iou_types
+        
         self._predictions = []
+        self.img_ids = []
+        
 
     def reset(self):
         self._predictions = []
@@ -61,12 +69,34 @@ class CocoEvaluator(DatasetEvaluator):
             inputs (dict): the inputs that's used to call the model.
             outputs (dict): the return dict of `model(**inputs)`
         """
-        import pdb
-        pdb.set_trace()
+
+        orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
+        # * need a better way to call it 
+        results = postprocessors['bbox'](outputs, orig_target_sizes)
+        predictions = {target['image_id'].item(): output for target, output in zip(inputs["labels"], results)}
+        
+        img_ids = list(np.unique(list(predictions.keys())))
+        self.img_ids.extend(img_ids)
+
+        for iou_type in self.iou_types:
+            results = self.prepare(predictions, iou_type)
+            import pdb
+            pdb.set_trace() 
+            # suppress pycocotools prints
+            with open(os.devnull, 'w') as devnull:
+                with contextlib.redirect_stdout(devnull):
+                    coco_dt = COCO.loadRes(self.coco_gt, results) if results else COCO()
+            coco_eval = self.coco_eval[iou_type]
+
+            coco_eval.cocoDt = coco_dt
+            coco_eval.params.imgIds = list(img_ids)
+
+            # img_ids, eval_imgs = evaluate(coco_eval)
+
+            # self.eval_imgs[iou_type].append(eval_imgs)
         
         pred_logits = outputs["prediction_scores"]
         labels = inputs["labels"]
-
         # measure accuracy
         topk_acc = accuracy(pred_logits, labels, topk=self.topk)
         num_correct_acc_topk = [acc * labels.size(0) / 100 for acc in topk_acc]
@@ -74,6 +104,102 @@ class CocoEvaluator(DatasetEvaluator):
         self._predictions.append(
             {"num_correct_topk": num_correct_acc_topk, "num_samples": labels.size(0)}
         )
+        
+        
+    def prepare(self, predictions, iou_type):
+        if iou_type == "bbox":
+            return self.prepare_for_coco_detection(predictions)
+        elif iou_type == "segm":
+            return self.prepare_for_coco_segmentation(predictions)
+        elif iou_type == "keypoints":
+            return self.prepare_for_coco_keypoint(predictions)
+        else:
+            raise ValueError("Unknown iou type {}".format(iou_type))
+
+    def prepare_for_coco_detection(self, predictions):
+        coco_results = []
+        for original_id, prediction in predictions.items():
+            if len(prediction) == 0:
+                continue
+
+            boxes = prediction["boxes"]
+            boxes = convert_to_xywh(boxes).tolist()
+            scores = prediction["scores"].tolist()
+            labels = prediction["labels"].tolist()
+
+            coco_results.extend(
+                [
+                    {
+                        "image_id": original_id,
+                        "category_id": labels[k],
+                        "bbox": box,
+                        "score": scores[k],
+                    }
+                    for k, box in enumerate(boxes)
+                ]
+            )
+        return coco_results
+
+    def prepare_for_coco_segmentation(self, predictions):
+        coco_results = []
+        for original_id, prediction in predictions.items():
+            if len(prediction) == 0:
+                continue
+
+            scores = prediction["scores"]
+            labels = prediction["labels"]
+            masks = prediction["masks"]
+
+            masks = masks > 0.5
+
+            scores = prediction["scores"].tolist()
+            labels = prediction["labels"].tolist()
+
+            rles = [
+                mask_util.encode(np.array(mask[0, :, :, np.newaxis], dtype=np.uint8, order="F"))[0]
+                for mask in masks
+            ]
+            for rle in rles:
+                rle["counts"] = rle["counts"].decode("utf-8")
+
+            coco_results.extend(
+                [
+                    {
+                        "image_id": original_id,
+                        "category_id": labels[k],
+                        "segmentation": rle,
+                        "score": scores[k],
+                    }
+                    for k, rle in enumerate(rles)
+                ]
+            )
+        return coco_results
+
+    def prepare_for_coco_keypoint(self, predictions):
+        coco_results = []
+        for original_id, prediction in predictions.items():
+            if len(prediction) == 0:
+                continue
+
+            boxes = prediction["boxes"]
+            boxes = convert_to_xywh(boxes).tolist()
+            scores = prediction["scores"].tolist()
+            labels = prediction["labels"].tolist()
+            keypoints = prediction["keypoints"]
+            keypoints = keypoints.flatten(start_dim=1).tolist()
+
+            coco_results.extend(
+                [
+                    {
+                        "image_id": original_id,
+                        "category_id": labels[k],
+                        'keypoints': keypoint,
+                        "score": scores[k],
+                    }
+                    for k, keypoint in enumerate(keypoints)
+                ]
+            )
+        return coco_results
 
     def evaluate(self):
         """
@@ -240,8 +366,6 @@ def inference_on_coco_dataset(
                 valid_data["labels"].append(label_dict)
             valid_data["labels"] = tuple(valid_data["labels"][:valid_sample])
                 
-            import pdb
-            pdb.set_trace()            
             valid_outputs = {}
             # TODO: impl aux_outputs
             for key, value in outputs.items():
@@ -254,7 +378,7 @@ def inference_on_coco_dataset(
             if flow.cuda.is_available():
                 dist.synchronize()
             total_compute_time += time.perf_counter() - start_compute_time
-
+            
             start_eval_time = time.perf_counter()
             if dist.is_main_process():
                 evaluator.process(valid_data, valid_outputs)
@@ -330,3 +454,19 @@ def inference_context(model):
         model.model.train(training_mode)
     else:
         model.train(training_mode)
+        
+        
+def get_coco_api_from_dataset(dataset):
+    for _ in range(10):
+        # if isinstance(dataset, torchvision.datasets.CocoDetection):
+        #     break
+        if isinstance(dataset, flow.utils.data.Subset):
+            dataset = dataset.dataset
+    if isinstance(dataset, flowvision.datasets.CocoDetection):
+        return dataset.coco
+    
+def convert_to_xywh(boxes):
+    # xmin, ymin, xmax, ymax = boxes.unbind(1)
+    xmin, ymin, xmax, ymax = boxes.split(1, dim=1)
+    xmin, ymin, xmax, ymax = xmin.squeeze(1), ymin.squeeze(1), xmax.squeeze(1), ymax.squeeze(1)    
+    return flow.stack((xmin, ymin, xmax - xmin, ymax - ymin), dim=1)

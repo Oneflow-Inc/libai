@@ -1,7 +1,9 @@
 from libai.config import get_config, LazyCall
-
+from libai.data.datasets.coco import CocoDetection
 from .models.configs_detr import model, postprocessors
-from ..datasets.coco_eval import CocoEvaluator
+from ..datasets.coco_eval import CocoEvaluator, get_coco_api_from_dataset
+from libai.config.configs.common.data.coco import make_coco_transforms
+
 
 dataloader = get_config("common/data/coco.py").dataloader
 train = get_config("common/train.py").train
@@ -25,7 +27,14 @@ train.warmup_ratio = 40 / 300
 train.eval_period = 5
 train.log_period = 1
 
-train.evaluation.evaluator = LazyCall(CocoEvaluator)(topk=(1, 5))
+# *TODO: refine it
+iou_types = tuple(k for k in ('segm', 'bbox') if k in postprocessors.keys())
+coco_detection = CocoDetection(img_folder="/dataset/mscoco_2017/val2017", 
+                               ann_file="/dataset/mscoco_2017/annotations/instances_val2017.json", 
+                               return_masks=False, transforms=make_coco_transforms("val"))
+
+train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_gt=get_coco_api_from_dataset(coco_detection), iou_types=iou_types)
+
 
 # Refine optimizer cfg for detr model
 base_lr = 1.5e-4
