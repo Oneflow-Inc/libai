@@ -23,7 +23,7 @@ model.cfg.num_attention_heads = 40
 model.cfg.hidden_size = 2560
 model.cfg.hidden_layers = 48
 
-train.train_micro_batch_size = 6
+train.train_micro_batch_size = 16
 train.dist.pipeline_parallel_size = 4
 # encoder_layers + decoder_layers
 train.dist.pipeline_num_layers = model.cfg.hidden_layers
@@ -33,7 +33,9 @@ train.zero_optimization.enabled = True
 train.zero_optimization.stage = 1
 train.amp.enabled = True
 train.activation_checkpoint.enabled = False
+train.train_iter = 200
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
+train.evaluation.eval_iter = 1000
 
 train.output_dir = "output/bert_3.9B_output"

@@ -15,4 +15,4 @@ set -x -e
 # salloc --nodes=1 --gres=gpu:8 --cpus-per-gpu=20 -t 24:00:00
 CMD="sh tools/train.sh tools/train_net.py configs/bert_3.9B_pp_pretrain.py 8"
 # clear; srun --nodes=1 --gres=gpu:8 --ntasks-per-node=8 —-jobid=151810 bash -c 'python $CMD'
-clear; srun -N 1 --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=20 -o %x-%j.log $CMD
+clear; srun  --jobid=153421 -N 1 --gres=gpu:8 --ntasks-per-node=1 --cpus-per-task=160 -o %x-%j.log $CMD

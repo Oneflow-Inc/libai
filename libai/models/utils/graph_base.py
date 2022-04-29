@@ -80,7 +80,7 @@ class GraphBase(nn.Graph):
         # if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
 
         # Enable compute_stream by default.
-        flow.boxing.nccl.enable_use_compute_stream(True)
+        flow.boxing.nccl.enable_use_compute_stream(False)
 
     def build(self, **kwargs):
         if self.is_train:
