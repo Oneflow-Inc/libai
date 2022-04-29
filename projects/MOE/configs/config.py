@@ -6,7 +6,6 @@ from libai.config import LazyCall
 from libai.data.build import build_image_test_loader, build_image_train_loader
 from libai.moe.moe import MoE
 from projects.MOE.model.mlp import MLP
-from projects.MOE.utils import collate_fn
 from projects.MOE.dataset.dataset import CIFAR_Dataset
 
 train = get_config("common/train.py").train
@@ -31,8 +30,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
             transform=transform,
         ),
     ],
-    num_workers=4,
-    collate_fn = collate_fn,
+    num_workers=1,
 )
 
 dataloader.test = [
@@ -43,8 +41,7 @@ dataloader.test = [
             download=True,
             transform=transform,
         ),
-        num_workers=4,
-        collate_fn = collate_fn,
+        num_workers=1,
     ),
 ]
 

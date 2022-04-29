@@ -274,7 +274,7 @@ class MoE(nn.Module):
 
 
 
-    def forward(self, x, loss_coef=1e-2):
+    def forward(self, x, loss_coef=1e-2,**kargs):
         """Args:
         x: tensor shape [batch_size, input_size]
         train: a boolean scalar.
@@ -299,4 +299,4 @@ class MoE(nn.Module):
         # fix the 0 dim bug when a expert receive no input
         expert_outputs = [self.experts[i](expert_inputs[i]) for i in range(self.num_experts) if gates[i].shape[0] != 0]
         y = dispatcher.combine(expert_outputs)
-        return y, loss
+        return {"y":y, "loss":loss}
