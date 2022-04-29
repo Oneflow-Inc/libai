@@ -60,8 +60,6 @@ class TextGenerationPipeline(BasePipeline):
         **kwargs,
     ) -> dict:
         # tokenizer encoder
-        # inputs = self.tokenizer.tokenize(inputs)
-        # input_ids = self.tokenizer.convert_tokens_to_ids(inputs)
         encoder_ids = np.array(self.tokenizer.encode(inputs))
         encoder_padding_mask = self.make_attention_mask(encoder_ids, encoder_ids)
 

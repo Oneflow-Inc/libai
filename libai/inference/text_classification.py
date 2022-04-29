@@ -59,8 +59,6 @@ class TextClassificationPipeline(BasePipeline):
         **kwargs,
     ) -> dict:
         # tokenizer encoder
-        # inputs = self.tokenizer.tokenize(inputs)
-        # input_ids = self.tokenizer.convert_tokens_to_ids(inputs)
         input_ids = flow.tensor(np.array(self.tokenizer.encode(inputs)))
         padding_mask = flow.tensor(np.ones(input_ids.shape))
         # set batch size = 1
