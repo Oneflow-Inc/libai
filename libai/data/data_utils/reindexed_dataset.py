@@ -84,7 +84,7 @@ def get_samples_mapping(data_prefix, indexed_dataset, max_seq_length, short_seq_
 
 class SentenceIndexedDataset(flow.utils.data.Dataset):
     """This class is propused for building sample mapping index from `indexed_dataset` to
-    actural dataset.
+    actual dataset.
     It will combine as many consecutive sentences as possible in the same document without
     exceeding `max_seq_length`.
     When it does not reach maximum length, the pad will be filled later. All the sentences in it
@@ -177,7 +177,7 @@ def build_index_mappings(data_prefix, indexed_dataset, max_seq_length):
 
 class BlockIndexedDataset(flow.utils.data.Dataset):
     """This class is propused for building sample mapping index from `indexed_dataset`
-    to actural dataset.
+    to actual dataset.
     It will extract the sentence with the length of `max_seq_length` from the document.
     If it is less than the maximum length, it will be intercepted from the next document.
     Therefore, it always returns sentences with `max_seq_length`, but it may
