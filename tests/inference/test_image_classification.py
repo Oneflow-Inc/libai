@@ -39,11 +39,13 @@ class TestImageClassificationPipeline(flow.unittest.TestCase):
             get_data_from_cache(IMAGE_URL, cache_dir, md5=IMAGE_MD5)
         self.image_path = os.path.join(cache_dir, IMAGE_URL.split("/")[-1])
 
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_pipeline_parallel(self):
         self.pipeline = ImageClassificationPipeline("configs/vit_imagenet.py", 1, 1, 4)
         self.pipeline(self.image_path)
 
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_parallel(self):
         pass

@@ -26,6 +26,7 @@ class TestTextClassificationPipeline(flow.unittest.TestCase):
     def setUp(self) -> None:
         pass
 
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_parallel(self):
         pass

@@ -107,11 +107,3 @@ class ImageClassificationPipeline(BasePipeline):
                 "label": self.id2label[scores.argmax().item()],
                 "score": scores.max().item(),
             }
-
-
-if __name__ == "__main__":
-    for i in range(100):
-        model = ImageClassificationPipeline("configs/vit_imagenet.py", 1, 2, 1)
-        a = model("data_test/inference_test_data/ILSVRC2012_val_00000293.JPEG")
-        b = model("data_test/inference_test_data/ILSVRC2012_val_00000293.JPEG")
-        print(a, b)

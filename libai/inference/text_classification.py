@@ -119,13 +119,3 @@ class TextClassificationPipeline(BasePipeline):
                 "label": self.cfg.model.cfg.id2label[scores.argmax().item()],
                 "score": scores.max().item(),
             }
-
-
-if __name__ == "__main__":
-    texts = ["cat ", "you ", "dog ", "dragon ", "牛 ", "羊 "]
-    model = TextClassificationPipeline("configs/bert_large_pretrain.py")
-    for i in range(100):
-        text = list(np.random.randint(0, 5, 10))
-        text = "".join([texts[i] for i in text])
-        a = model(text)
-        print(a)

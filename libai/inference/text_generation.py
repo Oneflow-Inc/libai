@@ -138,23 +138,28 @@ class TextGenerationPipeline(BasePipeline):
                 encoder_decoder_attn_mask=DistTensorData(encoder_decoder_padding_mask),
             )
 
-            mdoel_input_dict = {
+            model_input_dict = {
                 "use_cache": use_cache,
             }
             for key, value in model_input.get_fields().items():
                 value.to_global()
-                mdoel_input_dict[key] = value.tensor
+                model_input_dict[key] = value.tensor
 
             # get_next_word
             # change it by yourself according to your needs
-            logits = self.model(**mdoel_input_dict)["prediction_scores"]
-            prob = logits[:, -1]
-            _, next_word = flow.max(prob, dim=1)
-            next_word = next_word.item()
+            logits = self.model(**model_input_dict)["prediction_scores"]
+            next_word = self.get_next_word(logits)
             decoder_ids = decoder_ids + [next_word]
             if next_word == self.tokenizer.eos_token_id:
                 break
         return decoder_ids
+
+    @classmethod
+    def get_next_word(self, logits):
+        prob = logits[:, -1]
+        _, next_word = flow.max(prob, dim=1)
+        next_word = next_word.item()
+        return next_word
 
     def forward(self, encoder_input_dict, use_cache=True, max_generate_length=10, **kwargs) -> dict:
         self.model.set_cache(encoder_states=None, past_key_values=None)
@@ -182,20 +187,3 @@ class TextGenerationPipeline(BasePipeline):
 
         records = {"generated_text": all_text}
         return records
-
-
-if __name__ == "__main__":
-    import logging
-
-    logger = logging.getLogger("libai." + __name__)
-    texts = ["cat ", "you ", "dog ", "dragon ", "牛 ", "羊 "]
-    model = TextGenerationPipeline("configs/t5_pp_pretrain.py", 1, 4, 1)
-    for i in range(100):
-        text = list(np.random.randint(0, 5, 10))
-        text = "".join([texts[i] for i in text])
-        logger.info("---------------------------not cache----------------------------")
-        a = model(text, use_cache=False, max_generate_length=15, return_type="new_text")
-        logger.info(a)
-        logger.info("---------------------------use cache----------------------------")
-        b = model(text, use_cache=True, max_generate_length=15, return_type="new_text")
-        logger.info(b)

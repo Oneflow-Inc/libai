@@ -38,7 +38,8 @@ class TestTextGenerationPipeline(flow.unittest.TestCase):
             # download tokenzier vocab on main process of each node
             get_data_from_cache(VOCAB_URL, cache_dir, md5=VOCAB_MD5)
 
-    # @flow.unittest.skip_unless_1n4d()
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
+    @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_parallel(self):
         self.pipeline = TextGenerationPipeline("configs/t5_pp_pretrain.py", 1, 4, 1)
 
@@ -54,7 +55,8 @@ class TestTextGenerationPipeline(flow.unittest.TestCase):
             if dist.is_main_process():
                 assert dict1["generated_text"] == dict2["generated_text"]
 
-    # @flow.unittest.skip_unless_1n4d()
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
+    @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_pipeline_parallel(self):
         self.pipeline = TextGenerationPipeline("configs/t5_pp_pretrain.py", 1, 1, 4)
 
@@ -70,7 +72,8 @@ class TestTextGenerationPipeline(flow.unittest.TestCase):
             if dist.is_main_process():
                 assert dict1["generated_text"] == dict2["generated_text"]
 
-    # @flow.unittest.skip_unless_1n4d()
+    @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
+    @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_pipeline_parallel(self):
         self.pipeline = TextGenerationPipeline("configs/t5_pp_pretrain.py", 1, 2, 2)
 
