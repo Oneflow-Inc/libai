@@ -49,7 +49,7 @@ dataloader.test = [
 ]
 
 model_cfg = dict(
-        expert=MLP,
+        expert=MLP(input_size=3072,output_size=10,hidden_size=256),
         input_size=3072,
         output_size=10,
         num_experts=10,
