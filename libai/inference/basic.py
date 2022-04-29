@@ -73,16 +73,13 @@ class BasePipeline(metaclass=ABCMeta):
 
     def update_cfg(
         self,
-        data_parallel=None,
-        tensor_parallel=None,
-        pipeline_parallel=None,
+        data_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=1,
     ):
-        if data_parallel is not None:
-            self.cfg.train.dist.data_parallel_size = data_parallel
-        if tensor_parallel is not None:
-            self.cfg.train.dist.tensor_parallel_size = tensor_parallel
-        if pipeline_parallel is not None:
-            self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
+        self.cfg.train.dist.data_parallel_size = data_parallel
+        self.cfg.train.dist.tensor_parallel_size = tensor_parallel
+        self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
         if self.cfg.train.dist.pipeline_parallel_size > 1:
             assert (
                 try_get_key(self.cfg.train.dist, "pipeline_num_layers") is not None

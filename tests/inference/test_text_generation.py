@@ -15,8 +15,8 @@
 
 import os
 import unittest
-import numpy as np
 
+import numpy as np
 import oneflow as flow
 import oneflow.unittest
 
@@ -24,10 +24,10 @@ from libai.inference.text_generation import TextGenerationPipeline
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 
-
 VOCAB_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt"  # noqa
 
 VOCAB_MD5 = "65ac8a72466e859cd3c6b279ed8e532a"
+
 
 class TestTextGenerationPipeline(flow.unittest.TestCase):
     def setUp(self) -> None:
