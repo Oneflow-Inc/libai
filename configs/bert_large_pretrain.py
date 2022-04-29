@@ -18,10 +18,14 @@ model.cfg.num_attention_heads = 16
 model.cfg.hidden_size = 768
 model.cfg.hidden_layers = 8
 
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
+
 train.train_micro_batch_size = 16
 
 train.amp.enabled = True
-train.activation_checkpoint.enabled = False
+
+for ds in dataloader.train.dataset:
+    ds.max_seq_length = model.cfg.max_position_embeddings
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 

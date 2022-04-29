@@ -30,15 +30,19 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
     dataset=[
         LazyCall(T5Dataset)(
+            name="t5",
             data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
             indexed_dataset=LazyCall(get_indexed_dataset)(
                 data_prefix="/workspace/data/libai_dataset/" "/loss_compara_content_sentence",
                 data_impl="mmap",
                 skip_warmup=False,
             ),
+            max_num_samples=None,
             max_seq_length=512,
-            mask_lm_prob=0.15,
+            max_seq_length_dec=128,
+            masked_lm_prob=0.15,
             short_seq_prob=0.1,
+            seed=1234,
         ),
     ],
     splits=[[949.0, 50.0, 1.0]],

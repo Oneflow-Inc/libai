@@ -602,8 +602,16 @@ class DefaultTrainer(TrainerBase):
 
         if OmegaConf.is_list(cfg.dataloader.train.dataset):
             for dataset in cfg.dataloader.train.dataset:
-                if try_get_key(dataset, "max_num_samples", default=-1) != -1:
+                if hasattr(dataset, "max_num_samples"):
                     dataset.max_num_samples = cfg.train.samples
+                if hasattr(dataset, "seed"):
+                    dataset.seed = cfg.train.seed
+        else:
+            dataset = cfg.dataloader.train.dataset
+            if hasattr(dataset, "max_num_samples"):
+                dataset.max_num_samples = cfg.train.samples
+            if hasattr(dataset, "seed"):
+                dataset.seed = cfg.train.seed
 
         # Set tokenizer for each dataset
         if tokenizer:

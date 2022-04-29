@@ -33,6 +33,7 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
             max_seq_length=512,
             mask_lm_prob=0.15,
             short_seq_prob=0.1,
+            seed=1234,
         ),
     ],
     splits=[[949.0, 50.0, 1.0]],

@@ -58,7 +58,7 @@ class GPT2Dataset(flow.utils.data.Dataset):
         )
 
     def __len__(self):
-        # -1 is due to data structure used to retieve the index:
+        # -1 is due to data structure used to retrieve the index:
         #    sample i --> [sample_idx[i], sample_idx[i+1])
         return self.sample_idx.shape[0] - 1
 
@@ -157,7 +157,7 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
                     num_samples_per_epoch + 1
                 ), "last epoch number of samples exceeded max value."
                 # If we have less than 80% of the samples for the last epoch,
-                # seperate out the epoch and treat it differently.
+                # separate out the epoch and treat it differently.
                 # Note: the 80% number is just based on common sense and can
                 # be adjusted if needed.
                 separate_last_epoch = last_epoch_num_samples < int(0.80 * num_samples_per_epoch)
@@ -199,12 +199,12 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
             #                               num_epochs, tokens_per_epoch)
             np.save(sample_idx_filename, sample_idx, allow_pickle=True)
             logger.info(
-                " > elasped time to build and save sample-idx mapping "
+                " > elapsed time to build and save sample-idx mapping "
                 "(seconds): {:4f}".format(time.time() - start_time)
             )
             # shuffle-idx.
             start_time = time.time()
-            # -1 is due to data structure used to retieve the index:
+            # -1 is due to data structure used to retrieve the index:
             #    sample i --> [sample_idx[i], sample_idx[i+1])
             if separate_last_epoch:
                 num_samples_ = num_samples_from_epochs_minus_one
@@ -243,7 +243,7 @@ def _num_tokens(documents, sizes):
 
 
 def _num_epochs(tokens_per_epoch, seq_length, num_samples):
-    """Based on number of samples and sequence lenght, calculate how many
+    """Based on number of samples and sequence length, calculate how many
     epochs will be needed."""
     num_epochs = 0
     total_tokens = 0
@@ -258,7 +258,7 @@ def _num_epochs(tokens_per_epoch, seq_length, num_samples):
 
 
 def _build_doc_idx(documents, num_epochs, np_rng, separate_last_epoch):
-    """Build an array with length = number-of-epochs * number-of-dcuments.
+    """Build an array with length = number-of-epochs * number-of-documents.
     Each index is mapped to a corresponding document."""
     if not separate_last_epoch or num_epochs == 1:
         doc_idx = np.mgrid[0:num_epochs, 0 : len(documents)][1]

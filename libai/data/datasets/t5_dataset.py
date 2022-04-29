@@ -53,7 +53,6 @@ class T5Dataset(flow.utils.data.Dataset):
         tokenizer,
         indexed_dataset,
         data_prefix,
-        num_epochs,
         max_num_samples,
         masked_lm_prob,
         max_seq_length,
@@ -75,7 +74,7 @@ class T5Dataset(flow.utils.data.Dataset):
         self.samples_mapping = get_samples_mapping(
             self.indexed_dataset,
             data_prefix,
-            num_epochs,
+            None,
             max_num_samples,
             self.max_seq_length - 2,  # account for added tokens
             short_seq_prob,
