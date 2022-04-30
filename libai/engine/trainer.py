@@ -297,13 +297,14 @@ class GraphTrainer(TrainerBase):
     A simple graph trainer for training and evaluating models in a static graph mode.
     """
 
-    def __init__(self, graph, data_loader):
+    def __init__(self, graph, data_loader, grad_acc_steps=1):
         super().__init__()
 
         graph.model.train()
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
+        self.grad_acc_steps = grad_acc_steps
 
     def run_step(self, get_batch: Callable):
         """

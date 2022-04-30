@@ -469,7 +469,6 @@ class BertForPreTraining(nn.Module):
                 on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
                 loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
         """
-
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 
@@ -481,6 +480,18 @@ class BertForPreTraining(nn.Module):
             lm_labels,
             loss_mask,
         )
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        dist_utils = dist.get_dist_util()
+
+        for module_block in model.modules():
+            if (
+                isinstance(module_block.origin, TransformerLayer)
+                and dist_utils.get_layer_stage_id(module_block.layer_idx)
+                != dist_utils.pipeline_parallel_size - 1
+            ):  # not last stage
+                module_block.config.activation_checkpointing = True
 
     @staticmethod
     def set_pipeline_stage_id(model):

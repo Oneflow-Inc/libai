@@ -106,10 +106,6 @@ class GraphBase(nn.Graph):
     def set_activation_checkpoint(self):
         if hasattr(type(self.model.origin), "set_activation_checkpoint"):
             type(self.model.origin).set_activation_checkpoint(self.model)
-        else:
-            for module_block in self.model.modules():
-                if isinstance(module_block.origin, TransformerLayer):
-                    module_block.config.activation_checkpointing = True
 
     def set_pipeline_stage_id(self):
         if hasattr(type(self.model.origin), "set_pipeline_stage_id"):
