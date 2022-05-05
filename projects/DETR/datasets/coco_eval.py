@@ -22,6 +22,7 @@ from libai.config.configs.common.data.coco import make_coco_transforms
 from libai.data.datasets.coco import CocoDetection
 
 from configs.models.configs_detr import postprocessors
+from utils.misc import all_gather
 
 
 def accuracy(output, target, topk=(1,)):
@@ -77,6 +78,11 @@ class CocoEvaluator(DatasetEvaluator):
         orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
         # * need a better way to call it 
         results = postprocessors['bbox'](outputs, orig_target_sizes)
+        
+        if 'segm' in postprocessors.keys():
+            target_sizes = flow.stack([t["size"] for t in inputs["labels"]], dim=0)
+            results = postprocessors['segm'](results, outputs, orig_target_sizes, target_sizes)
+        
         predictions = {target['image_id'].item(): output for target, output in zip(inputs["labels"], results)}
         
         img_ids = list(np.unique(list(predictions.keys())))
@@ -90,14 +96,50 @@ class CocoEvaluator(DatasetEvaluator):
                 with contextlib.redirect_stdout(devnull):
                     coco_dt = COCO.loadRes(self.coco_gt, results) if results else COCO()
             coco_eval = self.coco_eval[iou_type]
-            import pdb
-            pdb.set_trace() 
+            
             coco_eval.cocoDt = coco_dt
             coco_eval.params.imgIds = list(img_ids)
+                        
+            p = coco_eval.params
+            # add backward compatibility if useSegm is specified in params
+            if p.useSegm is not None:
+                p.iouType = 'segm' if p.useSegm == 1 else 'bbox'
+                print('useSegm (deprecated) is not None. Running {} evaluation'.format(p.iouType))
+            p.imgIds = list(np.unique(p.imgIds))
+            if p.useCats:
+                p.catIds = list(np.unique(p.catIds))
+            p.maxDets = sorted(p.maxDets)
+            coco_eval.params = p 
+            
+            coco_eval._prepare()
+            # loop through images, area range, max detection number
+            catIds = p.catIds if p.useCats else [-1]
 
-            img_ids, eval_imgs = self.evaluate(coco_eval)
+            if p.iouType == 'segm' or p.iouType == 'bbox':
+                computeIoU = coco_eval.computeIoU
+            elif p.iouType == 'keypoints':
+                computeIoU = coco_eval.computeOks
+            coco_eval.ious = {
+                (imgId, catId): computeIoU(imgId, catId)
+                for imgId in p.imgIds
+                for catId in catIds}
 
-            # self.eval_imgs[iou_type].append(eval_imgs)
+            evaluateImg = coco_eval.evaluateImg
+            maxDet = p.maxDets[-1]
+            evalImgs = [
+                evaluateImg(imgId, catId, areaRng, maxDet)
+                for catId in catIds
+                for areaRng in p.areaRng
+                for imgId in p.imgIds
+            ]
+            # this is NOT in the pycocotools code, but could be done outside
+            evalImgs = np.asarray(evalImgs).reshape(len(catIds), len(p.areaRng), len(p.imgIds))
+            coco_eval._paramsEval = copy.deepcopy(coco_eval.params)
+
+            # _, eval_imgs = self.evaluate(coco_eval)
+
+
+            self.eval_imgs[iou_type].append(evalImgs)
         
         # pred_logits = outputs["prediction_scores"]
         # labels = inputs["labels"]
@@ -205,84 +247,48 @@ class CocoEvaluator(DatasetEvaluator):
             )
         return coco_results
 
-    def evaluate(self, coco_eval):
-        import pdb
-        pdb.set_trace()
-        p = coco_eval.params
-        # add backward compatibility if useSegm is specified in params
-        if p.useSegm is not None:
-            p.iouType = 'segm' if p.useSegm == 1 else 'bbox'
-            print('useSegm (deprecated) is not None. Running {} evaluation'.format(p.iouType))
-        p.imgIds = list(np.unique(p.imgIds))
-        if p.useCats:
-            p.catIds = list(np.unique(p.catIds))
-        p.maxDets = sorted(p.maxDets)
-        coco_eval.params = p 
+    def evaluate(self):
         
-        coco_eval._prepare()
-        # loop through images, area range, max detection number
-        catIds = p.catIds if p.useCats else [-1]
+        pass                       
+        # if not dist.is_main_process():
+        #     return {}
+        # else:
+        #     predictions = self._predictions
 
-        if p.iouType == 'segm' or p.iouType == 'bbox':
-            computeIoU = coco_eval.computeIoU
-        elif p.iouType == 'keypoints':
-            computeIoU = coco_eval.computeOks
-        coco_eval.ious = {
-            (imgId, catId): computeIoU(imgId, catId)
-            for imgId in p.imgIds
-            for catId in catIds}
+        # total_correct_num = OrderedDict()
+        # for top_k in self.topk:
+        #     total_correct_num["Acc@" + str(top_k)] = 0
 
-        evaluateImg = coco_eval.evaluateImg
-        maxDet = p.maxDets[-1]
-        evalImgs = [
-            evaluateImg(imgId, catId, areaRng, maxDet)
-            for catId in catIds
-            for areaRng in p.areaRng
-            for imgId in p.imgIds
-        ]
-        # this is NOT in the pycocotools code, but could be done outside
-        evalImgs = np.asarray(evalImgs).reshape(len(catIds), len(p.areaRng), len(p.imgIds))
-        coco_eval._paramsEval = copy.deepcopy(coco_eval.params)
-        # toc = time.time()
-        # print('DONE (t={:0.2f}s).'.format(toc-tic))
-        return p.imgIds, evalImgs       
-                       
-        if not dist.is_main_process():
-            return {}
-        else:
-            predictions = self._predictions
+        # total_samples = 0
+        # for prediction in predictions:
+        #     for top_k, num_correct_n in zip(self.topk, prediction["num_correct_topk"]):
+        #         total_correct_num["Acc@" + str(top_k)] += int(num_correct_n)
 
-        total_correct_num = OrderedDict()
-        for top_k in self.topk:
-            total_correct_num["Acc@" + str(top_k)] = 0
+        #     total_samples += int(prediction["num_samples"])
 
-        total_samples = 0
-        for prediction in predictions:
-            for top_k, num_correct_n in zip(self.topk, prediction["num_correct_topk"]):
-                total_correct_num["Acc@" + str(top_k)] += int(num_correct_n)
+        # self._results = OrderedDict()
+        # for top_k, topk_correct_num in total_correct_num.items():
+        #     self._results[top_k] = topk_correct_num / total_samples * 100
 
-            total_samples += int(prediction["num_samples"])
+        # return copy.deepcopy(self._results)
 
-        self._results = OrderedDict()
-        for top_k, topk_correct_num in total_correct_num.items():
-            self._results[top_k] = topk_correct_num / total_samples * 100
+    def synchronize_between_processes(self):
+        for iou_type in self.iou_types:
+            self.eval_imgs[iou_type] = np.concatenate(self.eval_imgs[iou_type], 2)
+            create_common_coco_eval(self.coco_eval[iou_type], self.img_ids, self.eval_imgs[iou_type])
 
-        return copy.deepcopy(self._results)
+    def accumulate(self):
+        for coco_eval in self.coco_eval.values():
+            coco_eval.accumulate()
 
-
-def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
-    tensor_batch = x_dict["images"].tensors.tensor.shape[0]
-    assert tensor_batch <= batch_size
-
-    if tensor_batch == batch_size and not is_last_batch:
-        return x_dict, batch_size
-
-    valid_sample = tensor_batch - last_batch_lack
-    data_parallel_size = dist.get_data_parallel_size()
-    assert tensor_batch % data_parallel_size == 0
-    tensor_micro_batch_size = tensor_batch // data_parallel_size
-    padded_dict = {}
-    for key, xi in x_dict.items():
+    def summarize(self):
+        for iou_type, coco_eval in self.coco_eval.items():
+            print("IoU metric: {}".format(iou_type))
+            coco_eval.summarize()
+    
+            
+def pad_batch_tool(xi, batch_size, tensor_batch, tensor_micro_batch_size, last_batch_lack, data_parallel_size, padded_dict):
+    
         pad_shape = (batch_size, *xi.shape[1:])
         local_xi = xi.to_global(
             sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda")
@@ -295,7 +301,40 @@ def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
         padded_xi = padded_xi.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=xi.placement
         ).to_global(sbp=xi.sbp)
-        padded_dict[key] = padded_xi
+        
+        return padded_xi
+         
+            
+def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
+
+    tensor_batch = x_dict["images"].tensors.tensor.shape[0]
+    assert tensor_batch <= batch_size
+    if tensor_batch == batch_size and not is_last_batch:
+        return x_dict, batch_size
+
+    valid_sample = tensor_batch - last_batch_lack
+    data_parallel_size = dist.get_data_parallel_size()
+    assert tensor_batch % data_parallel_size == 0
+    tensor_micro_batch_size = tensor_batch // data_parallel_size
+    padded_dict = {}
+    
+    padded_xi = pad_batch_tool(x_dict["images"].tensors.tensor, batch_size, tensor_batch, tensor_micro_batch_size, last_batch_lack, data_parallel_size, padded_dict)
+    padded_dict["images"] = padded_xi
+
+    # ? need labels pad here ?
+    # padded_xi_list = []
+    # for label_dict in x_dict["labels"]:
+    #     current_label_dict = {}
+    #     for key, xi in label_dict.items():
+    #         print(key)
+    #         import pdb
+    #         pdb.set_trace()
+    #         padded_xi = pad_batch_tool(xi.tensor, batch_size, tensor_batch, tensor_micro_batch_size, last_batch_lack, data_parallel_size, padded_dict)
+    #         current_label_dict[key] = padded_xi
+    #     padded_xi_list.append(current_label_dict)
+    # padded_dict["labels"] = tuple(padded_xi_list)
+    padded_dict["labels"] = x_dict["labels"]
+    
     return padded_dict, valid_sample
 
 
@@ -365,6 +404,9 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
+            if idx >= 2:
+                # * for quick dev
+                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time
@@ -415,9 +457,9 @@ def inference_on_coco_dataset(
             start_eval_time = time.perf_counter()
             if dist.is_main_process():
                 evaluator.process(valid_data, valid_outputs)
+                
             dist.synchronize()
             total_eval_time += time.perf_counter() - start_eval_time
-
             consumed_samples += valid_sample
             iters_after_start = idx + 1 - num_warmup * int(idx >= num_warmup)
             data_seconds_per_iter = total_data_time / iters_after_start
@@ -441,6 +483,23 @@ def inference_on_coco_dataset(
                     n=5,
                 )
             start_data_time = time.perf_counter()
+        
+        # gather the stats from all processes
+        
+        if evaluator is not None:
+            evaluator.synchronize_between_processes()
+        
+        # if panoptic_evaluator is not None:
+        #     panoptic_evaluator.synchronize_between_processes()
+
+        # accumulate predictions from all images
+        if evaluator is not None:
+            evaluator.accumulate()
+            evaluator.summarize()
+        # panoptic_res = None
+        # if panoptic_evaluator is not None:
+        #     panoptic_res = panoptic_evaluator.summarize()
+
 
     # Measure the time only for this worker (before the synchronization barrier)
     total_time = time.perf_counter() - start_time
@@ -460,8 +519,9 @@ def inference_on_coco_dataset(
             num_devices,
         )
     )
-
+    
     results = evaluator.evaluate()
+    
     # An evaluator may return None when not in main process.
     # Replace it by an empty dict instead to make it easier for downstream code to handle
     if results is None:
@@ -503,3 +563,35 @@ def convert_to_xywh(boxes):
     xmin, ymin, xmax, ymax = boxes.split(1, dim=1)
     xmin, ymin, xmax, ymax = xmin.squeeze(1), ymin.squeeze(1), xmax.squeeze(1), ymax.squeeze(1)    
     return flow.stack((xmin, ymin, xmax - xmin, ymax - ymin), dim=1)
+
+
+def merge(img_ids, eval_imgs):
+    all_img_ids = all_gather(img_ids)
+    all_eval_imgs = all_gather(eval_imgs)
+
+    merged_img_ids = []
+    for p in all_img_ids:
+        merged_img_ids.extend(p)
+
+    merged_eval_imgs = []
+    for p in all_eval_imgs:
+        merged_eval_imgs.append(p)
+
+    merged_img_ids = np.array(merged_img_ids)
+    merged_eval_imgs = np.concatenate(merged_eval_imgs, 2)
+
+    # keep only unique (and in sorted order) images
+    merged_img_ids, idx = np.unique(merged_img_ids, return_index=True)
+    merged_eval_imgs = merged_eval_imgs[..., idx]
+
+    return merged_img_ids, merged_eval_imgs
+
+
+def create_common_coco_eval(coco_eval, img_ids, eval_imgs):
+    img_ids, eval_imgs = merge(img_ids, eval_imgs)
+    img_ids = list(img_ids)
+    eval_imgs = list(eval_imgs.flatten())
+
+    coco_eval.evalImgs = eval_imgs
+    coco_eval.params.imgIds = img_ids
+    coco_eval._paramsEval = copy.deepcopy(coco_eval.params)

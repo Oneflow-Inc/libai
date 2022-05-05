@@ -16,6 +16,7 @@ from collections import defaultdict, deque
 import oneflow as flow
 import oneflow.distributed as dist
 from oneflow import Tensor
+from oneflow.env import get_world_size, get_rank
 import flowvision
 
 
@@ -41,8 +42,6 @@ class SmoothedValue(object):
         """
         Warning: does not synchronize the deque!
         """
-        if not is_dist_avail_and_initialized():
-            return
         t = flow.tensor([self.count, self.total], dtype=flow.float64, device='cuda')
         dist.barrier()
         dist.all_reduce(t)
@@ -282,24 +281,24 @@ def setup_for_distributed(is_master):
     __builtin__.print = print
 
 
-def is_dist_avail_and_initialized():
-    if not dist.is_available():
-        return False
-    if not dist.is_initialized():
-        return False
-    return True
+# def is_dist_avail_and_initialized():
+#     if not dist.is_available():
+#         return False
+#     if not dist.is_initialized():
+#         return False
+#     return True
 
 
-def get_world_size():
-    if not is_dist_avail_and_initialized():
-        return 1
-    return dist.get_world_size()
+# def get_world_size():
+#     if not is_dist_avail_and_initialized():
+#         return 1
+#     return dist.get_world_size()
 
 
-def get_rank():
-    if not is_dist_avail_and_initialized():
-        return 0
-    return dist.get_rank()
+# def get_rank():
+#     if not is_dist_avail_and_initialized():
+#         return 0
+#     return dist.get_rank()
 
 
 def is_main_process():
