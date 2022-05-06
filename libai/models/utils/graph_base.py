@@ -36,6 +36,7 @@ class GraphBase(nn.Graph):
         zero_optim=False,
         zero_stage=0,
         is_train=True,
+        auto_parallel=False,
     ):
         super().__init__()
 
@@ -79,6 +80,16 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_cast_scale(True)
 
         # dist_util = dist.get_dist_util()
+
+        # auto_parallel
+        if auto_parallel:
+            self.config.enable_auto_parallel(auto_parallel)
+            self.config.enable_auto_parallel_prune_parallel_cast_ops(False)
+            self.config.set_auto_parallel_computation_cost_ratio(0.05)
+            self.config.set_auto_parallel_wait_time(1.65e4)
+            self.config.enable_auto_parallel_mainstem_algo(True);
+            self.config.enable_auto_parallel_sbp_collector(False);
+
         # Enable compute_stream for computation and communication with the same cuda stream.
         # This will reduce memory when using model parallelism.
         # if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
