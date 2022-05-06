@@ -21,7 +21,6 @@ import os
 import unicodedata
 from io import open
 
-from .build import TOKENIZER_REGISTRY
 from .tokenization_base import PreTrainedTokenizer, _is_control, _is_punctuation, _is_whitespace
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,6 @@ def whitespace_tokenize(text):
     return tokens
 
 
-@TOKENIZER_REGISTRY.register()
 class BertTokenizer(PreTrainedTokenizer):
     """
     Construct a BERT tokenizer. Based on WordPiece.

@@ -21,7 +21,6 @@ import os
 import regex as re
 import sentencepiece as spm
 
-from .build import TOKENIZER_REGISTRY
 from .tokenization_base import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
@@ -39,7 +38,6 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 }
 
 
-@TOKENIZER_REGISTRY.register()
 class T5Tokenizer(PreTrainedTokenizer):
     """
     Construct a T5 tokenizer. Based on `SentencePiece <https://github.com/google/sentencepiece>`.

@@ -406,6 +406,36 @@ class _BertCNWWMTokenizer(AbstractTokenizer):
     def additional_special_tokens(self, value):
         self._additional_special_tokens = value
 
+    def padded_vocab_size(self, multiple=1) -> int:
+        """Padded the vocabulary with dummy tokens and return the new size."""
+        vocab_size = self.vocab_size
+        while vocab_size % multiple != 0:
+            vocab_size += 1
+        return vocab_size
+    
+    def get_vocab(self):
+        return self.vocab
+    
+    @property
+    def cls_token_id(self):
+        return self.cls
+    
+    @property
+    def sep_token_id(self):
+        return self.sep
+    
+    @property
+    def pad_token_id(self):
+        return self.pad
+    
+    @property
+    def mask_token_id(self):
+        return self.mask
+
+
+
+   
+
 
 class _GPT2BPETokenizer(AbstractTokenizer):
     """Original GPT2 BPE tokenizer."""

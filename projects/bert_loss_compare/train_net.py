@@ -71,9 +71,9 @@ class Trainer(DefaultTrainer):
                 for loss, _ in all_losses:
                     f.write(str(loss) + "\n")
 
-    @classmethod
-    def build_train_loader(cls, cfg, tokenizer=None):
-        return build_train_valid_test_data_iterators(cfg)
+    # @classmethod
+    # def build_train_loader(cls, cfg, tokenizer=None):
+    #     return build_train_valid_test_data_iterators(cfg)
 
 
 def main(args):
@@ -93,10 +93,14 @@ def main(args):
     data_prefix_path = get_data_from_cache(BIN_DATA_URL, cache_dir, md5=BIN_DATA_MD5)
     data_prefix = data_prefix_path[:-4]
 
-    cfg.data.data_path = [data_prefix]
-    cfg.data.vocab_file = vocab_path
+    # cfg.data.data_path = [data_prefix]
+    cfg.dataloader.train.dataset[0].data_prefix = data_prefix
+    cfg.dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
+    # tokenizer vocab_file
+    # cfg.data.vocab_file = vocab_path
+    cfg.tokenization.tokenizer.vocab_file = vocab_path
 
-    setup_tokenizer(cfg)
+    # setup_tokenizer(cfg)
 
     if args.eval_only:
         tokenizer = None
