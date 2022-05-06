@@ -61,12 +61,13 @@ class GraphBase(nn.Graph):
                 assert (
                     not dist_util.is_tensor_model_parallel()
                 ), "ZeRO don't support tensor_model_parallel!"
-                self.config.set_zero_redundancy_optimizer_mode("distributed_split")
-                if zero_stage > 1:
-                    flow.boxing.nccl.enable_use_compute_stream(True)
-                if zero_stage > 2:
-                    # stage 3
-                    flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)
+                self.config.enable_zero(True, stage=zero_stage, parameter_consumer_limit_level=1)
+                # self.config.set_zero_redundancy_optimizer_mode("distributed_split")
+                # if zero_stage > 1:
+                #     flow.boxing.nccl.enable_use_compute_stream(True)
+                # if zero_stage > 2:
+                #     # stage 3
+                #     flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)
 
             self.set_pipeline_stage_id()
 
