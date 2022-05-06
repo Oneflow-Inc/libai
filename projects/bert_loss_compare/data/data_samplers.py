@@ -34,7 +34,7 @@ def build_pretraining_data_loader(cfg, dataset, consumed_samples):
         batch_sampler = MegatronPretrainingSampler(
             total_samples=len(dataset),
             consumed_samples=consumed_samples,
-            micro_batch_size=cfg.train.micro_batch_size,
+            micro_batch_size=cfg.train.train_micro_batch_size,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
         )
@@ -42,7 +42,7 @@ def build_pretraining_data_loader(cfg, dataset, consumed_samples):
         batch_sampler = MegatronPretrainingRandomSampler(
             total_samples=len(dataset),
             consumed_samples=consumed_samples,
-            micro_batch_size=cfg.train.micro_batch_size,
+            micro_batch_size=cfg.train.train_micro_batch_size,
             data_parallel_rank=dist.get_data_parallel_rank(),
             data_parallel_size=dist.get_data_parallel_size(),
         )

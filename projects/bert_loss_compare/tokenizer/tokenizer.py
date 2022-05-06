@@ -104,13 +104,11 @@ class AbstractTokenizer(ABC):
     @abstractmethod
     def vocab(self):
         """Dictionary from vocab text token to id token."""
-        pass
 
     @property
     @abstractmethod
     def inv_vocab(self):
         """Dictionary from vocab id token to text token."""
-        pass
 
     @abstractmethod
     def tokenize(self, text):

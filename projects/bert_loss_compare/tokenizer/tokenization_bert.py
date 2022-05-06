@@ -18,7 +18,6 @@
 import collections
 import logging
 import os
-import re
 import unicodedata
 from io import open
 

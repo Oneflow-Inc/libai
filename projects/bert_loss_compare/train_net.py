@@ -65,8 +65,8 @@ class Trainer(DefaultTrainer):
 
     def train(self):
         super().train()
-        all_losses = self.storage.history("total_loss").values()
         if dist.is_main_process():
+            all_losses = self.storage.history("total_loss").values()
             with open(os.path.join(self.cfg.train.output_dir, "of_loss.txt"), "w") as f:
                 for loss, _ in all_losses:
                     f.write(str(loss) + "\n")
