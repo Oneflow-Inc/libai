@@ -14,4 +14,4 @@ python3 -m oneflow.distributed.launch --nproc_per_node 4 -m pytest -s --disable-
 
 python3 -m oneflow.distributed.launch --nproc_per_node 4 -m pytest -s --disable-warnings tests/models/test_vit.py
 
-rm -rf @TEST_OUTPUT
+rm -rf $TEST_OUTPUT
