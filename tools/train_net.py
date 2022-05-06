@@ -13,6 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import oneflow as flow
+
+flow.boxing.nccl.enable_use_compute_stream(False)
+flow.boxing.nccl.enable_all_to_all(True)
+
 import logging
 import os
 import sys
@@ -24,6 +29,11 @@ from libai.utils.checkpoint import Checkpointer
 
 logger = logging.getLogger("libai." + __name__)
 
+@classmethod
+def test(cls, cfg, test_loaders, model, evaluator=None):
+    return {}
+
+DefaultTrainer.test = test
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)

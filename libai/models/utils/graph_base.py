@@ -36,6 +36,7 @@ class GraphBase(nn.Graph):
         zero_optim=False,
         zero_stage=0,
         is_train=True,
+        auto_parallel=False,
     ):
         super().__init__()
 
@@ -67,7 +68,8 @@ class GraphBase(nn.Graph):
                 ), "ZeRO don't support tensor_model_parallel!"
                 self.config.set_zero_redundancy_optimizer_mode("distributed_split")
                 if zero_stage > 1:
-                    flow.boxing.nccl.enable_use_compute_stream(True)
+                    pass
+                    #  flow.boxing.nccl.enable_use_compute_stream(True)
                 if zero_stage > 2:
                     # stage 3
                     flow.boxing.nccl.disable_group_boxing_by_dst_parallel(True)
@@ -79,12 +81,38 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_cast_scale(True)
 
         # dist_util = dist.get_dist_util()
+        # auto_parallel
+        self.config.enable_auto_parallel(auto_parallel)
+        import os
+        cost_ratio = float(os.environ["COST_RATIO"])
+        wait_time = float(os.environ["WAIT_TIME"])
+        trans_time = float(os.environ["AUTO_PARALLEL_TRANSFER_COST"])
+        if cost_ratio is None:
+            raise ValueError("not set COST_RATIO")
+        if wait_time is None:
+            raise ValueError("not set WAIT_TIME")
+        if trans_time is None:
+            raise ValueError("not set AUTO_PARALLEL_TRANSFER_COST")
+
+        self.config.set_auto_parallel_computation_cost_ratio(cost_ratio)
+        self.config.enable_auto_parallel_prune_parallel_cast_ops(False)
+        self.config.set_auto_parallel_wait_time(wait_time)
+        self.config.set_auto_parallel_transfer_cost(0.0)
+        self.config.enable_auto_parallel_mainstem_algo(True);
+        self.config.enable_auto_parallel_sbp_collector(False);
+        if auto_parallel:
+            print("=== enable autoparallel ===")
+            print(f"{cost_ratio=}")
+            print(f"{wait_time=}")
+            print(f"{trans_time=}")
+            print("===========================")
+
         # Enable compute_stream for computation and communication with the same cuda stream.
         # This will reduce memory when using model parallelism.
         # if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
 
         # Enable compute_stream by default.
-        flow.boxing.nccl.enable_use_compute_stream(True)
+        #  flow.boxing.nccl.enable_use_compute_stream(True)
 
     def build(self, **kwargs):
         if self.is_train:

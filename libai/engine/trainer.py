@@ -313,8 +313,11 @@ class GraphTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
-        data = next(self._data_loader_iter)
-        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        if not hasattr(self, "_data"):
+            data = next(self._data_loader_iter)
+            data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+            self._data = data
+        data = self._data
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.

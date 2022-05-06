@@ -6,6 +6,7 @@ graph = dict(
     # options for graph or eager mode
     enabled=True,
     debug=-1,  # debug mode for graph
+    auto_parallel=False,
     train_graph=LazyCall(GraphBase)(
         is_train=True,
     ),
