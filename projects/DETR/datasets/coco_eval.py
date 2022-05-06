@@ -60,7 +60,9 @@ class CocoEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
-
+        """
+        Process the pair of inputs and outputs.
+        """
         orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
         # * need a better way to call it 
         results = postprocessors['bbox'](outputs, orig_target_sizes)
@@ -122,21 +124,17 @@ class CocoEvaluator(DatasetEvaluator):
             evalImgs = np.asarray(evalImgs).reshape(len(catIds), len(p.areaRng), len(p.imgIds))
             coco_eval._paramsEval = copy.deepcopy(coco_eval.params)
 
-            # _, eval_imgs = self.evaluate(coco_eval)
-
-
             self.eval_imgs[iou_type].append(evalImgs)
+            
+    def evaluate(self):
+        """
+        Evaluate/summarize the performance after processing all input/output pairs.
+        """            
+        self.synchronize_between_processes()
+        self.accumulate()
+        self.summarize()   
         
-        # pred_logits = outputs["prediction_scores"]
-        # labels = inputs["labels"]
-        # # measure accuracy
-        # topk_acc = accuracy(pred_logits, labels, topk=self.topk)
-        # num_correct_acc_topk = [acc * labels.size(0) / 100 for acc in topk_acc]
-
-        # self._predictions.append(
-        #     {"num_correct_topk": num_correct_acc_topk, "num_samples": labels.size(0)}
-        # )
-        
+        return self.coco_eval
         
     def prepare(self, predictions, iou_type):
         if iou_type == "bbox":
@@ -233,31 +231,6 @@ class CocoEvaluator(DatasetEvaluator):
             )
         return coco_results
 
-    def evaluate(self):
-        
-        pass                       
-        # if not dist.is_main_process():
-        #     return {}
-        # else:
-        #     predictions = self._predictions
-
-        # total_correct_num = OrderedDict()
-        # for top_k in self.topk:
-        #     total_correct_num["Acc@" + str(top_k)] = 0
-
-        # total_samples = 0
-        # for prediction in predictions:
-        #     for top_k, num_correct_n in zip(self.topk, prediction["num_correct_topk"]):
-        #         total_correct_num["Acc@" + str(top_k)] += int(num_correct_n)
-
-        #     total_samples += int(prediction["num_samples"])
-
-        # self._results = OrderedDict()
-        # for top_k, topk_correct_num in total_correct_num.items():
-        #     self._results[top_k] = topk_correct_num / total_samples * 100
-
-        # return copy.deepcopy(self._results)
-
     def synchronize_between_processes(self):
         for iou_type in self.iou_types:
             self.eval_imgs[iou_type] = np.concatenate(self.eval_imgs[iou_type], 2)
@@ -270,6 +243,8 @@ class CocoEvaluator(DatasetEvaluator):
     def summarize(self):
         for iou_type, coco_eval in self.coco_eval.items():
             print("IoU metric: {}".format(iou_type))
+            import pdb
+            pdb.set_trace()
             coco_eval.summarize()
     
             
@@ -390,6 +365,8 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
+            if idx > 5:
+                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time
@@ -404,7 +381,6 @@ def inference_on_coco_dataset(
 
             data = get_batch(inputs)
             is_last_batch = idx == len(data_loader) - 1
-            # TODO: refine the last_batch situation in pad_batch
             paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
             _, outputs = model(paded_data)
             
@@ -468,35 +444,18 @@ def inference_on_coco_dataset(
                 )
             start_data_time = time.perf_counter()
         
-        # gather the stats from all processes
-        
-        if evaluator is not None:
-            evaluator.synchronize_between_processes()
-        
-        # if panoptic_evaluator is not None:
-        #     panoptic_evaluator.synchronize_between_processes()
-
-        # accumulate predictions from all images
-        if evaluator is not None:
-            evaluator.accumulate()
-            evaluator.summarize()
-        # panoptic_res = None
-        # if panoptic_evaluator is not None:
-        #     panoptic_res = panoptic_evaluator.summarize()
-
-
     # Measure the time only for this worker (before the synchronization barrier)
     total_time = time.perf_counter() - start_time
     total_time_str = str(datetime.timedelta(seconds=total_time))
     # NOTE this format is parsed by grep
-    logger.info("Total valid samples: {}".format(consumed_samples))
-    logger.info(
+    logger.warning("Total valid samples: {}".format(consumed_samples))
+    logger.warning(
         "Total inference time: {} ({:.6f} s / iter per device, on {} devices)".format(
             total_time_str, total_time / (total_samples - num_warmup), num_devices
         )
     )
     total_compute_time_str = str(datetime.timedelta(seconds=int(total_compute_time)))
-    logger.info(
+    logger.warning(
         "Total inference pure compute time: {} ({:.6f} s / iter per device, on {} devices)".format(
             total_compute_time_str,
             total_compute_time / (total_samples - num_warmup),
@@ -504,13 +463,15 @@ def inference_on_coco_dataset(
         )
     )
     
-    results = evaluator.evaluate()
-    
-    # An evaluator may return None when not in main process.
-    # Replace it by an empty dict instead to make it easier for downstream code to handle
-    if results is None:
-        results = {}
-    return results
+    if evaluator is not None:
+        evaluator.evaluate()
+    # import pdb
+    # pdb.set_trace()    
+    # # An evaluator may return None when not in main process.
+    # # Replace it by an empty dict instead to make it easier for downstream code to handle
+    # if results is None:
+    #     results = {}
+    # return results
 
 
 @contextmanager
