@@ -60,20 +60,6 @@ class CocoEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
-        """
-        Process the pair of inputs and outputs.
-
-        .. code-block:: python
-
-            pred_logits = outputs["prediction_scores"]
-            labels = inputs["labels"]
-            # do evaluation on pred_logits/labels pair
-            ...
-
-        Args:
-            inputs (dict): the inputs that's used to call the model.
-            outputs (dict): the return dict of `model(**inputs)`
-        """
 
         orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
         # * need a better way to call it 
@@ -391,11 +377,11 @@ def inference_on_coco_dataset(
     # reset total samples
     real_eval_iter = min(eval_iter, len(data_loader))
     total_samples = min(real_eval_iter * batch_size, len(data_loader.dataset))
-    logger.info(
+    logger.warning(
         f"with eval_iter {eval_iter}, "
         f"reset total samples {len(data_loader.dataset)} to {total_samples}"
     )
-    logger.info(f"Start inference on {total_samples} samples")
+    logger.warning(f"Start inference on {total_samples} samples")
 
     with ExitStack() as stack:
         if isinstance(model, (flow.nn.Module, flow.nn.Graph)):
@@ -404,9 +390,6 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
-            if idx >= 2:
-                # * for quick dev
-                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time
@@ -466,12 +449,13 @@ def inference_on_coco_dataset(
             compute_seconds_per_iter = total_compute_time / iters_after_start
             eval_seconds_per_iter = total_eval_time / iters_after_start
             total_seconds_per_iter = (time.perf_counter() - start_time) / iters_after_start
+
             if idx >= num_warmup * 2 or compute_seconds_per_iter > 5:
                 eta = datetime.timedelta(
                     seconds=int(total_seconds_per_iter * (total_samples // batch_size - idx - 1))
                 )
                 log_every_n_seconds(
-                    logging.INFO,
+                    logging.WARNING,
                     (
                         f"Inference done {consumed_samples}/{total_samples}. "
                         f"Dataloading: {data_seconds_per_iter:.4f} s/iter. "
