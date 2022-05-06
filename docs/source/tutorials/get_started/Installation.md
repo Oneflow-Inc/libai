@@ -1,5 +1,5 @@
 # Installation
-LiBai provides an editable installation way for users to develop their own project based on LiBai's framework.
+LiBai provides an editable installation way for you to develop your own project based on LiBai's framework.
 
 ## Build LiBai from Source
 
@@ -16,8 +16,8 @@ conda create -n libai python=3.7 -y
 conda activate libai
 ```
 
-- Install the stable release of OneFlow with `CUDA` support refer to [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
-- Install `pybind11`
+- Install the stable release of OneFlow with `CUDA` support. See [OneFlow installation guide](https://github.com/Oneflow-Inc/oneflow#install-with-pip-package).
+- Install `pybind11`:
 
 ```bash
 pip install pybind11

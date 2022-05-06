@@ -57,11 +57,11 @@ LiBai is a large-scale open-source model training toolbox based on OneFlow. The 
 
 ## Installation
 
-See [Installation instructions](https://libai.readthedocs.io/en/latest/tutorials/Installation.html).
+See [Installation instructions](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html).
 
 ## Getting Started
 
-See [Getting Started](https://libai.readthedocs.io/en/latest/tutorials/Getting_Started.html) for the basic usage of LiBai.
+See [Quick Run](https://libai.readthedocs.io/en/latest/tutorials/get_started/quick_run.html) for the basic usage of LiBai.
 
 ## Documentation
 
@@ -93,6 +93,9 @@ See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) f
 - Support Data parallel [Swin Transformer](https://arxiv.org/abs/2103.14030) model
 - Support finetune task in [QQP project](/projects/QQP/)
 - Support text classification task in [text classification project](/projects/text_classification/)
+- Support Pathways Language Model (PaLM) in [PaLM project](/projects/PaLM/)
+- Support MoCo_v3 in [MOCOV3 project](/projects/MOCOV3/)
+- (experimental) Support MAE in [MAE project](/projects/MAE/)
 
 See [changelog](./changelog.md) for details and release history.
 

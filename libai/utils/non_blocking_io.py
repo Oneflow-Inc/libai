@@ -14,11 +14,6 @@
 # limitations under the License.
 
 
-"""
-Code are mainly adopted from
-https://github.com/facebookresearch/iopath/blob/main/iopath/common/non_blocking_io.py
-"""
-
 import concurrent.futures
 import io
 import logging
@@ -26,6 +21,12 @@ from dataclasses import dataclass
 from queue import Queue
 from threading import Thread
 from typing import IO, Callable, Optional, Union
+
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/iopath/blob/main/iopath/common/non_blocking_io.py
+# --------------------------------------------------------
+
 
 """
 This file is used for asynchronous file operations.

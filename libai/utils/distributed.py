@@ -118,13 +118,23 @@ class _DistributeUtil(object):
             for i in range(0, self.world_size, num_devices_per_stage)
         ]
 
-        assert cfg.pipeline_num_layers % self._pipeline_parallel_size == 0, (
-            f"number of layers ({cfg.pipeline_num_layers}) is not divisible by"
+        assert cfg.pipeline_num_layers >= self._pipeline_parallel_size, (
+            f"number of layers ({cfg.pipeline_num_layers}) is less than"
             f" pipeline model parallel size ({self._pipeline_parallel_size})"
         )
         num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
+        stage_offset = cfg.pipeline_num_layers % self._pipeline_parallel_size
 
-        self._layer_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
+        # stage_offset can make the later stages contain more layers when pipeline_num_layers
+        # cannot be divided by pipeline_parallel_size.
+        # This can make pipeline parallel more memory efficient.
+        self._layer_stage_ids = []
+        for i in range(0, cfg.pipeline_num_layers - stage_offset, num_layers_per_stage):
+            stage_id = i // num_layers_per_stage
+            if stage_id >= (self._pipeline_parallel_size - stage_offset):
+                self._layer_stage_ids.append(stage_id)
+            self._layer_stage_ids.extend([stage_id] * num_layers_per_stage)
+
         self._layer_ranks = [stages_devices[stage_id] for stage_id in self._layer_stage_ids]
 
     def _init_parallel_hierarchy(self):
@@ -162,7 +172,7 @@ class _DistributeUtil(object):
 
     @property
     def model_parallel_size(self):
-        return self._tensor_parallel_size * self._pipeline_parallel_size
+        return self._tensor_parallel_size
 
     @property
     def data_parallel_size(self):
@@ -195,7 +205,7 @@ class _DistributeUtil(object):
 def setup_dist_util(cfg):
     """Initialize the distributed environment with configuration.
 
-    Examples:
+    Example:
 
     .. code-block:: python
 
@@ -246,7 +256,7 @@ def get_layer_placement(layer_idx, device_type="cuda"):
 
     Args:
         layer_idx (int): layer index indicating the rank groups. This is very useful for pipeline
-            parallelism training where different layers on different ranks.
+            parallelism training where different layers are on different ranks.
         device_type (str, optional): device type. Defaults to "cuda".
     """
     dist_util = get_dist_util()
@@ -265,7 +275,7 @@ def get_nd_sbp(sbp_list):
         sbp_list (list): a sbp list with 2D mesh.
 
     Returns:
-        An modified sbp list according to the initialized distributed environment.
+        A modified sbp list according to the initialized distributed environment.
     """
     assert isinstance(sbp_list, list)
     assert len(sbp_list) == 2
@@ -283,13 +293,13 @@ def get_nd_sbp(sbp_list):
 
 
 def get_hidden_sbp():
-    """hidden states sbp."""
+    """Hidden states sbp."""
     return get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
 
 
 def get_data_parallel_rank():
     dist_util = get_dist_util()
-    return flow.env.get_rank() // dist_util.model_parallel_size
+    return (flow.env.get_rank() // dist_util.model_parallel_size) % dist_util.data_parallel_size
 
 
 def get_data_parallel_size():
@@ -303,7 +313,7 @@ def get_tensor_parallel_size():
 
 
 def same_sbp(lhs_sbp, rhs_sbp):
-    """Determine if two sbp signature is same."""
+    """Determine if two sbp signatures are the same."""
     assert len(lhs_sbp) == len(rhs_sbp)
 
     for i in range(len(lhs_sbp)):
@@ -351,7 +361,7 @@ def convert_to_distributed_default_setting(module):
 
 
 def ttol(tensor, pure_local=False, ranks=None):
-    """global tensor to local tensor."""
+    """Global tensor to local tensor."""
     if tensor.is_global:
         placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
         if pure_local:
@@ -365,7 +375,7 @@ def ttol(tensor, pure_local=False, ranks=None):
 
 
 def tton(tensor, local_only=False, ranks=None):
-    """global tensor to numpy ndarray."""
+    """Global tensor to numpy ndarray."""
     if tensor.is_global:
         tensor = ttol(tensor, local_only, ranks)
 

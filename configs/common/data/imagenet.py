@@ -19,7 +19,7 @@ train_aug = LazyCall(transforms.Compose)(
             size=224,
             scale=(0.08, 1.0),
             ratio=(3.0 / 4.0, 4.0 / 3.0),
-            interpolation=str_to_interp_mode("bicubic"),
+            interpolation=InterpolationMode.BICUBIC,
         ),
         LazyCall(transforms.RandomHorizontalFlip)(p=0.5),
         LazyCall(rand_augment_transform)(

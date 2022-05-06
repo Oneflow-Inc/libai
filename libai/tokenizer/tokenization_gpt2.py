@@ -23,7 +23,6 @@ from io import open
 
 import regex as re
 
-from .build import TOKENIZER_REGISTRY
 from .tokenization_base import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
@@ -85,7 +84,6 @@ def get_pairs(word):
     return pairs
 
 
-@TOKENIZER_REGISTRY.register()
 class GPT2Tokenizer(PreTrainedTokenizer):
     """
     Construct a GPT-2 tokenizer. Based on byte-level Byte-Pair-Encoding.
@@ -208,7 +206,7 @@ class GPT2Tokenizer(PreTrainedTokenizer):
         return self.decoder.get(index)
 
     def convert_tokens_to_string(self, tokens):
-        """Converts a sequence of tokens (string) in a single string."""
+        """Converts a sequence of tokens (string) to a single string."""
         text = "".join(tokens)
         text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
         return text

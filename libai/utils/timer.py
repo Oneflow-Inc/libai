@@ -17,6 +17,11 @@
 from time import perf_counter
 from typing import Optional
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/fvcore/blob/main/fvcore/common/timer.py
+# --------------------------------------------------------
+
 
 class Timer:
     """

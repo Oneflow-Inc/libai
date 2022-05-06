@@ -22,6 +22,11 @@ from omegaconf import OmegaConf
 
 from .lazy import LazyConfig
 
+# --------------------------------------------------------
+# References:
+# https://github.com/facebookresearch/detectron2/blob/main/detectron2/config/config.py
+# --------------------------------------------------------
+
 
 def configurable(init_func=None, *, from_config=None):
     """
