@@ -1,2 +1,0 @@
-# How to use Huggingface's pretrained weights in LiBai
-This example shows how to convert huggingface's pretrained model in LiBai. For more details please refer to [How to use Huggingface’s pretrained weights in LiBai](https://libai.readthedocs.io/en/latest/notes/How_to_implement_huggingface%27s_weights_in_LiBai.html).

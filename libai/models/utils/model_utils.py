@@ -315,6 +315,9 @@ class LoadPretrainedModels(object):
         for k, v in self.kwargs:
             self.default_cfg[k] = v
 
+        self.default_cfg['bias_dropout_fusion'] = False
+        self.default_cfg['apply_residual_post_layernorm'] = True
+
     def _load_torch_state_dict(self, state_dict_file):
         # load pytorch_model.bin
         state_dict = torch.load(state_dict_file, map_location="cpu")
