@@ -30,7 +30,7 @@ class ImageNetDataset(datasets.ImageFolder):
         root (string): Root directory of the ImageNet Dataset.
         train (bool, optional): If True, creates dataset from training set, otherwise
             creates from test set.
-        transform (callable, optional): A function/transform that  takes in an PIL image
+        transform (callable, optional): A function/transform that  takes in a PIL image
             and returns a transformed version. E.g, ``transforms.RandomCrop``
     """
 
