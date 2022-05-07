@@ -57,6 +57,7 @@ class BertDataset(flow.utils.data.Dataset):
         short_seq_prob=0.0,
         seed=1234,
         binary_head=True,
+        masking_style="bert",
     ):
 
         # Params to store.
@@ -65,6 +66,7 @@ class BertDataset(flow.utils.data.Dataset):
         self.masked_lm_prob = mask_lm_prob
         self.max_seq_length = max_seq_length
         self.binary_head = binary_head
+        self.masking_style = masking_style
 
         # Dataset.
         self.indexed_dataset = indexed_dataset
@@ -104,6 +106,7 @@ class BertDataset(flow.utils.data.Dataset):
 
         np_rng = np.random.RandomState(seed=((self.seed + idx) % 2 ** 32))
         return build_training_sample(
+            self.tokenizer,
             sample,
             seq_length,
             self.max_seq_length,  # needed for padding
@@ -116,10 +119,12 @@ class BertDataset(flow.utils.data.Dataset):
             self.masked_lm_prob,
             np_rng,
             self.binary_head,
+            masking_style=self.masking_style,
         )
 
 
 def build_training_sample(
+    tokenizer,
     sample,
     target_seq_length,
     max_seq_length,
@@ -132,6 +137,7 @@ def build_training_sample(
     masked_lm_prob,
     np_rng,
     binary_head,
+    masking_style="bert",
 ):
     """Build training sample.
 
@@ -177,6 +183,7 @@ def build_training_sample(
     # Masking.
     max_predictions_per_seq = masked_lm_prob * max_num_tokens
     (tokens, masked_positions, masked_labels, _, _) = create_masked_lm_predictions(
+        tokenizer,
         tokens,
         vocab_id_list,
         vocab_id_to_token_dict,
@@ -186,6 +193,7 @@ def build_training_sample(
         mask_id,
         max_predictions_per_seq,
         np_rng,
+        masking_style=masking_style,
     )
 
     # Padding.

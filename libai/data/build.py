@@ -20,7 +20,7 @@ from oneflow.utils.data.dataset import ConcatDataset
 from libai.config import LazyCall, instantiate
 from libai.utils import distributed as dist
 
-from .data_utils import split_ds
+from .data_utils import get_train_valid_test_split_
 from .samplers import CyclicSampler, SingleRoundSampler
 from .structures import Instance
 
@@ -29,6 +29,7 @@ def build_nlp_train_val_test_loader(
     dataset,
     splits,
     weights,
+    train_val_test_num_samples,
     train_batch_size,
     test_batch_size,
     train_sampler=LazyCall(CyclicSampler)(shuffle=True),
@@ -69,8 +70,23 @@ def build_nlp_train_val_test_loader(
             map-style dataset.
         dataset_mixer: function for concating list dataset.
     """
-    # TODO: add dataset_weights sampler
-    dataset = instantiate(dataset)
+
+    def build_dataset(index, dataset):
+        doc_idx_ptr = indexed_dataset.get_doc_idx()
+        start_index = ds_splits[index]
+        end_index = ds_splits[index + 1] + 1
+        indexed_dataset.set_doc_idx(doc_idx_ptr[start_index:end_index])
+        dataset.indexed_dataset = indexed_dataset
+        dataset.max_num_samples = train_val_test_num_samples[index]
+        dataset = instantiate(dataset)
+
+        # Set the original pointer so dataset remains the main dataset.
+        indexed_dataset.set_doc_idx(doc_idx_ptr)
+        # check
+        assert indexed_dataset.doc_idx[0] == 0
+        assert indexed_dataset.doc_idx.shape[0] == (total_num_of_documents + 1)
+        return dataset
+
     if OmegaConf.is_list(dataset):
         dataset = list(dataset)
     elif not isinstance(dataset, list):
@@ -81,7 +97,14 @@ def build_nlp_train_val_test_loader(
 
     train_datasets, val_datasets, test_datasets = [], [], []
     for dst, split in zip(dataset, splits):
-        train_dataset, val_dataset, test_dataset = split_ds(dst, split)
+        indexed_dataset = instantiate(dst.indexed_dataset)
+        total_num_of_documents = indexed_dataset.doc_idx.shape[0] - 1
+        ds_splits = get_train_valid_test_split_(total_num_of_documents, split)
+
+        train_dataset = build_dataset(0, dst)
+        val_dataset = build_dataset(1, dst)
+        test_dataset = build_dataset(2, dst)
+
         train_datasets.append(train_dataset)
         val_datasets.append(val_dataset)
         test_datasets.append(test_dataset)
@@ -176,12 +199,18 @@ def build_nlp_train_loader(
     else:
         dataset = dataset[0]
 
-    sampler.dataset = dataset
-    sampler.micro_batch_size = train_batch_size
+    sampler.total_samples = len(dataset)
     sampler.consumed_samples = consumed_samples
+    sampler.micro_batch_size = train_batch_size
     sampler.data_parallel_rank = dist.get_data_parallel_rank()
     sampler.data_parallel_size = dist.get_data_parallel_size()
-    sampler.seed = seed
+
+    # sampler.dataset = dataset
+    # sampler.micro_batch_size = train_batch_size
+    # sampler.consumed_samples = consumed_samples
+    # sampler.data_parallel_rank = dist.get_data_parallel_rank()
+    # sampler.data_parallel_size = dist.get_data_parallel_size()
+    # sampler.seed = seed
     sampler = instantiate(sampler)
 
     dataloader = DataLoader(

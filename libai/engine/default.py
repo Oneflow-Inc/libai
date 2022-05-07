@@ -600,16 +600,23 @@ class DefaultTrainer(TrainerBase):
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
 
+        if hasattr(cfg.dataloader.train, "train_val_test_num_samples"):
+            eval_iter = (
+                cfg.train.train_iter // cfg.train.evaluation.eval_period + 1
+            ) * cfg.train.eval_iter
+            test_iter = cfg.train.eval_iter
+
+            cfg.dataloader.train.train_val_test_num_samples = [
+                cfg.train.samples,
+                eval_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size(),
+                test_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size(),
+            ]
         if OmegaConf.is_list(cfg.dataloader.train.dataset):
             for dataset in cfg.dataloader.train.dataset:
-                if hasattr(dataset, "max_num_samples"):
-                    dataset.max_num_samples = cfg.train.samples
                 if hasattr(dataset, "seed"):
                     dataset.seed = cfg.train.seed
         else:
             dataset = cfg.dataloader.train.dataset
-            if hasattr(dataset, "max_num_samples"):
-                dataset.max_num_samples = cfg.train.samples
             if hasattr(dataset, "seed"):
                 dataset.seed = cfg.train.seed
 
