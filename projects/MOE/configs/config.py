@@ -11,21 +11,21 @@ from projects.MOE.dataset.dataset import CIFAR_Dataset
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
-
-
+graph.enabled = False
 
 
 data_root = "./projects/MOE/data"
 transform = vision.transforms.Compose(
-    [vision.transforms.ToTensor(),
-        vision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    [vision.transforms.ToTensor(), vision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+)
 
 dataloader = OmegaConf.create()
 
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
         LazyCall(CIFAR_Dataset)(
-            root=data_root, train=True,
+            root=data_root,
+            train=True,
             download=True,
             transform=transform,
         ),
@@ -46,13 +46,13 @@ dataloader.test = [
 ]
 
 model_cfg = dict(
-        expert=MLP(input_size=3072,output_size=10,hidden_size=256),
-        input_size=3072,
-        output_size=10,
-        num_experts=10,
-        noisy_gating=True,
-        k=4,
-        device = "cuda",
+    expert=MLP(input_size=3072, output_size=10, hidden_size=256),
+    input_size=3072,
+    output_size=10,
+    num_experts=10,
+    noisy_gating=True,
+    k=4,
+    device="cuda",
 )
 
 model = LazyCall(MoE)(**model_cfg)
