@@ -51,75 +51,46 @@ class DetrMultiheadAttention(MultiheadAttention):
         self,
         hidden_size,
         num_attention_heads,
-        attention_dropout_prob=0.0,
         output_dropout_prob=0.0,
-        init_method=nn.init.xavier_normal_,
-        output_layer_init_method=None,
-        bias_dropout_fusion=False,
-        scale_mask_softmax_fusion=False,
-        apply_query_key_layer_scaling=False,
-        *,
-        layer_idx=0
+        attention_dropout_prob=0.0
     ):
         super().__init__(hidden_size=hidden_size, 
                          num_attention_heads=num_attention_heads, 
-                         output_dropout_prob=output_dropout_prob)
-        self.hidden_size = hidden_size
-        if output_layer_init_method is None:
-            output_layer_init_method = init_method
+                         output_dropout_prob=output_dropout_prob,
+                         attention_dropout_prob=attention_dropout_prob)
 
-        assert (
-            hidden_size % num_attention_heads == 0
-        ), "hidden_size must be divisible by num_attention_heads."
+        # self.query = Linear(
+        #     self.hidden_size,
+        #     self.hidden_size,
+        #     parallel="col",
+        #     init_method=init_method,
+        #     layer_idx=layer_idx,
+        # )
+        # self.key = Linear(
+        #     self.hidden_size,
+        #     self.hidden_size,
+        #     parallel="col",
+        #     init_method=init_method,
+        #     layer_idx=layer_idx,
+        # )
+        # self.value = Linear(
+        #     self.hidden_size,
+        #     self.hidden_size,
+        #     parallel="col",
+        #     init_method=init_method,
+        #     layer_idx=layer_idx,
+        # )
 
-        self.num_heads = num_attention_heads
-        self.head_size = hidden_size // num_attention_heads
-
-        self.dropout = nn.Dropout(p=attention_dropout_prob)
-        self.norm_factor = 1.0 / math.sqrt(float(self.head_size))
-        self.coeff = None
-        if apply_query_key_layer_scaling:
-            self.coeff = layer_idx + 1
-            self.norm_factor /= self.coeff
-
-        self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
-        self.bias_dropout_fusion = bias_dropout_fusion
-
-        if self.bias_dropout_fusion:
-            self.output_dropout_prob = output_dropout_prob
-        else:
-            self.output_dropout = nn.Dropout(p=output_dropout_prob)
-
-        self.query = Linear(
-            self.hidden_size,
-            self.hidden_size,
-            parallel="col",
-            init_method=init_method,
-            layer_idx=layer_idx,
-        )
-        self.key = Linear(
-            self.hidden_size,
-            self.hidden_size,
-            parallel="col",
-            init_method=init_method,
-            layer_idx=layer_idx,
-        )
-        self.value = Linear(
-            self.hidden_size,
-            self.hidden_size,
-            parallel="col",
-            init_method=init_method,
-            layer_idx=layer_idx,
-        )
-
-        self.dense = Linear(
-            self.hidden_size,
-            self.hidden_size,
-            parallel="row",
-            init_method=output_layer_init_method,
-            skip_bias_add=self.bias_dropout_fusion,
-            layer_idx=layer_idx,
-        )
+        # self.dense = Linear(
+        #     self.hidden_size,
+        #     self.hidden_size,
+        #     parallel="row",
+        #     init_method=output_layer_init_method,
+        #     skip_bias_add=self.bias_dropout_fusion,
+        #     layer_idx=layer_idx,
+        # )
+        
+        # self.query_key_value = None
 
     def forward(
         self,

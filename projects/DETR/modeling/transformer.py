@@ -138,7 +138,6 @@ class TransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False):
         super().__init__()
-        # self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout) 
         self.self_attn = DetrMultiheadAttention(hidden_size=d_model, num_attention_heads=nhead, attention_dropout_prob=dropout)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -164,12 +163,8 @@ class TransformerEncoderLayer(nn.Module):
                      src_key_padding_mask: Optional[Tensor] = None,
                      pos: Optional[Tensor] = None):
         q = k = self.with_pos_embed(src, pos)
-        # src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
-        #                       key_padding_mask=src_key_padding_mask)[0]
         
-        # NOTE: error here
-        # TODO: fit libai transformer 
-        # src2 = self.self_attn(q.permute(1,0,2)).permute(1,0,2)
+        # TODO: refine libai attention 
         src2 = self.self_attn(hidden_states=(q,k,src), 
                               attention_mask=src_mask, 
                               key_padding_mask=src_key_padding_mask).permute(1,0,2)
@@ -213,8 +208,6 @@ class TransformerDecoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False):
         super().__init__()
-        # self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        # self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
         self.self_attn = DetrMultiheadAttention(hidden_size=d_model, num_attention_heads=nhead, attention_dropout_prob=dropout)
         self.multihead_attn = DetrMultiheadAttention(hidden_size=d_model, num_attention_heads=nhead, attention_dropout_prob=dropout)
 

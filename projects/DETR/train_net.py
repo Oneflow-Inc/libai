@@ -21,9 +21,9 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
-from libai.utils.checkpoint import Checkpointer
 
 from trainer.detr_default import DetrDefaultTrainer
+from utils.checkpoint import detr_checkpointer
 
 logger = logging.getLogger("libai." + __name__)
 
@@ -50,8 +50,8 @@ def main(args):
         if try_get_key(cfg, "tokenization") is not None:
             tokenizer = DefaultTrainer.build_tokenizer(cfg)
         model = DefaultTrainer.build_model(cfg)
-        Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
-            cfg.train.load_weight, resume=args.resume
+        detr_checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
+            cfg.train.load_weight, resume=args.resume, weight_style="pytorch"
         )
         if try_get_key(cfg, "train.graph.enabled", default=False):
             model = DefaultTrainer.build_graph(cfg, model, is_train=False)

@@ -59,7 +59,8 @@ class DetrDefaultTrainer(DefaultTrainer):
         self._trainer = DetrEagerTrainer(
             self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
         )
-
+        import pdb
+        pdb.set_trace()
     @classmethod
     def get_batch(cls, data: Instance, mixup_func: Optional[Callable] = None):
         """
