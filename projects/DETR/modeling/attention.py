@@ -59,39 +59,6 @@ class DetrMultiheadAttention(MultiheadAttention):
                          output_dropout_prob=output_dropout_prob,
                          attention_dropout_prob=attention_dropout_prob)
 
-        # self.query = Linear(
-        #     self.hidden_size,
-        #     self.hidden_size,
-        #     parallel="col",
-        #     init_method=init_method,
-        #     layer_idx=layer_idx,
-        # )
-        # self.key = Linear(
-        #     self.hidden_size,
-        #     self.hidden_size,
-        #     parallel="col",
-        #     init_method=init_method,
-        #     layer_idx=layer_idx,
-        # )
-        # self.value = Linear(
-        #     self.hidden_size,
-        #     self.hidden_size,
-        #     parallel="col",
-        #     init_method=init_method,
-        #     layer_idx=layer_idx,
-        # )
-
-        # self.dense = Linear(
-        #     self.hidden_size,
-        #     self.hidden_size,
-        #     parallel="row",
-        #     init_method=output_layer_init_method,
-        #     skip_bias_add=self.bias_dropout_fusion,
-        #     layer_idx=layer_idx,
-        # )
-        
-        # self.query_key_value = None
-
     def forward(
         self,
         hidden_states: flow.Tensor,
@@ -135,14 +102,19 @@ class DetrMultiheadAttention(MultiheadAttention):
         
         bsz, tgt_len = query.size()[:2]
 
-        query = self.query(query)
-        key = self.key(key)
-        value = self.value(value)
+        query_key_value = self.query_key_value(hidden_states)
+        query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
+        query_key_value = query_key_value.permute(
+            0, 2, 1, 3
+        )  # [bsz, num_heads, src_len, 3 * head_size]
+        query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
             
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
+            
+            # * detr needs key_padding_mask
             if key_padding_mask is not None:
                 attention_mask = attention_mask.masked_fill(key_padding_mask, float("-inf"))
                 

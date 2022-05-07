@@ -42,15 +42,16 @@ class detr_checkpointer(Checkpointer):
             self.logger.info("No pytorch-style checkpoint found. Training model from scratch")
             return {}
         self.logger.info("Loading pytorch-style checkpoint from {}".format(path))
-        import pdb
-        pdb.set_trace()
+
         torch_state_dict = torch.load(path)["model"]
 
-        of_state_dict, _ = convert_state(
-            torch_state_dict,
-        )
+        of_state_dict = convert_state(torch_state_dict)
+
         for key, value in of_state_dict.items():
+            print(key)
             load_tensor(self.model.state_dict()[key], value)
 
         # return any further checkpoint data
         # return checkpoint 
+        import pdb
+        pdb.set_trace()
