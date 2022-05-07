@@ -48,14 +48,14 @@ def _load_state_dict_into_model(model_to_load, state_dict, start_prefix):
 
 
 class LoadPretrainedModels(object):
-    def __init__(self, model, default_cfg, pretrained_model_name_or_path, **kwargs):
+    def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
         """Class used to load the [transformers](https://huggingface.co/models)' pretrained model.
 
         Args:
             model (libai.models): Model to be loaded in Libai.
             default_cfg (dict): The default config of model, you can import it from
                 `libai.config.configs.common.models`.
-            pretrained_model_name_or_path (str): The directory path of pretrained model,
+            pretrained_model_path (str): The directory path of pretrained model,
                 which contains model weights file, config file.
             convert_function (function): A function used to convert the checkpoint file
                 of Huggingface to OneFlow.
@@ -63,13 +63,19 @@ class LoadPretrainedModels(object):
                 Whether to return a dictionary containing missing keys, unexpected keys
                 and error messages.
         """
+        self.model_to_convert_function = {
+            'bert': self._convert_bert_checkpoint_file,
+            'gpt': self._convert_gpt_checkpoint_file,
+            't5': self._convert_t5_checkpoint_file,
+        }
         self.model = model
         self.default_cfg = default_cfg
-        self.pretrained_model_name_or_path = pretrained_model_name_or_path
+        self.pretrained_model_path = pretrained_model_path
         self.kwargs = kwargs
 
         # choise convert function according self.model
-        self.convert_function = self._convert_bert_checkpoint_file
+        # TODO(xzp)
+        self.convert_function = self.model_to_convert_function['bert']
         self.output_loading_info = kwargs.pop("output_loading_info", False)
 
     def convert_tensor(self, tensor):
@@ -382,20 +388,19 @@ class LoadPretrainedModels(object):
         model,
         state_dict,
         loaded_keys,
-        pretrained_model_name_or_path,
+        pretrained_model_path,
         ignore_mismatched_sizes=False,
     ):
         """Load pretrained model.
 
         Args:
-            model (_type_): _description_
-            state_dict (_type_): _description_
-            loaded_keys (_type_): _description_
-            pretrained_model_name_or_path (_type_): _description_
-            ignore_mismatched_sizes (bool, optional): _description_. Defaults to False.
-
-        Returns:
-            _type_: _description_
+            model (libai.models): The model to be loaded.
+            state_dict (OrderedDict): state dict.
+            loaded_keys (list): keys of state dict.
+            pretrained_model_path (str): pretrained modelE path.
+            ignore_mismatched_sizes (bool):
+                Whether or not to raise an error if some of the weights from the checkpoint do not have the same size
+                as the weights of the model, defaults to `False`.
         """
         model_state_dict = model.state_dict()
         expected_keys = list(model_state_dict.keys())
@@ -414,7 +419,7 @@ class LoadPretrainedModels(object):
         if remove_prefix_from_model:
             expected_keys_not_prefixed = [
                 s for s in expected_keys if not s.startswith(prefix)
-            ]  # model中没有prefix开头的参数
+            ]
             expected_keys = [
                 ".".join(s.split(".")[1:]) if s.startswith(prefix) else s for s in expected_keys
             ]
@@ -495,7 +500,7 @@ class LoadPretrainedModels(object):
 
         if len(unexpected_keys) > 0:
             logger.warning(
-                f"Some weights of the model checkpoint at {pretrained_model_name_or_path} "
+                f"Some weights of the model checkpoint at {pretrained_model_path} "
                 "were not used when "
                 f"initializing {model.__class__.__name__}: {unexpected_keys}\n"
                 f"- This IS expected if you are initializing {model.__class__.__name__} "
@@ -515,7 +520,7 @@ class LoadPretrainedModels(object):
         if len(missing_keys) > 0:
             logger.warning(
                 f"Some weights of {model.__class__.__name__} were not initialized "
-                f"from the model checkpoint at {pretrained_model_name_or_path} "
+                f"from the model checkpoint at {pretrained_model_path} "
                 f"and are newly initialized: {missing_keys}\n"
                 f"You should probably TRAIN this model on a down-stream task to be"
                 "able to use it for predictions and inference."
@@ -523,7 +528,7 @@ class LoadPretrainedModels(object):
         elif len(mismatched_keys) == 0:
             logger.info(
                 f"All the weights of {model.__class__.__name__} were initialized "
-                f"from the model checkpoint at {pretrained_model_name_or_path}.\n"
+                f"from the model checkpoint at {pretrained_model_path}.\n"
                 f"If your task is similar to the task the model of the checkpoint "
                 "was trained on, "
                 f"you can already use {model.__class__.__name__} for predictions "
@@ -539,7 +544,7 @@ class LoadPretrainedModels(object):
             )
             logger.warning(
                 f"Some weights of {model.__class__.__name__} were not initialized"
-                f"from the model checkpoint at {pretrained_model_name_or_path} "
+                f"from the model checkpoint at {pretrained_model_path} "
                 f"and are newly initialized because the shapes did not"
                 f"match:\n{mismatched_warning}\n"
                 f"You should probably TRAIN this model on a down-stream"
@@ -567,25 +572,25 @@ class LoadPretrainedModels(object):
             >>> bert = my_class.load_model()
 
         """
-        if os.path.isdir(self.pretrained_model_name_or_path):
+        if os.path.isdir(self.pretrained_model_path):
             # state_dict file
-            if os.path.isfile(os.path.join(self.pretrained_model_name_or_path, WEIGHTS_NAME)):
-                model_file = os.path.join(self.pretrained_model_name_or_path, WEIGHTS_NAME)
+            if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME)):
+                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME)
             else:
                 raise EnvironmentError(
                     f"Error no file named {WEIGHTS_NAME} found in directory"
-                    f"{self.pretrained_model_name_or_path}."
+                    f"{self.pretrained_model_path}."
                 )
             # config file
-            if os.path.isfile(os.path.join(self.pretrained_model_name_or_path, CONFIG_NAME)):
-                config_file = os.path.join(self.pretrained_model_name_or_path, CONFIG_NAME)
+            if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
+                config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
             else:
                 raise EnvironmentError(
                     f"Error no file named {CONFIG_NAME} found in directory "
-                    f"{self.pretrained_model_name_or_path}."
+                    f"{self.pretrained_model_path}."
                 )
         else:
-            raise EnvironmentError(f"{self.pretrained_model_name_or_path} is not a directory.")
+            raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
         self._load_config_from_json(config_file)
         torch_state_dict = self._load_torch_state_dict(model_file)
@@ -609,7 +614,7 @@ class LoadPretrainedModels(object):
             mismatched_keys,
             error_msgs,
         ) = self._load_pretrained_model(
-            self.model, flow_state_dict, loaded_state_dict_keys, self.pretrained_model_name_or_path
+            self.model, flow_state_dict, loaded_state_dict_keys, self.pretrained_model_path
         )
 
         model.eval()
