@@ -333,59 +333,38 @@ class LoadPretrainedModels(object):
             pretrained_model_name_or_path (_type_): _description_
             ignore_mismatched_sizes (bool, optional): _description_. Defaults to False.
 
-        Raises:
-            ValueError: _description_
-            RuntimeError: _description_
-
         Returns:
             _type_: _description_
         """
         model_state_dict = model.state_dict()
-
-        # 模型中的参数名
         expected_keys = list(model_state_dict.keys())
-
-        # 例如BertModel的prefix是bert
         prefix = model.base_model_prefix
 
-        # 如果prefix存在
         if len(prefix) > 0:
-            # cpt中有prefix
             has_prefix_module = any(s.startswith(prefix) for s in loaded_keys)
-            # model中有prefix
             expects_prefix_module = any(s.startswith(prefix) for s in expected_keys)
         else:
             has_prefix_module = False
             expects_prefix_module = False
         
-        # cpt中无prefix且model中有prefix时，该参数为True
         remove_prefix_from_model = not has_prefix_module and expects_prefix_module
-        # cpt中有prefix但model中无prefix，参数为True
         add_prefix_to_model = has_prefix_module and not expects_prefix_module
 
-        # 如果需要删除model中的参数名
         if remove_prefix_from_model:
-            # 删除model中参数名的prefix
             expected_keys_not_prefixed = [s for s in expected_keys if not s.startswith(prefix)]  # model中没有prefix开头的参数
             expected_keys = [".".join(s.split(".")[1:]) if s.startswith(prefix) else s for s in expected_keys]
         elif add_prefix_to_model:
-            # model中所有参数加上前缀
             expected_keys = [".".join([prefix, s]) for s in expected_keys]
 
-        # 模型中多出的
         missing_keys = list(set(expected_keys) - set(loaded_keys))
-        # cpt中多出的
         unexpected_keys = list(set(loaded_keys) - set(expected_keys))
 
         start_prefix = ""
         model_to_load = model
         if len(model.base_model_prefix) > 0 and not hasattr(model, model.base_model_prefix) and has_prefix_module:
-            # 预训练中有prefix，但是model中没有prefix的base_model
             start_prefix = model.base_model_prefix + "."
         if len(model.base_model_prefix) > 0 and hasattr(model, model.base_model_prefix) and not has_prefix_module:
-            # 预训练中无prefix，model中有prefix的base_model
             model_to_load = getattr(model, model.base_model_prefix)
-            # 如果cpt中有key在expected_keys_not_prefixed中
             if any(key in expected_keys_not_prefixed for key in loaded_keys):
                 raise ValueError(
                     "The state dictionary of the model you are training to load is corrupted. Are you sure it was "
@@ -405,11 +384,8 @@ class LoadPretrainedModels(object):
                 for checkpoint_key in loaded_keys:
                     model_key = checkpoint_key
                     if remove_prefix_from_model:
-                        # cpt和model都无prefix
                         model_key = f"{prefix}.{checkpoint_key}"
                     elif add_prefix_to_model:
-                        # cpt中有prefix但model中无prefix
-                        # model key没有prefix，但是checkpoint_key有，所以删除checkpoint_key中的prefix
                         model_key = ".".join(checkpoint_key.split(".")[1:])
 
                     if (
@@ -431,7 +407,6 @@ class LoadPretrainedModels(object):
                 remove_prefix_from_model,
                 ignore_mismatched_sizes
             )
-            # model_to_load是要加载的cpt的模型
             error_msgs = _load_state_dict_into_model(model_to_load, state_dict, start_prefix)
 
         if len(error_msgs) > 0:
