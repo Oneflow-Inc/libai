@@ -84,6 +84,7 @@ class T5Dataset(flow.utils.data.Dataset):
         )
 
         # Vocab stuff.
+        self.tokenizer = tokenizer
         tokenizer.add_tokens(
             [tokenizer._bos_token, tokenizer._eos_token, *tokenizer._additional_special_tokens]
         )
@@ -113,6 +114,7 @@ class T5Dataset(flow.utils.data.Dataset):
         # python randint is inclusive whereas the numpy one is exclusive.
         np_rng = np.random.RandomState(seed=(self.seed + idx))
         return build_training_sample(
+            self.tokenizer,
             sample,
             seq_length,
             self.max_seq_length,  # needed for padding
@@ -132,6 +134,7 @@ class T5Dataset(flow.utils.data.Dataset):
 
 
 def build_training_sample(
+    tokenizer,
     sample,
     target_seq_length,
     max_seq_length,
@@ -183,6 +186,7 @@ def build_training_sample(
     # Masking.
     max_predictions_per_seq = masked_lm_prob * max_num_tokens
     (tokens, masked_positions, masked_labels, _, masked_spans) = create_masked_lm_predictions(
+        tokenizer,
         tokens,
         vocab_id_list,
         vocab_id_to_token_dict,

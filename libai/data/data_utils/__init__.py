@@ -13,7 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .dataset_utils import compile_helper, create_masked_lm_predictions, get_samples_mapping
+from .dataset_utils import (
+    compile_helper,
+    create_masked_lm_predictions,
+    get_samples_mapping,
+    get_train_valid_test_split_,
+)
 
 from .indexed_dataset import (
     IndexedCachedDataset,
@@ -21,4 +26,3 @@ from .indexed_dataset import (
     MMapIndexedDataset,
     get_indexed_dataset,
 )
-from .split_dataset import SplitDataset, split_ds

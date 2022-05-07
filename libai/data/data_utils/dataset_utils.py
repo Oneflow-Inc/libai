@@ -14,13 +14,14 @@
 # limitations under the License.
 
 
-# Most of the code here has been copied from:
-#   https://github.com/google-research/albert/blob/master/create_pretraining_data.py
-# with some modifications.
-
 import collections
 import logging
 import os
+
+# Most of the code here has been copied from:
+#   https://github.com/google-research/albert/blob/master/create_pretraining_data.py
+# with some modifications.
+import re
 import time
 
 import numpy as np
@@ -59,6 +60,7 @@ def is_start_piece(piece):
 
 
 def create_masked_lm_predictions(
+    tokenizer,
     tokens,
     vocab_id_list,
     vocab_id_to_token_dict,
@@ -85,7 +87,6 @@ def create_masked_lm_predictions(
     token_boundary = [0] * len(tokens)
 
     for (i, token) in enumerate(tokens):
-
         if token == cls_id or token == sep_id:
             token_boundary[i] = 1
             continue
@@ -107,6 +108,18 @@ def create_masked_lm_predictions(
                 token_boundary[i] = 1
 
     output_tokens = list(tokens)
+    # add by ganruyi
+    if masking_style == "bert-cn-wwm":
+        # if non chinese is False, that means it is chinese, 
+        # then try to remove "##" which is added previously
+        new_token_ids = []
+        for token_id in output_tokens:
+            token = tokenizer.tokenizer.convert_ids_to_tokens([token_id])[0]
+            if len(re.findall("##[\u4E00-\u9FA5]", token)) > 0:
+                token = token[2:]
+            new_token_id = tokenizer.tokenizer.convert_tokens_to_ids([token])[0]
+            new_token_ids.append(new_token_id)
+        output_tokens = new_token_ids
 
     masked_lm_positions = []
     masked_lm_labels = []
@@ -119,7 +132,7 @@ def create_masked_lm_predictions(
     ngrams = np.arange(1, max_ngrams + 1, dtype=np.int64)
     if not geometric_dist:
         # Note(mingdachen):
-        # By default, we set the probilities to favor shorter ngram sequences.
+        # By default, we set the probabities to favor shorter ngrams sequences.
         pvals = 1.0 / np.arange(1, max_ngrams + 1)
         pvals /= pvals.sum(keepdims=True)
         if favor_longer_ngram:
@@ -191,6 +204,23 @@ def create_masked_lm_predictions(
                     # 10% of the time, keep original
                     if np_rng.random() < 0.5:
                         masked_token = tokens[index]
+                    # 10% of the time, replace with random word
+                    else:
+                        masked_token = vocab_id_list[np_rng.randint(0, len(vocab_id_list))]
+            elif masking_style == "bert-cn-wwm":
+                # 80% of the time, replace with [MASK]
+                if np_rng.random() < 0.8:
+                    masked_token = mask_id
+                else:
+                    # 10% of the time, keep original
+                    if np_rng.random() < 0.5:
+                        # if it's chinese wwm, remove ## in toknes
+                        token_id = tokens[index]
+                        token = tokenizer.tokenizer.convert_ids_to_tokens([token_id])[0]
+                        if len(re.findall("##[\u4E00-\u9FA5]", token)) > 0:
+                            token = token[2:]
+                        new_token_id = tokenizer.tokenizer.convert_tokens_to_ids([token])[0]
+                        masked_token = new_token_id
                     # 10% of the time, replace with random word
                     else:
                         masked_token = vocab_id_list[np_rng.randint(0, len(vocab_id_list))]
@@ -266,7 +296,13 @@ def create_masked_lm_predictions(
     for p in masked_lms:
         masked_lm_positions.append(p.index)
         masked_lm_labels.append(p.label)
-    return (output_tokens, masked_lm_positions, masked_lm_labels, token_boundary, masked_spans)
+    return (
+        output_tokens,
+        masked_lm_positions,
+        masked_lm_labels,
+        token_boundary,
+        masked_spans,
+    )
 
 
 def get_samples_mapping(
@@ -323,7 +359,7 @@ def get_samples_mapping(
 
         samples_mapping = helpers.build_mapping(
             indexed_dataset.doc_idx,
-            indexed_dataset.sizes.astype(np.int64),
+            indexed_dataset.sizes,
             num_epochs,
             max_num_samples,
             max_seq_length,
@@ -337,7 +373,7 @@ def get_samples_mapping(
         logger.info(" > saved the index mapping in {}".format(indexmap_filename))
         # Make sure all the ranks have built the mapping
         logger.info(
-            " > elasped time to build and save samples mapping "
+            " > elapsed time to build and save samples mapping "
             "(seconds): {:4f}".format(time.time() - start_time)
         )
 
@@ -354,3 +390,34 @@ def get_samples_mapping(
     logger.info("    total number of samples: {}".format(samples_mapping.shape[0]))
 
     return samples_mapping
+
+
+def get_train_valid_test_split_(size, splits=None):
+    """
+    Split a dataset into subsets given proportions of how
+    much to allocate per split. If a split is 0% returns None for that split.
+    Purpose: Useful for creating train/val/test splits
+
+    Arguments:
+        ds (Dataset or array-like): Data to be split.
+        split (1D array-like): proportions to split `ds`. `sum(splits) != 0`
+    """
+
+    if splits is None:
+        splits = [0.8, 0.2, 0.0]
+
+    while len(splits) < 3:
+        splits.append(0.0)
+    splits = splits[:3]
+    splits_sum = sum(splits)
+    assert splits_sum > 0.0, "Split sum must be larger than 0."
+    splits = [split / splits_sum for split in splits]
+    splits_index = [0]
+    for index, split in enumerate(splits):
+        splits_index.append(splits_index[index] + int(round(split * float(size))))
+    diff = splits_index[-1] - size
+    for index in range(1, len(splits_index)):
+        splits_index[index] -= diff
+    assert len(splits_index) == 4
+    assert splits_index[-1] == size
+    return splits_index
