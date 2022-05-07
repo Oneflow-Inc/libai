@@ -263,8 +263,9 @@ class BertModel(nn.Module):
         amp_enabled (bool, optional):
             Whether or not to set fp16 for embedding weight in T5 model. Defaults to ``False``.
     """
-    
-    base_model_prefix = 'bert'
+
+    base_model_prefix = "bert"
+
     @configurable
     def __init__(
         self,
