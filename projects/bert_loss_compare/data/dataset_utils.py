@@ -304,13 +304,6 @@ def _build_train_valid_test_datasets(
                     masking_style="bert" if dataset_type == DSET_TYPE_BERT else "bert-cn-wwm",
                     **kwargs,
                 )
-            elif dataset_type == DSET_TYPE_ROFORMER:
-                dataset = RoformerDataset(
-                    indexed_dataset=indexed_dataset,
-                    masked_lm_prob=masked_lm_prob,
-                    short_seq_prob=short_seq_prob,
-                    **kwargs,
-                )
             else:
                 raise NotImplementedError("Dataset type not fully implemented.")
 

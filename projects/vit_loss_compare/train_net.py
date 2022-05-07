@@ -18,14 +18,13 @@ import sys
 
 sys.path.append(".")
 
+from utils.load_torch_weight import load_from_torch
+
 import libai.utils.distributed as dist
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.trainer import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.file_utils import get_data_from_cache
-
-from utils.load_torch_weight import load_from_torch
-
 
 DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/cifar10/cifar-10-python.tar.gz"
 MODEL_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/models/torch_vit_tiny_weight_cifar10.pth"
@@ -51,7 +50,7 @@ class Trainer(DefaultTrainer):
             print("write loss")
             for loss, _ in all_losses:
                 f.write(str(loss) + "\n")
-    
+
     @classmethod
     def test(cls, cfg, test_loaders, model, evaluator=None):
         return {}

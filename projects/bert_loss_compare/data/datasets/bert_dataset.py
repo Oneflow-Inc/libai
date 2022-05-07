@@ -36,6 +36,7 @@ class BertDataset(flow.utils.data.Dataset):
     def __init__(
         self,
         name,
+        # tokenizer,
         indexed_dataset,
         data_prefix,
         num_epochs,

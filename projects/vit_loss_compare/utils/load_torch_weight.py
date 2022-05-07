@@ -15,10 +15,11 @@
 
 import logging
 
-import torch
 import oneflow as flow
+import torch
 
 logger = logging.getLogger(__name__)
+
 
 def filter_keys(key, value):
     if "norm1" in key:
@@ -42,8 +43,9 @@ def filter_keys(key, value):
         if "weight" in key:
             value = value.transpose((-1, -2))
     elif "head.weight" in key:
-            value = value.transpose((-1, -2))
+        value = value.transpose((-1, -2))
     return key, value
+
 
 def load_from_torch(model, path="./vit_tiny_torch_weight.pth"):
     torch_dict = torch.load(path)
@@ -51,11 +53,13 @@ def load_from_torch(model, path="./vit_tiny_torch_weight.pth"):
     new_parameters = dict()
     for key, value in parameters.items():
         if "num_batches_tracked" not in key:
-          val = value.detach().cpu().numpy()
-          # to global tensor
-          key, val = filter_keys(key, val)
-          val = flow.tensor(val).to_global(sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)}))
-          new_parameters[key] = val
+            val = value.detach().cpu().numpy()
+            # to global tensor
+            key, val = filter_keys(key, val)
+            val = flow.tensor(val).to_global(
+                sbp=flow.sbp.broadcast, placement=flow.placement("cuda", {0: range(1)})
+            )
+            new_parameters[key] = val
     model.load_state_dict(new_parameters)
     logger.info("Successfully load pytorch vit initial weight.")
     return model
