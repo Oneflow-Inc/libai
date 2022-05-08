@@ -110,14 +110,14 @@ def create_masked_lm_predictions(
     output_tokens = list(tokens)
     # add by ganruyi
     if masking_style == "bert-cn-wwm":
-        # if non chinese is False, that means it is chinese, 
+        # if non chinese is False, that means it is chinese,
         # then try to remove "##" which is added previously
         new_token_ids = []
         for token_id in output_tokens:
-            token = tokenizer.tokenizer.convert_ids_to_tokens([token_id])[0]
+            token = tokenizer.convert_ids_to_tokens([token_id])[0]
             if len(re.findall("##[\u4E00-\u9FA5]", token)) > 0:
                 token = token[2:]
-            new_token_id = tokenizer.tokenizer.convert_tokens_to_ids([token])[0]
+            new_token_id = tokenizer.convert_tokens_to_ids([token])[0]
             new_token_ids.append(new_token_id)
         output_tokens = new_token_ids
 
@@ -216,10 +216,10 @@ def create_masked_lm_predictions(
                     if np_rng.random() < 0.5:
                         # if it's chinese wwm, remove ## in toknes
                         token_id = tokens[index]
-                        token = tokenizer.tokenizer.convert_ids_to_tokens([token_id])[0]
+                        token = tokenizer.convert_ids_to_tokens([token_id])[0]
                         if len(re.findall("##[\u4E00-\u9FA5]", token)) > 0:
                             token = token[2:]
-                        new_token_id = tokenizer.tokenizer.convert_tokens_to_ids([token])[0]
+                        new_token_id = tokenizer.convert_tokens_to_ids([token])[0]
                         masked_token = new_token_id
                     # 10% of the time, replace with random word
                     else:

@@ -199,18 +199,12 @@ def build_nlp_train_loader(
     else:
         dataset = dataset[0]
 
-    sampler.total_samples = len(dataset)
-    sampler.consumed_samples = consumed_samples
+    sampler.dataset = dataset
     sampler.micro_batch_size = train_batch_size
+    sampler.consumed_samples = consumed_samples
     sampler.data_parallel_rank = dist.get_data_parallel_rank()
     sampler.data_parallel_size = dist.get_data_parallel_size()
-
-    # sampler.dataset = dataset
-    # sampler.micro_batch_size = train_batch_size
-    # sampler.consumed_samples = consumed_samples
-    # sampler.data_parallel_rank = dist.get_data_parallel_rank()
-    # sampler.data_parallel_size = dist.get_data_parallel_size()
-    # sampler.seed = seed
+    sampler.seed = seed
     sampler = instantiate(sampler)
 
     dataloader = DataLoader(

@@ -602,9 +602,12 @@ class DefaultTrainer(TrainerBase):
 
         if hasattr(cfg.dataloader.train, "train_val_test_num_samples"):
             eval_iter = (
-                cfg.train.train_iter // cfg.train.evaluation.eval_period + 1
-            ) * cfg.train.eval_iter
-            test_iter = cfg.train.eval_iter
+                (cfg.train.train_iter // cfg.train.evaluation.eval_period + 1)
+                * cfg.train.evaluation.eval_iter
+                if cfg.train.evaluation.enabled
+                else 0
+            )
+            test_iter = cfg.train.evaluation.eval_iter if cfg.train.evaluation.enabled else 0
 
             cfg.dataloader.train.train_val_test_num_samples = [
                 cfg.train.samples,

@@ -37,7 +37,6 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
                 data_impl="mmap",
                 skip_warmup=False,
             ),
-            max_num_samples=None,
             max_seq_length=512,
             max_seq_length_dec=128,
             masked_lm_prob=0.15,
@@ -45,6 +44,7 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
             seed=1234,
         ),
     ],
+    train_val_test_num_samples=None,  # a hint for deferred assignment
     splits=[[949.0, 50.0, 1.0]],
     weights=[1.0],
     num_workers=4,
