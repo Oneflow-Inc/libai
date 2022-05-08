@@ -17,10 +17,6 @@
 import collections
 import logging
 import os
-
-# Most of the code here has been copied from:
-#   https://github.com/google-research/albert/blob/master/create_pretraining_data.py
-# with some modifications.
 import re
 import time
 
@@ -30,6 +26,10 @@ import oneflow as flow
 from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
+
+# Most of the code here has been copied from:
+#   https://github.com/google-research/albert/blob/master/create_pretraining_data.py
+# with some modifications.
 
 
 def compile_helper():

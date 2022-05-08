@@ -610,9 +610,9 @@ class DefaultTrainer(TrainerBase):
             test_iter = cfg.train.evaluation.eval_iter if cfg.train.evaluation.enabled else 0
 
             cfg.dataloader.train.train_val_test_num_samples = [
-                cfg.train.samples,
-                eval_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size(),
-                test_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size(),
+                int(cfg.train.samples),
+                int(eval_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
+                int(test_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
             ]
         if OmegaConf.is_list(cfg.dataloader.train.dataset):
             for dataset in cfg.dataloader.train.dataset:

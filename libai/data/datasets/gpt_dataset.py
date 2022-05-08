@@ -138,9 +138,8 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
             # not mean anything.
             if num_epochs == 1:
                 separate_last_epoch = False
-                print(
-                    " > only one epoch required, setting " "separate_last_epoch to False",
-                    flush=True,
+                logger.info(
+                    " > only one epoch required, setting " "separate_last_epoch to False"
                 )
 
             else:
@@ -173,9 +172,10 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
                         "than 80% of number of samples per epoch ({}), "
                         "setting separate_last_epoch to False"
                     )
-                print(string.format(last_epoch_num_samples, num_samples_per_epoch), flush=True)
+                logger.info(string.format(last_epoch_num_samples, num_samples_per_epoch))
 
             # doc-idx.
+            logger.info("start to build and save doc-idx mapping ...")
             start_time = time.time()
             doc_idx = _build_doc_idx(documents, num_epochs, np_rng, separate_last_epoch)
             np.save(doc_idx_filename, doc_idx, allow_pickle=True)
@@ -184,6 +184,8 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
                 "(seconds): {:4f}".format(time.time() - start_time)
             )
             # sample-idx.
+
+            logger.info("start to build and save sample-idx mapping ...")
             start_time = time.time()
 
             # Use C++ implementation for speed.
@@ -213,7 +215,7 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
             shuffle_idx = _build_shuffle_idx(num_samples_, sample_idx.shape[0] - 1, np_rng)
             np.save(shuffle_idx_filename, shuffle_idx, allow_pickle=True)
             logger.info(
-                " > elasped time to build and save shuffle-idx mapping"
+                " > elapsed time to build and save shuffle-idx mapping"
                 " (seconds): {:4f}".format(time.time() - start_time)
             )
 
@@ -275,10 +277,9 @@ def _build_doc_idx(documents, num_epochs, np_rng, separate_last_epoch):
 
 def _build_shuffle_idx(num_samples, total_size, np_rng):
     """Build the range [0, size) and shuffle."""
-    print(
+    logger.info(
         " > building shuffle index with split [0, {}) and [{}, {}) "
-        "...".format(num_samples, num_samples, total_size),
-        flush=True,
+        "...".format(num_samples, num_samples, total_size)
     )
 
     dtype_ = np.uint32
