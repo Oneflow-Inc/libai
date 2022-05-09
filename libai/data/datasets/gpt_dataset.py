@@ -138,9 +138,7 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
             # not mean anything.
             if num_epochs == 1:
                 separate_last_epoch = False
-                logger.info(
-                    " > only one epoch required, setting " "separate_last_epoch to False"
-                )
+                logger.info(" > only one epoch required, setting " "separate_last_epoch to False")
 
             else:
                 # Get the number of samples for the last epoch
