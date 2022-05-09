@@ -4,9 +4,10 @@ import flowvision as vision
 from libai.config import get_config
 from libai.config import LazyCall
 from libai.data.build import build_image_test_loader, build_image_train_loader
-from libai.moe.moe import MoE
-from projects.MOE.model.mlp import MLP
+from libai.layers import Linear
+
 from projects.MOE.dataset.dataset import CIFAR_Dataset
+from projects.MOE.model.moe import MoE
 
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
@@ -46,7 +47,7 @@ dataloader.test = [
 ]
 
 model_cfg = dict(
-    expert=MLP(input_size=3072, output_size=10, hidden_size=256),
+    expert=Linear(in_features=3072, out_features=10),
     input_size=3072,
     output_size=10,
     num_experts=10,
