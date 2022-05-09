@@ -502,3 +502,37 @@ class BertForPreTraining(nn.Module):
 
         # Set the last layernorm stage id
         model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+
+class BertForClassification(nn.Module):
+    def __init__(self, cfg, num_labels, classifier_dropout=None):
+        super().__init__()
+        self.num_labels = num_labels
+        self.cfg = cfg
+
+        self.bert = BertModel(cfg)
+        self.classifier = Linear(
+            cfg.hidden_size,
+            num_labels,
+            bias=True,
+            parallel="row",
+            init_method=init_method_normal(cfg.initializer_range),
+            layer_idx=-1,
+        )
+        classifier_dropout = classifier_dropout if classifier_dropout is not None else cfg.hidden_dropout_prob
+        self.dropout = nn.Dropout(classifier_dropout)
+    
+    def forward(self, input_ids, attention_mask, tokentype_ids=None, labels=None):
+        outputs = self.bert(input_ids, attention_mask, tokentype_ids)
+        sequence_output = outputs[0]
+        sequence_output = self.dropout(sequence_output)
+        logits = self.classifier(sequence_output)
+
+        loss = None
+        if labels is not None:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            loss = loss.to_global(
+                sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
+            )
+        return {"loss": loss, "logits": logits}
