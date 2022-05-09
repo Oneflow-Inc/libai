@@ -47,7 +47,7 @@ def _load_state_dict_into_model(model_to_load, state_dict, start_prefix):
     return error_msgs
 
 
-class LoadPretrainedModels(object):
+class LoadPretrainedBase(object):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
         """Class used to load the [transformers](https://huggingface.co/models)' pretrained model.
 
@@ -57,25 +57,14 @@ class LoadPretrainedModels(object):
                 `libai.config.configs.common.models`.
             pretrained_model_path (str): The directory path of pretrained model,
                 which contains model weights file, config file.
-            convert_function (function): A function used to convert the checkpoint file
-                of Huggingface to OneFlow.
             output_loading_info (`bool`, *optional*, defaults to `False`):
                 Whether to return a dictionary containing missing keys, unexpected keys
                 and error messages.
         """
-        self.model_to_convert_function = {
-            'bert': self._convert_bert_checkpoint_file,
-            'gpt': self._convert_gpt_checkpoint_file,
-            't5': self._convert_t5_checkpoint_file,
-        }
         self.model = model
         self.default_cfg = default_cfg
         self.pretrained_model_path = pretrained_model_path
         self.kwargs = kwargs
-
-        # choise convert function according self.model
-        # TODO(xzp)
-        self.convert_function = self.model_to_convert_function['bert']
         self.output_loading_info = kwargs.pop("output_loading_info", False)
 
     def convert_tensor(self, tensor):
@@ -143,20 +132,309 @@ class LoadPretrainedModels(object):
             state_dict[new_key] = state_dict.pop(old_key)
         return state_dict
 
-    def _convert_bert_checkpoint_file(self, torch_state_dict, cfg_dict):
+    def _convert_state_dict(self, torch_state_dict, cfg):
+        """A function used to convert the checkpoint file of Huggingface to LiBai.
+
+        Args:
+            torch_state_dict (OrderedDict): torch state dict.
+            cfg (dict): model's default config dict.
+
+        Returns:
+            OrderedDict: flow state dict.
+        """
+        raise NotImplementedError("_convert_state_dict not implemented")
+
+    def _load_config_from_json(self, config_file):
+        # load config from config.json, and update default config.
+        with open(config_file, mode="r", encoding="utf-8") as f:
+            cfg_dict = json.load(f)
+
+        # update default_cfg by config.json
+        for k, v in cfg_dict.items():
+            if k == "num_hidden_layers":
+                self.default_cfg["hidden_layers"] = v
+                continue
+            elif k == "type_vocab_size":
+                self.default_cfg["num_tokentypes"] = v
+                continue
+            elif k == "layer_norm_eps":
+                self.default_cfg["layernorm_eps"] = v
+            if k in cfg_dict:
+                self.default_cfg[k] = v
+
+        # update default_cfg by kwargs
+        for k, v in self.kwargs:
+            self.default_cfg[k] = v
+
+        self.default_cfg["bias_dropout_fusion"] = False
+        self.default_cfg["apply_residual_post_layernorm"] = True
+
+    def _load_torch_state_dict(self, state_dict_file):
+        # load pytorch_model.bin
+        state_dict = torch.load(state_dict_file, map_location="cpu")
+        return state_dict
+
+    def _load_pretrained_model(
+        self,
+        model,
+        state_dict,
+        loaded_keys,
+        pretrained_model_path,
+        ignore_mismatched_sizes=False,
+    ):
+        """Load pretrained model.
+
+        Args:
+            model (libai.models): The model to be loaded.
+            state_dict (OrderedDict): state dict.
+            loaded_keys (list): keys of state dict.
+            pretrained_model_path (str): pretrained modelE path.
+            ignore_mismatched_sizes (bool):
+                Whether or not to raise an error if some of the weights
+                from the checkpoint do not have the same size as the
+                weights of the model, defaults to `False`.
+        """
+        model_state_dict = model.state_dict()
+        expected_keys = list(model_state_dict.keys())
+        prefix = model.base_model_prefix
+
+        if len(prefix) > 0:
+            has_prefix_module = any(s.startswith(prefix) for s in loaded_keys)
+            expects_prefix_module = any(s.startswith(prefix) for s in expected_keys)
+        else:
+            has_prefix_module = False
+            expects_prefix_module = False
+
+        remove_prefix_from_model = not has_prefix_module and expects_prefix_module
+        add_prefix_to_model = has_prefix_module and not expects_prefix_module
+
+        if remove_prefix_from_model:
+            expected_keys_not_prefixed = [s for s in expected_keys if not s.startswith(prefix)]
+            expected_keys = [
+                ".".join(s.split(".")[1:]) if s.startswith(prefix) else s for s in expected_keys
+            ]
+        elif add_prefix_to_model:
+            expected_keys = [".".join([prefix, s]) for s in expected_keys]
+
+        missing_keys = list(set(expected_keys) - set(loaded_keys))
+        unexpected_keys = list(set(loaded_keys) - set(expected_keys))
+
+        start_prefix = ""
+        model_to_load = model
+        if (
+            len(model.base_model_prefix) > 0
+            and not hasattr(model, model.base_model_prefix)
+            and has_prefix_module
+        ):
+            start_prefix = model.base_model_prefix + "."
+        if (
+            len(model.base_model_prefix) > 0
+            and hasattr(model, model.base_model_prefix)
+            and not has_prefix_module
+        ):
+            model_to_load = getattr(model, model.base_model_prefix)
+            if any(key in expected_keys_not_prefixed for key in loaded_keys):
+                raise ValueError(
+                    "The state dictionary of the model you are training to load is corrupted. \
+                    Are you sure it was "
+                    "properly saved?"
+                )
+
+        def _find_mismatched_keys(
+            state_dict,
+            model_state_dict,
+            loaded_keys,
+            add_prefix_to_model,
+            remove_prefix_from_model,
+            ignore_mismatched_sizes,
+        ):
+            mismatched_keys = []
+            if ignore_mismatched_sizes:
+                for checkpoint_key in loaded_keys:
+                    model_key = checkpoint_key
+                    if remove_prefix_from_model:
+                        model_key = f"{prefix}.{checkpoint_key}"
+                    elif add_prefix_to_model:
+                        model_key = ".".join(checkpoint_key.split(".")[1:])
+
+                    if (
+                        model_key in model_state_dict
+                        and state_dict[checkpoint_key].shape != model_state_dict[model_key].shape
+                    ):
+                        mismatched_keys.append(
+                            (
+                                checkpoint_key,
+                                state_dict[checkpoint_key].shape,
+                                model_state_dict[model_key].shape,
+                            )
+                        )
+                        del state_dict[checkpoint_key]
+            return mismatched_keys
+
+        if state_dict is not None:
+            mismatched_keys = _find_mismatched_keys(
+                state_dict,
+                model_state_dict,
+                loaded_keys,
+                add_prefix_to_model,
+                remove_prefix_from_model,
+                ignore_mismatched_sizes,
+            )
+            error_msgs = _load_state_dict_into_model(model_to_load, state_dict, start_prefix)
+
+        if len(error_msgs) > 0:
+            error_msg = "\n\t".join(error_msgs)
+            raise RuntimeError(
+                f"Error(s) in loading state_dict for {model.__class__.__name__}:\n\t{error_msg}"
+            )
+
+        if len(unexpected_keys) > 0:
+            logger.warning(
+                f"Some weights of the model checkpoint at {pretrained_model_path} "
+                "were not used when "
+                f"initializing {model.__class__.__name__}: {unexpected_keys}\n"
+                f"- This IS expected if you are initializing {model.__class__.__name__} "
+                "from the checkpoint of a model trained on another task "
+                f"or with another architecture (e.g. initializing a BertForSequenceClassification "
+                "model from a BertForPreTraining model).\n"
+                f"- This IS NOT expected if you are initializing {model.__class__.__name__} "
+                "from the checkpoint of a model that you expect "
+                f"to be exactly identical (initializing a BertForSequenceClassification model "
+                "from a BertForSequenceClassification model)."
+            )
+        else:
+            logger.info(
+                f"All model checkpoint weights were used when initializing "
+                f"{model.__class__.__name__}.\n"
+            )
+        if len(missing_keys) > 0:
+            logger.warning(
+                f"Some weights of {model.__class__.__name__} were not initialized "
+                f"from the model checkpoint at {pretrained_model_path} "
+                f"and are newly initialized: {missing_keys}\n"
+                f"You should probably TRAIN this model on a down-stream task to be"
+                "able to use it for predictions and inference."
+            )
+        elif len(mismatched_keys) == 0:
+            logger.info(
+                f"All the weights of {model.__class__.__name__} were initialized "
+                f"from the model checkpoint at {pretrained_model_path}.\n"
+                f"If your task is similar to the task the model of the checkpoint "
+                "was trained on, "
+                f"you can already use {model.__class__.__name__} for predictions "
+                "without further training."
+            )
+        if len(mismatched_keys) > 0:
+            mismatched_warning = "\n".join(
+                [
+                    f"- {key}: found shape {shape1} in the checkpoint and {shape2}"
+                    "in the model instantiated"
+                    for key, shape1, shape2 in mismatched_keys
+                ]
+            )
+            logger.warning(
+                f"Some weights of {model.__class__.__name__} were not initialized"
+                f"from the model checkpoint at {pretrained_model_path} "
+                f"and are newly initialized because the shapes did not"
+                f"match:\n{mismatched_warning}\n"
+                f"You should probably TRAIN this model on a down-stream"
+                "task to be able to use it for predictions and inference."
+            )
+
+        return model, missing_keys, unexpected_keys, mismatched_keys, error_msgs
+
+    def load_model(self):
+        """Load model.
+
+        # For example:
+
+        # .. code-block:: python
+
+            >>> import libai
+            >>> from libai.config.configs.common.models.bert import cfg
+            >>> from model_utils import LoadPretrainedModels
+
+            >>> my_class = LoadPretrainedBert(
+                    libai.models.BertModel,
+                    cfg,
+                    'path/bert-base-chinese'
+                )
+            >>> bert = my_class.load_model()
+
+        """
+        if os.path.isdir(self.pretrained_model_path):
+            # state_dict file
+            if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME)):
+                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME)
+            else:
+                raise EnvironmentError(
+                    f"Error no file named {WEIGHTS_NAME} found in directory"
+                    f"{self.pretrained_model_path}."
+                )
+            # config file
+            if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
+                config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
+            else:
+                raise EnvironmentError(
+                    f"Error no file named {CONFIG_NAME} found in directory "
+                    f"{self.pretrained_model_path}."
+                )
+        else:
+            raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
+
+        self._load_config_from_json(config_file)
+        torch_state_dict = self._load_torch_state_dict(model_file)
+        torch_state_dict = self._fix_key(torch_state_dict)
+
+        # convert state dict
+        flow_state_dict = self._convert_state_dict(torch_state_dict, self.default_cfg)
+        loaded_state_dict_keys = list(flow_state_dict.keys())
+
+        # instance model
+        self.model = build_model(LazyCall(self.model)(cfg=self.default_cfg))
+
+        # state_dict to global
+        self._state_dict_to_global(flow_state_dict)
+
+        # load
+        (
+            model,
+            missing_keys,
+            unexpected_keys,
+            mismatched_keys,
+            error_msgs,
+        ) = self._load_pretrained_model(
+            self.model, flow_state_dict, loaded_state_dict_keys, self.pretrained_model_path
+        )
+
+        model.eval()
+
+        if self.output_loading_info:
+            loading_info = {
+                "missing_keys": missing_keys,
+                "unexpected_keys": unexpected_keys,
+                "mismatched_keys": mismatched_keys,
+                "error_msgs": error_msgs,
+            }
+            return model, loading_info
+        return model
+
+
+class LoadPretrainedBert(LoadPretrainedBase):
+    def _convert_state_dict(self, torch_state_dict, cfg):
         """Convert torch state dict to flow state dict.
 
         Args:
             torch_state_dict (OrderedDict): torch state dict.
-            cfg_dict (dict): model's default config dict.
+            cfg (dict): model's default config dict.
 
         Returns:
             OrderedDict: flow state dict.
         """
         oneflow_state_dict = torch_state_dict.copy()
-        num_heads = cfg_dict.get("num_attention_heads", 12)
-        hidden_size = cfg_dict.get("hidden_size", 768)
-        layers = cfg_dict.get("hidden_layers", 12)
+        num_heads = cfg.get("num_attention_heads", 12)
+        hidden_size = cfg.get("hidden_size", 768)
+        layers = cfg.get("hidden_layers", 12)
         head_size = int(hidden_size / num_heads)
 
         has_prefix = any(s.startswith(self.model.base_model_prefix) for s in oneflow_state_dict)
@@ -346,285 +624,3 @@ class LoadPretrainedModels(object):
             else:
                 oneflow_state_dict[key] = self.convert_tensor(oneflow_state_dict.pop(key))
         return oneflow_state_dict
-
-    def _convert_gpt_checkpoint_file(self):
-        pass
-
-    def _convert_t5_checkpoint_file(self):
-        pass
-
-    def _load_config_from_json(self, config_file):
-        # load config from config.json, and update default config.
-        with open(config_file, mode="r", encoding="utf-8") as f:
-            cfg_dict = json.load(f)
-
-        # update default_cfg by config.json
-        for k, v in cfg_dict.items():
-            if k == "num_hidden_layers":
-                self.default_cfg["hidden_layers"] = v
-                continue
-            elif k == "type_vocab_size":
-                self.default_cfg["num_tokentypes"] = v
-                continue
-            elif k == "layer_norm_eps":
-                self.default_cfg["layernorm_eps"] = v
-            if k in cfg_dict:
-                self.default_cfg[k] = v
-
-        # update default_cfg by kwargs
-        for k, v in self.kwargs:
-            self.default_cfg[k] = v
-
-        self.default_cfg["bias_dropout_fusion"] = False
-        self.default_cfg["apply_residual_post_layernorm"] = True
-
-    def _load_torch_state_dict(self, state_dict_file):
-        # load pytorch_model.bin
-        state_dict = torch.load(state_dict_file, map_location="cpu")
-        return state_dict
-
-    def _load_pretrained_model(
-        self,
-        model,
-        state_dict,
-        loaded_keys,
-        pretrained_model_path,
-        ignore_mismatched_sizes=False,
-    ):
-        """Load pretrained model.
-
-        Args:
-            model (libai.models): The model to be loaded.
-            state_dict (OrderedDict): state dict.
-            loaded_keys (list): keys of state dict.
-            pretrained_model_path (str): pretrained modelE path.
-            ignore_mismatched_sizes (bool):
-                Whether or not to raise an error if some of the weights from the checkpoint do not have the same size
-                as the weights of the model, defaults to `False`.
-        """
-        model_state_dict = model.state_dict()
-        expected_keys = list(model_state_dict.keys())
-        prefix = model.base_model_prefix
-
-        if len(prefix) > 0:
-            has_prefix_module = any(s.startswith(prefix) for s in loaded_keys)
-            expects_prefix_module = any(s.startswith(prefix) for s in expected_keys)
-        else:
-            has_prefix_module = False
-            expects_prefix_module = False
-
-        remove_prefix_from_model = not has_prefix_module and expects_prefix_module
-        add_prefix_to_model = has_prefix_module and not expects_prefix_module
-
-        if remove_prefix_from_model:
-            expected_keys_not_prefixed = [
-                s for s in expected_keys if not s.startswith(prefix)
-            ]
-            expected_keys = [
-                ".".join(s.split(".")[1:]) if s.startswith(prefix) else s for s in expected_keys
-            ]
-        elif add_prefix_to_model:
-            expected_keys = [".".join([prefix, s]) for s in expected_keys]
-
-        missing_keys = list(set(expected_keys) - set(loaded_keys))
-        unexpected_keys = list(set(loaded_keys) - set(expected_keys))
-
-        start_prefix = ""
-        model_to_load = model
-        if (
-            len(model.base_model_prefix) > 0
-            and not hasattr(model, model.base_model_prefix)
-            and has_prefix_module
-        ):
-            start_prefix = model.base_model_prefix + "."
-        if (
-            len(model.base_model_prefix) > 0
-            and hasattr(model, model.base_model_prefix)
-            and not has_prefix_module
-        ):
-            model_to_load = getattr(model, model.base_model_prefix)
-            if any(key in expected_keys_not_prefixed for key in loaded_keys):
-                raise ValueError(
-                    "The state dictionary of the model you are training to load is corrupted. \
-                    Are you sure it was "
-                    "properly saved?"
-                )
-
-        def _find_mismatched_keys(
-            state_dict,
-            model_state_dict,
-            loaded_keys,
-            add_prefix_to_model,
-            remove_prefix_from_model,
-            ignore_mismatched_sizes,
-        ):
-            mismatched_keys = []
-            if ignore_mismatched_sizes:
-                for checkpoint_key in loaded_keys:
-                    model_key = checkpoint_key
-                    if remove_prefix_from_model:
-                        model_key = f"{prefix}.{checkpoint_key}"
-                    elif add_prefix_to_model:
-                        model_key = ".".join(checkpoint_key.split(".")[1:])
-
-                    if (
-                        model_key in model_state_dict
-                        and state_dict[checkpoint_key].shape != model_state_dict[model_key].shape
-                    ):
-                        mismatched_keys.append(
-                            (
-                                checkpoint_key,
-                                state_dict[checkpoint_key].shape,
-                                model_state_dict[model_key].shape,
-                            )
-                        )
-                        del state_dict[checkpoint_key]
-            return mismatched_keys
-
-        if state_dict is not None:
-            mismatched_keys = _find_mismatched_keys(
-                state_dict,
-                model_state_dict,
-                loaded_keys,
-                add_prefix_to_model,
-                remove_prefix_from_model,
-                ignore_mismatched_sizes,
-            )
-            error_msgs = _load_state_dict_into_model(model_to_load, state_dict, start_prefix)
-
-        if len(error_msgs) > 0:
-            error_msg = "\n\t".join(error_msgs)
-            raise RuntimeError(
-                f"Error(s) in loading state_dict for {model.__class__.__name__}:\n\t{error_msg}"
-            )
-
-        if len(unexpected_keys) > 0:
-            logger.warning(
-                f"Some weights of the model checkpoint at {pretrained_model_path} "
-                "were not used when "
-                f"initializing {model.__class__.__name__}: {unexpected_keys}\n"
-                f"- This IS expected if you are initializing {model.__class__.__name__} "
-                "from the checkpoint of a model trained on another task "
-                f"or with another architecture (e.g. initializing a BertForSequenceClassification "
-                "model from a BertForPreTraining model).\n"
-                f"- This IS NOT expected if you are initializing {model.__class__.__name__} "
-                "from the checkpoint of a model that you expect "
-                f"to be exactly identical (initializing a BertForSequenceClassification model "
-                "from a BertForSequenceClassification model)."
-            )
-        else:
-            logger.info(
-                f"All model checkpoint weights were used when initializing "
-                f"{model.__class__.__name__}.\n"
-            )
-        if len(missing_keys) > 0:
-            logger.warning(
-                f"Some weights of {model.__class__.__name__} were not initialized "
-                f"from the model checkpoint at {pretrained_model_path} "
-                f"and are newly initialized: {missing_keys}\n"
-                f"You should probably TRAIN this model on a down-stream task to be"
-                "able to use it for predictions and inference."
-            )
-        elif len(mismatched_keys) == 0:
-            logger.info(
-                f"All the weights of {model.__class__.__name__} were initialized "
-                f"from the model checkpoint at {pretrained_model_path}.\n"
-                f"If your task is similar to the task the model of the checkpoint "
-                "was trained on, "
-                f"you can already use {model.__class__.__name__} for predictions "
-                "without further training."
-            )
-        if len(mismatched_keys) > 0:
-            mismatched_warning = "\n".join(
-                [
-                    f"- {key}: found shape {shape1} in the checkpoint and {shape2}"
-                    "in the model instantiated"
-                    for key, shape1, shape2 in mismatched_keys
-                ]
-            )
-            logger.warning(
-                f"Some weights of {model.__class__.__name__} were not initialized"
-                f"from the model checkpoint at {pretrained_model_path} "
-                f"and are newly initialized because the shapes did not"
-                f"match:\n{mismatched_warning}\n"
-                f"You should probably TRAIN this model on a down-stream"
-                "task to be able to use it for predictions and inference."
-            )
-
-        return model, missing_keys, unexpected_keys, mismatched_keys, error_msgs
-
-    def load_model(self):
-        """Load model.
-
-        # For example:
-
-        # .. code-block:: python
-
-            >>> import libai
-            >>> from libai.config.configs.common.models.bert import cfg
-            >>> from model_utils import LoadPretrainedModels
-
-            >>> my_class = LoadPretrainedModels(
-                    libai.models.BertModel,
-                    cfg,
-                    'path/bert-base-chinese'
-                )
-            >>> bert = my_class.load_model()
-
-        """
-        if os.path.isdir(self.pretrained_model_path):
-            # state_dict file
-            if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME)):
-                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME)
-            else:
-                raise EnvironmentError(
-                    f"Error no file named {WEIGHTS_NAME} found in directory"
-                    f"{self.pretrained_model_path}."
-                )
-            # config file
-            if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
-                config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
-            else:
-                raise EnvironmentError(
-                    f"Error no file named {CONFIG_NAME} found in directory "
-                    f"{self.pretrained_model_path}."
-                )
-        else:
-            raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
-
-        self._load_config_from_json(config_file)
-        torch_state_dict = self._load_torch_state_dict(model_file)
-        torch_state_dict = self._fix_key(torch_state_dict)
-
-        # convert state dict
-        flow_state_dict = self.convert_function(torch_state_dict, self.default_cfg)
-        loaded_state_dict_keys = list(flow_state_dict.keys())
-
-        # instance model
-        self.model = build_model(LazyCall(self.model)(cfg=self.default_cfg))
-
-        # state_dict to global
-        self._state_dict_to_global(flow_state_dict)
-
-        # load
-        (
-            model,
-            missing_keys,
-            unexpected_keys,
-            mismatched_keys,
-            error_msgs,
-        ) = self._load_pretrained_model(
-            self.model, flow_state_dict, loaded_state_dict_keys, self.pretrained_model_path
-        )
-
-        model.eval()
-
-        if self.output_loading_info:
-            loading_info = {
-                "missing_keys": missing_keys,
-                "unexpected_keys": unexpected_keys,
-                "mismatched_keys": mismatched_keys,
-                "error_msgs": error_msgs,
-            }
-            return model, loading_info
-        return model
