@@ -66,6 +66,7 @@ class LoadPretrainedBase(object):
         self.pretrained_model_path = pretrained_model_path
         self.kwargs = kwargs
         self.output_loading_info = kwargs.pop("output_loading_info", False)
+        self.base_model_prefix = None
 
     def convert_tensor(self, tensor):
         """Convert pytorch tensor to OneFlow tensor.
@@ -85,11 +86,11 @@ class LoadPretrainedBase(object):
         Args:
             flow_state_dict (OrderedDict): State dict of OneFlow's pretrained model.
         """
-        prefix = self.model.base_model_prefix
+        prefix = self.base_model_prefix
 
         # checkpoint
         has_prefix_module = any(
-            s.startswith(self.model.base_model_prefix) for s in flow_state_dict.keys()
+            s.startswith(self.base_model_prefix) for s in flow_state_dict.keys()
         )
 
         # module
@@ -196,7 +197,7 @@ class LoadPretrainedBase(object):
         """
         model_state_dict = model.state_dict()
         expected_keys = list(model_state_dict.keys())
-        prefix = model.base_model_prefix
+        prefix = self.base_model_prefix
 
         if len(prefix) > 0:
             has_prefix_module = any(s.startswith(prefix) for s in loaded_keys)
@@ -222,17 +223,17 @@ class LoadPretrainedBase(object):
         start_prefix = ""
         model_to_load = model
         if (
-            len(model.base_model_prefix) > 0
-            and not hasattr(model, model.base_model_prefix)
+            len(self.base_model_prefix) > 0
+            and not hasattr(model, self.base_model_prefix)
             and has_prefix_module
         ):
-            start_prefix = model.base_model_prefix + "."
+            start_prefix = self.base_model_prefix + "."
         if (
-            len(model.base_model_prefix) > 0
-            and hasattr(model, model.base_model_prefix)
+            len(self.base_model_prefix) > 0
+            and hasattr(model, self.base_model_prefix)
             and not has_prefix_module
         ):
-            model_to_load = getattr(model, model.base_model_prefix)
+            model_to_load = getattr(model, self.base_model_prefix)
             if any(key in expected_keys_not_prefixed for key in loaded_keys):
                 raise ValueError(
                     "The state dictionary of the model you are training to load is corrupted. \
@@ -421,6 +422,10 @@ class LoadPretrainedBase(object):
 
 
 class LoadPretrainedBert(LoadPretrainedBase):
+    def __init__(self, model, default_cfg, pretrained_model_path, base_model_prefix='bert', **kwargs):
+        super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix = base_model_prefix
+
     def _convert_state_dict(self, torch_state_dict, cfg):
         """Convert torch state dict to flow state dict.
 
@@ -437,7 +442,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
         layers = cfg.get("hidden_layers", 12)
         head_size = int(hidden_size / num_heads)
 
-        has_prefix = any(s.startswith(self.model.base_model_prefix) for s in oneflow_state_dict)
+        has_prefix = any(s.startswith(self.base_model_prefix) for s in oneflow_state_dict)
 
         prefix = "bert." if has_prefix else ""
         index_idx = 3 if has_prefix else 2
