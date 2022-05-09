@@ -19,6 +19,7 @@ from typing import Tuple
 
 import oneflow as flow
 from oneflow import nn
+import oneflow.nn.functional as F
 
 from libai.layers.attention import MultiheadAttention
 from libai.layers.linear import Linear
@@ -98,17 +99,18 @@ class DetrMultiheadAttention(MultiheadAttention):
             
         # *NOTE: for detr MultiHeadAttention
         query, key, value = hidden_states
+
         query, key, value = query.permute(1,0,2), key.permute(1,0,2), value.permute(1,0,2)
         
         bsz, tgt_len = query.size()[:2]
-
-        query_key_value = self.query_key_value(hidden_states)
-        query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
-        query_key_value = query_key_value.permute(
-            0, 2, 1, 3
-        )  # [bsz, num_heads, src_len, 3 * head_size]
-        query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
-            
+        
+        query_w, key_w, value_w = self.query_key_value.weight.chunk(3, dim=0)
+        query_b, key_b, value_b = self.query_key_value.bias.chunk(3, dim=0)
+        
+        query = self.linear(query, query_w, query_b, bsz) 
+        key = self.linear(key, key_w, key_b, bsz) 
+        value = self.linear(value, value_w, value_b, bsz)  
+        
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
@@ -163,6 +165,13 @@ class DetrMultiheadAttention(MultiheadAttention):
             output = (output, past_key_value)
 
         return output
+    
+    def linear(self, x, w, b, bsz):
+        
+        return F.linear(x, weight=w, bias=b).view(
+            bsz, -1, self.num_heads, self.head_size).permute(
+            0, 2, 1, 3) 
+        
 
     def extra_repr(self) -> str:
         return "hidden_size={}, num_heads={}, is_cross_attention={}".format(

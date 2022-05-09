@@ -30,7 +30,7 @@ import flowvision
 from flowvision.models.layer_getter import IntermediateLayerGetter
 
 from libai.config.configs.common.data.coco import NestedTensor
-import libai.utils.distributed as dist 
+import libai.utils.distributed as dist
 
 from .position_encoding import build_position_encoding
 
@@ -46,11 +46,11 @@ class FrozenBatchNorm2d(nn.Module):
 
     def __init__(self, n):
         super(FrozenBatchNorm2d, self).__init__()
-        self.register_buffer("weight", flow.ones(n))
-        self.register_buffer("bias", flow.zeros(n))
-        self.register_buffer("running_mean", flow.zeros(n))
-        self.register_buffer("running_var", flow.ones(n))
-
+        self.register_buffer("weight", flow.ones(n), persistent=True)
+        self.register_buffer("bias", flow.zeros(n), persistent=True)
+        self.register_buffer("running_mean", flow.zeros(n), persistent=True)
+        self.register_buffer("running_var", flow.ones(n), persistent=True)
+        
     def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
                               missing_keys, unexpected_keys, error_msgs):
         num_batches_tracked_key = prefix + 'num_batches_tracked'
@@ -120,7 +120,7 @@ class Backbone(BackboneBase):
         backbone = getattr(flowvision.models, name)(
             replace_stride_with_dilation=[False, False, dilation],
             pretrained=dist.is_main_process(), norm_layer=FrozenBatchNorm2d)
-
+        
         num_channels = 512 if name in ('resnet18', 'resnet34') else 2048
         super().__init__(backbone, train_backbone, num_channels, return_interm_layers)
 

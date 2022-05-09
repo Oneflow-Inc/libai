@@ -43,6 +43,7 @@ from libai.utils import distributed as dist
 from libai.utils.checkpoint import Checkpointer
 from libai.utils.events import CommonMetricPrinter, JSONWriter, TensorboardXWriter
 from libai.utils.logger import setup_logger
+from libai.utils.distributed import get_nd_sbp, get_layer_placement
 
 from trainer.detr_trainer import DetrEagerTrainer
 from datasets.coco_eval import inference_on_coco_dataset
@@ -59,8 +60,7 @@ class DetrDefaultTrainer(DefaultTrainer):
         self._trainer = DetrEagerTrainer(
             self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
         )
-        import pdb
-        pdb.set_trace()
+
     @classmethod
     def get_batch(cls, data: Instance, mixup_func: Optional[Callable] = None):
         """
@@ -164,3 +164,27 @@ class DetrDefaultTrainer(DefaultTrainer):
         # if len(results) == 1:
         #     results = list(results.values())[0]
         # return results
+    @classmethod
+    def build_model(cls, cfg):
+        """
+        Returns:
+            flow.nn.Module:
+
+        It now calls :func:`libai.models.build_model`.
+        Overwrite it if you'd like a different model.
+        """
+        assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
+        # Set model fp16 option because of embedding layer `white_identity` manual
+        # insert for amp training if provided.
+        if try_get_key(cfg.model, "cfg.amp_enabled") is not None:
+            cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        # In case some model define without cfg keyword.
+        elif try_get_key(cfg.model, "amp_enabled") is not None:
+            cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        model = build_model(cfg.model)
+        logger = logging.getLogger(__name__)
+        logger.info("Model:\n{}".format(model))
+
+        model.apply(dist.convert_to_distributed_default_setting)
+        
+        return model

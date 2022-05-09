@@ -58,6 +58,7 @@ def main(args):
         test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
         if len(test_loader) == 0:
             logger.info("No dataset in dataloader.test, please set dataset for dataloader.test")
+
         DefaultTrainer.test(cfg, test_loader, model)
         return
 

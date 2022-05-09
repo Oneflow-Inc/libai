@@ -243,8 +243,6 @@ class CocoEvaluator(DatasetEvaluator):
     def summarize(self):
         for iou_type, coco_eval in self.coco_eval.items():
             print("IoU metric: {}".format(iou_type))
-            import pdb
-            pdb.set_trace()
             coco_eval.summarize()
     
             
@@ -365,8 +363,6 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
-            if idx > 5:
-                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time

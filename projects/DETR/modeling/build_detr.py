@@ -48,8 +48,10 @@ def build(args):
     backbone = LazyCall(build_backbone)(args=args)
 
     transformer = LazyCall(build_transformer)(args=args)
-
-    matcher = build_matcher(args)
+    
+    # TODO: LazyCall build_matcher
+    matcher = build_matcher(args=args)
+    
     weight_dict = {'loss_ce': 1, 'loss_bbox': args.bbox_loss_coef}
     weight_dict['loss_giou'] = args.giou_loss_coef
     if args.masks:

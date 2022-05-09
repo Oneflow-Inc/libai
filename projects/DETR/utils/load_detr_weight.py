@@ -45,6 +45,7 @@ def convert_state(state):
 
 
 def load_tensor(tensor_lhs, tensor_rhs):
+
     tensor_rhs = flow.to_global(
         tensor_rhs,
         placement=tensor_lhs.placement,

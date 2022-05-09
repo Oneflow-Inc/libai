@@ -48,10 +48,10 @@ class detr_checkpointer(Checkpointer):
         of_state_dict = convert_state(torch_state_dict)
 
         for key, value in of_state_dict.items():
-            print(key)
-            load_tensor(self.model.state_dict()[key], value)
+            # ! of_state_dict["bn"] and of_state_dict["downsample"] is local mode, not global, 
+            # ! which makes load_tensor() fail. Check it!
+            if "bn" not in key and "downsample" not in key:
+                load_tensor(self.model.state_dict()[key], value)
 
         # return any further checkpoint data
         # return checkpoint 
-        import pdb
-        pdb.set_trace()
