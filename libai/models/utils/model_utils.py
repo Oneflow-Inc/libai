@@ -110,7 +110,7 @@ class LoadPretrainedBase(object):
                 )
 
     def _fix_key(self, state_dict):
-        """Fix the key in state dict.
+        """Fix the key in state dict: Convert "gamma" to "weight" and "beta" to "bias".
 
         Args:
             state_dict (OrderedDict): state dict of pretrained model.
@@ -146,7 +146,12 @@ class LoadPretrainedBase(object):
         raise NotImplementedError("_convert_state_dict not implemented")
 
     def _load_config_from_json(self, config_file):
-        # load config from config.json, and update default config.
+        """load config from `config.json`, and update default config.
+
+        Args:
+            config_file (str): Path of config file.
+        """
+
         with open(config_file, mode="r", encoding="utf-8") as f:
             cfg_dict = json.load(f)
 
@@ -422,7 +427,9 @@ class LoadPretrainedBase(object):
 
 
 class LoadPretrainedBert(LoadPretrainedBase):
-    def __init__(self, model, default_cfg, pretrained_model_path, base_model_prefix='bert', **kwargs):
+    def __init__(
+        self, model, default_cfg, pretrained_model_path, base_model_prefix="bert", **kwargs
+    ):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
         self.base_model_prefix = base_model_prefix
 
