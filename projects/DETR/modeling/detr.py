@@ -63,12 +63,6 @@ class DETR(nn.Module):
         samples, targets = samples["images"], samples["labels"]
         
         if isinstance(samples, (list, flow.Tensor)):
-            if isinstance(samples, list):
-                print("sample is list")
-            elif isinstance(samples, flow.Tensor):
-                print("sample is tensor")
-            import pdb
-            pdb.set_trace()
             samples = nested_tensor_from_tensor_list(samples)
             
         features, pos = self.backbone(samples)

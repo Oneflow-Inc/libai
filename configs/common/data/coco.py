@@ -385,9 +385,16 @@ def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
         batch_shape = [len(tensor_list)] + max_size
         b, c, h, w = batch_shape
         dtype = tensor_list[0].dtype
-        device = tensor_list[0].device
-        tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
-        mask = flow.ones((b, h, w), dtype=flow.bool, device=device)
+        
+        if tensor_list[0].is_global:
+            sbp = tensor_list[0].sbp
+            placement = tensor_list[0].placement
+            tensor = flow.zeros(batch_shape, dtype=dtype).to_global(sbp=sbp, placement=placement)
+            mask = flow.ones((b, h, w), dtype=flow.bool).to_global(sbp=sbp, placement=placement)
+        else:
+            device = tensor_list[0].device
+            tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
+            mask = flow.ones((b, h, w), dtype=flow.bool, device=device)         
 
         # ! oneflow errors: m does not change mask value
         # for img, pad_img, m in zip(tensor_list, tensor, mask):

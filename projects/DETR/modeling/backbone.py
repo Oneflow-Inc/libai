@@ -94,12 +94,19 @@ class BackboneBase(nn.Module):
 
     def forward(self, tensor_list: NestedTensor):
 
-        xs = self.body(tensor_list.tensors.tensor)
+        if isinstance(tensor_list.tensors, flow.Tensor):
+            xs = self.body(tensor_list.tensors)            
+        else:
+            xs = self.body(tensor_list.tensors.tensor)
+            
         out: Dict[str, NestedTensor] = {}
         for name, x in xs.items():
             m = tensor_list.mask
             assert m is not None
-            mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
+            if isinstance(m, flow.Tensor):
+                mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
+            else:
+                mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
             
             # ! bugs in F.interpolate. Here is the temporary substitute
             if x.shape[-2:] != mask.shape[-2:]:
