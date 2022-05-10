@@ -19,31 +19,16 @@ from typing import Callable, Optional
 import logging
 import math
 import os
-import time
-from collections import OrderedDict
-from omegaconf import OmegaConf
-from termcolor import colored
-
 import oneflow as flow
 
 from libai.data import Instance
 from libai.config.configs.common.data.coco import NestedTensor
 from libai.data.structures import DistTensorData, Instance
 from libai.engine.default import DefaultTrainer
-from libai.config import LazyConfig, instantiate, try_get_key
+from libai.config import instantiate, try_get_key
 from libai.data import Instance
-from libai.engine import hooks
-from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase
-from libai.evaluation import print_csv_format
-from libai.models import build_graph, build_model
-from libai.optim import build_optimizer
-from libai.scheduler import build_lr_scheduler
-from libai.tokenizer import build_tokenizer
+from libai.models import  build_model
 from libai.utils import distributed as dist
-from libai.utils.checkpoint import Checkpointer
-from libai.utils.events import CommonMetricPrinter, JSONWriter, TensorboardXWriter
-from libai.utils.logger import setup_logger
-from libai.utils.distributed import get_nd_sbp, get_layer_placement
 
 from trainer.detr_trainer import DetrEagerTrainer
 from datasets.coco_eval import inference_on_coco_dataset

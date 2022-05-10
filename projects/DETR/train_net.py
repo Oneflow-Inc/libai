@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import logging
-from operator import imod
 import os
 import sys
 
@@ -26,7 +25,6 @@ from trainer.detr_default import DetrDefaultTrainer
 from utils.checkpoint import detr_checkpointer
 
 logger = logging.getLogger("libai." + __name__)
-
 
 
 DefaultTrainer = DetrDefaultTrainer

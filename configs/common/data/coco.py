@@ -404,9 +404,9 @@ def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
         for i, img in enumerate(tensor_list):
             tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
             mask[i, : img.shape[1], :img.shape[2]] = False
-            
     else:
         raise ValueError('not supported')
+    
     return NestedTensor(tensor, mask)
 
 def collate_fn(batch):
