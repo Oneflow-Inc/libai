@@ -18,8 +18,6 @@ import flowvision
 from libai.evaluation.evaluator import DatasetEvaluator
 from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
-from libai.config.configs.common.data.coco import make_coco_transforms
-from libai.data.datasets.coco import CocoDetection
 
 from configs.models.configs_detr import postprocessors
 from utils.misc import all_gather
@@ -246,59 +244,73 @@ class CocoEvaluator(DatasetEvaluator):
             coco_eval.summarize()
     
             
-def pad_batch_tool(xi, batch_size, tensor_batch, tensor_micro_batch_size, last_batch_lack, data_parallel_size, padded_dict):
+# def pad_batch_images(xi, batch_size, tensor_batch, tensor_micro_batch_size, last_batch_lack, data_parallel_size):
+#     import pdb
+#     pdb.set_trace()    
+#     pad_shape = (batch_size, *xi.shape[1:])
+#     local_xi = xi.to_global(
+#         sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda")
+#     ).to_local()
+#     padded_xi = flow.zeros(pad_shape, dtype=xi.dtype, device="cuda")
+#     padded_xi[:tensor_batch, ...] = padded_xi[:tensor_batch, ...] + local_xi
+#     for i in range(last_batch_lack - 1):
+#         start_idx = tensor_micro_batch_size * (data_parallel_size - i - 1) - 1
+#         padded_xi[start_idx:-1] = padded_xi[start_idx + 1 :]
+#     padded_xi = padded_xi.to_global(
+#         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=xi.placement
+#     ).to_global(sbp=xi.sbp)
     
-    pad_shape = (batch_size, *xi.shape[1:])
-    local_xi = xi.to_global(
-        sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda")
-    ).to_local()
-    padded_xi = flow.zeros(pad_shape, dtype=xi.dtype, device="cuda")
-    padded_xi[:tensor_batch, ...] = padded_xi[:tensor_batch, ...] + local_xi
-    for i in range(last_batch_lack - 1):
-        start_idx = tensor_micro_batch_size * (data_parallel_size - i - 1) - 1
-        padded_xi[start_idx:-1] = padded_xi[start_idx + 1 :]
-    padded_xi = padded_xi.to_global(
-        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=xi.placement
-    ).to_global(sbp=xi.sbp)
+#     return padded_xi
+
+# def pad_batch_labels(xi,last_batch_lack):
     
-    return padded_xi
+#     '''
+#     The xi is tuple here.
+#     '''
+#     padded_xi = []
+#     for i in range(last_batch_lack-1):
+#         padded_xi.append([])
+    
+#     padded_xi.extend(xi)
+    
+#     return tuple(padded_xi)
          
             
-def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
+# def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
 
-    tensor_batch = x_dict["images"].tensors.tensor.shape[0]
-    assert tensor_batch <= batch_size
-    if tensor_batch == batch_size and not is_last_batch:
-        return x_dict, batch_size
+#     tensor_batch = x_dict["images"].tensors.tensor.shape[0]
+#     assert tensor_batch <= batch_size
+#     if tensor_batch == batch_size and not is_last_batch:
+#         return x_dict, batch_size
 
-    valid_sample = tensor_batch - last_batch_lack
-    data_parallel_size = dist.get_data_parallel_size()
-    assert tensor_batch % data_parallel_size == 0
-    tensor_micro_batch_size = tensor_batch // data_parallel_size
-    padded_dict = {}
+#     valid_sample = tensor_batch - last_batch_lack
+#     data_parallel_size = dist.get_data_parallel_size()
+#     assert tensor_batch % data_parallel_size == 0
+#     tensor_micro_batch_size = tensor_batch // data_parallel_size
+#     padded_dict = {}
     
-    padded_xi = pad_batch_tool(x_dict["images"].tensors.tensor, 
-                               batch_size, tensor_batch, tensor_micro_batch_size, 
-                               last_batch_lack, data_parallel_size, padded_dict)
-    import pdb
-    pdb.set_trace()
-    padded_dict["images"] = padded_xi
+#     padded_xi = pad_batch_images(x_dict["images"].tensors.tensor, 
+#                                batch_size, tensor_batch, tensor_micro_batch_size, 
+#                                last_batch_lack, data_parallel_size)
+#     import pdb
+#     pdb.set_trace()
+#     padded_dict["images"] = padded_xi
 
-    # TODO: labels pad here
-    # padded_xi_list = []
-    # for label_dict in x_dict["labels"]:
-    #     current_label_dict = {}
-    #     for key, xi in label_dict.items():
-    #         print(key)
-    #         import pdb
-    #         pdb.set_trace()
-    #         padded_xi = pad_batch_tool(xi.tensor, batch_size, tensor_batch, tensor_micro_batch_size, last_batch_lack, data_parallel_size, padded_dict)
-    #         current_label_dict[key] = padded_xi
-    #     padded_xi_list.append(current_label_dict)
-    # padded_dict["labels"] = tuple(padded_xi_list)
-    padded_dict["labels"] = x_dict["labels"]
+#     # TODO: labels pad here
+#     # padded_xi_list = []
+#     # for label_dict in x_dict["labels"]:
+#     #     current_label_dict = {}
+#     #     for key, xi in label_dict.items():
+#     #         print(key)
+#     #         import pdb
+#     #         pdb.set_trace()
+#     #         padded_xi = pad_batch_labels(xi.tensor,last_batch_lack)
+#     #         current_label_dict[key] = padded_xi
+#     #     padded_xi_list.append(current_label_dict)
+#     # padded_dict["labels"] = tuple(padded_xi_list)
+#     padded_dict["labels"] = x_dict["labels"]
     
-    return padded_dict, valid_sample
+#     return padded_dict, valid_sample
 
 
 def inference_on_coco_dataset(
@@ -381,11 +393,13 @@ def inference_on_coco_dataset(
             # model forward
             # local tensor -> global tensor
             data = get_batch(inputs)
-            is_last_batch = idx == len(data_loader) - 1
-            import pdb
-            pdb.set_trace()
-            paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
-            _, outputs = model(paded_data)
+            # is_last_batch = idx == len(data_loader) - 1
+
+            tensor_batch = data["images"].tensors.tensor.shape[0]
+            valid_sample = tensor_batch - last_batch_lack
+            # TODO: make sure how to impl pad_batch. Graph mode needs this.
+            # paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
+            _, outputs = model(data)
             
             # get valid samplen
             # key: images
@@ -394,7 +408,7 @@ def inference_on_coco_dataset(
                                              if data["images"].tensors.tensor.placement.ranks.ndim == 1 
                                              else [[0]])[:valid_sample]
             
-            # *NOTE: dtype of detr label: tuple. len(labels)=bsz
+            # *NOTE: dtype of detr label: tuple. len(labels)=bsz, labels[0].dtype=dict
             valid_data["labels"] = []
             for label in data["labels"]:
                 label_dict = {}

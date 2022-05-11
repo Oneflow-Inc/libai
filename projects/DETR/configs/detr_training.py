@@ -23,7 +23,7 @@ train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
-train.test_micro_batch_size = 8
+train.test_micro_batch_size = 9
 train.train_epoch = 300
 train.warmup_ratio = 40 / 300
 train.eval_period = 5

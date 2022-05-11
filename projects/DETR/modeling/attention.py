@@ -14,15 +14,12 @@
 # limitations under the License.
 
 
-import math
 from typing import Tuple
 
 import oneflow as flow
-from oneflow import nn
 import oneflow.nn.functional as F
 
 from libai.layers.attention import MultiheadAttention
-from libai.layers.linear import Linear
 
 
 class DetrMultiheadAttention(MultiheadAttention):
