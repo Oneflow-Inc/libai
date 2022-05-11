@@ -85,9 +85,9 @@ class PreTrainedTokenizer(object):
     """
     Base class for all tokenizers.
 
-    Handle all the shared methods for tokenization and special tokens as well as methods
+    Handle all the shared methods for tokenization and special tokens, methods
     dowloading/caching/loading pretrained tokenizers as well as adding tokens to the vocabulary.
-    This class also contain the added tokens in a unified way on top of all tokenizers so we don't
+    This class also contains the added tokens in a unified way on top of all tokenizers, so we don't
     have to handle the specific vocabulary augmentation methods of the various underlying
     dictionary structures (BPE, sentencepiece...).
 
@@ -212,10 +212,10 @@ class PreTrainedTokenizer(object):
                 should be cached if the standard cache should not be used.
             force_download: (`optional`) boolean, default False:
                 Force to (re-)download the vocabulary files and override the cached versions if
-                they exists.
+                they exist.
             proxies: (`optional`) dict, default None:
                 A dictionary of proxy servers to use by protocol or endpoint,
-                e.g.: {'http': 'foo.bar:3128', 'http://hostname': 'foo.bar:4012'}.
+                e.g., {'http': 'foo.bar:3128', 'http://hostname': 'foo.bar:4012'}.
                 The proxies are used on each request.
             inputs: (`optional`) positional arguments: will be passed to the
                 Tokenizer ``__init__`` method.
@@ -822,7 +822,7 @@ class PreTrainedTokenizer(object):
 
     def convert_tokens_to_string(self, tokens: List[str]) -> str:
         """
-        Converts a sequence of tokens in a single string. The most simple way to do it is
+        Converts a sequence of tokens to a single string. The most simple way to do it is
         ``" ".join(tokens)`` but we often want to remove sub-word tokenization artifacts
         at the same time.
 

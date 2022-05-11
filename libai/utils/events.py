@@ -45,7 +45,7 @@ def get_event_storage():
     """
     Returns:
         The :class:`EventStorage` object that's currently being used.
-        Throws an error if no :class:`EventStorage` is currently enabled.
+        Throw an error if no :class:`EventStorage` is currently enabled.
     """
     assert len(
         _CURRENT_STORAGE_STACK
@@ -69,7 +69,7 @@ class JSONWriter(EventWriter):
     """
     Write scalars to a json file.
     It saves scalars as one json per line (instead of a big json) for easy parsing.
-    Examples parsing such a json file:
+    Example of parsing such a json file:
 
     ::
 
@@ -132,6 +132,46 @@ class JSONWriter(EventWriter):
 
     def close(self):
         self._file_handle.close()
+
+
+class TensorboardXWriter(EventWriter):
+    """
+    Write all scalars to a tensorboard file
+    """
+
+    def __init__(self, log_dir: str, window_size: int = 20, **kwargs):
+        """
+        Args:
+            log_dir (str): the directory to save the output events
+            window_size (int): the scalars will be median-smoothed by this window size
+
+            kwargs: other arguments passed to `torch.utils.tensorboard.SummaryWriter(...)`
+        """
+        self._window_size = window_size
+        from tensorboardX import SummaryWriter
+
+        self._writer = SummaryWriter(log_dir=log_dir, **kwargs)
+        self._last_write = -1
+
+    def write(self):
+        storage = get_event_storage()
+        new_last_write = self._last_write
+        for k, (v, iter) in storage.latest_with_smoothing_hint(self._window_size).items():
+            if iter > self._last_write:
+                self._writer.add_scalar(k, v, iter)
+                new_last_write = max(new_last_write, iter)
+        self._last_write = new_last_write
+
+        # TODO: add write image
+
+        if len(storage._histograms) >= 1:
+            for params in storage._histograms:
+                self._writer.add_histogram_raw(**params)
+            storage.clear_histograms()
+
+    def close(self):
+        if hasattr(self, "_writer"):  # doesn't exist when the code fails at import
+            self._writer.close()
 
 
 class CommonMetricPrinter(EventWriter):
@@ -197,7 +237,7 @@ class CommonMetricPrinter(EventWriter):
 
         # NOTE: max_mem is parsed by grep in "dev/parse_results.sh"
         self.logger.info(
-            " {eta}{iter}  {sample}  {losses}  {time}{data_time}  lr: {lr}  {memory}".format(
+            " {eta}{iter}  {sample}  {losses}  {time}{data_time} {tpt} lr: {lr}  {memory}".format(
                 eta=f"eta: {eta_string}  " if eta_string else "",
                 iter=f"iteration: {iteration}/{self._max_iter}",
                 sample=f"consumed samples: {consumed_samples}",
@@ -208,10 +248,13 @@ class CommonMetricPrinter(EventWriter):
                         if "loss" in k
                     ]
                 ),
-                time="time: {:.4f}({:.2f})  ".format(iter_time, self._batch_size / iter_time)
+                time="time: {:.4f} s/iter  ".format(iter_time) if iter_time is not None else "",
+                data_time="data_time: {:.4f} s/iter".format(data_time)
+                if data_time is not None
+                else "",
+                tpt="total throughput: {:.2f} samples/s".format(self._batch_size / iter_time)
                 if iter_time is not None
                 else "",
-                data_time="data_time: {:.4f}".format(data_time) if data_time is not None else "",
                 lr=lr,
                 memory="max_mem: {:.0f}M".format(max_mem_mb) if max_mem_mb is not None else "",
             )
@@ -241,7 +284,7 @@ class EventStorage:
 
     def put_image(self, img_name, img_tensor):
         """
-        Add an `img_tensor` associated with `img_name`, to be shown on
+        Add an `img_tensor` associated with `img_name` to be shown on
         tensorboard.
 
         Args:
@@ -284,7 +327,7 @@ class EventStorage:
         """
         Put multiple scalars from keyword arguments.
 
-        Examples:
+        Example:
 
         .. code-block:: python
 
@@ -323,7 +366,7 @@ class EventStorage:
         Similar to :meth:`latest`, but the returned values
         are either the un-smoothed original latest value,
         or a median of the given window_size,
-        depend on whether the smoothing_hint is True.
+        depending on whether the smoothing_hint is True.
         This provides a default behavior that other writers can use.
         """
         result = {}
@@ -344,8 +387,8 @@ class EventStorage:
 
     def step(self):
         """
-        User should either: (1) Call this function to increment storage.iter when needed. Or
-        (2) Set `storage.iter` to the correct iteration number before each iteration.
+        User should either: (1) Call this function to increment storage.iter when needed.
+        Or (2) Set `storage.iter` to the correct iteration number before each iteration.
 
         The storage will then be able to associate the new data with an iteration number.
         """

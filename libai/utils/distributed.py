@@ -205,7 +205,7 @@ class _DistributeUtil(object):
 def setup_dist_util(cfg):
     """Initialize the distributed environment with configuration.
 
-    Examples:
+    Example:
 
     .. code-block:: python
 
@@ -256,7 +256,7 @@ def get_layer_placement(layer_idx, device_type="cuda"):
 
     Args:
         layer_idx (int): layer index indicating the rank groups. This is very useful for pipeline
-            parallelism training where different layers on different ranks.
+            parallelism training where different layers are on different ranks.
         device_type (str, optional): device type. Defaults to "cuda".
     """
     dist_util = get_dist_util()
@@ -275,7 +275,7 @@ def get_nd_sbp(sbp_list):
         sbp_list (list): a sbp list with 2D mesh.
 
     Returns:
-        An modified sbp list according to the initialized distributed environment.
+        A modified sbp list according to the initialized distributed environment.
     """
     assert isinstance(sbp_list, list)
     assert len(sbp_list) == 2
@@ -293,7 +293,7 @@ def get_nd_sbp(sbp_list):
 
 
 def get_hidden_sbp():
-    """hidden states sbp."""
+    """Hidden states sbp."""
     return get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
 
 
@@ -313,7 +313,7 @@ def get_tensor_parallel_size():
 
 
 def same_sbp(lhs_sbp, rhs_sbp):
-    """Determine if two sbp signature is same."""
+    """Determine if two sbp signatures are the same."""
     assert len(lhs_sbp) == len(rhs_sbp)
 
     for i in range(len(lhs_sbp)):
@@ -361,7 +361,7 @@ def convert_to_distributed_default_setting(module):
 
 
 def ttol(tensor, pure_local=False, ranks=None):
-    """global tensor to local tensor."""
+    """Global tensor to local tensor."""
     if tensor.is_global:
         placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
         if pure_local:
@@ -375,7 +375,7 @@ def ttol(tensor, pure_local=False, ranks=None):
 
 
 def tton(tensor, local_only=False, ranks=None):
-    """global tensor to numpy ndarray."""
+    """Global tensor to numpy ndarray."""
     if tensor.is_global:
         tensor = ttol(tensor, local_only, ranks)
 

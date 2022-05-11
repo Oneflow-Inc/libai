@@ -194,8 +194,9 @@ class BertLoss(nn.Module):
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
         # because (lm_loss * loss_mask) / loss_mask.sum() cannot accept P / P
-        denominator = loss_mask.sum().to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        denominator = (
+            loss_mask.sum().to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+            + 1e-7
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
         # NOTE(l1aoxingyu): Change lm loss sbp sign [P, P] -> [P, B] to add with sop loss

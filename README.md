@@ -93,6 +93,9 @@ See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) f
 - Support Data parallel [Swin Transformer](https://arxiv.org/abs/2103.14030) model
 - Support finetune task in [QQP project](/projects/QQP/)
 - Support text classification task in [text classification project](/projects/text_classification/)
+- Support Pathways Language Model (PaLM) in [PaLM project](/projects/PaLM/)
+- Support MoCo_v3 in [MOCOV3 project](/projects/MOCOV3/)
+- (experimental) Support MAE in [MAE project](/projects/MAE/)
 
 See [changelog](./changelog.md) for details and release history.
 
