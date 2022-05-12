@@ -68,6 +68,7 @@ class DETR(nn.Module):
         features, pos = self.backbone(samples)
         
         src, mask = features[-1].decompose()
+        
         assert mask is not None
         hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
         

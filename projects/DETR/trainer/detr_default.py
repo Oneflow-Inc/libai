@@ -47,24 +47,12 @@ class DetrDefaultTrainer(DefaultTrainer):
         )
 
     @classmethod
-    def get_batch(cls, data: Instance, mixup_func: Optional[Callable] = None):
+    def get_batch(cls, data: Instance):
         """
         Convert batched local tensor to distributed tensor for model step running.
-
-        If you want to do something with batched data before model, (e.g. mixup),
-        you can rewrite this function.
         """
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
-
-        # TODO: impl the mixup_func
-        # if mixup_func is not None:
-        #     images, labels = mixup_func(
-        #         data.get("images").tensor.cuda(),
-        #         data.get("labels").tensor.cuda(),
-        #     )
-        #     data.get("images").tensor = images
-        #     data.get("labels").tensor = labels
 
         images, labels = data
 
@@ -74,8 +62,8 @@ class DetrDefaultTrainer(DefaultTrainer):
         mask = DistTensorData(images.mask, placement_idx=-1)
         mask.to_global()
 
-        images = NestedTensor(tensors,mask)
-        # TDOO: refine the code. to DistTensorData func should impl in class CocoDetection
+        images = NestedTensor(tensors, mask)
+        
         for i in range(len(labels)):
             for k,v in labels[i].items():
                 labels[i][k] = DistTensorData(flow.tensor(v), placement_idx=-1)
@@ -85,6 +73,7 @@ class DetrDefaultTrainer(DefaultTrainer):
             "images": images,
             "labels": labels
         }
+        
         return ret_dict 
     
     @classmethod

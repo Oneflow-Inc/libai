@@ -395,11 +395,6 @@ def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
             device = tensor_list[0].device
             tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
             mask = flow.ones((b, h, w), dtype=flow.bool, device=device)         
-
-        # ! oneflow errors: m does not change mask value
-        # for img, pad_img, m in zip(tensor_list, tensor, mask):
-        #     pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)
-        #     m[: img.shape[1], :img.shape[2]] = False
         
         for i, img in enumerate(tensor_list):
             tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img

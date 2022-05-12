@@ -91,30 +91,38 @@ class BackboneBase(nn.Module):
             return_layers = {'layer4': "0"}
         self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)
         self.num_channels = num_channels
+        
+        # self.substitute = {}
 
     def forward(self, tensor_list: NestedTensor):
 
-        if isinstance(tensor_list.tensors, flow.Tensor):
-            xs = self.body(tensor_list.tensors)            
-        else:
-            xs = self.body(tensor_list.tensors.tensor)
+        xs = self.body(tensor_list.tensors.tensor)
             
         out: Dict[str, NestedTensor] = {}
+        
+        # if len(self.substitute) == 0:
+        #     for name, x in xs.items():
+        #         m = tensor_list.mask
+        #         assert m is not None
+
+        #         mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]    
+                
+        #         if x.shape[-2:] == mask.shape[-2:]:
+        #             self.substitute["x"] = x
+        #             self.substitute["mask"] = mask    
+        #             break     
+        
         for name, x in xs.items():
             m = tensor_list.mask
             assert m is not None
-            if isinstance(m, flow.Tensor):
-                mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
-            else:
-                mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
-            
-            # ! bugs in F.interpolate. Here is the temporary substitute
-            if x.shape[-2:] != mask.shape[-2:]:
-                mask_ = flow.zeros((x.shape[0],x.shape[-2], x.shape[-1]), dtype=flow.bool).to_global(sbp=mask.sbp, placement=mask.placement)
-                mask_[:,:mask.shape[1], :mask.shape[2]]=mask
-                mask = mask_
+
+            mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
+            # # ! bugs in F.interpolate. Here is the temporary substitute
+            # if x.shape[-2:] != mask.shape[-2:]:
+            #     x = self.substitute["x"]
+            #     mask = self.substitute["mask"]
+                
             out[name] = NestedTensor(x, mask)
-            
         return out
 
 

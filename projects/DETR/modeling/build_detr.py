@@ -15,8 +15,6 @@
 
 
 import oneflow as flow
-import oneflow.nn.functional as F
-import oneflow.nn as nn
 
 from libai.config import LazyCall
 

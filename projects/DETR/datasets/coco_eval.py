@@ -397,7 +397,7 @@ def inference_on_coco_dataset(
 
             tensor_batch = data["images"].tensors.tensor.shape[0]
             valid_sample = tensor_batch - last_batch_lack
-            # TODO: make sure how to impl pad_batch. Graph mode needs this.
+            # TODO: Make sure how to impl pad_batch. Graph mode needs this.
             # paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
             _, outputs = model(data)
             
@@ -482,13 +482,6 @@ def inference_on_coco_dataset(
     
     if evaluator is not None:
         evaluator.evaluate()
-    # import pdb
-    # pdb.set_trace()    
-    # # An evaluator may return None when not in main process.
-    # # Replace it by an empty dict instead to make it easier for downstream code to handle
-    # if results is None:
-    #     results = {}
-    # return results
 
 
 @contextmanager
