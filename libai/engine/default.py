@@ -348,11 +348,12 @@ class DefaultTrainer(TrainerBase):
         # When using gradient accumulation in eager mode, each run_step just handle
         # `micro_batch_size * num_gpus` samples, so we need to divide `num_accumulation_steps`
         # to get the actual `batch_size` for computing `throughput` and `consumed_samples`
-        self.global_batch_size = (
-            cfg.train.global_batch_size
-            if cfg.graph.enabled
-            else cfg.train.global_batch_size // cfg.train.num_accumulation_steps
-        )
+        # self.global_batch_size = (
+        #     cfg.train.global_batch_size
+        #     if cfg.graph.enabled
+        #     else cfg.train.global_batch_size // cfg.train.num_accumulation_steps
+        # )
+        self.global_batch_size = cfg.train.global_batch_size // cfg.train.num_accumulation_steps
         self.max_iter = cfg.train.train_iter
 
         self.register_hooks(self.build_hooks())
