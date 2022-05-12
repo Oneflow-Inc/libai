@@ -3,15 +3,17 @@
 # https://github.com/openai/CLIP/tree/main/clip/model.py
 # --------------------------------------------------------
 
-from oneflow import nn
-from typing import Union, Tuple
 from collections import OrderedDict
+from typing import Tuple, Union
+
 import numpy as np
 import oneflow as flow
+from oneflow import nn
 
-from libai.layers import LayerNorm, TransformerLayer, Embedding
+from libai.layers import Embedding, LayerNorm, TransformerLayer
 from libai.models import VisionTransformer
 from libai.utils import distributed as dist
+
 from .ops import multi_head_attention_forward
 
 
@@ -21,7 +23,8 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1):
         super().__init__()
 
-        # all conv layers have stride 1. an avgpool is performed after the second convolution when stride > 1
+        # all conv layers have stride 1. an avgpool is performed
+        # after the second convolution when stride > 1
         self.conv1 = nn.Conv2d(inplanes, planes, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
         self.relu1 = nn.ReLU(inplace=True)
@@ -40,12 +43,20 @@ class Bottleneck(nn.Module):
         self.stride = stride
 
         if stride > 1 or inplanes != planes * Bottleneck.expansion:
-            # downsampling layer is prepended with an avgpool, and the subsequent convolution has stride 1
-            self.downsample = nn.Sequential(OrderedDict([
-                ("-1", nn.AvgPool2d(stride)),
-                ("0", nn.Conv2d(inplanes, planes * self.expansion, 1, stride=1, bias=False)),
-                ("1", nn.BatchNorm2d(planes * self.expansion))
-            ]))
+            # downsampling layer is prepended with an avgpool,
+            # and the subsequent convolution has stride 1
+            self.downsample = nn.Sequential(
+                OrderedDict(
+                    [
+                        ("-1", nn.AvgPool2d(stride)),
+                        (
+                            "0",
+                            nn.Conv2d(inplanes, planes * self.expansion, 1, stride=1, bias=False),
+                        ),
+                        ("1", nn.BatchNorm2d(planes * self.expansion)),
+                    ]
+                )
+            )
 
     def forward(self, x: flow.Tensor):
         identity = x
@@ -66,7 +77,9 @@ class Bottleneck(nn.Module):
 class AttentionPool2d(nn.Module):
     def __init__(self, spacial_dim: int, embed_dim: int, num_heads: int, output_dim: int = None):
         super().__init__()
-        self.positional_embedding = nn.Parameter(flow.randn(spacial_dim ** 2 + 1, embed_dim) / embed_dim ** 0.5)
+        self.positional_embedding = nn.Parameter(
+            flow.randn(spacial_dim ** 2 + 1, embed_dim) / embed_dim ** 0.5
+        )
         self.k_proj = nn.Linear(embed_dim, embed_dim)
         self.q_proj = nn.Linear(embed_dim, embed_dim)
         self.v_proj = nn.Linear(embed_dim, embed_dim)
@@ -74,11 +87,15 @@ class AttentionPool2d(nn.Module):
         self.num_heads = num_heads
 
     def forward(self, x):
-        x = x.reshape(x.shape[0], x.shape[1], x.shape[2] * x.shape[3]).permute(2, 0, 1)  # NCHW -> (HW)NC
+        x = x.reshape(x.shape[0], x.shape[1], x.shape[2] * x.shape[3]).permute(
+            2, 0, 1
+        )  # NCHW -> (HW)NC
         x = flow.cat([x.mean(dim=0, keepdim=True), x], dim=0)  # (HW+1)NC
         x = x + self.positional_embedding[:, None, :].to(x.dtype)  # (HW+1)NC
         x, _ = multi_head_attention_forward(
-            query=x, key=x, value=x,
+            query=x,
+            key=x,
+            value=x,
             embed_dim_to_check=x.shape[-1],
             num_heads=self.num_heads,
             q_proj_weight=self.q_proj.weight,
@@ -93,7 +110,7 @@ class AttentionPool2d(nn.Module):
             out_proj_bias=self.c_proj.bias,
             use_separate_proj_weight=True,
             training=self.training,
-            need_weights=False
+            need_weights=False,
         )
 
         return x[0]
@@ -102,8 +119,10 @@ class AttentionPool2d(nn.Module):
 class ModifiedResNet(nn.Module):
     """
     A ResNet class that is similar to torchvision's but contains the following changes:
-    - There are now 3 "stem" convolutions as opposed to 1, with an average pool instead of a max pool.
-    - Performs anti-aliasing strided convolutions, where an avgpool is prepended to convolutions with stride > 1
+    - There are now 3 "stem" convolutions as opposed to 1,
+      with an average pool instead of a max pool.
+    - Performs anti-aliasing strided convolutions, where an avgpool is
+      prepended to convolutions with stride > 1
     - The final pooling layer is a QKV attention instead of an average pool
     """
 
@@ -160,14 +179,17 @@ class ModifiedResNet(nn.Module):
         x = self.attnpool(x)
 
         return x
-    
+
+
 class Transformer(nn.Module):
     def __init__(self, width: int, layers: int, heads: int, attn_mask: flow.Tensor = None):
         super().__init__()
         self.width = width
         self.layers = layers
         self.attn_mask = attn_mask
-        self.resblocks = nn.ModuleList([TransformerLayer(width, 4 * width, heads, layer_idx=i) for i in range(layers)])
+        self.resblocks = nn.ModuleList(
+            [TransformerLayer(width, 4 * width, heads, layer_idx=i) for i in range(layers)]
+        )
 
     def forward(self, x: flow.Tensor):
         for layer in self.resblocks:
@@ -176,20 +198,21 @@ class Transformer(nn.Module):
 
 
 class CLIP(nn.Module):
-    def __init__(self,
-                 embed_dim: int,
-                 # vision
-                 image_resolution: int,
-                 vision_layers: Union[Tuple[int, int, int, int], int],
-                 vision_width: int,
-                 vision_patch_size: int,
-                 # text
-                 context_length: int,
-                 vocab_size: int,
-                 transformer_width: int,
-                 transformer_heads: int,
-                 transformer_layers: int
-                 ):
+    def __init__(
+        self,
+        embed_dim: int,
+        # vision
+        image_resolution: int,
+        vision_layers: Union[Tuple[int, int, int, int], int],
+        vision_width: int,
+        vision_patch_size: int,
+        # text
+        context_length: int,
+        vocab_size: int,
+        transformer_width: int,
+        transformer_heads: int,
+        transformer_layers: int,
+    ):
         super().__init__()
 
         self.context_length = context_length
@@ -201,7 +224,7 @@ class CLIP(nn.Module):
                 output_dim=embed_dim,
                 heads=vision_heads,
                 input_resolution=image_resolution,
-                width=vision_width
+                width=vision_width,
             ).to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
         else:
             vision_heads = vision_width // 64
@@ -211,19 +234,26 @@ class CLIP(nn.Module):
                 embed_dim=vision_width,
                 depth=vision_layers,
                 num_heads=vision_heads,
-                num_classes=embed_dim
+                num_classes=embed_dim,
             )
 
         self.transformer = Transformer(
             width=transformer_width,
             layers=transformer_layers,
             heads=transformer_heads,
-            attn_mask=self.build_attention_mask()
+            attn_mask=self.build_attention_mask(),
         )
 
         self.vocab_size = vocab_size
         self.token_embedding = Embedding(vocab_size, transformer_width)
-        self.positional_embedding = nn.Parameter(flow.empty(self.context_length, transformer_width, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=dist.get_layer_placement(0)))
+        self.positional_embedding = nn.Parameter(
+            flow.empty(
+                self.context_length,
+                transformer_width,
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=dist.get_layer_placement(0),
+            )
+        )
         self.ln_final = LayerNorm((transformer_width,), layer_idx=-1)
 
         self.text_projection = nn.Parameter(flow.empty(transformer_width, embed_dim))
@@ -243,7 +273,12 @@ class CLIP(nn.Module):
                 nn.init.normal_(self.visual.attnpool.v_proj.weight, std=std)
                 nn.init.normal_(self.visual.attnpool.c_proj.weight, std=std)
 
-            for resnet_block in [self.visual.layer1, self.visual.layer2, self.visual.layer3, self.visual.layer4]:
+            for resnet_block in [
+                self.visual.layer1,
+                self.visual.layer2,
+                self.visual.layer3,
+                self.visual.layer4,
+            ]:
                 for name, param in resnet_block.named_parameters():
                     if name.endswith("bn3.weight"):
                         nn.init.zeros_(param)
@@ -265,7 +300,7 @@ class CLIP(nn.Module):
         # pytorch uses additive attention mask; fill with -inf
         mask = flow.empty(self.context_length, self.context_length)
         mask.fill_(float("-inf"))
-        mask = flow.triu(mask, 1) # zero out the lower diagonal
+        mask = flow.triu(mask, 1)  # zero out the lower diagonal
         return mask
 
     @property
