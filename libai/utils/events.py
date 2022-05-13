@@ -240,7 +240,7 @@ class CommonMetricPrinter(EventWriter):
             " {eta}{iter}  {sample}  {losses}  {time}{data_time} {tpt} lr: {lr}  {memory}".format(
                 eta=f"eta: {eta_string}  " if eta_string else "",
                 iter=f"iteration: {iteration}/{self._max_iter}",
-                sample=f"consumed samples: {consumed_samples}",
+                sample=f"consumed_samples: {consumed_samples}",
                 losses="  ".join(
                     [
                         "{}: {:.4g}".format(k, v.median(200))
@@ -252,7 +252,7 @@ class CommonMetricPrinter(EventWriter):
                 data_time="data_time: {:.4f} s/iter".format(data_time)
                 if data_time is not None
                 else "",
-                tpt="total throughput: {:.2f} samples/s".format(self._batch_size / iter_time)
+                tpt="total_throughput: {:.2f} samples/s".format(self._batch_size / iter_time)
                 if iter_time is not None
                 else "",
                 lr=lr,
