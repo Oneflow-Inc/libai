@@ -68,15 +68,13 @@ class T5Embedding(flow.nn.Module):
 
         self.embedding_dropout = flow.nn.Dropout(embedding_dropout_prob)
 
-    def forward(self, input_ids, position_ids=None):
+    def forward(self, input_ids, past_length=0):
         seq_length = input_ids.size()[1]
-        word_embeddings = self.word_embeddings(input_ids)
 
-        if position_ids is None:
-            # Change position_ids sbp sign: [B, B] -> [S(0), B]
-            position_ids = (
-                self.position_ids[:, :seq_length].expand_as(input_ids).to_global(sbp=input_ids.sbp)
-            )
+        position_ids = self.position_ids[:, past_length : past_length + seq_length]
+        position_ids = position_ids.expand_as(input_ids).to_global(sbp=input_ids.sbp)
+
+        word_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
         embeddings = word_embeddings + position_embeddings
         embeddings = self.embedding_dropout(embeddings)
@@ -222,6 +220,9 @@ class T5Model(flow.nn.Module):
         self.decoder = flow.nn.Sequential()
         self.decoder.add_module("layers", decoder_layers)
         self.decoder.add_module("final_layernorm", decoder_final_layernorm)
+        self.past_key_values = [None] * len(self.decoder.layers)
+        self.encoder_states = None
+        self.past_length = 0
 
         self.lm_head = LMLogits(vocab_size, bias=True)
 
@@ -254,6 +255,7 @@ class T5Model(flow.nn.Module):
         encoder_attn_mask,
         decoder_attn_mask,
         encoder_decoder_attn_mask,
+        use_cache=False,
     ):
         """
 
@@ -275,31 +277,60 @@ class T5Model(flow.nn.Module):
             encoder_decoder_attn_mask (flow.LongTensor):
                 Mask for decoder to avoid performing attention on encoder padded token indices.
                 Mask values have the same meaning as encoder_attn_mask.
+            use_cache (bool, optional):
+                It will be set to True, when the model is in the inference
+                phase and used for incremental decoding. Defaults to False.
 
         Returns:
             flow.Tensor: logits
         """
-        encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
+        if use_cache and self.encoder_states is not None:
+            encoder_states = self.encoder_states
+        else:
+            self.set_cache(encoder_states=None, past_key_values=None)
+            encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
+            enc_embedding_output = self.embedding(encoder_input_ids)
+            enc_hidden_states = enc_embedding_output
+            for layer in self.encoder.layers:
+                enc_hidden_states = layer(enc_hidden_states, encoder_attn_mask)
+            encoder_states = self.encoder.final_layernorm(enc_hidden_states)
+
         decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
-        enc_embedding_output = self.embedding(encoder_input_ids)
-        enc_hidden_states = enc_embedding_output
-        for layer in self.encoder.layers:
-            enc_hidden_states = layer(enc_hidden_states, encoder_attn_mask)
-        encoder_states = self.encoder.final_layernorm(enc_hidden_states)
-
-        dec_embedding_output = self.embedding(decoder_input_ids)
+        dec_embedding_output = self.embedding(decoder_input_ids, self.past_length)
         dec_hidden_states = dec_embedding_output
-        for layer in self.decoder.layers:
+        if use_cache:
+            presents = []
+        for layer, past_key_value in zip(self.decoder.layers, self.past_key_values):
             dec_hidden_states = layer(
                 dec_hidden_states,
                 decoder_attn_mask,
                 encoder_states,
                 encoder_decoder_attn_mask,
+                past_key_value=past_key_value,
+                use_cache=use_cache,
             )
+            if use_cache:
+                dec_hidden_states, present = dec_hidden_states
+                presents.append(present)
+        if use_cache:
+            self.set_cache(encoder_states, past_key_values=presents)
+
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
         logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
         return logits
+
+    def set_cache(self, encoder_states, past_key_values):
+        self.encoder_states = encoder_states
+        self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]
+
+        if past_key_values is None:
+            past_key_values = [None] * len(self.decoder.layers)
+        assert len(past_key_values) == len(self.decoder.layers), (
+            f"past_key_values's length {len(past_key_values)} doesn't match "
+            f"decoder num_layers' length {self.decoder.layers}"
+        )
+        self.past_key_values = past_key_values
 
 
 class T5Loss(flow.nn.Module):
@@ -330,6 +361,9 @@ class T5ForPreTraining(flow.nn.Module):
         self.t5_model = T5Model(cfg)
         self.loss_func = T5Loss()
 
+    def set_cache(self, encoder_states, past_key_values):
+        self.t5_model.set_cache(encoder_states, past_key_values)
+
     def forward(
         self,
         encoder_input_ids,
@@ -339,6 +373,7 @@ class T5ForPreTraining(flow.nn.Module):
         encoder_decoder_attn_mask,
         lm_labels=None,
         loss_mask=None,
+        use_cache=False,
     ):
         """
 
@@ -368,6 +403,9 @@ class T5ForPreTraining(flow.nn.Module):
                 Tokens with indices set to `-1` are ignored (masked), the loss is only computed
                 for the tokens with labels in `[0, ..., config.vocab_size]`.
                 None for evaluating.
+            use_cache (bool, optional):
+                It will be set to True, when the model is in the inference
+                phase and used for incremental decoding. Defaults to False.
 
         Returns:
             dict:
@@ -382,6 +420,7 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_attn_mask,
             decoder_attn_mask,
             encoder_decoder_attn_mask,
+            use_cache=use_cache,
         )
 
         if lm_labels is not None:

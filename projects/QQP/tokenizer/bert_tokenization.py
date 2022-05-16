@@ -202,7 +202,7 @@ class FullTokenizer(object):
 
     @staticmethod
     def convert_tokens_to_string(tokens, clean_up_tokenization_spaces=True):
-        """Converts a sequence of tokens (string) in a single string."""
+        """Converts a sequence of tokens (string) to a single string."""
 
         def clean_up_tokenization(out_string):
             """Clean up a list of simple English tokenization artifacts

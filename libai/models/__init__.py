@@ -20,6 +20,7 @@ from .t5_model import T5ForPreTraining, T5Model
 from .gpt_model import GPTForPreTraining, GPTModel
 from .vision_transformer import VisionTransformer
 from .swin_transformer import SwinTransformer
+from .resmlp import ResMLP
 
 __all__ = [
     "build_model",
@@ -32,4 +33,5 @@ __all__ = [
     "GPTForPreTraining",
     "VisionTransformer",
     "SwinTransformer",
+    "ResMLP",
 ]

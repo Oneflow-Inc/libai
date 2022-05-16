@@ -105,7 +105,7 @@ dtypes = {
     3: np.int16,
     4: np.int32,
     5: np.int64,
-    6: np.float,
+    6: np.float32,
     7: np.double,
     8: np.uint16,
 }
@@ -276,7 +276,7 @@ class IndexedDatasetBuilder(object):
         np.int16: 2,
         np.int32: 4,
         np.int64: 8,
-        np.float: 4,
+        np.float32: 4,
         np.double: 8,
     }
 
@@ -593,7 +593,7 @@ def get_indexed_dataset(data_prefix, data_impl, skip_warmup):
     indexed_dataset = make_dataset(data_prefix, data_impl, skip_warmup)
     assert indexed_dataset.sizes.shape[0] == indexed_dataset.doc_idx[-1]
     logger.info(
-        "inished creating indexed dataset in {:4f} " "seconds".format(time.time() - start_time)
+        "Finished creating indexed dataset in {:4f} " "seconds".format(time.time() - start_time)
     )
 
     logger.info("indexed dataset stats:")

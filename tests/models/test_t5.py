@@ -36,7 +36,7 @@ VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
 BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 
-TEST_OUTPUT = "output_unittest/test_t5"
+TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_t5")
 
 
 setup_logger(distributed_rank=dist.get_rank())
@@ -71,7 +71,9 @@ class TestT5Model(flow.unittest.TestCase):
         # set training config
         cfg.train.train_epoch = 0
         cfg.train.train_iter = 10
-        cfg.train.evaluation.enabled = False  # no evaluation now
+        cfg.train.evaluation.enabled = True
+        cfg.train.evaluation.eval_period = 10
+        cfg.train.evaluation.eval_iter = 10
         cfg.train.log_period = 1
         cfg.train.train_micro_batch_size = 8
         cfg.train.num_accumulation_steps = 1
