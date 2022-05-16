@@ -394,7 +394,6 @@ def inference_on_coco_dataset(
             # local tensor -> global tensor
             data = get_batch(inputs)
             # is_last_batch = idx == len(data_loader) - 1
-
             tensor_batch = data["images"].tensors.tensor.shape[0]
             valid_sample = tensor_batch - last_batch_lack
             # TODO: Make sure how to impl pad_batch. Graph mode needs this.

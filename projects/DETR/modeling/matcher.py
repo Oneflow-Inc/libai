@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from unittest import expectedFailure
+import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 import oneflow as flow
@@ -73,7 +72,6 @@ class HungarianMatcher(nn.Module):
         out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [batch_size * num_queries, 4]
 
         # Also concat the target labels and boxes
-
         tgt_ids = flow.cat([v["labels"].tensor for v in targets])
         tgt_bbox = flow.cat([v["boxes"].tensor for v in targets])
 
@@ -93,11 +91,15 @@ class HungarianMatcher(nn.Module):
         C = C.view(bs, num_queries, -1).cpu()
 
         sizes = [len(v["boxes"].tensor) for v in targets]
-        try:
+        # ! oneflow bugs: https://github.com/Oneflow-Inc/libai/pull/260#issuecomment-1124721109
+        if sizes[-1]==0:
+            argsort_idx = np.argsort(sizes)
+            indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(np.array(sizes)[argsort_idx].tolist(), -1))]
+            inverse_idx = np.argsort(argsort_idx)
+            indices = np.array(indices)[inverse_idx].tolist()
+        else:
             indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
-        except:
-            import pdb
-            pdb.set_trace()
+            
         # NOTE: setting dtype=flow.int64 returns bug: numpy-ndarray holds elements of unsupported datatype
         # return [(flow.as_tensor(i, dtype=flow.int64), flow.as_tensor(j, dtype=flow.int64)) for i, j in indices]
         return [(flow.as_tensor(i).to(dtype=flow.int64), flow.as_tensor(j).to(dtype=flow.int64)) for i, j in indices]

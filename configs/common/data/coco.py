@@ -1,4 +1,16 @@
 from omegaconf import OmegaConf
+import random
+import PIL
+from typing import Optional, List
+
+
+
+
+
+import oneflow as flow
+from oneflow import Tensor
+import flowvision
+import flowvision.transforms.functional as F
 from flowvision.data.constants import (
     IMAGENET_DEFAULT_MEAN,
     IMAGENET_DEFAULT_STD,
@@ -9,19 +21,7 @@ import flowvision.transforms.functional as F
 from libai.config import LazyCall
 from libai.data.datasets import CocoDetection
 from libai.data.build import build_image_train_loader, build_image_test_loader
-import random
-
-import PIL
-import oneflow as flow
-import flowvision.transforms.functional as F
-
-from typing import Optional, List
-
-import oneflow as flow
-from oneflow import Tensor
-
-# needed due to empty tensor bug in pytorch and torchvision 0.5
-import flowvision
+from libai.data.structures import DistTensorData, Instance
 
 
 def box_xyxy_to_cxcywh(x):
@@ -376,38 +376,49 @@ class NestedTensor(object):
         return str(self.tensors)
 
 
-def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
+def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
+    
+    img = tensor_list[0].get_fields()["images"].tensor        
+    
+    if img.ndim == 3:
 
-    if tensor_list[0].ndim == 3:
-
-        max_size = _max_by_axis([list(img.shape) for img in tensor_list])
+        max_size = _max_by_axis([list(img.get_fields()["images"].tensor.shape) for img in tensor_list])
 
         batch_shape = [len(tensor_list)] + max_size
         b, c, h, w = batch_shape
-        dtype = tensor_list[0].dtype
         
-        if tensor_list[0].is_global:
-            sbp = tensor_list[0].sbp
-            placement = tensor_list[0].placement
+        dtype = img.dtype
+        
+        if img.is_global:
+            sbp = img.tensor.sbp
+            placement = img.tensor.placement
             tensor = flow.zeros(batch_shape, dtype=dtype).to_global(sbp=sbp, placement=placement)
             mask = flow.ones((b, h, w), dtype=flow.bool).to_global(sbp=sbp, placement=placement)
         else:
-            device = tensor_list[0].device
+            device = img.device
             tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
             mask = flow.ones((b, h, w), dtype=flow.bool, device=device)         
-        
-        for i, img in enumerate(tensor_list):
+
+        labels = []
+        for i, ins in enumerate(tensor_list):
+            img = ins.get_fields()["images"].tensor 
             tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
             mask[i, : img.shape[1], :img.shape[2]] = False
+            labels.append(ins.get_fields()["labels"])
+            
     else:
         raise ValueError('not supported')
-    
-    return NestedTensor(tensor, mask)
+    return Instance(
+        images = NestedTensor(DistTensorData(tensor, placement_idx=0), DistTensorData(mask, placement_idx=0)), 
+        labels = tuple(labels)
+        )
 
 def collate_fn(batch):
-    batch = list(zip(*batch))
-    batch[0] = nested_tensor_from_tensor_list(batch[0])
-    return tuple(batch)
+    
+    assert isinstance(batch[0], Instance), "batch[0] must be `instance` for trivial batch collator"
+    # batch = list(zip(*batch))
+    batch = nested_tensor_from_tensor_list(batch)
+    return batch
 
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_image_train_loader)(

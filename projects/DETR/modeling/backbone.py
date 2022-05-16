@@ -100,28 +100,13 @@ class BackboneBase(nn.Module):
             
         out: Dict[str, NestedTensor] = {}
         
-        # if len(self.substitute) == 0:
-        #     for name, x in xs.items():
-        #         m = tensor_list.mask
-        #         assert m is not None
-
-        #         mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]    
-                
-        #         if x.shape[-2:] == mask.shape[-2:]:
-        #             self.substitute["x"] = x
-        #             self.substitute["mask"] = mask    
-        #             break     
         
         for name, x in xs.items():
             m = tensor_list.mask
             assert m is not None
 
             mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
-            # # ! bugs in F.interpolate. Here is the temporary substitute
-            # if x.shape[-2:] != mask.shape[-2:]:
-            #     x = self.substitute["x"]
-            #     mask = self.substitute["mask"]
-                
+
             out[name] = NestedTensor(x, mask)
         return out
 

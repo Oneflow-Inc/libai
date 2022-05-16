@@ -19,7 +19,7 @@ dataloader.test[0].dataset.img_folder = "/dataset/mscoco_2017/val2017"
 dataloader.test[0].dataset.ann_file = "/dataset/mscoco_2017/annotations/instances_val2017.json"
 
 
-train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
+# train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2

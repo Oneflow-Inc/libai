@@ -53,21 +53,21 @@ class DetrDefaultTrainer(DefaultTrainer):
         """
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
-
-        images, labels = data
-
-        tensors = DistTensorData(images.tensors, placement_idx=-1)
+            
+        images = data.get_fields()["images"]
+        labels = data.get_fields()["labels"]
+        tensors = images.tensors
         tensors.to_global()
-
-        mask = DistTensorData(images.mask, placement_idx=-1)
+        
+        mask = images.mask
         mask.to_global()
 
         images = NestedTensor(tensors, mask)
         
         for i in range(len(labels)):
             for k,v in labels[i].items():
-                labels[i][k] = DistTensorData(flow.tensor(v), placement_idx=-1)
-                labels[i][k].to_global()
+                v.to_global()
+                labels[i][k] = v
             
         ret_dict = {
             "images": images,
