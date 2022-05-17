@@ -95,7 +95,8 @@ def get_pairs(word):
 
 
 class RobertaTokenizer(PreTrainedTokenizer):
-    """Constructs a RoBERTa tokenizer, derived from the GPT-2 tokenizer, using byte-level Byte-Pair-Encoding.
+    """Constructs a RoBERTa tokenizer, derived from the GPT-2 tokenizer,
+    using byte-level Byte-Pair-Encoding.
 
     Args:
         vocab_file (:obj:`str`):
