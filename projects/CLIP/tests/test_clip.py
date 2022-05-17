@@ -56,12 +56,11 @@ class TestCLIP(unittest.TestCase):
             transformer_layers=10,
         )
         img = flow.rand(
-            32, 3, 224, 224, sbp=flow.sbp.split(0), placement=flow.placement("cuda", ranks=[0])
+            16, 3, 224, 224, sbp=flow.sbp.split(0), placement=flow.placement("cuda", ranks=[0])
         )
         text = flow.ones(
             16,
             12,
-            128,
             dtype=flow.int64,
             sbp=flow.sbp.split(0),
             placement=flow.placement("cuda", ranks=[0]),
