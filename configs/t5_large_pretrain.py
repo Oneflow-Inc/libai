@@ -19,8 +19,10 @@ model.cfg.num_attention_heads = 12
 model.cfg.hidden_size = 384
 model.cfg.hidden_layers = 6
 
+train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
+
 train.train_micro_batch_size = 16
-train.activation_checkpoint.enabled = True
+train.amp.enabled = True
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 

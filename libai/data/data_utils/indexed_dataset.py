@@ -593,7 +593,7 @@ def get_indexed_dataset(data_prefix, data_impl, skip_warmup):
     indexed_dataset = make_dataset(data_prefix, data_impl, skip_warmup)
     assert indexed_dataset.sizes.shape[0] == indexed_dataset.doc_idx[-1]
     logger.info(
-        "inished creating indexed dataset in {:4f} " "seconds".format(time.time() - start_time)
+        "Finished creating indexed dataset in {:4f} " "seconds".format(time.time() - start_time)
     )
 
     logger.info("indexed dataset stats:")
