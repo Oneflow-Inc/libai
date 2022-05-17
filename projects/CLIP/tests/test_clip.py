@@ -2,12 +2,10 @@ import os
 import sys
 import unittest
 
-import numpy as np
 import oneflow as flow
-import torch
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))  # noqa
-from clip.model import CLIP, ModifiedResNet, Transformer
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from clip.model import CLIP, ModifiedResNet, Transformer  # noqa: E402
 
 
 class TestCLIP(unittest.TestCase):
@@ -49,7 +47,7 @@ class TestCLIP(unittest.TestCase):
             vision_width=120,
             vision_patch_size=16,
             # text
-            context_length=12,
+            context_length=16,
             vocab_size=3000,
             transformer_width=128,
             transformer_heads=16,
@@ -60,7 +58,7 @@ class TestCLIP(unittest.TestCase):
         )
         text = flow.ones(
             16,
-            12,
+            16,
             dtype=flow.int64,
             sbp=flow.sbp.split(0),
             placement=flow.placement("cuda", ranks=[0]),
@@ -68,6 +66,7 @@ class TestCLIP(unittest.TestCase):
 
         logits_img, logits_text = net(img, text)
         print(logits_img)
+        print(logits_text)
 
 
 if __name__ == "__main__":

@@ -68,20 +68,21 @@ def multi_head_attention_forward(
           the embedding dimension.
         - value: :math:`(S, N, E)` where S is the source sequence length, N is the batch size, E is
           the embedding dimension.
-        - key_padding_mask: :math:`(N, S)` where N is the batch size, S is the source 
+        - key_padding_mask: :math:`(N, S)` where N is the batch size, S is the source
           sequence length.
-          If a ByteTensor is provided, the non-zero positions will be ignored while 
-          the zero positions will be unchanged. If a BoolTensor is provided, the positions 
+          If a ByteTensor is provided, the non-zero positions will be ignored while
+          the zero positions will be unchanged. If a BoolTensor is provided, the positions
           with the value of ``True`` will be ignored while the position with the value
           of ``False`` will be unchanged.
         - attn_mask: 2D mask :math:`(L, S)` where L is the target sequence length,
           S is the source sequence length.
-          3D mask :math:`(N*num_heads, L, S)` where N is the batch size, L is the target sequence length,
-          S is the source sequence length. attn_mask ensures that position i is allowed to attend the unmasked
-          positions. If a ByteTensor is provided, the non-zero positions are not allowed to attend
-          while the zero positions will be unchanged. If a BoolTensor is provided, positions with ``True``
-          are not allowed to attend while ``False`` values will be unchanged. If a FloatTensor
-          is provided, it will be added to the attention weight.
+          3D mask :math:`(N*num_heads, L, S)` where N is the batch size, L is the target
+          sequence length, S is the source sequence length. attn_mask ensures that position
+          i is allowed to attend the unmasked positions.
+          If a ByteTensor is provided, the non-zero positions are not allowed to attend
+          while the zero positions will be unchanged. If a BoolTensor is provided, positions
+          with ``True`` are not allowed to attend while ``False`` values will be unchanged.
+          If a FloatTensor is provided, it will be added to the attention weight.
         - static_k: :math:`(N*num_heads, S, E/num_heads)`, where S is the source sequence length,
           N is the batch size, E is the embedding dimension. E/num_heads is the head dimension.
         - static_v: :math:`(N*num_heads, S, E/num_heads)`, where S is the source sequence length,
@@ -191,7 +192,8 @@ def multi_head_attention_forward(
         )
         if attn_mask.dtype == flow.uint8:
             warnings.warn(
-                "Byte tensor for attn_mask in nn.MultiheadAttention is deprecated. Use bool tensor instead."
+                "Byte tensor for attn_mask in nn.MultiheadAttention is deprecated. "
+                "Use bool tensor instead."
             )
             attn_mask = attn_mask.to(flow.bool)
 
@@ -209,7 +211,8 @@ def multi_head_attention_forward(
     # convert ByteTensor key_padding_mask to bool
     if key_padding_mask is not None and key_padding_mask.dtype == flow.uint8:
         warnings.warn(
-            "Byte tensor for key_padding_mask in nn.MultiheadAttention is deprecated. Use bool tensor instead."
+            "Byte tensor for key_padding_mask in nn.MultiheadAttention is deprecated. "
+            "Use bool tensor instead."
         )
         key_padding_mask = key_padding_mask.to(flow.bool)
 

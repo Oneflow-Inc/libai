@@ -7,8 +7,8 @@ import oneflow as flow
 import torch
 from torch.nn.functional import multi_head_attention_forward as multi_head_attention_forward_torch
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))  # noqa
-from clip.ops import multi_head_attention_forward as multi_head_attention_forward_flow
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from clip.ops import multi_head_attention_forward as multi_head_attention_forward_flow  # noqa: E402
 
 
 class TestMultiHeadAttention(unittest.TestCase):

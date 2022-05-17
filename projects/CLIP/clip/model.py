@@ -256,8 +256,18 @@ class CLIP(nn.Module):
         )
         self.ln_final = LayerNorm((transformer_width,), layer_idx=-1)
 
-        self.text_projection = nn.Parameter(flow.empty(transformer_width, embed_dim))
-        self.logit_scale = nn.Parameter(flow.ones([]) * np.log(1 / 0.07))
+        self.text_projection = nn.Parameter(
+            flow.empty(
+                transformer_width,
+                embed_dim,
+                sbp=flow.sbp.broadcast,
+                placement=dist.get_layer_placement(0),
+            )
+        )
+        self.logit_scale = nn.Parameter(
+            flow.ones([], sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
+            * np.log(1 / 0.07)
+        )
 
         self.initialize_parameters()
 
@@ -298,7 +308,12 @@ class CLIP(nn.Module):
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
-        mask = flow.empty(self.context_length, self.context_length)
+        mask = flow.empty(
+            self.context_length,
+            self.context_length,
+            sbp=flow.sbp.broadcast,
+            placement=dist.get_layer_placement(0),
+        )
         mask.fill_(float("-inf"))
         mask = flow.triu(mask, 1)  # zero out the lower diagonal
         return mask
@@ -321,7 +336,10 @@ class CLIP(nn.Module):
 
         # x.shape = [batch_size, n_ctx, transformer.width]
         # take features from the eot embedding (eot_token is the highest number in each sequence)
-        x = x[flow.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
+        x = (
+            x[flow.arange(x.shape[0], sbp=x.sbp, placement=x.placement), text.argmax(dim=-1)]
+            @ self.text_projection
+        )
 
         return x
 
