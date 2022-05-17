@@ -1,11 +1,8 @@
-import imp
 from libai.config import LazyCall
-from libai.evaluation import ClsEvaluator
 from libai.models.bert_model import BertForClassification
 from libai.config.configs.common.models.bert import cfg
 from .common.models.graph import graph
 from .common.train import train
-from .common.optim import optim
 from .common.data.bert_dataset import tokenization
 
 vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
