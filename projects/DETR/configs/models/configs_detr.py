@@ -20,17 +20,17 @@ detr_args.masks = False
 
 # Backbone
 # Name of the convolutional backbone to use
-detr_args.backbone = "resnet18"
+detr_args.backbone = "resnet50"
 # If true, we replace stride with dilation in the last convolutional block (DC5)
 detr_args.dilation = False
 # Type of positional embedding to use on top of the image features (sine, learned)
 detr_args.position_embedding = "sine"
 
 # Transformer
-detr_args.hidden_dim = 64 # 256
+detr_args.hidden_dim = 256
 detr_args.dropout = 0.1
 detr_args.nheads = 1 # 8
-detr_args.dim_feedforward = 64 # 2048
+detr_args.dim_feedforward = 2048 
 detr_args.enc_layers = 1 # 6
 detr_args.dec_layers = 1 # 6
 detr_args.pre_norm = False

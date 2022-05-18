@@ -15,6 +15,7 @@ from collections import defaultdict, deque
 
 import oneflow as flow
 import oneflow.distributed as dist
+from oneflow import comm
 from oneflow import Tensor
 from oneflow.env import get_world_size, get_rank
 import flowvision
@@ -80,47 +81,53 @@ class SmoothedValue(object):
             value=self.value)
 
 
-def all_gather(data):
-    """
-    Run all_gather on arbitrary picklable data (not necessarily tensors)
-    Args:
-        data: any picklable object
-    Returns:
-        list[data]: list of data gathered from each rank
-    """
-    world_size = get_world_size()
-    if world_size == 1:
-        return [data]
+# def all_gather(data):
+#     """
+#     Run all_gather on arbitrary picklable data (not necessarily tensors)
+#     Args:
+#         data: any picklable object
+#     Returns:
+#         list[data]: list of data gathered from each rank
+#     """
+    
+    # world_size = get_world_size()
+    # if world_size == 1:
+    #     return [data]
 
-    # serialized to a Tensor
-    buffer = pickle.dumps(data)
-    storage = flow.ByteStorage.from_buffer(buffer)
-    tensor = flow.ByteTensor(storage).to("cuda")
+    # # serialized to a Tensor
+    
+    # # TODO (ziqiu chi): learn pickle
+    # # oneflow does not support flow.ByteStorage
+    
+    # # buffer = pickle.dumps(data)
+    # # storage = flow.ByteStorage.from_buffer(buffer)
+    # # tensor = flow.ByteTensor(storage).to("cuda")
 
-    # obtain Tensor size of each rank
-    local_size = flow.tensor([tensor.numel()], device="cuda")
-    size_list = [flow.tensor([0], device="cuda") for _ in range(world_size)]
-    dist.all_gather(size_list, local_size)
-    size_list = [int(size.item()) for size in size_list]
-    max_size = max(size_list)
+    # # obtain Tensor size of each rank
+    # tensor = flow.tensor(data)
+    # local_size = flow.tensor([tensor.numel()], device="cuda")
+    # size_list = [flow.tensor([0], device="cuda") for _ in range(world_size)]
+    # comm.all_gather(size_list, local_size)
+    # size_list = [int(size.item()) for size in size_list]
+    # max_size = max(size_list)
+    
+    # # receiving Tensor from all ranks
+    # # we pad the tensor because torch all_gather does not support
+    # # gathering tensors of different shapes
+    # tensor_list = []
+    # for _ in size_list:
+    #     tensor_list.append(flow.empty((max_size,), dtype=flow.uint8, device="cuda"))
+    # if local_size != max_size:
+    #     padding = flow.empty(size=(max_size - local_size,), dtype=flow.uint8, device="cuda")
+    #     tensor = flow.cat((tensor, padding), dim=0)
+    # comm.all_gather(tensor_list, tensor)
 
-    # receiving Tensor from all ranks
-    # we pad the tensor because flow all_gather does not support
-    # gathering tensors of different shapes
-    tensor_list = []
-    for _ in size_list:
-        tensor_list.append(flow.empty((max_size,), dtype=flow.uint8, device="cuda"))
-    if local_size != max_size:
-        padding = flow.empty(size=(max_size - local_size,), dtype=flow.uint8, device="cuda")
-        tensor = flow.cat((tensor, padding), dim=0)
-    dist.all_gather(tensor_list, tensor)
+    # data_list = []
+    # for size, tensor in zip(size_list, tensor_list):
+    #     buffer = tensor.cpu().numpy().tobytes()[:size]
+    #     data_list.append(pickle.loads(buffer))
 
-    data_list = []
-    for size, tensor in zip(size_list, tensor_list):
-        buffer = tensor.cpu().numpy().tobytes()[:size]
-        data_list.append(pickle.loads(buffer))
-
-    return data_list
+    # return data_list
 
 
 def reduce_dict(input_dict, average=True):

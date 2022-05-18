@@ -20,7 +20,6 @@ from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
 
 from configs.models.configs_detr import postprocessors
-from utils.misc import all_gather
 
 
 def accuracy(output, target, topk=(1,)):
@@ -58,13 +57,13 @@ class CocoEvaluator(DatasetEvaluator):
         self._predictions = []
 
     def process(self, inputs, outputs):
+
         """
         Process the pair of inputs and outputs.
         """
         orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
         # * need a better way to call it 
         results = postprocessors['bbox'](outputs, orig_target_sizes)
-        
         if 'segm' in postprocessors.keys():
             target_sizes = flow.stack([t["size"] for t in inputs["labels"]], dim=0)
             results = postprocessors['segm'](results, outputs, orig_target_sizes, target_sizes)
@@ -118,20 +117,21 @@ class CocoEvaluator(DatasetEvaluator):
                 for areaRng in p.areaRng
                 for imgId in p.imgIds
             ]
-            # this is NOT in the pycocotools code, but could be done outside
+        
             evalImgs = np.asarray(evalImgs).reshape(len(catIds), len(p.areaRng), len(p.imgIds))
             coco_eval._paramsEval = copy.deepcopy(coco_eval.params)
 
             self.eval_imgs[iou_type].append(evalImgs)
-            
+   
     def evaluate(self):
         """
         Evaluate/summarize the performance after processing all input/output pairs.
-        """            
-        import pdb
-        pdb.set_trace()
+        """     
+        print("synchronize_between_processes")
         self.synchronize_between_processes()
+        print("accumulate")
         self.accumulate()
+        print("summarize")
         self.summarize()   
         
         return self.coco_eval
@@ -235,7 +235,10 @@ class CocoEvaluator(DatasetEvaluator):
         for iou_type in self.iou_types:
             self.eval_imgs[iou_type] = np.concatenate(self.eval_imgs[iou_type], 2)
             create_common_coco_eval(self.coco_eval[iou_type], self.img_ids, self.eval_imgs[iou_type])
-
+            # if dist.is_main_process():
+            #     evaluator.process(valid_data, valid_outputs)
+                
+            # dist.synchronize()
     def accumulate(self):
         for coco_eval in self.coco_eval.values():
             coco_eval.accumulate()
@@ -311,8 +314,6 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
-            if idx > 10:
-                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time
@@ -334,7 +335,6 @@ def inference_on_coco_dataset(
             # TODO: Make sure how to impl pad_batch. Graph mode needs this.
             # paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
             _, outputs = model(data)
-            
             # get valid samplen
             # key: images
             valid_data = {}
@@ -355,6 +355,7 @@ def inference_on_coco_dataset(
             # TODO: impl aux_outputs
             for key, value in outputs.items():
                 value = dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
+
                 if value.ndim > 1:
                     valid_outputs[key] = value[:valid_sample]  # Slice if it's batched output
                 else:
@@ -367,7 +368,7 @@ def inference_on_coco_dataset(
             start_eval_time = time.perf_counter()
             if dist.is_main_process():
                 evaluator.process(valid_data, valid_outputs)
-                
+
             dist.synchronize()
             total_eval_time += time.perf_counter() - start_eval_time
             consumed_samples += valid_sample
@@ -414,7 +415,7 @@ def inference_on_coco_dataset(
         )
     )
     
-    if evaluator is not None:
+    if evaluator is not None and dist.is_main_process():
         evaluator.evaluate()
 
 
@@ -455,8 +456,10 @@ def convert_to_xywh(boxes):
 
 
 def merge(img_ids, eval_imgs):
-    all_img_ids = all_gather(img_ids)
-    all_eval_imgs = all_gather(eval_imgs)
+    # all_img_ids = all_gather(img_ids)
+    # all_eval_imgs = all_gather(eval_imgs)
+    all_img_ids = [img_ids]
+    all_eval_imgs = [eval_imgs]
 
     merged_img_ids = []
     for p in all_img_ids:
