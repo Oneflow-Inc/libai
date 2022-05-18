@@ -1,3 +1,4 @@
+from statistics import mode
 from libai.config import get_config, LazyCall
 from libai.data.datasets.coco import CocoDetection
 from .models.configs_detr import model, postprocessors
@@ -11,12 +12,12 @@ graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].img_folder= "/dataset/coco/train2017"
-dataloader.train.dataset[0].ann_file = "/dataset/coco/annotations/instances_train2017.json"
+dataloader.train.dataset[0].img_folder= "/dataset/mscoco_2017//train2017"
+dataloader.train.dataset[0].ann_file = "/dataset/mscoco_2017//annotations/instances_train2017.json"
 
 
-dataloader.test[0].dataset.img_folder = "/dataset/coco/val2017"
-dataloader.test[0].dataset.ann_file = "/dataset/coco/annotations/instances_val2017.json"
+dataloader.test[0].dataset.img_folder = "/dataset/mscoco_2017//val2017"
+dataloader.test[0].dataset.ann_file = "/dataset/mscoco_2017//annotations/instances_val2017.json"
 
 
 # train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
@@ -30,8 +31,8 @@ train.eval_period = 5
 train.log_period = 1
 
 # *TODO: refine it
-coco_detection = LazyCall(CocoDetection)(img_folder="/dataset/coco/val2017", 
-                               ann_file="/dataset/coco/annotations/instances_val2017.json", 
+coco_detection = LazyCall(CocoDetection)(img_folder="/dataset/mscoco_2017//val2017", 
+                               ann_file="/dataset/mscoco_2017//annotations/instances_val2017.json", 
                                return_masks=False, transforms=make_coco_transforms("val"))
 
 train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detection)
@@ -50,5 +51,5 @@ train.scheduler.warmup_method = "linear"
 
 graph.enabled = False
 
-# train.dist.data_parallel_size = 1
-# train.dist.tensor_parallel_size = 2
+train.dist.data_parallel_size = 1
+train.dist.tensor_parallel_size = 2

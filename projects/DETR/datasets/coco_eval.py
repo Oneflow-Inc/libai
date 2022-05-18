@@ -128,6 +128,8 @@ class CocoEvaluator(DatasetEvaluator):
         """
         Evaluate/summarize the performance after processing all input/output pairs.
         """            
+        import pdb
+        pdb.set_trace()
         self.synchronize_between_processes()
         self.accumulate()
         self.summarize()   
@@ -309,7 +311,8 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
-
+            if idx > 10:
+                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time
@@ -330,8 +333,6 @@ def inference_on_coco_dataset(
             valid_sample = tensor_batch - last_batch_lack
             # TODO: Make sure how to impl pad_batch. Graph mode needs this.
             # paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
-            import pdb
-            pdb.set_trace()
             _, outputs = model(data)
             
             # get valid samplen

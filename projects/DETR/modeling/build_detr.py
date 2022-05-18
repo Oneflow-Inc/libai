@@ -74,7 +74,6 @@ def build(args):
         if args.dataset_file == "coco_panoptic":
             is_thing_map = {i: i <= 90 for i in range(201)}
             postprocessors["panoptic"] = PostProcessPanoptic(is_thing_map, threshold=0.85)
-            
     model = LazyCall(DETR)(
         backbone=backbone,
         transformer=transformer,

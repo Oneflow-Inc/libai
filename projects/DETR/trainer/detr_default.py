@@ -55,16 +55,16 @@ class DetrDefaultTrainer(DefaultTrainer):
         labels = data.get_fields()["labels"]
         
         tensors = images[0] # tensors
-        # tensors.to_global()
+        tensors.to_global()
         mask = images[1] # mask
-        # mask.to_global()
+        mask.to_global()
 
         images = (tensors, mask)
         # images = NestedTensor(tensors, mask)
         
         for i in range(len(labels)):
             for k,v in labels[i].items():
-                # v.to_global()
+                v.to_global()
                 labels[i][k] = v
             
         ret_dict = {
@@ -157,6 +157,6 @@ class DetrDefaultTrainer(DefaultTrainer):
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
 
-        # model.apply(dist.convert_to_distributed_default_setting)
+        model.apply(dist.convert_to_distributed_default_setting)
         
         return model
