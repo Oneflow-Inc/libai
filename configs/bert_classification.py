@@ -16,10 +16,12 @@ model.cfg.intermediate_size = 3072
 model.cfg.num_attention_heads = 12
 model.cfg.hidden_size = 768
 model.cfg.hidden_layers = 12
+model.cfg.num_labels = 2
 
 train.train_micro_batch_size = 16
 
 train.amp.enabled = True
 train.activation_checkpoint.enabled = True
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
 
 train.output_dir = "output/bert_classification_output"

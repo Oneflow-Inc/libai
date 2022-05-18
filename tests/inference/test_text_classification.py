@@ -43,38 +43,38 @@ class TestTextClassificationPipeline(flow.unittest.TestCase):
     @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_parallel(self):
-        self.pipeline = TextClassificationPipeline("config/bert_classification.py",1, 4, 1)
+        self.pipeline = TextClassificationPipeline("configs/bert_classification.py", 1, 4, 1)
         
         text = list(np.random.randint(0, 6, 10))
         text = "".join([self.texts[i] for i in text])
         dict1 = self.pipeline(text)
         dict2 = self.pipeline(text)
         if dist.is_main_process():
-                assert dict1["score"] == dict2["score"]
+            assert dict1["score"] == dict2["score"]
 
     @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_pipeline_parallel(self):
-        self.pipeline = TextClassificationPipeline("config/bert_classification.py", 1, 1, 4)
+        self.pipeline = TextClassificationPipeline("configs/bert_classification.py", 1, 1, 4)
 
         text = list(np.random.randint(0, 6, 10))
         text = "".join([self.texts[i] for i in text])
         dict1 = self.pipeline(text)
         dict2 = self.pipeline(text)
         if dist.is_main_process():
-                assert dict1["score"] == dict2["score"]
+            assert dict1["score"] == dict2["score"]
 
     @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_pipeline_parallel(self):
-        self.pipeline = TextClassificationPipeline("config/bert_classification.py", 1, 2, 2)
+        self.pipeline = TextClassificationPipeline("configs/bert_classification.py", 1, 2, 2)
 
         text = list(np.random.randint(0, 6, 10))
         text = "".join([self.texts[i] for i in text])
         dict1 = self.pipeline(text)
         dict2 = self.pipeline(text)
         if dist.is_main_process():
-                assert dict1["score"] == dict2["score"]
+            assert dict1["score"] == dict2["score"]
 
                 
 if __name__ == "__main__":

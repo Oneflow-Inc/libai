@@ -505,21 +505,20 @@ class BertForPreTraining(nn.Module):
 
 
 class BertForClassification(nn.Module):
-    def __init__(self, cfg, num_labels, classifier_dropout=None):
+    def __init__(self, cfg):
         super().__init__()
-        self.num_labels = num_labels
         self.cfg = cfg
 
         self.bert = BertModel(cfg)
         self.classifier = Linear(
             cfg.hidden_size,
-            num_labels,
+            cfg.num_labels,
             bias=True,
-            parallel="row",
+            parallel="data",
             init_method=init_method_normal(cfg.initializer_range),
             layer_idx=-1,
         )
-        classifier_dropout = classifier_dropout if classifier_dropout is not None else cfg.hidden_dropout_prob
+        classifier_dropout = cfg.classifier_dropout if cfg.classifier_dropout is not None else cfg.hidden_dropout_prob
         self.dropout = nn.Dropout(classifier_dropout)
     
     def forward(self, input_ids, attention_mask, tokentype_ids=None, labels=None):
