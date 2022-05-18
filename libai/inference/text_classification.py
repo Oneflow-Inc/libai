@@ -108,7 +108,6 @@ class TextClassificationPipeline(BasePipeline):
         else:
             scores = logits
         scores = scores.detach().numpy()
-
         if return_all_scores:
             return [
                 {"label": self.cfg.model.cfg.id2label[i], "score": score.item()}

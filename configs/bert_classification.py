@@ -7,18 +7,16 @@ from .common.data.bert_dataset import tokenization
 
 vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
 
-model = LazyCall(BertForClassification)(cfg=cfg, num_labels=2)
+cfg['vocab_size'] = 21128
+cfg['intermediate_size'] = 3072
+cfg['num_attention_heads'] = 12
+cfg['hidden_layers'] = 12
+cfg['hidden_size'] = 768
+cfg['num_labels'] = 2
+cfg['classifier_dropout'] = 0.1
+
+model = LazyCall(BertForClassification)(cfg=cfg)
 tokenization.tokenizer.vocab_file = vocab_file
-
-# Bert-base model config
-model.cfg.vocab_size = 21128
-model.cfg.intermediate_size = 3072
-model.cfg.num_attention_heads = 12
-model.cfg.hidden_size = 768
-model.cfg.hidden_layers = 12
-model.cfg.num_labels = 2
-
-train.train_micro_batch_size = 16
 
 train.amp.enabled = True
 train.activation_checkpoint.enabled = True

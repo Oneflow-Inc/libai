@@ -514,7 +514,7 @@ class BertForClassification(nn.Module):
             cfg.hidden_size,
             cfg.num_labels,
             bias=True,
-            parallel="data",
+            parallel="row",
             init_method=init_method_normal(cfg.initializer_range),
             layer_idx=-1,
         )
@@ -523,10 +523,9 @@ class BertForClassification(nn.Module):
     
     def forward(self, input_ids, attention_mask, tokentype_ids=None, labels=None):
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
-        sequence_output = outputs[0]
-        sequence_output = self.dropout(sequence_output)
-        logits = self.classifier(sequence_output)
-
+        pooled_output = outputs[1]
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
         loss = None
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
@@ -535,3 +534,4 @@ class BertForClassification(nn.Module):
                 sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
             )
         return {"loss": loss, "logits": logits}
+        
