@@ -26,7 +26,7 @@ from oneflow import Tensor
 
 import utils.box_ops as box_ops
 from utils.misc import interpolate
-from libai.config.configs.common.data.coco import NestedTensor, nested_tensor_from_tensor_list
+from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
 
 try:
     from panopticapi.utils import id2rgb, rgb2id
@@ -47,7 +47,7 @@ class DETRsegm(nn.Module):
         self.bbox_attention = MHAttentionMap(hidden_dim, hidden_dim, nheads, dropout=0.0)
         self.mask_head = MaskHeadSmallConv(hidden_dim + nheads, [1024, 512, 256], hidden_dim)
 
-    def forward(self, samples: NestedTensor):
+    def forward(self, samples):
         if isinstance(samples, (list, flow.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.detr.backbone(samples)

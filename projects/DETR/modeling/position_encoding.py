@@ -26,8 +26,6 @@ import math
 import oneflow as flow
 import oneflow.nn as nn
 
-from libai.config.configs.common.data.coco import NestedTensor
-
 
 class PositionEmbeddingSine(nn.Module):
     """
@@ -45,9 +43,11 @@ class PositionEmbeddingSine(nn.Module):
             scale = 2 * math.pi
         self.scale = scale
 
-    def forward(self, tensor_list: NestedTensor):
-        x = tensor_list.tensors
-        mask = tensor_list.mask
+    def forward(self, tensor_list):
+        # x = tensor_list.tensors
+        # mask = tensor_list.mask
+        x, mask = tensor_list
+        
         assert mask is not None
         not_mask = ~mask
 
@@ -64,7 +64,7 @@ class PositionEmbeddingSine(nn.Module):
             y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
             x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
 
-        dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32).to_global(sbp=x.sbp, placement=x.placement)
+        dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32) # .to_global(sbp=x.sbp, placement=x.placement)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
         pos_x = x_embed[:, :, :, None] / dim_t
@@ -90,7 +90,7 @@ class PositionEmbeddingLearned(nn.Module):
         nn.init.uniform_(self.row_embed.weight)
         nn.init.uniform_(self.col_embed.weight)
 
-    def forward(self, tensor_list: NestedTensor):
+    def forward(self, tensor_list):
         x = tensor_list.tensors
         h, w = x.shape[-2:]
         i = flow.arange(w, device=x.device)

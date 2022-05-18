@@ -68,10 +68,9 @@ class DetrEagerTrainer(TrainerBase):
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
 
-        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        data = get_batch(data)
         data_time = time.perf_counter() - start
         loss_dict,_ = self.model(data)
-        
         losses = sum(loss_dict.values()) / self.grad_acc_steps
 
         losses.backward()

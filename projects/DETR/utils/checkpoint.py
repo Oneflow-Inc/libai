@@ -49,7 +49,7 @@ class detr_checkpointer(Checkpointer):
 
         for key, value in of_state_dict.items():
             # ! of_state_dict["bn"] and of_state_dict["downsample"] is local mode, not global, 
-            # ! which makes load_tensor() fail. Check it!
+            # ! which makes load_tensor() fail. Check it.
             if "bn" not in key and "downsample" not in key:
                 load_tensor(self.model.state_dict()[key], value)
 

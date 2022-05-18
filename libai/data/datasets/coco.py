@@ -105,20 +105,20 @@ class CocoDetection(flowvision.datasets.CocoDetection):
 
     def __getitem__(self, idx):
         img, target = super(CocoDetection, self).__getitem__(idx)
+
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
 
-        images = DistTensorData(img, placement_idx=0)
+        img = DistTensorData(img, placement_idx=0)
         
         for k, v in target.items():
-            target[k] = DistTensorData(flow.tensor(v, dtype=flow.long), placement_idx=-1)
+            target[k] = DistTensorData(v, placement_idx=-1)
             
         data_sample = Instance(
-            images=images,
+            images=img,
             labels=target,
         )
         return data_sample        
-        # return images, target

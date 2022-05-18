@@ -243,75 +243,6 @@ class CocoEvaluator(DatasetEvaluator):
             print("IoU metric: {}".format(iou_type))
             coco_eval.summarize()
     
-            
-# def pad_batch_images(xi, batch_size, tensor_batch, tensor_micro_batch_size, last_batch_lack, data_parallel_size):
-#     import pdb
-#     pdb.set_trace()    
-#     pad_shape = (batch_size, *xi.shape[1:])
-#     local_xi = xi.to_global(
-#         sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda")
-#     ).to_local()
-#     padded_xi = flow.zeros(pad_shape, dtype=xi.dtype, device="cuda")
-#     padded_xi[:tensor_batch, ...] = padded_xi[:tensor_batch, ...] + local_xi
-#     for i in range(last_batch_lack - 1):
-#         start_idx = tensor_micro_batch_size * (data_parallel_size - i - 1) - 1
-#         padded_xi[start_idx:-1] = padded_xi[start_idx + 1 :]
-#     padded_xi = padded_xi.to_global(
-#         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=xi.placement
-#     ).to_global(sbp=xi.sbp)
-    
-#     return padded_xi
-
-# def pad_batch_labels(xi,last_batch_lack):
-    
-#     '''
-#     The xi is tuple here.
-#     '''
-#     padded_xi = []
-#     for i in range(last_batch_lack-1):
-#         padded_xi.append([])
-    
-#     padded_xi.extend(xi)
-    
-#     return tuple(padded_xi)
-         
-            
-# def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
-
-#     tensor_batch = x_dict["images"].tensors.tensor.shape[0]
-#     assert tensor_batch <= batch_size
-#     if tensor_batch == batch_size and not is_last_batch:
-#         return x_dict, batch_size
-
-#     valid_sample = tensor_batch - last_batch_lack
-#     data_parallel_size = dist.get_data_parallel_size()
-#     assert tensor_batch % data_parallel_size == 0
-#     tensor_micro_batch_size = tensor_batch // data_parallel_size
-#     padded_dict = {}
-    
-#     padded_xi = pad_batch_images(x_dict["images"].tensors.tensor, 
-#                                batch_size, tensor_batch, tensor_micro_batch_size, 
-#                                last_batch_lack, data_parallel_size)
-#     import pdb
-#     pdb.set_trace()
-#     padded_dict["images"] = padded_xi
-
-#     # TODO: labels pad here
-#     # padded_xi_list = []
-#     # for label_dict in x_dict["labels"]:
-#     #     current_label_dict = {}
-#     #     for key, xi in label_dict.items():
-#     #         print(key)
-#     #         import pdb
-#     #         pdb.set_trace()
-#     #         padded_xi = pad_batch_labels(xi.tensor,last_batch_lack)
-#     #         current_label_dict[key] = padded_xi
-#     #     padded_xi_list.append(current_label_dict)
-#     # padded_dict["labels"] = tuple(padded_xi_list)
-#     padded_dict["labels"] = x_dict["labels"]
-    
-#     return padded_dict, valid_sample
-
 
 def inference_on_coco_dataset(
     model,
@@ -362,7 +293,6 @@ def inference_on_coco_dataset(
     consumed_samples = 0
     dps = dist.get_data_parallel_size()
     last_batch_lack = (dps - (total_samples % dps)) % dps
-
     # reset total samples
     real_eval_iter = min(eval_iter, len(data_loader))
     total_samples = min(real_eval_iter * batch_size, len(data_loader.dataset))
@@ -393,18 +323,22 @@ def inference_on_coco_dataset(
             # model forward
             # local tensor -> global tensor
             data = get_batch(inputs)
+            imgs = data["images"][0]
             # is_last_batch = idx == len(data_loader) - 1
-            tensor_batch = data["images"].tensors.tensor.shape[0]
+            tensor_batch = imgs.tensor.shape[0]
+            # tensor_batch = data["images"].tensors.tensor.shape[0]
             valid_sample = tensor_batch - last_batch_lack
             # TODO: Make sure how to impl pad_batch. Graph mode needs this.
             # paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
+            import pdb
+            pdb.set_trace()
             _, outputs = model(data)
             
             # get valid samplen
             # key: images
             valid_data = {}
-            valid_data["images"] = dist.ttol(data["images"].tensors.tensor, ranks=[0] 
-                                             if data["images"].tensors.tensor.placement.ranks.ndim == 1 
+            valid_data["images"] = dist.ttol(imgs.tensor, ranks=[0] 
+                                             if imgs.tensor.placement.ranks.ndim == 1 
                                              else [[0]])[:valid_sample]
             
             # *NOTE: dtype of detr label: tuple. len(labels)=bsz, labels[0].dtype=dict

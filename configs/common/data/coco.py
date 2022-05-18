@@ -1,3 +1,4 @@
+from sys import maxsize
 from omegaconf import OmegaConf
 import random
 import PIL
@@ -353,70 +354,78 @@ def _max_by_axis(the_list):
     return maxes
 
 
-class NestedTensor(object):
-    def __init__(self, tensors, mask: Optional[Tensor]):
-        self.tensors = tensors
-        self.mask = mask
+# class NestedTensor(object):
+#     def __init__(self, tensors, mask: Optional[Tensor]):
+#         self.tensors = tensors
+#         self.mask = mask
 
-    def to(self, device):
-        # type: (Device) -> NestedTensor # noqa
-        cast_tensor = self.tensors.to(device)
-        mask = self.mask
-        if mask is not None:
-            assert mask is not None
-            cast_mask = mask.to(device)
-        else:
-            cast_mask = None
-        return NestedTensor(cast_tensor, cast_mask)
+#     def to(self, device):
+#         # type: (Device) -> NestedTensor # noqa
+#         cast_tensor = self.tensors.to(device)
+#         mask = self.mask
+#         if mask is not None:
+#             assert mask is not None
+#             cast_mask = mask.to(device)
+#         else:
+#             cast_mask = None
+#         return NestedTensor(cast_tensor, cast_mask)
 
-    def decompose(self):
-        return self.tensors, self.mask
+#     def decompose(self):
+#         return self.tensors, self.mask
 
-    def __repr__(self):
-        return str(self.tensors)
+#     def __repr__(self):
+#         return str(self.tensors)
 
 
 def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
     
-    img = tensor_list[0].get_fields()["images"].tensor        
-    
-    if img.ndim == 3:
 
-        max_size = _max_by_axis([list(img.get_fields()["images"].tensor.shape) for img in tensor_list])
+    if tensor_list[0].get_fields()["images"].tensor.ndim == 3:
 
+        max_size = _max_by_axis([list(tensor.get_fields()["images"].tensor.shape) for tensor in tensor_list])
+        
+        # For data parallel
+        if flow.env.get_world_size() > 1:
+            max_size = flow.tensor(max_size).unsqueeze(0)
+            max_size = max_size.to_global(sbp=flow.sbp.split(0), placement=flow.placement('cuda', ranks=[0,1]))
+            max_size = flow.max(max_size, dim=0)[0].numpy().tolist()
         batch_shape = [len(tensor_list)] + max_size
         b, c, h, w = batch_shape
         
-        dtype = img.dtype
+        dtype = tensor_list[0].get_fields()["images"].tensor.dtype
+        device = tensor_list[0].get_fields()["images"].tensor.device
         
-        if img.is_global:
-            sbp = img.tensor.sbp
-            placement = img.tensor.placement
-            tensor = flow.zeros(batch_shape, dtype=dtype).to_global(sbp=sbp, placement=placement)
-            mask = flow.ones((b, h, w), dtype=flow.bool).to_global(sbp=sbp, placement=placement)
-        else:
-            device = img.device
-            tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
-            mask = flow.ones((b, h, w), dtype=flow.bool, device=device)         
-
+        tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
+        mask = flow.ones((b, h, w), dtype=flow.bool, device=device) 
+        
         labels = []
         for i, ins in enumerate(tensor_list):
-            img = ins.get_fields()["images"].tensor 
+            img = ins.get_fields()["images"].tensor
             tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
             mask[i, : img.shape[1], :img.shape[2]] = False
             labels.append(ins.get_fields()["labels"])
-            
+        #     for k,v in ins.get_fields()["labels"].items():
+        #         if k in labels.keys():
+        #             import pdb
+        #             pdb.set_trace()
+        #             labels[k] = flow.cat((labels[k], v.tensor.unsqueeze(0)), dim=0)
+        #         else:
+        #             labels[k] = v.tensor.unsqueeze(0)
+        # import pdb
+        # pdb.set_trace()                
+        # for k, v in labels.items():
+        #     labels[k] = DistTensorData(v, placement_idx=-1)
+        
     else:
         raise ValueError('not supported')
     return Instance(
-        images = NestedTensor(DistTensorData(tensor, placement_idx=0), DistTensorData(mask, placement_idx=0)), 
+        images = (DistTensorData(tensor, placement_idx=0), DistTensorData(mask, placement_idx=0)), 
         labels = tuple(labels)
         )
 
-def collate_fn(batch):
     
+def collate_fn(batch):
     assert isinstance(batch[0], Instance), "batch[0] must be `instance` for trivial batch collator"
-    # batch = list(zip(*batch))
     batch = nested_tensor_from_tensor_list(batch)
     return batch
 
@@ -431,7 +440,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
         ),
     ],
     # NOTE: num_workers=4 as default
-    num_workers=0,
+    num_workers=4,
     mixup_func=None,
     collate_fn = collate_fn
 )

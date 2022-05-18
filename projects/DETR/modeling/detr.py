@@ -18,7 +18,7 @@ import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
 
-from libai.config.configs.common.data.coco import NestedTensor, nested_tensor_from_tensor_list
+from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
 
 
 class DETR(nn.Module):
@@ -45,7 +45,7 @@ class DETR(nn.Module):
         self.aux_loss = aux_loss
         self.criterion = criterion
 
-    def forward(self, samples: NestedTensor):
+    def forward(self, samples):
         """ The forward expects a NestedTensor, which consists of:
                - samples.tensor: batched images, of shape [batch_size x 3 x H x W]
                - samples.mask: a binary mask of shape [batch_size x H x W], containing 1 on padded pixels
@@ -64,11 +64,12 @@ class DETR(nn.Module):
         
         if isinstance(samples, (list, flow.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
-            
+
         features, pos = self.backbone(samples)
-        
-        src, mask = features[-1].decompose()
-        
+        src, mask = features[-1]
+        # src, mask = features[-1].decompose()
+        import pdb
+        pdb.set_trace()
         assert mask is not None
         hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
         

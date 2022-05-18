@@ -15,15 +15,11 @@
 
 
 import logging
-from typing import Callable, Optional
-import logging
-import math
-import os
+
 import oneflow as flow
 
 from libai.data import Instance
-from libai.config.configs.common.data.coco import NestedTensor
-from libai.data.structures import DistTensorData, Instance
+from libai.data.structures import Instance
 from libai.engine.default import DefaultTrainer
 from libai.config import instantiate, try_get_key
 from libai.data import Instance
@@ -32,6 +28,7 @@ from libai.utils import distributed as dist
 
 from trainer.detr_trainer import DetrEagerTrainer
 from datasets.coco_eval import inference_on_coco_dataset
+from libai.data.structures import DistTensorData, Instance
 
 
 class DetrDefaultTrainer(DefaultTrainer):
@@ -56,17 +53,18 @@ class DetrDefaultTrainer(DefaultTrainer):
             
         images = data.get_fields()["images"]
         labels = data.get_fields()["labels"]
-        tensors = images.tensors
-        tensors.to_global()
         
-        mask = images.mask
-        mask.to_global()
+        tensors = images[0] # tensors
+        # tensors.to_global()
+        mask = images[1] # mask
+        # mask.to_global()
 
-        images = NestedTensor(tensors, mask)
+        images = (tensors, mask)
+        # images = NestedTensor(tensors, mask)
         
         for i in range(len(labels)):
             for k,v in labels[i].items():
-                v.to_global()
+                # v.to_global()
                 labels[i][k] = v
             
         ret_dict = {
@@ -159,6 +157,6 @@ class DetrDefaultTrainer(DefaultTrainer):
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
 
-        model.apply(dist.convert_to_distributed_default_setting)
+        # model.apply(dist.convert_to_distributed_default_setting)
         
         return model
