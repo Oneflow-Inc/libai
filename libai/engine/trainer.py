@@ -191,10 +191,7 @@ class TrainerBase:
         """
         # Only get metric value on rank0
         # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
-        metrics_dict = {
-            k: dist.tton(v, local_only=True)
-            for k, v in loss_dict.items()
-        }
+        metrics_dict = {k: dist.tton(v, local_only=True) for k, v in loss_dict.items()}
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging

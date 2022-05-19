@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import oneflow as flow
 from oneflow import nn
 from oneflow.nn import init
@@ -275,6 +277,8 @@ class Transformer(nn.Module):
         super().__init__()
         self.num_layers = num_layers
 
+        self.multihead_attn_fusion = os.getenv("MULTIHEAD_ATTN_FUSION") is not None
+
         def build_layer(layer_number):
             return TransformerLayer(
                 hidden_size,
@@ -299,10 +303,15 @@ class Transformer(nn.Module):
     def forward(self, hidden_states, attention_mask):
         # hidden_states shape: (batch_size, seq_length, hidden_size)
         # sbp: [S(0), B]
+        if self.multihead_attn_fusion:
+            hidden_states = hidden_states.transpose(0, 1)  # [seq, bs, dim]
         for i, layer in enumerate(self.layers):
             hidden_states = layer(hidden_states, attention_mask)
 
         output = self.layernorm_f(hidden_states)
+
+        if self.multihead_attn_fusion:
+            output = output.transpose(0, 1)
 
         return output
 

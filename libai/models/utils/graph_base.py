@@ -96,9 +96,14 @@ class GraphBase(nn.Graph):
             losses = sum(loss_dict.values())
             losses.backward()
             loss_dict = {
-            k: v.to_global(placement=flow.env.all_device_placement("cpu"), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-            for k, v in loss_dict.items()
-        }
+                k: v.to_global(
+                    placement=flow.placement(
+                        "cuda", ranks=[0] if v.placement.ranks.ndim == 1 else [[0]]
+                    ),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
+                for k, v in loss_dict.items()
+            }
             return loss_dict
         else:
             logger.info(
