@@ -190,6 +190,11 @@ class BertLoss(nn.Module):
         self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask, binary_logits, ns_labels):
+        lm_labels = lm_labels.to_global(placement=lm_output.placement)
+        loss_mask = loss_mask.to_global(placement=lm_output.placement)
+        binary_logits = binary_logits.to_global(placement=lm_output.placement) 
+        ns_labels = ns_labels.to_global(placement=lm_output.placement)
+        
         lm_loss = self.lm_loss(lm_output, lm_labels)
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]

@@ -63,10 +63,10 @@ class DistTensorData:
             # some random augmentations to the tensors without setting the same global seed.
             main_placement = dist.get_layer_placement(0)
             self.tensor = self.tensor.to_global(sbp=self.sbp, placement=main_placement)
-            if self.placement_idx != 0:
-                self.tensor = self.tensor.to_global(
-                    placement=dist.get_layer_placement(self.placement_idx)
-                )
+            # if self.placement_idx != 0:
+            #     self.tensor = self.tensor.to_global(
+            #         placement=dist.get_layer_placement(self.placement_idx)
+            #     )
 
     @staticmethod
     def stack(distTensor_lists: List["DistTensorData"]) -> "DistTensorData":

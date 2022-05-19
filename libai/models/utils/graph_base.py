@@ -95,6 +95,10 @@ class GraphBase(nn.Graph):
             loss_dict = self.model(**kwargs)
             losses = sum(loss_dict.values())
             losses.backward()
+            loss_dict = {
+            k: v.to_global(placement=flow.env.all_device_placement("cpu"), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+            for k, v in loss_dict.items()
+        }
             return loss_dict
         else:
             logger.info(
