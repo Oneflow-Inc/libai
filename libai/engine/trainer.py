@@ -322,6 +322,6 @@ class GraphTrainer(TrainerBase):
         loss_dict = self.graph(**data)
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step
-        loss_dict = {key: value.mean() for key, value in loss_dict.items()}
+        # loss_dict = {key: value.mean() for key, value in loss_dict.items()}
 
         self.write_metrics(loss_dict, data_time)
