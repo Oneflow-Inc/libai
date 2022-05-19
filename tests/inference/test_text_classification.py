@@ -25,7 +25,6 @@ from libai.inference.text_classification import TextClassificationPipeline
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 
-
 VOCAB_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt"  # noqa
 
 VOCAB_MD5 = "65ac8a72466e859cd3c6b279ed8e532a"
@@ -44,7 +43,7 @@ class TestTextClassificationPipeline(flow.unittest.TestCase):
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_parallel(self):
         self.pipeline = TextClassificationPipeline("configs/bert_classification.py", 1, 4, 1)
-        
+
         text = list(np.random.randint(0, 6, 10))
         text = "".join([self.texts[i] for i in text])
         dict1 = self.pipeline(text)
@@ -76,6 +75,6 @@ class TestTextClassificationPipeline(flow.unittest.TestCase):
         if dist.is_main_process():
             assert dict1["score"] == dict2["score"]
 
-                
+
 if __name__ == "__main__":
     unittest.main()
