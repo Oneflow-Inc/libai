@@ -22,7 +22,7 @@ tokenization.tokenizer = LazyCall(BertTokenizer)(
     do_chinese_wwm=False,
 )
 ```
-### dataset的构建，使其满足模型的输入输出
+### step-2 dataset的构建，使其满足模型的输入输出
 - 首先在config.py下引入特定dataset
 ```python
 from projects.token_classification.dataset import CnerDataset
@@ -84,5 +84,21 @@ dataset 的指定传入格式如下，可根据不同模型微调。于是需要
             examples.append(InputExample(guid=guid, text_a=text_a,text_b=None, label=labels))
         return examples
 ```
+
+### step 3 model
+- 在大模型的基础下，自定义构建分类层。
+以下是默认线性分类器：
+```python
+        self.classifier = Linear(
+            cfg.hidden_size,
+            self.num_classes,
+            bias=True,
+            parallel="row",
+            init_method=init_method,
+            layer_idx=-1,
+        )
+```
+
+
 
 
