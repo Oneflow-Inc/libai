@@ -60,13 +60,6 @@ class _DistributeUtil(object):
                 f"environment variable. {cfg.num_nodes} != {num_nodes}"
             )
 
-        if try_get_key(cfg, "pipeline_num_layers") is None:
-            logger.warning(
-                "Please set `train.dist.pipeline_num_layers` if you want to train with "
-                "pipeline parallelism, otherwise just ignore it."
-            )
-            cfg.pipeline_num_layers = 10000
-
         # Set the actual value to config
         cfg.num_nodes = num_nodes
         cfg.num_gpus_per_node = num_gpus_per_node
@@ -93,6 +86,20 @@ class _DistributeUtil(object):
         # Set the actual pipeline parallel size to cfg
         cfg.pipeline_parallel_size = self._pipeline_parallel_size
 
+        if cfg.pipeline_parallel_size > 1:
+            assert (
+                try_get_key(cfg, "pipeline_num_layers") is not None
+            ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
+
+            assert cfg.pipeline_num_layers >= self._pipeline_parallel_size, (
+                f"number of layers ({cfg.pipeline_num_layers}) is less than"
+                f" pipeline model parallel size ({self._pipeline_parallel_size})"
+            )
+        else:
+            # no pipeline parallel, just set 10000
+            if try_get_key(cfg, "pipeline_num_layers") is None:
+                cfg.pipeline_num_layers = 10000
+
         self._model_parallel_size = self._pipeline_parallel_size * self._tensor_parallel_size
 
         assert self.world_size % self._model_parallel_size == 0, (
@@ -118,10 +125,6 @@ class _DistributeUtil(object):
             for i in range(0, self.world_size, num_devices_per_stage)
         ]
 
-        assert cfg.pipeline_num_layers >= self._pipeline_parallel_size, (
-            f"number of layers ({cfg.pipeline_num_layers}) is less than"
-            f" pipeline model parallel size ({self._pipeline_parallel_size})"
-        )
         num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
         stage_offset = cfg.pipeline_num_layers % self._pipeline_parallel_size
 
