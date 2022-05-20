@@ -18,8 +18,6 @@ class ClassificationLoss(nn.Module):
 
     def forward(self, classification_logits, label):
         loss = nn.CrossEntropyLoss()(classification_logits, label)
-        # NOTE: Change loss sbp sign [P, P] -> [P, B] to add with sop loss
-        # whose sbp sign: [P, B]
         loss = loss.to_global(sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]))
         return loss
 
