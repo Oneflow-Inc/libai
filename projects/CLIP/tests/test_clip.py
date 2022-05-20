@@ -21,11 +21,10 @@ class TestCLIP(unittest.TestCase):
         assert isinstance(y, flow.Tensor)
 
     def test_transformer(self):
-        mask = flow.empty(
+        mask = flow.ones(
             12, 12, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])
         )
-        mask.fill_(float("-inf"))
-        mask = flow.triu(mask, 1)  # zero out the lower diagonal
+        mask = flow.tril(mask)  # zero out the lower diagonal
 
         # [1, 1, s, s]
         mask = mask.unsqueeze(0).unsqueeze(1).expand(16, 1, 12, 12)
@@ -43,11 +42,11 @@ class TestCLIP(unittest.TestCase):
             embed_dim=10,
             # vision
             image_resolution=224,
-            vision_layers=[3, 4, 6, 3],
+            vision_layers=6,
             vision_width=120,
             vision_patch_size=16,
             # text
-            context_length=16,
+            context_length=24,
             vocab_size=3000,
             transformer_width=128,
             transformer_heads=16,
@@ -58,8 +57,8 @@ class TestCLIP(unittest.TestCase):
         )
         text = flow.ones(
             16,
-            16,
-            dtype=flow.int64,
+            24,
+            dtype=flow.int,
             sbp=flow.sbp.split(0),
             placement=flow.placement("cuda", ranks=[0]),
         )
