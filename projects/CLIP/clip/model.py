@@ -4,15 +4,17 @@
 # --------------------------------------------------------
 
 from collections import OrderedDict
-from typing import Tuple, Union
+from typing import Dict, Tuple, Union
 
 import numpy as np
 import oneflow as flow
+import torch
 from oneflow import nn
 
-from libai.layers import Embedding, LayerNorm, TransformerLayer
-from libai.models import VisionTransformer
+from libai.layers import Embedding, LayerNorm, Linear, MultiheadAttention, TransformerLayer
+from libai.models import VisionTransformer as ViT
 from libai.utils import distributed as dist
+from libai.utils.checkpoint import get_missing_parameters_message, get_unexpected_parameters_message
 
 from .ops import multi_head_attention_forward
 
@@ -197,6 +199,63 @@ class Transformer(nn.Module):
         return x
 
 
+class VisionTransformer(ViT):
+    def __init__(
+        self,
+        img_size=224,
+        patch_size=16,
+        in_chans=3,
+        embed_dim=192,
+        depth=12,
+        num_heads=3,
+        mlp_ratio=4,
+        drop_rate=0,
+        attn_drop_rate=0,
+        drop_path_rate=0,
+        num_classes=1000,
+        loss_func=None,
+    ):
+        super().__init__(
+            img_size,
+            patch_size,
+            in_chans,
+            embed_dim,
+            depth,
+            num_heads,
+            mlp_ratio,
+            drop_rate,
+            attn_drop_rate,
+            drop_path_rate,
+            num_classes,
+            loss_func,
+        )
+
+        self.ln_pre = LayerNorm(embed_dim, layer_idx=0)
+        self.head = Linear(embed_dim, num_classes, bias=False, layer_idx=-1)
+
+    def forward_features(self, x):
+        # patch embedding
+        x = self.patch_embed(x)
+
+        cls_token = self.cls_token.expand(
+            x.shape[0], -1, -1
+        )  # stole cls_tokens impl from Phil Wang, thanks
+        cls_token = cls_token.to_global(sbp=x.sbp, placement=cls_token.placement)
+        x = flow.cat((cls_token, x), dim=1)
+
+        # position embedding
+        pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
+        pos_embed = pos_embed.to_global(sbp=x.sbp, placement=pos_embed.placement)
+        x = self.pos_drop(x + pos_embed)
+
+        # layernorm_pre
+        x = self.ln_pre(x)
+
+        # transformer block
+        x = self.blocks(x)
+        return x
+
+
 class CLIP(nn.Module):
     def __init__(
         self,
@@ -272,6 +331,8 @@ class CLIP(nn.Module):
         self.initialize_parameters()
 
     def initialize_parameters(self):
+        if hasattr(self.visual, "patch_embed"):
+            nn.init.zeros_(self.visual.patch_embed.proj.bias)
         nn.init.normal_(self.token_embedding.weight, std=0.02)
         nn.init.normal_(self.positional_embedding, std=0.01)
 
@@ -308,14 +369,13 @@ class CLIP(nn.Module):
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
-        mask = flow.empty(
+        mask = flow.ones(
             self.context_length,
             self.context_length,
             sbp=flow.sbp.broadcast,
             placement=dist.get_layer_placement(0),
         )
-        mask.fill_(float("-inf"))
-        mask = flow.triu(mask, 1)  # zero out the lower diagonal
+        mask = flow.tril(mask)  # zero out the lower diagonal
         return mask
 
     @property
@@ -323,16 +383,16 @@ class CLIP(nn.Module):
         return self.visual.conv1.weight.dtype
 
     def encode_image(self, image):
-        return self.visual(image.to(dtype=self.dtype))
+        return self.visual(image)["prediction_scores"]
 
     def encode_text(self, text):
-        x = self.token_embedding(text).to(dtype=self.dtype)  # [batch_size, n_ctx, d_model]
+        x = self.token_embedding(text)  # [batch_size, n_ctx, d_model]
 
-        x = x + self.positional_embedding.to(dtype=self.dtype)
-        x = x.permute(1, 0, 2)  # NLD -> LND
+        x = x + self.positional_embedding
+        # x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.transformer(x)
-        x = x.permute(1, 0, 2)  # LND -> NLD
-        x = self.ln_final(x).to(dtype=self.dtype)
+        # x = x.permute(1, 0, 2)  # LND -> NLD
+        x = self.ln_final(x)
 
         # x.shape = [batch_size, n_ctx, transformer.width]
         # take features from the eot embedding (eot_token is the highest number in each sequence)
@@ -358,3 +418,215 @@ class CLIP(nn.Module):
 
         # shape = [global_batch_size, global_batch_size]
         return logits_per_image, logits_per_text
+
+
+def convert_weights(model: nn.Module):
+    """Convert applicable model parameters to fp16"""
+
+    def _convert_weights_to_fp16(l):
+        if isinstance(l, (nn.Conv1d, nn.Conv2d, nn.Linear)):
+            l.weight.data = l.weight.data.to(dtype=flow.float16)
+            if l.bias is not None:
+                l.bias.data = l.bias.data.to(dtype=flow.float16)
+
+        if isinstance(l, MultiheadAttention):
+            for attr in ["query_key_value", "dense"]:
+                layer = getattr(l, attr)
+                weight = getattr(layer, "weight")
+                if weight is not None:
+                    weight.data = weight.data.to(dtype=flow.float16)
+                bias = getattr(layer, "bias")
+                if bias is not None:
+                    bias.data = bias.data.to(dtype=flow.float16)
+
+        if hasattr(l, "text_projection"):
+            attr = getattr(l, "text_projection")
+            if attr is not None:
+                attr.data = attr.data.to(dtype=flow.float16)
+
+        if hasattr(l, "proj"):
+            attr = getattr(l, "proj")
+            if attr is not None:
+                attr.weight.data = attr.weight.data.to(dtype=flow.float16)
+
+    model.apply(_convert_weights_to_fp16)
+
+
+def load_tensor(tensor_lhs: flow.Tensor, tensor_rhs: torch.Tensor):
+    tensor_rhs = flow.Tensor(
+        tensor_rhs.cpu().numpy(),
+        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        placement=flow.env.all_device_placement("cuda"),
+    ).to_global(sbp=tensor_lhs.sbp, placement=tensor_lhs.placement)
+    tensor_lhs.data.copy_(tensor_rhs.data)
+
+
+def load_weights(model: nn.Module, state_dict: Dict):
+    model_state_dict = model.state_dict()
+    incorrect_shapes = []
+    for k in list(state_dict.keys()):
+        if k in model_state_dict:
+            shape_model = tuple(model_state_dict[k].shape)
+            shape_checkpoint = tuple(state_dict[k].shape)
+            if shape_model != shape_checkpoint:
+                incorrect_shapes.append((k, shape_checkpoint, shape_model))
+                state_dict.pop(k)
+
+    unexpected_keys = []
+    for key, value in state_dict.items():
+        if key not in model_state_dict:
+            unexpected_keys.append(key)
+            # skip this key
+            continue
+        model_state_dict.pop(key)
+        load_tensor(model.state_dict()[key], value)
+
+    missing_keys = list(model_state_dict.keys())
+    for k, shape_checkpoint, shape_model in incorrect_shapes:
+        print(
+            "Skip loading parameter '{}' to the model due to incompatible "
+            "shapes: {} in the checkpoint but {} in the "
+            "model! You might want to double check if this is expected.".format(
+                k, shape_checkpoint, shape_model
+            )
+        )
+    if missing_keys:
+        print(get_missing_parameters_message(missing_keys))
+    if unexpected_keys:
+        print(get_unexpected_parameters_message(unexpected_keys))
+
+
+def convert_qkv_weight(qkv_weight, num_heads):
+    qkv_weight = qkv_weight.view([3, num_heads, 64, num_heads * 64])
+    qkv_weight = (
+        qkv_weight.permute(1, 0, 2, 3).contiguous().view(3 * num_heads * 64, num_heads * 64)
+    )
+    return qkv_weight
+
+
+def convert_qkv_bias(qkv_bias, num_heads):
+    qkv_bias = qkv_bias.view(3, num_heads, 64)
+    qkv_bias = qkv_bias.permute(1, 0, 2).contiguous().view(-1)
+    return qkv_bias
+
+
+def change_vit_state_dict(state_dict, visual_num_heads, text_num_heads):
+    new_state_dict = {}
+    for key, value in state_dict.items():
+        # change prefix
+        if "visual.transformer.resblocks" in key:
+            key = key.replace("visual.transformer.resblocks", "visual.blocks")
+        # change "ln_1" to "input_layernorm"
+        if "ln_1" in key:
+            key = key.replace("ln_1", "input_layernorm")
+        # change "ln_2" to "post_attention_layernorm"
+        if "ln_2" in key:
+            key = key.replace("ln_2", "post_attention_layernorm")
+        # change "attn.out_proj" to "attention.dense"
+        if "attn.out_proj" in key:
+            key = key.replace("attn.out_proj", "attention.dense")
+        # change "attn" to "attention.query_key_value"
+        if "attn.in_proj_weight" in key:
+            key = key.replace("attn.in_proj_weight", "attention.query_key_value.weight")
+            if "visual" not in key:
+                value = convert_qkv_weight(value, text_num_heads)
+            else:
+                value = convert_qkv_weight(value, visual_num_heads)
+        if "attn.in_proj_bias" in key:
+            key = key.replace("attn.in_proj_bias", "attention.query_key_value.bias")
+            if "visual" not in key:
+                value = convert_qkv_bias(value, text_num_heads)
+            else:
+                value = convert_qkv_bias(value, visual_num_heads)
+        # change "mlp.c_fc" to "mlp.dense_h_to_4h"
+        if "mlp.c_fc" in key:
+            key = key.replace("mlp.c_fc", "mlp.dense_h_to_4h")
+        # change "mlp.c_proj" to "mlp.dense_4h_to_h"
+        if "mlp.c_proj" in key:
+            key = key.replace("mlp.c_proj", "mlp.dense_4h_to_h")
+
+        # change "class_embedding" to "cls_token"
+        if "class_embedding" in key:
+            key = key.replace("class_embedding", "cls_token")
+            value = value.unsqueeze(0).unsqueeze(0)
+        # change "pos_embed" to "positional_embedding"
+        if "visual.positional_embedding" == key:
+            key = "visual.pos_embed"
+            value = value.unsqueeze(0)
+        # change patch_embedding
+        if key == "visual.conv1.weight":
+            key = "visual.patch_embed.proj.weight"
+        # change "ln_post"
+        if "ln_post" in key:
+            key = key.replace("ln_post", "norm")
+        # change "proj"
+        if "visual.proj" == key:
+            key = "visual.head.weight"
+            value = value.transpose(0, 1)
+
+        new_state_dict[key] = value
+
+    return new_state_dict
+
+
+def build_model(state_dict: dict):
+    vit = "visual.proj" in state_dict
+
+    if vit:
+        vision_width = state_dict["visual.conv1.weight"].shape[0]
+        vision_layers = len(
+            [
+                k
+                for k in state_dict.keys()
+                if k.startswith("visual.") and k.endswith(".attn.in_proj_weight")
+            ]
+        )
+        vision_patch_size = state_dict["visual.conv1.weight"].shape[-1]
+        grid_size = round((state_dict["visual.positional_embedding"].shape[0] - 1) ** 0.5)
+        image_resolution = vision_patch_size * grid_size
+    else:
+        counts: list = [
+            len(set(k.split(".")[2] for k in state_dict if k.startswith(f"visual.layer{b}")))
+            for b in [1, 2, 3, 4]
+        ]
+        vision_layers = tuple(counts)
+        vision_width = state_dict["visual.layer1.0.conv1.weight"].shape[0]
+        output_width = round(
+            (state_dict["visual.attnpool.positional_embedding"].shape[0] - 1) ** 0.5
+        )
+        vision_patch_size = None
+        assert output_width ** 2 + 1 == state_dict["visual.attnpool.positional_embedding"].shape[0]
+        image_resolution = output_width * 32
+
+    embed_dim = state_dict["text_projection"].shape[1]
+    context_length = state_dict["positional_embedding"].shape[0]
+    vocab_size = state_dict["token_embedding.weight"].shape[0]
+    transformer_width = state_dict["ln_final.weight"].shape[0]
+    transformer_heads = transformer_width // 64
+    transformer_layers = len(
+        set(k.split(".")[2] for k in state_dict if k.startswith("transformer.resblocks"))
+    )
+
+    if vit:
+        state_dict = change_vit_state_dict(state_dict, vision_width // 64, transformer_heads)
+
+    model = CLIP(
+        embed_dim,
+        image_resolution,
+        vision_layers,
+        vision_width,
+        vision_patch_size,
+        context_length,
+        vocab_size,
+        transformer_width,
+        transformer_heads,
+        transformer_layers,
+    )
+
+    for key in ["input_resolution", "context_length", "vocab_size"]:
+        if key in state_dict:
+            del state_dict[key]
+
+    # convert_weights(model)
+    load_weights(model, state_dict)
+    return model.eval()
