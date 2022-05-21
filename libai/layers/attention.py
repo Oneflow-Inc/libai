@@ -224,9 +224,11 @@ class MultiheadAttention(nn.Module):
             # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
             if attention_mask is not None:
                 if self.scale_mask_softmax_fusion:
-                    attention_weights = flow._C.fused_scale_mask_softmax(
-                        attention_scores, attention_mask, fill_value=-10000.0
-                    )
+                    attention_mask = attention_mask.to(dtype=flow.bool)
+                    attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
+                    attention_weights = flow._C.fused_scale_mask_softmax_dropout(
+                        attention_scores, attention_mask, fill_value=-10000.0, scale=self.coeff, p=self.attention_dropout_prob
+                    )[0]
                 else:
                     if self.coeff is not None:
                         attention_scores *= self.coeff
@@ -238,8 +240,8 @@ class MultiheadAttention(nn.Module):
             else:
                 attention_weights = flow.softmax(attention_scores, dim=-1)
 
-            # [bsz, num_heads, tgt_len, src_len]
-            attention_weights = self.dropout(attention_weights)
+                # [bsz, num_heads, tgt_len, src_len]
+                attention_weights = self.dropout(attention_weights)
 
             # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
             context = flow.matmul(attention_weights, value)
