@@ -130,12 +130,8 @@ class MultiheadAttention(nn.Module):
         qmk, v = flow._C.fused_self_attention(
             h, head_size=self.head_size, alpha=(1.0 / self.norm_factor)
         )
-        if self.coeff is not None:
-            qmk *= self.coeff
-        attention_scores = flow.mul(qmk, attention_mask)
-        attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-        attention_weights = flow.softmax(attention_scores, dim=-1)
-        attention_weights = self.dropout(attention_weights)
+        if self.scale_mask_softmax_fusion:
+            attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(qmk, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff)[0]
         return flow._C.matmul(attention_weights, v)
 
     def forward(
@@ -224,11 +220,13 @@ class MultiheadAttention(nn.Module):
             # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
             if attention_mask is not None:
                 if self.scale_mask_softmax_fusion:
-                    attention_mask = attention_mask.to(dtype=flow.bool)
-                    attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
-                    attention_weights = flow._C.fused_scale_mask_softmax_dropout(
-                        attention_scores, attention_mask, fill_value=-10000.0, scale=self.coeff, p=self.attention_dropout_prob
-                    )[0]
+                    # attention_mask = attention_mask.to(dtype=flow.bool)
+                    # attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
+                    # attention_weights = flow._C.fused_scale_mask_softmax_dropout(
+                    #     attention_scores, attention_mask, fill_value=-10000.0, scale=self.coeff, p=self.attention_dropout_prob
+                    # )[0]
+                    attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(attention_scores, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff)[0]
+
                 else:
                     if self.coeff is not None:
                         attention_scores *= self.coeff
