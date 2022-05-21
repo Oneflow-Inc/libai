@@ -132,6 +132,14 @@ class MultiheadAttention(nn.Module):
         )
         if self.scale_mask_softmax_fusion:
             attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(qmk, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff)[0]
+        else:
+            if self.coeff is not None:
+                qmk *= self.coeff
+            attention_scores = flow.mul(qmk, attention_mask)
+            attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
+            attention_weights = flow.softmax(attention_scores, dim=-1)
+            # [bsz, num_heads, tgt_len, src_len]
+            attention_weights = self.dropout(attention_weights)
         return flow._C.matmul(attention_weights, v)
 
     def forward(
@@ -226,7 +234,6 @@ class MultiheadAttention(nn.Module):
                     #     attention_scores, attention_mask, fill_value=-10000.0, scale=self.coeff, p=self.attention_dropout_prob
                     # )[0]
                     attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(attention_scores, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff)[0]
-
                 else:
                     if self.coeff is not None:
                         attention_scores *= self.coeff
@@ -235,9 +242,10 @@ class MultiheadAttention(nn.Module):
                     # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
                     # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
                     attention_weights = flow.softmax(attention_scores, dim=-1)
+                    # [bsz, num_heads, tgt_len, src_len]
+                    attention_weights = self.dropout(attention_weights)
             else:
                 attention_weights = flow.softmax(attention_scores, dim=-1)
-
                 # [bsz, num_heads, tgt_len, src_len]
                 attention_weights = self.dropout(attention_weights)
 
