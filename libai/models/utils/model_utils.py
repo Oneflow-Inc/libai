@@ -11,7 +11,8 @@ from libai.models import build_model
 logger = logging.getLogger(__name__)
 
 
-WEIGHTS_NAME = "pytorch_model.bin"
+WEIGHTS_NAME_PT = "pytorch_model.bin"
+WEIGHTS_NAME_OF = "oneflow_model"
 CONFIG_NAME = "config.json"
 
 
@@ -49,7 +50,7 @@ def _load_state_dict_into_model(model_to_load, state_dict, start_prefix):
 
 class LoadPretrainedBase(object):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
-        """Class used to load the [transformers](https://huggingface.co/models)' pretrained model.
+        """Class used to load the [`transformers`](https://huggingface.co/models) pretrained model or `OneFlow` pretrained model.
 
         Args:
             model (libai.models): Model to be loaded in Libai.
@@ -178,6 +179,11 @@ class LoadPretrainedBase(object):
     def _load_torch_state_dict(self, state_dict_file):
         # load pytorch_model.bin
         state_dict = torch.load(state_dict_file, map_location="cpu")
+        return state_dict
+
+    def _load_flow_state_dict(self, state_dict_file):
+        # load oneflow_model
+        state_dict = flow.load(state_dict_file)
         return state_dict
 
     def _load_pretrained_model(
@@ -369,14 +375,22 @@ class LoadPretrainedBase(object):
 
         """
         if os.path.isdir(self.pretrained_model_path):
-            # state_dict file
-            if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME)):
-                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME)
+            # state_dict file pytorch
+            if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)):
+                self.mode = 'pt'
+                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)
+            
+            # state_dict file oneflow
+            elif os.path.isdir(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)):
+                self.mode = 'of'
+                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)
+            
             else:
                 raise EnvironmentError(
-                    f"Error no file named {WEIGHTS_NAME} found in directory"
-                    f"{self.pretrained_model_path}."
+                    f"Error no file named {WEIGHTS_NAME_PT} or {WEIGHTS_NAME_OF} found"
+                    f"in directory {self.pretrained_model_path}."
                 )
+
             # config file
             if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
                 config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
@@ -388,12 +402,16 @@ class LoadPretrainedBase(object):
         else:
             raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
+        # load config and update config.
         self._load_config_from_json(config_file)
-        torch_state_dict = self._load_torch_state_dict(model_file)
-        torch_state_dict = self._fix_key(torch_state_dict)
+    
+        if self.mode == 'pt':
+            torch_state_dict = self._load_torch_state_dict(model_file)
+            torch_state_dict = self._fix_key(torch_state_dict)
+            flow_state_dict = self._convert_state_dict(torch_state_dict, self.default_cfg)
+        else:
+            flow_state_dict = self._load_flow_state_dict(model_file)
 
-        # convert state dict
-        flow_state_dict = self._convert_state_dict(torch_state_dict, self.default_cfg)
         loaded_state_dict_keys = list(flow_state_dict.keys())
 
         # instance model
