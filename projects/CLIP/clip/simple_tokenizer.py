@@ -11,10 +11,20 @@ from functools import lru_cache
 import ftfy
 import regex as re
 
+from libai.utils.file_utils import download_file
+
 
 @lru_cache()
 def default_bpe():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "bpe_simple_vocab_16e6.txt.gz")
+    default_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "bpe_simple_vocab_16e6.txt.gz"
+    )
+    if not os.path.exists(default_path):
+        download_file(
+            default_path,
+            "https://oneflow-static.oss-cn-beijing.aliyuncs.com/libai/clip/bpe_simple_vocab_16e6.txt.gz",
+        )
+    return default_path
 
 
 @lru_cache()
