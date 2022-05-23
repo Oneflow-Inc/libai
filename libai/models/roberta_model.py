@@ -247,7 +247,7 @@ class RobertaLMHead(nn.Module):
             hidden_size,
             hidden_size,
             bias=True,
-            parallel="col",
+            parallel="data",
             init_method=init_method,
             layer_idx=-1,
         )
