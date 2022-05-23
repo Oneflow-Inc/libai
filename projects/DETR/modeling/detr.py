@@ -44,7 +44,7 @@ class DETR(nn.Module):
         self.backbone = backbone
         self.aux_loss = aux_loss
         self.criterion = criterion
-
+        
     def forward(self, samples):
         """ The forward expects a NestedTensor, which consists of:
                - samples.tensor: batched images, of shape [batch_size x 3 x H x W]
@@ -77,7 +77,6 @@ class DETR(nn.Module):
             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
             
         loss_dict = self.criterion(out, targets)    
-        
         return loss_dict, out
 
     def _set_aux_loss(self, outputs_class, outputs_coord):

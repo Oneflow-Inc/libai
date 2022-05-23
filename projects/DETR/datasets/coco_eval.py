@@ -127,11 +127,8 @@ class CocoEvaluator(DatasetEvaluator):
         """
         Evaluate/summarize the performance after processing all input/output pairs.
         """     
-        print("synchronize_between_processes")
         self.synchronize_between_processes()
-        print("accumulate")
         self.accumulate()
-        print("summarize")
         self.summarize()   
         
         return self.coco_eval
@@ -314,6 +311,7 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
+
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time

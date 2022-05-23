@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# reference: https://github.com/pytorch/pytorch/blob/master/torch/nn/functional.py
 
 from typing import Tuple
+from numpy import dtype
 
 import oneflow as flow
 import oneflow.nn.functional as F
@@ -57,6 +59,8 @@ class DetrMultiheadAttention(MultiheadAttention):
                          output_dropout_prob=output_dropout_prob,
                          attention_dropout_prob=attention_dropout_prob)
 
+        self.num_attention_heads = num_attention_heads
+        
     def forward(
         self,
         hidden_states: flow.Tensor,
@@ -97,77 +101,114 @@ class DetrMultiheadAttention(MultiheadAttention):
         # *NOTE: for detr MultiHeadAttention
         query, key, value = hidden_states
 
-        query, key, value = query.permute(1,0,2), key.permute(1,0,2), value.permute(1,0,2)
+        # refer to torch.nn.MultiHeadAttention
         
-        bsz, tgt_len = query.size()[:2]
+        tgt_len, bsz, embed_dim = query.shape
+        src_len, _, _ = key.shape
+        head_dim = embed_dim / self.num_attention_heads
         
         query_w, key_w, value_w = self.query_key_value.weight.chunk(3, dim=0)
         query_b, key_b, value_b = self.query_key_value.bias.chunk(3, dim=0)
+     
+        query = self.linear(query, query_w, query_b) 
+        key = self.linear(key, key_w, key_b) 
+        value = self.linear(value, value_w, value_b)  
         
-        query = self.linear(query, query_w, query_b, bsz) 
-        key = self.linear(key, key_w, key_b, bsz) 
-        value = self.linear(value, value_w, value_b, bsz)  
-        
+        # Reshape q, k, v for multihead attention and make them batch first.
+        query = query.contiguous().view(tgt_len, bsz * self.num_attention_heads, head_dim).transpose(0, 1)
+        key = key.contiguous().view(key.shape[0], bsz * self.num_attention_heads, head_dim).transpose(0, 1)
+        value = value.contiguous().view(value.shape[0], bsz * self.num_attention_heads, head_dim).transpose(0, 1)
+
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
+        # attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
+        
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
-        if attention_mask is not None:
-            
-            # * detr needs key_padding_mask
-            if key_padding_mask is not None:
+        # merge key padding and attention masks
+        if key_padding_mask is not None:
+            assert key_padding_mask.shape == (bsz, src_len), \
+                f"expecting key_padding_mask shape of {(bsz, src_len)}, but got {key_padding_mask.shape}"            
+            key_padding_mask = key_padding_mask.view(bsz, 1, 1, src_len).expand(-1, self.num_attention_heads, -1, -1).reshape(bsz * self.num_attention_heads, 1, src_len)
+
+            if attention_mask is None:
+                attention_mask = key_padding_mask
+            elif attention_mask.dtype == flow.bool:
+                attention_mask = attention_mask.logical_or(key_padding_mask)
+            else:
                 attention_mask = attention_mask.masked_fill(key_padding_mask, float("-inf"))
                 
-            if self.scale_mask_softmax_fusion:
-                attention_weights = flow._C.fused_scale_mask_softmax(
-                    attention_scores, attention_mask, fill_value=-10000.0
-                )
-            else:
-                if self.coeff is not None:
-                    attention_scores *= self.coeff
-                attention_scores = flow.mul(attention_scores, attention_mask)
-                attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-                # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
-                # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
+        # convert mask to float
+        if attention_mask is not None and attention_mask.dtype == flow.bool:
+            new_attention_mask = flow.zeros_like(attention_mask).to(dtype=query.dtype)
+            new_attention_mask = new_attention_mask.masked_fill(attention_mask, float("-inf"))
+            attention_mask = new_attention_mask
+            
+        attention_scores = flow.bmm(query*self.norm_factor, key.transpose(-2,-1))
+        if attention_mask is not None:
+            attention_scores += attention_mask
+        attention_weights = flow.softmax(attention_scores, dim=-1)
+        #     if self.scale_mask_softmax_fusion:
+        #         attention_weights = flow._C.fused_scale_mask_softmax(
+        #             attention_scores, attention_mask, fill_value=-10000.0
+        #         )
+        #     else:
+        #         if self.coeff is not None:
+        #             attention_scores *= self.coeff
+        #         attention_scores = flow.mul(attention_scores, attention_mask)
+        #         attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
 
-                attention_weights = flow.softmax(attention_scores, dim=-1)
-        else:
+        #         attention_weights = flow.softmax(attention_scores, dim=-1)
+        # else:
+        #     attention_weights = flow.softmax(attention_scores, dim=-1)
+            
+        
+        # if attention_mask is not None:
+            
+        #     # * detr needs key_padding_mask
+        #     if key_padding_mask is not None:
+        #         attention_mask = attention_mask.masked_fill(key_padding_mask, float("-inf"))
+                
+        #     if self.scale_mask_softmax_fusion:
+        #         attention_weights = flow._C.fused_scale_mask_softmax(
+        #             attention_scores, attention_mask, fill_value=-10000.0
+        #         )
+        #     else:
+        #         if self.coeff is not None:
+        #             attention_scores *= self.coeff
+        #         attention_scores = flow.mul(attention_scores, attention_mask)
+        #         attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
+        #         # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
+        #         # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
+
+        #         attention_weights = flow.softmax(attention_scores, dim=-1)
+        # else:
        
-            attention_weights = flow.softmax(attention_scores, dim=-1)
+        #     attention_weights = flow.softmax(attention_scores, dim=-1)
 
-        # [bsz, num_heads, tgt_len, src_len]
         attention_weights = self.dropout(attention_weights)
 
-        # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
-        context = flow.matmul(attention_weights, value)
-        # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
-        context = context.transpose(1, 2)
-
-        # Concat multi-head results from
-        # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
-        # SBP sign: [S(0), S(2)]
-        context = context.view(bsz, tgt_len, self.hidden_size)
+        context = flow.bmm(attention_weights, value)
+        
+        # Change shape: [bsz*num_heads, tgt_len, head_size] -> [tgt_len, bsz*num_heads, head_size] -> [tgt_len, bsz, embed_dim]
+        context = context.transpose(0,1).contiguous().view(tgt_len, bsz, embed_dim)
 
         # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context)
 
-        if self.bias_dropout_fusion:
-            output, bias = output
-            output = flow._C.fused_bias_add_dropout(
-                output, bias, p=self.output_dropout_prob, axis=output.ndim - 1
-            )
-        else:
-            output = self.output_dropout(output)
+        # if self.bias_dropout_fusion:
+        #     output, bias = output
+        #     output = flow._C.fused_bias_add_dropout(
+        #         output, bias, p=self.output_dropout_prob, axis=output.ndim - 1
+        #     )
+        # else:
+        #     output = self.output_dropout(output)
 
-        if use_cache:
-            output = (output, past_key_value)
-
+        # if use_cache:
+        #     output = (output, past_key_value)
         return output
     
-    def linear(self, x, w, b, bsz):
+    def linear(self, x, w, b):
         
-        return F.linear(x, weight=w, bias=b).view(
-            bsz, -1, self.num_heads, self.head_size).permute(
-            0, 2, 1, 3) 
+        return F.linear(x, weight=w, bias=b)
         
 
     def extra_repr(self) -> str:

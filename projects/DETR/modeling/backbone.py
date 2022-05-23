@@ -93,6 +93,9 @@ class BackboneBase(nn.Module):
     def forward(self, tensor_list):
             
         img, img_mask = tensor_list
+
+        # !(ziqiu chi) The output is inconsistent with detr impl. 
+        # While in current version, the transformer output is consistent with detr impl.
         xs = self.body(img.tensor)
             
         out = {}

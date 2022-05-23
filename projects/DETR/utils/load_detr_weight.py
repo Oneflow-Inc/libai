@@ -46,12 +46,13 @@ def convert_state(state):
 
 def load_tensor(tensor_lhs, tensor_rhs):
 
-    tensor_rhs = flow.to_global(
-        tensor_rhs,
-        placement=tensor_lhs.placement,
-        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-    )
-    tensor_rhs = tensor_rhs.to_global(sbp=tensor_lhs.sbp)
+    if tensor_lhs.is_global:
+        tensor_rhs = flow.to_global(
+            tensor_rhs,
+            placement=tensor_lhs.placement,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
+        tensor_rhs = tensor_rhs.to_global(sbp=tensor_lhs.sbp)
     tensor_lhs.copy_(tensor_rhs)
 
 
