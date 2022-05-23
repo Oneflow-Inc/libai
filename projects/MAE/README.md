@@ -44,7 +44,7 @@ Based on [libai.layers](https://libai.readthedocs.io/en/latest/modules/libai.lay
 
 ## Usage
 ### Installation
-Please see [LiBai Installation](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html) to install LiBai
+Please see [LiBai Installation](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html) to install LiBai.
 
 ### Prepare the Data
 Please see [Prepare the Data](https://libai.readthedocs.io/en/latest/tutorials/get_started/quick_run.html#prepare-the-data).
