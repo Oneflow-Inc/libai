@@ -14,7 +14,7 @@ In this tutorial, we will introduce to users how to instantiate a pretrained one
 $ tree my_pre_trained_model_directory
 path/to/my_pre_trained_model_directory/
 ├── pytorch_model.bin or oneflow_model
-└── vocab.json
+└── config.json
 ```
 
 ## Start Loading
@@ -29,5 +29,5 @@ load_fucntion = LoadPretrainedBert(
     default_cfg=cfg,
     pretrained_model_path='path/to/my_pre_trained_model_directory'
     )
-bert = my_class.load_model()
+bert = load_fucntion.load_model()
 ```
