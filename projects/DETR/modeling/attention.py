@@ -89,9 +89,6 @@ class DetrMultiheadAttention(MultiheadAttention):
                 phase and used for incremental decoding. Defaults to False.
         """
 
-        # hidden_states, encoder_states: [S(0), B]
-        # attention_mask: [S(0), B]
-
         if encoder_states is not None:
             encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
@@ -119,10 +116,6 @@ class DetrMultiheadAttention(MultiheadAttention):
         key = key.contiguous().view(key.shape[0], bsz * self.num_attention_heads, head_dim).transpose(0, 1)
         value = value.contiguous().view(value.shape[0], bsz * self.num_attention_heads, head_dim).transpose(0, 1)
 
-        # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        # attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
-        
-        # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         # merge key padding and attention masks
         if key_padding_mask is not None:
             assert key_padding_mask.shape == (bsz, src_len), \
@@ -146,43 +139,6 @@ class DetrMultiheadAttention(MultiheadAttention):
         if attention_mask is not None:
             attention_scores += attention_mask
         attention_weights = flow.softmax(attention_scores, dim=-1)
-        #     if self.scale_mask_softmax_fusion:
-        #         attention_weights = flow._C.fused_scale_mask_softmax(
-        #             attention_scores, attention_mask, fill_value=-10000.0
-        #         )
-        #     else:
-        #         if self.coeff is not None:
-        #             attention_scores *= self.coeff
-        #         attention_scores = flow.mul(attention_scores, attention_mask)
-        #         attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-
-        #         attention_weights = flow.softmax(attention_scores, dim=-1)
-        # else:
-        #     attention_weights = flow.softmax(attention_scores, dim=-1)
-            
-        
-        # if attention_mask is not None:
-            
-        #     # * detr needs key_padding_mask
-        #     if key_padding_mask is not None:
-        #         attention_mask = attention_mask.masked_fill(key_padding_mask, float("-inf"))
-                
-        #     if self.scale_mask_softmax_fusion:
-        #         attention_weights = flow._C.fused_scale_mask_softmax(
-        #             attention_scores, attention_mask, fill_value=-10000.0
-        #         )
-        #     else:
-        #         if self.coeff is not None:
-        #             attention_scores *= self.coeff
-        #         attention_scores = flow.mul(attention_scores, attention_mask)
-        #         attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-        #         # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
-        #         # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
-
-        #         attention_weights = flow.softmax(attention_scores, dim=-1)
-        # else:
-       
-        #     attention_weights = flow.softmax(attention_scores, dim=-1)
 
         attention_weights = self.dropout(attention_weights)
 
@@ -191,29 +147,11 @@ class DetrMultiheadAttention(MultiheadAttention):
         # Change shape: [bsz*num_heads, tgt_len, head_size] -> [tgt_len, bsz*num_heads, head_size] -> [tgt_len, bsz, embed_dim]
         context = context.transpose(0,1).contiguous().view(tgt_len, bsz, embed_dim)
 
-        # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context)
 
-        # if self.bias_dropout_fusion:
-        #     output, bias = output
-        #     output = flow._C.fused_bias_add_dropout(
-        #         output, bias, p=self.output_dropout_prob, axis=output.ndim - 1
-        #     )
-        # else:
-        #     output = self.output_dropout(output)
-
-        # if use_cache:
-        #     output = (output, past_key_value)
         return output
     
     def linear(self, x, w, b):
         
         return F.linear(x, weight=w, bias=b)
         
-
-    def extra_repr(self) -> str:
-        return "hidden_size={}, num_heads={}, is_cross_attention={}".format(
-            self.hidden_size,
-            self.num_heads,
-            self.is_cross_attention,
-        )
