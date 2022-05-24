@@ -116,7 +116,7 @@ class JSONWriter(EventWriter):
             # keep scalars that have not been written
             if iter <= self._last_write:
                 continue
-            to_save[iter][k] = v
+            to_save[iter][k] = float(v)
         if len(to_save):
             all_iters = sorted(to_save.keys())
             self._last_write = max(all_iters)
@@ -311,7 +311,7 @@ class EventStorage:
         """
         name = self._current_prefix + name
         history = self._history[name]
-        value = float(value)
+        # value = float(value)
         history.update(value, self._iter)
         self._latest_scalars[name] = (value, self._iter)
 

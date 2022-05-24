@@ -402,7 +402,7 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
+            # hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
         ]
 
         if self.cfg.train.evaluation.enabled:

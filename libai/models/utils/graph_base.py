@@ -98,7 +98,7 @@ class GraphBase(nn.Graph):
             loss_dict = {
                 k: v.to_global(
                     placement=flow.placement(
-                        "cuda", ranks=[0] if v.placement.ranks.ndim == 1 else [[0]]
+                        "cpu", ranks=[0] if v.placement.ranks.ndim == 1 else [[0]]
                     ),
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 )
