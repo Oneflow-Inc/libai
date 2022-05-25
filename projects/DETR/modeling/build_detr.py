@@ -21,7 +21,8 @@ from libai.config import LazyCall
 from .backbone import build_backbone
 from .matcher import build_matcher
 from .segmentation import DETRsegm, PostProcessPanoptic, PostProcessSegm
-from .transformer import build_transformer
+# from .transformer import build_transformer
+from .libai_transformer import build_transformer
 from .detr import DETR
 from .criterion import SetCriterion
 from .post_process import PostProcess

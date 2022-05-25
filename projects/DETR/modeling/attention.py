@@ -32,31 +32,16 @@ class DetrMultiheadAttention(MultiheadAttention):
         num_attention_heads: number of attention heads.
         attention_dropout_prob: dropout probability of attention weights.
             Defaults to 0.0.
-        output_dropout_prob: dropout probability of output. Defaults to 0.0.
-        init_method: method to initialize the input layer weights.
-            Defaults to ``init.xavier_normal_``.
-        output_layer_init_method: method to initialize the output layer weights.
-            If None, use ``init_method``.
-        bias_dropout_fusion: whether to fuse add bias and dropout.
-            Defaults to False.
-        scale_mask_softmax_fusion: whether to fuse scale, mask and softmax.
-            Defaults to False.
-        apply_query_key_layer_scaling: if `True`, scaling the attention score by layer index.
-            Defaults to False.
-        layer_idx: A layer_idx sign which determines the placements.
-            It will be used in pipeline parallelism. Defaults to 0.
     """
 
     def __init__(
         self,
         hidden_size,
         num_attention_heads,
-        output_dropout_prob=0.0,
         attention_dropout_prob=0.0
     ):
         super().__init__(hidden_size=hidden_size, 
                          num_attention_heads=num_attention_heads, 
-                         output_dropout_prob=output_dropout_prob,
                          attention_dropout_prob=attention_dropout_prob)
 
         self.num_attention_heads = num_attention_heads
@@ -64,18 +49,13 @@ class DetrMultiheadAttention(MultiheadAttention):
     def forward(
         self,
         hidden_states: flow.Tensor,
-        encoder_states: flow.Tensor = None,
         attention_mask: flow.Tensor = None,
-        past_key_value: Tuple[flow.Tensor, flow.Tensor] = None,
-        use_cache: bool = False,
         key_padding_mask: flow.Tensor = None
     ):
         """
 
         Args:
             hidden_states (flow.Tensor): shape is [bsz, tgt_len, hidden_size].
-            encoder_states (flow.Tensor, optional): shape is [bsz, src_len, hidden_size].
-                Defaults to None.
             attention_mask (flow.Tensor, optional): shape is [bsz, 1, tgt_len, src_len].
                 It should be the combination of padding mask and casual mask.
                 It is the padding mask of source input when used with self-attention in encoder.
@@ -85,12 +65,7 @@ class DetrMultiheadAttention(MultiheadAttention):
                 Defaults to None.
             past_key_value (Tuple[flow.Tensor, flow.Tensor], optional): tuple of key and value,
                 each shape is [bsz, num_heads, src_len, head_size]. Defaults to None.
-            use_cache (bool, optional): it will be set to True, when the model is in the inference
-                phase and used for incremental decoding. Defaults to False.
         """
-
-        if encoder_states is not None:
-            encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
@@ -99,10 +74,8 @@ class DetrMultiheadAttention(MultiheadAttention):
         query, key, value = hidden_states
 
         # refer to torch.nn.MultiHeadAttention
-        
-        tgt_len, bsz, embed_dim = query.shape
-        src_len, _, _ = key.shape
-        head_dim = embed_dim / self.num_attention_heads
+        tgt_len, bsz = query.shape[:2]
+        src_len = key.shape[0]
         
         query_w, key_w, value_w = self.query_key_value.weight.chunk(3, dim=0)
         query_b, key_b, value_b = self.query_key_value.bias.chunk(3, dim=0)
@@ -112,9 +85,9 @@ class DetrMultiheadAttention(MultiheadAttention):
         value = self.linear(value, value_w, value_b)  
         
         # Reshape q, k, v for multihead attention and make them batch first.
-        query = query.contiguous().view(tgt_len, bsz * self.num_attention_heads, head_dim).transpose(0, 1)
-        key = key.contiguous().view(key.shape[0], bsz * self.num_attention_heads, head_dim).transpose(0, 1)
-        value = value.contiguous().view(value.shape[0], bsz * self.num_attention_heads, head_dim).transpose(0, 1)
+        query = query.contiguous().view(tgt_len, bsz * self.num_attention_heads, self.head_size).transpose(0, 1)
+        key = key.contiguous().view(key.shape[0], bsz * self.num_attention_heads, self.head_size).transpose(0, 1)
+        value = value.contiguous().view(value.shape[0], bsz * self.num_attention_heads, self.head_size).transpose(0, 1)
 
         # merge key padding and attention masks
         if key_padding_mask is not None:
@@ -136,6 +109,7 @@ class DetrMultiheadAttention(MultiheadAttention):
             attention_mask = new_attention_mask
             
         attention_scores = flow.bmm(query*self.norm_factor, key.transpose(-2,-1))
+        
         if attention_mask is not None:
             attention_scores += attention_mask
         attention_weights = flow.softmax(attention_scores, dim=-1)
@@ -145,7 +119,7 @@ class DetrMultiheadAttention(MultiheadAttention):
         context = flow.bmm(attention_weights, value)
         
         # Change shape: [bsz*num_heads, tgt_len, head_size] -> [tgt_len, bsz*num_heads, head_size] -> [tgt_len, bsz, embed_dim]
-        context = context.transpose(0,1).contiguous().view(tgt_len, bsz, embed_dim)
+        context = context.transpose(0,1).contiguous().view(tgt_len, bsz, self.hidden_size)
 
         output = self.dense(context)
 
