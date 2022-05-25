@@ -84,8 +84,8 @@ class SparseDispatcher(object):
         self._part_sizes = (gates > 0).sum(0).tolist()
         # expand gates to match with self._batch_index
         gates_exp = local_gates[batch_index.flatten()]
-        nonzero_gates = flow.gather(gates_exp, 1, self._expert_index)
-        self._nonzero_gates = nonzero_gates.to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
+        gates_exp = gates_exp.to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
+        self._nonzero_gates = flow.gather(gates_exp, 1, self._expert_index)
         self.device = device
 
     def dispatch(self, inp):
@@ -101,7 +101,8 @@ class SparseDispatcher(object):
 
         # assigns samples to experts whose gate is nonzero
         # expand according to batch index so we can just split by _part_sizes
-        inp_exp = inp[self._batch_index].squeeze(1)
+        inp = inp.to_local()
+        inp_exp = inp[self._batch_index.to_local()].squeeze(1).to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
         return flow.split(inp_exp, self._part_sizes, dim=0)
 
     def combine(self, expert_out, multiply_by_gates=True):
