@@ -22,7 +22,7 @@ def default_bpe():
     if not os.path.exists(default_path):
         download_file(
             default_path,
-            "https://oneflow-static.oss-cn-beijing.aliyuncs.com/libai/clip/bpe_simple_vocab_16e6.txt.gz",
+            "https://oneflow-static.oss-cn-beijing.aliyuncs.com/libai/clip/bpe_simple_vocab_16e6.txt.gz",  # noqa: E501
         )
     return default_path
 

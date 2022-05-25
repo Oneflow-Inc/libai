@@ -3,3 +3,5 @@ regex
 tqdm
 oneflow
 flowvision
+torch
+torchvision
