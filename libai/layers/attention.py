@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import enum
 import math
 import os
 from typing import Tuple
@@ -21,6 +22,11 @@ import oneflow as flow
 from oneflow import nn
 
 from .linear import Linear
+
+
+class AttnMaskType(enum.Enum):
+    padding = 1
+    causal = 2
 
 
 class MultiheadAttention(nn.Module):
@@ -60,6 +66,7 @@ class MultiheadAttention(nn.Module):
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
+        attn_mask_type=AttnMaskType.padding,
         *,
         layer_idx=0
     ):
@@ -75,6 +82,7 @@ class MultiheadAttention(nn.Module):
 
         self.num_heads = num_attention_heads
         self.head_size = hidden_size // num_attention_heads
+        self.attn_mask_type = attn_mask_type
 
         self.attention_dropout_prob = attention_dropout_prob
         self.dropout = nn.Dropout(p=attention_dropout_prob)
@@ -131,7 +139,9 @@ class MultiheadAttention(nn.Module):
             h, head_size=self.head_size, alpha=(1.0 / self.norm_factor)
         )
         if self.scale_mask_softmax_fusion:
-            attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(qmk, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff)[0]
+            attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(
+                qmk, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff
+            )[0]
         else:
             if self.coeff is not None:
                 qmk *= self.coeff
@@ -228,18 +238,29 @@ class MultiheadAttention(nn.Module):
             # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
             if attention_mask is not None:
                 if self.scale_mask_softmax_fusion:
-                    # attention_mask = attention_mask.to(dtype=flow.bool)
-                    # attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
-                    # attention_weights = flow._C.fused_scale_mask_softmax_dropout(
-                    #     attention_scores, attention_mask, fill_value=-10000.0, scale=self.coeff, p=self.attention_dropout_prob
-                    # )[0]
-                    attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(attention_scores, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff)[0]
+                    if self.attn_mask_type == AttnMaskType.causal:
+                        attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(
+                            attention_scores,
+                            p=self.attention_dropout_prob,
+                            diagonal=0,
+                            tril_scale_value=self.coeff,
+                        )[0]
+                    else:
+                        attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
+                        attention_weights = flow._C.fused_scale_mask_softmax_dropout(
+                            attention_scores,
+                            attention_mask,
+                            fill_value=-10000.0,
+                            scale=self.coeff,
+                            p=self.attention_dropout_prob,
+                        )[0]
                 else:
                     if self.coeff is not None:
                         attention_scores *= self.coeff
                     attention_scores = flow.mul(attention_scores, attention_mask)
                     attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-                    # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
+                    # TODO(xingyu.liao): graph will occur `where_scalar` errors
+                    # when using `masked_fill`
                     # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
                     attention_weights = flow.softmax(attention_scores, dim=-1)
                     # [bsz, num_heads, tgt_len, src_len]
@@ -251,7 +272,7 @@ class MultiheadAttention(nn.Module):
 
             # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
             context = flow.matmul(attention_weights, value)
-            # Change shape: [bsz, num_heads, tgt_len, head_size] -> 
+            # Change shape: [bsz, num_heads, tgt_len, head_size] ->
             # [bsz, tgt_len, num_heads, head_size]
             context = context.transpose(1, 2)
 
@@ -260,7 +281,7 @@ class MultiheadAttention(nn.Module):
             # SBP sign: [S(0), S(2)]
             context = context.view(bsz, tgt_len, self.hidden_size)
         else:
-            # (batch_size, num_heads, seq_len, head_size) -> 
+            # (batch_size, num_heads, seq_len, head_size) ->
             # (seq_len, batch_size, num_heads, head_size)
             hidden_states = flow._C.transpose(hidden_states, perm=(2, 0, 1, 3))
             context = hidden_states.flatten(2)

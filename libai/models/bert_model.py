@@ -29,6 +29,7 @@ from libai.layers import (
     VocabEmbedding,
     build_activation,
 )
+from libai.layers.attention import AttnMaskType
 from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
@@ -329,6 +330,7 @@ class BertModel(nn.Module):
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
+                    attn_mask_type=AttnMaskType.padding,  # bert mask type
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)

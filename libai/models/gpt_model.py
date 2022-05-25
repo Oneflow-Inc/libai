@@ -28,6 +28,7 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
+from libai.layers.attention import AttnMaskType
 from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
@@ -294,6 +295,7 @@ class Transformer(nn.Module):
                 scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                 apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                 apply_residual_post_layernorm=apply_residual_post_layernorm,
+                attn_mask_type=AttnMaskType.causal,
                 layer_idx=layer_number,
             )
 

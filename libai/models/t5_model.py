@@ -24,6 +24,7 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
+from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 
@@ -173,6 +174,7 @@ class T5Model(flow.nn.Module):
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
+                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -205,6 +207,7 @@ class T5Model(flow.nn.Module):
                     bias_dropout_fusion=bias_dropout_fusion,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
@@ -288,7 +291,9 @@ class T5Model(flow.nn.Module):
         decoder_input_ids = decoder_input_ids.to_global(placement=dist.get_layer_placement(0))
         encoder_attn_mask = encoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
         decoder_attn_mask = decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
-        encoder_decoder_attn_mask = encoder_decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+        encoder_decoder_attn_mask = encoder_decoder_attn_mask.to_global(
+            placement=dist.get_layer_placement(0)
+        )
         if use_cache and self.encoder_states is not None:
             encoder_states = self.encoder_states
         else:
@@ -345,6 +350,7 @@ class T5Loss(flow.nn.Module):
 
     def forward(self, logits, lm_labels, loss_mask):
         lm_loss = self.lm_loss(logits, lm_labels)
+        loss_mask = loss_mask.to_global(placement=lm_loss.placement)
         loss_mask = loss_mask.float()
         denominator = loss_mask.sum().to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
