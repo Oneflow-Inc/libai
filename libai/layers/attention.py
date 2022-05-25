@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+import os
 from typing import Tuple
 
 import oneflow as flow
@@ -63,6 +64,7 @@ class MultiheadAttention(nn.Module):
         layer_idx=0
     ):
         super().__init__()
+        self.multihead_attn_fusion = os.getenv("MULTIHEAD_ATTN_FUSION")
         self.hidden_size = hidden_size
         if output_layer_init_method is None:
             output_layer_init_method = init_method
@@ -74,6 +76,7 @@ class MultiheadAttention(nn.Module):
         self.num_heads = num_attention_heads
         self.head_size = hidden_size // num_attention_heads
 
+        self.attention_dropout_prob = attention_dropout_prob
         self.dropout = nn.Dropout(p=attention_dropout_prob)
         self.norm_factor = 1.0 / math.sqrt(float(self.head_size))
         self.coeff = None
@@ -122,6 +125,22 @@ class MultiheadAttention(nn.Module):
             skip_bias_add=self.bias_dropout_fusion,
             layer_idx=layer_idx,
         )
+
+    def fused_multihead_attn(self, h, attention_mask):
+        qmk, v = flow._C.fused_self_attention(
+            h, head_size=self.head_size, alpha=(1.0 / self.norm_factor)
+        )
+        if self.scale_mask_softmax_fusion:
+            attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(qmk, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff)[0]
+        else:
+            if self.coeff is not None:
+                qmk *= self.coeff
+            attention_scores = flow.mul(qmk, attention_mask)
+            attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
+            attention_weights = flow.softmax(attention_scores, dim=-1)
+            # [bsz, num_heads, tgt_len, src_len]
+            attention_weights = self.dropout(attention_weights)
+        return flow._C.matmul(attention_weights, v)
 
     def forward(
         self,
@@ -184,11 +203,15 @@ class MultiheadAttention(nn.Module):
             # hidden_states is the last-added state,
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
-            query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
-            query_key_value = query_key_value.permute(
-                0, 2, 1, 3
-            )  # [bsz, num_heads, src_len, 3 * head_size]
-            query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+            if self.multihead_attn_fusion:
+                hidden_states = self.fused_multihead_attn(query_key_value, attention_mask)
+            else:
+                query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
+                query_key_value = query_key_value.permute(
+                    0, 2, 1, 3
+                )  # [bsz, num_heads, src_len, 3 * head_size]
+                query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+
             if past_key_value is not None:
                 past_key, past_value = past_key_value
                 key = flow.cat((past_key.type_as(key), key), dim=2)
@@ -198,38 +221,49 @@ class MultiheadAttention(nn.Module):
         if use_cache:
             past_key_value = (key, value)
 
-        # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
+        if not self.multihead_attn_fusion:
+            # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
+            attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
 
-        # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
-        if attention_mask is not None:
-            if self.scale_mask_softmax_fusion:
-                attention_weights = flow._C.fused_scale_mask_softmax(
-                    attention_scores, attention_mask, fill_value=-10000.0
-                )
+            # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
+            if attention_mask is not None:
+                if self.scale_mask_softmax_fusion:
+                    # attention_mask = attention_mask.to(dtype=flow.bool)
+                    # attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
+                    # attention_weights = flow._C.fused_scale_mask_softmax_dropout(
+                    #     attention_scores, attention_mask, fill_value=-10000.0, scale=self.coeff, p=self.attention_dropout_prob
+                    # )[0]
+                    attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(attention_scores, p=self.attention_dropout_prob, diagonal=0, tril_scale_value=self.coeff)[0]
+                else:
+                    if self.coeff is not None:
+                        attention_scores *= self.coeff
+                    attention_scores = flow.mul(attention_scores, attention_mask)
+                    attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
+                    # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
+                    # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
+                    attention_weights = flow.softmax(attention_scores, dim=-1)
+                    # [bsz, num_heads, tgt_len, src_len]
+                    attention_weights = self.dropout(attention_weights)
             else:
-                if self.coeff is not None:
-                    attention_scores *= self.coeff
-                attention_scores = flow.mul(attention_scores, attention_mask)
-                attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-                # TODO(l1aoxingyu): graph will occur `where_scalar` errors when using `masked_fill`
-                # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
                 attention_weights = flow.softmax(attention_scores, dim=-1)
+                # [bsz, num_heads, tgt_len, src_len]
+                attention_weights = self.dropout(attention_weights)
+
+            # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
+            context = flow.matmul(attention_weights, value)
+            # Change shape: [bsz, num_heads, tgt_len, head_size] -> 
+            # [bsz, tgt_len, num_heads, head_size]
+            context = context.transpose(1, 2)
+
+            # Concat multi-head results from
+            # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
+            # SBP sign: [S(0), S(2)]
+            context = context.view(bsz, tgt_len, self.hidden_size)
         else:
-            attention_weights = flow.softmax(attention_scores, dim=-1)
-
-        # [bsz, num_heads, tgt_len, src_len]
-        attention_weights = self.dropout(attention_weights)
-
-        # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
-        context = flow.matmul(attention_weights, value)
-        # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
-        context = context.transpose(1, 2)
-
-        # Concat multi-head results from
-        # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
-        # SBP sign: [S(0), S(2)]
-        context = context.view(bsz, tgt_len, self.hidden_size)
+            # (batch_size, num_heads, seq_len, head_size) -> 
+            # (seq_len, batch_size, num_heads, head_size)
+            hidden_states = flow._C.transpose(hidden_states, perm=(2, 0, 1, 3))
+            context = hidden_states.flatten(2)
 
         # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context)

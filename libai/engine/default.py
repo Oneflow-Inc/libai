@@ -399,7 +399,7 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
+            # hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
         ]
 
         if self.cfg.train.evaluation.enabled:
@@ -452,7 +452,7 @@ class DefaultTrainer(TrainerBase):
         return [
             # It may not always print what you want to see, since it prints "common" metrics only.
             CommonMetricPrinter(self.global_batch_size, self.max_iter),
-            JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
+            # JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
             TensorboardXWriter(self.cfg.train.output_dir),
         ]
 
@@ -605,9 +605,9 @@ class DefaultTrainer(TrainerBase):
                 (cfg.train.train_iter // cfg.train.evaluation.eval_period + 1)
                 * cfg.train.evaluation.eval_iter
                 if cfg.train.evaluation.enabled
-                else 0
+                else 1
             )
-            test_iter = cfg.train.evaluation.eval_iter if cfg.train.evaluation.enabled else 0
+            test_iter = cfg.train.evaluation.eval_iter if cfg.train.evaluation.enabled else 1
 
             cfg.dataloader.train.train_val_test_num_samples = [
                 int(cfg.train.samples),
