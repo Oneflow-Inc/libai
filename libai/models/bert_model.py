@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import oneflow as flow
 from oneflow import nn
 
@@ -190,6 +192,11 @@ class BertLoss(nn.Module):
         self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask, binary_logits, ns_labels):
+        lm_labels = lm_labels.to_global(placement=lm_output.placement)
+        loss_mask = loss_mask.to_global(placement=lm_output.placement)
+        binary_logits = binary_logits.to_global(placement=lm_output.placement)
+        ns_labels = ns_labels.to_global(placement=lm_output.placement)
+
         lm_loss = self.lm_loss(lm_output, lm_labels)
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
@@ -304,6 +311,7 @@ class BertModel(nn.Module):
         # Mask generation
         self.extended_attn_mask = BertExtendedAttnMask()
 
+        self.multihead_attn_fusion = os.getenv("MULTIHEAD_ATTN_FUSION") is not None
         # Encoders
         self.encoders = nn.ModuleList(
             [
@@ -371,9 +379,16 @@ class BertModel(nn.Module):
         embedding_output = self.embeddings(input_ids, tokentype_ids)
 
         hidden_states = embedding_output
+        if self.multihead_attn_fusion:
+            hidden_states = hidden_states.transpose(0, 1)  # [seq, bs, dim]
+
         for layer in self.encoders:
             hidden_states = layer(hidden_states, extended_attention_mask)
         encoder_output = self.final_layernorm(hidden_states)
+
+        if self.multihead_attn_fusion:
+            encoder_output = encoder_output.transpose(0, 1)
+
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output
 
@@ -469,7 +484,9 @@ class BertForPreTraining(nn.Module):
                 on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
                 loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
         """
-
+        input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
+        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
+        tokentype_ids = tokentype_ids.to_global(placement=dist.get_layer_placement(0))
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 

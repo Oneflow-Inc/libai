@@ -284,6 +284,11 @@ class T5Model(flow.nn.Module):
         Returns:
             flow.Tensor: logits
         """
+        encoder_input_ids = encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
+        decoder_input_ids = decoder_input_ids.to_global(placement=dist.get_layer_placement(0))
+        encoder_attn_mask = encoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+        decoder_attn_mask = decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+        encoder_decoder_attn_mask = encoder_decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
         if use_cache and self.encoder_states is not None:
             encoder_states = self.encoder_states
         else:
