@@ -1,3 +1,4 @@
+import pdb
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 #
@@ -75,12 +76,16 @@ class SparseDispatcher(object):
         # drop indices
         _, self._expert_index = sorted_experts.split(1, dim=1)
         # get according batch index for each expert
-        self._batch_index = flow.nonzero(gates)[index_sorted_experts[:, 1], 0]
+        local_gates = gates.to_local()
+        local_index = index_sorted_experts.to_local()
+        batch_index = flow.nonzero(local_gates)[local_index[:, 1], 0]
+        self._batch_index = batch_index.to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
         # calculate num samples that each expert gets
         self._part_sizes = (gates > 0).sum(0).tolist()
         # expand gates to match with self._batch_index
-        gates_exp = gates[self._batch_index.flatten()]
-        self._nonzero_gates = flow.gather(gates_exp, 1, self._expert_index)
+        gates_exp = local_gates[batch_index.flatten()]
+        nonzero_gates = flow.gather(gates_exp, 1, self._expert_index)
+        self._nonzero_gates = nonzero_gates.to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
         self.device = device
 
     def dispatch(self, inp):
@@ -311,7 +316,7 @@ class MoE(nn.Module):
             load = self._gates_to_load(gates)
         return gates, load
 
-    def forward(self, x, loss_coef=1e-2, labels=None):
+    def forward(self, images, loss_coef=1e-2, labels=None):
         """Args:
         x: tensor shape [batch_size, input_size]
         train: a boolean scalar.
@@ -323,6 +328,7 @@ class MoE(nn.Module):
         training loss of the model.  The backpropagation of this loss
         encourages all experts to be approximately equally used across a batch.
         """
+        x = images.view(images.shape[0],-1)
         gates, load = self.noisy_top_k_gating(x, self.training)
         # calculate importance loss
         importance = gates.sum(0)
