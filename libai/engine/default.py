@@ -605,9 +605,10 @@ class DefaultTrainer(TrainerBase):
                 (cfg.train.train_iter // cfg.train.evaluation.eval_period + 1)
                 * cfg.train.evaluation.eval_iter
                 if cfg.train.evaluation.enabled
-                else 0
+                # samples for test_dataset must be larger than 0 even if there is no evaluation
+                else 1
             )
-            test_iter = cfg.train.evaluation.eval_iter if cfg.train.evaluation.enabled else 0
+            test_iter = cfg.train.evaluation.eval_iter if cfg.train.evaluation.enabled else 1
 
             cfg.dataloader.train.train_val_test_num_samples = [
                 int(cfg.train.samples),

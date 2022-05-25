@@ -103,7 +103,7 @@ class TransformerLayer(nn.Module):
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
         )
 
-        self.self_attention = self.build_attention(is_cross_attention=False)
+        self.attention = self.build_attention(is_cross_attention=False)
         self.post_attention_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
         )
@@ -173,7 +173,7 @@ class TransformerLayer(nn.Module):
             self_attn_past_key_value, cross_attn_past_key_value = None, None
 
         layernorm_output = self.input_layernorm(hidden_states)
-        attention_output = self.self_attention(
+        attention_output = self.attention(
             layernorm_output,
             attention_mask=attention_mask,
             past_key_value=self_attn_past_key_value,
