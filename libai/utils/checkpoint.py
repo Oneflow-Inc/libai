@@ -170,8 +170,14 @@ class Checkpointer(object):
         """
         save_file = os.path.join(self.save_dir, "last_checkpoint")
         try:
-            with open(save_file, "r") as f:
-                last_saved = f.read().strip()
+            # load checkpoint file in rank0
+            if flow.env.get_rank() == 0:
+                with open(save_file, "r") as f:
+                    last_saved = f.read().strip()
+            else:
+                last_saved = None
+            # broadcast checkpoint file to other ranks
+            last_saved = _broadcast_py_object(last_saved, 0)
         except IOError:
             # if file doesn't exist, maybe because it has just been
             # deleted by a separate process
@@ -218,6 +224,7 @@ class Checkpointer(object):
         """
         data = {}
         keys = self.path_manager.ls(f)
+        # broadcast checkpointer keys to other ranks
         keys = _broadcast_py_object(keys, src=0)
         for key in keys:
             data[key] = flow.load(os.path.join(f, key), global_src_rank=0)
