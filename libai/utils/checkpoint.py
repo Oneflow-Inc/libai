@@ -177,7 +177,7 @@ class Checkpointer(object):
             else:
                 last_saved = None
             # broadcast checkpoint file to other ranks
-            last_saved = _broadcast_py_object(last_saved, 0)
+            last_saved = _broadcast_py_object(last_saved, src=0)
         except IOError:
             # if file doesn't exist, maybe because it has just been
             # deleted by a separate process
