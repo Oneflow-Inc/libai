@@ -22,6 +22,7 @@ from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 import numpy as np
 import oneflow as flow
 from oneflow import nn
+from oneflow.framework.check_point_v2 import _broadcast_py_object
 from termcolor import colored
 
 from libai.utils.file_io import HTTPURLHandler, PathManagerBase
@@ -217,6 +218,7 @@ class Checkpointer(object):
         """
         data = {}
         keys = self.path_manager.ls(f)
+        keys = _broadcast_py_object(keys, src=0)
         for key in keys:
             data[key] = flow.load(os.path.join(f, key), global_src_rank=0)
         try:
