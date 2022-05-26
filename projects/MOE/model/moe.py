@@ -76,15 +76,12 @@ class SparseDispatcher(object):
         # drop indices
         _, self._expert_index = sorted_experts.split(1, dim=1)
         # get according batch index for each expert
-        local_gates = gates.to_local()
-        local_index = index_sorted_experts.to_local()
-        batch_index = flow.nonzero(local_gates)[local_index[:, 1], 0]
-        self._batch_index = batch_index.to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
+        nonzero_gates = flow.nonzero(gates)
+        self._batch_index = flow.gather(nonzero_gates[:,0],0,index_sorted_experts[:,1])
         # calculate num samples that each expert gets
         self._part_sizes = (gates > 0).sum(0).tolist()
         # expand gates to match with self._batch_index
-        gates_exp = local_gates[batch_index.flatten()]
-        gates_exp = gates_exp.to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
+        gates_exp = flow.index_select(gates,0,self._batch_index.flatten())
         self._nonzero_gates = flow.gather(gates_exp, 1, self._expert_index)
         self.device = device
 
@@ -101,8 +98,7 @@ class SparseDispatcher(object):
 
         # assigns samples to experts whose gate is nonzero
         # expand according to batch index so we can just split by _part_sizes
-        inp = inp.to_local()
-        inp_exp = inp[self._batch_index.to_local()].squeeze(1).to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0))
+        inp_exp = flow.index_select(inp,0,self._batch_index).squeeze(1)
         return flow.split(inp_exp, self._part_sizes, dim=0)
 
     def combine(self, expert_out, multiply_by_gates=True):
@@ -124,15 +120,16 @@ class SparseDispatcher(object):
         if multiply_by_gates:
             stitched = stitched.mul(self._nonzero_gates)
 
+        pdb.set_trace()
         zeros = flow.zeros(
             self._gates.size(0),
             expert_out[-1].size(1),
             placement=dist.get_layer_placement(0),
             sbp=flow.sbp.broadcast,
-        ).to_local()
+        )
 
-        batch_index = self._batch_index.to_local()
-        stitched = stitched.to_local()
+        batch_index = self._batch_index
+        stitched = stitched
         # combine samples that have been processed by the same k experts
         for src, index in enumerate(batch_index):
             zeros[index.item()] = zeros[index.item()] + stitched[src]
