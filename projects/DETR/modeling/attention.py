@@ -15,9 +15,6 @@
 
 # reference: https://github.com/pytorch/pytorch/blob/master/torch/nn/functional.py
 
-from typing import Tuple
-from numpy import dtype
-
 import oneflow as flow
 import oneflow.nn.functional as F
 
@@ -63,8 +60,6 @@ class DetrMultiheadAttention(MultiheadAttention):
                 used with self-attention in decoder. It is the padding mask of source input when
                 used with cross-attention in decoder.
                 Defaults to None.
-            past_key_value (Tuple[flow.Tensor, flow.Tensor], optional): tuple of key and value,
-                each shape is [bsz, num_heads, src_len, head_size]. Defaults to None.
         """
 
         if attention_mask is not None:

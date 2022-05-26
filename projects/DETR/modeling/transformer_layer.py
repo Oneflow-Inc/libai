@@ -1,9 +1,5 @@
-from turtle import forward
-
 import oneflow.nn as nn
-import oneflow as flow
 
-from libai.utils import distributed as dist
 from libai.layers.transformer_layer import TransformerLayer
 from libai.layers.mlp import MLP
 
@@ -72,19 +68,6 @@ class DetrTransformerLayer(TransformerLayer):
                 with shape (batch_size, 1, seq_length, seq_length) and the sbp
                 signature is (S(0), B),
         """
-        # # Change placement for pipeline parallelsim
-        # hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
-        # position_embedding = position_embedding.to_global(placement=dist.get_layer_placement(self.layer_idx))
-        
-        # # hidden_states shape: (batch_size, seq_length, hidden_size)
-        # if attention_mask is not None:
-        #     attention_mask = attention_mask.to_global(
-        #         placement=dist.get_layer_placement(self.layer_idx)
-        #     )
-        # if key_padding_mask is not None:
-        #     key_padding_mask = key_padding_mask.to_global(
-        #         placement=dist.get_layer_placement(self.layer_idx)
-        #     )
         
         if self.normalize_before:
             layernorm_hidden_states = self.input_layernorm(hidden_states)

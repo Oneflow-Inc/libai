@@ -21,13 +21,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 
-from trainer.detr_default import DetrDefaultTrainer
+from trainer.detr_default import DetrDefaultTrainer as DefaultTrainer
 from utils.checkpoint import detr_checkpointer
 
 logger = logging.getLogger("libai." + __name__)
-
-
-DefaultTrainer = DetrDefaultTrainer
 
 
 def main(args): 
