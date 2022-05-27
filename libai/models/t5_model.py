@@ -449,19 +449,37 @@ class T5ForPreTraining(flow.nn.Module):
         # Set pipeline parallelism stage_id
         for module_block in model.modules():
             if isinstance(module_block.origin, T5Embedding):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, ExtendedMask):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx))
             elif isinstance(module_block.origin, LMLogits):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
             elif isinstance(module_block.origin, T5Loss):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
 
-        model.t5_model.encoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
-            model.t5_model.encoder.final_layernorm.layer_idx
+        model.t5_model.encoder.final_layernorm.config.set_stage(
+            dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
+            dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx)
         )
-        model.t5_model.decoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
-            model.t5_model.decoder.final_layernorm.layer_idx
+        model.t5_model.decoder.final_layernorm.config.set_stage(
+            dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
+            dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx)
         )
+        # model.t5_model.encoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
+        #     model.t5_model.encoder.final_layernorm.layer_idx
+        # )
+        # model.t5_model.decoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
+        #     model.t5_model.decoder.final_layernorm.layer_idx
+        # )
