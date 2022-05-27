@@ -37,16 +37,6 @@ class ImageClassificationPipeline(BasePipeline):
         label2id = self.label2id(self.cfg.model.num_classes)
         self.id2label = {ind: label for label, ind in label2id.items()}
         self.transform = instantiate(self.cfg.dataloader.test[0].dataset.transform)
-        
-    def update_cfg(
-        self,
-        data_parallel=1,
-        tensor_parallel=1,
-        pipeline_parallel=1,
-    ):
-        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
-        self.cfg.train.load_weight = "/home/chengpeng/model_best"
-    
 
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
@@ -103,7 +93,7 @@ class ImageClassificationPipeline(BasePipeline):
         if function_to_apply == "sigmoid":
             scores = flow.sigmoid(logits)
         elif function_to_apply == "softmax":
-            
+
             scores = flow.softmax(logits)
         else:
             scores = logits
@@ -137,6 +127,7 @@ class ImageClassificationPipeline(BasePipeline):
 
         assert num_classes == len(labels), "number of labels must be equal to num_classes"
         return {label: i for (i, label) in enumerate(labels)}
+
 
 if __name__ == "__main__":
     pipeline = ImageClassificationPipeline("/home/chengpeng/config.yaml", 1, 1, 1)

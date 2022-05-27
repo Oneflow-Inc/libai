@@ -40,6 +40,7 @@ class BasePipeline(metaclass=ABCMeta):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        model_path=None,
         **kwargs,
     ):
         # init cfg
@@ -59,7 +60,7 @@ class BasePipeline(metaclass=ABCMeta):
 
         # initial and load model
         self.model = DefaultTrainer.build_model(self.cfg).eval()
-        self.load_pretrain_weight(self.model, self.cfg)
+        self.load_pretrain_weight(self.model, self.cfg, model_path)
 
         # initial tokenizer
         self.tokenizer = self.build_tokenizer(self.cfg)
@@ -78,7 +79,9 @@ class BasePipeline(metaclass=ABCMeta):
         pipeline_parallel=1,
     ):
         self.cfg.train.dist.num_nodes = dist.get_num_nodes()
-        self.cfg.train.dist.num_gpus_per_node = dist.get_world_size() // dist.get_num_nodes() #noqa
+        self.cfg.train.dist.num_gpus_per_node = (
+            dist.get_world_size() // dist.get_num_nodes()
+        )  # noqa
         self.cfg.train.dist.data_parallel_size = data_parallel
         self.cfg.train.dist.tensor_parallel_size = tensor_parallel
         self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
@@ -87,10 +90,8 @@ class BasePipeline(metaclass=ABCMeta):
                 try_get_key(self.cfg.train.dist, "pipeline_num_layers") is not None
             ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
 
-    def load_pretrain_weight(self, model, cfg):
-        Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
-            cfg.train.load_weight, resume=False
-        )
+    def load_pretrain_weight(self, model, cfg, model_path):
+        Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(model_path, resume=False)
 
     def build_tokenizer(self, cfg):
         tokenizer = None
