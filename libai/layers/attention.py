@@ -248,7 +248,7 @@ class MultiheadAttention(nn.Module):
                         tril_scale_value=self.coeff,
                     )[0]
                 else:
-                    attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
+                    # attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
                     attention_weights = flow._C.fused_scale_mask_softmax_dropout(
                         attention_scores,
                         attention_mask,
