@@ -94,9 +94,9 @@ class TextClassificationPipeline(BasePipeline):
             ], f"Unrecognized `function_to_apply` argument: {function_to_apply}"
         else:
             if num_labels == 1:
-                function_to_apply == "sigmoid"
+                function_to_apply = "sigmoid"
             elif num_labels > 1:
-                function_to_apply == "softmax"
+                function_to_apply = "softmax"
 
         # process, logits: [num_labels]
         logits = model_outputs_dict["logits"][0]

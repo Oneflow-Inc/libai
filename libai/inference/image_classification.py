@@ -37,6 +37,16 @@ class ImageClassificationPipeline(BasePipeline):
         label2id = self.label2id(self.cfg.model.num_classes)
         self.id2label = {ind: label for label, ind in label2id.items()}
         self.transform = instantiate(self.cfg.dataloader.test[0].dataset.transform)
+        
+    def update_cfg(
+        self,
+        data_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=1,
+    ):
+        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
+        self.cfg.train.load_weight = "/home/chengpeng/model_best"
+    
 
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
@@ -83,9 +93,9 @@ class ImageClassificationPipeline(BasePipeline):
             ], f"Unrecognized `function_to_apply` argument: {function_to_apply}"
         else:
             if num_labels == 1:
-                function_to_apply == "sigmoid"
+                function_to_apply = "sigmoid"
             elif num_labels > 1:
-                function_to_apply == "softmax"
+                function_to_apply = "softmax"
 
         # process, logits: [num_labels]
         logits = model_outputs_dict["prediction_scores"][0]
@@ -93,6 +103,7 @@ class ImageClassificationPipeline(BasePipeline):
         if function_to_apply == "sigmoid":
             scores = flow.sigmoid(logits)
         elif function_to_apply == "softmax":
+            
             scores = flow.softmax(logits)
         else:
             scores = logits
@@ -107,13 +118,13 @@ class ImageClassificationPipeline(BasePipeline):
                 "label": self.id2label[scores.argmax().item()],
                 "score": scores.max().item(),
             }
-    
+
     def label2id(self, num_classes):
         """
         Args:
             num_classes (int): the number of total classes
         Returns:
-            labels (list): a dict contains all the labels for inference, 
+            labels (list): a dict contains all the labels for inference,
                            each item should be the form as follows:
                            {
                                "tench": 0,
@@ -122,6 +133,11 @@ class ImageClassificationPipeline(BasePipeline):
                            }
 
         """
-        from .utils.imagenet_class import IMAGENET_LABELS as labels
+        from utils.imagenet_class import IMAGENET_LABELS as labels
+
         assert num_classes == len(labels), "number of labels must be equal to num_classes"
-        return {label : i for (i, label) in enumerate(labels)}
+        return {label: i for (i, label) in enumerate(labels)}
+
+if __name__ == "__main__":
+    pipeline = ImageClassificationPipeline("/home/chengpeng/config.yaml", 1, 1, 1)
+    print(pipeline("data_test/inference_test_data/ILSVRC2012_val_00000293.JPEG"))
