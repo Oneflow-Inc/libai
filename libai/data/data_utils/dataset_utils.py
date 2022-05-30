@@ -339,7 +339,7 @@ def get_samples_mapping(
     indexmap_filename += ".npy"
 
     # Build the indexed mapping if not exist.
-    if flow.env.get_rank() == 0 and not os.path.isfile(indexmap_filename):
+    if flow.env.get_local_rank() == 0 and not os.path.isfile(indexmap_filename):
         logger.info(
             " > WARNING: could not find index map file {}, building "
             "the indices on rank 0 ...".format(indexmap_filename)
@@ -350,7 +350,7 @@ def get_samples_mapping(
         assert indexed_dataset.sizes.dtype == np.int32
 
         # Build samples mapping
-        verbose = flow.env.get_rank() == 0
+        verbose = flow.env.get_local_rank() == 0
         start_time = time.time()
         logger.info(" > building samples index mapping for {} ...".format(name))
 
