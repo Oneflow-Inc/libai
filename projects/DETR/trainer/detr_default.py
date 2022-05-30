@@ -54,19 +54,20 @@ class DetrDefaultTrainer(DefaultTrainer):
         images = data.get_fields()["images"]
         labels = data.get_fields()["labels"]
         
-        tensors = images[0] # tensors
+        tensors = images[0] 
         tensors.to_global()
-        mask = images[1] # mask
+        mask = images[1] 
         mask.to_global()
-
         images = (tensors, mask)
-        # images = NestedTensor(tensors, mask)
         
+        # TODO (ziqiu chi): 
+        # If RandomSizeCrop is adopted in transform, boxes size is different, 
+        # which leads the tensor parallel bug.
         for i in range(len(labels)):
-            for k,v in labels[i].items():
-                v.to_global()
+            for k, v in labels[i].items():
+                v.tensor = v.tensor.to(device="cuda:0")
+                # v.to_global()
                 labels[i][k] = v
-            
         ret_dict = {
             "images": images,
             "labels": labels

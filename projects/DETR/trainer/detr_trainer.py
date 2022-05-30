@@ -1,3 +1,11 @@
+'''
+Author: hihippie chiziiqiu0923@gmail.com
+Date: 2022-05-12 15:39:00
+LastEditors: hihippie chiziiqiu0923@gmail.com
+LastEditTime: 2022-05-26 13:49:50
+FilePath: /libai/projects/DETR/trainer/detr_trainer.py
+Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+'''
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 #
@@ -67,12 +75,11 @@ class DetrEagerTrainer(TrainerBase):
         start = time.perf_counter()
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-
         data = get_batch(data)
         data_time = time.perf_counter() - start
         loss_dict,_ = self.model(data)
-        losses = sum(loss_dict.values()) / self.grad_acc_steps
 
+        losses = sum(loss_dict.values()) / self.grad_acc_steps
         losses.backward()
 
         self.write_metrics(loss_dict, data_time)
