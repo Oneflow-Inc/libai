@@ -269,7 +269,7 @@ class RobertaLMHead(nn.Module):
         return hidden_states
 
 
-class RobertaForPreTraining(nn.Module):
+class RobertaPreTrainedModel(nn.Module):
     @staticmethod
     def set_pipeline_stage_id(model):
         dist_utils = dist.get_dist_util()
@@ -294,7 +294,7 @@ class RobertaForPreTraining(nn.Module):
         model.roberta.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
 
 
-class RobertaForMaskedLM(RobertaForPreTraining):
+class RobertaForPreTraining(RobertaPreTrainedModel):
     def __init__(self, cfg):
         super().__init__()
 
@@ -347,7 +347,7 @@ class RobertaForMaskedLM(RobertaForPreTraining):
         return {"prediction_scores": prediction_scores}
 
 
-class RobertaForCausalLM(RobertaForPreTraining):
+class RobertaForCausalLM(RobertaPreTrainedModel):
     def __init__(self, cfg):
         super().__init__()
 

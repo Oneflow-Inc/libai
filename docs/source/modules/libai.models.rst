@@ -57,7 +57,7 @@ Roberta
 .. automodule:: libai.models.roberta_model
     :members: 
         RobertaModel,
-        RobertaForMaskedLM,
+        RobertaForPreTraining,
         RobertaForCausalLM,
 
 T5
