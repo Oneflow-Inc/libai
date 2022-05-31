@@ -304,7 +304,7 @@ class RobertaForPreTraining(RobertaPreTrainedModel):
             cfg.vocab_size,
             cfg.hidden_size,
             init_method_normal(cfg.initializer_range),
-            cfg.layer_norm_eps,
+            cfg.layernorm_eps,
         )
         self.loss_fc = RobertaLoss()
 
@@ -313,7 +313,7 @@ class RobertaForPreTraining(RobertaPreTrainedModel):
         input_ids,
         attention_mask,
         tokentype_ids=None,
-        labels=None,
+        lm_labels=None,
         loss_mask=None,
     ):
         """
@@ -340,9 +340,8 @@ class RobertaForPreTraining(RobertaPreTrainedModel):
         sequence_output = outputs[0]
         prediction_scores = self.lm_head(sequence_output, self.roberta.word_embeddings_weight())
 
-        if labels is not None:
-            masked_lm_loss = self.loss_fc(prediction_scores, labels, loss_mask)
-            return {"lm_loss": masked_lm_loss}
+        if lm_labels is not None:
+            return self.loss_fc(prediction_scores, lm_labels, loss_mask)
 
         return {"prediction_scores": prediction_scores}
 
@@ -357,7 +356,7 @@ class RobertaForCausalLM(RobertaPreTrainedModel):
             cfg.vocab_size,
             cfg.hidden_size,
             init_method_normal(cfg.initializer_range),
-            cfg.layer_norm_eps,
+            cfg.layernorm_eps,
         )
         self.loss_fc = RobertaLoss()
 

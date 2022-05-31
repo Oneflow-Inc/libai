@@ -75,6 +75,7 @@ class RobertaDataset(flow.utils.data.Dataset):
             short_seq_prob,
             self.seed,
             self.name,
+            binary_head=False
         )
 
         # Vocab stuff.
@@ -155,6 +156,7 @@ def build_training_sample(
         tokens.extend(sample[j])
     
     max_num_tokens = target_seq_length
+    truncate_segments(tokens, len(tokens), max_num_tokens, np_rng)
 
     # create tokens and tokentypes
     tokens, tokentypes = create_tokens_and_tokentypes(tokens, cls_id, sep_id)
@@ -189,6 +191,20 @@ def build_training_sample(
     )
 
     return train_sample
+
+
+def truncate_segments(tokens, len_tokens, max_num_tokens, np_rng):
+    """Truncates a sequences to a maximum sequence length."""
+    assert len_tokens > 0
+    if len_tokens <= max_num_tokens:
+        return False
+    while len_tokens > max_num_tokens:
+        if np_rng.random() < 0.5:
+            del tokens[0]
+        else:
+            tokens.pop()
+        len_tokens -= 1
+    return True
 
 
 def create_tokens_and_tokentypes(tokens, cls_id, sep_id):
