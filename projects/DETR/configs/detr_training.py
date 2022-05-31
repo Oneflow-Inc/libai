@@ -26,10 +26,12 @@ dataloader.test[0].dataset.ann_file = "/dataset/coco/annotations/instances_val20
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
 train.test_micro_batch_size = 2
-train.train_epoch = 300
-train.warmup_ratio = 40 / 300
+train.train_epoch = 10
+# train.warmup_ratio = 40 / 300
 train.eval_period = 5
 train.log_period = 1
+
+train.checkpointer["period"]=100
 
 # *TODO: refine it
 coco_detection = LazyCall(CocoDetection)(img_folder="/dataset/coco/val2017", 
@@ -52,5 +54,6 @@ train.scheduler.warmup_method = "linear"
 
 graph.enabled = False
 
-train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 2
+# model_parallel
+# train.dist.data_parallel_size = 1
+# train.dist.tensor_parallel_size = 2

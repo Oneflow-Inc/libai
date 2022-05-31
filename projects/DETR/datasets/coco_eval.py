@@ -346,7 +346,8 @@ def inference_on_coco_dataset(
             for label in data["labels"]:
                 label_dict = {}
                 for key, value in label.items():
-                    label_dict[key] = dist.ttol(value.tensor, ranks=[0] if value.tensor.placement.ranks.ndim == 1 else [[0]])
+                    label_dict[key] = value.tensor
+                    # label_dict[key] = dist.ttol(value.tensor, ranks=[0] if value.tensor.placement.ranks.ndim == 1 else [[0]])
                 valid_data["labels"].append(label_dict)
             valid_data["labels"] = tuple(valid_data["labels"][:valid_sample])
                 

@@ -61,7 +61,7 @@ class DetrDefaultTrainer(DefaultTrainer):
         images = (tensors, mask)
         
         # TODO (ziqiu chi): 
-        # If RandomSizeCrop is adopted in transform, boxes size is different, 
+        # If RandomSizeCrop is adopted in transform, boxes size is different in different ranks, 
         # which leads the tensor parallel bug.
         for i in range(len(labels)):
             for k, v in labels[i].items():
@@ -72,7 +72,7 @@ class DetrDefaultTrainer(DefaultTrainer):
             "images": images,
             "labels": labels
         }
-        
+
         return ret_dict 
     
     @classmethod

@@ -4,20 +4,11 @@ import random
 import PIL
 from typing import Optional, List
 
-
-
-
-
 import oneflow as flow
 from oneflow import Tensor
 import flowvision
 import flowvision.transforms.functional as F
-from flowvision.data.constants import (
-    IMAGENET_DEFAULT_MEAN,
-    IMAGENET_DEFAULT_STD,
-)
 import flowvision.transforms as T
-import flowvision.transforms.functional as F
 
 from libai.config import LazyCall
 from libai.data.datasets import CocoDetection
@@ -57,7 +48,8 @@ def crop(image, target, region):
 
     if "boxes" in target:
         boxes = target["boxes"]
-        # NOTE: oneflow does not support min/max between different dtype, such as float32 and float64
+
+        # BUG: oneflow does not support min/max between different dtype, such as float32 and float64
         # max_size = flow.as_tensor([w, h], dtype=flow.float32)
         max_size = flow.as_tensor([w, h], dtype=flow.float64)
 
@@ -87,7 +79,6 @@ def crop(image, target, region):
 
         for field in fields:
             target[field] = target[field][keep]
-
     return cropped_image, target
 
 
@@ -329,6 +320,9 @@ def make_coco_transforms(image_set):
                 RandomResize(scales, max_size=1333),
                 Compose([
                     RandomResize([400, 500, 600]),
+                    # TODO (ziqiu chi): 
+                    # If RandomSizeCrop is adopted in transform, boxes size is different, 
+                    # which leads the tensor parallel bug.
                     RandomSizeCrop(384, 600),
                     RandomResize(scales, max_size=1333),
                 ])
@@ -354,37 +348,14 @@ def _max_by_axis(the_list):
     return maxes
 
 
-# class NestedTensor(object):
-#     def __init__(self, tensors, mask: Optional[Tensor]):
-#         self.tensors = tensors
-#         self.mask = mask
-
-#     def to(self, device):
-#         # type: (Device) -> NestedTensor # noqa
-#         cast_tensor = self.tensors.to(device)
-#         mask = self.mask
-#         if mask is not None:
-#             assert mask is not None
-#             cast_mask = mask.to(device)
-#         else:
-#             cast_mask = None
-#         return NestedTensor(cast_tensor, cast_mask)
-
-#     def decompose(self):
-#         return self.tensors, self.mask
-
-#     def __repr__(self):
-#         return str(self.tensors)
-
-
 def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
     
 
     if tensor_list[0].get_fields()["images"].tensor.ndim == 3:
 
         max_size = _max_by_axis([list(tensor.get_fields()["images"].tensor.shape) for tensor in tensor_list])
-        
         # For data parallel
+        # TODO: (ziqiu chi) Refine code in line 358.
         if flow.env.get_world_size() > 1:
             max_size = flow.tensor(max_size).unsqueeze(0)
             max_size = max_size.to_global(sbp=flow.sbp.split(0), placement=flow.placement('cuda', ranks=[0,1]))
@@ -404,17 +375,7 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
             tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
             mask[i, : img.shape[1], :img.shape[2]] = False
             labels.append(ins.get_fields()["labels"])
-        #     for k,v in ins.get_fields()["labels"].items():
-        #         if k in labels.keys():
-        #             import pdb
-        #             pdb.set_trace()
-        #             labels[k] = flow.cat((labels[k], v.tensor.unsqueeze(0)), dim=0)
-        #         else:
-        #             labels[k] = v.tensor.unsqueeze(0)
-        # import pdb
-        # pdb.set_trace()                
-        # for k, v in labels.items():
-        #     labels[k] = DistTensorData(v, placement_idx=-1)
+            
         
     else:
         raise ValueError('not supported')
@@ -425,7 +386,7 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
 
     
 def collate_fn(batch):
-    assert isinstance(batch[0], Instance), "batch[0] must be `instance` for trivial batch collator"
+    assert isinstance(batch[0], Instance), "batch[0] must be `instance`"
     batch = nested_tensor_from_tensor_list(batch)
     return batch
 
@@ -440,7 +401,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
         ),
     ],
     # NOTE: num_workers=4 as default
-    num_workers=4,
+    num_workers=0,
     mixup_func=None,
     collate_fn = collate_fn
 )
