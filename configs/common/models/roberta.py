@@ -1,6 +1,6 @@
 from libai.config import LazyCall
 
-from libai.models import RobertaModel, RobertaForMaskedLM, RobertaForCausalLM
+from libai.models import RobertaModel, RobertaForPreTraining, RobertaForCausalLM
 
 cfg = dict(
     vocab_size=50265,
@@ -28,4 +28,4 @@ roberta_model = LazyCall(RobertaModel)(cfg=cfg)
 
 roberta_causal_lm = LazyCall(RobertaForCausalLM)(cfg=cfg)
 
-roberta_masked_lm = LazyCall(RobertaForMaskedLM)(cfg=cfg)
+roberta_masked_lm = LazyCall(RobertaForPreTraining)(cfg=cfg)
