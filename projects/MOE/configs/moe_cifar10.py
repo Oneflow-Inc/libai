@@ -1,12 +1,12 @@
-from omegaconf import OmegaConf
-
 import flowvision as vision
+
+from omegaconf import OmegaConf
 from libai.config import get_config
 from libai.config import LazyCall
 from libai.data.build import build_image_test_loader, build_image_train_loader
 from libai.layers import Linear
-
 from libai.data.datasets import CIFAR10Dataset
+
 from projects.MOE.model.moe import MoE
 
 train = get_config("common/train.py").train

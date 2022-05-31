@@ -1,4 +1,3 @@
-import pdb
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 #
@@ -120,7 +119,6 @@ class SparseDispatcher(object):
         if multiply_by_gates:
             stitched = stitched.mul(self._nonzero_gates)
 
-        pdb.set_trace()
         zeros = flow.zeros(
             self._gates.size(0),
             expert_out[-1].size(1),
