@@ -62,6 +62,7 @@ class VisionTransformer(nn.Module):
         loss_func=None,
     ):
         super().__init__()
+        self.img_size = img_size
         self.num_classes = num_classes
         self.patch_embed = PatchEmbedding(
             img_size=img_size,
