@@ -339,6 +339,7 @@ def get_samples_mapping(
     indexmap_filename += ".npy"
 
     # Build the indexed mapping if not exist.
+    # NOTE: use `get_local_rank() == 0` to promise samples will be build in each node.
     if flow.env.get_local_rank() == 0 and not os.path.isfile(indexmap_filename):
         logger.info(
             " > WARNING: could not find index map file {}, building "
