@@ -21,6 +21,7 @@ import oneflow as flow
 from libai.data.structures import DistTensorData, Instance
 
 from ..data_utils import create_masked_lm_predictions, get_samples_mapping
+from bert_dataset import pad_and_convert_to_numpy
 
 
 class RobertaDataset(flow.utils.data.Dataset):
@@ -170,40 +171,6 @@ def build_training_sample(
     )
 
     return train_sample
-    
-
-def pad_and_convert_to_numpy(
-    tokens, tokentypes, masked_positions, masked_labels, pad_id, max_seq_length
-):
-    """Pad sequences and convert them to numpy."""
-
-    # Some checks.
-    num_tokens = len(tokens)
-    padding_length = max_seq_length - num_tokens
-    assert padding_length >= 0
-    assert len(tokentypes) == num_tokens
-    assert len(masked_positions) == len(masked_labels)
-
-    # Tokens and token types.
-    filler = [pad_id] * padding_length
-    tokens_np = np.array(tokens + filler, dtype=np.int64)
-    tokentypes_np = np.array(tokentypes + filler, dtype=np.int64) 
-
-    # padding mask
-    padding_mask_np = np.array([1] * num_tokens + [0] * padding_length, dtype=np.int64)   
-
-    # labels and loss mask.
-    labels = [-1] * max_seq_length
-    loss_mask = [0] * max_seq_length
-    for i in range(len(masked_positions)):
-        assert masked_positions[i] < num_tokens
-        labels[masked_positions[i]] = masked_labels[i]
-        loss_mask[masked_positions[i]] = 1
-    labels_np = np.array(labels, dtype=np.int64)
-    loss_mask_np = np.array(loss_mask, dtype=np.int64)
-
-    return tokens_np, tokentypes_np, labels_np, padding_mask_np, loss_mask_np
-
 
 
 def create_tokens_and_tokentypes(tokens, cls_id, sep_id):
