@@ -28,6 +28,7 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
+from libai.layers.attention import AttnMaskType
 from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
@@ -294,6 +295,7 @@ class Transformer(nn.Module):
                 scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                 apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                 apply_residual_post_layernorm=apply_residual_post_layernorm,
+                attn_mask_type=AttnMaskType.causal,
                 layer_idx=layer_number,
             )
 
@@ -369,10 +371,18 @@ class GPTForPreTraining(nn.Module):
 
         for module_block in model.modules():
             if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx))
             elif isinstance(module_block.origin, (LMLogits, GPTLoss)):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
 
-        model.GPT_model.transformer.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        # model.GPT_model.transformer.layernorm_f.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.GPT_model.transformer.layernorm_f.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))

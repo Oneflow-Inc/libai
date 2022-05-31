@@ -29,6 +29,7 @@ from libai.layers import (
     VocabEmbedding,
     build_activation,
 )
+from libai.layers.attention import AttnMaskType
 from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
@@ -329,6 +330,7 @@ class BertModel(nn.Module):
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
+                    attn_mask_type=AttnMaskType.padding,  # bert mask type
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -507,15 +509,28 @@ class BertForPreTraining(nn.Module):
         for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, BertEmbeddings):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, BertExtendedAttnMask):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx))
             elif isinstance(module_block.origin, BertPooler):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
             elif isinstance(module_block.origin, BertPreTrainingHeads):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                   dist.get_layer_placement(-1))
 
         # Set the last layernorm stage id
-        model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        # model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.bert.final_layernorm.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
+
