@@ -21,7 +21,7 @@ import oneflow as flow
 from libai.data.structures import DistTensorData, Instance
 
 from ..data_utils import create_masked_lm_predictions, get_samples_mapping
-from bert_dataset import pad_and_convert_to_numpy
+from .bert_dataset import pad_and_convert_to_numpy
 
 
 class RobertaDataset(flow.utils.data.Dataset):
