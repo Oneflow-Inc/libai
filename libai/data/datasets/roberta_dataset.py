@@ -25,7 +25,7 @@ from .bert_dataset import pad_and_convert_to_numpy
 
 
 class RobertaDataset(flow.utils.data.Dataset):
-    """Dataset containing sentence for RoBERTa training. 
+    """Dataset containing sentence for RoBERTa training.
     Each index corresponds to a randomly selected sentence.
 
     Args:
@@ -40,6 +40,7 @@ class RobertaDataset(flow.utils.data.Dataset):
         max_predictions_per_seq: Maximum number of mask tokens in each sentence. Defaults to None.
         seed: Seed for random number generator for reproducibility. Defaults to 1234.
     """
+
     def __init__(
         self,
         name,
@@ -75,7 +76,7 @@ class RobertaDataset(flow.utils.data.Dataset):
             short_seq_prob,
             self.seed,
             self.name,
-            binary_head=False
+            binary_head=False,
         )
 
         # Vocab stuff.
@@ -154,7 +155,7 @@ def build_training_sample(
     tokens = []
     for j in range(len(sample)):
         tokens.extend(sample[j])
-    
+
     max_num_tokens = target_seq_length
     truncate_segments(tokens, len(tokens), max_num_tokens, np_rng)
 
@@ -174,7 +175,7 @@ def build_training_sample(
         mask_id,
         max_predictions_per_seq,
         np_rng,
-        masking_style=masking_style
+        masking_style=masking_style,
     )
 
     # Padding.
@@ -214,5 +215,5 @@ def create_tokens_and_tokentypes(tokens, cls_id, sep_id):
     # [SPE].
     tokens.append(sep_id)
     tokentypes = [0] * len(tokens)
-    
+
     return tokens, tokentypes

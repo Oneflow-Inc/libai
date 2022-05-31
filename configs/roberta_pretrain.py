@@ -6,7 +6,7 @@ from .common.train import train
 from .common.optim import optim
 from .common.data.roberta_dataset import dataloader, tokenization
 
-graph['enabled'] = False
+graph["enabled"] = False
 vocab_file = "./data_test/roberta_data/roberta-vocab.json"
 merge_files = "./data_test/roberta_data/roberta-merges.txt"
 data_prefix = "./data_test/roberta_data/loss_compara_content_sentence"

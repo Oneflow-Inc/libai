@@ -28,10 +28,10 @@ from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
 
-VOCAB_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/roberta_dataset/roberta-vocab.json"   # noqa
-MERGE_FILE_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/roberta_dataset/roberta-merges.txt"   # noqa
-BIN_DATA_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/roberta_dataset/loss_compara_content_sentence.bin" # noqa
-IDX_DATA_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/roberta_dataset/loss_compara_content_sentence.idx" # noqa
+VOCAB_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/roberta_dataset/roberta-vocab.json"  # noqa
+MERGE_FILE_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/roberta_dataset/roberta-merges.txt"  # noqa
+BIN_DATA_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/roberta_dataset/loss_compara_content_sentence.bin"  # noqa
+IDX_DATA_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/roberta_dataset/loss_compara_content_sentence.idx"  # noqa
 
 VOCAB_MD5 = "be4d3c6f3f5495426b2c03b334334354"
 MERGES_FILE_MD5 = "75a37753dd7a28a2c5df80c28bf06e4e"

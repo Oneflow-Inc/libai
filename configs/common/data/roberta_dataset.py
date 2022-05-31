@@ -10,8 +10,7 @@ from libai.tokenizer import RobertaTokenizer
 tokenization = OmegaConf.create()
 
 tokenization.tokenizer = LazyCall(RobertaTokenizer)(
-    vocab_file="roberta-vocab.json",
-    merges_file='roberta-merges.txt'
+    vocab_file="roberta-vocab.json", merges_file="roberta-merges.txt"
 )
 tokenization.append_eod = False
 tokenization.make_vocab_size_divisible_by = 128
