@@ -130,6 +130,24 @@ def build_training_sample(
     np_rng,
     masking_style="bert",
 ):
+    """Build training sample.
+
+    Arguments:
+        sample: A list of sentences in which each sentence is a list token ids.
+        target_seq_length: Desired sequence length.
+        max_seq_length: Maximum length of the sequence. All values are padded to
+            this length.
+        vocab_id_list: List of vocabulary ids. Used to pick a random id.
+        vocab_id_to_token_dict: A dictionary from vocab ids to text tokens.
+        cls_id: Start of example id.
+        sep_id: Separator id.
+        mask_id: Mask token id.
+        pad_id: Padding token id.
+        masked_lm_prob: Probability to mask tokens.
+        np_rng: Random number genenrator. Note that this rng state should be
+              numpy and not python since python randint is inclusive for
+              the upper bound whereas the numpy one is exclusive.
+    """
     assert target_seq_length <= max_seq_length
 
     tokens = []
@@ -174,6 +192,7 @@ def build_training_sample(
 
 
 def create_tokens_and_tokentypes(tokens, cls_id, sep_id):
+    """Add [CLS] and [SEP] and build tokentypes."""
     # [CLS].
     tokens.insert(0, cls_id)
     # [SPE].
