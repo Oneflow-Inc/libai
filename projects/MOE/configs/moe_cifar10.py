@@ -14,7 +14,6 @@ optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
 graph.enabled = False
 
-# train.dist.data_parallel_size = 2
 
 data_root = "./projects/MOE/data"
 transform = vision.transforms.Compose(
