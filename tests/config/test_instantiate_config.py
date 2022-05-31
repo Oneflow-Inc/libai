@@ -18,7 +18,18 @@ from omegaconf import __version__ as oc_version
 OC_VERSION = tuple(int(x) for x in oc_version.split(".")[:2])
 
 
-ShapeSpec = namedtuple("ShapeSpec", ["channels", "width"])
+class ShapeSpec(namedtuple("_ShapeSpec", ["channels", "width"])):
+    """
+    A simple structure that contains basic shape specification about a tensor.
+    It is often used as the auxiliary inputs/outputs of models,
+    to complement the lack of shape inference ability among pytorch modules.
+    Attributes:
+        channels:
+        width:
+    """
+
+    def __new__(cls, channels=None, width=None):
+        return super().__new__(cls, channels, width)
 
 
 class TestClass:
@@ -86,7 +97,7 @@ class TestConstruction(unittest.TestCase):
         self.assertEqual(x[2].int_arg, 1)
 
     def test_instantiate_namedtuple(self):
-        x = LazyCall(TestClass)(int_arg=ShapeSpec(1, 3))
+        x = LazyCall(TestClass)(int_arg=ShapeSpec(channels=1, width=3))
         # test serialization
         with tempfile.TemporaryDirectory() as d:
             fname = os.path.join(d, "lb_test.yaml")
