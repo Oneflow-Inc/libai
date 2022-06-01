@@ -650,7 +650,6 @@ class LoadPretrainedBert(LoadPretrainedBase):
         Args:
             config_file (str): Path of config file.
         """
-
         with open(config_file, mode="r", encoding="utf-8") as f:
             cfg_dict = json.load(f)
 
@@ -658,21 +657,19 @@ class LoadPretrainedBert(LoadPretrainedBase):
         for k, v in cfg_dict.items():
             if k == "num_hidden_layers":
                 self.default_cfg["hidden_layers"] = v
-                continue
             elif k == "type_vocab_size":
                 self.default_cfg["num_tokentypes"] = v
-                continue
             elif k == "layer_norm_eps":
                 self.default_cfg["layernorm_eps"] = v
-            if k in cfg_dict:
+            elif k in cfg_dict:
                 self.default_cfg[k] = v
 
         # update default_cfg by kwargs
         for k, v in self.kwargs:
             self.default_cfg[k] = v
 
-        self.default_cfg["bias_dropout_fusion"] = False
         self.default_cfg["apply_residual_post_layernorm"] = True
+
 
 class LoadPretrainedGPT2(LoadPretrainedBase):
     def __init__(self, model, default_cfg, pretrained_model_path, base_model_prefix='transformer',**kwargs):
@@ -761,3 +758,41 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
                     new_key = prefix + '.layernorm_f.bias'
                 oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.po(key))
         return oneflow_state_dict
+    
+    def _load_config_from_json(self, config_file):
+        """load config from `config.json`, and update default config.
+
+        Args:
+            config_file (str): Path of config file.
+        """
+        with open(config_file, mode="r", encoding="utf-8") as f:
+            cfg_dict = json.load(f)
+        
+        # update default_cfg by config.json
+        for k, v in cfg_dict.items():
+            if k == "n_layer":
+                self.default_cfg["num_layers"] = v
+            elif k == "n_embd":
+                self.default_cfg["hidden_size"] = v
+            elif k == "n_head":
+                self.default_cfg["num_attention_heads"] = v
+            elif k == "n_positions":
+                self.default_cfg["max_seq_length"] = v
+            elif k == "embd_pdrop":
+                self.default_cfg["embedding_dropout_prob"] = v
+            elif k == "attn_pdrop":
+                self.default_cfg["attention_dropout_prob"] = v
+            elif k == "resid_pdrop":
+                self.default_cfg["output_dropout_prob"] = v
+            elif k == "layer_norm_epsilon":
+                self.default_cfg["layernorm_epsilon"] = v
+            elif k in cfg_dict:
+                self.default_cfg[k] = v
+        if "n_inner" in cfg_dict:
+                self.default_cfg["ffn_hidden_size"] = v
+        else:
+            self.default_cfg["ffn_hidden_size"] = 4 * self.default_cfg["hidden_size"]
+
+        # update default_cfg by kwargs
+        for k, v in self.kwargs:
+            self.default_cfg[k] = v
