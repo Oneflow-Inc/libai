@@ -134,6 +134,20 @@ class LoadPretrainedBase(object):
             state_dict[new_key] = state_dict.pop(old_key)
         return state_dict
 
+    def _fix_qkv_w_ordering(self, qkv_w, head_size, num_heads, hidden_size, checkpoint_version=0.0):
+        # TODO(xzp): Different versions checkpoint
+
+        qkv_w = qkv_w.view([3, num_heads, head_size, hidden_size])
+        qkv_w = qkv_w.permute(1, 0, 2, 3).contiguous().view(3 * hidden_size, hidden_size)
+        return qkv_w
+
+    def _fix_qkv_b_ordering(self, qkv_b, head_size, num_heads, hidden_size, checkpoint_version=0.0):
+        # TODO(xzp): Different versions checkpoint
+        
+        qkv_b = qkv_b.view(3, num_heads, head_size)
+        qkv_b = qkv_b.permute(1, 0, 2).contiguous().view(-1)
+        return qkv_b
+
     def _convert_state_dict(self, torch_state_dict, cfg):
         """A function used to convert the checkpoint file of Huggingface to LiBai.
 
@@ -529,12 +543,8 @@ class LoadPretrainedBert(LoadPretrainedBase):
                         dim=-1,
                     )
 
-                    qkv_w = qkv_w.view([3, num_heads, head_size, hidden_size])
-                    qkv_w = (
-                        qkv_w.permute(1, 0, 2, 3).contiguous().view(3 * hidden_size, hidden_size)
-                    )
-                    qkv_b = qkv_b.view(3, num_heads, head_size)
-                    qkv_b = qkv_b.permute(1, 0, 2).contiguous().view(-1)
+                    qkv_w = self._fix_qkv_w_ordering(qkv_w, head_size, num_heads, hidden_size)
+                    qkv_b = self._fix_qkv_b_ordering(qkv_b, head_size, num_heads, hidden_size)
 
                     new_key = (
                         prefix + "encoders." + index + ".self_attention.query_key_value.weight"
