@@ -164,28 +164,7 @@ class LoadPretrainedBase(object):
             config_file (str): Path of config file.
         """
 
-        with open(config_file, mode="r", encoding="utf-8") as f:
-            cfg_dict = json.load(f)
-
-        # update default_cfg by config.json
-        for k, v in cfg_dict.items():
-            if k == "num_hidden_layers":
-                self.default_cfg["hidden_layers"] = v
-                continue
-            elif k == "type_vocab_size":
-                self.default_cfg["num_tokentypes"] = v
-                continue
-            elif k == "layer_norm_eps":
-                self.default_cfg["layernorm_eps"] = v
-            if k in cfg_dict:
-                self.default_cfg[k] = v
-
-        # update default_cfg by kwargs
-        for k, v in self.kwargs:
-            self.default_cfg[k] = v
-
-        self.default_cfg["bias_dropout_fusion"] = False
-        self.default_cfg["apply_residual_post_layernorm"] = True
+        raise NotImplementedError("_load_config_from_json not implemented")
 
     def _load_torch_state_dict(self, state_dict_file):
         # load pytorch_model.bin
@@ -472,7 +451,10 @@ class LoadPretrainedBert(LoadPretrainedBase):
         Returns:
             OrderedDict: flow state dict.
         """
+        # The converted checkpoint.
         oneflow_state_dict = torch_state_dict.copy()
+
+        # Get configs
         num_heads = cfg.get("num_attention_heads", 12)
         hidden_size = cfg.get("hidden_size", 768)
         layers = cfg.get("hidden_layers", 12)
@@ -660,4 +642,122 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
             else:
                 oneflow_state_dict[key] = self.convert_tensor(oneflow_state_dict.pop(key))
+        return oneflow_state_dict
+
+    def _load_config_from_json(self, config_file):
+        """load config from `config.json`, and update default config.
+
+        Args:
+            config_file (str): Path of config file.
+        """
+
+        with open(config_file, mode="r", encoding="utf-8") as f:
+            cfg_dict = json.load(f)
+
+        # update default_cfg by config.json
+        for k, v in cfg_dict.items():
+            if k == "num_hidden_layers":
+                self.default_cfg["hidden_layers"] = v
+                continue
+            elif k == "type_vocab_size":
+                self.default_cfg["num_tokentypes"] = v
+                continue
+            elif k == "layer_norm_eps":
+                self.default_cfg["layernorm_eps"] = v
+            if k in cfg_dict:
+                self.default_cfg[k] = v
+
+        # update default_cfg by kwargs
+        for k, v in self.kwargs:
+            self.default_cfg[k] = v
+
+        self.default_cfg["bias_dropout_fusion"] = False
+        self.default_cfg["apply_residual_post_layernorm"] = True
+
+class LoadPretrainedGPT2(LoadPretrainedBase):
+    def __init__(self, model, default_cfg, pretrained_model_path, base_model_prefix='transformer',**kwargs):
+        super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix = base_model_prefix
+
+    def _convert_state_dict(self, torch_state_dict, cfg):
+        """Convert torch state dict to flow state dict.
+
+        Args:
+            torch_state_dict (OrderedDict): torch state dict.
+            cfg (dict): model's default config dict.
+
+        Returns:
+            OrderedDict: flow state dict.
+        """
+        # The converted checkpoint.
+        oneflow_state_dict = torch_state_dict.copy()
+
+        # Get configs
+        num_heads = cfg.get("num_attention_heads", 12)
+        hidden_size = cfg.get("hidden_size", 768)
+        head_size = int(hidden_size / num_heads)
+
+        has_prefix = any(s.startswith(self.base_model_prefix) for s in oneflow_state_dict)
+        prefix = "GPT_model.transformer."
+        layer_idx = 2 if has_prefix else 1
+
+        old_keys = oneflow_state_dict.keys()
+
+        for key in list(old_keys):
+            # Convert GPT2's embedding layers
+            if "wte" in key:
+                new_key = "GPT_model.embeddings.token_embeddings.weight"
+                oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+            elif "wpe" in key:
+                new_key = "GPT_model.embeddings.position_embeddings.weight"
+                oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+            # Convert transformer layers.
+            elif "h" in key:
+                index = key.split(".")[layer_idx]
+                if "ln_1" in key:
+                    if "weight" in key:
+                        new_key = prefix + 'layers.' + index + ".input_layernorm.weight"
+                    else:
+                        new_key = prefix + 'layers.' + index + ".input_layernorm.bias"
+                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                elif "ln_2" in key:
+                    if "weight" in key:
+                        new_key = prefix + 'layers.' + index + ".post_attention_layernorm.weight"
+                    else:
+                        new_key = prefix + 'layers.' + index + ".post_attention_layernorm.bias"
+                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                elif "attn" in key:
+                    if "c_attn" in key:
+                        if "weight" in key:
+                            new_key = prefix + 'layers.' + index + ".self_attention.query_key_value.weight"
+                        else:
+                            new_key = prefix + 'layers.' + index + ".self_attention.query_key_value.bias"
+                        qkv = oneflow_state_dict.pop(key)
+                        qkv = self._fix_qkv_ordering(qkv, head_size, num_heads, hidden_size)
+                        oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    elif "c_proj" in key:
+                        if "weight" in key:
+                            new_key = prefix + 'layers.' + index + ".self_attention.dense.weight"
+                        elif "bias" in key:
+                            new_key = prefix + 'layers.' + index + ".self_attention.dense.bias"
+                        oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    elif "mlp" in key:
+                        if "c_fc" in key:
+                            if "weight" in key:
+                                new_key = prefix + 'layers.' + index + ".mlp.dense_h_to_4h.weight"
+                            elif "bias" in key:
+                                new_key = prefix + 'layers.' + index + ".mlp.dense_h_to_4h.bias"
+                            oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                        elif "c_proj" in key:
+                            if "weight" in key:
+                                new_key = prefix + 'layers.' + index + ".mlp.dense_4h_to_h.weight"
+                            elif "bias" in key:
+                                new_key = prefix + 'layers.' + index + ".mlp.dense_4h_to_h.bias"
+                            oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+            elif "ln_f" in key:
+                if "weight" in key:
+                    new_key = prefix + '.layernorm_f.weight'
+                else:
+                    new_key = prefix + '.layernorm_f.bias'
+                oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.po(key))
         return oneflow_state_dict
