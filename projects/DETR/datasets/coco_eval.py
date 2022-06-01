@@ -19,7 +19,7 @@ from libai.evaluation.evaluator import DatasetEvaluator
 from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
 
-from configs.models.configs_detr import postprocessors
+from projects.DETR.configs.models.configs_detr_resnet50 import postprocessors
 
 
 def accuracy(output, target, topk=(1,)):

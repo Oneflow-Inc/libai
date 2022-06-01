@@ -60,7 +60,7 @@ class SetCriterion(nn.Module):
         src_logits = outputs['pred_logits']
         target_classes = flow.full(src_logits.shape[:2], self.num_classes, dtype=flow.int64)
       
-        target_classes_o = flow.cat([t["labels"].tensor[J] for t, (_, J) in zip(targets, indices)]) # .to(device=src_logits.device)
+        target_classes_o = flow.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)]) # .to(device=src_logits.device)
         
         batch_idx, src_idx = self._get_src_permutation_idx(indices)
         idx = batch_idx, src_idx
@@ -72,8 +72,6 @@ class SetCriterion(nn.Module):
             target_classes, 
             self.empty_weight.to(device=src_logits.device))
         losses = {'loss_ce': loss_ce.to_global(sbp=sbp, placement=placement)}
-        # if log:
-        #     losses['class_error'] = 100 - accuracy(src_logits[idx], target_classes_o)[0]
         return losses
 
     @flow.no_grad()
@@ -82,7 +80,7 @@ class SetCriterion(nn.Module):
         This is not really a loss, it is intended for logging purposes only. It doesn't propagate gradients
         """
         pred_logits = outputs['pred_logits']
-        tgt_lengths = flow.as_tensor([len(v["labels"].tensor) for v in targets]).to(device=pred_logits.device)
+        tgt_lengths = flow.as_tensor([len(v["labels"]) for v in targets]).to(device=pred_logits.device)
         # Count the number of predictions that are NOT "no-object" (which is the last class)
         card_pred = (pred_logits.argmax(-1) != pred_logits.shape[-1] - 1).sum(1)
         
@@ -102,7 +100,7 @@ class SetCriterion(nn.Module):
         assert 'pred_boxes' in outputs
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
-        target_boxes = flow.cat([t['boxes'].tensor[i] for t, (_, i) in zip(targets, indices)], dim=0)
+        target_boxes = flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
         
         l1_loss = nn.L1Loss(reduction="none")
         loss_bbox = l1_loss(src_boxes, target_boxes)
@@ -120,14 +118,14 @@ class SetCriterion(nn.Module):
         """Compute the losses related to the masks: the focal loss and the dice loss.
            targets dicts must contain the key "masks" containing a tensor of dim [nb_target_boxes, h, w]
         """
+        # TODO: useless code for detection task.
         assert "pred_masks" in outputs
-
         src_idx = self._get_src_permutation_idx(indices)
         tgt_idx = self._get_tgt_permutation_idx(indices)
         src_masks = outputs["pred_masks"]
         src_masks = src_masks[src_idx]
-        masks = [t["masks"].tensor for t in targets]
-        # TODO use valid to mask invalid areas due to padding in loss
+        masks = [t["masks"] for t in targets]
+        
         target_masks, valid = nested_tensor_from_tensor_list(masks).decompose()
         target_masks = target_masks.to(src_masks)
         target_masks = target_masks[tgt_idx]
@@ -176,6 +174,9 @@ class SetCriterion(nn.Module):
              targets: list of dicts, such that len(targets) == batch_size.
                       The expected keys in each dict depends on the losses applied, see each loss' doc
         """
+
+        # outputs["pred_logits"].shape -> oneflow.Size([bsz, num_queries, 92])  
+        # outputs["pred_boxes"].shape -> oneflow.Size([bsz, num_queries, 4])
         sbp, placement = outputs["pred_logits"].sbp, outputs["pred_logits"].placement
         # Switch outputs to local mode
         outputs = {k: v.to_local().to(device="cuda:0") for k, v in outputs.items()}
@@ -186,12 +187,12 @@ class SetCriterion(nn.Module):
         indices = self.matcher(outputs_without_aux, targets)
 
         # Compute the average number of target boxes accross all nodes, for normalization purposes
-        num_boxes = sum(len(t["labels"].tensor) for t in targets)
-        # num_boxes = flow.as_tensor([num_boxes], dtype=flow.float, device=next(iter(outputs.values())).device)
+        num_boxes = sum(len(t["labels"]) for t in targets)
         num_boxes = flow.as_tensor([num_boxes], dtype=flow.float64)
-        # if is_dist_avail_and_initialized():
-        #     flow.distributed.all_reduce(num_boxes)
-        num_boxes = flow.clamp(num_boxes / get_world_size(), min=1).item()
+        
+        # Need get_world_size() in model parallel ?
+        num_boxes = flow.clamp(num_boxes, min=1).item()
+        # num_boxes = flow.clamp(num_boxes / get_world_size(), min=1).item()
         # Compute all the requested losses
         losses = {}
         for loss in self.losses:

@@ -28,7 +28,7 @@ from libai.utils import distributed as dist
 
 from trainer.detr_trainer import DetrEagerTrainer
 from datasets.coco_eval import inference_on_coco_dataset
-from libai.data.structures import DistTensorData, Instance
+from libai.data.structures import Instance
 
 
 class DetrDefaultTrainer(DefaultTrainer):
@@ -56,18 +56,16 @@ class DetrDefaultTrainer(DefaultTrainer):
         
         tensors = images[0] 
         tensors.to_global()
+        
         mask = images[1] 
         mask.to_global()
+        
         images = (tensors, mask)
         
-        # TODO (ziqiu chi): 
-        # If RandomSizeCrop is adopted in transform, boxes size is different in different ranks, 
-        # which leads the tensor parallel bug.
         for i in range(len(labels)):
             for k, v in labels[i].items():
-                v.tensor = v.tensor.to(device="cuda:0")
-                # v.to_global()
-                labels[i][k] = v
+                labels[i][k] = v.to(device="cuda:0")
+                
         ret_dict = {
             "images": images,
             "labels": labels
@@ -97,10 +95,6 @@ class DetrDefaultTrainer(DefaultTrainer):
         Returns:
             dict: a dict of result metrics
         """
-        # logger = logging.getLogger(__name__)
-        # TODO: support multi evaluator
-        # if isinstance(evaluators, DatasetEvaluator):
-        #     evaluators = [evaluators]
         test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
         evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
 

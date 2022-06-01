@@ -68,12 +68,12 @@ class HungarianMatcher(nn.Module):
         bs, num_queries = outputs["pred_logits"].shape[:2]
         # We flatten to compute the cost matrices in a batch
         out_prob = outputs["pred_logits"].flatten(0, 1).softmax(-1)
-        
-        out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [batch_size * num_queries, 4]
+        out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [bsz * num_queries, 4]
         
         # Also concat the target labels and boxes
-        tgt_ids = flow.cat([v["labels"].tensor for v in targets]) # .to(device=out_prob.device)
-        tgt_bbox = flow.cat([v["boxes"].tensor for v in targets]) # .to(device=out_prob.device)
+        tgt_ids = flow.cat([v["labels"] for v in targets])
+        tgt_bbox = flow.cat([v["boxes"] for v in targets])
+        
         # Compute the classification cost. Contrary to the loss, we don't use the NLL,
         # but approximate it in 1 - proba[target class].
         # The 1 is a constant that doesn't change the matching, it can be ommitted.
@@ -90,7 +90,7 @@ class HungarianMatcher(nn.Module):
         C = self.cost_bbox * cost_bbox + self.cost_class * cost_class + self.cost_giou * cost_giou
         C = C.view(bs, num_queries, -1).cpu()
 
-        sizes = [len(v["boxes"].tensor) for v in targets]
+        sizes = [len(v["boxes"]) for v in targets]
         # ! oneflow bugs: https://github.com/Oneflow-Inc/libai/pull/260#issuecomment-1124721109
         if sizes[-1]==0:
             argsort_idx = np.argsort(sizes)

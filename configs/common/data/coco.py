@@ -1,4 +1,3 @@
-from sys import maxsize
 from omegaconf import OmegaConf
 import random
 import PIL

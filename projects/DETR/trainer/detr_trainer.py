@@ -77,7 +77,7 @@ class DetrEagerTrainer(TrainerBase):
         data = next(self._data_loader_iter)
         data = get_batch(data)
         data_time = time.perf_counter() - start
-        loss_dict,_ = self.model(data)
+        loss_dict, _ = self.model(data)
 
         losses = sum(loss_dict.values()) / self.grad_acc_steps
         losses.backward()

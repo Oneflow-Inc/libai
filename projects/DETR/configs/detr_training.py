@@ -1,7 +1,7 @@
 from statistics import mode
 from libai.config import get_config, LazyCall
 from libai.data.datasets.coco import CocoDetection
-from .models.configs_detr import model, postprocessors
+from .models.configs_detr_resnet50 import model, postprocessors
 from ..datasets.coco_eval import CocoEvaluator, get_coco_api_from_dataset
 from libai.config.configs.common.data.coco import make_coco_transforms
 
@@ -26,12 +26,12 @@ dataloader.test[0].dataset.ann_file = "/dataset/coco/annotations/instances_val20
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
 train.test_micro_batch_size = 2
-train.train_epoch = 10
+train.train_epoch = 2
 # train.warmup_ratio = 40 / 300
-train.eval_period = 5
+train.eval_period = 1
 train.log_period = 1
 
-train.checkpointer["period"]=100
+train.checkpointer["period"]=5000
 
 # *TODO: refine it
 coco_detection = LazyCall(CocoDetection)(img_folder="/dataset/coco/val2017", 
@@ -55,5 +55,5 @@ train.scheduler.warmup_method = "linear"
 graph.enabled = False
 
 # model_parallel
-# train.dist.data_parallel_size = 1
-# train.dist.tensor_parallel_size = 2
+train.dist.data_parallel_size = 1
+train.dist.tensor_parallel_size = 2

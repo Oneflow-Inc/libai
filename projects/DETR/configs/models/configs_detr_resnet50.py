@@ -36,8 +36,7 @@ detr_args.dec_layers = 6
 detr_args.pre_norm = False
 
 # Loss
-# Disables auxiliary decoding losses (loss at each layer)
-detr_args.aux_loss = False
+detr_args.aux_loss = True
 
 # Matcher
 # Class coefficient in the matching cost
