@@ -716,7 +716,7 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
                 new_key = "GPT_model.embeddings.position_embeddings.weight"
                 oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
             # Convert transformer layers.
-            elif "h" in key:
+            elif "h." in key:
                 index = key.split(".")[layer_idx]
                 if "ln_1" in key:
                     if "weight" in key:
@@ -737,33 +737,44 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
                         else:
                             new_key = prefix + 'layers.' + index + ".self_attention.query_key_value.bias"
                         qkv = oneflow_state_dict.pop(key)
+                        if qkv.ndim > 1:
+                            qkv = qkv.transpose(1,0)
                         qkv = self._fix_qkv_ordering(qkv, head_size, num_heads, hidden_size)
-                        oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                        oneflow_state_dict[new_key] = self.convert_tensor(qkv)     
                     elif "c_proj" in key:
                         if "weight" in key:
                             new_key = prefix + 'layers.' + index + ".self_attention.dense.weight"
                         elif "bias" in key:
                             new_key = prefix + 'layers.' + index + ".self_attention.dense.bias"
-                        oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
-                    elif "mlp" in key:
-                        if "c_fc" in key:
-                            if "weight" in key:
-                                new_key = prefix + 'layers.' + index + ".mlp.dense_h_to_4h.weight"
-                            elif "bias" in key:
-                                new_key = prefix + 'layers.' + index + ".mlp.dense_h_to_4h.bias"
-                            oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
-                        elif "c_proj" in key:
-                            if "weight" in key:
-                                new_key = prefix + 'layers.' + index + ".mlp.dense_4h_to_h.weight"
-                            elif "bias" in key:
-                                new_key = prefix + 'layers.' + index + ".mlp.dense_4h_to_h.bias"
-                            oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                        value = oneflow_state_dict.pop(key)
+                        if value.ndim > 1:
+                            value = value.transpose(1,0)
+                        oneflow_state_dict[new_key] = self.convert_tensor(value)
+                elif "mlp" in key:
+                    if "c_fc" in key:
+                        if "weight" in key:
+                            new_key = prefix + 'layers.' + index + ".mlp.dense_h_to_4h.weight"
+                        elif "bias" in key:
+                            new_key = prefix + 'layers.' + index + ".mlp.dense_h_to_4h.bias"
+                        value = oneflow_state_dict.pop(key)
+                        if value.ndim > 1:
+                            value = value.transpose(1, 0)
+                        oneflow_state_dict[new_key] = self.convert_tensor(value)
+                    elif "c_proj" in key:
+                        if "weight" in key:
+                            new_key = prefix + 'layers.' + index + ".mlp.dense_4h_to_h.weight"
+                        elif "bias" in key:
+                            new_key = prefix + 'layers.' + index + ".mlp.dense_4h_to_h.bias"
+                        value = oneflow_state_dict.pop(key)
+                        if value.ndim > 1:
+                            value = value.transpose(1, 0)
+                        oneflow_state_dict[new_key] = self.convert_tensor(value)
             elif "ln_f" in key:
                 if "weight" in key:
-                    new_key = prefix + '.layernorm_f.weight'
-                else:
-                    new_key = prefix + '.layernorm_f.bias'
-                oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.po(key))
+                    new_key = prefix + 'layernorm_f.weight'
+                elif "bias" in key:
+                    new_key = prefix + 'layernorm_f.bias'
+                oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
         return oneflow_state_dict
     
     def _load_config_from_json(self, config_file):
