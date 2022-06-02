@@ -477,6 +477,6 @@ class T5ForPreTraining(flow.nn.Module):
                     dist.get_layer_placement(-1))
 
         model.t5_model.decoder.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
-            dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx)
+            dist_utils.get_layer_stage_id(-1),
+            dist.get_layer_placement(-1)
         )
