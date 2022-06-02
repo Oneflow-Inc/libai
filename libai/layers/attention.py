@@ -15,7 +15,6 @@
 
 import enum
 import math
-import os
 from typing import Tuple
 
 import oneflow as flow
@@ -68,10 +67,11 @@ class MultiheadAttention(nn.Module):
         apply_query_key_layer_scaling=False,
         attn_mask_type=AttnMaskType.padding,
         *,
-        layer_idx=0
+        layer_idx=0,
+        multihead_attn_fusion=False
     ):
         super().__init__()
-        self.multihead_attn_fusion = os.getenv("MULTIHEAD_ATTN_FUSION") is not None
+        self.multihead_attn_fusion = multihead_attn_fusion
         self.hidden_size = hidden_size
         if output_layer_init_method is None:
             output_layer_init_method = init_method

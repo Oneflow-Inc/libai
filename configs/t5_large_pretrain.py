@@ -27,3 +27,7 @@ train.amp.enabled = True
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 
 train.output_dir = "./output/t5_output"
+
+train.dist.data_parallel_size=2
+train.dist.tensor_parallel_size=2
+train.dist.pipeline_parallel_size=2
