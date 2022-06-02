@@ -67,7 +67,8 @@ class LoadPretrainedBase(object):
         self.pretrained_model_path = pretrained_model_path
         self.kwargs = kwargs
         self.output_loading_info = kwargs.pop("output_loading_info", False)
-        self.base_model_prefix = None
+        self.base_model_prefix_1 = None
+        self.base_model_prefix_2 = None
 
     def convert_tensor(self, tensor):
         """Convert pytorch tensor to OneFlow tensor.
@@ -87,15 +88,15 @@ class LoadPretrainedBase(object):
         Args:
             flow_state_dict (OrderedDict): State dict of OneFlow's pretrained model.
         """
-        prefix = self.base_model_prefix
+        prefix = self.base_model_prefix_2
 
-        # checkpoint
+        # Checkpoint
         has_prefix_module = any(
-            s.startswith(self.base_model_prefix) for s in flow_state_dict.keys()
+            s.startswith(self.base_model_prefix_2) for s in flow_state_dict.keys()
         )
-
-        # module
+        # Module
         expects_prefix_module = any(s.startswith(prefix) for s in self.model.state_dict().keys())
+        
         start_prefix = "" if has_prefix_module else prefix + "."
         loaded_keys = [start_prefix + key for key in flow_state_dict.keys()]
 
@@ -198,7 +199,7 @@ class LoadPretrainedBase(object):
         """
         model_state_dict = model.state_dict()
         expected_keys = list(model_state_dict.keys())
-        prefix = self.base_model_prefix
+        prefix = self.base_model_prefix_2
 
         if len(prefix) > 0:
             has_prefix_module = any(s.startswith(prefix) for s in loaded_keys)
@@ -224,11 +225,11 @@ class LoadPretrainedBase(object):
         start_prefix = ""
         model_to_load = model
         if (
-            len(self.base_model_prefix) > 0
-            and not hasattr(model, self.base_model_prefix)
+            len(self.base_model_prefix_2) > 0
+            and not hasattr(model, self.base_model_prefix_2)
             and has_prefix_module
         ):
-            start_prefix = self.base_model_prefix + "."
+            start_prefix = self.base_model_prefix_2 + "."
         if (
             len(self.base_model_prefix) > 0
             and hasattr(model, self.base_model_prefix)
@@ -392,7 +393,7 @@ class LoadPretrainedBase(object):
         else:
             raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
-        # load config and update config.
+        # Load config and update config.
         self._load_config_from_json(config_file)
     
         if self.mode == 'pt':
@@ -404,13 +405,13 @@ class LoadPretrainedBase(object):
 
         loaded_state_dict_keys = list(flow_state_dict.keys())
 
-        # instance model
+        # Instance model
         self.model = build_model(LazyCall(self.model)(cfg=self.default_cfg))
 
-        # state_dict to global
+        # State_dict to global
         self._state_dict_to_global(flow_state_dict)
 
-        # load
+        # Load
         (
             model,
             missing_keys,
@@ -439,7 +440,10 @@ class LoadPretrainedBert(LoadPretrainedBase):
         self, model, default_cfg, pretrained_model_path, base_model_prefix="bert", **kwargs
     ):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
-        self.base_model_prefix = base_model_prefix
+        # base_model_prefix_1 is GPT's prefix in Transformers.
+        # base_model_prefix_2 is GPT'2 prefix in LiBai.
+        self.base_model_prefix_1 = base_model_prefix
+        self.base_model_prefix_2 = "bert"
 
     def _convert_state_dict(self, torch_state_dict, cfg):
         """Convert torch state dict to flow state dict.
@@ -674,7 +678,10 @@ class LoadPretrainedBert(LoadPretrainedBase):
 class LoadPretrainedGPT2(LoadPretrainedBase):
     def __init__(self, model, default_cfg, pretrained_model_path, base_model_prefix='transformer',**kwargs):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
-        self.base_model_prefix = base_model_prefix
+        # base_model_prefix_1 is GPT's prefix in Transformers.
+        # base_model_prefix_2 is GPT'2 prefix in LiBai.
+        self.base_model_prefix_1 = base_model_prefix
+        self.base_model_prefix_2 = "GPT_model"
 
     def _convert_state_dict(self, torch_state_dict, cfg):
         """Convert torch state dict to flow state dict.
