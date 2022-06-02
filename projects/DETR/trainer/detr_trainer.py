@@ -78,10 +78,17 @@ class DetrEagerTrainer(TrainerBase):
         data = get_batch(data)
         data_time = time.perf_counter() - start
         loss_dict, _ = self.model(data)
-
-        losses = sum(loss_dict.values()) / self.grad_acc_steps
+        weight_dict = self.model.criterion.weight_dict
+        losses = 0.
+        for k in loss_dict.keys():
+            if k in weight_dict:
+                losses += loss_dict[k] * weight_dict[k]
+        # losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+        # try:
+        #     losses.backward()
+        # except:
+        #     print(data["images"][0].tensor.shape)
         losses.backward()
-
         self.write_metrics(loss_dict, data_time)
 
         if (self.iter + 1) % self.grad_acc_steps == 0:

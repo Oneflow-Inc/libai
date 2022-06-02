@@ -71,26 +71,26 @@ class SetCriterion(nn.Module):
             src_logits.transpose(1, 2), 
             target_classes, 
             self.empty_weight.to(device=src_logits.device))
-        losses = {'loss_ce': loss_ce.to_global(sbp=sbp, placement=placement)}
+        losses = {'loss_ce': loss_ce.to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)}
         return losses
 
-    @flow.no_grad()
-    def loss_cardinality(self, outputs, targets, indices, num_boxes, sbp, placement):
-        """ Compute the cardinality error, ie the absolute error in the number of predicted non-empty boxes
-        This is not really a loss, it is intended for logging purposes only. It doesn't propagate gradients
-        """
-        pred_logits = outputs['pred_logits']
-        tgt_lengths = flow.as_tensor([len(v["labels"]) for v in targets]).to(device=pred_logits.device)
-        # Count the number of predictions that are NOT "no-object" (which is the last class)
-        card_pred = (pred_logits.argmax(-1) != pred_logits.shape[-1] - 1).sum(1)
+    # @flow.no_grad()
+    # def loss_cardinality(self, outputs, targets, indices, num_boxes, sbp, placement):
+    #     """ Compute the cardinality error, ie the absolute error in the number of predicted non-empty boxes
+    #     This is not really a loss, it is intended for logging purposes only. It doesn't propagate gradients
+    #     """
+    #     pred_logits = outputs['pred_logits']
+    #     tgt_lengths = flow.as_tensor([len(v["labels"]) for v in targets]).to(device=pred_logits.device)
+    #     # Count the number of predictions that are NOT "no-object" (which is the last class)
+    #     card_pred = (pred_logits.argmax(-1) != pred_logits.shape[-1] - 1).sum(1)
         
-        # *: flow.nn.functional does not support F.l1_loss
-        # card_err = F.l1_loss(card_pred.float(), tgt_lengths.float())
-        l1_loss = nn.L1Loss(reduction="mean")
-        card_err = l1_loss(card_pred.float(), tgt_lengths.float()).to_global(sbp=sbp, placement=placement)
+    #     # *: flow.nn.functional does not support F.l1_loss
+    #     # card_err = F.l1_loss(card_pred.float(), tgt_lengths.float())
+    #     l1_loss = nn.L1Loss(reduction="mean")
+    #     card_err = l1_loss(card_pred.float(), tgt_lengths.float()).to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)
         
-        losses = {'cardinality_error': card_err}
-        return losses
+    #     losses = {'cardinality_error': card_err}
+    #     return losses
 
     def loss_boxes(self, outputs, targets, indices, num_boxes, sbp, placement):
         """Compute the losses related to the bounding boxes, the L1 regression loss and the GIoU loss
@@ -106,12 +106,12 @@ class SetCriterion(nn.Module):
         loss_bbox = l1_loss(src_boxes, target_boxes)
 
         losses = {}
-        losses['loss_bbox'] = (loss_bbox.sum() / num_boxes).to_global(sbp=sbp, placement=placement)
+        losses['loss_bbox'] = (loss_bbox.sum() / num_boxes).to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)
 
         loss_giou = 1 - flow.diag(box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
             box_ops.box_cxcywh_to_xyxy(target_boxes)))
-        losses['loss_giou'] = (loss_giou.sum() / num_boxes).to_global(sbp=sbp, placement=placement)
+        losses['loss_giou'] = (loss_giou.sum() / num_boxes).to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)
         return losses
 
     def loss_masks(self, outputs, targets, indices, num_boxes, sbp, placement):
@@ -160,7 +160,7 @@ class SetCriterion(nn.Module):
     def get_loss(self, loss, outputs, targets, indices, num_boxes, sbp, placement):
         loss_map = {
             'labels': self.loss_labels,
-            'cardinality': self.loss_cardinality,
+            # 'cardinality': self.loss_cardinality,
             'boxes': self.loss_boxes,
             'masks': self.loss_masks
         }
