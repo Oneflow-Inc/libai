@@ -19,10 +19,7 @@ from flowvision.layers.blocks.boxes import box_area
 
 
 def box_cxcywh_to_xyxy(x):
-    # x_c, y_c, w, h = x.unbind(-1)
-    x_c, y_c, w, h = x.split(1, dim=-1)
-    x_c, y_c, w, h = x_c.squeeze(-1), y_c.squeeze(-1), w.squeeze(-1), h.squeeze(-1)
-    
+    x_c, y_c, w, h = x.unbind(-1)
     b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
          (x_c + 0.5 * w), (y_c + 0.5 * h)]
     return flow.stack(b, dim=-1).to(dtype=flow.float64)
@@ -35,12 +32,12 @@ def box_xyxy_to_cxcywh(x):
     return flow.stack(b, dim=-1)
 
 
-# modified from flowvision to also return the union
 def box_iou(boxes1, boxes2):
     area1 = box_area(boxes1)
     area2 = box_area(boxes2)
 
     # NOTE: flow.max cannot min/max between diff dtype
+    # BUG
     lt = flow.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
     rb = flow.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
 
@@ -50,7 +47,51 @@ def box_iou(boxes1, boxes2):
     union = area1[:, None] + area2 - inter
 
     iou = inter / union
+    print(iou.shape)
+    if iou.shape[0] == 1 and iou.shape[1] == 1:
+        import pdb
+        pdb.set_trace()
     return iou, union
+
+# def _upcast(t):
+#     # Protects from numerical overflows in multiplications by upcasting to the equivalent higher type
+#     if t.is_floating_point():
+#         return t if t.dtype in (flow.float32, flow.float64) else t.float()
+#     else:
+#         return t if t.dtype in (flow.int32, flow.int64) else t.int()
+
+# def _box_inter_union(boxes1, boxes2):
+#     area1 = box_area(boxes1)
+#     area2 = box_area(boxes2)
+
+#     lt = flow.maximum(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
+#     rb = flow.minimum(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
+
+#     wh = _upcast(rb - lt).clamp(min=0)  # [N,M,2]
+#     inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]
+
+#     union = area1[:, None] + area2 - inter
+
+#     return inter, union
+
+
+# def box_iou(boxes1, boxes2):
+#     """
+#     Return intersection-over-union (Jaccard index) between two sets of boxes.
+#     Both sets of boxes are expected to be in ``(x1, y1, x2, y2)`` format with
+#     ``0 <= x1 < x2`` and ``0 <= y1 < y2``.
+#     Args:
+#         boxes1 (Tensor[N, 4]): first set of boxes
+#         boxes2 (Tensor[N, 4]): second set of boxes
+#     Returns:
+#         Tensor[N, M]: the NxM matrix containing the pairwise IoU values for every element in boxes 1 and boxes2
+#     """
+#     inter, union = _box_inter_union(boxes1, boxes2)
+#     iou = inter / union
+#     if iou.shape[0] == 1 and iou.shape[1] == 1:
+#         import pdb
+#         pdb.set_trace()
+#     return iou, union
 
 
 def generalized_box_iou(boxes1, boxes2):
@@ -66,8 +107,7 @@ def generalized_box_iou(boxes1, boxes2):
     # so do an early check
     assert (boxes1[:, 2:] >= boxes1[:, :2]).all()
     assert (boxes2[:, 2:] >= boxes2[:, :2]).all()
-    iou, union = box_iou(boxes1, boxes2)
-
+    iou, union = box_iou(boxes1, boxes2)  # min/max op
     lt = flow.min(boxes1[:, None, :2], boxes2[:, :2])
     rb = flow.max(boxes1[:, None, 2:], boxes2[:, 2:])
 

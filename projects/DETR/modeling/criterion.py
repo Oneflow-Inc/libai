@@ -111,6 +111,7 @@ class SetCriterion(nn.Module):
         loss_giou = 1 - flow.diag(box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
             box_ops.box_cxcywh_to_xyxy(target_boxes)))
+        
         losses['loss_giou'] = (loss_giou.sum() / num_boxes).to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)
         return losses
 

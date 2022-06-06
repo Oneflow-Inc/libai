@@ -62,7 +62,7 @@ def build(args):
         weight_dict.update(aux_weight_dict)
 
     # losses = ['labels', 'boxes', 'cardinality']
-    losses = ['labels', 'boxes']
+    losses = ['boxes']
     if args.masks:
         losses += ["masks"]
     criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
