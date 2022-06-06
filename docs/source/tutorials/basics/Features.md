@@ -38,7 +38,7 @@ from .common.optim import optim
 
 # get config
 from libai.config import get_config
-optim = get_config("common/optim").optim
+optim = get_config("common/optim.py").optim
 
 # enable gradient clipping
 optim.params.clip_grad_max_norm = 1.0
@@ -65,7 +65,7 @@ from .common.train import train
 
 # get config 
 from libai.config import get_config
-train = get_config("common/train").train
+train = get_config("common/train.py").train
 
 # enable grad accumulation for 4 steps
 train.num_accumulation_steps = 4
@@ -95,7 +95,7 @@ from .common.train import train
 
 # get config 
 from libai.config import get_config
-train = get_config("common/train").train
+train = get_config("common/train.py").train
 
 # enable activation checkpointing
 train.activation_checkpoint.enabled = True
@@ -122,7 +122,7 @@ from .common.train import train
 
 # get config 
 from libai.config import get_config
-train = get_config("common/train").train
+train = get_config("common/train.py").train
 
 # enable zero 
 train.zero_optimization.enabled = True

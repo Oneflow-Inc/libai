@@ -114,6 +114,8 @@ def _check_batch_size(cfg):
         )
     else:
         raise ValueError("train_micro_batch_size and global_batch_size must be set either")
+    # Set total training samples.
+    cfg.train.samples = cfg.train.train_iter * cfg.train.global_batch_size
 
 
 def _compile_dependencies():
@@ -597,6 +599,30 @@ class DefaultTrainer(TrainerBase):
             cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
+
+        if hasattr(cfg.dataloader.train, "train_val_test_num_samples"):
+            eval_iter = (
+                (cfg.train.train_iter // cfg.train.evaluation.eval_period + 1)
+                * cfg.train.evaluation.eval_iter
+                if cfg.train.evaluation.enabled
+                # samples for test_dataset must be larger than 0 even if there is no evaluation
+                else 1
+            )
+            test_iter = cfg.train.evaluation.eval_iter if cfg.train.evaluation.enabled else 1
+
+            cfg.dataloader.train.train_val_test_num_samples = [
+                int(cfg.train.samples),
+                int(eval_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
+                int(test_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
+            ]
+        if OmegaConf.is_list(cfg.dataloader.train.dataset):
+            for dataset in cfg.dataloader.train.dataset:
+                if hasattr(dataset, "seed"):
+                    dataset.seed = cfg.train.seed
+        else:
+            dataset = cfg.dataloader.train.dataset
+            if hasattr(dataset, "seed"):
+                dataset.seed = cfg.train.seed
 
         # Set tokenizer for each dataset
         if tokenizer:
