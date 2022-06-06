@@ -69,10 +69,11 @@ class TestImageClassificationPipeline(flow.unittest.TestCase):
     def test_smallvitpipeline_with_pipeline_parallel(self):
         self.pipeline = ImageClassificationPipeline(self.config_path, 1, 1, 4, self.model_path)
         rst = self.pipeline(self.image_path)
-        self.assertTrue(rst["label"] == "tench, Tinca tinca")
-        self.assertTrue(
-            np.allclose(np.array(0.7100194096565247), np.array(rst["score"]), 1e-7, 1e-7)
-        )
+        if flow.env.get_rank() == 0:
+            self.assertTrue(rst["label"] == "tench, Tinca tinca")
+            self.assertTrue(
+                np.allclose(np.array(0.7100194096565247), np.array(rst["score"]), 1e-4, 1e-4)
+            )
 
     @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()

@@ -30,9 +30,12 @@ class ImageClassificationPipeline(BasePipeline):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        model_path=None,
         **kwargs,
     ):
-        super().__init__(config_file, data_parallel, tensor_parallel, pipeline_parallel, **kwargs)
+        super().__init__(
+            config_file, data_parallel, tensor_parallel, pipeline_parallel, model_path, **kwargs
+        )
         assert "num_classes" in self.cfg.model, "The model's config must contain num_classes"
         label2id = self.label2id(self.cfg.model.num_classes)
         self.id2label = {ind: label for label, ind in label2id.items()}
@@ -123,7 +126,7 @@ class ImageClassificationPipeline(BasePipeline):
                            }
 
         """
-        from utils.imagenet_class import IMAGENET_LABELS as labels
+        from libai.inference.utils.imagenet_class import IMAGENET_LABELS as labels
 
         assert num_classes == len(labels), "number of labels must be equal to num_classes"
         return {label: i for (i, label) in enumerate(labels)}
