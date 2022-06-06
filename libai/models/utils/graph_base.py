@@ -36,7 +36,7 @@ class GraphBase(nn.Graph):
         zero_optim=False,
         zero_stage=0,
         is_train=True,
-        auto_parallel=False,
+        auto_parallel_conf=None,
     ):
         super().__init__()
 
@@ -82,13 +82,13 @@ class GraphBase(nn.Graph):
         # dist_util = dist.get_dist_util()
 
         # auto_parallel
-        if auto_parallel:
-            self.config.enable_auto_parallel(auto_parallel)
-            self.config.enable_auto_parallel_prune_parallel_cast_ops(False)
+        if auto_parallel_conf is not None and auto_parallel_conf.enabled:
+            self.config.enable_auto_parallel(True)
+            self.config.enable_auto_parallel_prune_parallel_cast_ops(auto_parallel_conf.prune_parallel_cast_ops)
             self.config.set_auto_parallel_computation_cost_ratio(0.05)
             self.config.set_auto_parallel_wait_time(1.65e4)
-            self.config.enable_auto_parallel_mainstem_algo(True);
-            self.config.enable_auto_parallel_sbp_collector(False);
+            self.config.enable_auto_parallel_mainstem_algo(auto_parallel_conf.mainstem_algo);
+            self.config.enable_auto_parallel_sbp_collector(auto_parallel_conf.sbp_collector);
 
         # Enable compute_stream for computation and communication with the same cuda stream.
         # This will reduce memory when using model parallelism.
