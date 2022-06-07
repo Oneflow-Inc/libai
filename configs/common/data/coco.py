@@ -353,12 +353,11 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
     if tensor_list[0].get_fields()["images"].tensor.ndim == 3:
 
         max_size = _max_by_axis([list(tensor.get_fields()["images"].tensor.shape) for tensor in tensor_list])
-        # For data parallel
-        # TODO: (ziqiu chi) Refine code in line 358.
         if flow.env.get_world_size() > 1:
             max_size = flow.tensor(max_size).unsqueeze(0)
-            max_size = max_size.to_global(sbp=flow.sbp.split(0), placement=flow.placement('cuda', ranks=[0,1]))
+            max_size = max_size.to_global(sbp=flow.sbp.split(0), placement=flow.placement('cuda', ranks=list(range(flow.env.get_world_size()))))
             max_size = flow.max(max_size, dim=0)[0].numpy().tolist()
+
         batch_shape = [len(tensor_list)] + max_size
         b, c, h, w = batch_shape
         

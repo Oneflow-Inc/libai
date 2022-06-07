@@ -56,4 +56,4 @@ graph.enabled = False
 
 # model_parallel
 train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 2
+train.dist.tensor_parallel_size = 4
