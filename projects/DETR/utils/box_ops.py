@@ -37,61 +37,26 @@ def box_iou(boxes1, boxes2):
     area2 = box_area(boxes2)
 
     # NOTE: flow.max cannot min/max between diff dtype
-    # BUG
-    lt = flow.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
-    rb = flow.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
+    # NOTE: dim expand version leads the backward bug: Check failed: !broadcast_axis_vec.empty()
+    # TODO(ziqiu chi): https://github.com/Oneflow-Inc/libai/issues/288#issuecomment-1144587028
+    # lt = flow.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
+    # rb = flow.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
 
+    if boxes1.shape[0] == 1 and boxes2.shape[0] == 1:
+        lt = flow.max(boxes1[:, :2], boxes2[:, :2]).unsqueeze(1)  
+        rb = flow.min(boxes1[:, 2:], boxes2[:, 2:]).unsqueeze(1)  
+        
+    else:
+        lt = flow.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
+        rb = flow.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]        
+    
     wh = (rb - lt).clamp(min=0)  # [N,M,2]
     inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]
 
     union = area1[:, None] + area2 - inter
-
     iou = inter / union
-    print(iou.shape)
-    if iou.shape[0] == 1 and iou.shape[1] == 1:
-        import pdb
-        pdb.set_trace()
+
     return iou, union
-
-# def _upcast(t):
-#     # Protects from numerical overflows in multiplications by upcasting to the equivalent higher type
-#     if t.is_floating_point():
-#         return t if t.dtype in (flow.float32, flow.float64) else t.float()
-#     else:
-#         return t if t.dtype in (flow.int32, flow.int64) else t.int()
-
-# def _box_inter_union(boxes1, boxes2):
-#     area1 = box_area(boxes1)
-#     area2 = box_area(boxes2)
-
-#     lt = flow.maximum(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
-#     rb = flow.minimum(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
-
-#     wh = _upcast(rb - lt).clamp(min=0)  # [N,M,2]
-#     inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]
-
-#     union = area1[:, None] + area2 - inter
-
-#     return inter, union
-
-
-# def box_iou(boxes1, boxes2):
-#     """
-#     Return intersection-over-union (Jaccard index) between two sets of boxes.
-#     Both sets of boxes are expected to be in ``(x1, y1, x2, y2)`` format with
-#     ``0 <= x1 < x2`` and ``0 <= y1 < y2``.
-#     Args:
-#         boxes1 (Tensor[N, 4]): first set of boxes
-#         boxes2 (Tensor[N, 4]): second set of boxes
-#     Returns:
-#         Tensor[N, M]: the NxM matrix containing the pairwise IoU values for every element in boxes 1 and boxes2
-#     """
-#     inter, union = _box_inter_union(boxes1, boxes2)
-#     iou = inter / union
-#     if iou.shape[0] == 1 and iou.shape[1] == 1:
-#         import pdb
-#         pdb.set_trace()
-#     return iou, union
 
 
 def generalized_box_iou(boxes1, boxes2):
@@ -107,10 +72,20 @@ def generalized_box_iou(boxes1, boxes2):
     # so do an early check
     assert (boxes1[:, 2:] >= boxes1[:, :2]).all()
     assert (boxes2[:, 2:] >= boxes2[:, :2]).all()
+    
     iou, union = box_iou(boxes1, boxes2)  # min/max op
-    lt = flow.min(boxes1[:, None, :2], boxes2[:, :2])
-    rb = flow.max(boxes1[:, None, 2:], boxes2[:, 2:])
-
+    
+    # TODO(ziqiu chi): https://github.com/Oneflow-Inc/libai/issues/288#issuecomment-1144587028
+    # lt = flow.min(boxes1[:, None, :2], boxes2[:, :2])
+    # rb = flow.max(boxes1[:, None, 2:], boxes2[:, 2:])
+    if boxes1.shape[0] == 1 and boxes2.shape[0] == 1:
+        lt = flow.min(boxes1[:, :2], boxes2[:, :2]).unsqueeze(1)  
+        rb = flow.max(boxes1[:, 2:], boxes2[:, 2:]).unsqueeze(1)  
+        
+    else:
+        lt = flow.min(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
+        rb = flow.max(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]   
+        
     wh = (rb - lt).clamp(min=0)  # [N,M,2]
     area = wh[:, :, 0] * wh[:, :, 1]
 
