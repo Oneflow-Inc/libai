@@ -21,7 +21,7 @@ model.cfg.hidden_layers = 6
 
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
-train.train_micro_batch_size = 16
+train.train_micro_batch_size = 64
 train.amp.enabled = True
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
@@ -29,5 +29,13 @@ train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 train.output_dir = "./output/t5_output"
 
 train.dist.data_parallel_size=2
-train.dist.tensor_parallel_size=2
+train.dist.tensor_parallel_size=1
 train.dist.pipeline_parallel_size=2
+
+train.zero_optimization.enabled = True
+train.zero_optimization.stage = 2
+
+train.num_accumulation_steps = 8
+train.log_period = 1
+
+train.activation_checkpoint.enabled = True
