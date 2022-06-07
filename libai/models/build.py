@@ -26,7 +26,7 @@ def build_model(cfg):
 
 def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
     """Build the `nn.Graph`, defined by ``cfg.graph``."""
-    auto_parallel_conf=try_get_key(cfg, "graph.auto_parallel", default=None)
+    auto_parallel_conf = try_get_key(cfg, "graph.auto_parallel", default=None)
     if is_train:
         # Set train graph
         assert optimizer is not None, "optimizer must be set for train graph"

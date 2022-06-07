@@ -90,19 +90,15 @@ class GraphBase(nn.Graph):
                 )
                 self.config.set_auto_parallel_computation_cost_ratio(0.05)
                 self.config.set_auto_parallel_wait_time(1.65e4)
-                self.config.enable_auto_parallel_mainstem_algo(
-                    auto_parallel_conf.mainstem_algo
-                )
-                self.config.enable_auto_parallel_sbp_collector(
-                    auto_parallel_conf.sbp_collector
-                )
+                self.config.enable_auto_parallel_mainstem_algo(auto_parallel_conf.mainstem_algo)
+                self.config.enable_auto_parallel_sbp_collector(auto_parallel_conf.sbp_collector)
             except RuntimeWarning:
                 import warnings
 
                 warnings.warn(
                     "The version of oneflow don't support auto_parallel.\n"
                     "Please reinstall the oneflow for auto_parallel:\n"
-                    "python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/release-auto_parallel-v0.1/[PLATFORM]"
+                    "python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/release-auto_parallel-v0.1/[PLATFORM]"  # noqa
                 )
 
         # Enable compute_stream for computation and communication with the same cuda stream.
