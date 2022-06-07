@@ -120,7 +120,8 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
     shuffle_idx_filename = _filename + "_shuffle_idx.npy"
 
     # Build the indexed mapping if not exist.
-    if flow.env.get_rank() == 0:
+    # NOTE: use `get_local_rank() == 0` to promise samples will be build in each node.
+    if flow.env.get_local_rank() == 0:
         if (
             (not os.path.isfile(doc_idx_filename))
             or (not os.path.isfile(sample_idx_filename))

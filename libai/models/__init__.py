@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .bert_model import BertForPreTraining, BertModel
+
+from .bert_model import BertForPreTraining, BertModel, BertForClassification
 from .roberta_model import RobertaForPreTraining, RobertaForCausalLM, RobertaModel
 from .build import build_graph, build_model
 from .t5_model import T5ForPreTraining, T5Model
@@ -27,6 +28,7 @@ __all__ = [
     "build_graph",
     "BertModel",
     "BertForPreTraining",
+    "BertForClassification",
     "RobertaModel",
     "RobertaForCausalLM",
     "RobertaForPreTraining",
