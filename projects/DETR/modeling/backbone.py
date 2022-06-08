@@ -94,19 +94,15 @@ class BackboneBase(nn.Module):
             
         img, img_mask = tensor_list
 
-        # !(ziqiu chi) The output is inconsistent with detr impl. 
-        # While in current version, the transformer output is consistent with detr impl.
         xs = self.body(img.tensor)
             
         out = {}
         for name, x in xs.items():
-            # m = tensor_list.mask
             m = img_mask
             assert m is not None
             mask = F.interpolate(m.tensor[None].float(), size=x.shape[-2:]).to(flow.bool)[0]
 
             out[name] = (x, mask)
-            # out[name] = NestedTensor(x, mask)
         return out
 
 

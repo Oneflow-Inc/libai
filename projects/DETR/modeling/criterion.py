@@ -20,7 +20,6 @@ import oneflow.nn as nn
 import oneflow.nn.functional as F
 from oneflow.env import get_world_size
 
-# from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
 from DETR.datasets.coco_dataloader import nested_tensor_from_tensor_list
 
 from utils import box_ops
@@ -75,24 +74,6 @@ class SetCriterion(nn.Module):
         losses = {'loss_ce': loss_ce.to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)}
         return losses
 
-    # @flow.no_grad()
-    # def loss_cardinality(self, outputs, targets, indices, num_boxes, sbp, placement):
-    #     """ Compute the cardinality error, ie the absolute error in the number of predicted non-empty boxes
-    #     This is not really a loss, it is intended for logging purposes only. It doesn't propagate gradients
-    #     """
-    #     pred_logits = outputs['pred_logits']
-    #     tgt_lengths = flow.as_tensor([len(v["labels"]) for v in targets]).to(device=pred_logits.device)
-    #     # Count the number of predictions that are NOT "no-object" (which is the last class)
-    #     card_pred = (pred_logits.argmax(-1) != pred_logits.shape[-1] - 1).sum(1)
-        
-    #     # *: flow.nn.functional does not support F.l1_loss
-    #     # card_err = F.l1_loss(card_pred.float(), tgt_lengths.float())
-    #     l1_loss = nn.L1Loss(reduction="mean")
-    #     card_err = l1_loss(card_pred.float(), tgt_lengths.float()).to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)
-        
-    #     losses = {'cardinality_error': card_err}
-    #     return losses
-
     def loss_boxes(self, outputs, targets, indices, num_boxes, sbp, placement):
         """Compute the losses related to the bounding boxes, the L1 regression loss and the GIoU loss
            targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 4]
@@ -120,7 +101,6 @@ class SetCriterion(nn.Module):
         """Compute the losses related to the masks: the focal loss and the dice loss.
            targets dicts must contain the key "masks" containing a tensor of dim [nb_target_boxes, h, w]
         """
-        # TODO: useless code for detection task.
         assert "pred_masks" in outputs
         src_idx = self._get_src_permutation_idx(indices)
         tgt_idx = self._get_tgt_permutation_idx(indices)
@@ -162,7 +142,6 @@ class SetCriterion(nn.Module):
     def get_loss(self, loss, outputs, targets, indices, num_boxes, sbp, placement):
         loss_map = {
             'labels': self.loss_labels,
-            # 'cardinality': self.loss_cardinality,
             'boxes': self.loss_boxes,
             'masks': self.loss_masks
         }

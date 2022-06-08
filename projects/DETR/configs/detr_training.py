@@ -1,11 +1,9 @@
 from statistics import mode
 from libai.config import get_config, LazyCall
-# from libai.data.datasets.coco import CocoDetection
 from ..datasets.coco_detection import CocoDetection
 from ..datasets.coco_dataloader import dataloader, make_coco_transforms
 from .models.configs_detr_resnet50 import model, postprocessors
 from ..datasets.coco_eval import CocoEvaluator, get_coco_api_from_dataset
-# from libai.config.configs.common.data.coco import make_coco_transforms
 
 
 # dataloader = get_config("common/data/coco.py").dataloader
@@ -29,17 +27,13 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 
 
 # For inference
-train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
+# train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
 train.test_micro_batch_size = 2
-train.train_epoch = 2
-# train.warmup_ratio = 40 / 300
-train.eval_period = 1
-train.log_period = 1
-
-train.checkpointer["period"]=5000
+train.train_iter=200
+train.evaluation.eval_period = 10
 
 coco_detection = LazyCall(CocoDetection)(
     img_folder = path_val_img, 

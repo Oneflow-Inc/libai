@@ -5,8 +5,6 @@ from modeling.build_detr import build
 
 # args for detr build_model
 detr_args = OmegaConf.create()
-# detr_args.lr = 1e-4
-# detr_args.batch_size = 2
 detr_args.lr_backbone = 1e-5
 detr_args.dataset_file = "coco"
 detr_args.num_queries = 100
