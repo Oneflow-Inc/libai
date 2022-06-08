@@ -5,7 +5,7 @@ LiBai supports **auto-parallel training** strategy which means LiBai will automa
 ## Installation
 Install OneFlow Auto-Parallel Branch
 
-```python
+```shell
 python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/release-auto_parallel-v0.1/[PLATFORM]
 ```
 - All available `[PLATFORM]`:
