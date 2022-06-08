@@ -1,6 +1,6 @@
 # Auto Parallel Training
 
-LiBai supports **auto-parallel training** strategy which means LiBai will automatically find **the most efficient parallel mode** for a specific model during training. Users can try out auto-parallel training by the following steps.
+LiBai supports **auto-parallel training** which means LiBai will automatically find **an efficient parallel training strategy** for a specific model during training. Users can try out auto-parallel training by the following steps.
 
 ## Installation
 Install OneFlow Auto-Parallel Branch
