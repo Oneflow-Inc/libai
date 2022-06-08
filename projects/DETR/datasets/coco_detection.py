@@ -4,8 +4,6 @@ COCO dataset which returns image_id for evaluation.
 Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/coco_utils.py
 """
 
-from numpy import dtype
-
 import oneflow as flow
 import flowvision
 from pycocotools import mask as coco_mask
@@ -29,7 +27,6 @@ def convert_coco_poly_to_mask(segmentations, height, width):
     else:
         masks = flow.zeros((0, height, width), dtype=flow.uint8)
     return masks
-
 
 
 class ConvertCocoPolysToMask(object):

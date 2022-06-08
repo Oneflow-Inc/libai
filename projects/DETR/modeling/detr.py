@@ -18,7 +18,8 @@ import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
 
-from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
+# from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
+from DETR.datasets.coco_dataloader import nested_tensor_from_tensor_list
 
 
 class DETR(nn.Module):

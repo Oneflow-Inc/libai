@@ -26,7 +26,8 @@ from oneflow import Tensor
 
 import utils.box_ops as box_ops
 from utils.misc import interpolate
-from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
+# from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
+from DETR.datasets.coco_dataloader import nested_tensor_from_tensor_list
 
 try:
     from panopticapi.utils import id2rgb, rgb2id

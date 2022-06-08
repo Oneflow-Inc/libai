@@ -1,12 +1,14 @@
 from statistics import mode
 from libai.config import get_config, LazyCall
-from libai.data.datasets.coco import CocoDetection
+# from libai.data.datasets.coco import CocoDetection
+from ..datasets.coco_detection import CocoDetection
+from ..datasets.coco_dataloader import dataloader, make_coco_transforms
 from .models.configs_detr_resnet50 import model, postprocessors
 from ..datasets.coco_eval import CocoEvaluator, get_coco_api_from_dataset
-from libai.config.configs.common.data.coco import make_coco_transforms
+# from libai.config.configs.common.data.coco import make_coco_transforms
 
 
-dataloader = get_config("common/data/coco.py").dataloader
+# dataloader = get_config("common/data/coco.py").dataloader
 train = get_config("common/train.py").train
 graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim

@@ -10,7 +10,7 @@ from pycocotools.coco import COCO
 import pycocotools.mask as mask_util
 from contextlib import ExitStack, contextmanager
 from typing import Callable, List, Union
-from collections import OrderedDict, abc
+from collections import abc
 
 import oneflow as flow
 import flowvision

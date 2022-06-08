@@ -20,7 +20,8 @@ import oneflow.nn as nn
 import oneflow.nn.functional as F
 from oneflow.env import get_world_size
 
-from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
+# from libai.config.configs.common.data.coco import nested_tensor_from_tensor_list
+from DETR.datasets.coco_dataloader import nested_tensor_from_tensor_list
 
 from utils import box_ops
 from utils.misc import accuracy, interpolate

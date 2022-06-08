@@ -10,7 +10,7 @@ import flowvision.transforms.functional as F
 import flowvision.transforms as T
 
 from libai.config import LazyCall
-from libai.data.datasets import CocoDetection
+from .coco_detection import CocoDetection
 from libai.data.build import build_image_train_loader, build_image_test_loader
 from libai.data.structures import DistTensorData, Instance
 
@@ -44,7 +44,7 @@ def crop(image, target, region):
     if "boxes" in target:
         boxes = target["boxes"]
 
-        # BUG: oneflow does not support min/max between different dtype, such as float32 and float64
+        # TODO (ziqiu chi): oneflow does not support min/max between different dtype, such as float32 and float64
         # max_size = flow.as_tensor([w, h], dtype=flow.float32)
         max_size = flow.as_tensor([w, h], dtype=flow.float64)
 
