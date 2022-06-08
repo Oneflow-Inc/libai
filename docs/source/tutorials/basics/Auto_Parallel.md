@@ -36,9 +36,9 @@ python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/rele
 </table>
 
 
-### Train model in auto-parallel mode
+## Train/Evaluate model in auto-parallel mode
 You can train your own model in auto-prallel mode by simply updating the config as follows:
-#### Modify the training config
+### Modify config file
 ```python
 # your config
 from .common.models.graph import graph
@@ -50,7 +50,14 @@ Training model with auto-parallel on 4 GPUs:
 bash ./tools/train.sh tools/train_net.py configs/your_own_config.py 4
 ```
 
-#### Directly modify the training command line
+### Directly modify the training command line
+- auto-parallel training:
 ```shell
 bash ./tools/train.sh tools/train_net.py configs/your_own_config.py 4 graph.auto_parallel.enabled=True
+```
+
+- auto-parallel evaluation:
+
+```shell
+bash ./tools/train.sh tools/train_net.py configs/your_own_config.py 4 --eval graph.auto_parallel.enabled=True
 ```
