@@ -17,11 +17,7 @@ from libai.data.structures import DistTensorData, Instance
 
 def box_xyxy_to_cxcywh(x):
 
-    # NOTE: oneflow does not support unbind op
-    # x0, y0, x1, y1 = x.unbind(-1)
-
-    x0, y0, x1, y1 = x.split(1,-1)
-    x0, y0, x1, y1 = x0.squeeze(-1), y0.squeeze(-1), x1.squeeze(-1), y1.squeeze(-1)
+    x0, y0, x1, y1 = x.unbind(-1)
 
     b = [(x0 + x1) / 2, (y0 + y1) / 2,
          (x1 - x0), (y1 - y0)]
@@ -399,7 +395,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
         ),
     ],
     # NOTE: num_workers=4 as default
-    num_workers=0,
+    num_workers=4,
     mixup_func=None,
     collate_fn = collate_fn
 )

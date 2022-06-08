@@ -331,7 +331,7 @@ def inference_on_coco_dataset(
             tensor_batch = imgs.tensor.shape[0]
             # tensor_batch = data["images"].tensors.tensor.shape[0]
             valid_sample = tensor_batch - last_batch_lack
-            # TODO: Make sure how to impl pad_batch. Graph mode needs this.
+            # TODO (ziqiu chi): Make sure how to impl pad_batch. Graph mode needs this.
             # paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
             _, outputs = model(data)
             # get valid samplen
@@ -341,23 +341,16 @@ def inference_on_coco_dataset(
                                              if imgs.tensor.placement.ranks.ndim == 1 
                                              else [[0]])[:valid_sample]
             
-            # *NOTE: dtype of detr label: tuple. len(labels)=bsz, labels[0].dtype=dict
-            valid_data["labels"] = []
-            for label in data["labels"]:
-                label_dict = {}
-                for key, value in label.items():
-                    label_dict[key] = value.tensor
-                    # label_dict[key] = dist.ttol(value.tensor, ranks=[0] if value.tensor.placement.ranks.ndim == 1 else [[0]])
-                valid_data["labels"].append(label_dict)
-            valid_data["labels"] = tuple(valid_data["labels"][:valid_sample])
+            valid_data["labels"] = tuple(data["labels"][:valid_sample])
                 
             valid_outputs = {}
-            # TODO: impl aux_outputs
             for key, value in outputs.items():
+                if key == "aux_outputs":
+                    continue
                 value = dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
 
                 if value.ndim > 1:
-                    valid_outputs[key] = value[:valid_sample]  # Slice if it's batched output
+                    valid_outputs[key] = value[:valid_sample]  
                 else:
                     valid_outputs[key] = value
 

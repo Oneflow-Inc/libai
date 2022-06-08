@@ -113,9 +113,6 @@ class CocoDetection(flowvision.datasets.CocoDetection):
             img, target = self._transforms(img, target)
         img = DistTensorData(img, placement_idx=0)
 
-        # for k, v in target.items():
-        #     target[k] = DistTensorData(v, placement_idx=-1)
-            
         data_sample = Instance(
             images=img,
             labels=target,

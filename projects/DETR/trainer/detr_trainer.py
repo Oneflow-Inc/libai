@@ -28,22 +28,6 @@ from libai.engine.trainer import TrainerBase
 
 
 class DetrEagerTrainer(TrainerBase):
-    """
-    A simple eager trainer for the most common type of task:
-    single-cost single-optimizer single-data-source iterative optimization,
-    optionally using data-parallelism.
-    It assumes that every step, you:
-
-    1. Compute the loss with a data from the data_loader.
-    2. Compute the gradients with the above loss.
-    3. Update the model with the optimizer.
-
-    All other tasks during training (checkpointing, logging, evaluation, LR schedule)
-    are maintained by hooks, which can be registered by :meth:`TrainerBase.register_hooks`.
-    If you want to do anything fancier than this,
-    either subclass TrainerBase and implement your own `run_step`,
-    or write your own training loop.
-    """
 
     def __init__(self, model, data_loader, optimizer, grad_acc_steps=1):
         """
@@ -83,11 +67,7 @@ class DetrEagerTrainer(TrainerBase):
         for k in loss_dict.keys():
             if k in weight_dict:
                 losses += loss_dict[k] * weight_dict[k]
-        # losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
-        # try:
-        #     losses.backward()
-        # except:
-        #     print(data["images"][0].tensor.shape)
+        losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
         losses.backward()
         self.write_metrics(loss_dict, data_time)
 

@@ -80,57 +80,19 @@ class DetrDefaultTrainer(DefaultTrainer):
 
     @classmethod
     def test(cls, cfg, test_loaders, model, evaluator=None):
-        """
-        Evaluate the given model. The given model is expected to already contain
-        weights to evaluate.
 
-        Args:
-            cfg (CfgNode):
-            test_loaders: list [dataloader1, dataloader2, ...]
-            model (nn.Graph):
-            evaluators (list[DatasetEvaluator] or None): if None, will call
-                :meth:`build_evaluator`. Otherwise, must have the same length as
-                ``cfg.DATASETS.TEST``.
-
-        Returns:
-            dict: a dict of result metrics
-        """
         test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
         evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
 
-        # results = OrderedDict()
-        for idx, data_loader in enumerate(test_loaders):
-            # When evaluators are passed in as arguments,
-            # implicitly assume that evaluators can be created before data_loader.
-            # dataset_name = type(data_loader.dataset).__name__
-            inference_on_coco_dataset(
-                model,
-                data_loader,
-                test_batch_size,
-                cfg.train.evaluation.eval_iter,
-                cls.get_batch,
-                evaluator,
-            )
+        inference_on_coco_dataset(
+            model,
+            test_loaders[0],
+            test_batch_size,
+            cfg.train.evaluation.eval_iter,
+            cls.get_batch,
+            evaluator,
+        )
             
-            # * In pycocotools, COCOeval prints the summarize info.
-            # TODO: Inherit the COCOeval class and develop the logger info
-            # results[dataset_name] = results_i
-            # if dist.is_main_process():
-            #     assert isinstance(
-            #         results_i, dict
-            #     ), "Evaluator must return a dict on the main process. Got {} instead.".format(
-            #         results_i
-            #     )
-            #     logger.info(
-            #         "Evaluation results for {} in csv format:".format(
-            #             colored(dataset_name, "green")
-            #         )
-            #     )
-            #     print_csv_format(results_i)
-
-        # if len(results) == 1:
-        #     results = list(results.values())[0]
-        # return results
     @classmethod
     def build_model(cls, cfg):
         """

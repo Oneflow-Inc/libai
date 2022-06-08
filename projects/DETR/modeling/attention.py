@@ -113,10 +113,6 @@ class DetrMultiheadAttention(MultiheadAttention):
         context = flow.bmm(attention_weights, value)
         
         # Change shape: [bsz*num_heads, tgt_len, head_size] -> [tgt_len, bsz*num_heads, head_size] -> [tgt_len, bsz, embed_dim]
-        # context = context.transpose(0,1).contiguous().view(tgt_len, bsz, self.hidden_size)
-        print(context.sbp, context.placement)    
-        print(context.transpose(0,1).shape)    
-        print(tgt_len, bsz, self.hidden_size)
         context = context.transpose(0,1).contiguous().view(tgt_len, bsz, self.hidden_size)
 
         output = self.dense(context)

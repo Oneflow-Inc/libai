@@ -12,16 +12,22 @@ graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].img_folder= "/dataset/mscoco_2017/train2017"
-dataloader.train.dataset[0].ann_file = "/dataset/mscoco_2017/annotations/instances_train2017.json"
+path_train_img = "/dataset/coco/train2017"
+path_train_ann = "/dataset/coco/annotations/instances_train2017.json"
+
+path_val_img = "/dataset/coco/val2017"
+path_val_ann = "/dataset/coco/annotations/instances_val2017.json"
+
+dataloader.train.dataset[0].img_folder= path_train_img
+dataloader.train.dataset[0].ann_file = path_train_ann
 dataloader.train.dataset_mixer = None
 
-dataloader.test[0].dataset.img_folder = "/dataset/mscoco_2017/val2017"
-dataloader.test[0].dataset.ann_file = "/dataset/mscoco_2017/annotations/instances_val2017.json"
+dataloader.test[0].dataset.img_folder = path_val_img
+dataloader.test[0].dataset.ann_file = path_val_ann
 
 
 # For inference
-# train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
+train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
@@ -33,11 +39,12 @@ train.log_period = 1
 
 train.checkpointer["period"]=5000
 
-# *TODO: refine it
-coco_detection = LazyCall(CocoDetection)(img_folder="/dataset/mscoco_2017/val2017", 
-                               ann_file="/dataset/mscoco_2017//annotations/instances_val2017.json", 
-                               return_masks=False, transforms=make_coco_transforms("val"))
-
+coco_detection = LazyCall(CocoDetection)(
+    img_folder = path_val_img, 
+    ann_file = path_val_ann, 
+    return_masks = False,
+    transforms = make_coco_transforms("val")
+    )
 train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detection)
 
 
@@ -56,4 +63,4 @@ graph.enabled = False
 
 # model_parallel
 train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 4
+train.dist.tensor_parallel_size = 2
