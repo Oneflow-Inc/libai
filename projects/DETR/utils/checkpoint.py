@@ -6,6 +6,8 @@ LastEditTime: 2022-05-25 19:15:32
 FilePath: /libai/projects/DETR/utils/checkpoint.py
 Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 '''
+import os
+
 import oneflow as flow
 import oneflow.nn as nn
 
@@ -58,5 +60,46 @@ class detr_checkpointer(Checkpointer):
     
             load_tensor(self.model.state_dict()[key], value)
 
-        # return any further checkpoint data
-        # return checkpoint 
+    def save(self, name: str, **kwargs):
+        """
+        Dump model and checkpointables to a file.
+
+        Args:
+            name (str): name of the file.
+            kwargs (dict): extra arbitrary data to save.
+        """
+        # Since backbone needs the frozenBN2d
+        # that uses the self.register_buffer (local mode) 
+        local_state = {}
+        for k, v in self.model.state_dict().items():
+            if v.is_global:
+                local_state[k] = v.to_local()
+            else:
+                local_state[k] = v
+
+        data = {}
+        data["model"] = local_state
+        for key, obj in self.checkpointables.items():
+            data[key] = obj.state_dict()
+        data.update(kwargs)
+
+        basename = name
+        save_dir = os.path.join(self.save_dir, basename)
+        assert os.path.basename(save_dir) == basename, basename
+        if not self.path_manager.exists(save_dir):
+            self.path_manager.mkdirs(save_dir)
+        self.logger.info("Saving checkpoint to {}".format(save_dir))
+
+        for save_name in data:
+            if save_name == "iteration":
+                continue
+            save_file = os.path.join(save_dir, save_name)
+            # If directory existing, remove it for saving
+            if self.path_manager.exists(save_file):
+                self.path_manager.mkdirs(save_file)
+                
+            flow.save(data[save_name], save_file)
+            
+
+        if basename != "model_best":
+            self.tag_last_checkpoint(basename)

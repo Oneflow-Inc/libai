@@ -15,6 +15,7 @@
 
 
 import logging
+from collections import OrderedDict
 
 import oneflow as flow
 
@@ -28,8 +29,7 @@ from libai.utils import distributed as dist
 
 from trainer.detr_trainer import DetrEagerTrainer
 from datasets.coco_eval import inference_on_coco_dataset
-from libai.data.structures import Instance
-
+from modeling.backbone import FrozenBatchNorm2d
 
 class DetrDefaultTrainer(DefaultTrainer):
 
@@ -113,7 +113,13 @@ class DetrDefaultTrainer(DefaultTrainer):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
-
         model.apply(dist.convert_to_distributed_default_setting)
+        
+        # Line 116 can not switch buffer params to global
+        # Thus the following code switches buffer params in FrozenBatchNorm2d to global
+        model.backbone[0].body.to_global(
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
+                    placement=dist.get_layer_placement(0), 
+                    )
         
         return model
