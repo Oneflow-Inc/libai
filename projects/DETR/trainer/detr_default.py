@@ -116,7 +116,7 @@ class DetrDefaultTrainer(DefaultTrainer):
         model.apply(dist.convert_to_distributed_default_setting)
         
         # Line 116 can not switch buffer params to global
-        # Thus the following code switches buffer params in FrozenBatchNorm2d to global
+        # Thus the following code impl it.
         model.backbone[0].body.to_global(
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
                     placement=dist.get_layer_placement(0), 

@@ -59,16 +59,11 @@ class FrozenBatchNorm2d(nn.Module):
             missing_keys, unexpected_keys, error_msgs)
 
     def forward(self, x):
-        # move reshapes to the beginning
-        # to make it fuser-friendly
         
-        sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        placement = x.placement
-        
-        w = self.weight.reshape(1, -1, 1, 1).to_global(sbp=sbp, placement=placement)
-        b = self.bias.reshape(1, -1, 1, 1).to_global(sbp=sbp, placement=placement)
-        rv = self.running_var.reshape(1, -1, 1, 1).to_global(sbp=sbp, placement=placement)
-        rm = self.running_mean.reshape(1, -1, 1, 1).to_global(sbp=sbp, placement=placement)
+        w = self.weight.reshape(1, -1, 1, 1)
+        b = self.bias.reshape(1, -1, 1, 1)
+        rv = self.running_var.reshape(1, -1, 1, 1)
+        rm = self.running_mean.reshape(1, -1, 1, 1)
         
         eps = 1e-5
         scale = w * (rv + eps).rsqrt()
