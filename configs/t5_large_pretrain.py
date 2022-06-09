@@ -39,3 +39,4 @@ train.num_accumulation_steps = 8
 train.log_period = 1
 
 train.activation_checkpoint.enabled = True
+train.train_iter = 5

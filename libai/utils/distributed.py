@@ -137,6 +137,10 @@ class _DistributeUtil(object):
             if stage_id >= (self._pipeline_parallel_size - stage_offset):
                 self._layer_stage_ids.append(stage_id)
             self._layer_stage_ids.extend([stage_id] * num_layers_per_stage)
+        # self._layer_stage_ids = [0, 0, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3]
+        self._layer_stage_ids =   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1]
+        # print(self._layer_stage_ids)
+        # exit(0)
 
         self._layer_ranks = [stages_devices[stage_id] for stage_id in self._layer_stage_ids]
 
