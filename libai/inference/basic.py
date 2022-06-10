@@ -78,10 +78,6 @@ class BasePipeline(metaclass=ABCMeta):
         tensor_parallel=1,
         pipeline_parallel=1,
     ):
-        self.cfg.train.dist.num_nodes = dist.get_num_nodes()
-        self.cfg.train.dist.num_gpus_per_node = (
-            dist.get_world_size() // dist.get_num_nodes()
-        )  # noqa
         self.cfg.train.dist.data_parallel_size = data_parallel
         self.cfg.train.dist.tensor_parallel_size = tensor_parallel
         self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
