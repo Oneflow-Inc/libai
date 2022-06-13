@@ -706,7 +706,7 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
         head_size = int(hidden_size / num_heads)
 
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
-        prefix = "GPT_model.transformer." if has_prefix else "GPT_model."
+        prefix = "GPT_model." if has_prefix else "GPT_model.transformer."
         layer_idx = 2 if has_prefix else 1
 
         old_keys = oneflow_state_dict.keys()
@@ -825,3 +825,5 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
         # update default_cfg by kwargs
         for k, v in self.kwargs:
             self.default_cfg[k] = v
+
+
