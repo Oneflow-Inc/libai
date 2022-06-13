@@ -527,7 +527,7 @@ class BertForClassification(nn.Module):
         self.dropout = nn.Dropout(classifier_dropout)
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None, labels=None, **kwargs):
-        labels = labels if labels is not None else kwargs.get('ns_labels')
+        labels = labels if labels is not None else kwargs.get("ns_labels")
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         pooled_output = outputs[1]
         pooled_output = self.dropout(pooled_output)
