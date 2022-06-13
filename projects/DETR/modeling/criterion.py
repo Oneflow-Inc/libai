@@ -163,13 +163,6 @@ class SetCriterion(nn.Module):
 
         # outputs["pred_logits"].shape -> oneflow.Size([bsz, num_queries, 92])  
         # outputs["pred_boxes"].shape -> oneflow.Size([bsz, num_queries, 4])
-        # sbp, placement = outputs["pred_logits"].sbp, outputs["pred_logits"].placement
-        # Switch outputs to local mode
-        # outputs = {k: v.to_local().to(device="cuda:0") for k, v in outputs.items() if k != "aux_outputs"}
-        # if "aux_outputs" in outputs.keys():
-        #     for i in range(outputs["aux_outputs"]):
-        #         for k, v in outputs["aux_outputs"][i].items():
-        #             outputs["aux_outputs"][i][k] = v.to_local().to(device="cuda:0")
         
         outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
         

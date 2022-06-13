@@ -29,7 +29,7 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 
 
 # For inference
-# train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
+train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
