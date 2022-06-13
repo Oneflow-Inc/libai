@@ -34,10 +34,16 @@ from .utils import init_method_normal
 
 
 class RobertaExtendedAttnMask(BertExtendedAttnMask):
+    """
+    Same as BertExtendedAttnMask.
+    """
     pass
 
 
 class RobertaEmbeddings(BertEmbeddings):
+    """
+    Same as BertEmbeddings with a tiny tweak for vocab_embeddings and position_embeddings.
+    """
     def __init__(
         self,
         vocab_size,
@@ -75,6 +81,9 @@ class RobertaEmbeddings(BertEmbeddings):
 
 
 class RobertaPooler(BertPooler):
+    """
+    Same as BertPooler.
+    """
     pass
 
 
