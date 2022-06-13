@@ -526,14 +526,15 @@ class BertForClassification(nn.Module):
         )
         self.dropout = nn.Dropout(classifier_dropout)
 
-    def forward(self, input_ids, attention_mask, tokentype_ids=None, ns_labels=None, **kwargs):
+    def forward(self, input_ids, attention_mask, tokentype_ids=None, labels=None, **kwargs):
+        labels = labels if labels is not None else kwargs.get('ns_labels')
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         pooled_output = outputs[1]
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
-        if ns_labels is not None:
+        if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), ns_labels.view(-1))
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             loss = loss.to_global(sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]))
             return {"cls_loss": loss}
         else:
