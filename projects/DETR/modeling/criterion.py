@@ -70,7 +70,7 @@ class SetCriterion(nn.Module):
         loss_ce = F.cross_entropy(
             src_logits.transpose(1, 2), 
             target_classes, 
-            self.empty_weight.to(device=src_logits.device))
+            self.empty_weight.to_local())
         losses = {'loss_ce': loss_ce.to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)}
         return losses
 

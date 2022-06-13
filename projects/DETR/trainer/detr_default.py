@@ -30,6 +30,8 @@ from libai.utils import distributed as dist
 from trainer.detr_trainer import DetrEagerTrainer
 from datasets.coco_eval import inference_on_coco_dataset
 from modeling.backbone import FrozenBatchNorm2d
+from utils.distributed import convert_to_distributed_default_setting
+
 
 class DetrDefaultTrainer(DefaultTrainer):
 
@@ -113,13 +115,7 @@ class DetrDefaultTrainer(DefaultTrainer):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
-        model.apply(dist.convert_to_distributed_default_setting)
-        
-        # Line 116 can not switch buffer params to global
-        # Thus the following code impl it.
-        model.backbone[0].body.to_global(
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
-                    placement=dist.get_layer_placement(0), 
-                    )
-        
+
+        model.apply(convert_to_distributed_default_setting)
+
         return model
