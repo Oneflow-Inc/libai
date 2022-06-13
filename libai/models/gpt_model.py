@@ -154,7 +154,7 @@ class GPTModel(nn.Module):
             amp_enabled=amp_enabled,
         )
 
-        self.casual_mask = CasualMask()
+        # self.casual_mask = CasualMask()
 
         self.transformer = Transformer(
             num_layers,
@@ -210,8 +210,8 @@ class GPTModel(nn.Module):
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
         input_embeds = self.embeddings(input_ids, 0)
 
-        attention_mask = self.casual_mask(input_ids, past_length=0)
-        transformer_output = self.transformer(input_embeds, attention_mask)
+        # attention_mask = self.casual_mask(input_ids, past_length=0)
+        transformer_output = self.transformer(input_embeds, attention_mask=None)
 
         output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
 
