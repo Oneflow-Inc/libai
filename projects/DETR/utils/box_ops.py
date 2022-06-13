@@ -19,11 +19,19 @@ from flowvision.layers.blocks.boxes import box_area
 
 
 def box_cxcywh_to_xyxy(x):
+    # TODO (ziqiu chi): unbind does not support global tensor
+    # https://github.com/Oneflow-Inc/libai/pull/260#issuecomment-1153500398
+    is_global = x.is_global
+    if is_global:
+        sbp, placement = x.sbp, x.placement
+        x = x.to_local()
     x_c, y_c, w, h = x.unbind(-1)
     b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
-         (x_c + 0.5 * w), (y_c + 0.5 * h)]
-    return flow.stack(b, dim=-1).to(dtype=flow.float64)
-
+        (x_c + 0.5 * w), (y_c + 0.5 * h)]
+    box = flow.stack(b, dim=-1)
+    if is_global:
+        return box.to_global(sbp=sbp, placement=placement)
+    return box
 
 def box_xyxy_to_cxcywh(x):
     x0, y0, x1, y1 = x.unbind(-1)

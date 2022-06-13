@@ -73,7 +73,6 @@ class DETR(nn.Module):
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
         if self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
-            
         loss_dict = self.criterion(out, targets)    
         return loss_dict, out
 

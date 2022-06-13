@@ -67,7 +67,7 @@ class DetrEagerTrainer(TrainerBase):
         for k in loss_dict.keys():
             if k in weight_dict:
                 losses += loss_dict[k] * weight_dict[k]
-        losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+        # losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
         losses.backward()
         self.write_metrics(loss_dict, data_time)
         

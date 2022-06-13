@@ -20,6 +20,9 @@ import oneflow.nn as nn
 import oneflow.nn.functional as F
 from oneflow.env import get_world_size
 
+
+from libai.data.structures import DistTensorData
+
 from DETR.datasets.coco_dataloader import nested_tensor_from_tensor_list
 
 from utils import box_ops
@@ -52,7 +55,7 @@ class SetCriterion(nn.Module):
         empty_weight[-1] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
 
-    def loss_labels(self, outputs, targets, indices, num_boxes, sbp, placement):
+    def loss_labels(self, outputs, targets, indices, num_boxes):
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
@@ -60,21 +63,23 @@ class SetCriterion(nn.Module):
         src_logits = outputs['pred_logits']
         target_classes = flow.full(src_logits.shape[:2], self.num_classes, dtype=flow.int64)
       
-        target_classes_o = flow.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)]) # .to(device=src_logits.device)
+        target_classes_o = flow.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
         
         batch_idx, src_idx = self._get_src_permutation_idx(indices)
         idx = batch_idx, src_idx
-        
         target_classes[idx] = target_classes_o
-        target_classes = target_classes.to(device=src_logits.device)
+        
+        target_classes = DistTensorData(target_classes, placement_idx=0)
+        target_classes.to_global()
+        
         loss_ce = F.cross_entropy(
             src_logits.transpose(1, 2), 
-            target_classes, 
-            self.empty_weight.to_local())
-        losses = {'loss_ce': loss_ce.to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)}
+            target_classes.tensor, 
+            self.empty_weight)
+        losses = {'loss_ce': loss_ce.to(dtype=flow.float64)}
         return losses
 
-    def loss_boxes(self, outputs, targets, indices, num_boxes, sbp, placement):
+    def loss_boxes(self, outputs, targets, indices, num_boxes):
         """Compute the losses related to the bounding boxes, the L1 regression loss and the GIoU loss
            targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 4]
            The target boxes are expected in format (center_x, center_y, w, h), normalized by the image size.
@@ -82,19 +87,19 @@ class SetCriterion(nn.Module):
         assert 'pred_boxes' in outputs
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
-        target_boxes = flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-        
+        target_boxes = DistTensorData(flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0), placement_idx=0)
+        target_boxes.to_global()
         l1_loss = nn.L1Loss(reduction="none")
-        loss_bbox = l1_loss(src_boxes, target_boxes)
+        loss_bbox = l1_loss(src_boxes, target_boxes.tensor)
 
         losses = {}
-        losses['loss_bbox'] = (loss_bbox.sum() / num_boxes).to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)
+        losses['loss_bbox'] = loss_bbox.sum() / num_boxes
 
         loss_giou = 1 - flow.diag(box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
-            box_ops.box_cxcywh_to_xyxy(target_boxes)))
+            box_ops.box_cxcywh_to_xyxy(target_boxes.tensor)))
         
-        losses['loss_giou'] = (loss_giou.sum() / num_boxes).to(dtype=flow.float32).to_global(sbp=sbp, placement=placement)
+        losses['loss_giou'] = (loss_giou.sum() / num_boxes)
         return losses
 
     def loss_masks(self, outputs, targets, indices, num_boxes, sbp, placement):
@@ -139,14 +144,14 @@ class SetCriterion(nn.Module):
         tgt_idx = flow.cat([tgt for (_, tgt) in indices])
         return batch_idx, tgt_idx
 
-    def get_loss(self, loss, outputs, targets, indices, num_boxes, sbp, placement):
+    def get_loss(self, loss, outputs, targets, indices, num_boxes):
         loss_map = {
             'labels': self.loss_labels,
             'boxes': self.loss_boxes,
             'masks': self.loss_masks
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
-        return loss_map[loss](outputs, targets, indices, num_boxes, sbp, placement)
+        return loss_map[loss](outputs, targets, indices, num_boxes)
 
     def forward(self, outputs, targets):
         """ This performs the loss computation.
@@ -158,13 +163,13 @@ class SetCriterion(nn.Module):
 
         # outputs["pred_logits"].shape -> oneflow.Size([bsz, num_queries, 92])  
         # outputs["pred_boxes"].shape -> oneflow.Size([bsz, num_queries, 4])
-        sbp, placement = outputs["pred_logits"].sbp, outputs["pred_logits"].placement
+        # sbp, placement = outputs["pred_logits"].sbp, outputs["pred_logits"].placement
         # Switch outputs to local mode
-        outputs = {k: v.to_local().to(device="cuda:0") for k, v in outputs.items() if k != "aux_outputs"}
-        if "aux_outputs" in outputs.keys():
-            for i in range(outputs["aux_outputs"]):
-                for k, v in outputs["aux_outputs"][i].items():
-                    outputs["aux_outputs"][i][k] = v.to_local().to(device="cuda:0")
+        # outputs = {k: v.to_local().to(device="cuda:0") for k, v in outputs.items() if k != "aux_outputs"}
+        # if "aux_outputs" in outputs.keys():
+        #     for i in range(outputs["aux_outputs"]):
+        #         for k, v in outputs["aux_outputs"][i].items():
+        #             outputs["aux_outputs"][i][k] = v.to_local().to(device="cuda:0")
         
         outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
         
@@ -181,7 +186,7 @@ class SetCriterion(nn.Module):
         # Compute all the requested losses
         losses = {}
         for loss in self.losses:
-            losses.update(self.get_loss(loss, outputs, targets, indices, num_boxes, sbp, placement))
+            losses.update(self.get_loss(loss, outputs, targets, indices, num_boxes))
         # In case of auxiliary losses, we repeat this process with the output of each intermediate layer.
         if 'aux_outputs' in outputs:
             for i, aux_outputs in enumerate(outputs['aux_outputs']):

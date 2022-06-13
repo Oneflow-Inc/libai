@@ -34,8 +34,8 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
 train.test_micro_batch_size = 2
-train.train_iter=200
-train.evaluation.eval_period = 10
+train.train_epoch = 1
+# train.evaluation.eval_period = 10
 
 coco_detection = LazyCall(CocoDetection)(
     img_folder = path_val_img, 
