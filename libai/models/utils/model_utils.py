@@ -439,12 +439,12 @@ class LoadPretrainedBase(object):
 
 class LoadPretrainedBert(LoadPretrainedBase):
     def __init__(
-        self, model, default_cfg, pretrained_model_path, base_model_prefix="bert", **kwargs
+        self, model, default_cfg, pretrained_model_path, **kwargs
     ):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
         # base_model_prefix_1 is BERT's prefix in Transformers.
         # base_model_prefix_2 is BERT's prefix in LiBai.
-        self.base_model_prefix_1 = base_model_prefix
+        self.base_model_prefix_1 = "bert"
         self.base_model_prefix_2 = "bert"
 
     def _convert_state_dict(self, torch_state_dict, cfg):
@@ -679,12 +679,12 @@ class LoadPretrainedBert(LoadPretrainedBase):
 
 class LoadPretrainedGPT2(LoadPretrainedBase):
     def __init__(
-        self, model, default_cfg, pretrained_model_path, base_model_prefix="transformer", **kwargs
+        self, model, default_cfg, pretrained_model_path, **kwargs
     ):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
         # base_model_prefix_1 is GPT's prefix in Transformers.
         # base_model_prefix_2 is GPT's prefix in LiBai.
-        self.base_model_prefix_1 = base_model_prefix
+        self.base_model_prefix_1 = "transformer"
         self.base_model_prefix_2 = "GPT_model"
 
     def _convert_state_dict(self, torch_state_dict, cfg):
