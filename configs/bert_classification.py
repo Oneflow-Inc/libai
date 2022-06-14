@@ -1,16 +1,21 @@
 from libai.config import LazyCall
 from libai.models.bert_model import BertForClassification
-from libai.config.configs.common.models.bert import cfg
+from .common.models.bert import cfg as bert_cfg
 from .common.models.graph import graph
 from .common.train import train
-from .common.data.bert_dataset import tokenization
+from .common.optim import optim
+from .common.data.bert_dataset import tokenization, dataloader
 
 vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
+data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
 
-cfg["num_labels"] = 2
-cfg["classifier_dropout"] = 0.1
+dataloader.train.dataset[0].data_prefix = data_prefix
+dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
-model = LazyCall(BertForClassification)(cfg=cfg)
+bert_cfg["num_labels"] = 2
+bert_cfg["classifier_dropout"] = 0.1
+
+model = LazyCall(BertForClassification)(cfg=bert_cfg)
 tokenization.tokenizer.vocab_file = vocab_file
 
 model.cfg.vocab_size = 21128
