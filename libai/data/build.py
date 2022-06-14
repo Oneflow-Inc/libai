@@ -211,6 +211,7 @@ def build_nlp_train_loader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
+        persistent_workers=True if num_workers > 0 else False,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )
@@ -259,7 +260,11 @@ def build_nlp_test_loader(
     sampler = instantiate(sampler)
 
     test_loader = DataLoader(
-        dataset, batch_sampler=sampler, num_workers=num_workers, collate_fn=collate_fn
+        dataset, 
+        batch_sampler=sampler, 
+        num_workers=num_workers, 
+        persistent_workers=True if num_workers > 0 else False, 
+        collate_fn=collate_fn,
     )
     return test_loader
 
@@ -330,6 +335,7 @@ def build_image_train_loader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
+        persistent_workers=True if num_workers > 0 else False,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )
@@ -383,6 +389,7 @@ def build_image_test_loader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
+        persistent_workers=True if num_workers > 0 else False,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )

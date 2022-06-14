@@ -239,15 +239,8 @@ class MultiheadAttention(nn.Module):
 
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
-            if self.scale_mask_softmax_fusion:
-                if self.attn_mask_type == AttnMaskType.causal:
-                    attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(
-                        attention_scores,
-                        p=self.attention_dropout_prob,
-                        diagonal=0,
-                        tril_scale_value=self.coeff,
-                    )[0]
-                else:
+            if self.scale_mask_softmax_fusion:     
+                if self.attn_mask_type == AttnMaskType.padding:
                     # attention_mask = attention_mask.repeat(1, attention_scores.shape[1], 1, 1)
                     attention_weights = flow._C.fused_scale_mask_softmax_dropout(
                         attention_scores,
@@ -268,9 +261,18 @@ class MultiheadAttention(nn.Module):
                 # [bsz, num_heads, tgt_len, src_len]
                 attention_weights = self.dropout(attention_weights)
         else:
-            attention_weights = flow.softmax(attention_scores, dim=-1)
-            # [bsz, num_heads, tgt_len, src_len]
-            attention_weights = self.dropout(attention_weights)
+            if self.scale_mask_softmax_fusion:
+                if self.attn_mask_type == AttnMaskType.causal:
+                    attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(
+                        attention_scores,
+                        p=self.attention_dropout_prob,
+                        diagonal=0,
+                        tril_scale_value=self.coeff,
+                    )[0]
+            else:
+                attention_weights = flow.softmax(attention_scores, dim=-1)
+                # [bsz, num_heads, tgt_len, src_len]
+                attention_weights = self.dropout(attention_weights)
 
         # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
         context = flow.matmul(attention_weights, value)
