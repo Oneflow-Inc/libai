@@ -84,7 +84,7 @@ train = dict(
         # evaluator for calculating top-k acc
         evaluator=LazyCall(ClsEvaluator)(topk=(1, 5)),
         eval_period=5000,
-        eval_iter=1e9,  # running steps for validation/test
+        eval_iter=1e5,  # running steps for validation/test
 
         # Metrics to be used for best model checkpoint.
         eval_metric="Acc@1",

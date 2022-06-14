@@ -13,11 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
 import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
 from libai.utils import distributed as dist
+
+logger = logging.getLogger(__name__)
 
 
 class GraphBase(nn.Graph):
@@ -32,6 +36,7 @@ class GraphBase(nn.Graph):
         zero_optim=False,
         zero_stage=0,
         is_train=True,
+        auto_parallel_conf=None,
     ):
         super().__init__()
 
@@ -75,6 +80,27 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_cast_scale(True)
 
         # dist_util = dist.get_dist_util()
+
+        # auto_parallel
+        if auto_parallel_conf is not None and auto_parallel_conf.enabled:
+            try:
+                self.config.enable_auto_parallel(True)
+                self.config.enable_auto_parallel_prune_parallel_cast_ops(
+                    auto_parallel_conf.prune_parallel_cast_ops
+                )
+                self.config.set_auto_parallel_computation_cost_ratio(0.05)
+                self.config.set_auto_parallel_wait_time(1.65e4)
+                self.config.enable_auto_parallel_mainstem_algo(auto_parallel_conf.mainstem_algo)
+                self.config.enable_auto_parallel_sbp_collector(auto_parallel_conf.sbp_collector)
+            except RuntimeWarning:
+                import warnings
+
+                warnings.warn(
+                    "The version of oneflow don't support auto_parallel.\n"
+                    "Please reinstall the oneflow for auto_parallel:\n"
+                    "python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/release-auto_parallel-v0.1/[PLATFORM]"  # noqa
+                )
+
         # Enable compute_stream for computation and communication with the same cuda stream.
         # This will reduce memory when using model parallelism.
         # if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
@@ -84,11 +110,19 @@ class GraphBase(nn.Graph):
 
     def build(self, **kwargs):
         if self.is_train:
+            logger.info(
+                "Start compling the train graph which may take some time. "
+                "Please wait for a moment ..."
+            )
             loss_dict = self.model(**kwargs)
             losses = sum(loss_dict.values())
             losses.backward()
             return loss_dict
         else:
+            logger.info(
+                "Start compling the eval graph which may take some time. "
+                "Please wait for a moment ..."
+            )
             return self.model(**kwargs)
 
     def set_activation_checkpoint(self):

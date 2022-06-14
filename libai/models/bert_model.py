@@ -194,8 +194,9 @@ class BertLoss(nn.Module):
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
         # because (lm_loss * loss_mask) / loss_mask.sum() cannot accept P / P
-        denominator = loss_mask.sum().to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        denominator = (
+            loss_mask.sum().to_global(sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+            + 1e-7
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
         # NOTE(l1aoxingyu): Change lm loss sbp sign [P, P] -> [P, B] to add with sop loss
@@ -501,3 +502,37 @@ class BertForPreTraining(nn.Module):
 
         # Set the last layernorm stage id
         model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+
+
+class BertForClassification(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+
+        self.bert = BertModel(cfg)
+        self.classifier = Linear(
+            cfg.hidden_size,
+            cfg.num_labels,
+            bias=True,
+            parallel="row",
+            init_method=init_method_normal(cfg.initializer_range),
+            layer_idx=-1,
+        )
+        classifier_dropout = (
+            cfg.classifier_dropout
+            if cfg.classifier_dropout is not None
+            else cfg.hidden_dropout_prob
+        )
+        self.dropout = nn.Dropout(classifier_dropout)
+
+    def forward(self, input_ids, attention_mask, tokentype_ids=None, labels=None):
+        outputs = self.bert(input_ids, attention_mask, tokentype_ids)
+        pooled_output = outputs[1]
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
+        loss = None
+        if labels is not None:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            loss = loss.to_global(sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]))
+        return {"loss": loss, "logits": logits}

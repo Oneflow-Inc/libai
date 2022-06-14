@@ -34,7 +34,7 @@ DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/
 
 DATA_MD5 = "c58f30108f718f92721af3b95e74349a"
 
-TEST_OUTPUT = "output_unittest/test_vit"
+TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_vit")
 
 setup_logger(distributed_rank=dist.get_rank())
 

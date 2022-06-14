@@ -6,7 +6,7 @@ wget
 hydra-core
 nltk
 numpy
-omegaconf
+omegaconf==2.1.0
 Pygments
 PyYAML
 jieba
@@ -24,3 +24,4 @@ isort==5.10.1
 black==21.4b2
 autoflake
 tensorboardX
+pytest

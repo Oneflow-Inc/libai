@@ -66,7 +66,7 @@ class DatasetEvaluator:
 
     def evaluate(self):
         """
-        Evaluate/summarize the performance, after processing all input/output pairs.
+        Evaluate/summarize the performance after processing all input/output pairs.
 
         Returns:
             dict:

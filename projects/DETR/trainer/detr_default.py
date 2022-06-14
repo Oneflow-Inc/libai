@@ -13,18 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from email.mime import image
-from typing import Callable, Optional
+
+import logging
+from collections import OrderedDict
 
 import oneflow as flow
-from libai.config.configs.common.data.coco import NestedTensor
 
 from libai.data import Instance
-from libai.data.structures import DistTensorData, Instance
-
-
+from libai.data.structures import Instance
 from libai.engine.default import DefaultTrainer
+from libai.config import instantiate, try_get_key
+from libai.data import Instance
+from libai.models import  build_model
+from libai.utils import distributed as dist
+
 from trainer.detr_trainer import DetrEagerTrainer
+from datasets.coco_eval import inference_on_coco_dataset
+from modeling.backbone import FrozenBatchNorm2d
+from utils.distributed import convert_to_distributed_default_setting
 
 
 class DetrDefaultTrainer(DefaultTrainer):
@@ -40,43 +46,75 @@ class DetrDefaultTrainer(DefaultTrainer):
         )
 
     @classmethod
-    def get_batch(cls, data: Instance, mixup_func: Optional[Callable] = None):
+    def get_batch(cls, data: Instance):
         """
         Convert batched local tensor to distributed tensor for model step running.
-
-        If you want to do something with batched data before model, (e.g. mixup),
-        you can rewrite this function.
         """
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
-
-        # TODO: impl the mixup_func
-        # if mixup_func is not None:
-        #     images, labels = mixup_func(
-        #         data.get("images").tensor.cuda(),
-        #         data.get("labels").tensor.cuda(),
-        #     )
-        #     data.get("images").tensor = images
-        #     data.get("labels").tensor = labels
-
-        images, labels = data
-        labels = labels[0]
-
-        tensors = DistTensorData(images.tensors, placement_idx=-1)
+            
+        images = data.get_fields()["images"]
+        labels = data.get_fields()["labels"]
+        
+        tensors = images[0] 
         tensors.to_global()
-
-        mask = DistTensorData(images.mask, placement_idx=-1)
+        
+        mask = images[1] 
         mask.to_global()
-
-        images = NestedTensor(tensors,mask)
-
-        for k,v in labels.items():
-            labels[k] = DistTensorData(flow.tensor(v), placement_idx=-1)
-            labels[k].to_global()
+        
+        images = (tensors, mask)
+        
+        for i in range(len(labels)):
+            for k, v in labels[i].items():
+                labels[i][k] = v.to(device="cuda:0")
+                
         ret_dict = {
             "images": images,
             "labels": labels
         }
-        import pdb
-        pdb.set_trace()
+
         return ret_dict 
+    
+    @classmethod
+    def build_evaluator(cls, cfg):
+        evaluator = instantiate(cfg.train.evaluation.evaluator)
+        return evaluator
+
+    @classmethod
+    def test(cls, cfg, test_loaders, model, evaluator=None):
+
+        test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
+        evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
+        inference_on_coco_dataset(
+            model,
+            test_loaders[0],
+            test_batch_size,
+            cfg.train.evaluation.eval_iter,
+            cls.get_batch,
+            evaluator,
+        )
+            
+    @classmethod
+    def build_model(cls, cfg):
+        """
+        Returns:
+            flow.nn.Module:
+
+        It now calls :func:`libai.models.build_model`.
+        Overwrite it if you'd like a different model.
+        """
+        assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
+        # Set model fp16 option because of embedding layer `white_identity` manual
+        # insert for amp training if provided.
+        if try_get_key(cfg.model, "cfg.amp_enabled") is not None:
+            cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        # In case some model define without cfg keyword.
+        elif try_get_key(cfg.model, "amp_enabled") is not None:
+            cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        model = build_model(cfg.model)
+        logger = logging.getLogger(__name__)
+        logger.info("Model:\n{}".format(model))
+
+        model.apply(convert_to_distributed_default_setting)
+
+        return model

@@ -1,3 +1,11 @@
+'''
+Author: hihippie chiziiqiu0923@gmail.com
+Date: 2022-05-12 15:39:00
+LastEditors: hihippie chiziiqiu0923@gmail.com
+LastEditTime: 2022-05-26 13:49:50
+FilePath: /libai/projects/DETR/trainer/detr_trainer.py
+Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+'''
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 #
@@ -16,29 +24,10 @@
 import time
 from typing import Callable
 
-import oneflow as flow
-
-from libai.data.structures import DistTensorData, Instance
 from libai.engine.trainer import TrainerBase
 
 
 class DetrEagerTrainer(TrainerBase):
-    """
-    A simple eager trainer for the most common type of task:
-    single-cost single-optimizer single-data-source iterative optimization,
-    optionally using data-parallelism.
-    It assumes that every step, you:
-
-    1. Compute the loss with a data from the data_loader.
-    2. Compute the gradients with the above loss.
-    3. Update the model with the optimizer.
-
-    All other tasks during training (checkpointing, logging, evaluation, LR schedule)
-    are maintained by hooks, which can be registered by :meth:`TrainerBase.register_hooks`.
-    If you want to do anything fancier than this,
-    either subclass TrainerBase and implement your own `run_step`,
-    or write your own training loop.
-    """
 
     def __init__(self, model, data_loader, optimizer, grad_acc_steps=1):
         """
@@ -68,31 +57,16 @@ class DetrEagerTrainer(TrainerBase):
         """
         assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
-
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-
-        # NOTE: it is better to impl this in libai/data/datasets/coco.py, 
-        # data = list(data)
-        # images, labels = data[0], data[1][0]
-        # images.tensors = DistTensorData(images.tensors, placement_idx=-1)
-        # images.mask = DistTensorData(images.mask, placement_idx=-1)
-        # for k,v in labels.items():
-        #     labels[k] = DistTensorData(flow.tensor(labels[k]).long(), placement_idx=-1)
-        # data = Instance(
-        #     images = images,
-        #     labels = labels
-        # )
-        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        data = get_batch(data)
         data_time = time.perf_counter() - start
-        import pdb
-        pdb.set_trace()
-        loss_dict = self.model(data["images"])
-        losses = sum(loss_dict.values()) / self.grad_acc_steps
-
+        loss_dict, _ = self.model(data)
+        weight_dict = self.model.criterion.weight_dict
+        losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
         losses.backward()
         self.write_metrics(loss_dict, data_time)
-
+        
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()

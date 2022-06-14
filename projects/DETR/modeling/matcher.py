@@ -1,10 +1,25 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-"""
-Modules to compute the matching cost and solve the corresponding LSAP.
-"""
-import oneflow as flow
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import numpy as np
 from scipy.optimize import linear_sum_assignment
+
+import oneflow as flow
 from oneflow import nn
+
+from libai.data.structures import DistTensorData
 
 from utils.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
 
@@ -53,33 +68,44 @@ class HungarianMatcher(nn.Module):
                 len(index_i) = len(index_j) = min(num_queries, num_target_boxes)
         """
         bs, num_queries = outputs["pred_logits"].shape[:2]
-
         # We flatten to compute the cost matrices in a batch
-        out_prob = outputs["pred_logits"].flatten(0, 1).softmax(-1)  # [batch_size * num_queries, num_classes]
-        out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [batch_size * num_queries, 4]
-
+        out_prob = outputs["pred_logits"].flatten(0, 1).softmax(-1)
+        out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [bsz * num_queries, 4]
+        
         # Also concat the target labels and boxes
-        tgt_ids = flow.cat([v["labels"] for v in targets])
-        tgt_bbox = flow.cat([v["boxes"] for v in targets])
+        tgt_ids = DistTensorData(flow.cat([v["labels"] for v in targets]), placement_idx=0)
+        tgt_bbox = DistTensorData(flow.cat([v["boxes"] for v in targets]), placement_idx=0)
+        tgt_ids.to_global()
+        tgt_bbox.to_global()
 
         # Compute the classification cost. Contrary to the loss, we don't use the NLL,
         # but approximate it in 1 - proba[target class].
         # The 1 is a constant that doesn't change the matching, it can be ommitted.
-        cost_class = -out_prob[:, tgt_ids]
+        cost_class = -out_prob[:, tgt_ids.tensor]
 
         # Compute the L1 cost between boxes
-        cost_bbox = flow.cdist(out_bbox, tgt_bbox, p=1)
+
+        cost_bbox = (out_bbox.unsqueeze(1)-tgt_bbox.tensor.unsqueeze(0)).norm(p=1, dim=2)
+        # cost_bbox = flow.cdist(out_bbox, tgt_bbox, p=1)
 
         # Compute the giou cost betwen boxes
-        cost_giou = -generalized_box_iou(box_cxcywh_to_xyxy(out_bbox), box_cxcywh_to_xyxy(tgt_bbox))
-
+        cost_giou = -generalized_box_iou(box_cxcywh_to_xyxy(out_bbox), box_cxcywh_to_xyxy(tgt_bbox.tensor))
         # Final cost matrix
         C = self.cost_bbox * cost_bbox + self.cost_class * cost_class + self.cost_giou * cost_giou
         C = C.view(bs, num_queries, -1).cpu()
 
         sizes = [len(v["boxes"]) for v in targets]
-        indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
-        return [(flow.as_tensor(i, dtype=flow.int64), flow.as_tensor(j, dtype=flow.int64)) for i, j in indices]
+        # ! oneflow bugs: https://github.com/Oneflow-Inc/libai/pull/260#issuecomment-1124721109
+        if sizes[-1]==0:
+            argsort_idx = np.argsort(sizes)
+            indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(np.array(sizes)[argsort_idx].tolist(), -1))]
+            inverse_idx = np.argsort(argsort_idx)
+            indices = np.array(indices)[inverse_idx].tolist()
+        else:
+            indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
+        # NOTE: setting dtype=flow.int64 returns bug: numpy-ndarray holds elements of unsupported datatype
+        # return [(flow.as_tensor(i, dtype=flow.int64), flow.as_tensor(j, dtype=flow.int64)) for i, j in indices]
+        return [(flow.as_tensor(i).to(dtype=flow.int64), flow.as_tensor(j).to(dtype=flow.int64)) for i, j in indices]
 
 
 def build_matcher(args):

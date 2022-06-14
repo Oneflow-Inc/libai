@@ -20,12 +20,11 @@ import time
 from collections import OrderedDict
 from typing import Callable, Optional
 
-import omegaconf
 import oneflow as flow
+from omegaconf import OmegaConf
 from termcolor import colored
 
-from libai.config import LazyConfig, try_get_key
-from libai.config.instantiate import instantiate
+from libai.config import LazyConfig, instantiate, try_get_key
 from libai.data import Instance
 from libai.engine import hooks
 from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase
@@ -115,6 +114,8 @@ def _check_batch_size(cfg):
         )
     else:
         raise ValueError("train_micro_batch_size and global_batch_size must be set either")
+    # Set total training samples.
+    cfg.train.samples = cfg.train.train_iter * cfg.train.global_batch_size
 
 
 def _compile_dependencies():
@@ -149,7 +150,7 @@ def default_setup(cfg, args):
     1. Set up the libai logger
     2. Log basic information about environment, cmdline arguments, and config
     3. Setup the distributed environment
-    4. Setup tokenizer if it's NLP related task
+    4. Setup tokenizer if it's an NLP related task
     5. Check batch_size
     6. Backup the config to the output directory
     7. Compile dependencies
@@ -202,14 +203,14 @@ def default_setup(cfg, args):
 class DefaultTrainer(TrainerBase):
     """
     A trainer with default training logic. Compared to `TrainerBase`, it
-    contains the following logic in addition:
+    also contains the following logic:
 
     1. Create model, optimizer, scheduler, dataloader from the given config.
     2. Load a checkpoint or `cfg.MODEL.WEIGHTS`, if exists.
     3. Register a few common hooks defined by the config.
 
-    It is created to simplify the **standard model training workflow** and reduce code boilerplate
-    for users who only need the standard training workflow, with standard features.
+    With standard features, it is created to simplify the **standard model training workflow** and
+    reduce code boilerplate for users who only need the standard training workflow.
 
     It means this class makes **many assumptions** about your training logic that
     may easily become invalid in a new research. In fact, any assumptions beyond those made in the
@@ -599,15 +600,41 @@ class DefaultTrainer(TrainerBase):
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
 
+        if hasattr(cfg.dataloader.train, "train_val_test_num_samples"):
+            eval_iter = (
+                (cfg.train.train_iter // cfg.train.evaluation.eval_period + 1)
+                * cfg.train.evaluation.eval_iter
+                if cfg.train.evaluation.enabled
+                # samples for test_dataset must be larger than 0 even if there is no evaluation
+                else 1
+            )
+            test_iter = cfg.train.evaluation.eval_iter if cfg.train.evaluation.enabled else 1
+
+            cfg.dataloader.train.train_val_test_num_samples = [
+                int(cfg.train.samples),
+                int(eval_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
+                int(test_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
+            ]
+        if OmegaConf.is_list(cfg.dataloader.train.dataset):
+            for dataset in cfg.dataloader.train.dataset:
+                if hasattr(dataset, "seed"):
+                    dataset.seed = cfg.train.seed
+        else:
+            dataset = cfg.dataloader.train.dataset
+            if hasattr(dataset, "seed"):
+                dataset.seed = cfg.train.seed
+
         # Set tokenizer for each dataset
         if tokenizer:
-            if isinstance(cfg.dataloader.train.dataset, omegaconf.listconfig.ListConfig):
+            if OmegaConf.is_list(cfg.dataloader.train.dataset):
                 for dataset in cfg.dataloader.train.dataset:
                     dataset.tokenizer = tokenizer
             else:
                 cfg.dataloader.train.dataset.tokenizer = tokenizer
 
-        train_loader, valid_loader, test_loader = instantiate(cfg.dataloader.train)
+        train_loader, valid_loader, test_loader = instantiate(
+            cfg.dataloader.train, _recursive_=False
+        )
         return train_loader, valid_loader, test_loader
 
     @classmethod
@@ -625,8 +652,8 @@ class DefaultTrainer(TrainerBase):
             return []
         logger = logging.getLogger(__name__)
         logger.info("Prepare testing set")
-        assert isinstance(
-            cfg.dataloader.test, omegaconf.listconfig.ListConfig
+        assert OmegaConf.is_list(
+            cfg.dataloader.test
         ), f"dataloader.test must be list but got type of {type(cfg.dataloader.test)}"
         for i in range(len(cfg.dataloader.test)):
             cfg.dataloader.test[i].test_batch_size = cfg.train.test_micro_batch_size
@@ -634,7 +661,7 @@ class DefaultTrainer(TrainerBase):
             if tokenizer:
                 cfg.dataloader.test[i].dataset.tokenizer = tokenizer
         # list[dataloader1, dataloader2, ...]
-        test_loader = instantiate(cfg.dataloader.test)
+        test_loader = instantiate(cfg.dataloader.test, _recursive_=False)
         return test_loader
 
     @classmethod
