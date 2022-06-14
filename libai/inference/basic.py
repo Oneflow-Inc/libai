@@ -40,6 +40,7 @@ class BasePipeline(metaclass=ABCMeta):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        model_path=None,
         **kwargs,
     ):
         # init cfg
@@ -59,7 +60,7 @@ class BasePipeline(metaclass=ABCMeta):
 
         # initial and load model
         self.model = DefaultTrainer.build_model(self.cfg).eval()
-        self.load_pretrain_weight(self.model, self.cfg)
+        self.load_pretrain_weight(self.model, self.cfg, model_path)
 
         # initial tokenizer
         self.tokenizer = self.build_tokenizer(self.cfg)
@@ -85,10 +86,8 @@ class BasePipeline(metaclass=ABCMeta):
                 try_get_key(self.cfg.train.dist, "pipeline_num_layers") is not None
             ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
 
-    def load_pretrain_weight(self, model, cfg):
-        Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(
-            cfg.train.load_weight, resume=False
-        )
+    def load_pretrain_weight(self, model, cfg, model_path):
+        Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(model_path, resume=False)
 
     def build_tokenizer(self, cfg):
         tokenizer = None
