@@ -304,7 +304,6 @@ class GraphTrainer(TrainerBase):
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
-        flow.env.init_rdma()
 
     def run_step(self, get_batch: Callable):
         """
