@@ -5,7 +5,6 @@ from libai.config import get_config, LazyCall
 from ..datasets.coco_detection import CocoDetection
 from ..datasets.coco_dataloader import dataloader, make_coco_transforms
 from ..datasets.coco_eval import CocoEvaluator, get_coco_api_from_dataset
-from modeling.backbone import FrozenBatchNorm2d
 from .models.configs_detr_resnet50 import model, postprocessors
 
 
@@ -29,7 +28,7 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 
 
 # For inference
-train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
+# train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
