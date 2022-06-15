@@ -85,8 +85,8 @@ class LayerNorm(nn.Module):
         else:
             y = flow._C.layer_norm(
                 x,
-                begin_norm_axis=self.begin_norm_axis,
-                begin_params_axis=self.begin_params_axis,
+                begin_norm_axis=begin_norm_axis,
+                begin_params_axis=begin_params_axis,
                 epsilon=self.eps,
             )
         return y
