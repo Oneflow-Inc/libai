@@ -2,6 +2,8 @@ import json
 import logging
 import os
 
+from yaml import warnings
+
 import oneflow as flow
 import torch
 
@@ -389,16 +391,17 @@ class LoadPretrainedBase(object):
             # config file
             if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
                 config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
+
+                # Load config and update config.
+                self._load_config_from_json(config_file)
             else:
-                raise EnvironmentError(
-                    f"Error no file named {CONFIG_NAME} found in directory "
-                    f"{self.pretrained_model_path}."
+                warnings.warn(
+                    f"Error no file named {CONFIG_NAME} found in directory"
+                    f"{self.pretrained_model_path}",
+                    RuntimeWarning
                 )
         else:
             raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
-
-        # Load config and update config.
-        self._load_config_from_json(config_file)
 
         if self.mode == "pt":
             torch_state_dict = self._load_torch_state_dict(model_file)
