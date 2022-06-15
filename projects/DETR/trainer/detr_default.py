@@ -61,14 +61,14 @@ class DetrDefaultTrainer(DefaultTrainer):
         mask = images[1] 
         mask.to_global()
         
-        images = (tensors, mask)
-        
+        # Since some keys in labels(dict) have various-shape value, 
+        # they can not be converted to global in tensor parallel
         for i in range(len(labels)):
             for k, v in labels[i].items():
                 labels[i][k] = v.to(device="cuda:0")
                 
         ret_dict = {
-            "images": images,
+            "images": (tensors.tensor, mask.tensor),
             "labels": labels
         }
 

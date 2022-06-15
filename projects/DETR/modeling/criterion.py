@@ -99,7 +99,7 @@ class SetCriterion(nn.Module):
             box_ops.box_cxcywh_to_xyxy(target_boxes)))
         loss_giou = DistTensorData(loss_giou.sum(), placement_idx=0)
         loss_giou.to_global()
-        losses['loss_giou'] = (loss_giou.tensor/ num_boxes)
+        losses['loss_giou'] = (loss_giou.tensor / num_boxes)
         return losses
 
     def loss_masks(self, outputs, targets, indices, num_boxes, sbp, placement):

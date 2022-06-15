@@ -46,10 +46,7 @@ class DETR(nn.Module):
         self.criterion = criterion
         
     def forward(self, samples):
-        """ The forward expects a NestedTensor, which consists of:
-               - samples.tensor: batched images, of shape [batch_size x 3 x H x W]
-               - samples.mask: a binary mask of shape [batch_size x H x W], containing 1 on padded pixels
-
+        """ 
             It returns a dict with the following elements:
                - "pred_logits": the classification logits (including no-object) for all queries.
                                 Shape= [batch_size x num_queries x (num_classes + 1)]
@@ -65,7 +62,6 @@ class DETR(nn.Module):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
         src, mask = features[-1]
-        # src, mask = features[-1].decompose()
         assert mask is not None
         hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
         outputs_class = self.class_embed(hs)
