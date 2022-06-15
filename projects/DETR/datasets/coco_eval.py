@@ -10,7 +10,7 @@ from pycocotools.coco import COCO
 import pycocotools.mask as mask_util
 from contextlib import ExitStack, contextmanager
 from typing import Callable, List, Union
-from collections import abc
+from collections import abc, OrderedDict
 
 import oneflow as flow
 import flowvision
@@ -46,7 +46,7 @@ class CocoEvaluator(DatasetEvaluator):
         self.coco_gt = copy.deepcopy(get_coco_api_from_dataset(coco_detection))
         self.iou_types = tuple(k for k in ('segm', 'bbox') if k in postprocessors.keys())
         
-        self._predictions = []
+        self._predictions = OrderedDict()
         self.img_ids = []
         self.coco_eval = {}
         for iou_type in self.iou_types:
@@ -54,7 +54,7 @@ class CocoEvaluator(DatasetEvaluator):
         self.eval_imgs = {k: [] for k in self.iou_types}
         
     def reset(self):
-        self._predictions = []
+        self._predictions = OrderedDict()
 
     def process(self, inputs, outputs):
 
@@ -130,8 +130,7 @@ class CocoEvaluator(DatasetEvaluator):
         self.synchronize_between_processes()
         self.accumulate()
         self.summarize()   
-        
-        return self.coco_eval
+        return copy.deepcopy(self._predictions)
         
     def prepare(self, predictions, iou_type):
         if iou_type == "bbox":
@@ -232,10 +231,7 @@ class CocoEvaluator(DatasetEvaluator):
         for iou_type in self.iou_types:
             self.eval_imgs[iou_type] = np.concatenate(self.eval_imgs[iou_type], 2)
             create_common_coco_eval(self.coco_eval[iou_type], self.img_ids, self.eval_imgs[iou_type])
-            # if dist.is_main_process():
-            #     evaluator.process(valid_data, valid_outputs)
-                
-            # dist.synchronize()
+
     def accumulate(self):
         for coco_eval in self.coco_eval.values():
             coco_eval.accumulate()
@@ -244,7 +240,8 @@ class CocoEvaluator(DatasetEvaluator):
         for iou_type, coco_eval in self.coco_eval.items():
             print("IoU metric: {}".format(iou_type))
             coco_eval.summarize()
-    
+            self._predictions[iou_type+"@AP"] = coco_eval.stats[0]
+
 
 def inference_on_coco_dataset(
     model,
@@ -311,8 +308,6 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
-            if idx >= 50:
-                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time
@@ -331,7 +326,7 @@ def inference_on_coco_dataset(
             tensor_batch = imgs.tensor.shape[0]
             # tensor_batch = data["images"].tensors.tensor.shape[0]
             valid_sample = tensor_batch - last_batch_lack
-            # TODO (ziqiu chi): Make sure how to impl pad_batch. Graph mode needs this.
+            # TODO (ziqiu chi): Make sure how to impl pad_batch.
             # paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
             _, outputs = model(data)
             # get valid samplen
@@ -408,9 +403,11 @@ def inference_on_coco_dataset(
         )
     )
     
+    results = {}
     if evaluator is not None and dist.is_main_process():
-        evaluator.evaluate()
+        results = evaluator.evaluate()
 
+    return results
 
 @contextmanager
 def inference_context(model):
