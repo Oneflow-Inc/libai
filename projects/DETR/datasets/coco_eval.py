@@ -62,11 +62,12 @@ class CocoEvaluator(DatasetEvaluator):
         Process the pair of inputs and outputs.
         """
         orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
-        # * need a better way to call it 
+
         results = postprocessors['bbox'](outputs, orig_target_sizes)
-        if 'segm' in postprocessors.keys():
-            target_sizes = flow.stack([t["size"] for t in inputs["labels"]], dim=0)
-            results = postprocessors['segm'](results, outputs, orig_target_sizes, target_sizes)
+        
+        # if 'segm' in postprocessors.keys():
+        #     target_sizes = flow.stack([t["size"] for t in inputs["labels"]], dim=0)
+        #     results = postprocessors['segm'](results, outputs, orig_target_sizes, target_sizes)
         
         predictions = {target['image_id'].item(): output for target, output in zip(inputs["labels"], results)}
         
