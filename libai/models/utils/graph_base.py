@@ -62,7 +62,7 @@ class GraphBase(nn.Graph):
                 self.set_activation_checkpoint()
 
             if zero_optim:
-                self.config.enable_zero(True, stage = zero_stage)
+                self.config.enable_zero(True, stage=zero_stage)
 
             self.set_pipeline_stage_id()
 
