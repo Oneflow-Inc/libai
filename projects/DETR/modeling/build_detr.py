@@ -16,23 +16,16 @@
 
 from libai.config import LazyCall
 
-from .backbone import build_backbone
-from .matcher import build_matcher
-from .transformer import build_transformer
+from .backbone import Backbone, Joiner
+from .matcher import HungarianMatcher
+from .transformer import Transformer
 from .detr import DETR
 from .criterion import SetCriterion
+from .position_encoding import PositionEmbeddingLearned, PositionEmbeddingSine
 
-
-def build(args):
-    """
-    Build the DETR model and postprocessors (dict) for detection
-    """
-
+    
+def build_criterion(args):
     num_classes = 20 if args.dataset_file != 'coco' else 91
-
-    backbone = LazyCall(build_backbone)(args=args)
-    transformer = LazyCall(build_transformer)(args=args)
-
     weight_dict = {
         "loss_ce": 1, 
         "loss_bbox": args.bbox_loss_coef,
@@ -46,12 +39,71 @@ def build(args):
         
     losses = ['labels', 'boxes']
     
-    criterion = LazyCall(SetCriterion)(
+    return SetCriterion(
         num_classes=num_classes, 
-        matcher=LazyCall(build_matcher)(args=args), 
+        matcher=HungarianMatcher(
+        cost_class=args.set_cost_class, 
+        cost_bbox=args.set_cost_bbox, 
+        cost_giou=args.set_cost_giou
+        ), 
         weight_dict=weight_dict, 
         eos_coef=args.eos_coef, 
-        losses=losses)
+        losses=losses
+        )
+
+
+def build_transformer(args):
+    return Transformer(
+        d_model=args.hidden_dim,
+        dropout=args.dropout,
+        nhead=args.nheads,
+        dim_feedforward=args.dim_feedforward,
+        num_encoder_layers=args.enc_layers,
+        num_decoder_layers=args.dec_layers,
+        normalize_before=args.pre_norm,
+        return_intermediate_dec=True,
+    )
+    
+
+def build_position_encoding(args):
+    N_steps = args.hidden_dim // 2
+    if args.position_embedding in ('v2', 'sine'):
+        position_embedding = PositionEmbeddingSine(N_steps, normalize=True)
+    elif args.position_embedding in ('v3', 'learned'):
+        position_embedding = PositionEmbeddingLearned(N_steps)
+    else:
+        raise ValueError(f"not supported {args.position_embedding}")
+
+    return position_embedding
+
+
+def build_backbone(args):
+    position_embedding = build_position_encoding(args=args)
+    train_backbone = args.lr_backbone > 0
+    # TODO (ziqiu chi): return_interm_layers works for segmentation task
+    return_interm_layers = args.masks
+    backbone = Backbone(
+        name=args.backbone, 
+        train_backbone=train_backbone, 
+        return_interm_layers=return_interm_layers, 
+        dilation=args.dilation)
+    model = Joiner(
+        backbone=backbone, 
+        position_embedding=position_embedding)
+    model.num_channels = backbone.num_channels
+    return model
+
+
+def build(args):
+    """
+    Build the DETR model and postprocessors (dict) for detection
+    """
+
+    num_classes = 20 if args.dataset_file != 'coco' else 91
+
+    backbone = LazyCall(build_backbone)(args=args)
+    transformer = LazyCall(build_transformer)(args=args)
+    criterion = LazyCall(build_criterion)(args=args)
             
     model = LazyCall(DETR)(
         backbone=backbone,

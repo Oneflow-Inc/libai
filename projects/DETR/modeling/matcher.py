@@ -19,8 +19,6 @@ from scipy.optimize import linear_sum_assignment
 import oneflow as flow
 from oneflow import nn
 
-from libai.data.structures import DistTensorData
-
 from utils.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
 
 
@@ -106,7 +104,3 @@ class HungarianMatcher(nn.Module):
         # NOTE: setting dtype=flow.int64 returns bug: numpy-ndarray holds elements of unsupported datatype
         # return [(flow.as_tensor(i, dtype=flow.int64), flow.as_tensor(j, dtype=flow.int64)) for i, j in indices]
         return [(flow.as_tensor(i).to(dtype=flow.int64), flow.as_tensor(j).to(dtype=flow.int64)) for i, j in indices]
-
-
-def build_matcher(args):
-    return HungarianMatcher(cost_class=args.set_cost_class, cost_bbox=args.set_cost_bbox, cost_giou=args.set_cost_giou)
