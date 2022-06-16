@@ -19,7 +19,6 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
-from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +68,6 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
-
-        # dist_util = dist.get_dist_util()
 
         # auto_parallel
         if auto_parallel_conf is not None and auto_parallel_conf.enabled:
