@@ -130,7 +130,7 @@ class RobertaModel(BertModel):
                 Defaults to 0.0.
             max_position_embeddings (int):
                 Max sequence length of input, defines the shape of Position Embeddings
-                in ``BertEmbedding``.
+                in ``RobertaEmbeddings``.
             type_vocab_size (int, optional):
                 Number of segment token indices. Defaults to 2.
             add_pooling_layer (bool, optional):
