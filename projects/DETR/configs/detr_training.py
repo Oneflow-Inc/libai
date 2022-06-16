@@ -13,11 +13,11 @@ graph = get_config("common/models/graph.py").graph
 optim = get_config("common/optim.py").optim
 
 # Refine data path to imagenet
-path_train_img = "/dataset/coco/train2017"
-path_train_ann = "/dataset/coco/annotations/instances_train2017.json"
+path_train_img = "/dataset/mscoco_2017/train2017"
+path_train_ann = "/dataset/mscoco_2017/annotations/instances_train2017.json"
 
-path_val_img = "/dataset/coco/val2017"
-path_val_ann = "/dataset/coco/annotations/instances_val2017.json"
+path_val_img = "/dataset/mscoco_2017/val2017"
+path_val_ann = "/dataset/mscoco_2017/annotations/instances_val2017.json"
 
 dataloader.train.dataset[0].img_folder= path_train_img
 dataloader.train.dataset[0].ann_file = path_train_ann
@@ -31,8 +31,8 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 # train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
-train.train_micro_batch_size = 2
-train.test_micro_batch_size = 2
+train.train_micro_batch_size = 4
+train.test_micro_batch_size = 4
 train.train_epoch = 1
 # train.evaluation.eval_period = 10
 
@@ -60,4 +60,4 @@ graph.enabled = False
 
 # model_parallel
 train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 2
+train.dist.tensor_parallel_size = 4

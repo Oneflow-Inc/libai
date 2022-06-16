@@ -61,14 +61,14 @@ class DetrDefaultTrainer(DefaultTrainer):
         mask = images[1] 
         mask.to_global()
         
-        images = (tensors, mask)
-        
+        # Since some keys in labels(dict) have various-shape value, 
+        # they can not be converted to global in tensor parallel
         for i in range(len(labels)):
             for k, v in labels[i].items():
                 labels[i][k] = v.to(device="cuda:0")
                 
         ret_dict = {
-            "images": images,
+            "images": (tensors.tensor, mask.tensor),
             "labels": labels
         }
 
@@ -84,7 +84,7 @@ class DetrDefaultTrainer(DefaultTrainer):
 
         test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
         evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
-        inference_on_coco_dataset(
+        results = inference_on_coco_dataset(
             model,
             test_loaders[0],
             test_batch_size,
@@ -92,6 +92,9 @@ class DetrDefaultTrainer(DefaultTrainer):
             cls.get_batch,
             evaluator,
         )
+        
+        return results
+        
             
     @classmethod
     def build_model(cls, cfg):

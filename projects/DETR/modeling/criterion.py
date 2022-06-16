@@ -68,7 +68,6 @@ class SetCriterion(nn.Module):
         batch_idx, src_idx = self._get_src_permutation_idx(indices)
         idx = batch_idx, src_idx
         target_classes[idx] = target_classes_o
-        
         target_classes = DistTensorData(target_classes, placement_idx=0)
         target_classes.to_global()
         
@@ -87,19 +86,20 @@ class SetCriterion(nn.Module):
         assert 'pred_boxes' in outputs
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
-        target_boxes = DistTensorData(flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0), placement_idx=0)
-        target_boxes.to_global()
+        target_boxes = flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
+        src_boxes = src_boxes.to_local().to(device=target_boxes.device)
         l1_loss = nn.L1Loss(reduction="none")
-        loss_bbox = l1_loss(src_boxes, target_boxes.tensor)
-
+        loss_bbox = DistTensorData(l1_loss(src_boxes, target_boxes).sum(), placement_idx=0)
+        loss_bbox.to_global()
         losses = {}
-        losses['loss_bbox'] = loss_bbox.sum() / num_boxes
+        losses['loss_bbox'] = (loss_bbox.tensor / num_boxes)
 
         loss_giou = 1 - flow.diag(box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
-            box_ops.box_cxcywh_to_xyxy(target_boxes.tensor)))
-        
-        losses['loss_giou'] = (loss_giou.sum() / num_boxes)
+            box_ops.box_cxcywh_to_xyxy(target_boxes)))
+        loss_giou = DistTensorData(loss_giou.sum(), placement_idx=0)
+        loss_giou.to_global()
+        losses['loss_giou'] = (loss_giou.tensor / num_boxes)
         return losses
 
     def loss_masks(self, outputs, targets, indices, num_boxes, sbp, placement):

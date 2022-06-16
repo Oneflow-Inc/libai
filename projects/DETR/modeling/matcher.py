@@ -73,26 +73,26 @@ class HungarianMatcher(nn.Module):
         out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [bsz * num_queries, 4]
         
         # Also concat the target labels and boxes
-        tgt_ids = DistTensorData(flow.cat([v["labels"] for v in targets]), placement_idx=0)
-        tgt_bbox = DistTensorData(flow.cat([v["boxes"] for v in targets]), placement_idx=0)
-        tgt_ids.to_global()
-        tgt_bbox.to_global()
+        tgt_ids = flow.cat([v["labels"] for v in targets])
+        tgt_bbox = flow.cat([v["boxes"] for v in targets])
 
         # Compute the classification cost. Contrary to the loss, we don't use the NLL,
         # but approximate it in 1 - proba[target class].
         # The 1 is a constant that doesn't change the matching, it can be ommitted.
-        cost_class = -out_prob[:, tgt_ids.tensor]
+        cost_class = -out_prob[:, tgt_ids]
+
+        cost_class = cost_class.to_local().to(tgt_bbox.device)
+        out_bbox = out_bbox.to_local().to(tgt_bbox.device)
 
         # Compute the L1 cost between boxes
-
-        cost_bbox = (out_bbox.unsqueeze(1)-tgt_bbox.tensor.unsqueeze(0)).norm(p=1, dim=2)
+        cost_bbox = (out_bbox.unsqueeze(1)-tgt_bbox.unsqueeze(0)).norm(p=1, dim=2)
         # cost_bbox = flow.cdist(out_bbox, tgt_bbox, p=1)
 
         # Compute the giou cost betwen boxes
-        cost_giou = -generalized_box_iou(box_cxcywh_to_xyxy(out_bbox), box_cxcywh_to_xyxy(tgt_bbox.tensor))
+        cost_giou = -generalized_box_iou(box_cxcywh_to_xyxy(out_bbox), box_cxcywh_to_xyxy(tgt_bbox))
         # Final cost matrix
         C = self.cost_bbox * cost_bbox + self.cost_class * cost_class + self.cost_giou * cost_giou
-        C = C.view(bs, num_queries, -1).cpu()
+        C = C.view(bs, num_queries, -1)
 
         sizes = [len(v["boxes"]) for v in targets]
         # ! oneflow bugs: https://github.com/Oneflow-Inc/libai/pull/260#issuecomment-1124721109

@@ -394,8 +394,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
             transforms=make_coco_transforms("train"),
         ),
     ],
-    # NOTE: num_workers=4 as default
-    num_workers=4,
+    num_workers=0,
     mixup_func=None,
     collate_fn = collate_fn
 )
@@ -408,7 +407,6 @@ dataloader.test = [
             return_masks=False,
             transforms=make_coco_transforms("val"),
         ),
-        # NOTE: num_workers=4 as default
         num_workers=0,
         collate_fn = collate_fn
 

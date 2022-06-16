@@ -91,7 +91,7 @@ class PositionEmbeddingLearned(nn.Module):
         nn.init.uniform_(self.col_embed.weight)
 
     def forward(self, tensor_list):
-        x = tensor_list.tensors
+        x = tensor_list
         h, w = x.shape[-2:]
         i = flow.arange(w, device=x.device)
         j = flow.arange(h, device=x.device)
