@@ -9,24 +9,16 @@ import flowvision
 import flowvision.transforms.functional as F
 import flowvision.transforms as T
 
-from libai.config import LazyCall
 from .coco_detection import CocoDetection
+from utils.box_ops import box_xyxy_to_cxcywh
+
+from libai.config import LazyCall
 from libai.data.build import build_image_train_loader, build_image_test_loader
 from libai.data.structures import DistTensorData, Instance
 
 
-def box_xyxy_to_cxcywh(x):
-
-    x0, y0, x1, y1 = x.unbind(-1)
-
-    b = [(x0 + x1) / 2, (y0 + y1) / 2,
-         (x1 - x0), (y1 - y0)]
-    return flow.stack(b, dim=-1)
-
-
 def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corners=None):
     # type: (Tensor, Optional[List[int]], Optional[float], str, Optional[bool]) -> Tensor
-
     return flowvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)
 
 
@@ -315,9 +307,6 @@ def make_coco_transforms(image_set):
                 RandomResize(scales, max_size=1333),
                 Compose([
                     RandomResize([400, 500, 600]),
-                    # TODO (ziqiu chi): 
-                    # If RandomSizeCrop is adopted in transform, boxes size is different, 
-                    # which leads the tensor parallel bug.
                     RandomSizeCrop(384, 600),
                     RandomResize(scales, max_size=1333),
                 ])
