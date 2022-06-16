@@ -32,14 +32,15 @@ def build(args):
     num_classes = 20 if args.dataset_file != 'coco' else 91
     if args.dataset_file == "coco_panoptic":
         num_classes = 250
-    device = flow.device(args.device)
 
     backbone = LazyCall(build_backbone)(args=args)
-
     transformer = LazyCall(build_transformer)(args=args)
-    
-    # TODO: LazyCall build_matcher
-    matcher = build_matcher(args=args)
+    criterion = LazyCall(SetCriterion)(
+        num_classes=num_classes, 
+        matcher=build_matcher(args=args), 
+        weight_dict=weight_dict, 
+        eos_coef=args.eos_coef, 
+        losses=losses)
     
     weight_dict = {'loss_ce': 1, 'loss_bbox': args.bbox_loss_coef}
     weight_dict['loss_giou'] = args.giou_loss_coef
@@ -55,15 +56,14 @@ def build(args):
     losses = ['labels', 'boxes']
     if args.masks:
         losses += ["masks"]
-    criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
-                             eos_coef=args.eos_coef, losses=losses)
-    criterion.to(device)
+
     postprocessors = {'bbox': PostProcess()}
     if args.masks:
         postprocessors['segm'] = PostProcessSegm()
         if args.dataset_file == "coco_panoptic":
             is_thing_map = {i: i <= 90 for i in range(201)}
             postprocessors["panoptic"] = PostProcessPanoptic(is_thing_map, threshold=0.85)
+            
     model = LazyCall(DETR)(
         backbone=backbone,
         transformer=transformer,
