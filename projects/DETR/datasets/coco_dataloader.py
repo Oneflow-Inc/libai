@@ -369,7 +369,6 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
             tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
             mask[i, : img.shape[1], :img.shape[2]] = False
             labels.append(ins.get_fields()["labels"])
-            
         
     else:
         raise ValueError('not supported')

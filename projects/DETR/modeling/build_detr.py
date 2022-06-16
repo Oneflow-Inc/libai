@@ -14,27 +14,21 @@
 # limitations under the License.
 
 
-import oneflow as flow
-
 from libai.config import LazyCall
 
 from .backbone import build_backbone
 from .matcher import build_matcher
-from .segmentation import DETRsegm, PostProcessPanoptic, PostProcessSegm
 from .transformer import build_transformer
 from .detr import DETR
 from .criterion import SetCriterion
-from .post_process import PostProcess
 
 
 def build(args):
     """
-    Build the DETR model and postprocessors (dict)
+    Build the DETR model and postprocessors (dict) for detection
     """
 
     num_classes = 20 if args.dataset_file != 'coco' else 91
-    # if args.dataset_file == "coco_panoptic":
-    #     num_classes = 250
 
     backbone = LazyCall(build_backbone)(args=args)
     transformer = LazyCall(build_transformer)(args=args)
@@ -43,9 +37,7 @@ def build(args):
         "loss_ce": 1, 
         "loss_bbox": args.bbox_loss_coef,
         "loss_giou": args.giou_loss_coef}
-    # if args.masks:
-    #     weight_dict["loss_mask"] = args.mask_loss_coef
-    #     weight_dict["loss_dice"] = args.dice_loss_coef
+
     if args.aux_loss:
         aux_weight_dict = {}
         for i in range(args.dec_layers - 1):
@@ -60,14 +52,6 @@ def build(args):
         weight_dict=weight_dict, 
         eos_coef=args.eos_coef, 
         losses=losses)
-    # if args.masks:
-    #     losses += ["masks"]
-    postprocessors = {'bbox': PostProcess()}
-    # if args.masks:
-    #     postprocessors['segm'] = PostProcessSegm()
-    #     if args.dataset_file == "coco_panoptic":
-    #         is_thing_map = {i: i <= 90 for i in range(201)}
-    #         postprocessors["panoptic"] = PostProcessPanoptic(is_thing_map, threshold=0.85)
             
     model = LazyCall(DETR)(
         backbone=backbone,
@@ -77,7 +61,5 @@ def build(args):
         aux_loss=args.aux_loss,
         criterion=criterion,
     )
-    # if args.masks:
-    #     model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))
 
-    return model, postprocessors
+    return model

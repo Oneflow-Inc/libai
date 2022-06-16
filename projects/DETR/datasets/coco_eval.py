@@ -65,10 +65,6 @@ class CocoEvaluator(DatasetEvaluator):
 
         results = postprocessors['bbox'](outputs, orig_target_sizes)
         
-        # if 'segm' in postprocessors.keys():
-        #     target_sizes = flow.stack([t["size"] for t in inputs["labels"]], dim=0)
-        #     results = postprocessors['segm'](results, outputs, orig_target_sizes, target_sizes)
-        
         predictions = {target['image_id'].item(): output for target, output in zip(inputs["labels"], results)}
         
         img_ids = list(np.unique(list(predictions.keys())))
@@ -87,10 +83,7 @@ class CocoEvaluator(DatasetEvaluator):
             coco_eval.params.imgIds = list(img_ids)
                         
             p = coco_eval.params
-            # add backward compatibility if useSegm is specified in params
-            if p.useSegm is not None:
-                p.iouType = 'segm' if p.useSegm == 1 else 'bbox'
-                print('useSegm (deprecated) is not None. Running {} evaluation'.format(p.iouType))
+
             p.imgIds = list(np.unique(p.imgIds))
             if p.useCats:
                 p.catIds = list(np.unique(p.catIds))
@@ -136,10 +129,10 @@ class CocoEvaluator(DatasetEvaluator):
     def prepare(self, predictions, iou_type):
         if iou_type == "bbox":
             return self.prepare_for_coco_detection(predictions)
-        elif iou_type == "segm":
-            return self.prepare_for_coco_segmentation(predictions)
-        elif iou_type == "keypoints":
-            return self.prepare_for_coco_keypoint(predictions)
+        # elif iou_type == "segm":
+        #     return self.prepare_for_coco_segmentation(predictions)
+        # elif iou_type == "keypoints":
+        #     return self.prepare_for_coco_keypoint(predictions)
         else:
             raise ValueError("Unknown iou type {}".format(iou_type))
 
@@ -308,8 +301,8 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
-            # if idx > 50:
-            #     break
+            if idx > 50:
+                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time

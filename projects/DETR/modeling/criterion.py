@@ -14,20 +14,13 @@
 # limitations under the License.
 
 
-from numpy import place
 import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
-from oneflow.env import get_world_size
-
 
 from libai.data.structures import DistTensorData
 
-from DETR.datasets.coco_dataloader import nested_tensor_from_tensor_list
-
 from utils import box_ops
-from utils.misc import accuracy, interpolate
-from .segmentation import dice_loss, sigmoid_focal_loss
 
 
 class SetCriterion(nn.Module):
@@ -102,34 +95,6 @@ class SetCriterion(nn.Module):
         losses['loss_giou'] = (loss_giou.tensor / num_boxes)
         return losses
 
-    def loss_masks(self, outputs, targets, indices, num_boxes, sbp, placement):
-        """Compute the losses related to the masks: the focal loss and the dice loss.
-           targets dicts must contain the key "masks" containing a tensor of dim [nb_target_boxes, h, w]
-        """
-        assert "pred_masks" in outputs
-        src_idx = self._get_src_permutation_idx(indices)
-        tgt_idx = self._get_tgt_permutation_idx(indices)
-        src_masks = outputs["pred_masks"]
-        src_masks = src_masks[src_idx]
-        masks = [t["masks"] for t in targets]
-        
-        target_masks, valid = nested_tensor_from_tensor_list(masks).decompose()
-        target_masks = target_masks.to(src_masks)
-        target_masks = target_masks[tgt_idx]
-
-        # upsample predictions to the target size
-        src_masks = interpolate(src_masks[:, None], size=target_masks.shape[-2:],
-                                mode="bilinear", align_corners=False)
-        src_masks = src_masks[:, 0].flatten(1)
-
-        target_masks = target_masks.flatten(1)
-        target_masks = target_masks.view(src_masks.shape)
-        losses = {
-            "loss_mask": sigmoid_focal_loss(src_masks, target_masks, num_boxes).to_global(sbp=sbp, placement=placement),
-            "loss_dice": dice_loss(src_masks, target_masks, num_boxes).to_global(sbp=sbp, placement=placement),
-        }
-        return losses
-
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
         # NOTE: flow does not support flow.full_like
@@ -148,7 +113,6 @@ class SetCriterion(nn.Module):
         loss_map = {
             'labels': self.loss_labels,
             'boxes': self.loss_boxes,
-            'masks': self.loss_masks
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
         return loss_map[loss](outputs, targets, indices, num_boxes)

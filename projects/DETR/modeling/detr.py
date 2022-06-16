@@ -58,6 +58,7 @@ class DETR(nn.Module):
                                 dictionnaries containing the two above keys for each decoder layer.
         """
         samples, targets = samples["images"], samples["labels"]
+
         if isinstance(samples, (list, flow.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
