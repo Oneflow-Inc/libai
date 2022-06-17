@@ -126,7 +126,7 @@ def get_args():
         "--tokenizer-name",
         type=str,
         required=True,
-        choices=["BertTokenizer", "GPT2Tokenizer", "T5Tokenizer"],
+        choices=["BertTokenizer", "GPT2Tokenizer", "T5Tokenizer", "RobertaTokenizer"],
         help="What type of tokenizer to use.",
     )
     group.add_argument("--vocab-file", type=str, default=None, help="Path to the vocab file")

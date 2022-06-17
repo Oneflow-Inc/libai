@@ -222,7 +222,7 @@ class BertModel(nn.Module):
     Args:
         vocab_size (int): The size of vocabulary file.
         hidden_size (int): The size of hidden states.
-        hidden_layers (_type_): The number of ``TransformerLayer`` in encoder.
+        hidden_layers (int): The number of ``TransformerLayer`` in encoder.
         num_attention_heads (int):
             The number of attention heads for each attention layer of ``TransformerLayer``.
         intermediate_size (int):
@@ -358,7 +358,7 @@ class BertModel(nn.Module):
 
         Args:
             input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
-            attention_mask (flow.LongTensor): Mask to avoid performing     attention
+            attention_mask (flow.LongTensor): Mask to avoid performing attention
                 on padding token indices. Mask values selected in `[0, 1]`:
 
                 - 1 for tokens that are **not masked**,

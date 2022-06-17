@@ -6,6 +6,7 @@ Supported models in LiBai(李白)
 - `SwinTransformer`_
 - `ResMLP`_
 - `BERT`_
+- `RoBERTa`_
 - `T5`_
 - `GPT-2`_
 
@@ -13,6 +14,7 @@ Supported models in LiBai(李白)
 .. _SwinTransformer: https://arxiv.org/abs/2103.14030
 .. _ResMLP: https://arxiv.org/abs/2105.03404
 .. _BERT: https://arxiv.org/abs/1810.04805
+.. _RoBERTa: https://arxiv.org/abs/1907.11692
 .. _T5: https://arxiv.org/abs/1910.10683
 .. _GPT-2: https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf
 
@@ -49,6 +51,14 @@ BERT
     :members: 
         BertModel,
         BertForPreTraining,
+
+RoBERTa
+----
+.. automodule:: libai.models.roberta_model
+    :members: 
+        RobertaModel,
+        RobertaForPreTraining,
+        RobertaForCausalLM,
 
 T5
 ---
