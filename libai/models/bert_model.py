@@ -230,7 +230,7 @@ class BertModel(nn.Module):
     Args:
         vocab_size (int): The size of vocabulary file.
         hidden_size (int): The size of hidden states.
-        hidden_layers (_type_): The number of ``TransformerLayer`` in encoder.
+        hidden_layers (int): The number of ``TransformerLayer`` in encoder.
         num_attention_heads (int):
             The number of attention heads for each attention layer of ``TransformerLayer``.
         intermediate_size (int):
@@ -368,7 +368,7 @@ class BertModel(nn.Module):
 
         Args:
             input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
-            attention_mask (flow.LongTensor): Mask to avoid performing     attention
+            attention_mask (flow.LongTensor): Mask to avoid performing attention
                 on padding token indices. Mask values selected in `[0, 1]`:
 
                 - 1 for tokens that are **not masked**,
@@ -534,3 +534,39 @@ class BertForPreTraining(nn.Module):
         model.bert.final_layernorm.config.set_stage(dist_utils.get_layer_stage_id(-1),
                     dist.get_layer_placement(-1))
 
+
+class BertForClassification(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        self.num_labels = cfg.num_labels
+
+        self.bert = BertModel(cfg)
+        self.classifier = Linear(
+            cfg.hidden_size,
+            cfg.num_labels,
+            bias=True,
+            parallel="row",
+            init_method=init_method_normal(cfg.initializer_range),
+            layer_idx=-1,
+        )
+        classifier_dropout = (
+            cfg.classifier_dropout
+            if cfg.classifier_dropout is not None
+            else cfg.hidden_dropout_prob
+        )
+        self.dropout = nn.Dropout(classifier_dropout)
+
+    def forward(self, input_ids, attention_mask, tokentype_ids=None, labels=None, **kwargs):
+        labels = labels if labels is not None else kwargs.get("ns_labels")
+        outputs = self.bert(input_ids, attention_mask, tokentype_ids)
+        pooled_output = outputs[1]
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
+        if labels is not None:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            loss = loss.to_global(sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]))
+            return {"cls_loss": loss}
+        else:
+            return {"logits": logits}

@@ -10,10 +10,6 @@ libai.data.data_utils module
         IndexedDataset,
         MMapIndexedDataset,
         get_indexed_dataset,
-        BlockIndexedDataset,
-        SentenceIndexedDataset,
-        SplitDataset,
-        split_ds,
 
 
 libai.data.datasets module
@@ -26,6 +22,7 @@ libai.data.datasets module
         CIFAR100Dataset,
         ImageNetDataset,
         BertDataset,
+        RobertaDataset,
         T5Dataset,
         GPT2Dataset
 

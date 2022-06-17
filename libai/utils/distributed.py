@@ -365,8 +365,8 @@ def convert_to_distributed_default_setting(module):
     Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
     global tensor with data parallelism as default.
     """
-    for param in module.parameters():
-        if not param.is_global:
+    for _, v in module.state_dict().items():
+        if not v.is_global:
             module.to_global(
                 sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=get_layer_placement(0),
