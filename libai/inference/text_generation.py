@@ -27,9 +27,12 @@ class TextGenerationPipeline(BasePipeline):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        model_path=None,
         **kwargs,
     ):
-        super().__init__(config_file, data_parallel, tensor_parallel, pipeline_parallel, **kwargs)
+        super().__init__(
+            config_file, data_parallel, tensor_parallel, pipeline_parallel, model_path, **kwargs
+        )
 
     def update_cfg(
         self,
