@@ -19,6 +19,7 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
+from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
 
