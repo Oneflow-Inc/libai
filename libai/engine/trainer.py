@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+import os
 import time
 import weakref
 from typing import Callable, List, Mapping
@@ -144,6 +145,9 @@ class TrainerBase:
                 for self.iter in range(start_iter, max_iter):
                     self.before_step()
                     self.run_step()
+                    if self.iter == 99:
+                        cmd = "nvidia-smi --query-gpu=timestamp,name,driver_version,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used --format=csv"
+                        os.system(cmd)
                     self.after_step()
                 # self.iter == max_iter can be used by `after_train` to
                 # tell whether the training successfully finished or failed
