@@ -7,7 +7,6 @@ import time
 import numpy as np
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
-import pycocotools.mask as mask_util
 from contextlib import ExitStack, contextmanager
 from typing import Callable, List, Union
 from collections import abc, OrderedDict
@@ -56,15 +55,18 @@ class CocoEvaluator(DatasetEvaluator):
     def reset(self):
         self._predictions = OrderedDict()
 
-    def process(self, inputs, outputs):
+    def process(self, inputs: dict, outputs: dict):
 
         """
         Process the pair of inputs and outputs.
+        params:
+            inputs: dict_keys(['labels', 'images'])
+            outputs: dict_keys(['pred_logits', 'pred_boxes'])
         """
         orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
-
+        # results -> List[dict()]
         results = postprocessors['bbox'](outputs, orig_target_sizes)
-        
+        # predictions -> {image_id: dict{scores, labels, boxes}}
         predictions = {target['image_id'].item(): output for target, output in zip(inputs["labels"], results)}
         
         img_ids = list(np.unique(list(predictions.keys())))
@@ -129,10 +131,6 @@ class CocoEvaluator(DatasetEvaluator):
     def prepare(self, predictions, iou_type):
         if iou_type == "bbox":
             return self.prepare_for_coco_detection(predictions)
-        # elif iou_type == "segm":
-        #     return self.prepare_for_coco_segmentation(predictions)
-        # elif iou_type == "keypoints":
-        #     return self.prepare_for_coco_keypoint(predictions)
         else:
             raise ValueError("Unknown iou type {}".format(iou_type))
 
@@ -156,67 +154,6 @@ class CocoEvaluator(DatasetEvaluator):
                         "score": scores[k],
                     }
                     for k, box in enumerate(boxes)
-                ]
-            )
-        return coco_results
-
-    def prepare_for_coco_segmentation(self, predictions):
-        coco_results = []
-        for original_id, prediction in predictions.items():
-            if len(prediction) == 0:
-                continue
-
-            scores = prediction["scores"]
-            labels = prediction["labels"]
-            masks = prediction["masks"]
-
-            masks = masks > 0.5
-
-            scores = prediction["scores"].tolist()
-            labels = prediction["labels"].tolist()
-
-            rles = [
-                mask_util.encode(np.array(mask[0, :, :, np.newaxis], dtype=np.uint8, order="F"))[0]
-                for mask in masks
-            ]
-            for rle in rles:
-                rle["counts"] = rle["counts"].decode("utf-8")
-
-            coco_results.extend(
-                [
-                    {
-                        "image_id": original_id,
-                        "category_id": labels[k],
-                        "segmentation": rle,
-                        "score": scores[k],
-                    }
-                    for k, rle in enumerate(rles)
-                ]
-            )
-        return coco_results
-
-    def prepare_for_coco_keypoint(self, predictions):
-        coco_results = []
-        for original_id, prediction in predictions.items():
-            if len(prediction) == 0:
-                continue
-
-            boxes = prediction["boxes"]
-            boxes = convert_to_xywh(boxes).tolist()
-            scores = prediction["scores"].tolist()
-            labels = prediction["labels"].tolist()
-            keypoints = prediction["keypoints"]
-            keypoints = keypoints.flatten(start_dim=1).tolist()
-
-            coco_results.extend(
-                [
-                    {
-                        "image_id": original_id,
-                        "category_id": labels[k],
-                        'keypoints': keypoint,
-                        "score": scores[k],
-                    }
-                    for k, keypoint in enumerate(keypoints)
                 ]
             )
         return coco_results
@@ -325,7 +262,6 @@ def inference_on_coco_dataset(
                                              else [[0]])
             
             _, outputs = model(data)
-            
             valid_outputs = {}
             for key, value in outputs.items():
                 if key == "aux_outputs":
@@ -414,8 +350,6 @@ def inference_context(model):
         
 def get_coco_api_from_dataset(dataset):
     for _ in range(10):
-        # if isinstance(dataset, torchvision.datasets.CocoDetection):
-        #     break
         if isinstance(dataset, flow.utils.data.Subset):
             dataset = dataset.dataset
     if isinstance(dataset, flowvision.datasets.CocoDetection):
@@ -429,8 +363,6 @@ def convert_to_xywh(boxes):
 
 
 def merge(img_ids, eval_imgs):
-    # all_img_ids = all_gather(img_ids)
-    # all_eval_imgs = all_gather(eval_imgs)
     all_img_ids = [img_ids]
     all_eval_imgs = [eval_imgs]
 

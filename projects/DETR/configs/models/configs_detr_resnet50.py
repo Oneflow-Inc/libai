@@ -1,7 +1,5 @@
 from omegaconf import OmegaConf
 
-from libai.config import LazyCall
-
 from modeling.build_detr import build
 from modeling.post_process import PostProcess
 
@@ -16,7 +14,7 @@ detr_args.mask_loss_coef = 1
 detr_args.dice_loss_coef = 1
 detr_args.eos_coef = 0.1
 detr_args.device = "cuda"
-detr_args.masks = False # Not impl
+detr_args.masks = False 
 
 # Backbone
 # Name of the convolutional backbone to use

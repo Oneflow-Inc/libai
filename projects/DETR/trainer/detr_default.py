@@ -28,7 +28,7 @@ from libai.models import  build_model
 from libai.utils import distributed as dist
 
 from trainer.detr_trainer import DetrEagerTrainer
-from datasets.coco_eval import inference_on_coco_dataset
+from projects.DETR.datasets.evaluation import inference_on_coco_dataset
 from modeling.backbone import FrozenBatchNorm2d
 
 
