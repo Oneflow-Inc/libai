@@ -10,6 +10,8 @@ import flowvision.transforms as T
 
 from utils.box_ops import box_xyxy_to_cxcywh
 
+from libai.config import LazyCall
+
 
 def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corners=None):
     # type: (Tensor, Optional[List[int]], Optional[float], str, Optional[bool]) -> Tensor
@@ -197,7 +199,8 @@ class RandomHorizontalFlip(object):
 
 class RandomResize(object):
     def __init__(self, sizes, max_size=None):
-        assert isinstance(sizes, (list, tuple))
+        # if LazyCall(RandomResize), assert sizes->list fail 
+        # assert isinstance(sizes, (list, tuple))
         self.sizes = sizes
         self.max_size = max_size
 
@@ -287,31 +290,33 @@ class Compose(object):
 
 def make_coco_transforms(image_set):
 
-    normalize = Compose([
-        ToTensor(),
-        Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    normalize = LazyCall(Compose)(
+        transforms=[
+        LazyCall(ToTensor)(),
+        LazyCall(Normalize)(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
 
     if image_set == 'train':
-        return Compose([
-            RandomHorizontalFlip(),
-            RandomSelect(
-                RandomResize(scales, max_size=1333),
-                Compose([
-                    RandomResize([400, 500, 600]),
-                    RandomSizeCrop(384, 600),
-                    RandomResize(scales, max_size=1333),
-                ])
-            ),
-            normalize,
-        ])
+        return LazyCall(Compose)(
+            transforms=[
+            LazyCall(RandomHorizontalFlip)(p=0.5),
+            LazyCall(RandomSelect)(
+                transforms1=LazyCall(RandomResize)(sizes=scales, max_size=1333),
+                transforms2=LazyCall(Compose)(
+                    transforms=[
+                    LazyCall(RandomResize)(sizes=[400, 500, 600], max_size=None),
+                    LazyCall(RandomSizeCrop)(min_size=384, max_size=600),
+                    LazyCall(RandomResize)(sizes=scales, max_size=1333)],
+                p=0.5)),
+            normalize])
 
     if image_set == 'val':
-        return Compose([
-            RandomResize([800], max_size=1333),
-            normalize,
-        ])
+        return LazyCall(Compose)(
+            transforms=[
+            LazyCall(RandomResize)(sizes=[800], max_size=1333),
+            normalize
+            ])
 
     raise ValueError(f'unknown {image_set}')

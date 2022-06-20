@@ -63,8 +63,9 @@ class DetrMultiheadAttention(MultiheadAttention):
         """
 
         if attention_mask is not None:
-            attention_mask = attention_mask.to_global(placement=hidden_states.placement)
-            
+            if hidden_states.is_global:
+                attention_mask = attention_mask.to_global(placement=hidden_states.placement)
+                
         query, key, value = hidden_states
 
         # refer to torch.nn.MultiHeadAttention
