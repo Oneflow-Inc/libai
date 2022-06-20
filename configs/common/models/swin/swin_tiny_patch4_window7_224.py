@@ -1,7 +1,8 @@
 from libai.config import LazyCall
 from libai.models import SwinTransformer
 
-model = LazyCall(SwinTransformer)(
+
+cfg = dict(
     img_size=224,
     patch_size=4,
     in_chans=3,
@@ -19,3 +20,5 @@ model = LazyCall(SwinTransformer)(
     patch_norm=True,
     use_checkpoint=False,
 )
+
+model = LazyCall(SwinTransformer)(cfg=cfg)

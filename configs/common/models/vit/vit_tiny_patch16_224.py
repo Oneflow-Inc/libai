@@ -1,9 +1,8 @@
 from libai.config import LazyCall
-
 from libai.models import VisionTransformer
 
 
-model = LazyCall(VisionTransformer)(
+cfg = dict(
     img_size=224,
     patch_size=16,
     in_chans=3,
@@ -16,3 +15,5 @@ model = LazyCall(VisionTransformer)(
     drop_path_rate=0.1,
     num_classes=1000,
 )
+
+model = LazyCall(VisionTransformer)(cfg=cfg)

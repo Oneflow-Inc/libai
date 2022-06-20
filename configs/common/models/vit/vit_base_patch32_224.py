@@ -1,5 +1,11 @@
-from .vit_tiny_patch16_224 import model
+from libai.config import LazyCall
+from libai.models import VisionTransformer
 
-model.patch_size = 32
-model.embed_dim = 768
-model.num_heads = 12
+from .vit_tiny_patch16_224 import cfg
+
+
+cfg["patch_size"] = 32
+cfg["embed_dim"] = 768
+cfg["num_heads"] = 12
+
+model = LazyCall(VisionTransformer)(cfg=cfg)

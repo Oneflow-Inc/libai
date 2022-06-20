@@ -1,4 +1,10 @@
-from .resmlp_12 import model
+from libai.config import LazyCall
+from libai.models import ResMLP
 
-model.depth = 24
-model.init_scale = 1e-5
+from .resmlp_12 import cfg
+
+
+cfg["depth"] = 24
+cfg["init_scale"] = 1e-5
+
+model = LazyCall(ResMLP)(cfg=cfg)
