@@ -32,9 +32,7 @@ def crop(image, target, region):
     if "boxes" in target:
         boxes = target["boxes"]
 
-        # TODO (ziqiu chi): oneflow does not support min/max between different dtype, such as float32 and float64
-        # max_size = flow.as_tensor([w, h], dtype=flow.float32)
-        max_size = flow.as_tensor([w, h], dtype=flow.float64)
+        max_size = flow.as_tensor([w, h])
 
         cropped_boxes = boxes - flow.as_tensor([j, i, j, i])
 
@@ -260,9 +258,8 @@ class Normalize(object):
         if "boxes" in target:
             boxes = target["boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
-            # NOTE: oneflow does not support min/max between different dtype, such as float32 and float64
-            # boxes = boxes / flow.tensor([w, h, w, h], dtype=flow.float32)
-            boxes = boxes / flow.tensor([w, h, w, h], dtype=flow.float64)
+            # NOTE: oneflow does not support / between different dtype, such as float32 and float64
+            boxes = boxes / flow.tensor([w, h, w, h], dtype=boxes.dtype)
             target["boxes"] = boxes
         return image, target
 

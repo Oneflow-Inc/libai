@@ -81,8 +81,6 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
         target_boxes = flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-        print("src boxes.shape", src_boxes.shape)
-        print("target boxes.shape", target_boxes.shape)
         src_boxes = src_boxes.to_local().to(device=target_boxes.device)
         loss_bbox = DistTensorData(self.l1_loss(src_boxes, target_boxes).sum(), placement_idx=0)
         loss_bbox.to_global()

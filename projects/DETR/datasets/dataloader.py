@@ -24,21 +24,21 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
     
 
     if tensor_list[0].get_fields()["images"].tensor.ndim == 3:
-
         max_size = _max_by_axis([list(tensor.get_fields()["images"].tensor.shape) for tensor in tensor_list])
-        if flow.env.get_world_size() > 1:
-            max_size = flow.tensor(max_size).unsqueeze(0)
-            max_size = max_size.to_global(sbp=flow.sbp.split(0), placement=flow.placement('cuda', ranks=list(range(flow.env.get_world_size()))))
-            max_size = flow.max(max_size, dim=0)[0].numpy().tolist()
+        
+        # if flow.env.get_world_size() > 1:
+            # max_size = flow.tensor(max_size).unsqueeze(0)
+            # placement = [0, 1]
+            # max_size = max_size.to_global(sbp=flow.sbp.split(0), placement=flow.placement("cuda", ranks=placement))
+            # max_size = flow.max(max_size, dim=0)[0].numpy().tolist()
 
         batch_shape = [len(tensor_list)] + max_size
         b, c, h, w = batch_shape
-        
         dtype = tensor_list[0].get_fields()["images"].tensor.dtype
-        device = tensor_list[0].get_fields()["images"].tensor.device
+        # device = tensor_list[0].get_fields()["images"].tensor.device
         
-        tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
-        mask = flow.ones((b, h, w), dtype=flow.bool, device=device) 
+        tensor = flow.zeros(batch_shape, dtype=dtype)
+        mask = flow.ones((b, h, w), dtype=flow.bool) 
         
         labels = []
         for i, ins in enumerate(tensor_list):
@@ -49,6 +49,7 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
         
     else:
         raise ValueError('not supported')
+
     return Instance(
         images = (DistTensorData(tensor, placement_idx=0), DistTensorData(mask, placement_idx=0)), 
         labels = tuple(labels)

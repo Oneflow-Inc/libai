@@ -81,7 +81,6 @@ class DetrDefaultTrainer(DefaultTrainer):
 
     @classmethod
     def test(cls, cfg, test_loaders, model, evaluator=None):
-
         test_batch_size = cfg.train.test_micro_batch_size * dist.get_data_parallel_size()
         evaluator = cls.build_evaluator(cfg) if not evaluator else evaluator
         results = inference_on_coco_dataset(
@@ -94,7 +93,6 @@ class DetrDefaultTrainer(DefaultTrainer):
         )
         
         return results
-        
             
     @classmethod
     def build_model(cls, cfg):
