@@ -260,10 +260,10 @@ def build_nlp_test_loader(
     sampler = instantiate(sampler)
 
     test_loader = DataLoader(
-        dataset, 
-        batch_sampler=sampler, 
-        num_workers=num_workers, 
-        persistent_workers=True if num_workers > 0 else False, 
+        dataset,
+        batch_sampler=sampler,
+        num_workers=num_workers,
+        persistent_workers=True if num_workers > 0 else False,
         collate_fn=collate_fn,
     )
     return test_loader

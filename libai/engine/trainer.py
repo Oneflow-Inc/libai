@@ -18,7 +18,6 @@ import time
 import weakref
 from typing import Callable, List, Mapping
 
-import numpy as np
 import oneflow as flow
 
 from libai.utils import distributed as dist

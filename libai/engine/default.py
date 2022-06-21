@@ -493,9 +493,7 @@ class DefaultTrainer(TrainerBase):
 
         ret_dict = {}
         for key, value in data.get_fields().items():
-            value.to_global(
-                device_type=self.cfg.train.input_placement_device
-            )
+            value.to_global(device_type=cls.cfg.train.input_placement_device)
             ret_dict[key] = value.tensor
         return ret_dict
 

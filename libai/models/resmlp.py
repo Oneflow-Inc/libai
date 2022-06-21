@@ -222,19 +222,21 @@ class ResMLP(nn.Module):
         for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, PatchEmbedding):
-                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
-                    dist.get_layer_placement(0))
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
             elif isinstance(module_block.origin, layers_scale_mlp_blocks):
-                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx))
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
 
         # Set norm and head stage id
-        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1),
-                    dist.get_layer_placement(-1))
-        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1),
-                    dist.get_layer_placement(-1))
-        model.loss_func.config.set_stage(dist_utils.get_layer_stage_id(-1),
-                    dist.get_layer_placement(-1))
+        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+        model.loss_func.config.set_stage(
+            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+        )
 
     @staticmethod
     def set_activation_checkpoint(model):

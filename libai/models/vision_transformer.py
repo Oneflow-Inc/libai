@@ -204,22 +204,27 @@ class VisionTransformer(nn.Module):
         for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, PatchEmbedding):
-                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
-                    dist.get_layer_placement(0))
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx))
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
 
         # Set pos_embed and cls_token stage id
-        model.pos_embed.config.set_stage(dist_utils.get_layer_stage_id(0),
-                    dist.get_layer_placement(0))
-        model.cls_token.config.set_stage(dist_utils.get_layer_stage_id(0),
-                    dist.get_layer_placement(0))
-        model.pos_drop.config.set_stage(dist_utils.get_layer_stage_id(0),
-                    dist.get_layer_placement(0))
-        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1),
-                    dist.get_layer_placement(-1))
-        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1),
-                    dist.get_layer_placement(-1))
-        model.loss_func.config.set_stage(dist_utils.get_layer_stage_id(-1),
-                    dist.get_layer_placement(-1))
+        model.pos_embed.config.set_stage(
+            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+        )
+        model.cls_token.config.set_stage(
+            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+        )
+        model.pos_drop.config.set_stage(
+            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+        )
+        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+        model.loss_func.config.set_stage(
+            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+        )
