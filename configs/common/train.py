@@ -115,7 +115,7 @@ train = dict(
         pipeline_parallel_size=1,
     ),
 
-    # device type of input tensor in model, in most cases set it to "cuda". 
+    # device type of input tensor in model, in most cases set it to "cuda".
     # when pipeline_parallel > 1 and you want to  ultimate acceleration in model training
     # set `input_placement_device="cpu"` and use tensor.to_global() in your model.forward()
     # see `libai/models/bert_model.py` as reference
