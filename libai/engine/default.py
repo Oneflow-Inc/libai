@@ -294,6 +294,9 @@ class DefaultTrainer(TrainerBase):
 
         self.test_loader.extend(self.build_test_loader(cfg, self.tokenizer))
 
+        # set rdma
+        flow.env.init_rdma()
+
         # Automatically scale the hyperparams
         self.auto_scale_hyperparams(cfg, self.train_loader)
 
