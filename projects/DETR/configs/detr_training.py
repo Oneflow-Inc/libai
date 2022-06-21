@@ -1,10 +1,7 @@
-from statistics import mode
-from omegaconf import OmegaConf
-
 from libai.config import get_config, LazyCall
-from ..datasets.coco_detection import CocoDetection
-from ..datasets.coco_dataloader import dataloader, make_coco_transforms
-from ..datasets.coco_eval import CocoEvaluator, get_coco_api_from_dataset
+from ..datasets.detection import CocoDetection
+from ..datasets.dataloader import dataloader, make_coco_transforms
+from ..datasets.evaluation import CocoEvaluator
 from .models.configs_detr_resnet50 import model, postprocessors
 
 
@@ -31,10 +28,10 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 # train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
-train.train_micro_batch_size = 4
-train.test_micro_batch_size = 4
-train.train_epoch = 1
-# train.evaluation.eval_period = 10
+train.train_micro_batch_size = 2
+train.test_micro_batch_size = 2
+train.train_epoch = 10
+train.evaluation.eval_period = 1
 
 coco_detection = LazyCall(CocoDetection)(
     img_folder = path_val_img, 
@@ -43,11 +40,11 @@ coco_detection = LazyCall(CocoDetection)(
     transforms = make_coco_transforms("val")
     )
 train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detection)
-
+train.evaluation.eval_metric = "bbox@AP"
 
 # Refine optimizer cfg for detr model
 base_lr = 1.5e-4
-actual_lr = base_lr * (train.train_micro_batch_size * 8 / 256)
+actual_lr = base_lr * (train.train_micro_batch_size * 2 / 256)
 optim.lr = actual_lr
 optim.weight_decay = 0.1
 
@@ -60,4 +57,4 @@ graph.enabled = False
 
 # model_parallel
 train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 4
+train.dist.tensor_parallel_size = 2

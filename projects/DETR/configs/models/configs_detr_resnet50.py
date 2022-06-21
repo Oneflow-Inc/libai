@@ -1,7 +1,7 @@
 from omegaconf import OmegaConf
 
 from modeling.build_detr import build
-
+from modeling.post_process import PostProcess
 
 # args for detr build_model
 detr_args = OmegaConf.create()
@@ -14,7 +14,7 @@ detr_args.mask_loss_coef = 1
 detr_args.dice_loss_coef = 1
 detr_args.eos_coef = 0.1
 detr_args.device = "cuda"
-detr_args.masks = False
+detr_args.masks = False 
 
 # Backbone
 # Name of the convolutional backbone to use
@@ -52,4 +52,5 @@ detr_args.giou_loss_coef = 1
 # Relative classification weight of the no-object class
 detr_args.eos_coef = 1
 
-model, postprocessors = build(args=detr_args)
+model = build(args=detr_args)
+postprocessors = {'bbox': PostProcess()}

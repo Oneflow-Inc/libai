@@ -46,7 +46,6 @@ class DetrEagerTrainer(TrainerBase):
 
         model.train()
         self.model = model
-        self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
         self.grad_acc_steps = grad_acc_steps

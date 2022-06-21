@@ -14,56 +14,97 @@
 # limitations under the License.
 
 
-import oneflow as flow
-
 from libai.config import LazyCall
 
-from .backbone import build_backbone
-from .matcher import build_matcher
-from .segmentation import DETRsegm, PostProcessPanoptic, PostProcessSegm
-from .transformer import build_transformer
+from .backbone import Backbone, Joiner
+from .matcher import HungarianMatcher
+from .transformer import Transformer
 from .detr import DETR
 from .criterion import SetCriterion
-from .post_process import PostProcess
+from .position_encoding import PositionEmbeddingLearned, PositionEmbeddingSine
 
-
-def build(args):
-
+    
+def build_criterion(args):
     num_classes = 20 if args.dataset_file != 'coco' else 91
-    if args.dataset_file == "coco_panoptic":
-        num_classes = 250
-    device = flow.device(args.device)
+    weight_dict = {
+        "loss_ce": 1, 
+        "loss_bbox": args.bbox_loss_coef,
+        "loss_giou": args.giou_loss_coef}
 
-    backbone = LazyCall(build_backbone)(args=args)
-
-    transformer = LazyCall(build_transformer)(args=args)
-    
-    # TODO: LazyCall build_matcher
-    matcher = build_matcher(args=args)
-    
-    weight_dict = {'loss_ce': 1, 'loss_bbox': args.bbox_loss_coef}
-    weight_dict['loss_giou'] = args.giou_loss_coef
-    if args.masks:
-        weight_dict["loss_mask"] = args.mask_loss_coef
-        weight_dict["loss_dice"] = args.dice_loss_coef
     if args.aux_loss:
         aux_weight_dict = {}
         for i in range(args.dec_layers - 1):
             aux_weight_dict.update({k + f'_{i}': v for k, v in weight_dict.items()})
         weight_dict.update(aux_weight_dict)
-
+        
     losses = ['labels', 'boxes']
-    if args.masks:
-        losses += ["masks"]
-    criterion = SetCriterion(num_classes, matcher=matcher, weight_dict=weight_dict,
-                             eos_coef=args.eos_coef, losses=losses)
-    criterion.to(device)
-    postprocessors = {'bbox': PostProcess()}
-    if args.masks:
-        postprocessors['segm'] = PostProcessSegm()
-        if args.dataset_file == "coco_panoptic":
-            is_thing_map = {i: i <= 90 for i in range(201)}
-            postprocessors["panoptic"] = PostProcessPanoptic(is_thing_map, threshold=0.85)
+    
+    return SetCriterion(
+        num_classes=num_classes, 
+        matcher=HungarianMatcher(
+        cost_class=args.set_cost_class, 
+        cost_bbox=args.set_cost_bbox, 
+        cost_giou=args.set_cost_giou
+        ), 
+        weight_dict=weight_dict, 
+        eos_coef=args.eos_coef, 
+        losses=losses
+        )
+
+
+def build_transformer(args):
+    return Transformer(
+        d_model=args.hidden_dim,
+        dropout=args.dropout,
+        nhead=args.nheads,
+        dim_feedforward=args.dim_feedforward,
+        num_encoder_layers=args.enc_layers,
+        num_decoder_layers=args.dec_layers,
+        normalize_before=args.pre_norm,
+        return_intermediate_dec=True,
+    )
+    
+
+def build_position_encoding(args):
+    N_steps = args.hidden_dim // 2
+    if args.position_embedding in ('v2', 'sine'):
+        position_embedding = PositionEmbeddingSine(N_steps, normalize=True)
+    elif args.position_embedding in ('v3', 'learned'):
+        position_embedding = PositionEmbeddingLearned(N_steps)
+    else:
+        raise ValueError(f"not supported {args.position_embedding}")
+
+    return position_embedding
+
+
+def build_backbone(args):
+    position_embedding = build_position_encoding(args=args)
+    train_backbone = args.lr_backbone > 0
+    # TODO (ziqiu chi): return_interm_layers works for segmentation task
+    return_interm_layers = args.masks
+    backbone = Backbone(
+        name=args.backbone, 
+        train_backbone=train_backbone, 
+        return_interm_layers=return_interm_layers, 
+        dilation=args.dilation)
+    model = Joiner(
+        backbone=backbone, 
+        position_embedding=position_embedding)
+    model.num_channels = backbone.num_channels
+    return model
+
+
+def build(args):
+    """
+    Build the DETR model and postprocessors (dict) for detection
+    """
+
+    num_classes = 20 if args.dataset_file != 'coco' else 91
+
+    backbone = LazyCall(build_backbone)(args=args)
+    transformer = LazyCall(build_transformer)(args=args)
+    criterion = LazyCall(build_criterion)(args=args)
+            
     model = LazyCall(DETR)(
         backbone=backbone,
         transformer=transformer,
@@ -72,7 +113,5 @@ def build(args):
         aux_loss=args.aux_loss,
         criterion=criterion,
     )
-    if args.masks:
-        model = DETRsegm(model, freeze_detr=(args.frozen_weights is not None))
 
-    return model, postprocessors
+    return model

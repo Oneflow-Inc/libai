@@ -33,25 +33,6 @@ def convert_tensor(tensor):
     tensor = tensor.float()
     return flow.Tensor(tensor.cpu().numpy())
 
-
-# def convert_state(state):
-#     save = OrderedDict()
-#     for name, tensor in state.items():
-#         if "in_proj" in name:
-#             if "weight" in name:
-#                 save[name[:-14]+"query_key_value.weight"] = convert_tensor(tensor)
-#             elif "bias" in name:
-#                 save[name[:-12]+"query_key_value.bias"] = convert_tensor(tensor)
-#         elif "out_proj" in name:
-#             if "weight" in name:
-#                 save[name[:-15]+"dense.weight"] = convert_tensor(tensor)
-#             elif "bias" in name:
-#                 save[name[:-13]+"dense.bias"] = convert_tensor(tensor)
-#         else:
-#             save[name] = convert_tensor(tensor)
-#     return save
-
-
 def convert_state(state):
     save = OrderedDict()
     for name, tensor in state.items():

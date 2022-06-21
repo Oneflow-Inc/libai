@@ -63,8 +63,10 @@ class PositionEmbeddingSine(nn.Module):
             eps = 1e-6
             y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
             x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
-
-        dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32).to_global(sbp=x.sbp, placement=x.placement)
+        if x.is_global:
+            dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32).to_global(sbp=x.sbp, placement=x.placement)
+        else:
+            dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
         pos_x = x_embed[:, :, :, None] / dim_t
@@ -91,10 +93,15 @@ class PositionEmbeddingLearned(nn.Module):
         nn.init.uniform_(self.col_embed.weight)
 
     def forward(self, tensor_list):
-        x = tensor_list
+        x, _ = tensor_list
         h, w = x.shape[-2:]
-        i = flow.arange(w, device=x.device)
-        j = flow.arange(h, device=x.device)
+        if x.is_global:
+            sbp, placement = x.sbp, x.placement
+            i = flow.arange(w).to_global(sbp=sbp, placement=placement)
+            j = flow.arange(h).to_global(sbp=sbp, placement=placement)
+        else:
+            i = flow.arange(w)
+            j = flow.arange(h)           
         x_emb = self.col_embed(i)
         y_emb = self.row_embed(j)
         pos = flow.cat([
@@ -104,14 +111,4 @@ class PositionEmbeddingLearned(nn.Module):
         return pos
 
 
-def build_position_encoding(args):
-    N_steps = args.hidden_dim // 2
-    if args.position_embedding in ('v2', 'sine'):
-        # TODO find a better way of exposing other arguments
-        position_embedding = PositionEmbeddingSine(N_steps, normalize=True)
-    elif args.position_embedding in ('v3', 'learned'):
-        position_embedding = PositionEmbeddingLearned(N_steps)
-    else:
-        raise ValueError(f"not supported {args.position_embedding}")
 
-    return position_embedding

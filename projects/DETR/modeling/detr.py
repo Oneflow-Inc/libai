@@ -18,7 +18,7 @@ import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
 
-from DETR.datasets.coco_dataloader import nested_tensor_from_tensor_list
+from projects.DETR.datasets.dataloader import nested_tensor_from_tensor_list
 
 
 class DETR(nn.Module):
@@ -58,17 +58,29 @@ class DETR(nn.Module):
                                 dictionnaries containing the two above keys for each decoder layer.
         """
         samples, targets = samples["images"], samples["labels"]
+
+        # TODO (ziqiu chi): More training iterations are required to check lines 63-64
         if isinstance(samples, (list, flow.Tensor)):
             samples = nested_tensor_from_tensor_list(samples)
+            
+        # *The 1st step: feature extraction
         features, pos = self.backbone(samples)
         src, mask = features[-1]
         assert mask is not None
+        # *The 2nd step: global feature learned by the transformer encoder
+        # *The 3rd step: predicted bboxes learaned by the transformer decoder
         hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
         outputs_class = self.class_embed(hs)
         outputs_coord = self.bbox_embed(hs).sigmoid()
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
         if self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
+        # *The 4th step: matching the predicted bboxes and the ground-truth boxes and 
+        # * computing the loss.
+        # DETR always generates 100 predicted boxes.
+        # (training)
+        # If there are 4 ground-truth boxes, 
+        # the rest of 96 predicted boxes will be marked as the "no object" class.
         loss_dict = self.criterion(out, targets)    
         return loss_dict, out
 

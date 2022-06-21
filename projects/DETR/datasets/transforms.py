@@ -1,4 +1,3 @@
-from omegaconf import OmegaConf
 import random
 import PIL
 from typing import Optional, List
@@ -9,24 +8,13 @@ import flowvision
 import flowvision.transforms.functional as F
 import flowvision.transforms as T
 
+from utils.box_ops import box_xyxy_to_cxcywh
+
 from libai.config import LazyCall
-from .coco_detection import CocoDetection
-from libai.data.build import build_image_train_loader, build_image_test_loader
-from libai.data.structures import DistTensorData, Instance
-
-
-def box_xyxy_to_cxcywh(x):
-
-    x0, y0, x1, y1 = x.unbind(-1)
-
-    b = [(x0 + x1) / 2, (y0 + y1) / 2,
-         (x1 - x0), (y1 - y0)]
-    return flow.stack(b, dim=-1)
 
 
 def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corners=None):
     # type: (Tensor, Optional[List[int]], Optional[float], str, Optional[bool]) -> Tensor
-
     return flowvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)
 
 
@@ -96,7 +84,6 @@ def hflip(image, target):
 
 def resize(image, target, size, max_size=None):
     # size can be min_size (scalar) or (w, h) tuple
-
     def get_size_with_aspect_ratio(image_size, size, max_size=None):
         w, h = image_size
         if max_size is not None:
@@ -122,10 +109,8 @@ def resize(image, target, size, max_size=None):
             return size[::-1]
         else:
             return get_size_with_aspect_ratio(image_size, size, max_size)
-
     size = get_size(image.size, size, max_size)
     rescaled_image = F.resize(image, size)
-
     if target is None:
         return rescaled_image, None
 
@@ -149,7 +134,7 @@ def resize(image, target, size, max_size=None):
     if "masks" in target:
         target['masks'] = interpolate(
             target['masks'][:, None].float(), size, mode="nearest")[:, 0] > 0.5
-
+ 
     return rescaled_image, target
 
 
@@ -211,7 +196,8 @@ class RandomHorizontalFlip(object):
 
 class RandomResize(object):
     def __init__(self, sizes, max_size=None):
-        assert isinstance(sizes, (list, tuple))
+        # if LazyCall(RandomResize), assert sizes->list fail 
+        # assert isinstance(sizes, (list, tuple))
         self.sizes = sizes
         self.max_size = max_size
 
@@ -301,114 +287,34 @@ class Compose(object):
 
 def make_coco_transforms(image_set):
 
-    normalize = Compose([
-        ToTensor(),
-        Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    normalize = LazyCall(Compose)(
+        transforms=[
+        LazyCall(ToTensor)(),
+        LazyCall(Normalize)(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
-
+    # NOTE RandomResize makes parallel training stuck
     if image_set == 'train':
-        return Compose([
-            RandomHorizontalFlip(),
-            RandomSelect(
-                RandomResize(scales, max_size=1333),
-                Compose([
-                    RandomResize([400, 500, 600]),
-                    # TODO (ziqiu chi): 
-                    # If RandomSizeCrop is adopted in transform, boxes size is different, 
-                    # which leads the tensor parallel bug.
-                    RandomSizeCrop(384, 600),
-                    RandomResize(scales, max_size=1333),
-                ])
-            ),
-            normalize,
-        ])
+        return LazyCall(Compose)(
+            transforms=[
+                LazyCall(RandomHorizontalFlip)(p=0.5),
+                LazyCall(RandomSelect)(
+                    transforms1=LazyCall(RandomResize)(sizes=scales, max_size=1333),
+                    transforms2=LazyCall(Compose)(
+                        transforms=[
+                        LazyCall(RandomResize)(sizes=[400, 500, 600], max_size=None),
+                        LazyCall(RandomSizeCrop)(min_size=384, max_size=600),
+                        LazyCall(RandomResize)(sizes=scales, max_size=1333)],
+                        ),
+                    p=0.5),
+            normalize])
 
     if image_set == 'val':
-        return Compose([
-            RandomResize([800], max_size=1333),
-            normalize,
-        ])
+        return LazyCall(Compose)(
+            transforms=[
+            LazyCall(RandomResize)(sizes=[800], max_size=1333),
+            normalize
+            ])
 
     raise ValueError(f'unknown {image_set}')
-
-
-def _max_by_axis(the_list):
-    # type: (List[List[int]]) -> List[int]
-    maxes = the_list[0]
-    for sublist in the_list[1:]:
-        for index, item in enumerate(sublist):
-            maxes[index] = max(maxes[index], item)
-    return maxes
-
-
-def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
-    
-
-    if tensor_list[0].get_fields()["images"].tensor.ndim == 3:
-
-        max_size = _max_by_axis([list(tensor.get_fields()["images"].tensor.shape) for tensor in tensor_list])
-        if flow.env.get_world_size() > 1:
-            max_size = flow.tensor(max_size).unsqueeze(0)
-            max_size = max_size.to_global(sbp=flow.sbp.split(0), placement=flow.placement('cuda', ranks=list(range(flow.env.get_world_size()))))
-            max_size = flow.max(max_size, dim=0)[0].numpy().tolist()
-
-        batch_shape = [len(tensor_list)] + max_size
-        b, c, h, w = batch_shape
-        
-        dtype = tensor_list[0].get_fields()["images"].tensor.dtype
-        device = tensor_list[0].get_fields()["images"].tensor.device
-        
-        tensor = flow.zeros(batch_shape, dtype=dtype, device=device)
-        mask = flow.ones((b, h, w), dtype=flow.bool, device=device) 
-        
-        labels = []
-        for i, ins in enumerate(tensor_list):
-            img = ins.get_fields()["images"].tensor
-            tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
-            mask[i, : img.shape[1], :img.shape[2]] = False
-            labels.append(ins.get_fields()["labels"])
-            
-        
-    else:
-        raise ValueError('not supported')
-    return Instance(
-        images = (DistTensorData(tensor, placement_idx=0), DistTensorData(mask, placement_idx=0)), 
-        labels = tuple(labels)
-        )
-
-    
-def collate_fn(batch):
-    assert isinstance(batch[0], Instance), "batch[0] must be `instance`"
-    batch = nested_tensor_from_tensor_list(batch)
-    return batch
-
-dataloader = OmegaConf.create()
-dataloader.train = LazyCall(build_image_train_loader)(
-    dataset=[
-        LazyCall(CocoDetection)(
-            img_folder="./dataset",
-            ann_file="./dataset/annotations",
-            return_masks=False,
-            transforms=make_coco_transforms("train"),
-        ),
-    ],
-    num_workers=0,
-    mixup_func=None,
-    collate_fn = collate_fn
-)
-
-dataloader.test = [
-    LazyCall(build_image_test_loader)(
-        dataset=LazyCall(CocoDetection)(
-            img_folder="./dataset",
-            ann_file="./dataset/annotations",
-            return_masks=False,
-            transforms=make_coco_transforms("val"),
-        ),
-        num_workers=0,
-        collate_fn = collate_fn
-
-    )
-]

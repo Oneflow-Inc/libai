@@ -96,13 +96,12 @@ class ConvertCocoPolysToMask(object):
 
 class CocoDetection(flowvision.datasets.CocoDetection):
     def __init__(self, img_folder, ann_file, transforms, return_masks):
-        super(CocoDetection, self).__init__(img_folder, ann_file)
+        super(CocoDetection, self).__init__(root=img_folder, annFile=ann_file)
         self._transforms = transforms
-        self.prepare = ConvertCocoPolysToMask(return_masks)
-
-    def __getitem__(self, idx):
-        img, target = super(CocoDetection, self).__getitem__(idx)
-
+        self.prepare = ConvertCocoPolysToMask(return_masks=return_masks)
+        
+    def __getitem__(self, idx: int):
+        img, target = super().__getitem__(idx)
         image_id = self.ids[idx]
         target = {'image_id': image_id, 'annotations': target}
         img, target = self.prepare(img, target)

@@ -14,20 +14,13 @@
 # limitations under the License.
 
 
-from numpy import place
 import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
-from oneflow.env import get_world_size
-
 
 from libai.data.structures import DistTensorData
 
-from DETR.datasets.coco_dataloader import nested_tensor_from_tensor_list
-
 from utils import box_ops
-from utils.misc import accuracy, interpolate
-from .segmentation import dice_loss, sigmoid_focal_loss
 
 
 class SetCriterion(nn.Module):
@@ -54,6 +47,7 @@ class SetCriterion(nn.Module):
         empty_weight = flow.ones(self.num_classes + 1)
         empty_weight[-1] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
+        self.l1_loss = nn.L1Loss(reduction="none")
 
     def loss_labels(self, outputs, targets, indices, num_boxes):
         """Classification loss (NLL)
@@ -87,9 +81,10 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
         target_boxes = flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
+        print("src boxes.shape", src_boxes.shape)
+        print("target boxes.shape", target_boxes.shape)
         src_boxes = src_boxes.to_local().to(device=target_boxes.device)
-        l1_loss = nn.L1Loss(reduction="none")
-        loss_bbox = DistTensorData(l1_loss(src_boxes, target_boxes).sum(), placement_idx=0)
+        loss_bbox = DistTensorData(self.l1_loss(src_boxes, target_boxes).sum(), placement_idx=0)
         loss_bbox.to_global()
         losses = {}
         losses['loss_bbox'] = (loss_bbox.tensor / num_boxes)
@@ -100,34 +95,6 @@ class SetCriterion(nn.Module):
         loss_giou = DistTensorData(loss_giou.sum(), placement_idx=0)
         loss_giou.to_global()
         losses['loss_giou'] = (loss_giou.tensor / num_boxes)
-        return losses
-
-    def loss_masks(self, outputs, targets, indices, num_boxes, sbp, placement):
-        """Compute the losses related to the masks: the focal loss and the dice loss.
-           targets dicts must contain the key "masks" containing a tensor of dim [nb_target_boxes, h, w]
-        """
-        assert "pred_masks" in outputs
-        src_idx = self._get_src_permutation_idx(indices)
-        tgt_idx = self._get_tgt_permutation_idx(indices)
-        src_masks = outputs["pred_masks"]
-        src_masks = src_masks[src_idx]
-        masks = [t["masks"] for t in targets]
-        
-        target_masks, valid = nested_tensor_from_tensor_list(masks).decompose()
-        target_masks = target_masks.to(src_masks)
-        target_masks = target_masks[tgt_idx]
-
-        # upsample predictions to the target size
-        src_masks = interpolate(src_masks[:, None], size=target_masks.shape[-2:],
-                                mode="bilinear", align_corners=False)
-        src_masks = src_masks[:, 0].flatten(1)
-
-        target_masks = target_masks.flatten(1)
-        target_masks = target_masks.view(src_masks.shape)
-        losses = {
-            "loss_mask": sigmoid_focal_loss(src_masks, target_masks, num_boxes).to_global(sbp=sbp, placement=placement),
-            "loss_dice": dice_loss(src_masks, target_masks, num_boxes).to_global(sbp=sbp, placement=placement),
-        }
         return losses
 
     def _get_src_permutation_idx(self, indices):
@@ -148,7 +115,6 @@ class SetCriterion(nn.Module):
         loss_map = {
             'labels': self.loss_labels,
             'boxes': self.loss_boxes,
-            'masks': self.loss_masks
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
         return loss_map[loss](outputs, targets, indices, num_boxes)

@@ -29,8 +29,6 @@ from flowvision.models.layer_getter import IntermediateLayerGetter
 
 import libai.utils.distributed as dist
 
-from .position_encoding import build_position_encoding
-
 
 class FrozenBatchNorm2d(nn.Module):
     """
@@ -43,10 +41,10 @@ class FrozenBatchNorm2d(nn.Module):
 
     def __init__(self, n):
         super(FrozenBatchNorm2d, self).__init__()
-        self.register_buffer("weight", flow.ones(n), persistent=True)
-        self.register_buffer("bias", flow.zeros(n), persistent=True)
-        self.register_buffer("running_mean", flow.zeros(n), persistent=True)
-        self.register_buffer("running_var", flow.ones(n), persistent=True)
+        self.register_buffer("weight", flow.ones(n))
+        self.register_buffer("bias", flow.zeros(n))
+        self.register_buffer("running_mean", flow.zeros(n))
+        self.register_buffer("running_var", flow.ones(n))
         
     def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
                               missing_keys, unexpected_keys, error_msgs):
@@ -129,15 +127,3 @@ class Joiner(nn.Sequential):
             # position encoding
             pos.append(self[1](x).to(x[0].dtype))
         return out, pos
-
-
-def build_backbone(args):
-    position_embedding = build_position_encoding(args)
-    train_backbone = args.lr_backbone > 0
-    return_interm_layers = args.masks
-    backbone = Backbone(
-        name=args.backbone, train_backbone=train_backbone, 
-        return_interm_layers=return_interm_layers, dilation=args.dilation)
-    model = Joiner(backbone=backbone, position_embedding=position_embedding)
-    model.num_channels = backbone.num_channels
-    return model
