@@ -191,6 +191,10 @@ class BertLoss(nn.Module):
         self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask, binary_logits, ns_labels):
+        lm_labels = lm_labels.to_global(placement=lm_output.placement)
+        loss_mask = loss_mask.to_global(placement=lm_output.placement)
+        binary_logits = binary_logits.to_global(placement=lm_output.placement)
+        ns_labels = ns_labels.to_global(placement=lm_output.placement)
         lm_loss = self.lm_loss(lm_output, lm_labels)
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
@@ -472,6 +476,9 @@ class BertForPreTraining(nn.Module):
                 loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
         """
 
+        input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
+        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
+        tokentype_ids = tokentype_ids.to_global(placement=dist.get_layer_placement(0))
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 

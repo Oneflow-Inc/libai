@@ -29,7 +29,7 @@ class DistTensorData:
     placement_idx: int = 0
 
     # Tensor-like methods
-    def to_global(self, sbp=None, placement=None):
+    def to_global(self, sbp=None, placement=None, device_type="cuda"):
         if sbp is not None:
             self.sbp = sbp
         else:
@@ -61,11 +61,11 @@ class DistTensorData:
             # We do that to make sure that all the tensors used by the model are all generated
             # by the fist device group, in case that each device group containg
             # some random augmentations to the tensors without setting the same global seed.
-            main_placement = dist.get_layer_placement(0)
+            main_placement = dist.get_layer_placement(0, device_type)
             self.tensor = self.tensor.to_global(sbp=self.sbp, placement=main_placement)
             if self.placement_idx != 0:
                 self.tensor = self.tensor.to_global(
-                    placement=dist.get_layer_placement(self.placement_idx)
+                    placement=dist.get_layer_placement(self.placement_idx, device_type)
                 )
 
     @staticmethod
