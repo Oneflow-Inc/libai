@@ -35,7 +35,6 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
         batch_shape = [len(tensor_list)] + max_size
         b, c, h, w = batch_shape
         dtype = tensor_list[0].get_fields()["images"].tensor.dtype
-        # device = tensor_list[0].get_fields()["images"].tensor.device
         
         tensor = flow.zeros(batch_shape, dtype=dtype)
         mask = flow.ones((b, h, w), dtype=flow.bool) 
