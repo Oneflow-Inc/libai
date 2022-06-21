@@ -24,6 +24,7 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
+from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 
@@ -173,6 +174,7 @@ class T5Model(flow.nn.Module):
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
+                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -205,6 +207,7 @@ class T5Model(flow.nn.Module):
                     bias_dropout_fusion=bias_dropout_fusion,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
