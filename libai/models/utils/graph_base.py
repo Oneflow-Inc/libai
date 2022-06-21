@@ -89,12 +89,11 @@ class GraphBase(nn.Graph):
                     "python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/release-auto_parallel-v0.1/[PLATFORM]"  # noqa
                 )
 
-        # Enable compute_stream for computation and communication with the same cuda stream.
+        # Enable cuda stream for computation and communication as the same stream.
         # This will reduce memory when using model parallelism.
-        # if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
-
-        # Enable compute_stream by default.
-        flow.boxing.nccl.enable_use_compute_stream(True)
+        dist_util = dist.get_dist_util()
+        if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
+            flow.boxing.nccl.enable_use_compute_stream(True)
 
     def build(self, **kwargs):
         if self.is_train:
