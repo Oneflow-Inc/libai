@@ -15,6 +15,7 @@
 
 from .build import build_tokenizer
 from .tokenization_bert import BertTokenizer
+from .tokenization_roberta import RobertaTokenizer
 from .tokenization_gpt2 import GPT2Tokenizer
 from .tokenization_t5 import GoogleT5Tokenizer
 from .tokenization_base import PreTrainedTokenizer

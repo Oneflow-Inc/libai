@@ -22,6 +22,7 @@ libai.data.datasets module
         CIFAR100Dataset,
         ImageNetDataset,
         BertDataset,
+        RobertaDataset,
         T5Dataset,
         GPT2Dataset
 

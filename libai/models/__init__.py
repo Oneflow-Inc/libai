@@ -13,7 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from .bert_model import BertForPreTraining, BertModel, BertForClassification
+from .roberta_model import RobertaForPreTraining, RobertaForCausalLM, RobertaModel
 from .build import build_graph, build_model
 from .t5_model import T5ForPreTraining, T5Model
 from .gpt_model import GPTForPreTraining, GPTModel
@@ -27,6 +29,9 @@ __all__ = [
     "BertModel",
     "BertForPreTraining",
     "BertForClassification",
+    "RobertaModel",
+    "RobertaForCausalLM",
+    "RobertaForPreTraining",
     "T5Model",
     "T5ForPreTraining",
     "GPTModel",
