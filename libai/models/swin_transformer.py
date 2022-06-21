@@ -700,21 +700,29 @@ class SwinTransformer(nn.Module):
     def set_pipeline_stage_id(model):
         dist_utils = dist.get_dist_util()
 
-        model.patch_embed.config.stage_id = dist_utils.get_layer_stage_id(0)
-        model.pos_drop.config.stage_id = dist_utils.get_layer_stage_id(0)
+        model.patch_embed.config.set_stage(dist_utils.get_layer_stage_id(0),
+            dist.get_layer_placement(0))
+        model.pos_drop.config.set_stage(dist_utils.get_layer_stage_id(0),
+            dist.get_layer_placement(0))
 
         # Set pipeline parallelism stage_id
         for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, SwinTransformerBlock):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx))
             elif isinstance(module_block.origin, PatchMerging):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx))
 
-        model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        model.avgpool.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1),
+            dist.get_layer_placement(-1))
+        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1),
+            dist.get_layer_placement(-1))
+        model.avgpool.config.set_stage(dist_utils.get_layer_stage_id(-1),
+            dist.get_layer_placement(-1))
+        model.loss_func.config.set_stage(dist_utils.get_layer_stage_id(-1),
+            dist.get_layer_placement(-1))
 
     @staticmethod
     def set_activation_checkpoint(model):

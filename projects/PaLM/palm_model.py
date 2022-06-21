@@ -280,11 +280,14 @@ class PaLM(nn.Module):
 
         for module_block in model.modules():
             if isinstance(module_block.origin, VocabEmbedding):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, PalmTransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx))
             elif isinstance(module_block.origin, PalmHead):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
         # final layernorm
-        model.net[-1].config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.net[-1].config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))

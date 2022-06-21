@@ -492,18 +492,24 @@ class BertForPreTraining(nn.Module):
         for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, BertEmbeddings):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, BertExtendedAttnMask):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx))
             elif isinstance(module_block.origin, BertPooler):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
             elif isinstance(module_block.origin, BertPreTrainingHeads):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
 
         # Set the last layernorm stage id
-        model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.bert.final_layernorm.config.set_stage(dist_utils.get_layer_stage_id(-1),
+            dist.get_layer_placement(-1))
 
 
 class BertForClassification(nn.Module):
