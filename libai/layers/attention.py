@@ -233,14 +233,13 @@ class MultiheadAttention(nn.Module):
                 # [bsz, num_heads, tgt_len, src_len]
                 attention_weights = self.dropout(attention_weights)
         else:
-            if self.scale_mask_softmax_fusion:
-                if self.attn_mask_type == AttnMaskType.causal:
-                    attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(
-                        attention_scores,
-                        p=self.attention_dropout_prob,
-                        diagonal=0,
-                        tril_scale_value=self.coeff,
-                    )[0]
+            if self.scale_mask_softmax_fusion and self.attn_mask_type == AttnMaskType.causal:
+                attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(
+                    attention_scores,
+                    p=self.attention_dropout_prob,
+                    diagonal=0,
+                    tril_scale_value=self.coeff,
+                )[0]
             else:
                 attention_weights = flow.softmax(attention_scores, dim=-1)
                 # [bsz, num_heads, tgt_len, src_len]

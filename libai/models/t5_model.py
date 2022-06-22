@@ -30,8 +30,12 @@ from libai.utils import distributed as dist
 
 
 class ExtendedMask(flow.nn.Module):
-    def forward(self, x):
-        return x.unsqueeze(1)
+    def forward(self, attention_mask):
+        extended_attention_mask = attention_mask.unsqueeze(1)
+
+        # Convert attention mask to binary.
+        extended_attention_mask = extended_attention_mask > 0.5
+        return extended_attention_mask
 
 
 class T5Embedding(flow.nn.Module):
