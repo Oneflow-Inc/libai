@@ -258,7 +258,7 @@ class EagerTrainer(TrainerBase):
         self.optimizer = optimizer
         self.grad_acc_steps = grad_acc_steps
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self, cfg, get_batch: Callable):
         """
         Implement the standard training logic described above.
         """
@@ -267,7 +267,7 @@ class EagerTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        data = get_batch(cfg, data, getattr(self.data_loader, "mixup_func", None))
         data_time = time.perf_counter() - start
 
         loss_dict = self.model(**data)
@@ -295,7 +295,7 @@ class GraphTrainer(TrainerBase):
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
         """
         Implement the standard training logic described above.
         """
@@ -304,7 +304,9 @@ class GraphTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        data = get_batch(
+            data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
+        )
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.

@@ -470,10 +470,15 @@ class DefaultTrainer(TrainerBase):
 
     def run_step(self):
         self._trainer.iter = self.iter
-        self._trainer.run_step(self.get_batch)
+        self._trainer.run_step(self.get_batch, self.cfg.train.input_placement_device)
 
     @classmethod
-    def get_batch(cls, data: Instance, mixup_func: Optional[Callable] = None):
+    def get_batch(
+        cls,
+        data: Instance,
+        input_placement_device: str = "cuda",
+        mixup_func: Optional[Callable] = None,
+    ):
         """
         Convert batched local tensor to distributed tensor for model step running.
 
@@ -493,7 +498,7 @@ class DefaultTrainer(TrainerBase):
 
         ret_dict = {}
         for key, value in data.get_fields().items():
-            value.to_global(device_type=cls.cfg.train.input_placement_device)
+            value.to_global(device_type=input_placement_device)
             ret_dict[key] = value.tensor
         return ret_dict
 
@@ -775,6 +780,7 @@ class DefaultTrainer(TrainerBase):
                 test_batch_size,
                 cfg.train.evaluation.eval_iter,
                 cls.get_batch,
+                cfg.train.input_placement_device,
                 evaluator,
             )
             results[dataset_name] = results_i
