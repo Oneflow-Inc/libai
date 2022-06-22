@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import oneflow as flow
 
 from libai.config import configurable
@@ -191,6 +193,8 @@ class T5Model(flow.nn.Module):
             layer_idx=hidden_layers - 1,
         )
 
+        self.multihead_attn_fusion = os.getenv("MULTIHEAD_ATTN_FUSION") is not None
+
         self.encoder = flow.nn.Sequential()
         self.encoder.add_module("layers", encoder_layers)
         self.encoder.add_module("final_layernorm", encoder_final_layernorm)
@@ -306,9 +310,13 @@ class T5Model(flow.nn.Module):
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
             enc_embedding_output = self.embedding(encoder_input_ids)
             enc_hidden_states = enc_embedding_output
+            if self.multihead_attn_fusion:
+                enc_hidden_states = enc_hidden_states.transpose(0, 1)
             for layer in self.encoder.layers:
                 enc_hidden_states = layer(enc_hidden_states, encoder_attn_mask)
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
+            if self.multihead_attn_fusion:
+                encoder_states = encoder_states.transpose(0, 1)
 
         decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
