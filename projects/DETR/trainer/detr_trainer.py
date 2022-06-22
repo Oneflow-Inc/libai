@@ -49,7 +49,7 @@ class DetrEagerTrainer(TrainerBase):
         self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
         self.grad_acc_steps = grad_acc_steps
-
+        
     def run_step(self, get_batch: Callable):
         """
         Implement the standard training logic described above.

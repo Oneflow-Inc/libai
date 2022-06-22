@@ -14,7 +14,6 @@ detr_args.mask_loss_coef = 1
 detr_args.dice_loss_coef = 1
 detr_args.eos_coef = 0.1
 detr_args.device = "cuda"
-detr_args.masks = False 
 
 # Backbone
 # Name of the convolutional backbone to use
@@ -51,6 +50,10 @@ detr_args.bbox_loss_coef = 1
 detr_args.giou_loss_coef = 1
 # Relative classification weight of the no-object class
 detr_args.eos_coef = 1
+
+
+# for panoptic segmentation
+detr_args.masks = False 
 
 model = build(args=detr_args)
 postprocessors = {'bbox': PostProcess()}

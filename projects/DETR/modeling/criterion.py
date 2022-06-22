@@ -81,18 +81,21 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
         target_boxes = flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-        src_boxes = src_boxes.to_local().to(device=target_boxes.device)
-        loss_bbox = DistTensorData(self.l1_loss(src_boxes, target_boxes).sum(), placement_idx=0)
-        loss_bbox.to_global()
+        # src_boxes = src_boxes.to_local().to(device=target_boxes.device)
+        # loss_bbox = DistTensorData(self.l1_loss(src_boxes, target_boxes).sum(), placement_idx=0)
+        # loss_bbox.to_global()
+        target_boxes = DistTensorData(target_boxes, placement_idx=0)
+        target_boxes.to_global()
+        target_boxes = target_boxes.tensor
+        loss_bbox = self.l1_loss(src_boxes, target_boxes).sum()
         losses = {}
-        losses['loss_bbox'] = (loss_bbox.tensor / num_boxes)
-
+        losses['loss_bbox'] = (loss_bbox / num_boxes)
         loss_giou = 1 - flow.diag(box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
             box_ops.box_cxcywh_to_xyxy(target_boxes)))
-        loss_giou = DistTensorData(loss_giou.sum(), placement_idx=0)
-        loss_giou.to_global()
-        losses['loss_giou'] = (loss_giou.tensor / num_boxes)
+        # loss_giou = DistTensorData(loss_giou.sum(), placement_idx=0)
+        # loss_giou.to_global()
+        losses['loss_giou'] = (loss_giou / num_boxes)
         return losses
 
     def _get_src_permutation_idx(self, indices):

@@ -48,7 +48,6 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
         
     else:
         raise ValueError('not supported')
-
     return Instance(
         images = (DistTensorData(tensor, placement_idx=0), DistTensorData(mask, placement_idx=0)), 
         labels = tuple(labels)

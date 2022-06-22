@@ -44,19 +44,12 @@ class PositionEmbeddingSine(nn.Module):
         self.scale = scale
 
     def forward(self, tensor_list):
-        # x = tensor_list.tensors
-        # mask = tensor_list.mask
         x, mask = tensor_list
         
         assert mask is not None
         not_mask = ~mask
 
-        # NOTE: oneflow does note support tensor.cumsum, support flow.cumsum 
-        # NOTE: flow.cumsum has no dtype args
-        # y_embed = not_mask.cumsum(1, dtype=flow.float32)
         y_embed = flow.cumsum(not_mask, dim=1)
-
-        # x_embed = not_mask.cumsum(2, dtype=flow.float32)
         x_embed = flow.cumsum(not_mask, dim=2)
 
         if self.normalize:

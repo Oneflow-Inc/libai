@@ -3,7 +3,7 @@ from ..datasets.detection import CocoDetection
 from ..datasets.dataloader import dataloader, make_coco_transforms
 from ..datasets.evaluation import CocoEvaluator
 from .models.configs_detr_resnet50 import model, postprocessors
-
+from ..utils.optim import get_default_optimizer_params
 
 train = get_config("common/train.py").train
 graph = get_config("common/models/graph.py").graph
@@ -43,10 +43,18 @@ train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detecti
 train.evaluation.eval_metric = "bbox@AP"
 
 # Refine optimizer cfg for detr model
-base_lr = 1.5e-4
+base_lr = 1e-4
 actual_lr = base_lr * (train.train_micro_batch_size * 2 / 256)
 optim.lr = actual_lr
 optim.weight_decay = 0.1
+
+optim.params = LazyCall(get_default_optimizer_params)(
+        weight_decay = None,
+        clip_grad_max_norm=1.0,
+        clip_grad_norm_type=2.0,
+        weight_decay_norm=0.0,
+        weight_decay_bias=0.0,   
+        overrides = {"weight": {"lr": 1e-5}})
 
 # Scheduler
 train.scheduler.warmup_factor = 0.001
