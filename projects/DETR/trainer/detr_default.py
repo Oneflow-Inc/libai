@@ -65,7 +65,8 @@ class DetrDefaultTrainer(DefaultTrainer):
         # they can not be converted to global in tensor parallel
         for i in range(len(labels)):
             for k, v in labels[i].items():
-                labels[i][k] = v.to(device="cuda:0")
+                v.to_global()
+                labels[i][k] = v.tensor
                 
         ret_dict = {
             "images": (tensors.tensor, mask.tensor),

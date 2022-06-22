@@ -79,8 +79,8 @@ class HungarianMatcher(nn.Module):
         # The 1 is a constant that doesn't change the matching, it can be ommitted.
         cost_class = -out_prob[:, tgt_ids]
 
-        cost_class = cost_class.to_local().to(tgt_bbox.device)
-        out_bbox = out_bbox.to_local().to(tgt_bbox.device)
+        # cost_class = cost_class.to_local().to(tgt_bbox.device)
+        # out_bbox = out_bbox.to_local().to(tgt_bbox.device)
 
         # Compute the L1 cost between boxes
         cost_bbox = (out_bbox.unsqueeze(1)-tgt_bbox.unsqueeze(0)).norm(p=1, dim=2)

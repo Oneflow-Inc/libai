@@ -56,18 +56,25 @@ class SetCriterion(nn.Module):
         assert 'pred_logits' in outputs
         src_logits = outputs['pred_logits']
         target_classes = flow.full(src_logits.shape[:2], self.num_classes, dtype=flow.int64)
-      
+        target_classes = DistTensorData(target_classes, placement_idx=0)
+        target_classes.to_global() 
+        target_classes = target_classes.tensor
+     
         target_classes_o = flow.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
         
         batch_idx, src_idx = self._get_src_permutation_idx(indices)
-        idx = batch_idx, src_idx
-        target_classes[idx] = target_classes_o
-        target_classes = DistTensorData(target_classes, placement_idx=0)
-        target_classes.to_global()
+        batch_idx = DistTensorData(batch_idx, placement_idx=0)
+        src_idx = DistTensorData(src_idx, placement_idx=0)
+        batch_idx.to_global() 
+        src_idx.to_global() 
         
+        idx = batch_idx.tensor, src_idx.tensor
+             
+        target_classes[idx] = target_classes_o
+
         loss_ce = F.cross_entropy(
             src_logits.transpose(1, 2), 
-            target_classes.tensor, 
+            target_classes, 
             self.empty_weight)
         losses = {'loss_ce': loss_ce.to(dtype=flow.float64)}
         return losses
@@ -81,21 +88,14 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs['pred_boxes'][idx]
         target_boxes = flow.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-        # src_boxes = src_boxes.to_local().to(device=target_boxes.device)
-        # loss_bbox = DistTensorData(self.l1_loss(src_boxes, target_boxes).sum(), placement_idx=0)
-        # loss_bbox.to_global()
-        target_boxes = DistTensorData(target_boxes, placement_idx=0)
-        target_boxes.to_global()
-        target_boxes = target_boxes.tensor
+
         loss_bbox = self.l1_loss(src_boxes, target_boxes).sum()
         losses = {}
         losses['loss_bbox'] = (loss_bbox / num_boxes)
         loss_giou = 1 - flow.diag(box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
             box_ops.box_cxcywh_to_xyxy(target_boxes)))
-        # loss_giou = DistTensorData(loss_giou.sum(), placement_idx=0)
-        # loss_giou.to_global()
-        losses['loss_giou'] = (loss_giou / num_boxes)
+        losses['loss_giou'] = (loss_giou.sum() / num_boxes)
         return losses
 
     def _get_src_permutation_idx(self, indices):
@@ -135,7 +135,6 @@ class SetCriterion(nn.Module):
         
         # Retrieve the matching between the outputs of the last layer and the targets
         indices = self.matcher(outputs_without_aux, targets)
-
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         num_boxes = sum(len(t["labels"]) for t in targets)
         num_boxes = flow.as_tensor([num_boxes], dtype=flow.float64)
