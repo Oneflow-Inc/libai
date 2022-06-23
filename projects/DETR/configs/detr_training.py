@@ -1,5 +1,4 @@
 from libai.config import get_config, LazyCall
-from libai.scheduler.lr_scheduler import WarmupCosineLR
 
 from ..datasets.detection import CocoDetection
 from ..datasets.dataloader import dataloader, make_coco_transforms

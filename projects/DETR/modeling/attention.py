@@ -103,8 +103,6 @@ class DetrMultiheadAttention(MultiheadAttention):
                 new_attention_mask = flow.zeros_like(attention_mask).to(dtype=query.dtype)
                 new_attention_mask = new_attention_mask.masked_fill(attention_mask, float("-inf"))
                 attention_mask = new_attention_mask
-            print("attention_scores", attention_scores.shape, attention_scores.sbp)
-            print("attention_mask", attention_mask.shape, attention_mask.sbp)
             attention_scores = attention_scores + attention_mask
             # NOTE: The += op leads error sbp signature
             # attention_scores += attention_mask

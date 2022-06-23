@@ -239,8 +239,6 @@ def inference_on_coco_dataset(
 
         start_data_time = time.perf_counter()
         for idx, inputs in enumerate(data_loader):
-            if idx > 50:
-                break
             if idx >= real_eval_iter:
                 break
             total_data_time += time.perf_counter() - start_data_time
