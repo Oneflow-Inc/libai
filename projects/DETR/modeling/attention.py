@@ -17,6 +17,7 @@
 
 import oneflow as flow
 import oneflow.nn.functional as F
+from libai.layers import attention
 
 from libai.layers.attention import MultiheadAttention
 
@@ -61,10 +62,6 @@ class DetrMultiheadAttention(MultiheadAttention):
                 used with cross-attention in decoder.
                 Defaults to None.
         """
-
-        if attention_mask is not None:
-            if hidden_states.is_global:
-                attention_mask = attention_mask.to_global(placement=hidden_states.placement)
                 
         query, key, value = hidden_states
 
@@ -97,25 +94,24 @@ class DetrMultiheadAttention(MultiheadAttention):
             else:
                 attention_mask = attention_mask.masked_fill(key_padding_mask, float("-inf"))
                 
-        # convert mask to float
-        if attention_mask is not None and attention_mask.dtype == flow.bool:
-            new_attention_mask = flow.zeros_like(attention_mask).to(dtype=query.dtype)
-            new_attention_mask = new_attention_mask.masked_fill(attention_mask, float("-inf"))
-            attention_mask = new_attention_mask
-            
+                
         attention_scores = flow.bmm(query*self.norm_factor, key.transpose(-2,-1))
-        
+                
+        # convert mask to float
         if attention_mask is not None:
+            if attention_mask.dtype == flow.bool:
+                new_attention_mask = flow.zeros_like(attention_mask).to(dtype=query.dtype)
+                new_attention_mask = new_attention_mask.masked_fill(attention_mask, float("-inf"))
+                attention_mask = new_attention_mask
             attention_scores += attention_mask
-        attention_weights = flow.softmax(attention_scores, dim=-1)
 
+        attention_weights = flow.softmax(attention_scores, dim=-1)
         attention_weights = self.dropout(attention_weights)
 
         context = flow.bmm(attention_weights, value)
         
         # Change shape: [bsz*num_heads, tgt_len, head_size] -> [tgt_len, bsz*num_heads, head_size] -> [tgt_len, bsz, embed_dim]
         context = context.transpose(0,1).contiguous().view(tgt_len, bsz, self.hidden_size)
-
         output = self.dense(context)
         return output
     
