@@ -27,9 +27,12 @@ class TextClassificationPipeline(BasePipeline):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        model_path=None,
         **kwargs,
     ):
-        super().__init__(config_file, data_parallel, tensor_parallel, pipeline_parallel, **kwargs)
+        super().__init__(
+            config_file, data_parallel, tensor_parallel, pipeline_parallel, model_path, **kwargs
+        )
 
     def update_cfg(
         self,
@@ -94,9 +97,9 @@ class TextClassificationPipeline(BasePipeline):
             ], f"Unrecognized `function_to_apply` argument: {function_to_apply}"
         else:
             if num_labels == 1:
-                function_to_apply == "sigmoid"
+                function_to_apply = "sigmoid"
             elif num_labels > 1:
-                function_to_apply == "softmax"
+                function_to_apply = "softmax"
 
         # process, logits: [num_labels]
         logits = model_outputs_dict["logits"][0]
@@ -108,7 +111,6 @@ class TextClassificationPipeline(BasePipeline):
         else:
             scores = logits
         scores = scores.detach().numpy()
-
         if return_all_scores:
             return [
                 {"label": self.cfg.model.cfg.id2label[i], "score": score.item()}

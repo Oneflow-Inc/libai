@@ -41,7 +41,7 @@ class TestTextGenerationPipeline(flow.unittest.TestCase):
     @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_parallel(self):
-        self.pipeline = TextGenerationPipeline("configs/t5_pp_pretrain.py", 1, 4, 1)
+        self.pipeline = TextGenerationPipeline("configs/t5_large_pretrain.py", 1, 4, 1)
 
         for _ in range(5):
             text = list(np.random.randint(0, 5, 10))
@@ -58,7 +58,7 @@ class TestTextGenerationPipeline(flow.unittest.TestCase):
     @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_pipeline_parallel(self):
-        self.pipeline = TextGenerationPipeline("configs/t5_pp_pretrain.py", 1, 1, 4)
+        self.pipeline = TextGenerationPipeline("configs/t5_large_pretrain.py", 1, 1, 4)
 
         for _ in range(5):
             text = list(np.random.randint(0, 5, 10))
@@ -75,7 +75,7 @@ class TestTextGenerationPipeline(flow.unittest.TestCase):
     @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     @flow.unittest.skip_unless_1n4d()
     def test_pipeline_with_tensor_pipeline_parallel(self):
-        self.pipeline = TextGenerationPipeline("configs/t5_pp_pretrain.py", 1, 2, 2)
+        self.pipeline = TextGenerationPipeline("configs/t5_large_pretrain.py", 1, 2, 2)
 
         for _ in range(5):
             text = list(np.random.randint(0, 5, 10))
