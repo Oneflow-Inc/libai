@@ -94,6 +94,8 @@ class TestGPTModel(flow.unittest.TestCase):
         cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 
+        cfg.train.rdma_enabled = False
+
         for ds in cfg.dataloader.train.dataset:
             ds.max_seq_length = cfg.model.cfg.max_seq_length
 
