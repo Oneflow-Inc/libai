@@ -255,13 +255,18 @@ def inference_on_coco_dataset(
             data = get_batch(inputs)
             imgs, _ = data["images"]
             
-            valid_data = {}
-            valid_data["labels"] = tuple(data["labels"])
-            valid_data["images"] = dist.ttol(imgs, ranks=[0] 
-                                             if imgs.placement.ranks.ndim == 1 
-                                             else [[0]])
-            
             _, outputs = model(data)
+            
+            # Switch to local mode
+            valid_data = {}
+            
+            valid_data["labels"] = data["labels"]
+            for label_dict in valid_data["labels"]:
+                for k, v in label_dict.items():
+                    label_dict[k] = dist.ttol(v, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+                    
+            valid_data["images"] = dist.ttol(imgs, ranks=[0] if imgs.placement.ranks.ndim == 1 else [[0]])
+
             valid_outputs = {}
             for key, value in outputs.items():
                 if key == "aux_outputs":
