@@ -109,7 +109,6 @@ class LoadPretrainedBase(object):
             if key in loaded_keys:
                 if not has_prefix_module:
                     key = ".".join(key.split(".")[1:])
-                # print(key)
                 flow_state_dict[key] = flow.to_global(
                     flow_state_dict[key], sbp=value.sbp, placement=value.placement
                 )
