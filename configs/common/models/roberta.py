@@ -18,8 +18,8 @@ cfg = dict(
     pad_token_id=1,
     bias_gelu_fusion=False,
     bias_dropout_fusion=False,
-    scale_mask_softmax_fusion=False,
-    apply_query_key_layer_scaling=False,
+    scale_mask_softmax_fusion=True,
+    apply_query_key_layer_scaling=True,
     apply_residual_post_layernorm=True,
     amp_enabled=False,
 )

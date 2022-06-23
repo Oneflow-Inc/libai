@@ -92,6 +92,8 @@ class RobertaLoss(nn.Module):
         self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask):
+        lm_labels = lm_labels.to_global(placement=lm_output.placement)
+        loss_mask = loss_mask.to_global(placement=lm_output.placement)
         lm_loss = self.lm_loss(lm_output, lm_labels)
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
@@ -357,6 +359,10 @@ class RobertaForPreTraining(RobertaPreTrainedModel):
                 loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
                 Defaults to None.
         """
+        input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
+        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
+        tokentype_ids = tokentype_ids.to_global(placement=dist.get_layer_placement(0))
+
         outputs = self.roberta(input_ids, attention_mask, tokentype_ids=tokentype_ids)
         sequence_output = outputs[0]
         prediction_scores = self.lm_head(sequence_output, self.roberta.word_embeddings_weight())
