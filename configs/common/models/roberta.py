@@ -16,11 +16,11 @@ cfg = dict(
     initializer_range=0.02,
     layernorm_eps=1e-5,
     pad_token_id=1,
-    bias_gelu_fusion=False,
-    bias_dropout_fusion=False,
+    bias_gelu_fusion=True,
+    bias_dropout_fusion=True,
     scale_mask_softmax_fusion=True,
     apply_query_key_layer_scaling=True,
-    apply_residual_post_layernorm=True,
+    apply_residual_post_layernorm=False,
     amp_enabled=False,
 )
 
