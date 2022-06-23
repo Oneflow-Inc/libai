@@ -20,6 +20,7 @@ from libai.utils.logger import log_every_n_seconds
 
 from modeling.post_process import PostProcess
 
+
 def accuracy(output, target, topk=(1,)):
     maxk = min(max(topk), output.size()[1])
     batch_size = target.size(0)

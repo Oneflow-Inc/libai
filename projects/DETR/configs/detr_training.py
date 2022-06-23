@@ -1,9 +1,12 @@
 from libai.config import get_config, LazyCall
+from libai.scheduler.lr_scheduler import WarmupCosineLR
+
 from ..datasets.detection import CocoDetection
 from ..datasets.dataloader import dataloader, make_coco_transforms
 from ..datasets.evaluation import CocoEvaluator
 from .models.configs_detr_resnet50 import model
 from ..utils.optim import get_default_optimizer_params
+from ..utils.lr_scheduler import WarmupStepLR
 
 train = get_config("common/train.py").train
 graph = get_config("common/models/graph.py").graph
@@ -28,8 +31,8 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 # train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
-train.train_micro_batch_size = 4
-train.test_micro_batch_size = 4
+train.train_micro_batch_size = 2
+train.test_micro_batch_size = 2
 train.train_epoch = 300
 train.evaluation.eval_period = 20
 
@@ -43,22 +46,25 @@ train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detecti
 train.evaluation.eval_metric = "bbox@AP"
 
 # Refine optimizer cfg for detr model
-backbone_lr = 1e-5
-optim.weight_decay = 0.1
+optim.weight_decay = 1e-4
 optim.lr = 1e-4
+backbone_lr = 1e-5
 
 optim.params = LazyCall(get_default_optimizer_params)(
         weight_decay = None,
-        clip_grad_max_norm=1.0,
+        clip_grad_max_norm=0.1,
         clip_grad_norm_type=2.0,
         weight_decay_norm=0.0,
         weight_decay_bias=0.0,   
         overrides = {"weight": {"lr": backbone_lr}})
 
 # Scheduler
-train.scheduler.warmup_factor = 0.001
-train.scheduler.alpha = 1.5e-4
-train.scheduler.warmup_method = "linear"
+train.scheduler = LazyCall(WarmupStepLR)(
+        warmup_factor=0,
+        warmup_iter=0,
+        step_size=200,
+        warmup_method="linear",
+    )
 
 graph.enabled = False
 
