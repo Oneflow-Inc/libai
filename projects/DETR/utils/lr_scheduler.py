@@ -44,16 +44,16 @@ def WarmupStepLR(
             In linear mode, the multiplication factor starts with warmup_factor in the first
             epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
-    multistep_lr = flow.optim.lr_scheduler.StepLR(
+    step_lr = flow.optim.lr_scheduler.StepLR(
         optimizer, step_size==step_size, gamma=gamma
     )
     if warmup_iter == 0:
         logger.warning("warmup iters equals to zero, return StepLR")
-        return multistep_lr
-    warmup_multistep_lr = flow.optim.lr_scheduler.WarmUpLR(
-        multistep_lr,
+        return step_lr
+    warmup_step_lr = flow.optim.lr_scheduler.WarmUpLR(
+        step_lr,
         warmup_factor=warmup_factor,
         warmup_iters=warmup_iter,
         warmup_method=warmup_method,
     )
-    return warmup_multistep_lr
+    return warmup_step_lr
