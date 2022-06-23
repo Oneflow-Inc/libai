@@ -362,6 +362,7 @@ class RobertaForPreTraining(RobertaPreTrainedModel):
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
         attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
         tokentype_ids = tokentype_ids.to_global(placement=dist.get_layer_placement(0))
+
         outputs = self.roberta(input_ids, attention_mask, tokentype_ids=tokentype_ids)
         sequence_output = outputs[0]
         prediction_scores = self.lm_head(sequence_output, self.roberta.word_embeddings_weight())
@@ -417,9 +418,6 @@ class RobertaForCausalLM(RobertaPreTrainedModel):
                 loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
                 Defaults to None.
         """
-        input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
-        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
-        tokentype_ids = tokentype_ids.to_global(placement=dist.get_layer_placement(0))
         outputs = self.roberta(input_ids, attention_mask, position_ids, tokentype_ids)
         sequence_output = outputs[0]
         prediction_scores = self.lm_head(sequence_output, self.roberta.word_embeddings_weight())
