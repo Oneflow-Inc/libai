@@ -18,8 +18,7 @@ from libai.evaluation.evaluator import DatasetEvaluator
 from libai.utils import distributed as dist
 from libai.utils.logger import log_every_n_seconds
 
-from projects.DETR.configs.models.configs_detr_resnet50 import postprocessors
-
+from modeling.post_process import PostProcess
 
 def accuracy(output, target, topk=(1,)):
     maxk = min(max(topk), output.size()[1])
@@ -43,7 +42,8 @@ class CocoEvaluator(DatasetEvaluator):
     def __init__(self, coco_detection):
         
         self.coco_gt = copy.deepcopy(get_coco_api_from_dataset(coco_detection))
-        self.iou_types = tuple(k for k in ('segm', 'bbox') if k in postprocessors.keys())
+        self.postprocessors = {'bbox': PostProcess()}
+        self.iou_types = tuple(k for k in ('segm', 'bbox') if k in self.postprocessors.keys())
         
         self._predictions = OrderedDict()
         self.img_ids = []
@@ -65,7 +65,7 @@ class CocoEvaluator(DatasetEvaluator):
         """
         orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
         # results -> List[dict()]
-        results = postprocessors['bbox'](outputs, orig_target_sizes)
+        results = self.postprocessors['bbox'](outputs, orig_target_sizes)
         # predictions -> {image_id: dict{scores, labels, boxes}}
         predictions = {target['image_id'].item(): output for target, output in zip(inputs["labels"], results)}
         

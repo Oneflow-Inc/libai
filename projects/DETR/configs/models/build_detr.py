@@ -16,12 +16,12 @@
 
 from libai.config import LazyCall
 
-from .backbone import Backbone, Joiner
-from .matcher import HungarianMatcher
-from .transformer import Transformer
-from .detr import DETR
-from .criterion import SetCriterion
-from .position_encoding import PositionEmbeddingLearned, PositionEmbeddingSine
+from ...modeling.backbone import Backbone, Joiner
+from ...modeling.matcher import HungarianMatcher
+from ...modeling.transformer import Transformer
+from ...modeling.detr import DETR
+from ...modeling.criterion import SetCriterion
+from ...modeling.position_encoding import PositionEmbeddingLearned, PositionEmbeddingSine
 
     
 def build_criterion(args):
@@ -79,12 +79,11 @@ def build_position_encoding(args):
 
 def build_backbone(args):
     position_embedding = build_position_encoding(args=args)
-    train_backbone = args.lr_backbone > 0
     # TODO (ziqiu chi): return_interm_layers works for segmentation task
     return_interm_layers = args.masks
     backbone = Backbone(
         name=args.backbone, 
-        train_backbone=train_backbone, 
+        train_backbone=args.train_backbone, 
         return_interm_layers=return_interm_layers, 
         dilation=args.dilation)
     model = Joiner(
@@ -96,7 +95,7 @@ def build_backbone(args):
 
 def build(args):
     """
-    Build the DETR model and postprocessors (dict) for detection
+    Build the DETR model for detection
     """
 
     num_classes = 20 if args.dataset_file != 'coco' else 91

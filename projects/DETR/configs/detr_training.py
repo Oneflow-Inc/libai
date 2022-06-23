@@ -2,7 +2,7 @@ from libai.config import get_config, LazyCall
 from ..datasets.detection import CocoDetection
 from ..datasets.dataloader import dataloader, make_coco_transforms
 from ..datasets.evaluation import CocoEvaluator
-from .models.configs_detr_resnet50 import model, postprocessors
+from .models.configs_detr_resnet50 import model
 from ..utils.optim import get_default_optimizer_params
 
 train = get_config("common/train.py").train
@@ -31,7 +31,7 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 train.train_micro_batch_size = 4
 train.test_micro_batch_size = 4
 train.train_epoch = 300
-train.evaluation.eval_period = 1
+train.evaluation.eval_period = 20
 
 coco_detection = LazyCall(CocoDetection)(
     img_folder = path_val_img, 
@@ -43,10 +43,9 @@ train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detecti
 train.evaluation.eval_metric = "bbox@AP"
 
 # Refine optimizer cfg for detr model
-base_lr = 1e-4
-actual_lr = base_lr * (train.train_micro_batch_size * 2 / 256)
-optim.lr = actual_lr
+backbone_lr = 1e-5
 optim.weight_decay = 0.1
+optim.lr = 1e-4
 
 optim.params = LazyCall(get_default_optimizer_params)(
         weight_decay = None,
@@ -54,7 +53,7 @@ optim.params = LazyCall(get_default_optimizer_params)(
         clip_grad_norm_type=2.0,
         weight_decay_norm=0.0,
         weight_decay_bias=0.0,   
-        overrides = {"weight": {"lr": 1e-5}})
+        overrides = {"weight": {"lr": backbone_lr}})
 
 # Scheduler
 train.scheduler.warmup_factor = 0.001
