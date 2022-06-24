@@ -69,6 +69,7 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
+        self.config.disable_straighten_algorithm(True)
 
         # auto_parallel
         if auto_parallel_conf is not None and auto_parallel_conf.enabled:
