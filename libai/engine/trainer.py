@@ -18,7 +18,6 @@ import time
 import weakref
 from typing import Callable, List, Mapping
 
-import numpy as np
 import oneflow as flow
 
 from libai.utils import distributed as dist
@@ -191,10 +190,11 @@ class TrainerBase:
         """
         # Only get metric value on rank0
         # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
-        metrics_dict = {
-            k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
-            for k, v in loss_dict.items()
-        }
+        # metrics_dict = {
+        #     k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+        #     for k, v in loss_dict.items()
+        # }
+        metrics_dict = {k: dist.ttol(v, pure_local=True) for k, v in loss_dict.items()}
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
@@ -216,11 +216,11 @@ class TrainerBase:
             # }
             metrics_dict = all_metrics_dict
             total_losses_reduced = sum(metrics_dict.values())
-            if not np.isfinite(total_losses_reduced):
-                raise FloatingPointError(
-                    f"Loss became infinite or NaN at iteration={storage.iter}!\n"
-                    f"loss_dict = {metrics_dict}"
-                )
+            # if not np.isfinite(total_losses_reduced):
+            #     raise FloatingPointError(
+            #         f"Loss became infinite or NaN at iteration={storage.iter}!\n"
+            #         f"loss_dict = {metrics_dict}"
+            #     )
 
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
             if len(metrics_dict) > 1:

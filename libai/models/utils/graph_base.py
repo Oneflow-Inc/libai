@@ -19,6 +19,7 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.layers import TransformerLayer
+from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +90,11 @@ class GraphBase(nn.Graph):
                     "python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/release-auto_parallel-v0.1/[PLATFORM]"  # noqa
                 )
 
+        dist_util = dist.get_dist_util()
         # Enable compute_stream for computation and communication with the same cuda stream.
         # This will reduce memory when using model parallelism.
-        # if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
-
-        # Enable compute_stream by default.
-        flow.boxing.nccl.enable_use_compute_stream(True)
+        if dist_util.is_tensor_model_parallel() or dist_util.is_pipeline_model_parallel():
+            flow.boxing.nccl.enable_use_compute_stream(True)
 
     def build(self, **kwargs):
         if self.is_train:
@@ -105,6 +105,15 @@ class GraphBase(nn.Graph):
             loss_dict = self.model(**kwargs)
             losses = sum(loss_dict.values())
             losses.backward()
+            loss_dict = {
+                k: v.to_global(
+                    placement=flow.placement(
+                        "cpu", ranks=[0] if v.placement.ranks.ndim == 1 else [[0]]
+                    ),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
+                for k, v in loss_dict.items()
+            }
             return loss_dict
         else:
             logger.info(

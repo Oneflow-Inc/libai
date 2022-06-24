@@ -24,6 +24,7 @@ from libai.layers import (
     TransformerLayer,
     VocabEmbedding,
 )
+from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 
@@ -173,6 +174,7 @@ class T5Model(flow.nn.Module):
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
+                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -205,6 +207,7 @@ class T5Model(flow.nn.Module):
                     bias_dropout_fusion=bias_dropout_fusion,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
@@ -284,6 +287,13 @@ class T5Model(flow.nn.Module):
         Returns:
             flow.Tensor: logits
         """
+        encoder_input_ids = encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
+        decoder_input_ids = decoder_input_ids.to_global(placement=dist.get_layer_placement(0))
+        encoder_attn_mask = encoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+        decoder_attn_mask = decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+        encoder_decoder_attn_mask = encoder_decoder_attn_mask.to_global(
+            placement=dist.get_layer_placement(0)
+        )
         if use_cache and self.encoder_states is not None:
             encoder_states = self.encoder_states
         else:
@@ -340,6 +350,7 @@ class T5Loss(flow.nn.Module):
 
     def forward(self, logits, lm_labels, loss_mask):
         lm_loss = self.lm_loss(logits, lm_labels)
+        loss_mask = loss_mask.to_global(placement=lm_loss.placement)
         loss_mask = loss_mask.float()
         denominator = loss_mask.sum().to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
@@ -438,19 +449,37 @@ class T5ForPreTraining(flow.nn.Module):
         # Set pipeline parallelism stage_id
         for module_block in model.modules():
             if isinstance(module_block.origin, T5Embedding):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, ExtendedMask):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(0),
+                    dist.get_layer_placement(0))
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx))
             elif isinstance(module_block.origin, LMLogits):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
             elif isinstance(module_block.origin, T5Loss):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                # module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(dist_utils.get_layer_stage_id(-1),
+                    dist.get_layer_placement(-1))
 
-        model.t5_model.encoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
-            model.t5_model.encoder.final_layernorm.layer_idx
+        model.t5_model.encoder.final_layernorm.config.set_stage(
+            dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
+            dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx)
         )
-        model.t5_model.decoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
-            model.t5_model.decoder.final_layernorm.layer_idx
+        model.t5_model.decoder.final_layernorm.config.set_stage(
+            dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
+            dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx)
         )
+        # model.t5_model.encoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
+        #     model.t5_model.encoder.final_layernorm.layer_idx
+        # )
+        # model.t5_model.decoder.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(
+        #     model.t5_model.decoder.final_layernorm.layer_idx
+        # )

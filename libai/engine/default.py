@@ -294,6 +294,8 @@ class DefaultTrainer(TrainerBase):
 
         self.test_loader.extend(self.build_test_loader(cfg, self.tokenizer))
 
+        flow.env.init_rdma()
+
         # Automatically scale the hyperparams
         self.auto_scale_hyperparams(cfg, self.train_loader)
 
@@ -399,7 +401,7 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
+            # hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
         ]
 
         if self.cfg.train.evaluation.enabled:
@@ -452,7 +454,7 @@ class DefaultTrainer(TrainerBase):
         return [
             # It may not always print what you want to see, since it prints "common" metrics only.
             CommonMetricPrinter(self.global_batch_size, self.max_iter),
-            JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
+            # JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
             TensorboardXWriter(self.cfg.train.output_dir),
         ]
 
