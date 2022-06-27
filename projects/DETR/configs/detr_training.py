@@ -1,5 +1,3 @@
-import math
-
 from libai.config import get_config, LazyCall, instantiate
 
 from ..datasets.detection import CocoDetection
@@ -59,11 +57,11 @@ optim.params = LazyCall(get_default_optimizer_params)(
         overrides = {"weight": {"lr": backbone_lr}})
 
 # Scheduler
+epoch_step_size = 200
 train.scheduler = LazyCall(WarmupStepLR)(
         warmup_factor=0,
         warmup_iter=0,
-        step_size=200,
-        train_epoch=train.train_epoch,
+        step_size=epoch_step_size,
         warmup_method="linear",
     )
 
@@ -71,4 +69,4 @@ graph.enabled = False
 
 # model_parallel
 train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 8
+train.dist.tensor_parallel_size = 4

@@ -26,10 +26,10 @@ from libai.config import instantiate, try_get_key
 from libai.data import Instance
 from libai.models import  build_model
 from libai.utils import distributed as dist
+from libai.scheduler import build_lr_scheduler
 
 from trainer.detr_trainer import DetrEagerTrainer
 from projects.DETR.datasets.evaluation import inference_on_coco_dataset
-from modeling.backbone import FrozenBatchNorm2d
 
 
 class DetrDefaultTrainer(DefaultTrainer):
@@ -119,3 +119,17 @@ class DetrDefaultTrainer(DefaultTrainer):
         model.apply(dist.convert_to_distributed_default_setting)
 
         return model
+
+    @classmethod
+    def build_lr_scheduler(cls, cfg, optimizer):
+        """
+        It now calls :func:`libai.scheduler.build_lr_scheduler`.
+        Overwrite it if you'd like a different scheduler.
+        """
+        assert (
+            try_get_key(cfg, "train.scheduler") is not None
+        ), "cfg.train must contain `scheduler` namespace"
+        assert cfg.train.train_epoch > cfg.train.scheduler.step_size
+        cfg.train.scheduler.step_size = (cfg.train.scheduler.step_size / 
+                                        cfg.train.train_epoch) * cfg.train.train_iter
+        return build_lr_scheduler(cfg.train.scheduler, optimizer)    
