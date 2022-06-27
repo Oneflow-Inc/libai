@@ -1,3 +1,4 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
 from libai.models import VisionTransformer
 
@@ -15,5 +16,7 @@ cfg = dict(
     drop_path_rate=0.1,
     num_classes=1000,
 )
+
+cfg = DictConfig(cfg)
 
 model = LazyCall(VisionTransformer)(cfg=cfg)

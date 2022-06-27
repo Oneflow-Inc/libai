@@ -1,3 +1,4 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
 from libai.models import SwinTransformer
 
@@ -20,5 +21,7 @@ cfg = dict(
     patch_norm=True,
     use_checkpoint=False,
 )
+
+cfg = DictConfig(cfg)
 
 model = LazyCall(SwinTransformer)(cfg=cfg)
