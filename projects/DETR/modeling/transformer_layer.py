@@ -80,7 +80,7 @@ class DetrTransformerLayer(TransformerLayer):
                 query = key = self.with_pos_embed(hidden_states, query_position_embedding)
             else:
                 query = key = self.with_pos_embed(hidden_states, position_embedding)
-                            
+
         attention_output = self.self_attention(
             (query, key, hidden_states),
             attention_mask=attention_mask,

@@ -114,7 +114,6 @@ class TransformerDecoder(nn.Module):
         output = tgt
 
         intermediate = []
-
         for layer in self.layers:
             output = layer(
                 output, 
