@@ -122,7 +122,7 @@ def WarmupStepLR(
             epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
     step_lr = flow.optim.lr_scheduler.StepLR(
-        optimizer, step_size==step_size, gamma=gamma
+        optimizer, step_size=step_size, gamma=gamma
     )
     if warmup_iter == 0:
         logger.warning("warmup iters equals to zero, return StepLR")
