@@ -101,7 +101,6 @@ def WarmupCosineAnnealingLR(
 def WarmupStepLR(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
-    train_epoch: int,
     warmup_factor: float,
     warmup_iter: int,
     step_size: int,
@@ -114,7 +113,6 @@ def WarmupStepLR(
     Args:
         optimizer (flow.optim.Optimizer): Wrapped optimizer.
         max_iter (int): Total training iters.
-        train_epoch (int): Total training epochs.
         warmup_factor (float): The warmup factor.
         warmup_iter (int): The number of warmup steps.
         step_size (int): Period of learning rate decay.
@@ -123,9 +121,6 @@ def WarmupStepLR(
             In linear mode, the multiplication factor starts with warmup_factor in the first
             epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
-    # Since LiBai executes scheduler.step() per iter,
-    # the step_size is converted to the iter-style version.
-    step_size = (step_size / train_epoch) * max_iter
     step_lr = flow.optim.lr_scheduler.StepLR(
         optimizer, step_size=step_size, gamma=gamma
     )
