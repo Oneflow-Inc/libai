@@ -59,7 +59,7 @@ class LoadPretrainedBase(object):
             default_cfg (dict): The default config of model, you can import it from
                 `libai.config.configs.common.models`.
             pretrained_model_path (str): The directory path of pretrained model,
-                which contains model weights file, config file.
+                which contains model weights file and config file.
             output_loading_info (`bool`, *optional*, defaults to `False`):
                 Whether to return a dictionary containing missing keys, unexpected keys
                 and error messages.
