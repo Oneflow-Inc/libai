@@ -30,7 +30,7 @@ from libai.scheduler import (
 )
 
 
-@unittest.skip("Bugs in warmup scheduler")
+# @unittest.skip("Bugs in warmup scheduler")
 class TestScheduler(TestCase):
     def test_warmup_multistep(self):
         p = nn.Parameter(flow.zeros(0))
@@ -133,18 +133,18 @@ class TestScheduler(TestCase):
 
         def _get_exponential_lr(base_lr, gamma, max_iters, warmup_iters):
             valid_values = []
-            for idx in range(max_iters - warmup_iters):
+            for idx in range(warmup_iters, max_iters+1):
                 valid_values.append(base_lr * (gamma ** idx))
             return valid_values
 
         for _ in range(30):
             sched.step()
             lrs.append(opt.param_groups[0]["lr"])
-        self.assertTrue(np.allclose(lrs[:5], [0.005, 1.004, 2.003, 3.002, 4.001]))
+        self.assertTrue(np.allclose(lrs[:5], [0.005, 0.00401, 0.0030199999999999997, 0.00203, 0.0010399999999999997]))
         valid_intermediate_values = _get_exponential_lr(
             base_lr=5.0, gamma=0.1, max_iters=30, warmup_iters=5
         )
-        self.assertEqual(lrs[5:30], valid_intermediate_values)
+        self.assertEqual(lrs[5:], valid_intermediate_values)
 
     def test_warmup_polynomial(self):
         p = nn.Parameter(flow.zeros(0))
