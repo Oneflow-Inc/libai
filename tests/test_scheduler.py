@@ -26,6 +26,7 @@ from libai.scheduler import (
     WarmupExponentialLR,
     WarmupMultiStepLR,
     WarmupPolynomialLR,
+    WarmupStepLR,
 )
 
 
@@ -57,6 +58,33 @@ class TestScheduler(TestCase):
         self.assertTrue(np.allclose(lrs[10:15], 0.5))
         self.assertTrue(np.allclose(lrs[15:20], 0.05))
         self.assertTrue(np.allclose(lrs[20:], 0.005))
+
+    def test_warmup_step(self):
+        p = nn.Parameter(flow.zeros(0))
+        opt = flow.optim.SGD([p], lr=5.0)
+
+        sched = WarmupStepLR(
+            optimizer=opt,
+            max_iter=10,
+            step_size=10,
+            gamma=0.1,
+            warmup_factor=0.001,
+            warmup_iter=5,
+            warmup_method="linear",
+        )
+
+        p.sum().backward()
+        opt.step()
+
+        lrs = [0.005]
+        for _ in range(30):
+            sched.step()
+            lrs.append(opt.param_groups[0]["lr"])
+        self.assertTrue(np.allclose(lrs[:5], [0.005, 1.004, 2.003, 3.002, 4.001]))
+        self.assertTrue(np.allclose(lrs[5:10], 5.0))
+        self.assertTrue(np.allclose(lrs[10:20], 0.5))
+        self.assertTrue(np.allclose(lrs[20:30], 0.05))
+        self.assertTrue(np.allclose(lrs[30:], 0.005))
 
     def test_warmup_cosine(self):
         p = nn.Parameter(flow.zeros(0))
