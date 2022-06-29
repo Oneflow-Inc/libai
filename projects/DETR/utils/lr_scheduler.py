@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 def WarmupStepLR(
     optimizer: flow.optim.Optimizer,
-    max_iter: int,
     warmup_factor: float,
     warmup_iter: int,
     step_size: int,
+    max_iter: int,
     gamma: float = 0.1,
     warmup_method: str = "linear",
 ):

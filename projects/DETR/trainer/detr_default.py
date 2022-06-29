@@ -129,7 +129,8 @@ class DetrDefaultTrainer(DefaultTrainer):
         assert (
             try_get_key(cfg, "train.scheduler") is not None
         ), "cfg.train must contain `scheduler` namespace"
-        assert cfg.train.train_epoch > cfg.train.scheduler.step_size
-        cfg.train.scheduler.step_size = (cfg.train.scheduler.step_size / 
-                                        cfg.train.train_epoch) * cfg.train.train_iter
+        if cfg.train.train_epoch:
+            assert cfg.train.train_epoch > cfg.train.scheduler.step_size
+            cfg.train.scheduler.step_size = (cfg.train.scheduler.step_size / 
+                                            cfg.train.train_epoch) * cfg.train.train_iter
         return build_lr_scheduler(cfg.train.scheduler, optimizer)    
