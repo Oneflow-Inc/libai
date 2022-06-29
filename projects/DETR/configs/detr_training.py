@@ -1,11 +1,11 @@
-from libai.config import get_config, LazyCall, instantiate
+from libai.config import get_config, LazyCall
+from libai.scheduler.lr_scheduler import WarmupStepLR
 
 from ..datasets.detection import CocoDetection
 from ..datasets.dataloader import dataloader, make_coco_transforms
 from ..datasets.evaluation import CocoEvaluator
 from .models.configs_detr_resnet50 import model
 from ..utils.optim import get_default_optimizer_params
-from ..utils.lr_scheduler import WarmupStepLR
 
 train = get_config("common/train.py").train
 graph = get_config("common/models/graph.py").graph
@@ -69,4 +69,4 @@ graph.enabled = False
 
 # model_parallel
 train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 4
+train.dist.tensor_parallel_size = 8

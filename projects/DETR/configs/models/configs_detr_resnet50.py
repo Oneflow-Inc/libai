@@ -1,7 +1,7 @@
 from omegaconf import OmegaConf
 
 from projects.DETR.configs.models.build_detr import build
-from modeling.post_process import PostProcess
+
 
 # Args for detr build_model
 detr_args = OmegaConf.create()
