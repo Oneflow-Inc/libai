@@ -239,7 +239,11 @@ def WarmupPolynomialLR(
             epoch and then inreases linearly to reach 1. Defaults to "linear".
     """
     polynomial_lr = flow.optim.lr_scheduler.PolynomialLR(
-        optimizer, decay_batch=max_iter, end_learning_rate=end_learning_rate, power=power, cycle=cycle
+        optimizer,
+        decay_batch=max_iter,
+        end_learning_rate=end_learning_rate,
+        power=power,
+        cycle=cycle,
     )
     if warmup_iter == 0:
         logger.warning("warmup iters equals to zero, return PolynomialLR")
