@@ -20,18 +20,12 @@ def _max_by_axis(the_list):
     return maxes
 
 
-def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
+def padding_tensor_from_tensor_list(tensor_list: List[Instance]):
     
 
     if tensor_list[0].get_fields()["images"].tensor.ndim == 3:
         max_size = _max_by_axis([list(tensor.get_fields()["images"].tensor.shape) for tensor in tensor_list])
         
-        # if flow.env.get_world_size() > 1:
-            # max_size = flow.tensor(max_size).unsqueeze(0)
-            # placement = [0, 1]
-            # max_size = max_size.to_global(sbp=flow.sbp.split(0), placement=flow.placement("cuda", ranks=placement))
-            # max_size = flow.max(max_size, dim=0)[0].numpy().tolist()
-
         batch_shape = [len(tensor_list)] + max_size
         b, c, h, w = batch_shape
         dtype = tensor_list[0].get_fields()["images"].tensor.dtype
@@ -40,6 +34,7 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
         mask = flow.ones((b, h, w), dtype=flow.bool) 
         
         labels = []
+        # TODO (ziqiu chi): Optimization of labels impl
         for i, ins in enumerate(tensor_list):
             img = ins.get_fields()["images"].tensor
             tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
@@ -56,7 +51,7 @@ def nested_tensor_from_tensor_list(tensor_list: List[Instance]):
     
 def collate_fn(batch):
     assert isinstance(batch[0], Instance), "batch[0] must be `instance`"
-    batch = nested_tensor_from_tensor_list(batch)
+    batch = padding_tensor_from_tensor_list(batch)
     return batch
 
 dataloader = OmegaConf.create()
@@ -84,6 +79,5 @@ dataloader.test = [
         ),
         num_workers=4,
         collate_fn = collate_fn
-
     )
 ]

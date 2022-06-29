@@ -18,7 +18,7 @@ import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
 
-from projects.DETR.datasets.dataloader import nested_tensor_from_tensor_list
+from projects.DETR.datasets.dataloader import padding_tensor_from_tensor_list
 
 
 class DETR(nn.Module):
@@ -60,7 +60,7 @@ class DETR(nn.Module):
         samples, targets = samples["images"], samples["labels"]
         # TODO (ziqiu chi): More training iterations are required to check lines 63-64
         if isinstance(samples, (list, flow.Tensor)):
-            samples = nested_tensor_from_tensor_list(samples)
+            samples = padding_tensor_from_tensor_list(samples)
             
         # *The 1st step: feature extraction
         features, pos = self.backbone(samples)
