@@ -43,12 +43,7 @@ class PostProcess(nn.Module):
         # convert to [x0, y0, x1, y1] format
         boxes = box_ops.box_cxcywh_to_xyxy(out_bbox)
         # and from relative [0, 1] to absolute [0, height] coordinates
-
-        # TODO: support flow.unbind
-        # img_h, img_w = target_sizes.unbind(1)
-        img_h, img_w = target_sizes.split(1, dim=1)
-        img_h, img_w = img_h.squeeze(1), img_w.squeeze(1)
-        
+        img_h, img_w = target_sizes.unbind(1)
         scale_fct = flow.stack([img_w, img_h, img_w, img_h], dim=1)
         boxes = boxes * scale_fct[:, None, :]
 

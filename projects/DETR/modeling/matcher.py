@@ -79,11 +79,9 @@ class HungarianMatcher(nn.Module):
         # The 1 is a constant that doesn't change the matching, it can be ommitted.
         cost_class = -out_prob[:, tgt_ids]
 
-        # cost_class = cost_class.to_local().to(tgt_bbox.device)
-        # out_bbox = out_bbox.to_local().to(tgt_bbox.device)
-
         # Compute the L1 cost between boxes
         cost_bbox = (out_bbox.unsqueeze(1)-tgt_bbox.unsqueeze(0)).norm(p=1, dim=2)
+        # TODO (ziqiu chi): oneflow does not support cdist
         # cost_bbox = flow.cdist(out_bbox, tgt_bbox, p=1)
 
         # Compute the giou cost betwen boxes
@@ -93,14 +91,9 @@ class HungarianMatcher(nn.Module):
         C = C.view(bs, num_queries, -1)
 
         sizes = [len(v["boxes"]) for v in targets]
-        # ! oneflow bugs: https://github.com/Oneflow-Inc/libai/pull/260#issuecomment-1124721109
-        if sizes[-1]==0:
-            argsort_idx = np.argsort(sizes)
-            indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(np.array(sizes)[argsort_idx].tolist(), -1))]
-            inverse_idx = np.argsort(argsort_idx)
-            indices = np.array(indices)[inverse_idx].tolist()
-        else:
-            indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
+
+        indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
+        
         # NOTE: setting dtype=flow.int64 returns bug: numpy-ndarray holds elements of unsupported datatype
         # return [(flow.as_tensor(i, dtype=flow.int64), flow.as_tensor(j, dtype=flow.int64)) for i, j in indices]
         return [(flow.as_tensor(i).to(dtype=flow.int64), flow.as_tensor(j).to(dtype=flow.int64)) for i, j in indices]

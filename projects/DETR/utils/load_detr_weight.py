@@ -1,11 +1,3 @@
-'''
-Author: hihippie chiziiqiu0923@gmail.com
-Date: 2022-05-24 09:55:37
-LastEditors: hihippie chiziiqiu0923@gmail.com
-LastEditTime: 2022-05-25 19:48:32
-FilePath: /libai/projects/DETR/utils/load_detr_weight.py
-Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
-'''
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 #

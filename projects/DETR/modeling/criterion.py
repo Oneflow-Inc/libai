@@ -124,13 +124,12 @@ class SetCriterion(nn.Module):
         """ This performs the loss computation.
         Parameters:
              outputs: dict of tensors, see the output specification of the model for the format
+                      For coco dataset:
+                      outputs["pred_logits"].shape: oneflow.Size([bsz, num_queries, 92])  
+                      outputs["pred_boxes"].shape: oneflow.Size([bsz, num_queries, 4])
              targets: list of dicts, such that len(targets) == batch_size.
                       The expected keys in each dict depends on the losses applied, see each loss' doc
         """
-
-        # outputs["pred_logits"].shape -> oneflow.Size([bsz, num_queries, 92])  
-        # outputs["pred_boxes"].shape -> oneflow.Size([bsz, num_queries, 4])
-        
         outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
         
         # Retrieve the matching between the outputs of the last layer and the targets
@@ -138,10 +137,7 @@ class SetCriterion(nn.Module):
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         num_boxes = sum(len(t["labels"]) for t in targets)
         num_boxes = flow.as_tensor([num_boxes], dtype=flow.float64)
-        
-        # Need get_world_size() in model parallel ?
         num_boxes = flow.clamp(num_boxes, min=1).item()
-        # num_boxes = flow.clamp(num_boxes / get_world_size(), min=1).item()
         # Compute all the requested losses
         losses = {}
         for loss in self.losses:

@@ -1,11 +1,3 @@
-'''
-Author: hihippie chiziiqiu0923@gmail.com
-Date: 2022-05-24 09:55:37
-LastEditors: hihippie chiziiqiu0923@gmail.com
-LastEditTime: 2022-05-25 19:15:32
-FilePath: /libai/projects/DETR/utils/checkpoint.py
-Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
-'''
 import os
 
 import oneflow as flow
@@ -55,7 +47,5 @@ class detr_checkpointer(Checkpointer):
 
         torch_state_dict = torch.load(path)["model"]
         of_state_dict = convert_state(torch_state_dict)
-        
         for key, value in of_state_dict.items():
-    
             load_tensor(self.model.state_dict()[key], value)

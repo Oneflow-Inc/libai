@@ -46,7 +46,7 @@ class DETR(nn.Module):
         self.criterion = criterion
         
     def forward(self, samples):
-        """ 
+        """
             It returns a dict with the following elements:
                - "pred_logits": the classification logits (including no-object) for all queries.
                                 Shape= [batch_size x num_queries x (num_classes + 1)]
