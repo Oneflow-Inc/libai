@@ -20,7 +20,6 @@ from typing import Callable, List, Mapping
 
 import oneflow as flow
 
-from libai.data.structures import DistTensorData, Instance
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
 
