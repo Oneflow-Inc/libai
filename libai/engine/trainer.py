@@ -20,6 +20,7 @@ from typing import Callable, List, Mapping
 
 import oneflow as flow
 
+from libai.data.structures import DistTensorData, Instance
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
 
@@ -289,13 +290,16 @@ class GraphTrainer(TrainerBase):
     A simple graph trainer for training and evaluating models in a static graph mode.
     """
 
-    def __init__(self, graph, data_loader):
+    def __init__(self, graph, data_loader, grad_acc_steps=1):
         super().__init__()
 
         graph.model.train()
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
+        self.grad_acc_steps = grad_acc_steps
+        self._temp_data = None
+        self._temp_count = 0
 
     def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
         """
@@ -304,11 +308,30 @@ class GraphTrainer(TrainerBase):
         assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
-        # If you want to do something with the data, you can wrap the dataloader.
-        data = next(self._data_loader_iter)
+        while self._temp_count != self.grad_acc_steps:
+            # If you want to do something with the data, you can wrap the dataloader.
+            data = next(self._data_loader_iter)
+
+            self._temp_count += 1
+            if self._temp_data is None:
+                self._temp_data = data
+            else:
+                # In static graph mode, data will be sliced in nn.Graph automatically,
+                # for geting mini-batch_size, we concat local_tensor first.
+                for key, value in data.get_fields().items():
+                    temp_value = self._temp_data.get(key)
+                    self._temp_data.get(key).tensor = flow.cat(
+                        (temp_value.tensor, value.tensor), dim=0
+                    )
+
+        data = self._temp_data
+        self._temp_count = 0
+        self._temp_data = None
+
         data = get_batch(
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
+
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.

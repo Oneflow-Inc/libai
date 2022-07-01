@@ -311,7 +311,9 @@ class DefaultTrainer(TrainerBase):
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
             self.graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            self._trainer = GraphTrainer(self.graph_train, self.train_loader)
+            self._trainer = GraphTrainer(
+                self.graph_train, self.train_loader, cfg.train.num_accumulation_steps
+            )
         else:
             self._trainer = EagerTrainer(
                 self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
@@ -598,10 +600,9 @@ class DefaultTrainer(TrainerBase):
         logger.info("Prepare training, validating, testing set")
         if cfg.graph.enabled:
             # In static graph mode, data will be sliced in nn.Graph automatically,
-            # so dataloader will get mini-batch-size.
-            cfg.dataloader.train.train_batch_size = (
-                cfg.train.train_micro_batch_size * cfg.train.num_accumulation_steps
-            )
+            # dataloader will get micro-batch-size and data will be concated
+            # in graph_trainer.run_step to get mini-batch-size.
+            cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         else:
             # In eager mode, gradient accumulation will act like PyTorch, so dataloader
             # will get micro-batch-size
