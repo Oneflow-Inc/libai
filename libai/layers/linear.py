@@ -147,8 +147,8 @@ class Linear1D(nn.Module):
         ):
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
             x = x.to_global(grad_sbp=x.sbp)
-            # Change x.sbp to [S(0), S(0)] if weight is [B, B]
-            x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
+            # NOTE(chengcheng): when input x is [S(0), B], there is no need to change sbp for x.
+            # x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
             x = flow.matmul(x, self.weight, transpose_b=True)
         else:
             # Not supported weight_sbp, deduce sbp and communicate with nccl automatically.

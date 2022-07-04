@@ -18,6 +18,8 @@ model.cfg.num_attention_heads = 16
 model.cfg.hidden_size = 768
 model.cfg.hidden_layers = 8
 
+train.input_placement_device = "cpu"
+
 train.dist.pipeline_num_layers = model.cfg.hidden_layers
 
 train.train_micro_batch_size = 16

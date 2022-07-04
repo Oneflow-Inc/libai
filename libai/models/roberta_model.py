@@ -134,6 +134,8 @@ class RobertaLoss(nn.Module):
         self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask):
+        lm_labels = lm_labels.to_global(placement=lm_output.placement)
+        loss_mask = loss_mask.to_global(placement=lm_output.placement)
         lm_loss = self.lm_loss(lm_output, lm_labels)
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
@@ -328,20 +330,33 @@ class RobertaPreTrainedModel(nn.Module):
         for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, RobertaEmbeddings):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
             elif isinstance(module_block.origin, RobertaExtendedAttnMask):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
             # `add_pooling_layer` in RobertaForMaskedLM and RobertaForCausalLM.
             # default to False.
             elif isinstance(module_block.origin, RobertaPooler):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                )
             elif isinstance(module_block.origin, RobertaLMHead):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                )
 
         # Set the last layernorm stage id
-        model.roberta.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.roberta.final_layernorm.config.set_stage(
+            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+        )
 
 
 class RobertaForPreTraining(RobertaPreTrainedModel):
@@ -386,6 +401,10 @@ class RobertaForPreTraining(RobertaPreTrainedModel):
                 loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
                 Defaults to None.
         """
+        input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
+        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
+        tokentype_ids = tokentype_ids.to_global(placement=dist.get_layer_placement(0))
+
         outputs = self.roberta(input_ids, attention_mask, tokentype_ids=tokentype_ids)
         sequence_output = outputs[0]
         prediction_scores = self.lm_head(sequence_output, self.roberta.word_embeddings_weight())

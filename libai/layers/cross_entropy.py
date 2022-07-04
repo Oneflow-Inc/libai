@@ -36,6 +36,8 @@ class ParallelCrossEntropyLoss(nn.Module):
         assert target.ndim == 2
         assert logits.shape[0:2] == target.shape
 
+        target = target.to_global(placement=logits.placement)
+
         # Change -1 in target to 0 because sparse_softmax_cross_entropy don't accept -1
         target = target * (target >= 0)
 

@@ -294,6 +294,10 @@ class DefaultTrainer(TrainerBase):
 
         self.test_loader.extend(self.build_test_loader(cfg, self.tokenizer))
 
+        if cfg.train.rdma_enabled:
+            # set rdma
+            flow.env.init_rdma()
+
         # Automatically scale the hyperparams
         self.auto_scale_hyperparams(cfg, self.train_loader)
 
@@ -307,7 +311,9 @@ class DefaultTrainer(TrainerBase):
                 cfg, self.model, self.optimizer, self.lr_scheduler, is_train=True
             )
             self.graph_eval = self.build_graph(cfg, self.model, is_train=False)
-            self._trainer = GraphTrainer(self.graph_train, self.train_loader)
+            self._trainer = GraphTrainer(
+                self.graph_train, self.train_loader, cfg.train.num_accumulation_steps
+            )
         else:
             self._trainer = EagerTrainer(
                 self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
@@ -467,10 +473,15 @@ class DefaultTrainer(TrainerBase):
 
     def run_step(self):
         self._trainer.iter = self.iter
-        self._trainer.run_step(self.get_batch)
+        self._trainer.run_step(self.get_batch, self.cfg.train.input_placement_device)
 
     @classmethod
-    def get_batch(cls, data: Instance, mixup_func: Optional[Callable] = None):
+    def get_batch(
+        cls,
+        data: Instance,
+        input_placement_device: str = "cuda",
+        mixup_func: Optional[Callable] = None,
+    ):
         """
         Convert batched local tensor to distributed tensor for model step running.
 
@@ -490,7 +501,7 @@ class DefaultTrainer(TrainerBase):
 
         ret_dict = {}
         for key, value in data.get_fields().items():
-            value.to_global()
+            value.to_global(device_type=input_placement_device)
             ret_dict[key] = value.tensor
         return ret_dict
 
@@ -589,10 +600,9 @@ class DefaultTrainer(TrainerBase):
         logger.info("Prepare training, validating, testing set")
         if cfg.graph.enabled:
             # In static graph mode, data will be sliced in nn.Graph automatically,
-            # so dataloader will get mini-batch-size.
-            cfg.dataloader.train.train_batch_size = (
-                cfg.train.train_micro_batch_size * cfg.train.num_accumulation_steps
-            )
+            # dataloader will get micro-batch-size and data will be concated
+            # in graph_trainer.run_step to get mini-batch-size.
+            cfg.dataloader.train.train_batch_size = cfg.train.train_micro_batch_size
         else:
             # In eager mode, gradient accumulation will act like PyTorch, so dataloader
             # will get micro-batch-size
@@ -772,6 +782,7 @@ class DefaultTrainer(TrainerBase):
                 test_batch_size,
                 cfg.train.evaluation.eval_iter,
                 cls.get_batch,
+                cfg.train.input_placement_device,
                 evaluator,
             )
             results[dataset_name] = results_i
