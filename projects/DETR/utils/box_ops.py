@@ -19,18 +19,10 @@ from flowvision.layers.blocks.boxes import box_area
 
 
 def box_cxcywh_to_xyxy(x):
-    # # TODO (ziqiu chi): unbind does not support global tensor
-    # # https://github.com/Oneflow-Inc/libai/pull/260#issuecomment-1153500398
-    # is_global = x.is_global
-    # if is_global:
-    #     sbp, placement = x.sbp, x.placement
-    #     x = x.to_local()
     x_c, y_c, w, h = x.unbind(-1)
     b = [(x_c - 0.5 * w), (y_c - 0.5 * h),
         (x_c + 0.5 * w), (y_c + 0.5 * h)]
     box = flow.stack(b, dim=-1)
-    # if is_global:
-    #     return box.to_global(sbp=sbp, placement=placement)
     return box
 
 def box_xyxy_to_cxcywh(x):
@@ -44,20 +36,8 @@ def box_iou(boxes1, boxes2):
     area1 = box_area(boxes1)
     area2 = box_area(boxes2)
 
-    # NOTE: flow.max cannot min/max between diff dtype
-    # NOTE: dim expand version leads the backward bug: Check failed: !broadcast_axis_vec.empty()
-    # TODO(ziqiu chi): https://github.com/Oneflow-Inc/libai/issues/288#issuecomment-1144587028
-    # lt = flow.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
-    # rb = flow.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]
-
-    if boxes1.shape[0] == 1 and boxes2.shape[0] == 1:
-        lt = flow.max(boxes1[:, :2], boxes2[:, :2]).unsqueeze(1)  
-        rb = flow.min(boxes1[:, 2:], boxes2[:, 2:]).unsqueeze(1)  
-        
-    else:
-        lt = flow.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
-        rb = flow.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]        
-    
+    lt = flow.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]
+    rb = flow.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]   
     wh = (rb - lt).clamp(min=0)  # [N,M,2]
     inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]
 
