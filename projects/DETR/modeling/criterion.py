@@ -92,9 +92,15 @@ class SetCriterion(nn.Module):
         loss_bbox = self.l1_loss(src_boxes, target_boxes).sum()
         losses = {}
         losses['loss_bbox'] = (loss_bbox / num_boxes)
-        loss_giou = 1 - flow.diag(box_ops.generalized_box_iou(
+        # BUG (ziqiu chi): https://github.com/Oneflow-Inc/oneflow/issues/8554
+        # TODO (ziqiu chi): fix lines 97-103 when bug is fixed.
+        generalized_box_iou = box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
-            box_ops.box_cxcywh_to_xyxy(target_boxes)))
+            box_ops.box_cxcywh_to_xyxy(target_boxes))
+        if len(generalized_box_iou) > 0:
+            loss_giou = 1 - generalized_box_iou.diag()
+        else:
+            loss_giou = 1 - generalized_box_iou
         losses['loss_giou'] = (loss_giou.sum() / num_boxes)
         return losses
 

@@ -4,9 +4,11 @@ COCO dataset which returns image_id for evaluation.
 Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/coco_utils.py
 """
 
+from matplotlib.pyplot import box
 import oneflow as flow
 import flowvision
 from pycocotools import mask as coco_mask
+from torch import from_numpy
 
 from libai.data.structures import DistTensorData, Instance
 
@@ -35,7 +37,6 @@ class ConvertCocoPolysToMask(object):
 
     def __call__(self, image, target):
         w, h = image.size
-
         image_id = target["image_id"]
         image_id = flow.tensor([image_id])
 
@@ -44,12 +45,13 @@ class ConvertCocoPolysToMask(object):
         anno = [obj for obj in anno if 'iscrowd' not in obj or obj['iscrowd'] == 0]
 
         boxes = [obj["bbox"] for obj in anno]
-        # guard against no boxes via resizing
+        # Guard against no boxes via resizing
         boxes = flow.as_tensor(boxes, dtype=flow.float32).reshape(-1, 4)
+        
         boxes[:, 2:] += boxes[:, :2]
         boxes[:, 0::2].clamp_(min=0, max=w)
         boxes[:, 1::2].clamp_(min=0, max=h)
-
+        
         classes = [obj["category_id"] for obj in anno]
         classes = flow.tensor(classes, dtype=flow.int64)
 
@@ -115,5 +117,4 @@ class CocoDetection(flowvision.datasets.CocoDetection):
             images=img,
             labels=target,
         )
-        
         return data_sample        
