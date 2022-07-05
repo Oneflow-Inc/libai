@@ -27,6 +27,7 @@ from libai.layers import (
     VocabEmbedding,
     build_activation,
 )
+from libai.layers.attention import AttnMaskType
 from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
@@ -126,7 +127,7 @@ class BertLMPredictionHead(nn.Module):
             hidden_size,
             hidden_size,
             bias=True,
-            parallel="col",
+            parallel="data",
             init_method=init_method,
             layer_idx=-1,
         )
@@ -188,6 +189,10 @@ class BertLoss(nn.Module):
         self.lm_loss = ParallelCrossEntropyLoss()
 
     def forward(self, lm_output, lm_labels, loss_mask, binary_logits, ns_labels):
+        lm_labels = lm_labels.to_global(placement=lm_output.placement)
+        loss_mask = loss_mask.to_global(placement=lm_output.placement)
+        binary_logits = binary_logits.to_global(placement=lm_output.placement)
+        ns_labels = ns_labels.to_global(placement=lm_output.placement)
         lm_loss = self.lm_loss(lm_output, lm_labels)
         loss_mask = loss_mask.float()
         # Change loss_mask.sum() sbp sign from [P, B] -> [B, B]
@@ -319,6 +324,7 @@ class BertModel(nn.Module):
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
+                    attn_mask_type=AttnMaskType.padding,  # bert mask type
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -468,6 +474,9 @@ class BertForPreTraining(nn.Module):
                 loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
         """
 
+        input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
+        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
+        tokentype_ids = tokentype_ids.to_global(placement=dist.get_layer_placement(0))
         outputs = self.bert(input_ids, attention_mask, tokentype_ids)
         sequence_output, pooled_output = outputs[:2]
 
@@ -488,18 +497,31 @@ class BertForPreTraining(nn.Module):
         for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, BertEmbeddings):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
             elif isinstance(module_block.origin, BertExtendedAttnMask):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
             elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
             elif isinstance(module_block.origin, BertPooler):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                )
             elif isinstance(module_block.origin, BertPreTrainingHeads):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                )
 
         # Set the last layernorm stage id
-        model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.bert.final_layernorm.config.set_stage(
+            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+        )
 
 
 class BertForClassification(nn.Module):

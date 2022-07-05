@@ -121,6 +121,7 @@ def inference_on_dataset(
     batch_size,
     eval_iter,
     get_batch: Callable,
+    input_placement_device: str,
     evaluator: Union[DatasetEvaluator, List[DatasetEvaluator], None],
 ):
     """
@@ -139,6 +140,8 @@ def inference_on_dataset(
             The elements it generates will be the inputs to the model.
         eval_iter: running steps for evaluation
         get_batch: a Callable function for getting data from dataloader
+        input_placement_device: used in get_batch, set it to `cuda` or `cpu`.
+            see input_placement_device in `libai.configs.common.train.py` for more details.
         evaluator: the evaluator(s) to run. Use `None` if you only want to benchmark,
             but don't want to do any evaluation.
 
@@ -192,7 +195,7 @@ def inference_on_dataset(
 
             start_compute_time = time.perf_counter()
             # model forward
-            data = get_batch(inputs)
+            data = get_batch(inputs, input_placement_device)
             is_last_batch = idx == len(data_loader) - 1
             paded_data, valid_sample = pad_batch(data, batch_size, last_batch_lack, is_last_batch)
             outputs = model(**paded_data)
