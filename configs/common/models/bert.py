@@ -22,6 +22,7 @@ cfg = dict(
     apply_residual_post_layernorm=False,
     add_binary_head=True,
     amp_enabled=False,
+    multihead_attn_fusion=True,
 )
 
 bert_model = LazyCall(BertModel)(cfg=cfg)

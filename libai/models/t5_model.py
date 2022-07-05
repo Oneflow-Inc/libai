@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import oneflow as flow
 
 from libai.config import configurable
@@ -149,6 +147,7 @@ class T5Model(flow.nn.Module):
         apply_query_key_layer_scaling=True,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
+        multihead_attn_fusion=False,
     ) -> None:
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -182,6 +181,7 @@ class T5Model(flow.nn.Module):
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
                     attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
+                    multihead_attn_fusion=multihead_attn_fusion,
                 )
                 for i in range(hidden_layers)
             ]
@@ -193,7 +193,7 @@ class T5Model(flow.nn.Module):
             layer_idx=hidden_layers - 1,
         )
 
-        self.multihead_attn_fusion = os.getenv("MULTIHEAD_ATTN_FUSION") is not None
+        self.multihead_attn_fusion = multihead_attn_fusion
 
         self.encoder = flow.nn.Sequential()
         self.encoder.add_module("layers", encoder_layers)
@@ -217,6 +217,7 @@ class T5Model(flow.nn.Module):
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
+                    multihead_attn_fusion=False,  # set to False in decoder
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
             ]
@@ -257,6 +258,7 @@ class T5Model(flow.nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
             "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
+            "multihead_attn_fusion": cfg.multihead_attn_fusion,
         }
 
     def forward(

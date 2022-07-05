@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import oneflow.nn as nn
 
 from libai.utils import distributed as dist
@@ -76,7 +74,8 @@ class TransformerLayer(nn.Module):
         apply_residual_post_layernorm=False,
         attn_mask_type=AttnMaskType.padding,
         *,
-        layer_idx=0
+        layer_idx=0,
+        multihead_attn_fusion=False
     ):
         super().__init__()
         self.hidden_size = hidden_size
@@ -101,9 +100,7 @@ class TransformerLayer(nn.Module):
             output_layer_init_method = init_method
         self.output_layer_init_method = output_layer_init_method
 
-        self.multihead_attn_fusion = (
-            os.getenv("MULTIHEAD_ATTN_FUSION") is not None and is_decoder is False
-        )
+        self.multihead_attn_fusion = multihead_attn_fusion is True and is_decoder is False
 
         self.drop_path = DropPath(drop_path_prob) if drop_path_prob > 0.0 else nn.Identity()
 

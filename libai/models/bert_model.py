@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import oneflow as flow
 from oneflow import nn
 
@@ -292,6 +290,7 @@ class BertModel(nn.Module):
         apply_query_key_layer_scaling=True,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
+        multihead_attn_fusion=False,
     ):
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -311,7 +310,7 @@ class BertModel(nn.Module):
         # Mask generation
         self.extended_attn_mask = BertExtendedAttnMask()
 
-        self.multihead_attn_fusion = os.getenv("MULTIHEAD_ATTN_FUSION") is not None
+        self.multihead_attn_fusion = multihead_attn_fusion
         # Encoders
         self.encoders = nn.ModuleList(
             [
@@ -331,6 +330,7 @@ class BertModel(nn.Module):
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
                     attn_mask_type=AttnMaskType.padding,  # bert mask type
                     layer_idx=i,
+                    multihead_attn_fusion=multihead_attn_fusion,
                 )
                 for i in range(hidden_layers)
             ]
@@ -360,6 +360,7 @@ class BertModel(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
             "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
+            "multihead_attn_fusion": cfg.multihead_attn_fusion,
         }
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):

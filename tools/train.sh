@@ -8,7 +8,6 @@ NODE_RANK=${NODE_RANK:-0}
 ADDR=${ADDR:-127.0.0.1}
 PORT=${PORT:-12345}
 
-export MULTIHEAD_ATTN_FUSION=true
 export ONEFLOW_FUSE_OPTIMIZER_UPDATE_CAST=true
 
 python3 -m oneflow.distributed.launch \

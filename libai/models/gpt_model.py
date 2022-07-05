@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import oneflow as flow
 from oneflow import nn
@@ -137,6 +136,7 @@ class GPTModel(nn.Module):
         apply_query_key_layer_scaling=False,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
+        multihead_attn_fusion=False,
     ):
         super().__init__()
         init_method = init_method_normal(sigma=initializer_range)
@@ -169,6 +169,7 @@ class GPTModel(nn.Module):
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
             apply_residual_post_layernorm=apply_residual_post_layernorm,
+            multihead_attn_fusion=multihead_attn_fusion,
         )
 
         self.lm_head = LMLogits(vocab_size, bias=False)
@@ -194,6 +195,7 @@ class GPTModel(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
             "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
+            "multihead_attn_fusion": cfg.multihead_attn_fusion,
         }
 
     def forward(self, input_ids):
@@ -272,11 +274,12 @@ class Transformer(nn.Module):
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
         apply_residual_post_layernorm=False,
+        multihead_attn_fusion=False,
     ):
         super().__init__()
         self.num_layers = num_layers
 
-        self.multihead_attn_fusion = os.getenv("MULTIHEAD_ATTN_FUSION") is not None
+        self.multihead_attn_fusion = multihead_attn_fusion
 
         def build_layer(layer_number):
             return TransformerLayer(
@@ -295,6 +298,7 @@ class Transformer(nn.Module):
                 apply_residual_post_layernorm=apply_residual_post_layernorm,
                 attn_mask_type=AttnMaskType.causal,
                 layer_idx=layer_number,
+                multihead_attn_fusion=multihead_attn_fusion,
             )
 
         self.layers = nn.ModuleList([build_layer(i) for i in range(self.num_layers)])
