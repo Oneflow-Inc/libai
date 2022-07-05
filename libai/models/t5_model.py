@@ -264,17 +264,17 @@ class T5Model(flow.nn.Module):
                 Indices of input sequence tokens in vocabulary for encoder.
             decoder_input_ids (flow.LongTensor):
                 Indices of input sequence tokens in vocabulary for decoder.
-            encoder_attn_mask (flow.LongTensor):
+            encoder_attn_mask (flow.BoolTensor):
                 Mask for encoder to avoid performing attention on
                 padding token indices. Mask values selected in `[0, 1]`:
 
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
 
-            decoder_attn_mask (flow.LongTensor):
+            decoder_attn_mask (flow.BoolTensor):
                 Mask for decoder to avoid performing attention on subsequent token indices.
                 Mask values have the same meaning as encoder_attn_mask.
-            encoder_decoder_attn_mask (flow.LongTensor):
+            encoder_decoder_attn_mask (flow.BoolTensor):
                 Mask for decoder to avoid performing attention on encoder padded token indices.
                 Mask values have the same meaning as encoder_attn_mask.
             use_cache (bool, optional):
@@ -382,23 +382,23 @@ class T5ForPreTraining(flow.nn.Module):
                 Indices of input sequence tokens in vocabulary for encoder.
             decoder_input_ids (flow.LongTensor):
                 Indices of input sequence tokens in vocabulary for decoder.
-            encoder_attn_mask (flow.LongTensor):
+            encoder_attn_mask (flow.BoolTensor):
                 Mask for encoder to avoid performing attention on
                 padding token indices. Mask values selected in `[0, 1]`:
 
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
 
-            decoder_attn_mask (flow.LongTensor):
+            decoder_attn_mask (flow.BoolTensor):
                 Mask for decoder to avoid performing attention on subsequent token indices.
                 Mask values have the same meaning as encoder_attn_mask.
-            encoder_decoder_attn_mask (flow.LongTensor):
+            encoder_decoder_attn_mask (flow.BoolTensor):
                 Mask for decoder to avoid performing attention on encoder padded token indices.
                 Mask values have the same meaning as encoder_attn_mask.
             lm_labels (flow.LongTensor, optional): Labels for computing the masked
                 language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
                 None for evaluating.
-            loss_mask (flow.Tensor, optional):
+            loss_mask (flow.BoolTensor, optional):
                 Mask to avoid performing loss computing on ignored tokens.
                 Tokens with indices set to `-1` are ignored (masked), the loss is only computed
                 for the tokens with labels in `[0, ..., config.vocab_size]`.
