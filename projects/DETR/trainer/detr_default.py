@@ -51,18 +51,13 @@ class DetrDefaultTrainer(DefaultTrainer):
         """
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
-            
         images = data.get_fields()["images"]
         labels = data.get_fields()["labels"]
         
-        tensors = images[0] 
+        tensors, mask = images[0], images[1] 
         tensors.to_global()
-        
-        mask = images[1] 
         mask.to_global()
         
-        # Since some keys in labels(dict) have various-shape value, 
-        # they can not be converted to global in tensor parallel
         for i in range(len(labels)):
             for k, v in labels[i].items():
                 v.to_global()

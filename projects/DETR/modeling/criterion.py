@@ -16,10 +16,9 @@
 
 import oneflow as flow
 import oneflow.nn as nn
-import oneflow.nn.functional as F
 
 from libai.data.structures import DistTensorData
-
+from modeling.cross_entropy import ParallelCrossEntropyLoss
 from utils import box_ops
 
 
@@ -48,6 +47,7 @@ class SetCriterion(nn.Module):
         empty_weight[-1] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
         self.l1_loss = nn.L1Loss(reduction="none")
+        self.cross_entropy = ParallelCrossEntropyLoss()
 
     def loss_labels(self, outputs, targets, indices, num_boxes):
         """Classification loss (NLL)
@@ -59,22 +59,14 @@ class SetCriterion(nn.Module):
         target_classes = DistTensorData(target_classes, placement_idx=0)
         target_classes.to_global() 
         target_classes = target_classes.tensor
-     
         target_classes_o = flow.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
         
-        batch_idx, src_idx = self._get_src_permutation_idx(indices)
-        batch_idx = DistTensorData(batch_idx, placement_idx=0)
-        src_idx = DistTensorData(src_idx, placement_idx=0)
-        batch_idx.to_global() 
-        src_idx.to_global() 
-        
-        idx = batch_idx.tensor, src_idx.tensor
-             
-        target_classes[idx] = target_classes_o
+        idx = self._get_src_permutation_idx(indices)
 
-        loss_ce = F.cross_entropy(
-            src_logits.transpose(1, 2), 
-            target_classes, 
+        target_classes[idx] = target_classes_o
+        loss_ce = self.cross_entropy(
+            src_logits, 
+            target_classes,
             self.empty_weight)
         losses = {'loss_ce': loss_ce.to(dtype=flow.float64)}
         return losses
@@ -92,15 +84,9 @@ class SetCriterion(nn.Module):
         loss_bbox = self.l1_loss(src_boxes, target_boxes).sum()
         losses = {}
         losses['loss_bbox'] = (loss_bbox / num_boxes)
-        # BUG (ziqiu chi): https://github.com/Oneflow-Inc/oneflow/issues/8554
-        # TODO (ziqiu chi): fix lines 97-103 when bug is fixed.
-        generalized_box_iou = box_ops.generalized_box_iou(
+        loss_giou = 1 -  box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
-            box_ops.box_cxcywh_to_xyxy(target_boxes))
-        if len(generalized_box_iou) > 0:
-            loss_giou = 1 - generalized_box_iou.diag()
-        else:
-            loss_giou = 1 - generalized_box_iou
+            box_ops.box_cxcywh_to_xyxy(target_boxes)).diag()
         losses['loss_giou'] = (loss_giou.sum() / num_boxes)
         return losses
 
@@ -110,7 +96,11 @@ class SetCriterion(nn.Module):
         # batch_idx = flow.cat([flow.full_like(src, i) for i, (src, _) in enumerate(indices)])
         batch_idx = flow.cat([flow.full(src.size(),i).to(dtype=src.dtype, device=src.device) for i, (src, _) in enumerate(indices)])
         src_idx = flow.cat([src for (src, _) in indices])
-        return batch_idx, src_idx
+        batch_idx = DistTensorData(batch_idx, placement_idx=0)
+        src_idx = DistTensorData(src_idx, placement_idx=0)
+        batch_idx.to_global() 
+        src_idx.to_global() 
+        return batch_idx.tensor, src_idx.tensor
 
     def _get_tgt_permutation_idx(self, indices):
         # permute targets following indices
@@ -137,7 +127,6 @@ class SetCriterion(nn.Module):
                       The expected keys in each dict depends on the losses applied, see each loss' doc
         """
         outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
-        
         # Retrieve the matching between the outputs of the last layer and the targets
         indices = self.matcher(outputs_without_aux, targets)
         # Compute the average number of target boxes accross all nodes, for normalization purposes
@@ -161,3 +150,25 @@ class SetCriterion(nn.Module):
                     losses.update(l_dict)
 
         return losses
+
+
+@flow.no_grad()
+def accuracy(output, target, topk=(1,)):
+    """Computes the precision@k for the specified values of k"""
+    if target.numel() == 0:
+        # BUG: 100 - [flow.zeros_like(target)] -> []
+        # 100 - [flow.zeros([], sbp=target.sbp, placement=target.placement)] -> 100
+        # return [flow.zeros_like(target)]
+        return [flow.zeros([], sbp=target.sbp, placement=target.placement)]
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].view(-1).float().sum(0)
+        res.append(correct_k.mul_(100.0 / batch_size))
+    return res

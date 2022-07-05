@@ -9,10 +9,6 @@ detr_args.train_backbone = True
 detr_args.dataset_file = "coco"
 detr_args.num_queries = 100
 detr_args.frozen_weights = None
-detr_args.bbox_loss_coef = 5
-detr_args.mask_loss_coef = 1
-detr_args.dice_loss_coef = 1
-detr_args.eos_coef = 0.1
 
 # Backbone
 # Name of the convolutional backbone to use
@@ -33,6 +29,7 @@ detr_args.pre_norm = False
 
 # Loss
 detr_args.aux_loss = True
+
 # Matcher
 # Class coefficient in the matching cost
 detr_args.set_cost_class = 1
@@ -40,13 +37,14 @@ detr_args.set_cost_class = 1
 detr_args.set_cost_bbox = 5
 # giou box coefficient in the matching cost
 detr_args.set_cost_giou = 2
+
 # Loss coefficients
 detr_args.mask_loss_coef = 1
 detr_args.dice_loss_coef = 1
-detr_args.bbox_loss_coef = 1
-detr_args.giou_loss_coef = 1
+detr_args.bbox_loss_coef = 5
+detr_args.giou_loss_coef = 2
 # Relative classification weight of the no-object class
-detr_args.eos_coef = 1
+detr_args.eos_coef = 0.1
 
 # for panoptic segmentation
 detr_args.masks = False 

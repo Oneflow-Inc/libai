@@ -69,7 +69,6 @@ class HungarianMatcher(nn.Module):
         # We flatten to compute the cost matrices in a batch
         out_prob = outputs["pred_logits"].flatten(0, 1).softmax(-1)
         out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [bsz * num_queries, 4]
-        
         # Also concat the target labels and boxes
         tgt_ids = flow.cat([v["labels"] for v in targets])
         tgt_bbox = flow.cat([v["boxes"] for v in targets])

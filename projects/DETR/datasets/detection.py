@@ -8,7 +8,6 @@ from matplotlib.pyplot import box
 import oneflow as flow
 import flowvision
 from pycocotools import mask as coco_mask
-from torch import from_numpy
 
 from libai.data.structures import DistTensorData, Instance
 
@@ -109,12 +108,5 @@ class CocoDetection(flowvision.datasets.CocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-        img = DistTensorData(img, placement_idx=0)
-        for k, _ in target.items():
-            target[k] = DistTensorData(target[k], placement_idx=0)
 
-        data_sample = Instance(
-            images=img,
-            labels=target,
-        )
-        return data_sample        
+        return (img, target)

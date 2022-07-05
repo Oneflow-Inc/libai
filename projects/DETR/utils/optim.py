@@ -98,7 +98,6 @@ def get_default_optimizer_params(
         flow.nn.FusedBatchNorm1d,
         flow.nn.FusedBatchNorm2d,
         flow.nn.FusedBatchNorm3d,
-        FrozenBatchNorm2d,
     )
     params = []
     memo = set()
@@ -115,7 +114,7 @@ def get_default_optimizer_params(
             if isinstance(module, norm_module_types) and weight_decay_norm is not None:
                 hyperparams["weight_decay"] = weight_decay_norm
             # Modify the learning rate of backbone
-            if isinstance(module, (nn.Conv2d, FrozenBatchNorm2d)):
-                hyperparams.update(overrides.get(model_param_name, {}))
+            if isinstance(module, nn.Conv2d):
+                hyperparams.update(overrides.get("backbone", {}))
             params.append({"params": [value], **hyperparams})
     return reduce_param_groups(params)

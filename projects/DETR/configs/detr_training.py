@@ -1,3 +1,5 @@
+import oneflow.nn as nn
+
 from libai.config import get_config, LazyCall
 from libai.scheduler.lr_scheduler import WarmupStepLR
 
@@ -49,12 +51,11 @@ optim.lr = 1e-4
 backbone_lr = 1e-5
 
 optim.params = LazyCall(get_default_optimizer_params)(
-        weight_decay = None,
         clip_grad_max_norm=0.1,
         clip_grad_norm_type=2.0,
         weight_decay_norm=0.0,
         weight_decay_bias=0.0,   
-        overrides = {"weight": {"lr": backbone_lr}})
+        overrides = {"backbone": {"lr": backbone_lr}})
 
 # Scheduler
 epoch_step_size = 200
@@ -68,5 +69,7 @@ train.scheduler = LazyCall(WarmupStepLR)(
 graph.enabled = False
 
 # model_parallel
-train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 8
+# train.dist.data_parallel_size = 1
+# train.dist.tensor_parallel_size = 2
+
+train.seed = 42
