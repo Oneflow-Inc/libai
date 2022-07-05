@@ -24,7 +24,6 @@ class T5Model(flow.nn.Module):
         embedding_dropout_prob,
         hidden_dropout_prob,
         attention_probs_dropout_prob,
-        max_position_embeddings,
         relative_attention_num_buckets,
         initializer_range=0.02,
         layernorm_eps=1e-12,
@@ -41,7 +40,6 @@ class T5Model(flow.nn.Module):
         self.embedding = T5Embedding(
             hidden_size=hidden_size,
             vocab_size=vocab_size,
-            max_sequence_length=max_position_embeddings,
             embedding_dropout_prob=embedding_dropout_prob,
             init_method=init_method,
             amp_enabled=amp_enabled,
@@ -133,7 +131,6 @@ class T5Model(flow.nn.Module):
             "embedding_dropout_prob": cfg.embedding_dropout_prob,
             "hidden_dropout_prob": cfg.hidden_dropout_prob,
             "attention_probs_dropout_prob": cfg.attention_probs_dropout_prob,
-            "max_position_embeddings": cfg.max_position_embeddings,
             "relative_attention_num_buckets": cfg.relative_attention_num_buckets,
             "initializer_range": cfg.initializer_range,
             "layernorm_eps": cfg.layernorm_eps,
@@ -154,8 +151,9 @@ class T5Model(flow.nn.Module):
         encoder_decoder_attn_mask,
         use_cache=False,
     ):
-        
-        
+
+        encoder_attn_mask = flow.ones(encoder_input_ids.size(), sbp=encoder_attn_mask.sbp, placement=encoder_attn_mask.placement)
+        decoder_attn_mask = flow.ones(decoder_input_ids.size(), sbp=decoder_attn_mask.sbp, placement=decoder_attn_mask.placement)
         if use_cache and self.encoder_states is not None:
             encoder_states = self.encoder_states
         else:
@@ -174,11 +172,12 @@ class T5Model(flow.nn.Module):
                     position_bias=position_bias,
                 )
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
+        
+        a,b = decoder_input_ids.size()
+        decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask, (a,b), is_decoder=True)
 
-        decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask, decoder_input_ids.size(), is_decoder=True)
         encoder_decoder_attn_mask = encoder_attn_mask
         
-
         dec_embedding_output = self.embedding(decoder_input_ids)
         dec_hidden_states = dec_embedding_output
         if use_cache:

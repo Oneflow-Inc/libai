@@ -213,12 +213,9 @@ class TransformerLayer(nn.Module):
                 use_cache=use_cache,
                 query_length=query_length,
             )
-            # print(attention_output)
-            # input()
-
             if use_cache:
                 attention_output, decoder_presents = attention_output
-                presents += decoder_presents
+                presents = presents + decoder_presents
 
             attention_output = self.drop_path(attention_output)
             if self.apply_residual_post_layernorm:

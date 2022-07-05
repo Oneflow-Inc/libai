@@ -28,7 +28,7 @@ train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 train.update(
     dict(
         output_dir = "./output/t5_output",
-        train_micro_batch_size=64,
+        train_micro_batch_size=8,
         amp=dict(enabled=False),
         scheduler=LazyCall(WarmupExponentialLR)(
             warmup_factor=0.0,

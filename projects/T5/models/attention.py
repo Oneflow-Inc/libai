@@ -5,7 +5,7 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.utils import distributed as dist
-from libai.layers.embedding import Embedding
+from projects.T5.models.embedding import Embedding
 from libai.layers.linear import Linear
 
 
@@ -121,7 +121,11 @@ class MultiheadAttention(nn.Module):
             layer_idx=layer_idx,
         )
         if self.has_relative_attention_bias:
-            self.relative_attention_bias = Embedding(self.relative_attention_num_buckets, self.num_heads)
+            self.relative_attention_bias = Embedding(
+                self.relative_attention_num_buckets, 
+                self.num_heads, 
+                layer_idx=layer_idx
+            )
 
     def forward(
         self,
@@ -225,20 +229,14 @@ class MultiheadAttention(nn.Module):
                 position_bias = self.compute_bias(
                     real_seq_length, 
                     key_length, 
-                    placement=attention_scores.placement
+                    placement=attention_mask.placement
                 )
 
             if past_key_value is not None:
                 position_bias = position_bias[:, :, -hidden_states.size(1) :, :]
 
-            # print('position_bias',position_bias.size(),position_bias.sbp, position_bias.placement)
-            # print('attention_mask',attention_mask.size(),attention_mask.sbp, position_bias.placement)
-            sbp=attention_mask.sbp
-            attention_mask = attention_mask.to_global(sbp=position_bias.sbp)
-            position_bias += (1 - attention_mask)*-1000
-            attention_mask = attention_mask.to_global(sbp=sbp)
-            
-        attention_scores += position_bias
+            position_bias = position_bias + (1 - attention_mask) * -1000
+        attention_scores = attention_scores + position_bias
         
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
@@ -294,8 +292,7 @@ class MultiheadAttention(nn.Module):
             self.is_cross_attention,
         )
 
-    @staticmethod
-    def _relative_position_bucket(relative_position, bidirectional=True, num_buckets=32, max_distance=128):
+    def _relative_position_bucket(self, relative_position, bidirectional=True, num_buckets=32, max_distance=128):
         # relative_position: (seq_len, seq_len)
         relative_buckets = 0
         if bidirectional:
@@ -331,7 +328,7 @@ class MultiheadAttention(nn.Module):
             ).fill_(num_buckets - 1)
         )
         
-        relative_buckets += flow.where(is_small, relative_position, relative_postion_if_large)
+        relative_buckets = relative_buckets + flow.where(is_small, relative_position, relative_postion_if_large)
         return relative_buckets
 
     def compute_bias(self, query_length, key_length, placement=None):
