@@ -1,8 +1,7 @@
 import oneflow as flow
 from oneflow import nn
 
-from libai.layers import Linear
-from projects.T5.models.activation import build_activation
+from libai.layers import Linear, build_activation
 
 
 class MLP(nn.Module):
@@ -120,7 +119,7 @@ class T5DenseGatedGeluDense(nn.Module):
         )
 
         if not bias_gelu_fusion:
-            self.activation_func = build_activation("new_glue")
+            self.activation_func = build_activation("gelu")
 
         self.wo = Linear(
             d_ff,
