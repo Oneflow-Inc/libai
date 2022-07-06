@@ -45,8 +45,6 @@ class BertExtendedAttnMask(nn.Module):
         # [b, 1, s, s]
         extended_attention_mask = attention_mask_bss.unsqueeze(1)
 
-        # Convert attention mask to binary.
-        extended_attention_mask = extended_attention_mask > 0.5
         return extended_attention_mask
 
 
@@ -368,7 +366,7 @@ class BertModel(nn.Module):
 
         Args:
             input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
-            attention_mask (flow.LongTensor): Mask to avoid performing attention
+            attention_mask (flow.BoolTensor): Mask to avoid performing attention
                 on padding token indices. Mask values selected in `[0, 1]`:
 
                 - 1 for tokens that are **not masked**,
@@ -465,7 +463,7 @@ class BertForPreTraining(nn.Module):
 
         Args:
             input_ids (flow.LongTensor): Indices of input sequence tokens in vocabulary.
-            attention_mask (flow.LongTensor): Mask to avoid performing attention on
+            attention_mask (flow.BoolTensor): Mask to avoid performing attention on
                 padding token indices. Mask values selected in `[0, 1]`:
 
                 - 1 for tokens that are **not masked**,
@@ -483,7 +481,7 @@ class BertForPreTraining(nn.Module):
 
             lm_labels (flow.LongTensor, optional): Labels for computing the masked
                 language modeling loss. Indices should be in `[-1, 0, ..., config.vocab_size]`.
-            loss_mask (flow.LongTensor, optional): Mask to avoid performing loss computing
+            loss_mask (flow.BoolTensor, optional): Mask to avoid performing loss computing
                 on ignored tokens. Tokens with indices set to `-1` are ignored (masked), the
                 loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`
         """
