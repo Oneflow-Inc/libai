@@ -20,7 +20,6 @@ def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corne
 
 def crop(image, target, region):
     cropped_image = F.crop(image, *region)
-
     target = target.copy()
     i, j, h, w = region
 
@@ -65,18 +64,14 @@ def crop(image, target, region):
 
 def hflip(image, target):
     flipped_image = F.hflip(image)
-
     w, h = image.size
-
     target = target.copy()
     if "boxes" in target:
         boxes = target["boxes"]
         boxes = boxes[:, [2, 1, 0, 3]] * flow.as_tensor([-1, 1, -1, 1]) + flow.as_tensor([w, 0, w, 0])
         target["boxes"] = boxes
-
     if "masks" in target:
         target['masks'] = target['masks'].flip(-1)
-
     return flipped_image, target
 
 
@@ -132,7 +127,6 @@ def resize(image, target, size, max_size=None):
     if "masks" in target:
         target['masks'] = interpolate(
             target['masks'][:, None].float(), size, mode="nearest")[:, 0] > 0.5
- 
     return rescaled_image, target
 
 
@@ -306,7 +300,6 @@ def make_coco_transforms(image_set):
                         ),
                     p=0.5),
             normalize])
-
     if image_set == 'val':
         return LazyCall(Compose)(
             transforms=[

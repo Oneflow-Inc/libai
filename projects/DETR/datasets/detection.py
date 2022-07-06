@@ -44,12 +44,17 @@ class ConvertCocoPolysToMask(object):
         anno = [obj for obj in anno if 'iscrowd' not in obj or obj['iscrowd'] == 0]
 
         boxes = [obj["bbox"] for obj in anno]
+
         # Guard against no boxes via resizing
         boxes = flow.as_tensor(boxes, dtype=flow.float32).reshape(-1, 4)
-        
-        boxes[:, 2:] += boxes[:, :2]
-        boxes[:, 0::2].clamp_(min=0, max=w)
-        boxes[:, 1::2].clamp_(min=0, max=h)
+        # BUG: inplace version returns error results
+        # boxes[:, 2:] += boxes[:, :2]
+        boxes[:, 2:] = boxes[:, 2:] + boxes[:, :2]
+        # BUG: inplace version returns error results
+        # boxes[:, 0::2].clamp_(min=0, max=w)
+        # boxes[:, 1::2].clamp_(min=0, max=h)
+        boxes[:, 0::2] = flow.clamp(boxes[:, 0::2], min=0, max=w)
+        boxes[:, 1::2] = flow.clamp(boxes[:, 1::2], min=0, max=h)
         
         classes = [obj["category_id"] for obj in anno]
         classes = flow.tensor(classes, dtype=flow.int64)
@@ -108,5 +113,4 @@ class CocoDetection(flowvision.datasets.CocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-
         return (img, target)
