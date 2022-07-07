@@ -10,7 +10,7 @@
    - fused_scale_tril_softmax_mask_scale
    - fused_self_attention in branch `libai_bench`
 - User Experience Optimization
-- Optimization for training throughput
+- Optimization for training throughput, see [benchmark](https://libai.readthedocs.io/en/latest/tutorials/get_started/Benchmark.html) for more details
 
 **New Supported Models:**
 
