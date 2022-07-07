@@ -22,6 +22,7 @@ from .gpt_model import GPTForPreTraining, GPTModel
 from .vision_transformer import VisionTransformer
 from .swin_transformer import SwinTransformer
 from .resmlp import ResMLP
+from .swin_transformer_v2 import SwinTransformerV2
 
 __all__ = [
     "build_model",
@@ -38,5 +39,6 @@ __all__ = [
     "GPTForPreTraining",
     "VisionTransformer",
     "SwinTransformer",
+    'SwinTransformerV2',
     "ResMLP",
 ]
