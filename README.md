@@ -80,6 +80,7 @@ See LiBai's [documentation](https://libai.readthedocs.io/en/latest/index.html) f
    - fused_scale_tril_softmax_mask_scale
    - fused_self_attention in branch `libai_bench`
 - User Experience Optimization
+- Optimization for training throughput
 
 **Supported Models:**
 - Support 3D parallel [Roberta](https://arxiv.org/abs/1907.11692) model
