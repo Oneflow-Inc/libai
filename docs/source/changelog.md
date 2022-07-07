@@ -1,5 +1,23 @@
 ## Changelog
 
+### v0.2.0 (07/07/2022)
+**New Features:**
+- Support evaluation enabled and set `eval_iter`
+- Support customized sampler in `config.py`
+- Support rdma for pipeline-model-parallel
+- Support multi fused kernel 
+   - fused_scale_mask_softmax_dropout
+   - fused_scale_tril_softmax_mask_scale
+   - fused_self_attention in branch `libai_bench`
+- User Experience Optimization
+
+**New Supported Models:**
+
+- Support 3D parallel [Roberta](https://arxiv.org/abs/1907.11692) model
+- Support 2D parallel (data parallel + tensor model parallel) [SimCSE](https://arxiv.org/abs/2104.08821) model
+- Support Data parallel (MAE)[https://arxiv.org/abs/2111.06377] model
+- Support Data parallel (MOCOV3)[https://arxiv.org/abs/2104.02057] model
+
 ### v0.1.0 (22/03/2022)
 
 **New Features:**
