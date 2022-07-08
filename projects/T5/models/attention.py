@@ -53,6 +53,7 @@ class MultiheadAttention(nn.Module):
         self,
         hidden_size,
         num_attention_heads,
+        head_size,
         relative_attention_num_buckets,
         is_cross_attention=False,
         attention_dropout_prob=0.0,
@@ -75,13 +76,8 @@ class MultiheadAttention(nn.Module):
 
         if output_layer_init_method is None:
             output_layer_init_method = init_method
-
-        assert (
-            hidden_size % num_attention_heads == 0
-        ), "hidden_size must be divisible by num_attention_heads."
-
         self.num_heads = num_attention_heads
-        self.head_size = hidden_size // num_attention_heads
+        self.head_size = head_size
 
         self.dropout = nn.Dropout(p=attention_dropout_prob)
         self.norm_factor = 1.0 / math.sqrt(float(self.head_size))
@@ -102,7 +98,7 @@ class MultiheadAttention(nn.Module):
         if self.is_cross_attention:
             self.query = Linear(
                 self.hidden_size,
-                self.hidden_size,
+                self.num_heads * self.head_size,
                 bias=False,
                 parallel="col",
                 init_method=init_method,
@@ -110,7 +106,7 @@ class MultiheadAttention(nn.Module):
             )
             self.key_value = Linear(
                 self.hidden_size,
-                self.hidden_size * 2,
+                self.num_heads * self.head_size * 2,
                 bias=False,
                 parallel="col",
                 init_method=init_method,
@@ -119,7 +115,7 @@ class MultiheadAttention(nn.Module):
         else:
             self.query_key_value = Linear(
                 self.hidden_size,
-                self.hidden_size * 3,
+                self.num_heads * self.head_size * 3,
                 bias=False,
                 parallel="col",
                 init_method=init_method,
@@ -127,7 +123,7 @@ class MultiheadAttention(nn.Module):
             )
 
         self.dense = Linear(
-            self.hidden_size,
+            self.num_heads * self.head_size,
             self.hidden_size,
             bias=False,
             parallel="row",
@@ -276,7 +272,7 @@ class MultiheadAttention(nn.Module):
         # Concat multi-head results from
         # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
         # SBP sign: [S(0), S(2)]
-        context = context.view(bsz, tgt_len, self.hidden_size)
+        context = context.view(bsz, tgt_len, self.head_size*self.num_heads)
 
         # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context)

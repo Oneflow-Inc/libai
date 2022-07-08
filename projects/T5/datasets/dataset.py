@@ -5,8 +5,6 @@ from oneflow.utils.data import Dataset
 
 from libai.data.structures import DistTensorData, Instance
 
-data_path = "/home/xiezipeng/libai/projects/T5/data/wudao_180g_test_bert_tokenized_512_train/part_0"
-
 
 def get_data(path):
     total_data = []

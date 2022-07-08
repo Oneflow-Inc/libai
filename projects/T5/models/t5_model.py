@@ -33,6 +33,7 @@ class T5Model(flow.nn.Module):
         hidden_size,
         hidden_layers,
         num_attention_heads,
+        head_size,
         intermediate_size,
         embedding_dropout_prob,
         hidden_dropout_prob,
@@ -66,6 +67,7 @@ class T5Model(flow.nn.Module):
                     hidden_size=hidden_size,
                     ffn_hidden_size=intermediate_size,
                     num_attention_heads=num_attention_heads,
+                    head_size=head_size,
                     relative_attention_num_buckets=relative_attention_num_buckets,
                     is_decoder=False,
                     attention_dropout_prob=attention_probs_dropout_prob,
@@ -102,6 +104,7 @@ class T5Model(flow.nn.Module):
                     hidden_size=hidden_size,
                     ffn_hidden_size=intermediate_size,
                     num_attention_heads=num_attention_heads,
+                    head_size=head_size,
                     relative_attention_num_buckets=relative_attention_num_buckets,
                     is_decoder=True,
                     attention_dropout_prob=attention_probs_dropout_prob,
@@ -143,6 +146,7 @@ class T5Model(flow.nn.Module):
             "hidden_size": cfg.hidden_size,
             "hidden_layers": cfg.hidden_layers,
             "num_attention_heads": cfg.num_attention_heads,
+            "head_size": cfg.head_size,
             "intermediate_size": cfg.intermediate_size,
             "embedding_dropout_prob": cfg.embedding_dropout_prob,
             "hidden_dropout_prob": cfg.hidden_dropout_prob,
@@ -216,7 +220,7 @@ class T5Model(flow.nn.Module):
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
         logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
-        return logits
+        return decoder_states
 
     def set_cache(self, encoder_states, past_key_values):
         self.encoder_states = encoder_states

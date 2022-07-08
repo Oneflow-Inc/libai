@@ -59,6 +59,7 @@ class TransformerLayer(nn.Module):
         hidden_size,
         ffn_hidden_size,
         num_attention_heads,
+        head_size,
         relative_attention_num_buckets,
         is_decoder=False,
         attention_dropout_prob=0.0,
@@ -81,6 +82,7 @@ class TransformerLayer(nn.Module):
         self.hidden_size = hidden_size
         self.ffn_hidden_size = ffn_hidden_size
         self.num_attention_heads = num_attention_heads
+        self.head_size = head_size
         self.attention_dropout_prob = attention_dropout_prob
         self.output_dropout_prob = output_dropout_prob
         self.layernorm_epsilon = layernorm_epsilon
@@ -135,7 +137,7 @@ class TransformerLayer(nn.Module):
                 bias_dropout_fusion=self.bias_dropout_fusion,
                 layer_idx=self.layer_idx,
             )
-        else:
+        elif mlp_type == 't5':
             self.mlp = T5MLP(
                 self.hidden_size,
                 self.ffn_hidden_size,
@@ -277,6 +279,7 @@ class TransformerLayer(nn.Module):
         return MultiheadAttention(
             self.hidden_size,
             self.num_attention_heads,
+            head_size=self.head_size,
             relative_attention_num_buckets=relative_attention_num_buckets,
             is_cross_attention=is_cross_attention,
             attention_dropout_prob=self.attention_dropout_prob,

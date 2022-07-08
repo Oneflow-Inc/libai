@@ -7,6 +7,7 @@ cfg = dict(
     hidden_size=768,
     hidden_layers=6,
     num_attention_heads=12,
+    head_size=64,
     intermediate_size=3072,
     hidden_dropout_prob=0.1,
     attention_probs_dropout_prob=0.1,
