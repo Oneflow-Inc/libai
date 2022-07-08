@@ -16,8 +16,8 @@
 
 - Support 3D parallel [Roberta](https://arxiv.org/abs/1907.11692) model
 - Support 2D parallel (data parallel + tensor model parallel) [SimCSE](https://arxiv.org/abs/2104.08821) model
-- Support Data parallel (MAE)[https://arxiv.org/abs/2111.06377] model
-- Support Data parallel (MOCOV3)[https://arxiv.org/abs/2104.02057] model
+- Support Data parallel [MAE](https://arxiv.org/abs/2111.06377) model
+- Support Data parallel [MOCOV3](https://arxiv.org/abs/2104.02057) model
 
 ### v0.1.0 (22/03/2022)
 
