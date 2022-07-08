@@ -1,11 +1,12 @@
 import datasets
 import numpy as np
 import oneflow as flow
-from oneflow.utils.data import Dataset, DataLoader
+from oneflow.utils.data import Dataset
+
 from libai.data.structures import DistTensorData, Instance
 
-
 data_path = "/home/xiezipeng/libai/projects/T5/data/wudao_180g_test_bert_tokenized_512_train/part_0"
+
 
 def get_data(path):
     total_data = []
@@ -33,8 +34,7 @@ def compute_input_and_target_lengths(inputs_length, noise_density, mean_noise_sp
     while _tokens_length_to_inputs_length_targets_length(tokens_length + 1)[0] <= inputs_length:
         tokens_length += 1
 
-    inputs_length, targets_length = _tokens_length_to_inputs_length_targets_length(
-        tokens_length)
+    inputs_length, targets_length = _tokens_length_to_inputs_length_targets_length(tokens_length)
 
     # minor hack to get the targets length to be equal to inputs length
     # which is more likely to have been set to a nice round number.
@@ -59,9 +59,9 @@ class UnsuperviseT5Dataset(Dataset):
 
 class collate_fn:
     def __init__(
-        self, 
+        self,
         vocab_size,
-        max_seq_length, 
+        max_seq_length,
         noise_density,
         mean_noise_span_length,
         eos_token_id=1,
@@ -86,18 +86,14 @@ class collate_fn:
             k: np.array([examples[i][k] for i in range(len(examples))])
             for k, v in examples[0].items()
         }
-        input_ids = np.array(batch['input_ids'])
+        input_ids = np.array(batch["input_ids"])
         batch_size, expanded_input_length = input_ids.shape
         mask_indices = np.asarray(
-            [
-                self.random_spans_noise_mask(expanded_input_length) 
-                for i in range(batch_size)
-            ]
+            [self.random_spans_noise_mask(expanded_input_length) for i in range(batch_size)]
         )
         labels_mask = ~mask_indices
 
-        input_ids_sentinel = self.create_sentinel_ids(
-            mask_indices.astype(np.int8))
+        input_ids_sentinel = self.create_sentinel_ids(mask_indices.astype(np.int8))
         labels_sentinel = self.create_sentinel_ids(labels_mask.astype(np.int8))
 
         batch["input_ids"] = self.filter_input_ids(input_ids, input_ids_sentinel)
@@ -120,12 +116,8 @@ class collate_fn:
         )
 
         return Instance(
-            encoder_input_ids=DistTensorData(
-                flow.tensor(batch["input_ids"])
-            ),
-            decoder_input_ids=DistTensorData(
-                flow.tensor(batch["decoder_input_ids"])
-            ),
+            encoder_input_ids=DistTensorData(flow.tensor(batch["input_ids"])),
+            decoder_input_ids=DistTensorData(flow.tensor(batch["decoder_input_ids"])),
             encoder_attn_mask=DistTensorData(
                 flow.ones(len(batch["input_ids"]), len(batch["input_ids"][0]))
             ),
@@ -136,34 +128,30 @@ class collate_fn:
                 flow.ones(
                     len(batch["input_ids"]),
                     len(batch["input_ids"][0]),
-                    len(batch["decoder_input_ids"][0])
+                    len(batch["decoder_input_ids"][0]),
                 )
             ),
-            lm_labels=DistTensorData(
-                flow.tensor(batch["labels"])
-            )
+            lm_labels=DistTensorData(flow.tensor(batch["labels"])),
         )
 
     def filter_input_ids(self, input_ids, sentinel_ids):
         batch_size = input_ids.shape[0]
 
         input_ids_full = np.where(sentinel_ids != 0, sentinel_ids, input_ids)
-        input_ids = input_ids_full[input_ids_full >=
-                                    0].reshape((batch_size, -1))
+        input_ids = input_ids_full[input_ids_full >= 0].reshape((batch_size, -1))
         input_ids = np.concatenate(
             [input_ids, np.full((batch_size, 1), self.eos_token_id, dtype=np.int32)], axis=-1
         )
         return input_ids
 
     def create_sentinel_ids(self, mask_indices):
-        start_indices = mask_indices - \
-            np.roll(mask_indices, 1, axis=-1) * mask_indices
+        start_indices = mask_indices - np.roll(mask_indices, 1, axis=-1) * mask_indices
         start_indices[:, 0] = mask_indices[:, 0]
 
-        sentinel_ids = np.where(start_indices != 0, np.cumsum(
-            start_indices, axis=-1), start_indices)
         sentinel_ids = np.where(
-            sentinel_ids != 0, (self.vocab_size - sentinel_ids), 0)
+            start_indices != 0, np.cumsum(start_indices, axis=-1), start_indices
+        )
+        sentinel_ids = np.where(sentinel_ids != 0, (self.vocab_size - sentinel_ids), 0)
         sentinel_ids -= mask_indices - start_indices
 
         return sentinel_ids
@@ -173,8 +161,7 @@ class collate_fn:
         num_noise_tokens = int(np.round(length * self.noise_density))
         # avoid degeneracy by ensuring positive numbers of noise and nonnoise tokens.
         num_noise_tokens = min(max(num_noise_tokens, 1), length - 1)
-        num_noise_spans = int(
-            np.round(num_noise_tokens / self.mean_noise_span_length))
+        num_noise_spans = int(np.round(num_noise_tokens / self.mean_noise_span_length))
 
         # avoid degeneracy by ensuring positive number of noise spans
         num_noise_spans = max(num_noise_spans, 1)
@@ -190,14 +177,11 @@ class collate_fn:
             _, segment_length = np.unique(segment_id, return_counts=True)
             return segment_length
 
-        noise_span_lengths = _random_segmentation(
-            num_noise_tokens, num_noise_spans)
-        nonnoise_span_lengths = _random_segmentation(
-            num_nonnoise_tokens, num_noise_spans)
+        noise_span_lengths = _random_segmentation(num_noise_tokens, num_noise_spans)
+        nonnoise_span_lengths = _random_segmentation(num_nonnoise_tokens, num_noise_spans)
 
         interleaved_span_lengths = np.reshape(
-            np.stack([nonnoise_span_lengths, noise_span_lengths],
-                        axis=1), [num_noise_spans * 2]
+            np.stack([nonnoise_span_lengths, noise_span_lengths], axis=1), [num_noise_spans * 2]
         )
         span_starts = np.cumsum(interleaved_span_lengths)[:-1]
         span_start_indicator = np.zeros((length,), dtype=np.int8)
@@ -207,7 +191,9 @@ class collate_fn:
 
         return is_noise[:orig_length]
 
-    def shift_tokens_right(self, input_ids: np.array, pad_token_id: int, decoder_start_token_id: int) -> np.ndarray:
+    def shift_tokens_right(
+        self, input_ids: np.array, pad_token_id: int, decoder_start_token_id: int
+    ) -> np.ndarray:
         """
         Shift input ids one token to the right.
         """
@@ -215,6 +201,5 @@ class collate_fn:
         shifted_input_ids[:, 1:] = input_ids[:, :-1]
         shifted_input_ids[:, 0] = decoder_start_token_id
 
-        shifted_input_ids = np.where(
-            shifted_input_ids == -100, pad_token_id, shifted_input_ids)
+        shifted_input_ids = np.where(shifted_input_ids == -100, pad_token_id, shifted_input_ids)
         return shifted_input_ids

@@ -4,9 +4,9 @@ from typing import Tuple
 import oneflow as flow
 from oneflow import nn
 
+from libai.layers.linear import Linear
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import Embedding
-from libai.layers.linear import Linear
 
 
 class MultiheadAttention(nn.Module):
@@ -50,13 +50,13 @@ class MultiheadAttention(nn.Module):
         *,
         layer_idx=0,
         has_relative_attention_bias=False,
-        is_decoder=False
+        is_decoder=False,
     ):
         super().__init__()
         self.hidden_size = hidden_size
         self.relative_attention_num_buckets = relative_attention_num_buckets
         self.has_relative_attention_bias = has_relative_attention_bias
-        self.is_decoder=is_decoder
+        self.is_decoder = is_decoder
 
         if output_layer_init_method is None:
             output_layer_init_method = init_method
@@ -122,9 +122,7 @@ class MultiheadAttention(nn.Module):
         )
         if self.has_relative_attention_bias:
             self.relative_attention_bias = Embedding(
-                self.relative_attention_num_buckets, 
-                self.num_heads, 
-                layer_idx=layer_idx
+                self.relative_attention_num_buckets, self.num_heads, layer_idx=layer_idx
             )
 
     def forward(
@@ -158,7 +156,7 @@ class MultiheadAttention(nn.Module):
 
         # hidden_states, encoder_states: [S(0), B]
         # attention_mask: [S(0), B]
-        
+
         if encoder_states is not None:
             encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
@@ -168,13 +166,13 @@ class MultiheadAttention(nn.Module):
         bsz, tgt_len = hidden_states.size()[:2]
 
         real_seq_length = tgt_len
-        
+
         if past_key_value is not None:
             assert (
                 len(past_key_value) == 2
             ), f"past_key_value should have 2 past states: keys and values. Got { len(past_key_value)} past states"
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
-        
+
         key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
 
         if self.is_cross_attention:
@@ -217,19 +215,16 @@ class MultiheadAttention(nn.Module):
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(query, key, transpose_b=True)
 
-
         if position_bias is None:
             if not self.has_relative_attention_bias:
                 position_bias = flow.zeros(
-                    (1, self.num_heads, real_seq_length, key_length), 
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), 
+                    (1, self.num_heads, real_seq_length, key_length),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                     placement=attention_scores.placement,
                 )
             else:
                 position_bias = self.compute_bias(
-                    real_seq_length, 
-                    key_length, 
-                    placement=attention_mask.placement
+                    real_seq_length, key_length, placement=attention_mask.placement
                 )
 
             if past_key_value is not None:
@@ -237,7 +232,7 @@ class MultiheadAttention(nn.Module):
 
             position_bias = position_bias + (1 - attention_mask) * -1000
         attention_scores = attention_scores + position_bias
-        
+
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
             if self.scale_mask_softmax_fusion:
@@ -270,7 +265,7 @@ class MultiheadAttention(nn.Module):
 
         # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context)
-        
+
         if self.bias_dropout_fusion:
             output, bias = output
             output = flow._C.fused_bias_add_dropout(
@@ -282,7 +277,7 @@ class MultiheadAttention(nn.Module):
         if use_cache:
             output = (output, past_key_value)
 
-        output = (output,) + (position_bias, )
+        output = (output,) + (position_bias,)
         return output
 
     def extra_repr(self) -> str:
@@ -292,7 +287,9 @@ class MultiheadAttention(nn.Module):
             self.is_cross_attention,
         )
 
-    def _relative_position_bucket(self, relative_position, bidirectional=True, num_buckets=32, max_distance=128):
+    def _relative_position_bucket(
+        self, relative_position, bidirectional=True, num_buckets=32, max_distance=128
+    ):
         # relative_position: (seq_len, seq_len)
         relative_buckets = 0
         if bidirectional:
@@ -300,15 +297,18 @@ class MultiheadAttention(nn.Module):
             relative_buckets += (relative_position > 0).to(flow.long) * num_buckets
             relative_position = flow.abs(relative_position)
         else:
-            relative_position = -1 * flow.min(
-                relative_position, 
-                flow.zeros(
-                    relative_position.size(),
-                    sbp=relative_position.sbp, 
-                    placement=relative_position.placement
-                )
-            ).to(flow.long)
-        
+            relative_position = (
+                -1
+                * flow.min(
+                    relative_position,
+                    flow.zeros(
+                        relative_position.size(),
+                        sbp=relative_position.sbp,
+                        placement=relative_position.placement,
+                    ),
+                ).to(flow.long)
+            )
+
         max_exact = num_buckets // 2
         is_small = relative_position < max_exact
 
@@ -319,34 +319,46 @@ class MultiheadAttention(nn.Module):
         ).to(flow.long)
 
         relative_postion_if_large = flow.min(
-            relative_postion_if_large, 
+            relative_postion_if_large,
             flow.zeros(
                 relative_postion_if_large.size(),
                 dtype=relative_postion_if_large.dtype,
-                sbp=relative_postion_if_large.sbp, 
-                placement=relative_postion_if_large.placement
-            ).fill_(num_buckets - 1)
+                sbp=relative_postion_if_large.sbp,
+                placement=relative_postion_if_large.placement,
+            ).fill_(num_buckets - 1),
         )
-        
-        relative_buckets = relative_buckets + flow.where(is_small, relative_position, relative_postion_if_large)
+
+        relative_buckets = relative_buckets + flow.where(
+            is_small, relative_position, relative_postion_if_large
+        )
         return relative_buckets
 
     def compute_bias(self, query_length, key_length, placement=None):
         """Compute binned relative position bias"""
         context_position = flow.arange(
-            query_length, dtype=flow.long, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=placement
+            query_length,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=placement,
         )[:, None]
         memory_position = flow.arange(
-            key_length, dtype=flow.long, sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=placement
+            key_length,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=placement,
         )[None, :]
         relative_position = memory_position - context_position  # shape (query_length, key_length)
-        
+
         relative_position_bucket = self._relative_position_bucket(
             relative_position,  # shape (query_length, key_length)
             bidirectional=(not self.is_decoder),
             num_buckets=self.relative_attention_num_buckets,
         )
-        
-        values = self.relative_attention_bias(relative_position_bucket)  # shape (query_length, key_length, num_heads)
-        values = values.permute([2, 0, 1]).unsqueeze(0)  # shape (1, num_heads, query_length, key_length)
+
+        values = self.relative_attention_bias(
+            relative_position_bucket
+        )  # shape (query_length, key_length, num_heads)
+        values = values.permute([2, 0, 1]).unsqueeze(
+            0
+        )  # shape (1, num_heads, query_length, key_length)
         return values

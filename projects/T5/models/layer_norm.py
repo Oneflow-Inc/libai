@@ -1,4 +1,5 @@
 import oneflow as flow
+
 from libai.utils import distributed as dist
 
 
@@ -7,13 +8,13 @@ class LayerNorm(flow.nn.Module):
         super().__init__()
         self.layer_idx = layer_idx
         self.weight = flow.nn.Parameter(
-                flow.ones(
-                    normalized_shape,
-                    dtype=flow.float32,
-                    placement=dist.get_layer_placement(layer_idx),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                )
+            flow.ones(
+                normalized_shape,
+                dtype=flow.float32,
+                placement=dist.get_layer_placement(layer_idx),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
+        )
         self.variance_epsilon = eps
 
     def forward(self, hidden_states):

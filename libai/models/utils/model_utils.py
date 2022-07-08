@@ -439,7 +439,7 @@ class LoadPretrainedBase(object):
             }
             return model, loading_info
         return model
-        
+
 
 class LoadPretrainedT5(LoadPretrainedBase):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
@@ -503,7 +503,11 @@ class LoadPretrainedT5(LoadPretrainedBase):
             op_name = keys[op_idx]
 
             if keys[op_idx + 1] == "relative_attention_bias" and keys[op_idx] == "SelfAttention":
-                new_key = prefix2 + keys[encoder_decoder_idx] + ".layers.0.self_attention.relative_attention_bias.weight"
+                new_key = (
+                    prefix2
+                    + keys[encoder_decoder_idx]
+                    + ".layers.0.self_attention.relative_attention_bias.weight"
+                )
                 oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
 
             # Convert T5's Encoder layers.
@@ -674,16 +678,17 @@ class LoadPretrainedT5(LoadPretrainedBase):
         self.default_cfg["hidden_dropout_prob"] = cfg_dict["dropout_rate"]
         self.default_cfg["attention_probs_dropout_prob"] = cfg_dict["dropout_rate"]
         self.default_cfg["max_position_embeddings"] = cfg_dict["n_positions"]
-        self.default_cfg['relative_attention_num_buckets'] = cfg_dict['relative_attention_num_buckets']
+        self.default_cfg["relative_attention_num_buckets"] = cfg_dict[
+            "relative_attention_num_buckets"
+        ]
         self.default_cfg["embedding_dropout_prob"] = cfg_dict["dropout_rate"]
         self.default_cfg["initializer_range"] = cfg_dict["initializer_factor"]
         self.default_cfg["layernorm_eps"] = cfg_dict["layer_norm_epsilon"]
 
-
         # update default_cfg by kwargs
         for k, v in self.kwargs:
             self.default_cfg[k] = v
-        
-        self.default_cfg['bias_gelu_fusion'] = False
-        self.default_cfg['bias_dropout_fusion'] = False
-        self.default_cfg['apply_query_key_layer_scaling'] = False
+
+        self.default_cfg["bias_gelu_fusion"] = False
+        self.default_cfg["bias_dropout_fusion"] = False
+        self.default_cfg["apply_query_key_layer_scaling"] = False

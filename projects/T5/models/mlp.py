@@ -131,7 +131,6 @@ class T5DenseGatedGeluDense(nn.Module):
             layer_idx=layer_idx,
         )
 
-        
         self.dropout = nn.Dropout(self.output_dropout_prob)
 
     def forward(self, hidden_states):
@@ -142,4 +141,3 @@ class T5DenseGatedGeluDense(nn.Module):
         hidden_states = self.dropout(hidden_states)
         hidden_states = self.wo(hidden_states)
         return hidden_states
-

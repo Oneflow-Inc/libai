@@ -1,14 +1,12 @@
 import oneflow as flow
+
 from libai.config import configurable
-from libai.layers import (
-    LMLogits,
-    ParallelCrossEntropyLoss,
-)
+from libai.layers import LMLogits, ParallelCrossEntropyLoss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
-from projects.T5.models.mask import ExtendedMask
-from projects.T5.models.layer_norm import LayerNorm
 from projects.T5.models.embedding import T5Embedding
+from projects.T5.models.layer_norm import LayerNorm
+from projects.T5.models.mask import ExtendedMask
 from projects.T5.models.transformer_layer import TransformerLayer
 
 
@@ -99,7 +97,7 @@ class T5Model(flow.nn.Module):
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     layer_idx=i,
-                    has_relative_attention_bias=bool(i-hidden_layers == 0),
+                    has_relative_attention_bias=bool(i - hidden_layers == 0),
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
             ]
@@ -117,7 +115,7 @@ class T5Model(flow.nn.Module):
         self.past_key_values = [None] * len(self.decoder.layers)
         self.encoder_states = None
         self.past_length = 0
-        
+
         self.lm_head = LMLogits(vocab_size, bias=True)
 
     @classmethod
@@ -151,7 +149,7 @@ class T5Model(flow.nn.Module):
         encoder_decoder_attn_mask,
         use_cache=False,
     ):
-        
+
         if use_cache and self.encoder_states is not None:
             encoder_states = self.encoder_states
         else:
@@ -161,22 +159,19 @@ class T5Model(flow.nn.Module):
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
             enc_embedding_output = self.embedding(encoder_input_ids)
             enc_hidden_states = enc_embedding_output
-            
-            
+
             for layer in self.encoder.layers:
                 enc_hidden_states, position_bias = layer(
                     enc_hidden_states,
-                    encoder_attn_mask, 
+                    encoder_attn_mask,
                     position_bias=position_bias,
                 )
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
-        
-        a,b = decoder_input_ids.size()
-        decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask, (a,b), is_decoder=True)
+
+        a, b = decoder_input_ids.size()
+        decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask, (a, b), is_decoder=True)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
-        # encoder_decoder_attn_mask = encoder_attn_mask
-        
         dec_embedding_output = self.embedding(decoder_input_ids)
         dec_hidden_states = dec_embedding_output
         if use_cache:

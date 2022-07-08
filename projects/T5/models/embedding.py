@@ -1,8 +1,9 @@
 import oneflow as flow
 import oneflow.nn as nn
-from libai.layers.embedding import VocabEmbedding
-import libai.utils.distributed as dist
 from oneflow.nn import init
+
+import libai.utils.distributed as dist
+from libai.layers.embedding import VocabEmbedding
 
 
 class T5Embedding(flow.nn.Module):
@@ -52,7 +53,7 @@ class Embedding(nn.Module):
         padding_idx=None,
         init_method=init.xavier_normal_,
         amp_enabled=False,
-        layer_idx=0
+        layer_idx=0,
     ):
         super().__init__()
         self.num_embeddings = num_embeddings

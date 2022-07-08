@@ -1,11 +1,10 @@
 import oneflow.nn as nn
 
-from libai.utils import distributed as dist
-
-from projects.T5.models.attention import MultiheadAttention
 from libai.layers.droppath import DropPath
-from projects.T5.models.mlp import MLP
+from libai.utils import distributed as dist
+from projects.T5.models.attention import MultiheadAttention
 from projects.T5.models.layer_norm import LayerNorm
+from projects.T5.models.mlp import MLP
 
 
 class TransformerLayer(nn.Module):
@@ -92,9 +91,9 @@ class TransformerLayer(nn.Module):
 
         self.self_attention = self.build_attention(
             is_cross_attention=False,
-            relative_attention_num_buckets=relative_attention_num_buckets, 
+            relative_attention_num_buckets=relative_attention_num_buckets,
             has_relative_attention_bias=has_relative_attention_bias,
-            is_decoder = self.is_decoder
+            is_decoder=self.is_decoder,
         )
         self.post_attention_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
@@ -103,8 +102,8 @@ class TransformerLayer(nn.Module):
         if self.is_decoder:
             self.cross_attention = self.build_attention(
                 is_cross_attention=True,
-                relative_attention_num_buckets=relative_attention_num_buckets, 
-                is_decoder = self.is_decoder,
+                relative_attention_num_buckets=relative_attention_num_buckets,
+                is_decoder=self.is_decoder,
             )
             self.post_cross_attention_layernorm = LayerNorm(
                 self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
@@ -171,8 +170,7 @@ class TransformerLayer(nn.Module):
             self_attn_past_key_value, cross_attn_past_key_value = None, None
 
         layernorm_output = self.input_layernorm(hidden_states)
-        
-        
+
         attention_output, position_bias = self.self_attention(
             layernorm_output,
             attention_mask=attention_mask,
@@ -181,7 +179,6 @@ class TransformerLayer(nn.Module):
             use_cache=use_cache,
         )
 
-        
         attention_output = self.drop_path(attention_output)
 
         if use_cache:
@@ -238,12 +235,18 @@ class TransformerLayer(nn.Module):
 
         if use_cache:
             output = (output, presents)
-        output = (output,) + (position_bias, )
+        output = (output,) + (position_bias,)
         if self.is_decoder:
-            output = output + (encoder_decoder_position_bias, )
+            output = output + (encoder_decoder_position_bias,)
         return output
 
-    def build_attention(self, is_cross_attention=False, relative_attention_num_buckets=None, has_relative_attention_bias=False, is_decoder = False):
+    def build_attention(
+        self,
+        is_cross_attention=False,
+        relative_attention_num_buckets=None,
+        has_relative_attention_bias=False,
+        is_decoder=False,
+    ):
         return MultiheadAttention(
             self.hidden_size,
             self.num_attention_heads,
@@ -258,5 +261,5 @@ class TransformerLayer(nn.Module):
             apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
             layer_idx=self.layer_idx,
             has_relative_attention_bias=has_relative_attention_bias,
-            is_decoder = is_decoder
+            is_decoder=is_decoder,
         )
