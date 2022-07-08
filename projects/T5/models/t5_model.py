@@ -220,7 +220,7 @@ class T5Model(flow.nn.Module):
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
         logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
-        return decoder_states
+        return logits
 
     def set_cache(self, encoder_states, past_key_values):
         self.encoder_states = encoder_states
