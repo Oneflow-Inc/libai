@@ -1,3 +1,18 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import math
 from typing import Tuple
 
@@ -350,10 +365,10 @@ class MultiheadAttention(nn.Module):
         relative_position = memory_position - context_position  # shape (query_length, key_length)
 
         relative_position_bucket = self._relative_position_bucket(
-            relative_position,  # shape (query_length, key_length)
+            relative_position,  
             bidirectional=(not self.is_decoder),
             num_buckets=self.relative_attention_num_buckets,
-        )
+        )   # shape (query_length, key_length)
 
         values = self.relative_attention_bias(
             relative_position_bucket

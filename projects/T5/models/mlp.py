@@ -1,10 +1,25 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import oneflow as flow
 from oneflow import nn
 
 from libai.layers import Linear, build_activation
 
 
-class MLP(nn.Module):
+class T5MLP(nn.Module):
     def __init__(
         self,
         hidden_size,
@@ -77,7 +92,7 @@ class MLP(nn.Module):
         )
 
 
-class T5DenseGatedGeluDense(nn.Module):
+class MT5MLP(nn.Module):
     def __init__(
         self,
         d_model,
@@ -103,7 +118,7 @@ class T5DenseGatedGeluDense(nn.Module):
             d_ff,
             bias=False,
             parallel="col",
-            skip_bias_add=False,
+            skip_bias_add=bias_gelu_fusion,
             init_method=init_method,
             layer_idx=layer_idx,
         )
@@ -112,7 +127,7 @@ class T5DenseGatedGeluDense(nn.Module):
             d_model,
             d_ff,
             bias=False,
-            parallel="row",
+            parallel="col",
             skip_bias_add=False,
             init_method=init_method,
             layer_idx=layer_idx,
@@ -125,8 +140,8 @@ class T5DenseGatedGeluDense(nn.Module):
             d_ff,
             d_model,
             bias=False,
-            parallel="data",
-            skip_bias_add=False,
+            parallel="row",
+            skip_bias_add=bias_dropout_fusion,
             init_method=output_layer_init_method,
             layer_idx=layer_idx,
         )
@@ -135,9 +150,23 @@ class T5DenseGatedGeluDense(nn.Module):
 
     def forward(self, hidden_states):
         wi_0_out = self.wi_0(hidden_states)
-        hidden_gelu = self.activation_func(wi_0_out)
+        if self.bias_gelu_fusion:
+            wi_0_out, bias = wi_0_out
+            hidden_gelu = flow._C.fused_bias_add_gelu(
+                wi_0_out, bias, axis=wi_0_out.ndim - 1
+            )
+        else:
+            hidden_gelu = self.activation_func(wi_0_out)
+
         hidden_linear = self.wi_1(hidden_states)
-        hidden_states = hidden_gelu * hidden_linear
-        hidden_states = self.dropout(hidden_states)
-        hidden_states = self.wo(hidden_states)
-        return hidden_states
+        hidden_states = hidden_gelu * hidden_linear 
+
+        output = self.wo(hidden_states)
+        if self.bias_dropout_fusion:
+            output, bias = output
+            output = flow._C.fused_bias_add_dropout(
+                output, bias, p=self.output_dropout_prob, axis=output.ndim - 1
+            )
+        else:
+            output = self.dropout(output)
+        return output
