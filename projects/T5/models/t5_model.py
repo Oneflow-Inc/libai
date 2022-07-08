@@ -1,3 +1,18 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import oneflow as flow
 
 from libai.config import configurable
@@ -31,6 +46,7 @@ class T5Model(flow.nn.Module):
         apply_query_key_layer_scaling=True,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
+        mlp_type='t5',
     ) -> None:
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -63,6 +79,7 @@ class T5Model(flow.nn.Module):
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
                     layer_idx=i,
+                    mlp_type=mlp_type,
                     has_relative_attention_bias=bool(i == 0),
                 )
                 for i in range(hidden_layers)
@@ -97,6 +114,7 @@ class T5Model(flow.nn.Module):
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     layer_idx=i,
+                    mlp_type=mlp_type,
                     has_relative_attention_bias=bool(i - hidden_layers == 0),
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
@@ -138,6 +156,7 @@ class T5Model(flow.nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
             "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
+            "mlp_type": cfg.mlp_type,
         }
 
     def forward(
@@ -168,8 +187,7 @@ class T5Model(flow.nn.Module):
                 )
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
 
-        a, b = decoder_input_ids.size()
-        decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask, (a, b), is_decoder=True)
+        decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask, decoder_input_ids, is_decoder=True)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
         dec_embedding_output = self.embedding(decoder_input_ids)

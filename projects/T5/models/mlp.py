@@ -95,9 +95,9 @@ class T5MLP(nn.Module):
 class MT5MLP(nn.Module):
     def __init__(
         self,
-        d_model,
-        d_ff,
-        dropout_rate=0.0,
+        hidden_size,
+        ffn_hidden_size,
+        output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
         bias_gelu_fusion=False,
@@ -106,7 +106,7 @@ class MT5MLP(nn.Module):
         layer_idx=0,
     ):
         super().__init__()
-        self.output_dropout_prob = dropout_rate
+        self.output_dropout_prob = output_dropout_prob
         self.bias_gelu_fusion = bias_gelu_fusion
         self.bias_dropout_fusion = bias_dropout_fusion
 
@@ -114,8 +114,8 @@ class MT5MLP(nn.Module):
             output_layer_init_method = init_method
 
         self.wi_0 = Linear(
-            d_model,
-            d_ff,
+            hidden_size,
+            ffn_hidden_size,
             bias=False,
             parallel="col",
             skip_bias_add=bias_gelu_fusion,
@@ -124,8 +124,8 @@ class MT5MLP(nn.Module):
         )
 
         self.wi_1 = Linear(
-            d_model,
-            d_ff,
+            hidden_size,
+            ffn_hidden_size,
             bias=False,
             parallel="col",
             skip_bias_add=False,
@@ -137,8 +137,8 @@ class MT5MLP(nn.Module):
             self.activation_func = build_activation("gelu")
 
         self.wo = Linear(
-            d_ff,
-            d_model,
+            ffn_hidden_size,
+            hidden_size,
             bias=False,
             parallel="row",
             skip_bias_add=bias_dropout_fusion,
