@@ -444,6 +444,7 @@ class LoadPretrainedBase(object):
 class LoadPretrainedBert(LoadPretrainedBase):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+        
         """NOTE: base_model_prefix_1 is BERT's prefix in Transformers.
         base_model_prefix_2 is BERT's prefix in LiBai."""
         self.base_model_prefix_1 = "bert"
@@ -463,11 +464,12 @@ class LoadPretrainedBert(LoadPretrainedBase):
         oneflow_state_dict = torch_state_dict.copy()
 
         # Get configs
-        num_heads = cfg.get("num_attention_heads", 12)
-        hidden_size = cfg.get("hidden_size", 768)
-        layers = cfg.get("hidden_layers", 12)
+        num_heads = cfg.get("num_attention_heads")
+        hidden_size = cfg.get("hidden_size")
+        layers = cfg.get("hidden_layers")
         head_size = int(hidden_size / num_heads)
 
+        # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
 
         prefix = "bert." if has_prefix else ""
@@ -676,12 +678,14 @@ class LoadPretrainedBert(LoadPretrainedBase):
         for k, v in self.kwargs:
             self.default_cfg[k] = v
 
+        # use original BERT residual connection ordering
         self.default_cfg["apply_residual_post_layernorm"] = True
 
 
 class LoadPretrainedRoberta(LoadPretrainedBert):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+        
         """NOTE: base_model_prefix_1 is RoBERTa's prefix in Transformers,
         base_model_prefix_2 is RoBERTa's prefix in LiBai."""
         self.base_model_prefix_1 = "roberta"
@@ -701,11 +705,12 @@ class LoadPretrainedRoberta(LoadPretrainedBert):
         oneflow_state_dict = torch_state_dict.copy()
 
         # Get configs
-        num_heads = cfg.get("num_attention_heads", 12)
-        hidden_size = cfg.get("hidden_size", 768)
-        layers = cfg.get("hidden_layers", 12)
+        num_heads = cfg.get("num_attention_heads")
+        hidden_size = cfg.get("hidden_size")
+        layers = cfg.get("hidden_layers")
         head_size = int(hidden_size / num_heads)
 
+        # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
 
         prefix = "roberta." if has_prefix else ""
@@ -890,6 +895,7 @@ class LoadPretrainedRoberta(LoadPretrainedBert):
 class LoadPretrainedGPT2(LoadPretrainedBase):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+        
         """NOTE: base_model_prefix_1 is GPT's prefix in Transformers.
         base_model_prefix_2 is GPT's prefix in LiBai."""
         self.base_model_prefix_1 = "transformer"
@@ -910,10 +916,11 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
         old_keys = list(oneflow_state_dict.keys())
 
         # Get configs
-        num_heads = cfg.get("num_attention_heads", 12)
-        hidden_size = cfg.get("hidden_size", 768)
+        num_heads = cfg.get("num_attention_heads")
+        hidden_size = cfg.get("hidden_size")
         head_size = int(hidden_size / num_heads)
 
+        # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
         prefix1 = self.base_model_prefix_1 + "." if has_prefix else ""
         prefix2 = "GPT_model." if has_prefix else "GPT_model.transformer."
@@ -1038,6 +1045,7 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
 class LoadPretrainedT5(LoadPretrainedBase):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+        
         """NOTE: base_model_prefix_1 is T5's prefix in Transformers.
         base_model_prefix_2 is T5's prefix in LiBai."""
         self.base_model_prefix_1 = "transformer"
@@ -1057,9 +1065,11 @@ class LoadPretrainedT5(LoadPretrainedBase):
         oneflow_state_dict = torch_state_dict.copy()
         old_keys = list(oneflow_state_dict.keys())
         # Get configs
-        num_heads = cfg.get("num_attention_heads", 12)
-        hidden_size = cfg.get("hidden_size", 768)
-        head_size = cfg.get("head_size", 64)
+        num_heads = cfg.get("num_attention_heads")
+        hidden_size = cfg.get("hidden_size")
+        head_size = cfg.get("head_size", None)
+        if head_size == None:
+            head_size = int(hidden_size / num_heads)
 
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
         prefix1 = self.base_model_prefix_1 + "." if has_prefix else ""
@@ -1323,10 +1333,7 @@ class LoadPretrainedT5(LoadPretrainedBase):
         self.default_cfg["initializer_range"] = cfg_dict["initializer_factor"]
         self.default_cfg["layernorm_eps"] = cfg_dict["layer_norm_epsilon"]
         self.default_cfg["head_size"] = cfg_dict["d_kv"]
+        
         # update default_cfg by kwargs
         for k, v in self.kwargs:
             self.default_cfg[k] = v
-
-        self.default_cfg["bias_gelu_fusion"] = False
-        self.default_cfg["bias_dropout_fusion"] = False
-        self.default_cfg["apply_query_key_layer_scaling"] = False
