@@ -934,6 +934,8 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
 
         for key in old_keys:
             keys = key.split(".")
+            if layer_idx > len(keys):
+                continue
             layer = keys[layer_idx]
             # Convert transformer layers.
             if "h." in key:
@@ -1043,11 +1045,11 @@ class LoadPretrainedT5(LoadPretrainedBase):
 
     def _convert_state_dict(self, torch_state_dict, cfg):
         """Convert torch state dict to flow state dict.
-
+        
         Args:
             torch_state_dict (OrderedDict): torch state dict.
             cfg (dict): model's default config dict.
-
+        
         Returns:
             OrderedDict: flow state dict.
         """
@@ -1057,7 +1059,7 @@ class LoadPretrainedT5(LoadPretrainedBase):
         # Get configs
         num_heads = cfg.get("num_attention_heads", 12)
         hidden_size = cfg.get("hidden_size", 768)
-        head_size = int(hidden_size / num_heads)
+        head_size = cfg.get("head_size", 64)
 
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
         prefix1 = self.base_model_prefix_1 + "." if has_prefix else ""
@@ -1090,12 +1092,19 @@ class LoadPretrainedT5(LoadPretrainedBase):
         # NOTE: Each layers has no bias in Transformer's T5.
         for key in old_keys:
             keys = key.split(".")
+            if layer_idx1 > len(keys) or layer_idx2 > len(keys):
+                continue
             layer1 = keys[layer_idx1]
             layer2 = keys[layer_idx2]
             op_name = keys[op_idx]
 
-            if keys[op_idx + 1] == "relative_attention_bias":
-                continue
+            if keys[op_idx + 1] == "relative_attention_bias" and keys[op_idx] == "SelfAttention":
+                new_key = (
+                    prefix2
+                    + keys[encoder_decoder_idx]
+                    + ".layers.0.self_attention.relative_attention_bias.weight"
+                )
+                oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
 
             # Convert T5's Encoder layers.
             if keys[encoder_decoder_idx] == "encoder":
@@ -1119,7 +1128,7 @@ class LoadPretrainedT5(LoadPretrainedBase):
                         ),
                         dim=0,
                     )
-                    qkv_w = self._fix_qkv_ordering(qkv_w, head_size, num_heads)
+                    qkv_w = self._fix_qkv_ordering(qkv_w, head_size, num_heads, hidden_size)
                     oneflow_state_dict[new_key] = self.convert_tensor(qkv_w)
 
                     o_w = ".".join(keys[: op_idx + 1]) + ".o." + "weight"
@@ -1142,16 +1151,37 @@ class LoadPretrainedT5(LoadPretrainedBase):
                             oneflow_state_dict.pop(key)
                         )
                 elif op_name == "DenseReluDense":
-                    if keys[op_idx + 1] == "wi":
-                        new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
-                        oneflow_state_dict[new_key] = self.convert_tensor(
-                            oneflow_state_dict.pop(key)
-                        )
-                    elif keys[op_idx + 1] == "wo":
-                        new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
-                        oneflow_state_dict[new_key] = self.convert_tensor(
-                            oneflow_state_dict.pop(key)
-                        )
+                    if cfg.get("mlp_type") == "t5":
+                        if keys[op_idx + 1] == "wi":
+                            new_key = (
+                                prefix2 + "encoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
+                            )
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
+                        elif keys[op_idx + 1] == "wo":
+                            new_key = (
+                                prefix2 + "encoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
+                            )
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
+                    elif cfg.get("mlp_type") == "mt5":
+                        if keys[op_idx + 1] == "wi_0":
+                            new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.wi_0.weight"
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
+                        elif keys[op_idx + 1] == "wi_1":
+                            new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.wi_1.weight"
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
+                        elif keys[op_idx + 1] == "wo":
+                            new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.wo.weight"
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
 
             # Convert T5's decoder Layers.
             elif keys[encoder_decoder_idx] == "decoder":
@@ -1175,7 +1205,7 @@ class LoadPretrainedT5(LoadPretrainedBase):
                         ),
                         dim=0,
                     )
-                    qkv_w = self._fix_qkv_ordering(qkv_w, head_size, num_heads)
+                    qkv_w = self._fix_qkv_ordering(qkv_w, head_size, num_heads, hidden_size)
 
                     oneflow_state_dict[new_key] = self.convert_tensor(qkv_w)
 
@@ -1224,8 +1254,8 @@ class LoadPretrainedT5(LoadPretrainedBase):
                         ),
                         dim=0,
                     )
-                    q_w = self._fix_qkv_ordering(q_w, head_size, num_heads)
-                    kv_w = self._fix_qkv_ordering(kv_w, head_size, num_heads)
+                    q_w = self._fix_qkv_ordering(q_w, head_size, num_heads, hidden_size)
+                    kv_w = self._fix_qkv_ordering(kv_w, head_size, num_heads, hidden_size)
 
                     oneflow_state_dict[new_key] = self.convert_tensor(q_w)
                     new_key = (
@@ -1237,21 +1267,42 @@ class LoadPretrainedT5(LoadPretrainedBase):
                     new_key = prefix2 + "decoder.layers." + layer1 + ".cross_attention.dense.weight"
                     oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(o_w))
                 elif op_name == "DenseReluDense":
-                    if keys[op_idx + 1] == "wi":
-                        new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
-                        oneflow_state_dict[new_key] = self.convert_tensor(
-                            oneflow_state_dict.pop(key)
-                        )
-                    elif keys[op_idx + 1] == "wo":
-                        new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
-                        oneflow_state_dict[new_key] = self.convert_tensor(
-                            oneflow_state_dict.pop(key)
-                        )
+                    if cfg.get("mlp_type") == "t5":
+                        if keys[op_idx + 1] == "wi":
+                            new_key = (
+                                prefix2 + "decoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
+                            )
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
+                        elif keys[op_idx + 1] == "wo":
+                            new_key = (
+                                prefix2 + "decoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
+                            )
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
+                    elif cfg.get("mlp_type") == "mt5":
+                        if keys[op_idx + 1] == "wi_0":
+                            new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.wi_0.weight"
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
+                        elif keys[op_idx + 1] == "wi_1":
+                            new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.wi_1.weight"
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
+                        elif keys[op_idx + 1] == "wo":
+                            new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.wo.weight"
+                            oneflow_state_dict[new_key] = self.convert_tensor(
+                                oneflow_state_dict.pop(key)
+                            )
         return oneflow_state_dict
 
     def _load_config_from_json(self, config_file):
         """load config from `config.json`, and update default config.
-
+        
         Args:
             config_file (str): Path of config file.
         """
@@ -1264,11 +1315,18 @@ class LoadPretrainedT5(LoadPretrainedBase):
         self.default_cfg["intermediate_size"] = cfg_dict["d_ff"]
         self.default_cfg["hidden_dropout_prob"] = cfg_dict["dropout_rate"]
         self.default_cfg["attention_probs_dropout_prob"] = cfg_dict["dropout_rate"]
-        self.default_cfg["max_position_embeddings"] = cfg_dict["n_positions"]
+        self.default_cfg["max_position_embeddings"] = cfg_dict.get("n_positions", 512)
+        self.default_cfg["relative_attention_num_buckets"] = cfg_dict[
+            "relative_attention_num_buckets"
+        ]
         self.default_cfg["embedding_dropout_prob"] = cfg_dict["dropout_rate"]
         self.default_cfg["initializer_range"] = cfg_dict["initializer_factor"]
         self.default_cfg["layernorm_eps"] = cfg_dict["layer_norm_epsilon"]
-
+        self.default_cfg["head_size"] = cfg_dict["d_kv"]
         # update default_cfg by kwargs
         for k, v in self.kwargs:
             self.default_cfg[k] = v
+
+        self.default_cfg["bias_gelu_fusion"] = False
+        self.default_cfg["bias_dropout_fusion"] = False
+        self.default_cfg["apply_query_key_layer_scaling"] = False
