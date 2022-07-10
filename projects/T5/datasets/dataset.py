@@ -125,11 +125,12 @@ class collate_fn:
             encoder_decoder_attn_mask=DistTensorData(
                 flow.ones(
                     len(batch["input_ids"]),
-                    len(batch["input_ids"][0]),
                     len(batch["decoder_input_ids"][0]),
+                    len(batch["input_ids"][0]),
                 )
             ),
             lm_labels=DistTensorData(flow.tensor(batch["labels"])),
+            loss_mask=DistTensorData(flow.tensor(batch["labels"])),
         )
 
     def filter_input_ids(self, input_ids, sentinel_ids):

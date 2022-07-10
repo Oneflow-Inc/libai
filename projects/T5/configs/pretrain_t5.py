@@ -1,8 +1,9 @@
+from libai import evaluation
 from libai.data.build import build_nlp_train_loader
 from omegaconf import OmegaConf
 
 from libai.config import LazyCall
-from libai.evaluation import PPLEvaluator
+from libai.evaluation import PPLEvaluator, evaluator
 from libai.scheduler import WarmupExponentialLR
 
 from configs.common.train import train
@@ -45,10 +46,6 @@ model.cfg.intermediate_size = 1024
 model.cfg.layernorm_eps = 1e-6
 model.cfg.mlp_type = 'mt5'
 
-train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
-
-train.evaluation.evaluator = LazyCall(PPLEvaluator)()
-
 train.update(
     dict(
         output_dir="./output/t5_output",
@@ -62,6 +59,7 @@ train.update(
             data_parallel_size=2,
             tensor_parallel_size=2,
             pipeline_parallel_size=1,
+            pipeline_num_layers = 2 * model.cfg.hidden_layers
         ),
 
         scheduler=LazyCall(WarmupExponentialLR)(
@@ -70,5 +68,12 @@ train.update(
             warmup_method="linear",
             warmup_iter=0.0,
         ),
+
+        evaluation=dict(
+            evaluator=LazyCall(PPLEvaluator)(),
+            enabled=True,
+            eval_iter=1e5,
+            eval_period=5000,
+        )
     )
 )
