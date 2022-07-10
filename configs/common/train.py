@@ -1,3 +1,5 @@
+from omegaconf import DictConfig
+
 from libai.config import LazyCall
 from libai.scheduler import WarmupCosineLR
 from libai.evaluation import ClsEvaluator
@@ -130,3 +132,5 @@ train = dict(
     seed=1234,
 )
 # fmt: on
+
+train = DictConfig(train)
