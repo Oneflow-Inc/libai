@@ -19,8 +19,8 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 )
 
 # Refine model cfg for vit training on cifar100
-model.num_classes = 100
-model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+model.cfg.num_classes = 100
+model.cfg.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 # Refine optimizer cfg for swin model
 optim.lr = 5e-4
@@ -47,7 +47,7 @@ train.scheduler.warmup_method = "linear"
 train.dist.data_parallel_size = 8
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
-train.dist.pipeline_num_layers = sum(model.depths)
+train.dist.pipeline_num_layers = sum(model.cfg.depths)
 train.output_dir = "./output"
 
 # Set fp16 ON

@@ -39,8 +39,8 @@ resmlp_test_aug = LazyCall(transforms.Compose)(
 dataloader.test[0].dataset.transform = resmlp_test_aug
 
 # Refine model cfg for resmlp training on imagenet
-model.num_classes = 1000
-model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+model.cfg.num_classes = 1000
+model.cfg.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
@@ -49,7 +49,7 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     prob=1.0,
     switch_prob=0.5,
     mode="batch",
-    num_classes=model.num_classes,
+    num_classes=model.cfg.num_classes,
 )
 
 # Refine optimizer cfg for resmlp model
@@ -83,7 +83,7 @@ train.scheduler.warmup_method = "linear"
 train.amp.enabled = True
 
 # Distributed Settings
-train.dist.pipeline_num_layers = model.depth
+train.dist.pipeline_num_layers = model.cfg.depth
 train.dist.data_parallel_size = 1
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
