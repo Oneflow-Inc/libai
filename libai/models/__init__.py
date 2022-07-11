@@ -38,5 +38,6 @@ __all__ = [
     "GPTForPreTraining",
     "VisionTransformer",
     "SwinTransformer",
+    "SwinTransformerV2",
     "ResMLP",
 ]
