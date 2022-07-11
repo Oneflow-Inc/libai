@@ -14,3 +14,4 @@
 # limitations under the License.
 
 from .samplers import CyclicSampler, SingleRoundSampler
+from .ra_sampler import RASampler
