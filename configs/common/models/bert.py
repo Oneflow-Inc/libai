@@ -1,6 +1,7 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
-
 from libai.models import BertModel, BertForPreTraining
+
 
 cfg = dict(
     vocab_size=30522,
@@ -23,6 +24,8 @@ cfg = dict(
     add_binary_head=True,
     amp_enabled=False,
 )
+
+cfg = DictConfig(cfg)
 
 bert_model = LazyCall(BertModel)(cfg=cfg)
 
