@@ -6,6 +6,7 @@ import oneflow as flow
 import torch
 from yaml import warnings
 
+import libai.utils.distributed as dist
 from libai.config import LazyCall
 from libai.models import build_model
 
@@ -110,7 +111,12 @@ class LoadPretrainedBase(object):
                 if not has_prefix_module:
                     key = ".".join(key.split(".")[1:])
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key], sbp=value.sbp, placement=value.placement
+                    flow_state_dict[key], 
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=value.placement
+                )
+                flow_state_dict[key] = flow.to_global(
+                    flow_state_dict[key], sbp=value.sbp
                 )
 
     def _fix_key(self, state_dict):
