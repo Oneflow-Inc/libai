@@ -117,7 +117,7 @@ class LoadPretrainedBase(object):
                     placement=value.placement
                 )
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key], sbp=value.sbp, placement=value.placement
+                    flow_state_dict[key], sbp=value.sbp,
                 )
 
     def _fix_key(self, state_dict):
