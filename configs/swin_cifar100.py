@@ -20,7 +20,7 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 
 # Refine model cfg for vit training on cifar100
 model.cfg.num_classes = 100
-model.cfg.loss_func = LazyCall(SoftTargetCrossEntropy)()
+model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 # Refine optimizer cfg for swin model
 optim.lr = 5e-4
