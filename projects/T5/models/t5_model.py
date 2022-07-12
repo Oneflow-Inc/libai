@@ -18,10 +18,11 @@ import oneflow as flow
 from libai.config import configurable
 from libai.layers import LMLogits, ParallelCrossEntropyLoss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
+from libai.models.utils.model_utils import LoadPretrainedT5
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
-from projects.T5.models.mask import ExtendedMask
+from projects.T5.utils.mask import ExtendedMask
 from projects.T5.models.transformer_layer import TransformerLayer
 
 
@@ -44,7 +45,7 @@ class T5Model(flow.nn.Module):
         bias_gelu_fusion=False,
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
-        apply_query_key_layer_scaling=True,
+        apply_query_key_layer_scaling=False,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
         mlp_type='t5',
@@ -257,6 +258,10 @@ class T5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
+        if cfg.pretrained_model_path is not None:
+            load_class = LoadPretrainedT5(T5Model, cfg, cfg.pretrained_model_path)
+            self.t5_model = load_class.load_model()
+            
         self.loss_func = T5Loss()
 
     def set_cache(self, encoder_states, past_key_values):

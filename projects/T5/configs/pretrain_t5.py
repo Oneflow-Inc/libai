@@ -1,3 +1,4 @@
+from random import sample
 from libai import evaluation
 from libai.data.build import build_nlp_train_loader
 from omegaconf import OmegaConf
@@ -15,7 +16,9 @@ from projects.T5.configs.t5_config import pretrain_model as model
 
 
 train_data_path = "/home/xiezipeng/libai/projects/T5/data/wudao_180g_test_bert_tokenized_512_train/part_0"
+pretrained_model_path = "/home/xiezipeng/libai/projects/T5/data/pretrained-t5/randeng_t5_char_57M"
 
+micro_batch_size = 64
 
 # dataloader
 dataloader = OmegaConf.create()
@@ -44,19 +47,23 @@ model.cfg.num_attention_heads = 6
 model.cfg.head_size = 64
 model.cfg.intermediate_size = 1024
 model.cfg.layernorm_eps = 1e-6
+model.cfg.bias_gelu_fusion = False
+model.cfg.bias_dropout_fusion = False
+model.cfg.apply_query_key_layer_scaling = False
 model.cfg.mlp_type = 'mt5'
+model.cfg.pretrained_model_path = pretrained_model_path
 
 train.update(
     dict(
         output_dir="./output/t5_output",
-        train_micro_batch_size=8,
+        train_micro_batch_size=micro_batch_size,
         train_epoch=1,
-        train_iter=1000,
+        train_iter=240000,
         log_period=10,
         amp=dict(enabled=True),
         warmup_ratio=1/24,
         dist=dict(
-            data_parallel_size=2,
+            data_parallel_size=1,
             tensor_parallel_size=2,
             pipeline_parallel_size=1,
             pipeline_num_layers = 2 * model.cfg.hidden_layers
