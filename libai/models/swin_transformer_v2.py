@@ -207,16 +207,19 @@ class WindowAttention(nn.Module):
         qkv_bias = None
         if self.q_bias is not None:
             qkv_bias = flow.concat(
-                (
+                [
                     self.q_bias,
                     flow.zeros(
                         self.v_bias.shape,
                         requires_grad=False,
-                        placement=dist.get_layer_placement(self.layer_idx),
+                        placement=dist.get_layer_placement(
+                            self.layer_idx, device_type=self.v_bias.placement.type
+                        ),
                         sbp=flow.sbp.broadcast,
                     ),
                     self.v_bias,
-                )
+                ],
+                dim=0,
             )
         qkv = self.qkv(x) + qkv_bias.unsqueeze(0).unsqueeze(0)
         qkv = qkv.reshape(B_, N, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)
@@ -425,7 +428,6 @@ class SwinTransformerBlock(nn.Module):
 
         # TODO: res-post-norm
         x = x + self.drop_path(self.norm2(self.mlp(x)))
-
         return x
 
 
@@ -552,7 +554,9 @@ class BasicLayer(nn.Module):
     def forward(self, x):
         layer_idx = self.layer_id_offset
         for blk in self.blocks:
-            x = x.to_global(placement=dist.get_layer_placement(layer_idx))
+            x = x.to_global(
+                placement=dist.get_layer_placement(layer_idx, device_type=x.placement.type)
+            )
             if self.use_checkpoint:
                 raise Exception("Not Support Checkpointing yet!")
             else:
@@ -618,7 +622,7 @@ class PatchEmbed(nn.Module):
         return x
 
 
-class SwinTransformerV2(nn.Module):
+class OneflowSwinTransformerV2(nn.Module):
     r"""Swin Transformer
     Args:
         img_size (int | tuple(int)): Input image size. Default 224
