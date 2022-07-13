@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import pynvml
 import time
 from typing import Callable
 
@@ -41,8 +41,9 @@ class DetrEagerTrainer(TrainerBase):
         self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
         self.grad_acc_steps = grad_acc_steps
+        self.mem = []
         
-    def run_step(self, get_batch: Callable):
+    def run_step(self, get_batch: Callable,  input_placement_device: str = "cuda"):
         """
         Implement the standard training logic described above.
         """
@@ -61,3 +62,12 @@ class DetrEagerTrainer(TrainerBase):
             self.optimizer.clip_grad()
             self.optimizer.step()
             self.optimizer.zero_grad()
+        # pynvml.nvmlInit()
+        # NUM_EXPAND = 1024 * 1024
+        # handle = pynvml.nvmlDeviceGetHandleByIndex(1)
+        # meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        # self.mem.append(meminfo.used / NUM_EXPAND)
+        # print(meminfo.used / NUM_EXPAND)
+        # import matplotlib.pyplot as plt
+        # plt.plot(self.mem)
+        # plt.savefig("./mem_2.png")

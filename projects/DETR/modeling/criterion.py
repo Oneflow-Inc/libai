@@ -120,7 +120,6 @@ class SetCriterion(nn.Module):
 
         outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
         # Retrieve the matching between the outputs of the last layer and the targets
-
         indices = self.matcher(outputs_without_aux, targets)
         # Compute the average number of target boxes accross all nodes, for normalization purposes
         # num_boxes = sum(len(t["labels"][t["target_mask"]]) for t in targets)
@@ -142,7 +141,6 @@ class SetCriterion(nn.Module):
                     l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes)
                     l_dict = {k + f'_{i}': v for k, v in l_dict.items()}
                     losses.update(l_dict)
-
         return losses
 
 
