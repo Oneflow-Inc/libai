@@ -21,6 +21,8 @@ from oneflow import nn
 
 from utils.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
 
+from libai.utils import distributed as dist
+
 
 class HungarianMatcher(nn.Module):
     """This class computes an assignment between the targets and the predictions of the network
@@ -65,17 +67,20 @@ class HungarianMatcher(nn.Module):
             For each batch element, it holds:
                 len(index_i) = len(index_j) = min(num_queries, num_target_boxes)
         """
+
         bs, num_queries = outputs["pred_logits"].shape[:2]
         # We flatten to compute the cost matrices in a batch
         out_prob = outputs["pred_logits"].flatten(0, 1).softmax(-1)
         out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [bsz * num_queries, 4]
         # Also concat the target labels and boxes
-        tgt_ids = flow.cat([v["labels"] for v in targets])
-        tgt_bbox = flow.cat([v["boxes"] for v in targets])
+        tgt_orig_size = targets["target_orig_size"]
+        tgt_ids = flow.cat([targets["labels"][i, :tgt_orig_size[i]] for i in range(len(tgt_orig_size))])
+        tgt_bbox = flow.cat([targets["boxes"][i, :tgt_orig_size[i], :] for i in range(len(tgt_orig_size))])
 
         # Compute the classification cost. Contrary to the loss, we don't use the NLL,
         # but approximate it in 1 - proba[target class].
         # The 1 is a constant that doesn't change the matching, it can be ommitted.
+
         cost_class = -out_prob[:, tgt_ids]
 
         # Compute the L1 cost between boxes
@@ -88,11 +93,8 @@ class HungarianMatcher(nn.Module):
         # Final cost matrix
         C = self.cost_bbox * cost_bbox + self.cost_class * cost_class + self.cost_giou * cost_giou
         C = C.view(bs, num_queries, -1)
-
-        sizes = [len(v["boxes"]) for v in targets]
-
+        sizes = [v.item() for v in tgt_orig_size]
         indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
-        
         # NOTE: setting dtype=flow.int64 returns bug: numpy-ndarray holds elements of unsupported datatype
         # return [(flow.as_tensor(i, dtype=flow.int64), flow.as_tensor(j, dtype=flow.int64)) for i, j in indices]
         return [(flow.as_tensor(i).to(dtype=flow.int64), flow.as_tensor(j).to(dtype=flow.int64)) for i, j in indices]

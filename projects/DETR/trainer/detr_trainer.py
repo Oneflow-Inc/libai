@@ -57,7 +57,6 @@ class DetrEagerTrainer(TrainerBase):
         losses.backward()
         loss_dict_scaled = {k: v * weight_dict[k] for k, v in loss_dict.items() if k in weight_dict}
         self.write_metrics(loss_dict_scaled, data_time)
-        
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()

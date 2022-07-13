@@ -109,7 +109,7 @@ class CocoDetection(flowvision.datasets.CocoDetection):
     def __getitem__(self, idx: int):
         img, target = super().__getitem__(idx)
         image_id = self.ids[idx]
-        target = {'image_id': image_id, 'annotations': target}
+        target = {'image_id': int(image_id), 'annotations': target}
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)

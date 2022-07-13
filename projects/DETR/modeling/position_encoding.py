@@ -22,6 +22,7 @@
 
 
 import math
+from isort import place_module_with_reason
 
 import oneflow as flow
 import oneflow.nn as nn
@@ -45,7 +46,6 @@ class PositionEmbeddingSine(nn.Module):
 
     def forward(self, tensor_list):
         x, mask = tensor_list
-        
         assert mask is not None
         not_mask = ~mask
 
@@ -56,18 +56,18 @@ class PositionEmbeddingSine(nn.Module):
             eps = 1e-6
             y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
             x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
-        if x.is_global:
-            dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32).to_global(sbp=x.sbp, placement=x.placement)
-        else:
-            dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32)
-        dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
-        pos_x = x_embed[:, :, :, None] / dim_t
-        pos_y = y_embed[:, :, :, None] / dim_t
+        dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32)
+        dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
+        if x_embed.is_global:
+            pos_x = x_embed[:, :, :, None] / dim_t.to_global(sbp=x_embed.sbp, placement=x_embed.placement)
+            pos_y = y_embed[:, :, :, None] / dim_t.to_global(sbp=y_embed.sbp, placement=y_embed.placement)
+        else:
+            pos_x = x_embed[:, :, :, None] / dim_t
+            pos_y = y_embed[:, :, :, None] / dim_t 
         pos_x = flow.stack((pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4).flatten(3)
         pos_y = flow.stack((pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4).flatten(3)
         pos = flow.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)
-
         return pos
 
 

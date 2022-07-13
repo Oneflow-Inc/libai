@@ -45,7 +45,7 @@ class DETR(nn.Module):
         self.aux_loss = aux_loss
         self.criterion = criterion
         
-    def forward(self, samples):
+    def forward(self, inputs):
         """
             It returns a dict with the following elements:
                - "pred_logits": the classification logits (including no-object) for all queries.
@@ -57,18 +57,18 @@ class DETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-        samples, targets = samples["images"], samples["labels"]
+        samples, targets = inputs["images"], inputs["labels"]
+        
         # TODO (ziqiu chi): More training iterations are required to check lines 63-64
-        if isinstance(samples, (list, flow.Tensor)):
-            samples = padding_tensor_from_tensor_list(samples)
-          
+        # if isinstance(samples, (list, flow.Tensor)):
+        #     samples = padding_tensor_from_tensor_list(samples)
         # *The 1st step: feature extraction
         features, pos = self.backbone(samples)
         src, mask = features[-1]
         assert mask is not None
         # *The 2nd step: global feature learned by the transformer encoder
         # *The 3rd step: predicted bboxes learaned by the transformer decoder
-        hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
+        hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])
         outputs_class = self.class_embed(hs)
         outputs_coord = self.bbox_embed(hs).sigmoid()
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}

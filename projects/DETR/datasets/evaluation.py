@@ -64,11 +64,12 @@ class CocoEvaluator(DatasetEvaluator):
             inputs: dict_keys(['labels', 'images'])
             outputs: dict_keys(['pred_logits', 'pred_boxes'])
         """
-        orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)
+        # orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)[0]
+        orig_target_sizes = inputs["labels"]["orig_size"]
         # results -> List[dict()]
         results = self.postprocessors['bbox'](outputs, orig_target_sizes)
         # predictions -> {image_id: dict{scores, labels, boxes}}
-        predictions = {target['image_id'].item(): output for target, output in zip(inputs["labels"], results)}
+        predictions = {target.item(): output for target, output in zip(inputs["labels"]['image_id'], results)}
         
         img_ids = list(np.unique(list(predictions.keys())))
         self.img_ids.extend(img_ids)
@@ -262,9 +263,11 @@ def inference_on_coco_dataset(
             valid_data = {}
             
             valid_data["labels"] = data["labels"]
-            for label_dict in valid_data["labels"]:
-                for k, v in label_dict.items():
-                    label_dict[k] = dist.ttol(v, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+            for k, v in valid_data["labels"].items():
+                # if k == "image_id":
+                #     valid_data["labels"][k] = v.to(device=0)
+                # else:
+                valid_data["labels"][k] = dist.ttol(v, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
                     
             valid_data["images"] = dist.ttol(imgs, ranks=[0] if imgs.placement.ranks.ndim == 1 else [[0]])
 

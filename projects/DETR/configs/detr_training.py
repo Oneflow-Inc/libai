@@ -32,8 +32,8 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 # train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
-train.train_micro_batch_size = 2
-train.test_micro_batch_size = 2
+train.train_micro_batch_size = 1
+train.test_micro_batch_size = 1
 train.train_epoch = 300
 
 coco_detection = LazyCall(CocoDetection)(
@@ -68,8 +68,8 @@ train.scheduler = LazyCall(WarmupStepLR)(
 
 graph.enabled = False
 
-# model_parallel
-# train.dist.data_parallel_size = 1
+# parallel setting
+# train.dist.data_parallel_size = 4
 # train.dist.tensor_parallel_size = 2
 
 train.seed = 42

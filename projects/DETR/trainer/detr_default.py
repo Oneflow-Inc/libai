@@ -52,22 +52,20 @@ class DetrDefaultTrainer(DefaultTrainer):
         if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
             data.reraise()
         images = data.get_fields()["images"]
-        labels = data.get_fields()["labels"]
-        
         tensors, mask = images[0], images[1] 
         tensors.to_global()
         mask.to_global()
         
-        for i in range(len(labels)):
-            for k, v in labels[i].items():
-                v.to_global()
-                labels[i][k] = v.tensor
-                
+        targets = data.get_fields()["labels"]
+        label_dict = {}
+        for key, value in targets.get_fields().items():
+            value.to_global()
+            label_dict[key] = value.tensor
+            
         ret_dict = {
             "images": (tensors.tensor, mask.tensor),
-            "labels": labels
+            "labels": label_dict
         }
-
         return ret_dict 
     
     @classmethod

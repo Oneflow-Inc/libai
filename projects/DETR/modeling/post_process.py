@@ -17,6 +17,7 @@
 import oneflow as flow
 import oneflow.nn.functional as F
 import oneflow.nn as nn
+from torch import device
 
 from utils import box_ops
 
@@ -33,7 +34,6 @@ class PostProcess(nn.Module):
                           For visualization, this should be the image size after data augment, but before padding
         """
         out_logits, out_bbox = outputs['pred_logits'], outputs['pred_boxes']
-
         assert len(out_logits) == len(target_sizes)
         assert target_sizes.shape[1] == 2
 
