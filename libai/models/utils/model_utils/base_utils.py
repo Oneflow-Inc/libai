@@ -1,13 +1,13 @@
 import logging
 import os
 
-import oneflow as flow
 import torch
+import oneflow as flow
 from yaml import warnings
 
 import libai.utils.distributed as dist
 from libai.config import LazyCall
-from libai.models import build_model
+from libai.models.build import build_model
 
 logger = logging.getLogger(__name__)
 
@@ -432,8 +432,6 @@ class LoadPretrainedBase(object):
         ) = self._load_pretrained_model(
             self.model, flow_state_dict, loaded_state_dict_keys, self.pretrained_model_path
         )
-
-        model.eval()
 
         if self.output_loading_info:
             loading_info = {

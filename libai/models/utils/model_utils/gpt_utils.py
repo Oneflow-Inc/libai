@@ -1,5 +1,6 @@
 import json
 import torch
+
 from .base_utils import LoadPretrainedBase
 
 
@@ -149,5 +150,5 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
         )
 
         # update default_cfg by kwargs
-        for k, v in self.kwargs:
+        for k, v in self.kwargs.items():
             self.default_cfg[k] = v

@@ -1,5 +1,6 @@
 import json
 import torch
+
 from .base_utils import LoadPretrainedBase
 
 
@@ -237,8 +238,8 @@ class LoadPretrainedBert(LoadPretrainedBase):
                 self.default_cfg[k] = v
 
         # update default_cfg by kwargs
-        for k, v in self.kwargs:
+        for k, v in self.kwargs.items():
             self.default_cfg[k] = v
 
         # use original BERT residual connection ordering
-        self.default_cfg["apply_residual_post_layernorm"] = True
+        self.default_cfg.apply_residual_post_layernorm = True
