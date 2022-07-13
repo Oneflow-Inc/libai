@@ -1,3 +1,5 @@
+from omegaconf import DictConfig
+
 from libai.config import LazyCall
 from libai.scheduler import WarmupCosineLR
 from libai.evaluation import ClsEvaluator
@@ -115,9 +117,20 @@ train = dict(
         pipeline_parallel_size=1,
     ),
 
+    # device type of input tensor in model, in most cases set it to "cuda".
+    # when pipeline_parallel > 1 and you want to ultimate acceleration in model training
+    # set `input_placement_device="cpu"` and use tensor.to_global() in your model.forward()
+    # see `libai/models/bert_model.py` as reference
+    input_placement_device="cuda",
+
+    # rdma enabled, set it to `True` for improving speed of pipeline_parallel
+    rdma_enabled=True,
+
     # Set seed to positive to use a fixed seed. Note that a fixed seed increases
     # reproducibility but does not guarantee fully deterministic behavior.
     # Disabling all parallelism further increases reproducibility.
     seed=1234,
 )
 # fmt: on
+
+train = DictConfig(train)

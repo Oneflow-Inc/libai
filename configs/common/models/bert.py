@@ -1,6 +1,7 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
-
 from libai.models import BertModel, BertForPreTraining
+
 
 cfg = dict(
     vocab_size=30522,
@@ -17,12 +18,14 @@ cfg = dict(
     layernorm_eps=1e-5,
     bias_gelu_fusion=True,
     bias_dropout_fusion=True,
-    scale_mask_softmax_fusion=False,
+    scale_mask_softmax_fusion=True,
     apply_query_key_layer_scaling=True,
     apply_residual_post_layernorm=False,
     add_binary_head=True,
     amp_enabled=False,
 )
+
+cfg = DictConfig(cfg)
 
 bert_model = LazyCall(BertModel)(cfg=cfg)
 

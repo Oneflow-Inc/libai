@@ -125,6 +125,17 @@ class _DistributeUtil(object):
             for i in range(0, self.world_size, num_devices_per_stage)
         ]
 
+        # change pipeline_num_layers to make the middle stages contain more layers
+        if (
+            self._pipeline_parallel_size >= 4
+            and cfg.pipeline_num_layers >= 8
+            and cfg.pipeline_num_layers % self._pipeline_parallel_size == 0
+        ):
+            temp_num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
+            cfg.pipeline_num_layers += min(
+                self._pipeline_parallel_size - 1, temp_num_layers_per_stage
+            )
+
         num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
         stage_offset = cfg.pipeline_num_layers % self._pipeline_parallel_size
 
