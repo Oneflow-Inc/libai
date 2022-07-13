@@ -622,7 +622,7 @@ class PatchEmbed(nn.Module):
         return x
 
 
-class OneflowSwinTransformerV2(nn.Module):
+class SwinTransformerV2(nn.Module):
     r"""Swin Transformer
     Args:
         img_size (int | tuple(int)): Input image size. Default 224
