@@ -21,6 +21,8 @@ model.cfg.num_attention_heads = 12
 model.cfg.hidden_size = 768
 model.cfg.hidden_layers = 8
 
+train.input_placement_device = "cpu"
+
 # parallel strategy settings
 train.dist.data_parallel_size = 8
 train.dist.tensor_parallel_size = 1
