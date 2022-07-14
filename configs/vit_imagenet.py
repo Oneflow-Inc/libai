@@ -14,7 +14,7 @@ dataloader.test[0].dataset.root = "/path/to/imagenet"
 
 # Refine model cfg for vit training on imagenet
 model.cfg.num_classes = 1000
-model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+model.cfg.loss_func = SoftTargetCrossEntropy()
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(

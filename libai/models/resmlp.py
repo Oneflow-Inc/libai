@@ -180,6 +180,7 @@ class ResMLP(nn.Module):
             "drop_path_rate": cfg.drop_path_rate,
             "init_scale": cfg.init_scale,
             "num_classes": cfg.num_classes,
+            "loss_func": cfg.loss_func
         }
     
     def _init_weights(self, m):
