@@ -1,6 +1,6 @@
 import json
-import torch
 
+import oneflow as flow
 from .base_utils import LoadPretrainedBase
 
 
@@ -13,18 +13,18 @@ class LoadPretrainedBert(LoadPretrainedBase):
         self.base_model_prefix_1 = "bert"
         self.base_model_prefix_2 = "bert"
 
-    def _convert_state_dict(self, torch_state_dict, cfg):
-        """Convert torch state dict to flow state dict.
+    def _convert_state_dict(self, flow_state_dict, cfg):
+        """Convert state_dict's keys to match model.
 
         Args:
-            torch_state_dict (OrderedDict): torch state dict.
+            flow_state_dict (OrderedDict): model state dict.
             cfg (dict): model's default config dict.
 
         Returns:
             OrderedDict: flow state dict.
         """
         # The converted checkpoint.
-        oneflow_state_dict = torch_state_dict.copy()
+        oneflow_state_dict = flow_state_dict.copy()
 
         # Get configs
         num_heads = cfg.get("num_attention_heads")
@@ -47,18 +47,18 @@ class LoadPretrainedBert(LoadPretrainedBase):
             if "embeddings" in key:
                 if "word_embeddings" in key:
                     new_key = key.replace("word_embeddings", "vocab_embeddings")
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "token_type_embeddings" in key:
                     new_key = key.replace("token_type_embeddings", "tokentype_embeddings")
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "LayerNorm.weight" in key:
                     new_key = prefix + "encoders.0.input_layernorm.weight"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "LayerNorm.bias" in key:
                     new_key = prefix + "encoders.0.input_layernorm.bias"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 else:
-                    oneflow_state_dict[key] = self.convert_tensor(oneflow_state_dict[key])
+                    oneflow_state_dict[key] = oneflow_state_dict[key]
 
             # Convert bert's attention layers
             elif "attention" in key:
@@ -78,7 +78,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     k_b = k_w.replace("weight", "bias")
                     v_b = v_w.replace("weight", "bias")
 
-                    qkv_w = torch.cat(
+                    qkv_w = flow.cat(
                         (
                             oneflow_state_dict.pop(q_w),
                             oneflow_state_dict.pop(k_w),
@@ -86,7 +86,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
                         ),
                         dim=0,
                     )
-                    qkv_b = torch.cat(
+                    qkv_b = flow.cat(
                         (
                             oneflow_state_dict.pop(q_b),
                             oneflow_state_dict.pop(k_b),
@@ -101,38 +101,30 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     new_key = (
                         prefix + "encoders." + index + ".self_attention.query_key_value.weight"
                     )
-                    oneflow_state_dict[new_key] = self.convert_tensor(qkv_w)
+                    oneflow_state_dict[new_key] = qkv_w
 
                     new_key = prefix + "encoders." + index + ".self_attention.query_key_value.bias"
-                    oneflow_state_dict[new_key] = self.convert_tensor(qkv_b)
+                    oneflow_state_dict[new_key] = qkv_b
                 elif "output" in key:
                     index = key.split(".")[index_idx]
                     if "dense" in key:
                         if "weight" in key:
                             new_key = prefix + "encoders." + index + ".self_attention.dense.weight"
-                            oneflow_state_dict[new_key] = self.convert_tensor(
-                                oneflow_state_dict.pop(key)
-                            )
+                            oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                         elif "bias" in key:
                             new_key = prefix + "encoders." + index + ".self_attention.dense.bias"
-                            oneflow_state_dict[new_key] = self.convert_tensor(
-                                oneflow_state_dict.pop(key)
-                            )
+                            oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                     elif "LayerNorm" in key:
                         if "weight" in key:
                             new_key = (
                                 prefix + "encoders." + index + ".post_attention_layernorm.weight"
                             )
-                            oneflow_state_dict[new_key] = self.convert_tensor(
-                                oneflow_state_dict.pop(key)
-                            )
+                            oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                         elif "bias" in key:
                             new_key = (
                                 prefix + "encoders." + index + ".post_attention_layernorm.bias"
                             )
-                            oneflow_state_dict[new_key] = self.convert_tensor(
-                                oneflow_state_dict.pop(key)
-                            )
+                            oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
 
             # Convert bert's intermediate layers
             elif "intermediate" in key:
@@ -146,9 +138,9 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     w = key
                     b = key.replace("weight", "bias")
                     new_key = prefix + "encoders." + index + ".mlp.dense_h_to_4h.weight"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(w))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(w)
                     new_key = new_key.replace("weight", "bias")
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(b))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
 
             # Convert bert's output layers
             elif "output" in key:
@@ -162,9 +154,9 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     w = key
                     b = w.replace("weight", "bias")
                     new_key = prefix + "encoders." + index + ".mlp.dense_4h_to_h.weight"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(w))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(w)
                     new_key = new_key.replace("weight", "bias")
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(b))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
                 elif "LayerNorm.weight" in key:
                     if (
                         prefix + "encoders." + str(int(index) + 1) + ".input_layernorm.weight"
@@ -175,46 +167,46 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     b = w.replace("weight", "bias")
                     if index == str(layers - 1):
                         new_key = prefix + "final_layernorm.weight"
-                        oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(w))
+                        oneflow_state_dict[new_key] = oneflow_state_dict.pop(w)
                         new_key = new_key.replace("weight", "bias")
-                        oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(b))
+                        oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
                         continue
                     new_key = prefix + "encoders." + str(int(index) + 1) + ".input_layernorm.weight"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(w))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(w)
                     new_key = new_key.replace("weight", "bias")
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(b))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
 
             # Convert bert's pooler layers
             elif "pooler" in key:
                 if "weight" in key:
                     new_key = prefix + "pooler.dense.weight"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "bias" in key:
                     new_key = prefix + "pooler.dense.bias"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
 
             # Convert cls_head layers
             elif "cls" in key:
                 if "predictions.bias" in key:
                     new_key = "cls_head.lm_logits.bias"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "dense.weight" in key:
                     new_key = "cls_head.predictions.dense.weight"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "dense.bias" in key:
                     new_key = "cls_head.predictions.dense.bias"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "LayerNorm.weight" in key:
                     new_key = "cls_head.predictions.layernorm.weight"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "LayerNorm.bias" in key:
                     new_key = "cls_head.predictions.layernorm.bias"
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "seq_relationship" in key:
                     new_key = key.replace("cls", "cls_head")
-                    oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
             else:
-                oneflow_state_dict[key] = self.convert_tensor(oneflow_state_dict.pop(key))
+                oneflow_state_dict[key] = oneflow_state_dict.pop(key)
         return oneflow_state_dict
 
     def _load_config_from_json(self, config_file):
@@ -229,11 +221,11 @@ class LoadPretrainedBert(LoadPretrainedBase):
         # update default_cfg by config.json
         for k, v in cfg_dict.items():
             if k == "num_hidden_layers":
-                self.default_cfg["hidden_layers"] = v
+                self.default_cfg.hidden_layers = v
             elif k == "type_vocab_size":
-                self.default_cfg["num_tokentypes"] = v
+                self.default_cfg.num_tokentypes = v
             elif k == "layer_norm_eps":
-                self.default_cfg["layernorm_eps"] = v
+                self.default_cfg.layernorm_eps = v
             elif k in cfg_dict:
                 self.default_cfg[k] = v
 

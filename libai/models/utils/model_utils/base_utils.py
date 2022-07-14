@@ -72,8 +72,8 @@ class LoadPretrainedBase(object):
         self.base_model_prefix_1 = None
         self.base_model_prefix_2 = None
 
-    def convert_tensor(self, tensor):
-        """Convert pytorch tensor to OneFlow tensor.
+    def _convert_tensor(self, tensor):
+        """Convert PyTorch tensor to OneFlow tensor.
 
         Args:
             tensor (torch.Tensor): The source tensor.
@@ -82,7 +82,14 @@ class LoadPretrainedBase(object):
             flow.Tensor: The target tensor.
         """
         tensor = tensor.float()
-        return flow.Tensor(tensor.cpu().numpy())
+        return flow.Tensor(tensor.detach().cpu().numpy())
+
+    def _convert_tensors(self, torch_state_dict):
+
+        for k, v in torch_state_dict.items():
+            torch_state_dict[k] = self._convert_tensor(v)
+        
+        return torch_state_dict
 
     def _state_dict_to_global(self, flow_state_dict):
         """Tensor in OneFlow state dict to global according to model's sbp and placement.
@@ -156,7 +163,7 @@ class LoadPretrainedBase(object):
             qkv = qkv.permute(1, 0, 2).contiguous().view(-1)
         return qkv
 
-    def _convert_state_dict(self, torch_state_dict, cfg):
+    def _convert_state_dict(self, flow_state_dict, cfg):
         """A function used to convert the checkpoint file of Huggingface to LiBai.
 
         Args:
@@ -248,9 +255,7 @@ class LoadPretrainedBase(object):
             model_to_load = getattr(model, self.base_model_prefix_2)
             if any(key in expected_keys_not_prefixed for key in loaded_keys):
                 raise ValueError(
-                    "The state dictionary of the model you are training to load is corrupted. \
-                    Are you sure it was "
-                    "properly saved?"
+                    "The state dict of the model you are loading is corrupted."
                 )
 
         def _find_mismatched_keys(
@@ -306,14 +311,6 @@ class LoadPretrainedBase(object):
                 f"Some weights of the model checkpoint at {pretrained_model_path} "
                 "were not used when "
                 f"initializing {model.__class__.__name__}: {unexpected_keys}\n"
-                f"- This IS expected if you are initializing {model.__class__.__name__} "
-                "from the checkpoint of a model trained on another task "
-                f"or with another architecture (e.g. initializing a BertForSequenceClassification "
-                "model from a BertForPreTraining model).\n"
-                f"- This IS NOT expected if you are initializing {model.__class__.__name__} "
-                "from the checkpoint of a model that you expect "
-                f"to be exactly identical (initializing a BertForSequenceClassification model "
-                "from a BertForSequenceClassification model)."
             )
         else:
             logger.info(
@@ -324,18 +321,11 @@ class LoadPretrainedBase(object):
             logger.warning(
                 f"Some weights of {model.__class__.__name__} were not initialized "
                 f"from the model checkpoint at {pretrained_model_path} "
-                f"and are newly initialized: {missing_keys}\n"
-                f"You should probably TRAIN this model on a down-stream task to be"
-                "able to use it for predictions and inference."
             )
         elif len(mismatched_keys) == 0:
             logger.info(
                 f"All the weights of {model.__class__.__name__} were initialized "
                 f"from the model checkpoint at {pretrained_model_path}.\n"
-                f"If your task is similar to the task the model of the checkpoint "
-                "was trained on, "
-                f"you can already use {model.__class__.__name__} for predictions "
-                "without further training."
             )
         if len(mismatched_keys) > 0:
             mismatched_warning = "\n".join(
@@ -350,8 +340,6 @@ class LoadPretrainedBase(object):
                 f"from the model checkpoint at {pretrained_model_path} "
                 f"and are newly initialized because the shapes did not"
                 f"match:\n{mismatched_warning}\n"
-                f"You should probably TRAIN this model on a down-stream"
-                "task to be able to use it for predictions and inference."
             )
 
         return model, missing_keys, unexpected_keys, mismatched_keys, error_msgs
@@ -410,6 +398,7 @@ class LoadPretrainedBase(object):
         if self.mode == "pt":
             torch_state_dict = self._load_torch_state_dict(model_file)
             torch_state_dict = self._fix_key(torch_state_dict)
+            flow_state_dict = self._convert_tensors(torch_state_dict)
             flow_state_dict = self._convert_state_dict(torch_state_dict, self.default_cfg)
         else:
             flow_state_dict = self._load_flow_state_dict(model_file)
