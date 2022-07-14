@@ -65,11 +65,11 @@ class CocoEvaluator(DatasetEvaluator):
             outputs: dict_keys(['pred_logits', 'pred_boxes'])
         """
         # orig_target_sizes = flow.stack([t["orig_size"] for t in inputs["labels"]], dim=0)[0]
-        orig_target_sizes = inputs["labels"]["orig_size"]
+        orig_target_sizes = inputs["orig_size"]
         # results -> List[dict()]
         results = self.postprocessors['bbox'](outputs, orig_target_sizes)
         # predictions -> {image_id: dict{scores, labels, boxes}}
-        predictions = {target.item(): output for target, output in zip(inputs["labels"]['image_id'], results)}
+        predictions = {target.item(): output for target, output in zip(inputs['image_id'], results)}
         
         img_ids = list(np.unique(list(predictions.keys())))
         self.img_ids.extend(img_ids)
@@ -255,28 +255,23 @@ def inference_on_coco_dataset(
             # model forward
             # local tensor -> global tensor
             data = get_batch(inputs)
-            imgs, _ = data["images"]
+            imgs = data["images"]
             
             _, outputs = model(data)
             
             # Switch to local mode
             valid_data = {}
-            
-            valid_data["labels"] = data["labels"]
-            for k, v in valid_data["labels"].items():
-                # if k == "image_id":
-                #     valid_data["labels"][k] = v.to(device=0)
-                # else:
-                valid_data["labels"][k] = dist.ttol(v, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
+            for k, v in data.items():
+                if k == "images" or k == "mask":
+                    continue
+                valid_data[k] = dist.ttol(v, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
                     
-            valid_data["images"] = dist.ttol(imgs, ranks=[0] if imgs.placement.ranks.ndim == 1 else [[0]])
-
             valid_outputs = {}
             for key, value in outputs.items():
                 if key == "aux_outputs":
                     continue
                 valid_outputs[key] = dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
-          
+                
             if flow.cuda.is_available():
                 dist.synchronize()
             total_compute_time += time.perf_counter() - start_compute_time
@@ -311,7 +306,6 @@ def inference_on_coco_dataset(
                     n=5,
                 )
             start_data_time = time.perf_counter()
-        
     # Measure the time only for this worker (before the synchronization barrier)
     total_time = time.perf_counter() - start_time
     total_time_str = str(datetime.timedelta(seconds=total_time))

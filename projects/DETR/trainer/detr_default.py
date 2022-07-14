@@ -44,20 +44,6 @@ class DetrDefaultTrainer(DefaultTrainer):
             self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
         )
 
-    # @classmethod
-    # def get_batch(cls, data: Instance):
-    #     """
-    #     Convert batched local tensor to distributed tensor for model step running.
-    #     """
-    #     if isinstance(data, flow.utils.data._utils.worker.ExceptionWrapper):
-    #         data.reraise()
-
-    #     ret_dict = {}
-    #     for key, value in data.get_fields().items():
-    #         value.to_global()
-    #         ret_dict[key] = value.tensor
-            
-    #     return ret_dict 
     
     @classmethod
     def build_evaluator(cls, cfg):
