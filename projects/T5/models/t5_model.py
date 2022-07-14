@@ -258,11 +258,11 @@ class T5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
+        self.loss_func = T5Loss()
+
         if cfg.pretrained_model_path is not None:
             load_class = LoadPretrainedT5(T5Model, cfg, cfg.pretrained_model_path)
             self.t5_model = load_class.load_model()
-            
-        self.loss_func = T5Loss()
 
     def set_cache(self, encoder_states, past_key_values):
         self.t5_model.set_cache(encoder_states, past_key_values)

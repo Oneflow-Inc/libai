@@ -216,6 +216,10 @@ class TrainerBase:
             # }
             metrics_dict = all_metrics_dict
             total_losses_reduced = sum(metrics_dict.values())
+            
+            txt = open("/home/xiezipeng/libai/t5_loss.txt", "a")
+            txt.write(str(total_losses_reduced.item())+"\n")
+
             if not np.isfinite(total_losses_reduced):
                 raise FloatingPointError(
                     f"Loss became infinite or NaN at iteration={storage.iter}!\n"
