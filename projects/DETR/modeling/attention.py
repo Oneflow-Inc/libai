@@ -17,7 +17,6 @@
 
 import oneflow as flow
 import oneflow.nn.functional as F
-from libai.layers import attention
 
 from libai.layers.attention import MultiheadAttention
 

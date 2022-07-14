@@ -83,9 +83,9 @@ class BackboneBase(nn.Module):
         self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)
         self.num_channels = num_channels
         
-    def forward(self, tensor_list):
+    def forward(self, samples):
             
-        img, img_mask = tensor_list
+        img, img_mask = samples["images"], samples["mask"]
 
         xs = self.body(img)
             
@@ -118,8 +118,8 @@ class Joiner(nn.Sequential):
     def __init__(self, backbone, position_embedding):
         super().__init__(backbone, position_embedding)
 
-    def forward(self, tensor_list):
-        xs = self[0](tensor_list)
+    def forward(self, samples):
+        xs = self[0](samples)
         out = []
         pos = []
         for _, x in xs.items():

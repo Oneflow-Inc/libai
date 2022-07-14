@@ -17,7 +17,6 @@
 import oneflow as flow
 import oneflow.nn as nn
 
-from libai.data.structures import DistTensorData
 from modeling.cross_entropy import ParallelCrossEntropyLoss
 from utils import box_ops
 

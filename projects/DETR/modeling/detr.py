@@ -57,13 +57,13 @@ class DETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-        samples, targets = inputs["images"], inputs["labels"]
+        # samples, targets = inputs["images"], inputs["labels"]
         
         # TODO (ziqiu chi): More training iterations are required to check lines 63-64
         # if isinstance(samples, (list, flow.Tensor)):
         #     samples = padding_tensor_from_tensor_list(samples)
         # *The 1st step: feature extraction
-        features, pos = self.backbone(samples)
+        features, pos = self.backbone(inputs)
         src, mask = features[-1]
         assert mask is not None
         # *The 2nd step: global feature learned by the transformer encoder
@@ -80,7 +80,7 @@ class DETR(nn.Module):
         # (training)
         # If there are 4 ground-truth boxes, 
         # the rest of 96 predicted boxes will be marked as the "no object" class.
-        loss_dict = self.criterion(out, targets)    
+        loss_dict = self.criterion(out, inputs)    
         return loss_dict, out
 
     def _set_aux_loss(self, outputs_class, outputs_coord):
