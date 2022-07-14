@@ -146,7 +146,7 @@ class VisionTransformer(nn.Module):
             "attn_drop_rate": cfg.attn_drop_rate,
             "drop_path_rate": cfg.drop_path_rate,
             "num_classes": cfg.num_classes,
-            "loss_func": cfg.loss_func
+            "loss_func": cfg.loss_func,
         }
 
     def forward_features(self, x):
