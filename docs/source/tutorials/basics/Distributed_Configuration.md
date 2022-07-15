@@ -7,6 +7,19 @@ dist=dict(
         data_parallel_size=1,
         tensor_parallel_size=1,
         pipeline_parallel_size=1,
+
+
+        # set pipeline_num_layers when pipeline_parallel_size > 1
+        pipeline_num_layers=None,
+        # custom_pipeline_stage_id could be set for adjust num_layers in different stages
+        # it is usually used for manually balance calculation between stages in pipeline_parallelism
+        # e.g. you can set `custom_pipeline_stage_id=[0, 0, 0, 1]` 
+        # for `pipeline_num_layers=4 and pipeline_parallel_size=2`
+        # it means the first 3 layers will be located in stage0 and 
+        # the last layer will located in stage1
+        # NOTE: if it is None, LiBai will automatically set pipeline_stage_id
+        # `auto_pipeline_stage_id` and `actual_pipeline_stage_id` will be saved in `config.yaml`
+        custom_pipeline_stage_id=None,
 )
 ```
 For example, you can set `data_parallel_size=2` which will automatically split the input data into two groups for data parallel training.
@@ -123,6 +136,20 @@ train.dist.pipeline_num_layers = model.cfg.hidden_layers
 ```
 And the `data_parallel_size` will be automatically set to `(8 / (2 * 2)) = 2`
 
+
+#### **Set `custom_pipeline_stage_id` for Load Balance**
+In most cases, transformer layers have the same calculation, there is no need to set `custom_pipeline_stage_id`.
+
+But when transformer layers have unbalanced calculation, you can set `custom_pipeline_stage_id` for  manually balance calculation between stages in pipeline_parallelism
+
+For example:
+```python
+train.dist.pipeline_parallel_size = 4
+train.dist.pipeline_num_layers = 24
+train.dist.custom_pipeline_stage_id = [0]*6 + [1]*7 + [2]*7 + [3]*4
+```
+It means you have `[6, 7, 7, 4]` layers separately located in `stage0`~`stage3`.
+Modify `custom_pipeline_stage_id` according to your own needs.
 
 ## Update Distributed Config with Command Line
 You can also control the parallelization strategy by **command line** parameters as follows:

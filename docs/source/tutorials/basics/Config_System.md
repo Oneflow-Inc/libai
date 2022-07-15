@@ -190,7 +190,27 @@ train = dict(
         data_parallel_size=1,
         tensor_parallel_size=1,
         pipeline_parallel_size=1,
+        # set pipeline_num_layers when pipeline_parallel_size > 1
+        pipeline_num_layers=None,
+        # custom_pipeline_stage_id could be set for adjust num_layers in different stages
+        # it is usually used for manually balance calculation between stages in pipeline_parallelism
+        # e.g. you can set `custom_pipeline_stage_id=[0, 0, 0, 1]` 
+        # for `pipeline_num_layers=4 and pipeline_parallel_size=2`
+        # it means the first 3 layers will be located in stage0 and 
+        # the last layer will located in stage1
+        # NOTE: if it is None, LiBai will automatically set pipeline_stage_id
+        # `auto_pipeline_stage_id` and `actual_pipeline_stage_id` will be saved in `config.yaml`
+        custom_pipeline_stage_id=None,
     ),
+
+    # device type of input tensor in model, in most cases set it to "cuda".
+    # when pipeline_parallel > 1 and you want to ultimate acceleration in model training
+    # set `input_placement_device="cpu"` and use tensor.to_global() in your model.forward()
+    # see `libai/models/bert_model.py` as reference
+    input_placement_device="cuda",
+
+    # rdma enabled, set it to `True` for improving speed of pipeline_parallel
+    rdma_enabled=True,
     
     # Set seed to positive to use a fixed seed. Note that a fixed seed increases
     # reproducibility but does not guarantee fully deterministic behavior.
