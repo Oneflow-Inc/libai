@@ -63,9 +63,9 @@ train.update(
         amp=dict(enabled=True),
         warmup_ratio=1/24,
         dist=dict(
-            data_parallel_size=1,
+            data_parallel_size=2,
             tensor_parallel_size=2,
-            pipeline_parallel_size=1,
+            pipeline_parallel_size=2,
             pipeline_num_layers = 2 * model.cfg.hidden_layers
         ),
 
