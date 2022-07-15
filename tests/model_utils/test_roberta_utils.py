@@ -114,7 +114,6 @@ class TestRobertaUtils(flow.unittest.TestCase):
         )
 
         last_hidden_state, _ = model(input_ids, mask)
-        # print(last_hidden_state.sum())
         self.assertTrue(
             np.allclose(
                 np.array(341.5831), 
@@ -166,7 +165,6 @@ class TestRobertaUtils(flow.unittest.TestCase):
         )
 
         last_hidden_state, _ = model(input_ids, mask)
-        # print(last_hidden_state.sum())
         self.assertTrue(
             np.allclose(
                 np.array(341.5831), 
