@@ -40,7 +40,7 @@ dataloader.test[0].dataset.transform = resmlp_test_aug
 
 # Refine model cfg for resmlp training on imagenet
 model.cfg.num_classes = 1000
-model.cfg.loss_func = LazyCall(SoftTargetCrossEntropy)()
+model.cfg.loss_func = SoftTargetCrossEntropy()
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
