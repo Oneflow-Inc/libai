@@ -1,9 +1,9 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
-
 from libai.models import ResMLP
 
 
-model = LazyCall(ResMLP)(
+cfg = dict(
     img_size=224,
     patch_size=16,
     in_chans=3,
@@ -14,3 +14,7 @@ model = LazyCall(ResMLP)(
     init_scale=0.1,
     num_classes=1000,
 )
+
+cfg = DictConfig(cfg)
+
+model = LazyCall(ResMLP)(cfg=cfg)

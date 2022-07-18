@@ -1,6 +1,7 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
-
 from libai.models import T5Model, T5ForPreTraining
+
 
 cfg = dict(
     vocab_size=30522,
@@ -23,6 +24,8 @@ cfg = dict(
     amp_enabled=False,
     multihead_attn_fusion=True,
 )
+
+cfg = DictConfig(cfg)
 
 t5_model = LazyCall(T5Model)(cfg=cfg)
 

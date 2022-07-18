@@ -657,6 +657,7 @@ class SwinTransformer(nn.Module):
             "ape": cfg.ape,
             "patch_norm": cfg.patch_norm,
             "use_checkpoint": cfg.use_checkpoint,
+            "loss_func": cfg.loss_func,
         }
 
     def forward_features(self, x):

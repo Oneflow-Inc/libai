@@ -1,6 +1,7 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
-
 from libai.models import RobertaModel, RobertaForPreTraining, RobertaForCausalLM
+
 
 cfg = dict(
     vocab_size=50265,
@@ -23,6 +24,8 @@ cfg = dict(
     apply_residual_post_layernorm=False,
     amp_enabled=False,
 )
+
+cfg = DictConfig(cfg)
 
 roberta_model = LazyCall(RobertaModel)(cfg=cfg)
 

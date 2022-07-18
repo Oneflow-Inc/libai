@@ -1,6 +1,7 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
-
 from libai.models import GPTModel, GPTForPreTraining
+
 
 cfg = dict(
     num_layers=6,
@@ -23,6 +24,8 @@ cfg = dict(
     amp_enabled=False,
     multihead_attn_fusion=True,
 )
+
+cfg = DictConfig(cfg)
 
 gpt_model = LazyCall(GPTModel)(cfg=cfg)
 

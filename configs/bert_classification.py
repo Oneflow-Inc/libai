@@ -12,8 +12,8 @@ data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
 dataloader.train.dataset[0].data_prefix = data_prefix
 dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
-bert_cfg["num_labels"] = 2
-bert_cfg["classifier_dropout"] = 0.1
+bert_cfg.num_labels = 2
+bert_cfg.classifier_dropout = 0.1
 
 model = LazyCall(BertForClassification)(cfg=bert_cfg)
 tokenization.tokenizer.vocab_file = vocab_file
