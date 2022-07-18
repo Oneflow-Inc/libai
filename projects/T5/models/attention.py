@@ -181,8 +181,8 @@ class MultiheadAttention(nn.Module):
         if past_key_value is not None:
             assert (
                 len(past_key_value) == 2
-            ), f"past_key_value should have 2 past states: keys and values. "
-            f"Got { len(past_key_value)} past states"
+            ), "past_key_value should have 2 past states: keys and values."
+            f"Got {len(past_key_value)} past states.\n"
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
         key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
