@@ -18,12 +18,11 @@ import oneflow as flow
 from libai.config import configurable
 from libai.layers import LMLogits, ParallelCrossEntropyLoss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
-from libai.models.utils.model_utils import LoadPretrainedT5
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
-from projects.T5.utils.mask import ExtendedMask
 from projects.T5.models.transformer_layer import TransformerLayer
+from projects.T5.utils.mask import ExtendedMask
 
 
 class T5Model(flow.nn.Module):
@@ -48,7 +47,7 @@ class T5Model(flow.nn.Module):
         apply_query_key_layer_scaling=False,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
-        mlp_type='t5',
+        mlp_type="t5",
     ) -> None:
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -192,7 +191,9 @@ class T5Model(flow.nn.Module):
                 )
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
 
-        decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask, decoder_input_ids, is_decoder=True)
+        decoder_attn_mask = self.extended_attn_mask(
+            decoder_attn_mask, decoder_input_ids, is_decoder=True
+        )
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
         dec_embedding_output = self.embedding(decoder_input_ids)
@@ -244,8 +245,9 @@ class T5Loss(flow.nn.Module):
     def forward(self, logits, lm_labels, loss_mask):
         lm_loss = self.lm_loss(logits, lm_labels)
         loss_mask = loss_mask.float()
+        loss_mask = loss_mask.to_global(placement=lm_loss.placement)
         denominator = loss_mask.sum().to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
         masked_lm_loss = masked_lm_loss.to_global(
@@ -259,10 +261,6 @@ class T5ForPreTraining(flow.nn.Module):
         super().__init__()
         self.t5_model = T5Model(cfg)
         self.loss_func = T5Loss()
-
-        if cfg.pretrained_model_path is not None:
-            load_class = LoadPretrainedT5(T5Model, cfg, cfg.pretrained_model_path)
-            self.t5_model = load_class.load_model()
 
     def set_cache(self, encoder_states, past_key_values):
         self.t5_model.set_cache(encoder_states, past_key_values)

@@ -110,14 +110,15 @@ class LoadPretrainedBase(object):
             if key in loaded_keys:
                 if not has_prefix_module:
                     key = ".".join(key.split(".")[1:])
-                
+
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key], 
+                    flow_state_dict[key],
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=value.placement
+                    placement=value.placement,
                 )
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key], sbp=value.sbp,
+                    flow_state_dict[key],
+                    sbp=value.sbp,
                 )
 
     def _fix_key(self, state_dict):
@@ -144,14 +145,20 @@ class LoadPretrainedBase(object):
             state_dict[new_key] = state_dict.pop(old_key)
         return state_dict
 
-    def _fix_qkv_ordering(self, qkv, head_size, num_heads, hidden_size=None, checkpoint_version=0.0):
+    def _fix_qkv_ordering(
+        self, qkv, head_size, num_heads, hidden_size=None, checkpoint_version=0.0
+    ):
         # TODO(xzp): Different versions checkpoint
         hidden_size = (head_size * num_heads) if hidden_size is None else hidden_size
-        num_of_qkv = qkv.shape[0] // (head_size*num_heads)
+        num_of_qkv = qkv.shape[0] // (head_size * num_heads)
         mode = "weight" if qkv.ndim > 1 else "bias"
         if mode == "weight":
             qkv = qkv.view([num_of_qkv, num_heads, head_size, hidden_size])
-            qkv = qkv.permute(1, 0, 2, 3).contiguous().view(num_of_qkv * head_size * num_heads, hidden_size)
+            qkv = (
+                qkv.permute(1, 0, 2, 3)
+                .contiguous()
+                .view(num_of_qkv * head_size * num_heads, hidden_size)
+            )
         elif mode == "bias":
             qkv = qkv.view(num_of_qkv, num_heads, head_size)
             qkv = qkv.permute(1, 0, 2).contiguous().view(-1)
@@ -563,18 +570,22 @@ class LoadPretrainedT5(LoadPretrainedBase):
                             oneflow_state_dict.pop(key)
                         )
                 elif op_name == "DenseReluDense":
-                    if cfg.get('mlp_type') == 't5':
+                    if cfg.get("mlp_type") == "t5":
                         if keys[op_idx + 1] == "wi":
-                            new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
+                            new_key = (
+                                prefix2 + "encoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
+                            )
                             oneflow_state_dict[new_key] = self.convert_tensor(
                                 oneflow_state_dict.pop(key)
                             )
                         elif keys[op_idx + 1] == "wo":
-                            new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
+                            new_key = (
+                                prefix2 + "encoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
+                            )
                             oneflow_state_dict[new_key] = self.convert_tensor(
                                 oneflow_state_dict.pop(key)
                             )
-                    elif cfg.get('mlp_type') == 'mt5':
+                    elif cfg.get("mlp_type") == "mt5":
                         if keys[op_idx + 1] == "wi_0":
                             new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.wi_0.weight"
                             oneflow_state_dict[new_key] = self.convert_tensor(
@@ -675,18 +686,22 @@ class LoadPretrainedT5(LoadPretrainedBase):
                     new_key = prefix2 + "decoder.layers." + layer1 + ".cross_attention.dense.weight"
                     oneflow_state_dict[new_key] = self.convert_tensor(oneflow_state_dict.pop(o_w))
                 elif op_name == "DenseReluDense":
-                    if cfg.get('mlp_type') == 't5':
+                    if cfg.get("mlp_type") == "t5":
                         if keys[op_idx + 1] == "wi":
-                            new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
+                            new_key = (
+                                prefix2 + "decoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
+                            )
                             oneflow_state_dict[new_key] = self.convert_tensor(
                                 oneflow_state_dict.pop(key)
                             )
                         elif keys[op_idx + 1] == "wo":
-                            new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
+                            new_key = (
+                                prefix2 + "decoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
+                            )
                             oneflow_state_dict[new_key] = self.convert_tensor(
                                 oneflow_state_dict.pop(key)
                             )
-                    elif cfg.get('mlp_type') == 'mt5':
+                    elif cfg.get("mlp_type") == "mt5":
                         if keys[op_idx + 1] == "wi_0":
                             new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.wi_0.weight"
                             oneflow_state_dict[new_key] = self.convert_tensor(
@@ -719,14 +734,14 @@ class LoadPretrainedT5(LoadPretrainedBase):
         self.default_cfg["intermediate_size"] = cfg_dict["d_ff"]
         self.default_cfg["hidden_dropout_prob"] = cfg_dict["dropout_rate"]
         self.default_cfg["attention_probs_dropout_prob"] = cfg_dict["dropout_rate"]
-        self.default_cfg["max_position_embeddings"] = cfg_dict.get('n_positions', 512)
+        self.default_cfg["max_position_embeddings"] = cfg_dict.get("n_positions", 512)
         self.default_cfg["relative_attention_num_buckets"] = cfg_dict[
             "relative_attention_num_buckets"
         ]
         self.default_cfg["embedding_dropout_prob"] = cfg_dict["dropout_rate"]
         self.default_cfg["initializer_range"] = cfg_dict["initializer_factor"]
         self.default_cfg["layernorm_eps"] = cfg_dict["layer_norm_epsilon"]
-        self.default_cfg["head_size"] = cfg_dict['d_kv']
+        self.default_cfg["head_size"] = cfg_dict["d_kv"]
         # update default_cfg by kwargs
         for k, v in self.kwargs:
             self.default_cfg[k] = v

@@ -24,6 +24,7 @@ import oneflow.nn as nn
 from flowvision.layers.weight_init import trunc_normal_
 
 import libai.utils.distributed as dist
+from libai.config import configurable
 from libai.layers import MLP, DropPath, LayerNorm, Linear, PatchEmbedding
 
 
@@ -114,6 +115,7 @@ class ResMLP(nn.Module):
 
     """
 
+    @configurable
     def __init__(
         self,
         img_size=224,
@@ -166,6 +168,21 @@ class ResMLP(nn.Module):
 
         # weight init
         self.apply(self._init_weights)
+
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "img_size": cfg.img_size,
+            "patch_size": cfg.patch_size,
+            "in_chans": cfg.in_chans,
+            "embed_dim": cfg.embed_dim,
+            "depth": cfg.depth,
+            "drop_rate": cfg.drop_rate,
+            "drop_path_rate": cfg.drop_path_rate,
+            "init_scale": cfg.init_scale,
+            "num_classes": cfg.num_classes,
+            "loss_func": cfg.loss_func,
+        }
 
     def _init_weights(self, m):
         if isinstance(m, Linear):
@@ -222,14 +239,21 @@ class ResMLP(nn.Module):
         for module_block in model.modules():
             # module.origin can get the original module
             if isinstance(module_block.origin, PatchEmbedding):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
             elif isinstance(module_block.origin, layers_scale_mlp_blocks):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
 
         # Set norm and head stage id
-        model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+        model.loss_func.config.set_stage(
+            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+        )
 
     @staticmethod
     def set_activation_checkpoint(model):

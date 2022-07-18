@@ -152,14 +152,12 @@ class MT5MLP(nn.Module):
         wi_0_out = self.wi_0(hidden_states)
         if self.bias_gelu_fusion:
             wi_0_out, bias = wi_0_out
-            hidden_gelu = flow._C.fused_bias_add_gelu(
-                wi_0_out, bias, axis=wi_0_out.ndim - 1
-            )
+            hidden_gelu = flow._C.fused_bias_add_gelu(wi_0_out, bias, axis=wi_0_out.ndim - 1)
         else:
             hidden_gelu = self.activation_func(wi_0_out)
 
         hidden_linear = self.wi_1(hidden_states)
-        hidden_states = hidden_gelu * hidden_linear 
+        hidden_states = hidden_gelu * hidden_linear
 
         output = self.wo(hidden_states)
         if self.bias_dropout_fusion:

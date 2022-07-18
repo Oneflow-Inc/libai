@@ -18,7 +18,6 @@ import time
 import weakref
 from typing import Callable, List, Mapping
 
-import numpy as np
 import oneflow as flow
 
 from libai.utils import distributed as dist
@@ -189,12 +188,8 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        # Only get metric value on rank0
-        # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
-        metrics_dict = {
-            k: dist.tton(v, local_only=False, ranks=[0] if v.placement.ranks.ndim == 1 else [[0]])
-            for k, v in loss_dict.items()
-        }
+        # get metric value
+        metrics_dict = {k: dist.ttol(v, pure_local=True) for k, v in loss_dict.items()}
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
@@ -216,15 +211,9 @@ class TrainerBase:
             # }
             metrics_dict = all_metrics_dict
             total_losses_reduced = sum(metrics_dict.values())
-            
-            txt = open("/home/xiezipeng/libai/t5_loss.txt", "a")
-            txt.write(str(total_losses_reduced.item())+"\n")
 
-            if not np.isfinite(total_losses_reduced):
-                raise FloatingPointError(
-                    f"Loss became infinite or NaN at iteration={storage.iter}!\n"
-                    f"loss_dict = {metrics_dict}"
-                )
+            txt = open("/home/xiezipeng/libai/t5_loss.txt", "a")
+            txt.write(str(total_losses_reduced.item()) + "\n")
 
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
             if len(metrics_dict) > 1:
@@ -272,7 +261,7 @@ class EagerTrainer(TrainerBase):
         self.optimizer = optimizer
         self.grad_acc_steps = grad_acc_steps
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
         """
         Implement the standard training logic described above.
         """
@@ -281,7 +270,9 @@ class EagerTrainer(TrainerBase):
 
         # If you want to do something with the data, you can wrap the dataloader.
         data = next(self._data_loader_iter)
-        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        data = get_batch(
+            data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
+        )
         data_time = time.perf_counter() - start
 
         loss_dict = self.model(**data)
@@ -301,24 +292,48 @@ class GraphTrainer(TrainerBase):
     A simple graph trainer for training and evaluating models in a static graph mode.
     """
 
-    def __init__(self, graph, data_loader):
+    def __init__(self, graph, data_loader, grad_acc_steps=1):
         super().__init__()
 
         graph.model.train()
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.graph = graph
+        self.grad_acc_steps = grad_acc_steps
+        self._temp_data = None
+        self._temp_count = 0
 
-    def run_step(self, get_batch: Callable):
+    def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
         """
         Implement the standard training logic described above.
         """
         assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
 
-        # If you want to do something with the data, you can wrap the dataloader.
-        data = next(self._data_loader_iter)
-        data = get_batch(data, getattr(self.data_loader, "mixup_func", None))
+        while self._temp_count != self.grad_acc_steps:
+            # If you want to do something with the data, you can wrap the dataloader.
+            data = next(self._data_loader_iter)
+
+            self._temp_count += 1
+            if self._temp_data is None:
+                self._temp_data = data
+            else:
+                # In static graph mode, data will be sliced in nn.Graph automatically,
+                # for geting mini-batch_size, we concat local_tensor first.
+                for key, value in data.get_fields().items():
+                    temp_value = self._temp_data.get(key)
+                    self._temp_data.get(key).tensor = flow.cat(
+                        (temp_value.tensor, value.tensor), dim=0
+                    )
+
+        data = self._temp_data
+        self._temp_count = 0
+        self._temp_data = None
+
+        data = get_batch(
+            data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
+        )
+
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.

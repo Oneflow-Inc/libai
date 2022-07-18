@@ -22,7 +22,7 @@ cfg = dict(
     apply_query_key_layer_scaling=False,
     apply_residual_post_layernorm=False,
     amp_enabled=False,
-    mlp_type='t5',
+    mlp_type="t5",
 )
 
 t5_model = LazyCall(T5Model)(cfg=cfg)

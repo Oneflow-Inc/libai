@@ -19,7 +19,7 @@ from libai.layers.droppath import DropPath
 from libai.utils import distributed as dist
 from projects.T5.models.attention import MultiheadAttention
 from projects.T5.models.layer_norm import LayerNorm
-from projects.T5.models.mlp import T5MLP, MT5MLP
+from projects.T5.models.mlp import MT5MLP, T5MLP
 
 
 class TransformerLayer(nn.Module):
@@ -75,7 +75,7 @@ class TransformerLayer(nn.Module):
         apply_residual_post_layernorm=False,
         *,
         layer_idx=0,
-        mlp_type='t5',
+        mlp_type="t5",
         has_relative_attention_bias=False
     ):
         super().__init__()
@@ -126,7 +126,7 @@ class TransformerLayer(nn.Module):
             self.post_cross_attention_layernorm = LayerNorm(
                 self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
             )
-        if mlp_type == 'mt5':
+        if mlp_type == "mt5":
             self.mlp = MT5MLP(
                 self.hidden_size,
                 self.ffn_hidden_size,
@@ -137,7 +137,7 @@ class TransformerLayer(nn.Module):
                 bias_dropout_fusion=self.bias_dropout_fusion,
                 layer_idx=self.layer_idx,
             )
-        elif mlp_type == 't5':
+        elif mlp_type == "t5":
             self.mlp = T5MLP(
                 self.hidden_size,
                 self.ffn_hidden_size,

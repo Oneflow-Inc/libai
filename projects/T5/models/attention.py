@@ -181,7 +181,8 @@ class MultiheadAttention(nn.Module):
         if past_key_value is not None:
             assert (
                 len(past_key_value) == 2
-            ), f"past_key_value should have 2 past states: keys and values. Got { len(past_key_value)} past states"
+            ), f"past_key_value should have 2 past states: keys and values. "
+            f"Got { len(past_key_value)} past states"
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
         key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
@@ -272,7 +273,7 @@ class MultiheadAttention(nn.Module):
         # Concat multi-head results from
         # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
         # SBP sign: [S(0), S(2)]
-        context = context.view(bsz, tgt_len, self.head_size*self.num_heads)
+        context = context.view(bsz, tgt_len, self.head_size * self.num_heads)
 
         # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context)
@@ -361,10 +362,10 @@ class MultiheadAttention(nn.Module):
         relative_position = memory_position - context_position  # shape (query_length, key_length)
 
         relative_position_bucket = self._relative_position_bucket(
-            relative_position,  
+            relative_position,
             bidirectional=(not self.is_decoder),
             num_buckets=self.relative_attention_num_buckets,
-        )   # shape (query_length, key_length)
+        )  # shape (query_length, key_length)
 
         values = self.relative_attention_bias(
             relative_position_bucket
