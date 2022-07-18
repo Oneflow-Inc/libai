@@ -48,9 +48,9 @@ model.cfg.hidden_layers = 8
 model.cfg.num_attention_heads = 6
 model.cfg.head_size = 64
 model.cfg.intermediate_size = 1024
-model.cfg.hidden_dropout_prob = 0.1
-model.cfg.attention_probs_dropout_prob = 0.1
-model.cfg.embedding_dropout_prob = 0.1
+model.cfg.hidden_dropout_prob = 0.0
+model.cfg.attention_probs_dropout_prob = 0.0
+model.cfg.embedding_dropout_prob = 0.0
 model.cfg.layernorm_eps = 1e-6
 model.cfg.bias_gelu_fusion = False
 model.cfg.bias_dropout_fusion = False
@@ -87,3 +87,5 @@ train.update(
         ),
     )
 )
+# train.zero_optimization.enabled = True
+# train.zero_optimization.stage = 2

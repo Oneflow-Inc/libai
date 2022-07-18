@@ -117,17 +117,17 @@ class collate_fn:
             encoder_input_ids=DistTensorData(flow.tensor(batch["input_ids"])),
             decoder_input_ids=DistTensorData(flow.tensor(batch["decoder_input_ids"])),
             encoder_attn_mask=DistTensorData(
-                flow.ones(len(batch["input_ids"]), len(batch["input_ids"][0]))
+                flow.ones(len(batch["input_ids"]), len(batch["input_ids"][0])).to(flow.bool)
             ),
             decoder_attn_mask=DistTensorData(
-                flow.ones(len(batch["decoder_input_ids"]), len(batch["decoder_input_ids"][0]))
+                flow.ones(len(batch["decoder_input_ids"]), len(batch["decoder_input_ids"][0])).to(flow.bool)
             ),
             encoder_decoder_attn_mask=DistTensorData(
                 flow.ones(
                     len(batch["input_ids"]),
                     len(batch["decoder_input_ids"][0]),
                     len(batch["input_ids"][0]),
-                )
+                ).to(flow.bool)
             ),
             lm_labels=DistTensorData(flow.tensor(batch["labels"])),
             loss_mask=DistTensorData(flow.tensor(batch["labels"])),

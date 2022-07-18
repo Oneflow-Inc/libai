@@ -1,4 +1,5 @@
 from libai.config import LazyCall
+from omegaconf import DictConfig
 
 from projects.T5.models.t5_model import T5Model, T5ForPreTraining
 
