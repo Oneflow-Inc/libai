@@ -217,7 +217,7 @@ class TransformerLayer(nn.Module):
             hidden_states = residual + attention_output
             layernorm_output = self.post_cross_attention_layernorm(hidden_states)
 
-        mlp_output = self.mlp(layernorm_output)
+        mlp_output = self.mlp(layernorm_output)    
         mlp_output = self.drop_path(mlp_output)
 
         if self.apply_residual_post_layernorm:
