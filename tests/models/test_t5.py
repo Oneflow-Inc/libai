@@ -46,7 +46,7 @@ class TestT5Model(flow.unittest.TestCase):
     def setUp(self) -> None:
         cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "bert_data")
 
-        cfg = LazyConfig.load("configs/t5_large_pretrain_xzp.py")
+        cfg = LazyConfig.load("configs/t5_large_pretrain.py")
 
         # prepare dataset
         if dist.get_local_rank() == 0:

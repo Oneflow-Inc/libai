@@ -212,9 +212,6 @@ class TrainerBase:
             metrics_dict = all_metrics_dict
             total_losses_reduced = sum(metrics_dict.values())
 
-            txt = open("/home/xiezipeng/libai/t5_loss.txt", "a")
-            txt.write(str(total_losses_reduced.item()) + "\n")
-
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
             if len(metrics_dict) > 1:
                 storage.put_scalars(**metrics_dict)
