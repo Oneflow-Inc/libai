@@ -115,12 +115,13 @@ train.scheduler.alpha = 0.0
 train.scheduler.warmup_method = "linear"
 
 # parallel strategy settings
-train.dist.data_parallel_size = 8
+train.dist.data_parallel_size = 1
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
 train.dist.pipeline_num_layers = sum(model.depths)
 train.output_dir = "./output"
 
+train.rdma_enabled = False
 # Set fp16 ON
 train.amp.enabled = False
 train.activation_checkpoint.enabled = False
