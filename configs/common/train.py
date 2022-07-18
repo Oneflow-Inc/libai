@@ -115,26 +115,28 @@ train = dict(
         data_parallel_size=1,
         tensor_parallel_size=1,
         pipeline_parallel_size=1,
-        # set pipeline_num_layers when pipeline_parallel_size > 1
+        # users must set the `pipeline_num_layers` attribute when `pipeline_parallel_size > 1`
         pipeline_num_layers=None,
-        # custom_pipeline_stage_id could be set for adjust num_layers in different stages
-        # it is usually used for manually balance calculation between stages in pipeline_parallelism
+        # users could customize the number of layers in different stages
+        # by setting the `custom_pipeline_stage_id ` attribute which is used for
+        # manually balance calculation between stages when running pipeline parallelism
         # e.g. you can set `custom_pipeline_stage_id=[0, 0, 0, 1]`
         # for `pipeline_num_layers=4 and pipeline_parallel_size=2`
-        # it means the first 3 layers will be located in stage0 and
-        # the last layer will located in stage1
+        # which means the first 3 layers will be placed on stage0 and
+        # the last layer will be placed on stage1
         # NOTE: if it is None, LiBai will automatically set pipeline_stage_id
         # `auto_pipeline_stage_id` and `actual_pipeline_stage_id` will be saved in `config.yaml`
         custom_pipeline_stage_id=None,
     ),
 
-    # device type of input tensor in model, in most cases set it to "cuda".
-    # when pipeline_parallel > 1 and you want to ultimate acceleration in model training
-    # set `input_placement_device="cpu"` and use tensor.to_global() in your model.forward()
+    # the device type of input tensors for model, defaults to "cuda".
+    # if you want to accelerate the model training when pipeline_parallel > 1
+    # you can set `input_placement_device="cpu"` then call input_tensor.to_global()
+    # inside your model.forward() method
     # see `libai/models/bert_model.py` as reference
     input_placement_device="cuda",
 
-    # rdma enabled, set it to `True` for improving speed of pipeline_parallel
+    # set to `True` to enable rdma for improving speed of pipeline_parallel
     rdma_enabled=True,
 
     # Set seed to positive to use a fixed seed. Note that a fixed seed increases

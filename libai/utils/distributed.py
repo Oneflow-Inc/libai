@@ -101,7 +101,7 @@ class _DistributeUtil(object):
                     cfg.custom_pipeline_stage_id
                 ), "type of cfg.train.dist.custom_pipeline_stage_id must be list"
                 cfg.custom_pipeline_stage_id = list(cfg.custom_pipeline_stage_id)
-                assert max(cfg.custom_pipeline_stage_id) <= self._world_size, (
+                assert max(cfg.custom_pipeline_stage_id) < self._world_size, (
                     f"the element {max(cfg.custom_pipeline_stage_id)} in"
                     " cfg.train.dist.custom_pipeline_stage_id is out of range"
                     f" for total rank {self._world_size}"
