@@ -13,6 +13,7 @@ cfg = dict(
     drop_path_rate=0.05,
     init_scale=0.1,
     num_classes=1000,
+    loss_func=None,
 )
 
 cfg = DictConfig(cfg)
