@@ -1,6 +1,5 @@
 from libai.config import LazyCall
 from libai.evaluation import PPLEvaluator
-from libai.scheduler import WarmupExponentialLR
 from projects.T5.configs.t5_config import pretrain_model as model
 from .common.train import train
 from projects.T5.configs.optim import optim
@@ -20,21 +19,13 @@ model.cfg.num_attention_heads = 12
 model.cfg.hidden_size = 384
 model.cfg.hidden_layers = 6
 
+train.input_placement_device = "cpu"
+
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
+train.train_micro_batch_size = 16
+train.amp.enabled = True
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 
-train.update(
-    dict(
-        output_dir="./output/t5_output",
-        train_micro_batch_size=8,
-        amp=dict(enabled=False),
-        scheduler=LazyCall(WarmupExponentialLR)(
-            warmup_factor=0.0,
-            gamma=1.0,
-            warmup_method="linear",
-            warmup_iter=0.0,
-        ),
-    )
-)
+train.output_dir = "./output/t5_output"

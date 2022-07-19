@@ -9,7 +9,7 @@ cfg = dict(
     hidden_layers=6,
     num_attention_heads=12,
     head_size=64,
-    intermediate_size=3072,
+    intermediate_size=1536,
     hidden_dropout_prob=0.1,
     attention_probs_dropout_prob=0.1,
     relative_attention_num_buckets=32,
@@ -19,12 +19,14 @@ cfg = dict(
     layernorm_eps=1e-5,
     bias_gelu_fusion=False,
     bias_dropout_fusion=False,
-    scale_mask_softmax_fusion=False,
-    apply_query_key_layer_scaling=False,
+    scale_mask_softmax_fusion=True,
+    apply_query_key_layer_scaling=True,
     apply_residual_post_layernorm=False,
     amp_enabled=False,
     mlp_type="t5",
 )
+
+cfg = DictConfig(cfg)
 
 t5_model = LazyCall(T5Model)(cfg=cfg)
 

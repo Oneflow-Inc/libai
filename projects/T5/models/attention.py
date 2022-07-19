@@ -81,6 +81,7 @@ class MultiheadAttention(nn.Module):
         self.has_relative_attention_bias = has_relative_attention_bias
         self.is_decoder = is_decoder
         self.attn_mask_type = attn_mask_type
+        self.attention_dropout_prob = attention_dropout_prob
 
         if output_layer_init_method is None:
             output_layer_init_method = init_method
@@ -182,9 +183,7 @@ class MultiheadAttention(nn.Module):
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
-        bsz, tgt_len = hidden_states.size()[:2]
-
-        real_seq_length = tgt_len
+        bsz, real_seq_length = hidden_states.size()[:2]
 
         if past_key_value is not None:
             assert (

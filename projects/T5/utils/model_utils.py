@@ -1157,4 +1157,3 @@ class LoadPretrainedT5(LoadPretrainedBase):
 
         self.default_cfg["bias_gelu_fusion"] = False
         self.default_cfg["bias_dropout_fusion"] = False
-        self.default_cfg["apply_query_key_layer_scaling"] = False

@@ -35,8 +35,4 @@ class LayerNorm(flow.nn.Module):
     def forward(self, hidden_states):
         variance = hidden_states.to(flow.float32).pow(2).mean(-1, keepdim=True)
         hidden_states = hidden_states * flow.rsqrt(variance + self.variance_epsilon)
-
-        if self.weight.dtype in [flow.float16, flow.bfloat16]:
-            hidden_states = hidden_states.to(self.weight.dtype)
-
         return self.weight * hidden_states
