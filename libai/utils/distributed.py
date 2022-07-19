@@ -17,6 +17,7 @@ import logging
 
 import numpy as np
 import oneflow as flow
+from omegaconf import OmegaConf
 
 from libai.config import try_get_key
 
@@ -95,6 +96,22 @@ class _DistributeUtil(object):
                 f"number of layers ({cfg.pipeline_num_layers}) is less than"
                 f" pipeline model parallel size ({self._pipeline_parallel_size})"
             )
+            if try_get_key(cfg, "custom_pipeline_stage_id") is not None:
+                assert OmegaConf.is_list(
+                    cfg.custom_pipeline_stage_id
+                ), "type of cfg.train.dist.custom_pipeline_stage_id must be list"
+                cfg.custom_pipeline_stage_id = list(cfg.custom_pipeline_stage_id)
+                assert max(cfg.custom_pipeline_stage_id) < self._world_size, (
+                    f"the element {max(cfg.custom_pipeline_stage_id)} in"
+                    " cfg.train.dist.custom_pipeline_stage_id is out of range"
+                    f" for total rank {self._world_size}"
+                )
+                assert len(cfg.custom_pipeline_stage_id) == cfg.pipeline_num_layers, (
+                    "the length of cfg.train.dist.custom_pipeline_stage_id"
+                    f" {len(cfg.custom_pipeline_stage_id)} must be equal to"
+                    " cfg.train.dist.pipeline_num_layers"
+                    f" {cfg.train.dist.pipeline_num_layers}"
+                )
         else:
             # no pipeline parallel, just set 10000
             if try_get_key(cfg, "pipeline_num_layers") is None:
@@ -132,22 +149,32 @@ class _DistributeUtil(object):
             and cfg.pipeline_num_layers % self._pipeline_parallel_size == 0
         ):
             temp_num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
-            cfg.pipeline_num_layers += min(
+            actual_pipeline_num_layers = cfg.pipeline_num_layers + min(
                 self._pipeline_parallel_size - 1, temp_num_layers_per_stage
             )
+        else:
+            actual_pipeline_num_layers = cfg.pipeline_num_layers
 
-        num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
-        stage_offset = cfg.pipeline_num_layers % self._pipeline_parallel_size
+        num_layers_per_stage = actual_pipeline_num_layers // self._pipeline_parallel_size
+        stage_offset = actual_pipeline_num_layers % self._pipeline_parallel_size
 
         # stage_offset can make the later stages contain more layers when pipeline_num_layers
         # cannot be divided by pipeline_parallel_size.
         # This can make pipeline parallel more memory efficient.
         self._layer_stage_ids = []
-        for i in range(0, cfg.pipeline_num_layers - stage_offset, num_layers_per_stage):
+        for i in range(0, actual_pipeline_num_layers - stage_offset, num_layers_per_stage):
             stage_id = i // num_layers_per_stage
             if stage_id >= (self._pipeline_parallel_size - stage_offset):
                 self._layer_stage_ids.append(stage_id)
             self._layer_stage_ids.extend([stage_id] * num_layers_per_stage)
+        self._layer_stage_ids = self._layer_stage_ids[: cfg.pipeline_num_layers]
+        # when pipeline_parallel_size > 1, we add pipeline_stage_id infomation into cfg
+        if cfg.pipeline_parallel_size > 1:
+            cfg.auto_pipeline_stage_id = self._layer_stage_ids
+            # set pipeline_stage_id by users' setting
+            if try_get_key(cfg, "custom_pipeline_stage_id") is not None:
+                self._layer_stage_ids = cfg.custom_pipeline_stage_id
+            cfg.actual_pipeline_stage_id = self._layer_stage_ids
 
         self._layer_ranks = [stages_devices[stage_id] for stage_id in self._layer_stage_ids]
 
