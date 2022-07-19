@@ -1,13 +1,14 @@
 import json
 
 import oneflow as flow
+
 from .base_utils import LoadPretrainedBase
 
 
 class LoadPretrainedBert(LoadPretrainedBase):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
-        
+
         """NOTE: base_model_prefix_1 is BERT's prefix in Transformers.
         base_model_prefix_2 is BERT's prefix in LiBai."""
         self.base_model_prefix_1 = "bert"

@@ -1,13 +1,14 @@
 import json
 
 import oneflow as flow
+
 from .base_utils import LoadPretrainedBase
 
 
 class LoadPretrainedT5(LoadPretrainedBase):
     def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
-        
+
         """NOTE: base_model_prefix_1 is T5's prefix in Transformers.
         base_model_prefix_2 is T5's prefix in LiBai."""
         self.base_model_prefix_1 = "transformer"
@@ -30,7 +31,7 @@ class LoadPretrainedT5(LoadPretrainedBase):
         num_heads = cfg.get("num_attention_heads")
         hidden_size = cfg.get("hidden_size")
         head_size = cfg.get("head_size", None)
-        if head_size == None:
+        if head_size is None:
             head_size = int(hidden_size / num_heads)
 
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
@@ -50,10 +51,14 @@ class LoadPretrainedT5(LoadPretrainedBase):
         # Convert T5's final_layer_norm
         new_key = prefix2 + "encoder.final_layernorm.weight"
         old_keys.remove(prefix1 + "encoder.final_layer_norm.weight")
-        oneflow_state_dict[new_key] = oneflow_state_dict.pop(prefix1 + "encoder.final_layer_norm.weight")
+        oneflow_state_dict[new_key] = oneflow_state_dict.pop(
+            prefix1 + "encoder.final_layer_norm.weight"
+        )
         new_key = prefix2 + "decoder.final_layernorm.weight"
         old_keys.remove(prefix1 + "decoder.final_layer_norm.weight")
-        oneflow_state_dict[new_key] = oneflow_state_dict.pop(prefix1 + "decoder.final_layer_norm.weight")
+        oneflow_state_dict[new_key] = oneflow_state_dict.pop(
+            prefix1 + "decoder.final_layer_norm.weight"
+        )
 
         # NOTE: Each layers has no bias in Transformer's T5.
         for key in old_keys:
@@ -238,7 +243,7 @@ class LoadPretrainedT5(LoadPretrainedBase):
 
     def _load_config_from_json(self, config_file):
         """load config from `config.json`, and update default config.
-        
+
         Args:
             config_file (str): Path of config file.
         """
@@ -252,14 +257,12 @@ class LoadPretrainedT5(LoadPretrainedBase):
         self.default_cfg.hidden_dropout_prob = cfg_dict["dropout_rate"]
         self.default_cfg.attention_probs_dropout_prob = cfg_dict["dropout_rate"]
         self.default_cfg.max_position_embeddings = cfg_dict.get("n_positions", 512)
-        self.default_cfg.relative_attention_num_buckets = cfg_dict[
-            "relative_attention_num_buckets"
-        ]
+        self.default_cfg.relative_attention_num_buckets = cfg_dict["relative_attention_num_buckets"]
         self.default_cfg.embedding_dropout_prob = cfg_dict["dropout_rate"]
         self.default_cfg.initializer_range = cfg_dict["initializer_factor"]
         self.default_cfg.layernorm_eps = cfg_dict["layer_norm_epsilon"]
         self.default_cfg.head_size = cfg_dict["d_kv"]
-        
+
         # update default_cfg by kwargs
         for k, v in self.kwargs.items():
             self.default_cfg[k] = v

@@ -1,8 +1,8 @@
 import logging
 import os
 
-import torch
 import oneflow as flow
+import torch
 from yaml import warnings
 
 import libai.utils.distributed as dist
@@ -88,7 +88,7 @@ class LoadPretrainedBase(object):
 
         for k, v in torch_state_dict.items():
             torch_state_dict[k] = self._convert_tensor(v)
-        
+
         return torch_state_dict
 
     def _state_dict_to_global(self, flow_state_dict):
@@ -117,13 +117,11 @@ class LoadPretrainedBase(object):
                 if not has_prefix_module:
                     key = ".".join(key.split(".")[1:])
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key], 
+                    flow_state_dict[key],
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=value.placement
+                    placement=value.placement,
                 )
-                flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key], sbp=value.sbp
-                )
+                flow_state_dict[key] = flow.to_global(flow_state_dict[key], sbp=value.sbp)
 
     def _fix_key(self, state_dict):
         """Fix the key in state dict: Convert "gamma" to "weight" and "beta" to "bias".
@@ -254,9 +252,7 @@ class LoadPretrainedBase(object):
         ):
             model_to_load = getattr(model, self.base_model_prefix_2)
             if any(key in expected_keys_not_prefixed for key in loaded_keys):
-                raise ValueError(
-                    "The state dict of the model you are loading is corrupted."
-                )
+                raise ValueError("The state dict of the model you are loading is corrupted.")
 
         def _find_mismatched_keys(
             state_dict,
