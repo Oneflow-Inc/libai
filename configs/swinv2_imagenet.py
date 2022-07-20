@@ -1,5 +1,5 @@
 from libai.config import LazyCall
-from .common.models.swin.swin_tiny_patch4_window7_224 import model
+from .common.models.swinv2.swinv2_tiny_patch4_window8_256 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
@@ -132,7 +132,8 @@ train.train_epoch = 300
 train.warmup_ratio = 20 / 300
 train.eval_period = 1000
 train.log_period = 1
-
+graph.enabled = False
+train.rdma_enabled = True
 # Scheduler
 train.scheduler.warmup_factor = 0.001
 train.scheduler.alpha = 0.01
