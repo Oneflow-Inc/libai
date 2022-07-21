@@ -134,7 +134,7 @@ class MT5MLP(nn.Module):
         )
 
         if not bias_gelu_fusion:
-            self.activation_func = build_activation("gelu")
+            self.activation_func = build_activation("gelu_tanh")
 
         self.wo = Linear(
             ffn_hidden_size,
