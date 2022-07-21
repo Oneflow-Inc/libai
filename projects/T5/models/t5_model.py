@@ -17,12 +17,12 @@ import oneflow as flow
 
 from libai.config import configurable
 from libai.layers import Linear
-from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.models.t5_model import T5ForPreTraining
+from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
-from projects.T5.models.transformer_layer import TransformerLayer, AttnMaskType
+from projects.T5.models.transformer_layer import AttnMaskType, TransformerLayer
 from projects.T5.utils.mask import ExtendedMask
 
 
@@ -140,12 +140,7 @@ class T5Model(flow.nn.Module):
         self.encoder_states = None
         self.past_length = 0
 
-        self.lm_head = Linear(
-            hidden_size,
-            vocab_size,
-            bias=False,
-            layer_idx=2 * hidden_layers - 1
-        )
+        self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1)
 
     @classmethod
     def from_config(cls, cfg):

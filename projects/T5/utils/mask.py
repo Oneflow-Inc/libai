@@ -42,7 +42,9 @@ class ExtendedMask(flow.nn.Module):
         # causal_mask = seq_ids.unsqueeze(0).unsqueeze(0).repeat(
         #     batch_size, seq_len, 1
         # ) <= seq_ids.unsqueeze(0).unsqueeze(-1)
-        causal_mask = seq_ids[None, None, :].repeat(batch_size, seq_len, 1) <= seq_ids[None, :, None]
+        causal_mask = (
+            seq_ids[None, None, :].repeat(batch_size, seq_len, 1) <= seq_ids[None, :, None]
+        )
 
         causal_mask = causal_mask.to(x.dtype)
         if causal_mask.shape[1] < x.shape[1]:

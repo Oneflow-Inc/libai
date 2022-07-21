@@ -46,13 +46,6 @@ class Passthrough(nn.Module):
     def forward(self, x: flow.Tensor) -> flow.Tensor:
         return x
 
-class GeLUTanh(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-    
-    def foreard(self, x: flow.Tensor) -> flow.Tensor:
-        return flow.nn.functional.gelu(x, "tanh")
-
 
 class GeLUTanh(nn.Module):
     def __init__(self) -> None:

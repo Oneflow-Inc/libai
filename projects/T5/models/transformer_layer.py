@@ -17,7 +17,7 @@ import oneflow.nn as nn
 
 from libai.layers.droppath import DropPath
 from libai.utils import distributed as dist
-from projects.T5.models.attention import MultiheadAttention, AttnMaskType
+from projects.T5.models.attention import AttnMaskType, MultiheadAttention
 from projects.T5.models.layer_norm import LayerNorm
 from projects.T5.models.mlp import MT5MLP, T5MLP
 
@@ -291,7 +291,7 @@ class TransformerLayer(nn.Module):
             bias_dropout_fusion=self.bias_dropout_fusion,
             scale_mask_softmax_fusion=self.scale_mask_softmax_fusion,
             apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
-            attn_mask_type = self.attn_mask_type,
+            attn_mask_type=self.attn_mask_type,
             layer_idx=self.layer_idx,
             has_relative_attention_bias=has_relative_attention_bias,
             is_decoder=is_decoder,

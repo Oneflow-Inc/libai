@@ -120,7 +120,9 @@ class collate_fn:
                 flow.ones(len(batch["input_ids"]), len(batch["input_ids"][0])).to(flow.bool)
             ),
             decoder_attn_mask=DistTensorData(
-                flow.ones(len(batch["decoder_input_ids"]), len(batch["decoder_input_ids"][0])).to(flow.bool)
+                flow.ones(len(batch["decoder_input_ids"]), len(batch["decoder_input_ids"][0])).to(
+                    flow.bool
+                )
             ),
             encoder_decoder_attn_mask=DistTensorData(
                 flow.ones(
