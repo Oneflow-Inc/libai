@@ -327,7 +327,7 @@ class MultiheadAttention(nn.Module):
         relative_buckets = 0
         if bidirectional:
             num_buckets //= 2
-            relative_buckets += (relative_position > 0).to(flow.long) * num_buckets
+            relative_buckets = relative_buckets + (relative_position > 0).to(flow.long) * num_buckets
             relative_position = flow.abs(relative_position)
         else:
             relative_position = (
@@ -373,14 +373,14 @@ class MultiheadAttention(nn.Module):
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=placement,
-        )[:, None]
+        )
         memory_position = flow.arange(
             key_length,
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=placement,
-        )[None, :]
-        relative_position = memory_position - context_position  # shape (query_length, key_length)
+        )
+        relative_position = memory_position[None, :] - context_position[:, None]  # shape (query_length, key_length)
 
         relative_position_bucket = self._relative_position_bucket(
             relative_position,

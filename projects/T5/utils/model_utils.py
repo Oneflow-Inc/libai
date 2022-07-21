@@ -1152,7 +1152,7 @@ class LoadPretrainedT5(LoadPretrainedBase):
         self.default_cfg["layernorm_eps"] = cfg_dict["layer_norm_epsilon"]
         self.default_cfg["head_size"] = cfg_dict["d_kv"]
         # update default_cfg by kwargs
-        for k, v in self.kwargs:
+        for k, v in self.kwargs.items():
             self.default_cfg[k] = v
 
         self.default_cfg["bias_gelu_fusion"] = False
