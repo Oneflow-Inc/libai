@@ -24,7 +24,7 @@ from oneflow import nn
 class Activation(str, Enum):
     SquaredReLU = "squared_relu"
     GeLU = "gelu"
-    GELU2 = "gelu2"
+    GELUTanh = "gelu_tanh"
     LeakyReLU = "leaky_relu"
     ReLU = "relu"
     Tanh = "tanh"
@@ -48,16 +48,12 @@ class Passthrough(nn.Module):
         return x
 
 
-class GELU2(nn.Module):
+class GELUTanh(nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
     def forward(self, x: flow.Tensor) -> flow.Tensor:
-        return (
-            0.5
-            * x
-            * (1.0 + flow.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * flow.pow(x, 3.0))))
-        )
+        return flow.nn.functional.gelu(x, "tanh") 
 
 
 def build_activation(activation: Optional[Activation]):
@@ -71,7 +67,7 @@ def build_activation(activation: Optional[Activation]):
     return {
         Activation.ReLU: nn.ReLU,
         Activation.GeLU: nn.GELU,
-        Activation.GELU2: GELU2,
+        Activation.GELUTanh: GELUTanh,
         Activation.LeakyReLU: nn.LeakyReLU,
         Activation.SquaredReLU: SquaredReLU,
         Activation.Tanh: nn.Tanh,
