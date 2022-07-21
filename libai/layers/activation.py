@@ -54,6 +54,17 @@ class GeLUTanh(nn.Module):
         return flow.nn.functional.gelu(x, "tanh")
 
 
+class GeLUTanh(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x: flow.Tensor) -> flow.Tensor:
+        """When the approximate argument is 'tanh', Gelu is estimated with:
+        0.5 * x * (1.0 + flow.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * flow.pow(x, 3.0))))
+        """
+        return flow.nn.functional.gelu(x, approximate="tanh")
+
+
 def build_activation(activation: Optional[Activation]):
     """
     Fetching activation layers by name, e.g.,
