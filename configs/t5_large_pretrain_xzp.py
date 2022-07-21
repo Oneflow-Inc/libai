@@ -1,8 +1,8 @@
 from libai.config import LazyCall
 from libai.evaluation import PPLEvaluator
-from .common.models.t5 import pretrain_model as model
+from projects.T5.configs.t5_config import pretrain_model as model
 from .common.train import train
-from .common.optim import optim
+from projects.T5.configs.optim import optim
 from .common.data.t5_dataset import dataloader, tokenization
 
 from .common.models.graph import graph
@@ -35,4 +35,4 @@ train.zero_optimization.stage = 2
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 
-train.output_dir = "./output/t5_output"
+train.output_dir = "./output/mt5_output"
