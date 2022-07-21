@@ -50,10 +50,10 @@ class Passthrough(nn.Module):
 class GeLUTanh(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-    
+
     def forward(self, x: flow.Tensor) -> flow.Tensor:
         """When the approximate argument is 'tanh', Gelu is estimated with:
-        output = 0.5 * x * (1.0 + flow.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * flow.pow(x, 3.0))))
+        0.5 * x * (1.0 + flow.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * flow.pow(x, 3.0))))
         """
         return flow.nn.functional.gelu(x, approximate="tanh")
 
