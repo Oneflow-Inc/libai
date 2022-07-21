@@ -87,5 +87,5 @@ train.update(
         ),
     )
 )
-# train.zero_optimization.enabled = True
-# train.zero_optimization.stage = 2
+train.zero_optimization.enabled = True
+train.zero_optimization.stage = 2

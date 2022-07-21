@@ -16,7 +16,7 @@
 import oneflow as flow
 
 from libai.config import configurable
-from libai.layers import LMLogits, ParallelCrossEntropyLoss, Linear
+from libai.layers import ParallelCrossEntropyLoss, Linear
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
@@ -326,10 +326,10 @@ class T5ForPreTraining(flow.nn.Module):
                     dist_utils.get_layer_stage_id(module_block.layer_idx),
                     dist.get_layer_placement(module_block.layer_idx),
                 )
-            elif isinstance(module_block.origin, LMLogits):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
+            # elif isinstance(module_block.origin, LMLogits):
+            #     module_block.config.set_stage(
+            #         dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            #     )
             elif isinstance(module_block.origin, T5Loss):
                 module_block.config.set_stage(
                     dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)

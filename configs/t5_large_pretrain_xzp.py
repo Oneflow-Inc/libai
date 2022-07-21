@@ -21,11 +21,18 @@ model.cfg.hidden_layers = 6
 
 train.input_placement_device = "cpu"
 
+# dist
+train.dist.data_parallel_size = 2
+train.dist.tensor_parallel_size = 2
+train.dist.pipeline_parallel_size = 2
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
 train.train_micro_batch_size = 16
 train.amp.enabled = True
 
+train.zero_optimization.enabled = True
+train.zero_optimization.stage = 2
+
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 
-train.output_dir = "./output/t5_output"
+train.output_dir = "./output/mt5_output"
