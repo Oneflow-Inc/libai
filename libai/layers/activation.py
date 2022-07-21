@@ -23,6 +23,7 @@ from oneflow import nn
 class Activation(str, Enum):
     SquaredReLU = "squared_relu"
     GeLU = "gelu"
+    GeLUTanh = "gelu_tanh"
     LeakyReLU = "leaky_relu"
     ReLU = "relu"
     Tanh = "tanh"
@@ -46,6 +47,17 @@ class Passthrough(nn.Module):
         return x
 
 
+class GeLUTanh(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x: flow.Tensor) -> flow.Tensor:
+        """When the approximate argument is 'tanh', Gelu is estimated with:
+        0.5 * x * (1.0 + flow.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * flow.pow(x, 3.0))))
+        """
+        return flow.nn.functional.gelu(x, approximate="tanh")
+
+
 def build_activation(activation: Optional[Activation]):
     """
     Fetching activation layers by name, e.g.,
@@ -57,6 +69,7 @@ def build_activation(activation: Optional[Activation]):
     return {
         Activation.ReLU: nn.ReLU,
         Activation.GeLU: nn.GELU,
+        Activation.GeLUTanh: GeLUTanh,
         Activation.LeakyReLU: nn.LeakyReLU,
         Activation.SquaredReLU: SquaredReLU,
         Activation.Tanh: nn.Tanh,
