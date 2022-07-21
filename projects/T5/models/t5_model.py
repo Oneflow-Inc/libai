@@ -16,8 +16,9 @@
 import oneflow as flow
 
 from libai.config import configurable
-from libai.layers import LMLogits, ParallelCrossEntropyLoss, Linear
+from libai.layers import Linear
 from libai.models.utils import init_method_normal, scaled_init_method_normal
+from libai.models.t5_model import T5ForPreTraining
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
@@ -251,95 +252,7 @@ class T5Model(flow.nn.Module):
         self.past_key_values = past_key_values
 
 
-class T5Loss(flow.nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.lm_loss = ParallelCrossEntropyLoss()
-
-    def forward(self, logits, lm_labels, loss_mask):
-        lm_loss = self.lm_loss(logits, lm_labels)
-        loss_mask = loss_mask.float()
-        loss_mask = loss_mask.to_global(placement=lm_loss.placement)
-        denominator = loss_mask.sum().to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        )
-        masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
-        masked_lm_loss = masked_lm_loss.to_global(
-            sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
-        )
-        return {"masked_lm_loss": masked_lm_loss}
-
-
-class T5ForPreTraining(flow.nn.Module):
-    def __init__(self, cfg) -> None:
-        super().__init__()
-        self.t5_model = T5Model(cfg)
-        self.loss_func = T5Loss()
-
-    def set_cache(self, encoder_states, past_key_values):
-        self.t5_model.set_cache(encoder_states, past_key_values)
-
-    def forward(
-        self,
-        encoder_input_ids,
-        decoder_input_ids,
-        encoder_attn_mask,
-        decoder_attn_mask,
-        encoder_decoder_attn_mask,
-        lm_labels=None,
-        loss_mask=None,
-        use_cache=False,
-    ):
-        logits = self.t5_model(
-            encoder_input_ids,
-            decoder_input_ids,
-            encoder_attn_mask,
-            decoder_attn_mask,
-            encoder_decoder_attn_mask,
-            use_cache=use_cache,
-        )
-
-        if lm_labels is not None:
-            lm_loss = self.loss_func(logits, lm_labels, loss_mask)
-            return lm_loss
-        else:
-            return {
-                "prediction_scores": logits,
-            }
-
-    @staticmethod
-    def set_pipeline_stage_id(model):
-        dist_utils = dist.get_dist_util()
-
-        # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            if isinstance(module_block.origin, T5Embedding):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, ExtendedMask):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, LMLogits):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
-            elif isinstance(module_block.origin, T5Loss):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
-
-        model.t5_model.encoder.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
-            dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx),
-        )
-        model.t5_model.decoder.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(model.t5_model.decoder.final_layernorm.layer_idx),
-            dist.get_layer_placement(model.t5_model.decoder.final_layernorm.layer_idx),
-        )
+class T5ForPretraining(T5ForPreTraining):
+    """
+    Same as libai.models.T5ForPreTraining.
+    """

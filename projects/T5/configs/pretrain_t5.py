@@ -60,7 +60,7 @@ model.cfg.pretrained_model_path = pretrained_model_path
 
 train.update(
     dict(
-        output_dir="./output/t5_output",
+        output_dir="./output/mt5_output",
         train_micro_batch_size=micro_batch_size,
         train_epoch=1,
         train_iter=24000,
@@ -87,5 +87,6 @@ train.update(
         ),
     )
 )
-# train.zero_optimization.enabled = True
-# train.zero_optimization.stage = 2
+
+train.zero_optimization.enabled = True
+train.zero_optimization.stage = 2
