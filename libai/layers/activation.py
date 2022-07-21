@@ -53,7 +53,7 @@ class GeLUTanh(nn.Module):
     
     def forward(self, x: flow.Tensor) -> flow.Tensor:
         """When the approximate argument is 'tanh', Gelu is estimated with:
-        output = 0.5 * x * (1.0 + flow.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * flow.pow(input, 3.0))))
+        output = 0.5 * x * (1.0 + flow.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * flow.pow(x, 3.0))))
         """
         return flow.nn.functional.gelu(x, approximate="tanh")
 
