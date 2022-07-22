@@ -41,7 +41,9 @@ class TextGenerationPipeline(BasePipeline):
         pipeline_parallel=1,
     ):
         super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
-        self.cfg.model.cfg.bias_dropout_fusion = False
+        self.cfg.model.cfg.hidden_dropout_prob = 0.0
+        self.cfg.model.cfg.embedding_dropout_prob = 0.0
+        self.cfg.model.cfg.attention_probs_dropout_prob = 0.0
 
     def _parse_parameters(self, use_cache=None, max_generate_length=10, **pipeline_parameters):
         preprocess_params = {}
@@ -125,11 +127,11 @@ class TextGenerationPipeline(BasePipeline):
 
             # set batch size = 1
             encoder_input_ids = flow.tensor(encoder_nparray_ids, dtype=flow.long).unsqueeze(0)
-            encoder_padding_mask = flow.tensor(encoder_nparray_mask, dtype=flow.long).unsqueeze(0)
+            encoder_padding_mask = flow.tensor(encoder_nparray_mask, dtype=flow.bool).unsqueeze(0)
             decoder_input_ids = flow.tensor(decoder_input_ids, dtype=flow.long).unsqueeze(0)
-            decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.long).unsqueeze(0)
+            decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.bool).unsqueeze(0)
             encoder_decoder_padding_mask = flow.tensor(
-                encoder_decoder_padding_mask, dtype=flow.long
+                encoder_decoder_padding_mask, dtype=flow.bool
             ).unsqueeze(0)
 
             # to_global for model input
