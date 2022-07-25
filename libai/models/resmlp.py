@@ -24,6 +24,7 @@ import oneflow.nn as nn
 from flowvision.layers.weight_init import trunc_normal_
 
 import libai.utils.distributed as dist
+from libai.config import configurable
 from libai.layers import MLP, DropPath, LayerNorm, Linear, PatchEmbedding
 
 
@@ -114,6 +115,7 @@ class ResMLP(nn.Module):
 
     """
 
+    @configurable
     def __init__(
         self,
         img_size=224,
@@ -166,6 +168,21 @@ class ResMLP(nn.Module):
 
         # weight init
         self.apply(self._init_weights)
+
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "img_size": cfg.img_size,
+            "patch_size": cfg.patch_size,
+            "in_chans": cfg.in_chans,
+            "embed_dim": cfg.embed_dim,
+            "depth": cfg.depth,
+            "drop_rate": cfg.drop_rate,
+            "drop_path_rate": cfg.drop_path_rate,
+            "init_scale": cfg.init_scale,
+            "num_classes": cfg.num_classes,
+            "loss_func": cfg.loss_func,
+        }
 
     def _init_weights(self, m):
         if isinstance(m, Linear):

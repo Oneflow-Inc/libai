@@ -20,6 +20,7 @@ cfg = dict(
     ape=False,
     patch_norm=True,
     use_checkpoint=False,
+    loss_func=None,
 )
 
 cfg = DictConfig(cfg)

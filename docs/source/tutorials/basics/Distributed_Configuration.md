@@ -7,6 +7,19 @@ dist=dict(
         data_parallel_size=1,
         tensor_parallel_size=1,
         pipeline_parallel_size=1,
+
+        # users must set the `pipeline_num_layers` attribute when `pipeline_parallel_size > 1`
+        pipeline_num_layers=None,
+        # users could customize the number of layers in different stages
+        # by setting the `custom_pipeline_stage_id ` attribute which is used for
+        # manually balance calculation between stages when running pipeline parallelism
+        # e.g. you can set `custom_pipeline_stage_id=[0, 0, 0, 1]`
+        # for `pipeline_num_layers=4 and pipeline_parallel_size=2`
+        # which means the first 3 layers will be placed on stage0 and
+        # the last layer will be placed on stage1
+        # NOTE: if it is None, LiBai will automatically set pipeline_stage_id
+        # `auto_pipeline_stage_id` and `actual_pipeline_stage_id` will be saved in `config.yaml`
+        custom_pipeline_stage_id=None,
 )
 ```
 For example, you can set `data_parallel_size=2` which will automatically split the input data into two groups for data parallel training.
@@ -123,6 +136,20 @@ train.dist.pipeline_num_layers = model.cfg.hidden_layers
 ```
 And the `data_parallel_size` will be automatically set to `(8 / (2 * 2)) = 2`
 
+
+#### **Set `custom_pipeline_stage_id` for Load Balance**
+In most cases, the transformer layers of common models have the same computational overhead, so there is no need to set `custom_pipeline_stage_id`.
+
+But when transformer layers have unbalanced computational overhead, you can set `custom_pipeline_stage_id` for manually balance the compuation between stages in pipeline_parallelism
+
+For example:
+```python
+train.dist.pipeline_parallel_size = 4
+train.dist.pipeline_num_layers = 24
+train.dist.custom_pipeline_stage_id = [0]*6 + [1]*7 + [2]*7 + [3]*4
+```
+It means you have `[6, 7, 7, 4]` layers separately located in `stage0`~`stage3`.
+Modify `custom_pipeline_stage_id` according to your own needs.
 
 ## Update Distributed Config with Command Line
 You can also control the parallelization strategy by **command line** parameters as follows:
