@@ -36,7 +36,6 @@ class DETR(nn.Module):
         self.num_queries = num_queries
         self.transformer = transformer
         hidden_dim = transformer.d_model
-        # self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
         self.class_embed = Linear(hidden_dim, num_classes + 1)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
@@ -59,6 +58,7 @@ class DETR(nn.Module):
         """
         # *The 1st step: feature extraction
         features, pos = self.backbone(samples)
+        # len(features) = 1, len(pos) = 1
         src, mask = features[-1]
         assert mask is not None
         # *The 2nd step: global feature learned by the transformer encoder

@@ -16,6 +16,7 @@
 
 import oneflow as flow
 import oneflow.nn as nn
+import oneflow.nn.functional as F
 
 from modeling.cross_entropy import ParallelCrossEntropyLoss
 from utils import box_ops
@@ -46,7 +47,7 @@ class SetCriterion(nn.Module):
         empty_weight[-1] = self.eos_coef
         self.register_buffer('empty_weight', empty_weight)
         self.l1_loss = nn.L1Loss(reduction="none")
-        self.cross_entropy = ParallelCrossEntropyLoss()
+        # self.cross_entropy = ParallelCrossEntropyLoss()
 
     def loss_labels(self, outputs, targets, indices, num_boxes):
         """Classification loss (NLL)
@@ -61,10 +62,11 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         target_classes[idx] = target_classes_o
         target_classes = target_classes.to_global(sbp=src_logits.sbp, placement=src_logits.placement)
-        loss_ce = self.cross_entropy(
-            src_logits, 
-            target_classes,
-            self.empty_weight)
+        # loss_ce = self.cross_entropy(
+        #     src_logits, 
+        #     target_classes,
+        #     self.empty_weight)
+        loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
         losses = {'loss_ce': loss_ce}
         return losses
 

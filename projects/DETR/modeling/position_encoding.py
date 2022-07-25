@@ -22,7 +22,6 @@
 
 
 import math
-from isort import place_module_with_reason
 
 import oneflow as flow
 import oneflow.nn as nn
@@ -45,19 +44,19 @@ class PositionEmbeddingSine(nn.Module):
         self.scale = scale
 
     def forward(self, tensor_list):
-        x, mask = tensor_list
+        _, mask = tensor_list
         assert mask is not None
         not_mask = ~mask
-
+        
         y_embed = flow.cumsum(not_mask, dim=1)
         x_embed = flow.cumsum(not_mask, dim=2)
-
+        
         if self.normalize:
             eps = 1e-6
             y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
             x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
 
-        dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32)
+        dim_t = flow.arange(self.num_pos_feats)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
         if x_embed.is_global:
             pos_x = x_embed[:, :, :, None] / dim_t.to_global(sbp=x_embed.sbp, placement=x_embed.placement)
@@ -65,11 +64,12 @@ class PositionEmbeddingSine(nn.Module):
         else:
             pos_x = x_embed[:, :, :, None] / dim_t
             pos_y = y_embed[:, :, :, None] / dim_t 
+
         pos_x = flow.stack((pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4).flatten(3)
         pos_y = flow.stack((pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4).flatten(3)
         pos = flow.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)
-        return pos
-
+        return pos.to_global(sbp=flow.sbp.split(0), placement=pos.placement)
+ 
 
 class PositionEmbeddingLearned(nn.Module):
     """
@@ -89,19 +89,17 @@ class PositionEmbeddingLearned(nn.Module):
         x, _ = tensor_list
         h, w = x.shape[-2:]
         if x.is_global:
-            sbp, placement = x.sbp, x.placement
-            i = flow.arange(w).to_global(sbp=sbp, placement=placement)
-            j = flow.arange(h).to_global(sbp=sbp, placement=placement)
+            i = flow.arange(w).to_global(sbp=flow.sbp.broadcast, placement=x.placement)
+            j = flow.arange(h).to_global(sbp=flow.sbp.broadcast, placement=x.placement)
         else:
             i = flow.arange(w)
             j = flow.arange(h)           
         x_emb = self.col_embed(i)
         y_emb = self.row_embed(j)
         pos = flow.cat([
-            x_emb.unsqueeze(0).repeat(h, 1, 1),
-            y_emb.unsqueeze(1).repeat(1, w, 1),
-        ], dim=-1).permute(2, 0, 1).unsqueeze(0).repeat(x.shape[0], 1, 1, 1)
-        return pos
+            x_emb.unsqueeze(0).repeat(h, 1, 1), 
+            y_emb.unsqueeze(1).repeat(1, w, 1)], dim=-1).permute(2, 0, 1).unsqueeze(0).repeat(x.shape[0], 1, 1, 1)
+        return pos.to_global(sbp=flow.sbp.split(0), placement=pos.placement)
 
 
 

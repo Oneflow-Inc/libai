@@ -125,5 +125,6 @@ class Joiner(nn.Sequential):
         for _, x in xs.items():
             out.append(x)
             # position encoding
-            pos.append(self[1](x).to(x[0].dtype))
+            # pos.append(self[1](x).to(x[0].dtype))
+            pos.append(self[1](x))
         return out, pos

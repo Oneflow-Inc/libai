@@ -1,3 +1,4 @@
+import oneflow as flow
 import oneflow.nn as nn
 
 from libai.layers.transformer_layer import TransformerLayer
@@ -79,8 +80,10 @@ class DetrTransformerLayer(TransformerLayer):
             if self.is_decoder:
                 query = key = self.with_pos_embed(hidden_states, query_position_embedding)
             else:
-                query = key = self.with_pos_embed(hidden_states, position_embedding)
-
+                query = key = self.with_pos_embed(hidden_states, position_embedding) 
+                # query shape
+                # when position_embedding.sbp is split(0), (1764, 8, 256)
+                # when position_embedding.sbp is broadcast, (1764, 8, 256)
         attention_output = self.self_attention(
             (query, key, hidden_states),
             attention_mask=attention_mask,
@@ -119,7 +122,6 @@ class DetrTransformerLayer(TransformerLayer):
         
         if not self.normalize_before:
             output = self.post_attention_layernorm(output)
-            
         return output
     
     def with_pos_embed(self, tensor, pos):
