@@ -1154,6 +1154,3 @@ class LoadPretrainedT5(LoadPretrainedBase):
         # update default_cfg by kwargs
         for k, v in self.kwargs.items():
             self.default_cfg[k] = v
-
-        self.default_cfg["bias_gelu_fusion"] = False
-        self.default_cfg["bias_dropout_fusion"] = False

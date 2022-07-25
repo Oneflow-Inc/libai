@@ -33,6 +33,4 @@ class LayerNorm(flow.nn.Module):
         self.variance_epsilon = eps
 
     def forward(self, hidden_states):
-        variance = hidden_states.to(flow.float32).pow(2).mean(-1, keepdim=True)
-        hidden_states = hidden_states * flow.rsqrt(variance + self.variance_epsilon)
-        return self.weight * hidden_states
+        return flow._C.rms_layer_norm(hidden_states, self.weight, self.variance_epsilon)
