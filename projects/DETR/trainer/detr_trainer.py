@@ -17,6 +17,7 @@ import time
 from typing import Callable
 
 import oneflow as flow
+import matplotlib.pyplot as plt
 
 from libai.engine.trainer import TrainerBase
 
@@ -65,11 +66,11 @@ class DetrEagerTrainer(TrainerBase):
             self.optimizer.step()
             self.optimizer.zero_grad()
         # flow.cuda.empty_cache()
-        pynvml.nvmlInit()
-        NUM_EXPAND = 1024 * 1024
-        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-        meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
-        print(meminfo.used / NUM_EXPAND)
-        import matplotlib.pyplot as plt
-        plt.plot((meminfo.used / NUM_EXPAND))
-        plt.savefig("./mem.png")
+        # pynvml.nvmlInit()
+        # NUM_EXPAND = 1024 * 1024
+        # handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        # meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        # print(meminfo.used / NUM_EXPAND)
+        # self.mem.append(meminfo.used / NUM_EXPAND)
+        # plt.plot(self.mem)
+        # plt.savefig("./mem.png")

@@ -93,7 +93,6 @@ class DetrMultiheadAttention(MultiheadAttention):
             else:
                 attention_mask = attention_mask.masked_fill(key_padding_mask, float("-inf"))
                 
-                
         attention_scores = flow.bmm(query*self.norm_factor, key.transpose(-2,-1))
                 
         # convert mask to float

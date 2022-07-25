@@ -14,11 +14,10 @@
 # limitations under the License.
 
 
-import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
 
-from projects.DETR.datasets.dataloader import padding_tensor_from_tensor_list
+from libai.layers.linear import Linear
 
 
 class DETR(nn.Module):
@@ -37,7 +36,8 @@ class DETR(nn.Module):
         self.num_queries = num_queries
         self.transformer = transformer
         hidden_dim = transformer.d_model
-        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
+        # self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
+        self.class_embed = Linear(hidden_dim, num_classes + 1)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
         self.input_proj = nn.Conv2d(backbone.num_channels, hidden_dim, kernel_size=1)
@@ -45,7 +45,7 @@ class DETR(nn.Module):
         self.aux_loss = aux_loss
         self.criterion = criterion
         
-    def forward(self, inputs):
+    def forward(self, samples):
         """
             It returns a dict with the following elements:
                - "pred_logits": the classification logits (including no-object) for all queries.
@@ -57,13 +57,8 @@ class DETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-        # samples, targets = inputs["images"], inputs["labels"]
-        
-        # TODO (ziqiu chi): More training iterations are required to check lines 63-64
-        # if isinstance(samples, (list, flow.Tensor)):
-        #     samples = padding_tensor_from_tensor_list(samples)
         # *The 1st step: feature extraction
-        features, pos = self.backbone(inputs)
+        features, pos = self.backbone(samples)
         src, mask = features[-1]
         assert mask is not None
         # *The 2nd step: global feature learned by the transformer encoder
@@ -80,7 +75,7 @@ class DETR(nn.Module):
         # (training)
         # If there are 4 ground-truth boxes, 
         # the rest of 96 predicted boxes will be marked as the "no object" class.
-        loss_dict = self.criterion(out, inputs)    
+        loss_dict = self.criterion(out, samples)    
         return loss_dict, out
 
     def _set_aux_loss(self, outputs_class, outputs_coord):
@@ -96,7 +91,7 @@ class MLP(nn.Module):
         super().__init__()
         self.num_layers = num_layers
         h = [hidden_dim] * (num_layers - 1)
-        self.layers = nn.ModuleList(nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim]))
+        self.layers = nn.ModuleList(Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim]))
 
     def forward(self, x):
         for i, layer in enumerate(self.layers):

@@ -23,8 +23,8 @@ detr_args.hidden_dim = 256
 detr_args.dropout = 0.1
 detr_args.nheads = 8 
 detr_args.dim_feedforward = 2048 
-detr_args.enc_layers = 6 
-detr_args.dec_layers = 6 
+detr_args.enc_layers = 6
+detr_args.dec_layers = 6
 detr_args.pre_norm = False
 
 # Loss

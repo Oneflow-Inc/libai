@@ -32,7 +32,7 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 # train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
 
 # Refine train cfg for detr model
-train.train_micro_batch_size = 2
+train.train_micro_batch_size = 1
 train.test_micro_batch_size = 1
 train.train_epoch = 300
 

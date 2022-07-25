@@ -15,41 +15,28 @@ from libai.data.build import build_image_train_loader, build_image_test_loader
 from libai.data.structures import DistTensorData, Instance
 
 
-def _max_by_axis(the_list):
-    # type: (List[List[int]]) -> List[int]
-    maxes = the_list[0]
-    for sublist in the_list[1:]:
-        for index, item in enumerate(sublist):
-            maxes[index] = max(maxes[index], item)
-    return maxes
+# def _max_by_axis(the_list):
+#     # type: (List[List[int]]) -> List[int]
+#     maxes = the_list[0]
+#     for sublist in the_list[1:]:
+#         for index, item in enumerate(sublist):
+#             maxes[index] = max(maxes[index], item)
+#     return maxes
 
 
 def padding_tensor_from_tensor_list(tensor_list: List[tuple]):
     
-    # image
-    # for eager/graph ddp
+
+    # image padding
     max_size_img = [3, 1334, 1334]
-    max_size_target = 100
-    # for eager ddp
-    # max_size_img = _max_by_axis([list(tensor[0].shape) for tensor in tensor_list])
-    # switch max_size to global to calculate the maximum shape
-    # max_size_img = flow.tensor(max_size_img)
-    # max_size_img = max_size_img.to_global(
-    #     sbp=flow.sbp.split(0), placement=flow.placement("cuda", ranks=[0,1, 2,3]))
-    # list(range(get_world_size()))
-    # max_size_img = max_size_img.max(0)[0].numpy().tolist()
     batch_shape_img = [len(tensor_list)] + max_size_img
     b, c, h, w = batch_shape_img
     dtype = tensor_list[0][0].dtype
     tensor = flow.zeros(batch_shape_img, dtype=dtype)
     tensor_mask = flow.ones((b, h, w), dtype=flow.bool)
-    # targets
-    # for eager ddp
-    # max_size_target = flow.tensor(max([tensor[1]["boxes"].shape[0] for tensor in tensor_list]))
-    # .to_global(
-        # sbp=flow.sbp.split(0), placement=flow.placement("cuda", ranks=list(range(get_world_size()))))
-    # max_size_target = max_size_target.max(0)[0].numpy().tolist()
     
+    # target padding
+    max_size_target = 100
     boxes = flow.zeros((b, max_size_target, 4), dtype=flow.float32)
     labels = flow.zeros((b, max_size_target), dtype=flow.int64)
     area = flow.zeros((b, max_size_target), dtype=flow.float32)
@@ -59,6 +46,7 @@ def padding_tensor_from_tensor_list(tensor_list: List[tuple]):
     size = flow.zeros((b, 2), dtype=flow.int64)
     target_mask = flow.zeros((b, max_size_target), dtype=flow.bool)
     target_orig_size = flow.zeros(b, dtype=flow.int64)
+    
     for i, sample in enumerate(tensor_list):
         img, targets = sample
         # image

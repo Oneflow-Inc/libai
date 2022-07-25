@@ -55,6 +55,7 @@ class SetCriterion(nn.Module):
         assert 'pred_logits' in outputs
         src_logits = outputs['pred_logits']
         target_classes_o = flow.cat([t[J] for t, (_, J) in zip(targets["labels"], indices)])
+        # check here
         target_classes_o = target_classes_o.to_local()
         target_classes = flow.full(src_logits.shape[:2], self.num_classes, dtype=flow.int64)
         idx = self._get_src_permutation_idx(indices)
