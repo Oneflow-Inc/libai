@@ -49,7 +49,7 @@ def _load_state_dict_into_model(model_to_load, state_dict, start_prefix):
     return error_msgs
 
 
-class LoadPretrainedBase(object):
+class ModelLoader(object):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         """Class used to load the [`transformers`](https://huggingface.co/models) pretrained model
         or `OneFlow` pretrained model.
@@ -69,27 +69,6 @@ class LoadPretrainedBase(object):
         self.pretrained_model_path = pretrained_model_path
         self.kwargs = kwargs
         self.output_loading_info = kwargs.pop("output_loading_info", False)
-        self.base_model_prefix_1 = None
-        self.base_model_prefix_2 = None
-
-    def _convert_tensor(self, tensor):
-        """Convert PyTorch tensor to OneFlow tensor.
-
-        Args:
-            tensor (torch.Tensor): The source tensor.
-
-        Returns:
-            flow.Tensor: The target tensor.
-        """
-        tensor = tensor.float()
-        return flow.Tensor(tensor.detach().cpu().numpy())
-
-    def _convert_tensors(self, torch_state_dict):
-
-        for k, v in torch_state_dict.items():
-            torch_state_dict[k] = self._convert_tensor(v)
-
-        return torch_state_dict
 
     def _state_dict_to_global(self, flow_state_dict):
         """Tensor in OneFlow state dict to global according to model's sbp and placement.
@@ -122,75 +101,6 @@ class LoadPretrainedBase(object):
                     placement=value.placement,
                 )
                 flow_state_dict[key] = flow.to_global(flow_state_dict[key], sbp=value.sbp)
-
-    def _fix_key(self, state_dict):
-        """Fix the key in state dict: Convert "gamma" to "weight" and "beta" to "bias".
-
-        Args:
-            state_dict (OrderedDict): state dict of pretrained model.
-
-        Returns:
-            OrderedDict: State dict after fix key.
-        """
-        old_keys = []
-        new_keys = []
-        for key in state_dict.keys():
-            new_key = None
-            if "gamma" in key:
-                new_key = key.replace("gamma", "weight")
-            if "beta" in key:
-                new_key = key.replace("beta", "bias")
-            if new_key:
-                old_keys.append(key)
-                new_keys.append(new_key)
-        for old_key, new_key in zip(old_keys, new_keys):
-            state_dict[new_key] = state_dict.pop(old_key)
-        return state_dict
-
-    def _fix_qkv_ordering(self, qkv, head_size, num_heads, checkpoint_version=0.0):
-        # TODO(xzp): Different versions checkpoint
-
-        hidden_size = head_size * num_heads
-        num_of_qkv = qkv.shape[0] // hidden_size
-        mode = "weight" if qkv.ndim > 1 else "bias"
-        if mode == "weight":
-            qkv = qkv.view([num_of_qkv, num_heads, head_size, hidden_size])
-            qkv = qkv.permute(1, 0, 2, 3).contiguous().view(num_of_qkv * hidden_size, hidden_size)
-        elif mode == "bias":
-            qkv = qkv.view(num_of_qkv, num_heads, head_size)
-            qkv = qkv.permute(1, 0, 2).contiguous().view(-1)
-        return qkv
-
-    def _convert_state_dict(self, flow_state_dict, cfg):
-        """A function used to convert the checkpoint file of Huggingface to LiBai.
-
-        Args:
-            torch_state_dict (OrderedDict): torch state dict.
-            cfg (dict): model's default config dict in LiBai.
-
-        Returns:
-            OrderedDict: flow state dict.
-        """
-        raise NotImplementedError("_convert_state_dict not implemented")
-
-    def _load_config_from_json(self, config_file):
-        """load config from `config.json`, and update default config.
-
-        Args:
-            config_file (str): Path of config file.
-        """
-
-        raise NotImplementedError("_load_config_from_json not implemented")
-
-    def _load_torch_state_dict(self, state_dict_file):
-        # load pytorch_model.bin
-        state_dict = torch.load(state_dict_file, map_location="cpu")
-        return state_dict
-
-    def _load_flow_state_dict(self, state_dict_file):
-        # load oneflow_model
-        state_dict = flow.load(state_dict_file)
-        return state_dict
 
     def _load_pretrained_model(
         self,
@@ -295,13 +205,11 @@ class LoadPretrainedBase(object):
                 ignore_mismatched_sizes,
             )
             error_msgs = _load_state_dict_into_model(model_to_load, state_dict, start_prefix)
-
         if len(error_msgs) > 0:
             error_msg = "\n\t".join(error_msgs)
             raise RuntimeError(
                 f"Error(s) in loading state_dict for {model.__class__.__name__}:\n\t{error_msg}"
             )
-
         if len(unexpected_keys) > 0:
             logger.warning(
                 f"Some weights of the model checkpoint at {pretrained_model_path} "
@@ -340,7 +248,30 @@ class LoadPretrainedBase(object):
 
         return model, missing_keys, unexpected_keys, mismatched_keys, error_msgs
 
-    def load_model(self):
+
+class LiBaiModelLoader(ModelLoader):
+    """Class used to load `OneFlow` pretrained model.
+
+    Args:
+        model (libai.models): Model to be loaded in Libai.
+        libai_cfg (dict): The config of model in LiBai, you can import it from
+            `libai.config.configs.common.models`.
+        pretrained_model_path (str): The directory path of pretrained model,
+            which contains model weights file and config file.
+        output_loading_info (`bool`, *optional*, defaults to `False`):
+            Whether to return a dictionary containing missing keys, unexpected keys
+            and error messages.
+    """
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix2 = None  # prefix in LiBai
+
+    def _load_flow_state_dict(self, state_dict_file):
+        # load oneflow_model
+        state_dict = flow.load(state_dict_file)
+        return state_dict
+
+    def load(self):
         """Load model.
 
         # For example:
@@ -349,30 +280,178 @@ class LoadPretrainedBase(object):
 
             >>> import libai
             >>> from libai.config.configs.common.models.bert import cfg
-            >>> from model_utils import LoadPretrainedModels
+            >>> from model_utils import BertLoaderLiBai
 
-            >>> my_class = LoadPretrainedBert(
+            >>> loder = BertLoaderLiBai(
                     libai.models.BertModel,
                     cfg,
                     'path/bert-base-chinese'
                 )
-            >>> bert = my_class.load_model()
+            >>> bert = loder.load()
+
+        """
+        if os.path.isdir(self.pretrained_model_path):
+            # state_dict file oneflow
+            if os.path.isdir(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)):
+                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)
+            else:
+                raise EnvironmentError(
+                    f"Error no file named {WEIGHTS_NAME_OF} found"
+                    f"in directory {self.pretrained_model_path}."
+                )
+        else:
+            raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
+
+        flow_state_dict = self._load_flow_state_dict(model_file)
+
+        loaded_state_dict_keys = list(flow_state_dict.keys())
+
+        # Instance model
+        self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
+
+        # State_dict to global
+        self._state_dict_to_global(flow_state_dict)
+
+        # Load
+        (
+            model,
+            missing_keys,
+            unexpected_keys,
+            mismatched_keys,
+            error_msgs,
+        ) = self._load_pretrained_model(
+            self.model, flow_state_dict, loaded_state_dict_keys, self.pretrained_model_path
+        )
+
+        if self.output_loading_info:
+            loading_info = {
+                "missing_keys": missing_keys,
+                "unexpected_keys": unexpected_keys,
+                "mismatched_keys": mismatched_keys,
+                "error_msgs": error_msgs,
+            }
+            return model, loading_info
+        return model
+
+
+class HuggerFaceModelLoader(ModelLoader):
+    """Class used to load the [`transformers`](https://huggingface.co/models) 
+    pretrained model.
+    """
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix_1 = None # prefix in Transformers
+        self.base_model_prefix_2 = None # prefix in LiBai
+    
+    def _convert_tensor(self, tensor):
+        """Convert PyTorch tensor to OneFlow tensor.
+
+        Args:
+            tensor (torch.Tensor): The source tensor.
+
+        Returns:
+            flow.Tensor: The target tensor.
+        """
+        tensor = tensor.float()
+        return flow.Tensor(tensor.detach().cpu().numpy())
+
+    def _convert_tensors(self, torch_state_dict):
+
+        for k, v in torch_state_dict.items():
+            torch_state_dict[k] = self._convert_tensor(v)
+
+        return torch_state_dict
+
+    def _fix_key(self, state_dict):
+        """Fix the key in state dict: Convert "gamma" to "weight" and "beta" to "bias".
+
+        Args:
+            state_dict (OrderedDict): state dict of pretrained model.
+
+        Returns:
+            OrderedDict: State dict after fix key.
+        """
+        old_keys = []
+        new_keys = []
+        for key in state_dict.keys():
+            new_key = None
+            if "gamma" in key:
+                new_key = key.replace("gamma", "weight")
+            if "beta" in key:
+                new_key = key.replace("beta", "bias")
+            if new_key:
+                old_keys.append(key)
+                new_keys.append(new_key)
+        for old_key, new_key in zip(old_keys, new_keys):
+            state_dict[new_key] = state_dict.pop(old_key)
+        return state_dict
+
+    def _fix_qkv_ordering(self, qkv, head_size, num_heads, checkpoint_version=0.0):
+        # TODO(xzp): Different versions checkpoint
+
+        hidden_size = head_size * num_heads
+        num_of_qkv = qkv.shape[0] // hidden_size
+        mode = "weight" if qkv.ndim > 1 else "bias"
+        if mode == "weight":
+            qkv = qkv.view([num_of_qkv, num_heads, head_size, hidden_size])
+            qkv = qkv.permute(1, 0, 2, 3).contiguous().view(num_of_qkv * hidden_size, hidden_size)
+        elif mode == "bias":
+            qkv = qkv.view(num_of_qkv, num_heads, head_size)
+            qkv = qkv.permute(1, 0, 2).contiguous().view(-1)
+        return qkv
+
+    def _convert_state_dict(self, flow_state_dict, cfg):
+        """A function used to convert the checkpoint file of Huggingface to LiBai.
+
+        Args:
+            torch_state_dict (OrderedDict): torch state dict.
+            cfg (dict): model's default config dict in LiBai.
+
+        Returns:
+            OrderedDict: flow state dict.
+        """
+        raise NotImplementedError("_convert_state_dict not implemented")
+
+    def _load_config_from_json(self, config_file):
+        """load config from `config.json`, and update default config.
+
+        Args:
+            config_file (str): Path of config file.
+        """
+
+        raise NotImplementedError("_load_config_from_json not implemented")
+
+    def _load_torch_state_dict(self, state_dict_file):
+        # load pytorch_model.bin
+        state_dict = torch.load(state_dict_file, map_location="cpu")
+        return state_dict
+
+    def load(self):
+        """Load model.
+
+        # For example:
+
+        # .. code-block:: python
+
+            >>> import libai
+            >>> from libai.config.configs.common.models.bert import cfg
+            >>> from model_utils import BertLoaderHugger
+
+            >>> loader = BertLoaderHugger(
+                    libai.models.BertModel,
+                    cfg,
+                    'path/bert-base-chinese'
+                )
+            >>> bert = loader.load()
 
         """
         if os.path.isdir(self.pretrained_model_path):
             # state_dict file pytorch
             if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)):
-                self.mode = "pt"
                 model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)
-
-            # state_dict file oneflow
-            elif os.path.isdir(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)):
-                self.mode = "of"
-                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)
-
             else:
                 raise EnvironmentError(
-                    f"Error no file named {WEIGHTS_NAME_PT} or {WEIGHTS_NAME_OF} found"
+                    f"Error no file named {WEIGHTS_NAME_PT} found"
                     f"in directory {self.pretrained_model_path}."
                 )
 
@@ -391,13 +470,10 @@ class LoadPretrainedBase(object):
         else:
             raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
-        if self.mode == "pt":
-            torch_state_dict = self._load_torch_state_dict(model_file)
-            torch_state_dict = self._fix_key(torch_state_dict)
-            flow_state_dict = self._convert_tensors(torch_state_dict)
-            flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
-        else:
-            flow_state_dict = self._load_flow_state_dict(model_file)
+        torch_state_dict = self._load_torch_state_dict(model_file)
+        torch_state_dict = self._fix_key(torch_state_dict)
+        flow_state_dict = self._convert_tensors(torch_state_dict)
+        flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
 
         loaded_state_dict_keys = list(flow_state_dict.keys())
 
