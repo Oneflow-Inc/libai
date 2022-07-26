@@ -4,8 +4,8 @@ from .base_utils import LoadPretrainedBase
 
 
 class LoadPretrainedGPT2(LoadPretrainedBase):
-    def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
-        super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
         """NOTE: base_model_prefix_1 is GPT's prefix in Transformers.
         base_model_prefix_2 is GPT's prefix in LiBai."""
@@ -17,7 +17,7 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
 
         Args:
             flow_state_dict (OrderedDict): model state dict.
-            cfg (dict): model's default config dict.
+            cfg (dict): model's default config dict in LiBai.
 
         Returns:
             OrderedDict: flow state dict.
@@ -128,21 +128,21 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
         with open(config_file, mode="r", encoding="utf-8") as f:
             cfg_dict = json.load(f)
 
-        # update default_cfg by config.json
-        self.default_cfg.num_layers = cfg_dict["n_layer"]
-        self.default_cfg.hidden_size = cfg_dict["n_embd"]
-        self.default_cfg.num_attention_heads = cfg_dict["n_head"]
-        self.default_cfg.max_seq_length = cfg_dict["n_positions"]
-        self.default_cfg.embedding_dropout_prob = cfg_dict["embd_pdrop"]
-        self.default_cfg.attention_dropout_prob = cfg_dict["attn_pdrop"]
-        self.default_cfg.output_dropout_prob = cfg_dict["resid_pdrop"]
-        self.default_cfg.layernorm_epsilon = cfg_dict["layer_norm_epsilon"]
-        self.default_cfg.vocab_size = cfg_dict["vocab_size"]
-        self.default_cfg.initializer_range = cfg_dict["initializer_range"]
-        self.default_cfg.ffn_hidden_size = cfg_dict.get(
-            "n_inner", 4 * self.default_cfg["hidden_size"]
+        # update libai_cfg by config.json
+        self.libai_cfg.num_layers = cfg_dict["n_layer"]
+        self.libai_cfg.hidden_size = cfg_dict["n_embd"]
+        self.libai_cfg.num_attention_heads = cfg_dict["n_head"]
+        self.libai_cfg.max_seq_length = cfg_dict["n_positions"]
+        self.libai_cfg.embedding_dropout_prob = cfg_dict["embd_pdrop"]
+        self.libai_cfg.attention_dropout_prob = cfg_dict["attn_pdrop"]
+        self.libai_cfg.output_dropout_prob = cfg_dict["resid_pdrop"]
+        self.libai_cfg.layernorm_epsilon = cfg_dict["layer_norm_epsilon"]
+        self.libai_cfg.vocab_size = cfg_dict["vocab_size"]
+        self.libai_cfg.initializer_range = cfg_dict["initializer_range"]
+        self.libai_cfg.ffn_hidden_size = cfg_dict.get(
+            "n_inner", 4 * self.libai_cfg["hidden_size"]
         )
 
-        # update default_cfg by kwargs
+        # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
-            self.default_cfg[k] = v
+            self.libai_cfg[k] = v

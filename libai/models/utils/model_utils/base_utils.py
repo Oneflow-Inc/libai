@@ -50,13 +50,13 @@ def _load_state_dict_into_model(model_to_load, state_dict, start_prefix):
 
 
 class LoadPretrainedBase(object):
-    def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         """Class used to load the [`transformers`](https://huggingface.co/models) pretrained model
         or `OneFlow` pretrained model.
 
         Args:
             model (libai.models): Model to be loaded in Libai.
-            default_cfg (dict): The default config of model, you can import it from
+            libai_cfg (dict): The config of model in LiBai, you can import it from
                 `libai.config.configs.common.models`.
             pretrained_model_path (str): The directory path of pretrained model,
                 which contains model weights file and config file.
@@ -65,7 +65,7 @@ class LoadPretrainedBase(object):
                 and error messages.
         """
         self.model = model
-        self.default_cfg = default_cfg
+        self.libai_cfg = libai_cfg
         self.pretrained_model_path = pretrained_model_path
         self.kwargs = kwargs
         self.output_loading_info = kwargs.pop("output_loading_info", False)
@@ -166,7 +166,7 @@ class LoadPretrainedBase(object):
 
         Args:
             torch_state_dict (OrderedDict): torch state dict.
-            cfg (dict): model's default config dict.
+            cfg (dict): model's default config dict in LiBai.
 
         Returns:
             OrderedDict: flow state dict.
@@ -395,14 +395,14 @@ class LoadPretrainedBase(object):
             torch_state_dict = self._load_torch_state_dict(model_file)
             torch_state_dict = self._fix_key(torch_state_dict)
             flow_state_dict = self._convert_tensors(torch_state_dict)
-            flow_state_dict = self._convert_state_dict(torch_state_dict, self.default_cfg)
+            flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
         else:
             flow_state_dict = self._load_flow_state_dict(model_file)
 
         loaded_state_dict_keys = list(flow_state_dict.keys())
 
         # Instance model
-        self.model = build_model(LazyCall(self.model)(cfg=self.default_cfg))
+        self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
         self._state_dict_to_global(flow_state_dict)

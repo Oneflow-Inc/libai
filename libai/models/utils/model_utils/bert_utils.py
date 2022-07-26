@@ -6,8 +6,8 @@ from .base_utils import LoadPretrainedBase
 
 
 class LoadPretrainedBert(LoadPretrainedBase):
-    def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
-        super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
         """NOTE: base_model_prefix_1 is BERT's prefix in Transformers.
         base_model_prefix_2 is BERT's prefix in LiBai."""
@@ -19,7 +19,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
 
         Args:
             flow_state_dict (OrderedDict): model state dict.
-            cfg (dict): model's default config dict.
+            cfg (dict): model's default config dict in LiBai.
 
         Returns:
             OrderedDict: flow state dict.
@@ -219,20 +219,20 @@ class LoadPretrainedBert(LoadPretrainedBase):
         with open(config_file, mode="r", encoding="utf-8") as f:
             cfg_dict = json.load(f)
 
-        # update default_cfg by config.json
+        # update libai_cfg by config.json
         for k, v in cfg_dict.items():
             if k == "num_hidden_layers":
-                self.default_cfg.hidden_layers = v
+                self.libai_cfg.hidden_layers = v
             elif k == "type_vocab_size":
-                self.default_cfg.num_tokentypes = v
+                self.libai_cfg.num_tokentypes = v
             elif k == "layer_norm_eps":
-                self.default_cfg.layernorm_eps = v
+                self.libai_cfg.layernorm_eps = v
             elif k in cfg_dict:
-                self.default_cfg[k] = v
+                self.libai_cfg[k] = v
 
-        # update default_cfg by kwargs
+        # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
-            self.default_cfg[k] = v
+            self.libai_cfg[k] = v
 
         # use original BERT residual connection ordering
-        self.default_cfg.apply_residual_post_layernorm = True
+        self.libai_cfg.apply_residual_post_layernorm = True

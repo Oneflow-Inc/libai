@@ -6,8 +6,8 @@ from .base_utils import LoadPretrainedBase
 
 
 class LoadPretrainedT5(LoadPretrainedBase):
-    def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
-        super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
         """NOTE: base_model_prefix_1 is T5's prefix in Transformers.
         base_model_prefix_2 is T5's prefix in LiBai."""
@@ -19,7 +19,7 @@ class LoadPretrainedT5(LoadPretrainedBase):
 
         Args:
             flow_state_dict (OrderedDict): model state dict.
-            cfg (dict): model's default config dict.
+            cfg (dict): model's default config dict in LiBai.
 
         Returns:
             OrderedDict: flow state dict.
@@ -249,20 +249,20 @@ class LoadPretrainedT5(LoadPretrainedBase):
         """
         with open(config_file, mode="r", encoding="utf-8") as f:
             cfg_dict = json.load(f)
-        self.default_cfg.vocab_size = cfg_dict["vocab_size"]
-        self.default_cfg.hidden_size = cfg_dict["d_model"]
-        self.default_cfg.hidden_layers = cfg_dict["num_layers"]
-        self.default_cfg.num_attention_heads = cfg_dict["num_heads"]
-        self.default_cfg.intermediate_size = cfg_dict["d_ff"]
-        self.default_cfg.hidden_dropout_prob = cfg_dict["dropout_rate"]
-        self.default_cfg.attention_probs_dropout_prob = cfg_dict["dropout_rate"]
-        self.default_cfg.max_position_embeddings = cfg_dict.get("n_positions", 512)
-        self.default_cfg.relative_attention_num_buckets = cfg_dict["relative_attention_num_buckets"]
-        self.default_cfg.embedding_dropout_prob = cfg_dict["dropout_rate"]
-        self.default_cfg.initializer_range = cfg_dict["initializer_factor"]
-        self.default_cfg.layernorm_eps = cfg_dict["layer_norm_epsilon"]
-        self.default_cfg.head_size = cfg_dict["d_kv"]
+        self.libai_cfg.vocab_size = cfg_dict["vocab_size"]
+        self.libai_cfg.hidden_size = cfg_dict["d_model"]
+        self.libai_cfg.hidden_layers = cfg_dict["num_layers"]
+        self.libai_cfg.num_attention_heads = cfg_dict["num_heads"]
+        self.libai_cfg.intermediate_size = cfg_dict["d_ff"]
+        self.libai_cfg.hidden_dropout_prob = cfg_dict["dropout_rate"]
+        self.libai_cfg.attention_probs_dropout_prob = cfg_dict["dropout_rate"]
+        self.libai_cfg.max_position_embeddings = cfg_dict.get("n_positions", 512)
+        self.libai_cfg.relative_attention_num_buckets = cfg_dict["relative_attention_num_buckets"]
+        self.libai_cfg.embedding_dropout_prob = cfg_dict["dropout_rate"]
+        self.libai_cfg.initializer_range = cfg_dict["initializer_factor"]
+        self.libai_cfg.layernorm_eps = cfg_dict["layer_norm_epsilon"]
+        self.libai_cfg.head_size = cfg_dict["d_kv"]
 
-        # update default_cfg by kwargs
+        # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
-            self.default_cfg[k] = v
+            self.libai_cfg[k] = v

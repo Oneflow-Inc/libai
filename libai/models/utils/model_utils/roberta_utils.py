@@ -4,8 +4,8 @@ from .bert_utils import LoadPretrainedBert
 
 
 class LoadPretrainedRoberta(LoadPretrainedBert):
-    def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
-        super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
         """NOTE: base_model_prefix_1 is RoBERTa's prefix in Transformers,
         base_model_prefix_2 is RoBERTa's prefix in LiBai."""
@@ -17,7 +17,7 @@ class LoadPretrainedRoberta(LoadPretrainedBert):
 
         Args:
             flow_state_dict (OrderedDict): model state dict.
-            cfg (dict): model's default config dict.
+            cfg (dict): model's default config dict in LiBai.
 
         Returns:
             OrderedDict: flow state dict.
