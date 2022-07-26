@@ -58,7 +58,6 @@ class TransformerLayer(nn.Module):
         layernorm_epsilon=1e-5,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
-        attn_mask_type=AttnMaskType.padding,
         *,
         layer_idx=0,
         mlp_type="t5",
@@ -72,7 +71,6 @@ class TransformerLayer(nn.Module):
         self.attention_dropout_prob = attention_dropout_prob
         self.output_dropout_prob = output_dropout_prob
         self.layernorm_epsilon = layernorm_epsilon
-        self.attn_mask_type = attn_mask_type
 
         self.layer_idx = layer_idx
         self.is_decoder = is_decoder
@@ -249,7 +247,6 @@ class TransformerLayer(nn.Module):
             output_dropout_prob=self.output_dropout_prob,
             init_method=self.init_method,
             output_layer_init_method=self.output_layer_init_method,
-            attn_mask_type = self.attn_mask_type,
             layer_idx=self.layer_idx,
             has_relative_attention_bias=has_relative_attention_bias,
             is_decoder=is_decoder,

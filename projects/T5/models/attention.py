@@ -60,7 +60,6 @@ class MultiheadAttention(nn.Module):
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
-        attn_mask_type=AttnMaskType.causal,
         *,
         layer_idx=0,
         has_relative_attention_bias=False,
@@ -71,7 +70,6 @@ class MultiheadAttention(nn.Module):
         self.relative_attention_num_buckets = relative_attention_num_buckets
         self.has_relative_attention_bias = has_relative_attention_bias
         self.is_decoder = is_decoder
-        self.attn_mask_type = attn_mask_type
         self.attention_dropout_prob = attention_dropout_prob
 
         if output_layer_init_method is None:

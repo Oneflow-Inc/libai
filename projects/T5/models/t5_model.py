@@ -21,7 +21,7 @@ from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
-from projects.T5.models.transformer_layer import TransformerLayer, AttnMaskType
+from projects.T5.models.transformer_layer import TransformerLayer
 from projects.T5.utils.mask import ExtendedMask
 
 
@@ -70,7 +70,6 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                     mlp_type=mlp_type,
                     has_relative_attention_bias=bool(i == 0),
@@ -103,7 +102,6 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                     mlp_type=mlp_type,
                     has_relative_attention_bias=bool(i - hidden_layers == 0),
