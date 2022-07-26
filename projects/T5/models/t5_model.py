@@ -41,11 +41,6 @@ class T5Model(flow.nn.Module):
         relative_attention_num_buckets,
         initializer_range=0.02,
         layernorm_eps=1e-12,
-        bias_gelu_fusion=False,
-        bias_dropout_fusion=False,
-        scale_mask_softmax_fusion=False,
-        apply_query_key_layer_scaling=False,
-        apply_residual_post_layernorm=False,
         amp_enabled=False,
         mlp_type="t5",
     ) -> None:
@@ -75,11 +70,6 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    bias_gelu_fusion=bias_gelu_fusion,
-                    bias_dropout_fusion=bias_dropout_fusion,
-                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-                    apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-                    apply_residual_post_layernorm=apply_residual_post_layernorm,
                     attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                     mlp_type=mlp_type,
@@ -113,10 +103,6 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    bias_gelu_fusion=bias_gelu_fusion,
-                    bias_dropout_fusion=bias_dropout_fusion,
-                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-                    apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                     mlp_type=mlp_type,
@@ -161,11 +147,6 @@ class T5Model(flow.nn.Module):
             "relative_attention_num_buckets": cfg.relative_attention_num_buckets,
             "initializer_range": cfg.initializer_range,
             "layernorm_eps": cfg.layernorm_eps,
-            "bias_gelu_fusion": cfg.bias_gelu_fusion,
-            "bias_dropout_fusion": cfg.bias_dropout_fusion,
-            "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
-            "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
-            "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
             "mlp_type": cfg.mlp_type,
         }
@@ -236,7 +217,7 @@ class T5Model(flow.nn.Module):
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
         logits = self.lm_head(decoder_states)
-        return logits
+        return decoder_states
 
     def set_cache(self, encoder_states, past_key_values):
         self.encoder_states = encoder_states
@@ -326,10 +307,6 @@ class T5ForPreTraining(flow.nn.Module):
                     dist_utils.get_layer_stage_id(module_block.layer_idx),
                     dist.get_layer_placement(module_block.layer_idx),
                 )
-            # elif isinstance(module_block.origin, LMLogits):
-            #     module_block.config.set_stage(
-            #         dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-            #     )
             elif isinstance(module_block.origin, T5Loss):
                 module_block.config.set_stage(
                     dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
