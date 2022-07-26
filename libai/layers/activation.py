@@ -47,7 +47,6 @@ class Passthrough(nn.Module):
         return x
 
 
-
 class GeLUTanh(nn.Module):
     def __init__(self) -> None:
         super().__init__()
