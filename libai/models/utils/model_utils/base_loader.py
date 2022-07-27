@@ -249,7 +249,7 @@ class ModelLoader(object):
         return model, missing_keys, unexpected_keys, mismatched_keys, error_msgs
 
 
-class LiBaiModelLoader(ModelLoader):
+class ModelLoaderLiBai(ModelLoader):
     """Class used to load `OneFlow` pretrained model.
 
     Args:
@@ -264,7 +264,7 @@ class LiBaiModelLoader(ModelLoader):
     """
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
-        self.base_model_prefix2 = None  # prefix in LiBai
+        self.base_model_prefix_2 = None  # prefix in LiBai
 
     def _load_flow_state_dict(self, state_dict_file):
         # load oneflow_model
@@ -334,7 +334,7 @@ class LiBaiModelLoader(ModelLoader):
         return model
 
 
-class HuggerFaceModelLoader(ModelLoader):
+class ModelLoaderHuggerFace(ModelLoader):
     """Class used to load the [`transformers`](https://huggingface.co/models) 
     pretrained model.
     """
@@ -434,8 +434,8 @@ class HuggerFaceModelLoader(ModelLoader):
         # .. code-block:: python
 
             >>> import libai
-            >>> from libai.config.configs.common.models.bert import cfg
-            >>> from model_utils import BertLoaderHugger
+            >>> from configs.common.models.bert import cfg
+            >>> from libai.models.utils import BertLoaderHugger
 
             >>> loader = BertLoaderHugger(
                     libai.models.BertModel,

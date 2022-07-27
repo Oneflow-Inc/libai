@@ -29,15 +29,25 @@ path/to/pretrained_model_dir/
 You can load pretrained BERT as following:
 ```python
 import libai
-from libai.models.utils.model_utils import LoadPretrainedBert
+from libai.models.utils import BertLoaderHuugerFace, BertLoaderLiBai
 from libai.config.configs.common.models.bert import cfg
 
 
-load_fucntion = LoadPretrainedBert(
+# load huggingface weight
+loader = BertLoaderHuugerFace(
     model=libai.models.BertModel,
-    default_cfg=cfg,
-    pretrained_model_path='path/to/my_pre_trained_model_directory',
-    hidden_dropout_prob=0
+    libai_cfg=cfg,
+    pretrained_model_path='path/to/my_pretrained_model_directory',
+    hidden_dropout_prob=0,
 )
-bert = load_fucntion.load_model()
+bert = loader.load()
+
+# load libai weight
+loader = BertLoaderLiBai(
+    model=libai.models.BertModel,
+    libai_cfg=cfg,
+    pretrained_model_path='path/to/my_pretrained_model_directory',
+    hidden_dropout_prob=0,
+)
+bert = loader.load()
 ```

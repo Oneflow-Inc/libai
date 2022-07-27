@@ -15,7 +15,7 @@
 
 from .graph_base import GraphBase
 from .weight_init import init_method_normal, scaled_init_method_normal
-from .model_utils.bert_utils import LoadPretrainedBert
-from .model_utils.roberta_utils import LoadPretrainedRoberta
-from .model_utils.gpt_utils import LoadPretrainedGPT2
-from .model_utils.t5_utils import LoadPretrainedT5
+from .model_utils.bert_loader import BertLoaderHuggerFace, BertLoaderLiBai
+from .model_utils.roberta_loader import RobertaLoaderHuggerFace, RobertaLoaderLiBai
+from .model_utils.gpt_loader import GPT2LoaderHuggerFace, GPT2LoaderLiBai
+from .model_utils.t5_loader import T5LoaderHuggerFace, T5LoaderLibai

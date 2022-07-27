@@ -2,10 +2,10 @@ import json
 
 import oneflow as flow
 
-from .base_utils import LoadPretrainedBase
+from .base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
 
 
-class LoadPretrainedT5(LoadPretrainedBase):
+class T5LoaderHuggerFace(ModelLoaderHuggerFace):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
@@ -266,3 +266,9 @@ class LoadPretrainedT5(LoadPretrainedBase):
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
             self.libai_cfg[k] = v
+
+
+class T5LoaderLibai(ModelLoaderLiBai):
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix_2 = "t5_model"

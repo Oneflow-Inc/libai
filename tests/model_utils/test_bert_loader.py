@@ -24,8 +24,8 @@ import oneflow.unittest
 from omegaconf import DictConfig
 
 import libai
-from configs.common.models.bert import cfg as default_cfg
-from libai.models.utils import LoadPretrainedBert
+from configs.common.models.bert import cfg as libai_cfg
+from libai.models.utils import BertLoaderHuggerFace
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
@@ -42,7 +42,7 @@ TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_be
 setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestBertUtils(flow.unittest.TestCase):
+class TestBertLoder(flow.unittest.TestCase):
     def setUp(self) -> None:
         cache_dir = os.path.join(
             os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "bert_utils_data"
@@ -85,9 +85,9 @@ class TestBertUtils(flow.unittest.TestCase):
         dist.setup_dist_util(dist_cfg)
 
         # load model
-        load_func = LoadPretrainedBert(
+        load_func = BertLoaderHuggerFace(
             model=libai.models.BertModel,
-            default_cfg=default_cfg,
+            libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
             bias_gelu_fusion=False,
             bias_dropout_fusion=False,
@@ -96,7 +96,7 @@ class TestBertUtils(flow.unittest.TestCase):
             apply_residual_post_layernorm=True,
             amp_enabled=False,
         )
-        model = load_func.load_model()
+        model = load_func.load()
         model.eval()
 
         input_ids = flow.tensor(
@@ -131,9 +131,9 @@ class TestBertUtils(flow.unittest.TestCase):
         dist.setup_dist_util(dist_cfg)
 
         # load model
-        load_func = LoadPretrainedBert(
+        load_func = BertLoaderHuggerFace(
             model=libai.models.BertModel,
-            default_cfg=default_cfg,
+            libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
             bias_gelu_fusion=False,
             bias_dropout_fusion=False,
@@ -142,7 +142,7 @@ class TestBertUtils(flow.unittest.TestCase):
             apply_residual_post_layernorm=True,
             amp_enabled=False,
         )
-        model = load_func.load_model()
+        model = load_func.load()
         model.eval()
 
         input_ids = flow.tensor(

@@ -1,9 +1,9 @@
 import json
 
-from .base_utils import LoadPretrainedBase
+from .base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
 
 
-class LoadPretrainedGPT2(LoadPretrainedBase):
+class GPT2LoaderHuggerFace(ModelLoaderHuggerFace):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
@@ -146,3 +146,9 @@ class LoadPretrainedGPT2(LoadPretrainedBase):
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
             self.libai_cfg[k] = v
+
+
+class GPT2LoaderLiBai(ModelLoaderLiBai):
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix_2 = "GPT_model"

@@ -24,8 +24,8 @@ import oneflow.unittest
 from omegaconf import DictConfig
 
 import libai
-from configs.common.models.gpt import cfg as default_cfg
-from libai.models.utils import LoadPretrainedGPT2
+from configs.common.models.gpt import cfg as libai_cfg
+from libai.models.utils import GPT2LoaderHuggerFace
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
@@ -42,7 +42,7 @@ TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_gp
 setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestGPTUtils(flow.unittest.TestCase):
+class TestGPT2Loader(flow.unittest.TestCase):
     def setUp(self) -> None:
         cache_dir = os.path.join(
             os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "gpt_utils_data"
@@ -84,9 +84,9 @@ class TestGPTUtils(flow.unittest.TestCase):
         dist.setup_dist_util(dist_cfg)
 
         # load model
-        load_func = LoadPretrainedGPT2(
+        load_func = GPT2LoaderHuggerFace(
             model=libai.models.GPTModel,
-            default_cfg=default_cfg,
+            libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
             bias_gelu_fusion=False,
             bias_dropout_fusion=False,
@@ -97,7 +97,7 @@ class TestGPTUtils(flow.unittest.TestCase):
             attention_dropout_prob=0,
             output_dropout_prob=0,
         )
-        model = load_func.load_model()
+        model = load_func.load()
         model.eval()
 
         input_ids = flow.tensor(
@@ -129,9 +129,9 @@ class TestGPTUtils(flow.unittest.TestCase):
         dist.setup_dist_util(dist_cfg)
 
         # load model
-        load_func = LoadPretrainedGPT2(
+        load_func = GPT2LoaderHuggerFace(
             model=libai.models.GPTModel,
-            default_cfg=default_cfg,
+            libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
             bias_gelu_fusion=False,
             bias_dropout_fusion=False,
@@ -142,7 +142,7 @@ class TestGPTUtils(flow.unittest.TestCase):
             attention_dropout_prob=0,
             output_dropout_prob=0,
         )
-        model = load_func.load_model()
+        model = load_func.load()
         model.eval()
 
         input_ids = flow.tensor(

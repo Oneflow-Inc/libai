@@ -1,18 +1,16 @@
-import json
-
 import oneflow as flow
 
-from .base_utils import LoadPretrainedBase
+from .bert_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
 
 
-class LoadPretrainedBert(LoadPretrainedBase):
+class RobertaLoaderHuggerFace(ModelLoaderHuggerFace):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
-        """NOTE: base_model_prefix_1 is BERT's prefix in Transformers.
-        base_model_prefix_2 is BERT's prefix in LiBai."""
-        self.base_model_prefix_1 = "bert"
-        self.base_model_prefix_2 = "bert"
+        """NOTE: base_model_prefix_1 is RoBERTa's prefix in Transformers,
+        base_model_prefix_2 is RoBERTa's prefix in LiBai."""
+        self.base_model_prefix_1 = "roberta"
+        self.base_model_prefix_2 = "roberta"
 
     def _convert_state_dict(self, flow_state_dict, cfg):
         """Convert state_dict's keys to match model.
@@ -36,7 +34,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
         # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
 
-        prefix = "bert." if has_prefix else ""
+        prefix = "roberta." if has_prefix else ""
         index_idx = 3 if has_prefix else 2
         qkv_idx = 6 if has_prefix else 5
 
@@ -44,7 +42,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
 
         for key in list(old_keys):
 
-            # Convert bert's embedding layers
+            # Convert roberta's embedding layers
             if "embeddings" in key:
                 if "word_embeddings" in key:
                     new_key = key.replace("word_embeddings", "vocab_embeddings")
@@ -61,7 +59,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
                 else:
                     oneflow_state_dict[key] = oneflow_state_dict[key]
 
-            # Convert bert's attention layers
+            # Convert roberta's attention layers
             elif "attention" in key:
                 if "self" in key:
                     index = key.split(".")[index_idx]
@@ -127,7 +125,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
                             )
                             oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
 
-            # Convert bert's intermediate layers
+            # Convert roberta's intermediate layers
             elif "intermediate" in key:
                 index = key.split(".")[index_idx]
                 if (
@@ -143,7 +141,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     new_key = new_key.replace("weight", "bias")
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
 
-            # Convert bert's output layers
+            # Convert roberta's output layers
             elif "output" in key:
                 index = key.split(".")[index_idx]
                 if "dense.weight" in key:
@@ -177,7 +175,7 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     new_key = new_key.replace("weight", "bias")
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
 
-            # Convert bert's pooler layers
+            # Convert roberta's pooler layers
             elif "pooler" in key:
                 if "weight" in key:
                     new_key = prefix + "pooler.dense.weight"
@@ -186,53 +184,28 @@ class LoadPretrainedBert(LoadPretrainedBase):
                     new_key = prefix + "pooler.dense.bias"
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
 
-            # Convert cls_head layers
-            elif "cls" in key:
-                if "predictions.bias" in key:
-                    new_key = "cls_head.lm_logits.bias"
+            # Convert lm_head layers
+            elif "lm_head" in key:
+                if "layer_norm.weight" in key:
+                    new_key = "lm_head.layernorm.weight"
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                elif "dense.weight" in key:
-                    new_key = "cls_head.predictions.dense.weight"
-                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                elif "dense.bias" in key:
-                    new_key = "cls_head.predictions.dense.bias"
-                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                elif "LayerNorm.weight" in key:
-                    new_key = "cls_head.predictions.layernorm.weight"
-                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                elif "LayerNorm.bias" in key:
-                    new_key = "cls_head.predictions.layernorm.bias"
+                elif "layer_norm.bias" in key:
+                    new_key = "lm_head.layernorm.bias"
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "seq_relationship" in key:
                     new_key = key.replace("cls", "cls_head")
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
+                elif "lm_head.bias" in key:
+                    new_key = "lm_head.lm_logits.bias"
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
+                else:
+                    oneflow_state_dict[key] = oneflow_state_dict.pop(key)
             else:
                 oneflow_state_dict[key] = oneflow_state_dict.pop(key)
         return oneflow_state_dict
 
-    def _load_config_from_json(self, config_file):
-        """load config from `config.json`, and update default config.
 
-        Args:
-            config_file (str): Path of config file.
-        """
-        with open(config_file, mode="r", encoding="utf-8") as f:
-            cfg_dict = json.load(f)
-
-        # update libai_cfg by config.json
-        for k, v in cfg_dict.items():
-            if k == "num_hidden_layers":
-                self.libai_cfg.hidden_layers = v
-            elif k == "type_vocab_size":
-                self.libai_cfg.num_tokentypes = v
-            elif k == "layer_norm_eps":
-                self.libai_cfg.layernorm_eps = v
-            elif k in cfg_dict:
-                self.libai_cfg[k] = v
-
-        # update libai_cfg by kwargs
-        for k, v in self.kwargs.items():
-            self.libai_cfg[k] = v
-
-        # use original BERT residual connection ordering
-        self.libai_cfg.apply_residual_post_layernorm = True
+class RobertaLoaderLiBai(ModelLoaderLiBai):
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix_2 = "roberta"
