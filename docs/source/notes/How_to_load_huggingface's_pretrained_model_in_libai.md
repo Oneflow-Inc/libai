@@ -51,3 +51,18 @@ loader = BertLoaderLiBai(
 )
 bert = loader.load()
 ```
+
+
+# Use Custom ModelLoader
+
+## ModelLoaderHuggerFace
+If you want to define your own ModelLoaderHuggerFace, you can inherit the base ModelLoaderHuggerFace in `libai.models.utils.model_utils.base_loader`.
+
+Then you need to overwrite the `_convert_state_dict` and `_load_config_from_json` method to use your own ModelLoaderHuggerFace which can be implemented to load HuggingFace's pretrained model in LiBai. 
+
+Finally, you need set `base_model_prefix_1` and `base_model_prefix_2` argument, which represent the base model name in HuggingFace and the base model name in LiBai.
+
+## ModelLoaderLiBai
+If you want to define your own ModelLoaderLiBai, you can inherit the base ModelLoaderLiBai in `libai.models.utils.model_utils.base_loader`.
+
+You just need set `base_model_prefix_2` argument to load LiBai's pretrained model.
