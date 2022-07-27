@@ -1,9 +1,9 @@
 import oneflow as flow
 
-from .bert_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
+from .bert_loader import BertLoaderHuggerFace, BertLoaderLiBai
 
 
-class RobertaLoaderHuggerFace(ModelLoaderHuggerFace):
+class RobertaLoaderHuggerFace(BertLoaderHuggerFace):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
@@ -205,7 +205,7 @@ class RobertaLoaderHuggerFace(ModelLoaderHuggerFace):
         return oneflow_state_dict
 
 
-class RobertaLoaderLiBai(ModelLoaderLiBai):
+class RobertaLoaderLiBai(BertLoaderLiBai):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
         self.base_model_prefix_2 = "roberta"

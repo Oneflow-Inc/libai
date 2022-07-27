@@ -262,6 +262,7 @@ class ModelLoaderLiBai(ModelLoader):
             Whether to return a dictionary containing missing keys, unexpected keys
             and error messages.
     """
+
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
         self.base_model_prefix_2 = None  # prefix in LiBai
@@ -335,14 +336,15 @@ class ModelLoaderLiBai(ModelLoader):
 
 
 class ModelLoaderHuggerFace(ModelLoader):
-    """Class used to load the [`transformers`](https://huggingface.co/models) 
+    """Class used to load the [`transformers`](https://huggingface.co/models)
     pretrained model.
     """
+
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
-        self.base_model_prefix_1 = None # prefix in Transformers
-        self.base_model_prefix_2 = None # prefix in LiBai
-    
+        self.base_model_prefix_1 = None  # prefix in Transformers
+        self.base_model_prefix_2 = None  # prefix in LiBai
+
     def _convert_tensor(self, tensor):
         """Convert PyTorch tensor to OneFlow tensor.
 

@@ -139,9 +139,7 @@ class GPT2LoaderHuggerFace(ModelLoaderHuggerFace):
         self.libai_cfg.layernorm_epsilon = cfg_dict["layer_norm_epsilon"]
         self.libai_cfg.vocab_size = cfg_dict["vocab_size"]
         self.libai_cfg.initializer_range = cfg_dict["initializer_range"]
-        self.libai_cfg.ffn_hidden_size = cfg_dict.get(
-            "n_inner", 4 * self.libai_cfg["hidden_size"]
-        )
+        self.libai_cfg.ffn_hidden_size = cfg_dict.get("n_inner", 4 * self.libai_cfg["hidden_size"])
 
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
