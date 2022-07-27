@@ -16,7 +16,7 @@ class LoadPretrainedSwin(LoadPretrainedBase):
     
         self.base_model_prefix_1 = "swin"
         self.base_model_prefix_2 = "swin"
-    
+        
     def _convert_state_dict(self, flow_state_dict, cfg):
         """Convert state_dict's keys to match model.
 
@@ -30,11 +30,11 @@ class LoadPretrainedSwin(LoadPretrainedBase):
         # The converted checkpoint.
         oneflow_state_dict = flow_state_dict.copy()
 
-        # Get configs
-        num_heads = cfg.get("num_heads")
-        embed_dim = [cfg.get("embed_dim") * 2**i for i in range(0, 4)]
+        # Get configs tiny swin
+        num_heads = cfg.get("num_heads")     # 3 6 12 24
+        embed_dim = [cfg.get("embed_dim") * 2**i for i in range(0, 4)]  # 96 192 384 768
         
-        head_size = [dim/head for dim, head in  zip(embed_dim, num_heads)]
+        head_size = [int(dim/head) for dim, head in  zip(embed_dim, num_heads)] # 32 32 32 32
 
         # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
@@ -64,29 +64,27 @@ class LoadPretrainedSwin(LoadPretrainedBase):
                     elif "bias" in key:
                         new_key = "patch_embed.norm.bias"
                         oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                else:
-                    oneflow_state_dict[key] = oneflow_state_dict[key]
-
+                
             # Convert swin's layernorm layers
-            elif "layernorm_befor" in key:
+            elif "layernorm_before" in key:
                 index_layer = key.split(".")[index_idx_1]
                 index_block = key.split(".")[index_idx_2]
                 if "weight" in key:
                     new_key = "layers." + index_layer + ".blocks." + index_block + ".norm1.weight"
-                    oneflow_state_dict[key] = oneflow_state_dict[key]
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "bias" in key:
                     new_key = "layers." + index_layer + ".blocks." + index_block + ".norm1.bias"
-                    oneflow_state_dict[key] = oneflow_state_dict[key]
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 
             elif "layernorm_after" in key:
                 index_layer = key.split(".")[index_idx_1]
                 index_block = key.split(".")[index_idx_2]
                 if "weight" in key:
                     new_key = "layers." + index_layer + ".blocks." + index_block + ".norm2.weight"
-                    oneflow_state_dict[key] = oneflow_state_dict[key]
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "bias" in key:
                     new_key = "layers." + index_layer + ".blocks." + index_block + ".norm2.bias"
-                    oneflow_state_dict[key] = oneflow_state_dict[key]
+                    oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                     
             # Convert swin's attention layers
             elif "attention" in key:
@@ -100,6 +98,10 @@ class LoadPretrainedSwin(LoadPretrainedBase):
                         new_key = "layers." + index_layer + ".blocks." + index_block + ".attn.relative_position_index"
                         oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                     else:   # qkv
+                        if (
+                            "layers." + index_layer + ".blocks." + index_block + ".attn.qkv.weight" in oneflow_state_dict.keys()
+                        ):
+                            continue
                         q_w = key
                         k_w = q_w.replace("query", "key")
                         v_w = q_w.replace("query", "value")
@@ -124,8 +126,8 @@ class LoadPretrainedSwin(LoadPretrainedBase):
                             dim=-1,
                         )
 
-                        qkv_w = self._fix_qkv_ordering(qkv_w, head_size[index_layer], num_heads[index_layer])
-                        qkv_b = self._fix_qkv_ordering(qkv_b, head_size[index_layer], num_heads[index_layer])
+                        qkv_w = self._fix_qkv_ordering(qkv_w, head_size[int(index_layer)], num_heads[int(index_layer)])
+                        qkv_b = self._fix_qkv_ordering(qkv_b, head_size[int(index_layer)], num_heads[int(index_layer)])
 
                         new_key = (
                            "layers."  + index_layer + ".blocks." + index_block + ".attn.qkv.weight"
@@ -148,9 +150,13 @@ class LoadPretrainedSwin(LoadPretrainedBase):
                 index_layer = key.split(".")[index_idx_1]
                 index_block = key.split(".")[index_idx_2]
                 if "weight" in key:
+                    if (
+                        "layers." + index_layer + ".blocks." + index_block + ".mlp.dense_h_to_4h.weight" in oneflow_state_dict.keys()
+                    ):
+                        continue
                     w = key
                     b = key.replace("weight", "bias")
-                    new_key = prefix + "layers." + index_layer + ".blocks." + index_block + ".mlp.dense_h_to_4h.weight"
+                    new_key = "layers." + index_layer + ".blocks." + index_block + ".mlp.dense_h_to_4h.weight"
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(w)
                     new_key = new_key.replace("weight", "bias")
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
@@ -159,6 +165,10 @@ class LoadPretrainedSwin(LoadPretrainedBase):
                 index_layer = key.split(".")[index_idx_1]
                 index_block = key.split(".")[index_idx_2]
                 if "dense.weight" in key:
+                    if (
+                        "layers." + index_layer + ".blocks." + index_block + ".mlp.dense_4h_to_h.weight" in oneflow_state_dict.keys()
+                    ):
+                        continue
                     w = key
                     b = w.replace("weight", "bias")
                     new_key = "layers." + index_layer + ".blocks." + index_block + ".mlp.dense_4h_to_h.weight"
@@ -172,6 +182,10 @@ class LoadPretrainedSwin(LoadPretrainedBase):
                     new_key = "layers." + index_layer + ".downsample.reduction.weight"
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif "norm" in key:
+                    if(
+                        "layers." + index_layer + ".downsample.norm.weight" in oneflow_state_dict.keys()
+                    ):
+                        continue
                     w = key
                     b = w.replace("weight", "bias")
                     new_key = "layers." + index_layer + ".downsample.norm.weight"
@@ -209,7 +223,7 @@ class LoadPretrainedSwin(LoadPretrainedBase):
             cfg_dict = json.load(f)
 
         # update default_cfg by config.json
-        self.default_cfg.img_size = cfg_dict["cfg_dict"]
+        self.default_cfg.img_size = cfg_dict["image_size"]
         self.default_cfg.patch_size = cfg_dict["patch_size"]
         self.default_cfg.embed_dim = cfg_dict["embed_dim"]
         self.default_cfg.depths = cfg_dict["depths"]
