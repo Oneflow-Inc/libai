@@ -106,7 +106,6 @@ class ModelLoader(object):
         self,
         model,
         state_dict,
-        loaded_keys,
         pretrained_model_path,
         ignore_mismatched_sizes=False,
     ):
@@ -126,6 +125,7 @@ class ModelLoader(object):
         expected_keys = list(model_state_dict.keys())
         prefix = self.base_model_prefix_2
 
+        loaded_keys = state_dict.keys()
         if len(prefix) > 0:
             has_prefix_module = any(s.startswith(prefix) for s in loaded_keys)
             expects_prefix_module = any(s.startswith(prefix) for s in expected_keys)
@@ -305,8 +305,6 @@ class ModelLoaderLiBai(ModelLoader):
 
         flow_state_dict = self._load_flow_state_dict(model_file)
 
-        loaded_state_dict_keys = list(flow_state_dict.keys())
-
         # Instance model
         self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
@@ -321,7 +319,7 @@ class ModelLoaderLiBai(ModelLoader):
             mismatched_keys,
             error_msgs,
         ) = self._load_pretrained_model(
-            self.model, flow_state_dict, loaded_state_dict_keys, self.pretrained_model_path
+            self.model, flow_state_dict, self.pretrained_model_path
         )
 
         if self.output_loading_info:
@@ -477,8 +475,6 @@ class ModelLoaderHuggerFace(ModelLoader):
         flow_state_dict = self._convert_tensors(torch_state_dict)
         flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
 
-        loaded_state_dict_keys = list(flow_state_dict.keys())
-
         # Instance model
         self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
@@ -493,7 +489,7 @@ class ModelLoaderHuggerFace(ModelLoader):
             mismatched_keys,
             error_msgs,
         ) = self._load_pretrained_model(
-            self.model, flow_state_dict, loaded_state_dict_keys, self.pretrained_model_path
+            self.model, flow_state_dict, self.pretrained_model_path
         )
 
         if self.output_loading_info:
