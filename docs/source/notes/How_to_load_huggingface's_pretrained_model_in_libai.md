@@ -2,23 +2,23 @@
 In this tutorial, we will introduce to users how to instantiate a pretrained oneflow model.
 
 ## Steps
-1. Prepare pretrained model weights file, which can be the form of `OneFlow` or `Transfomers`.
+1. Prepare pretrained model weights file, which can be the form of `OneFlow` or `HuggingFace`.
 - `OneFlow`'s pretrained model weights saved using [`oneflow.save()`].
 - `Huggingface`'s pretrained model weights file(`pytorch_model.bin`) can be downloaded from https://huggingface.co/models.
 
 2. Prepare config file.
-> The config file is required when loading the `Transformers` model.
-> When loading OneFlow config file, only need to import it from `configs/common/models`.
-- Config file(`config.json`) can be downloaded from https://huggingface.co/models.
+> The config file is required when loading the `HuggingFace` model.
+> `OneFlow`'s config file can be import directly from `configs/common/models`.
+- `Huggingface`'s config file(`config.json`) can be downloaded from https://huggingface.co/models.
 
-3. Move the files to the folder. The file structure should be like:
+3. The structure of the pretrained model folder should be like:
 ```bash
-# Load OneFlow model
+# OneFlow pretrained model
 $ tree pretrained_model_dir
 path/to/pretrained_model_dir/
  └── oneflow_model
 
-# Load Transformers model
+# Huggingface pretrained model
 $ tree pretrained_model_dir
 path/to/pretrained_model_dir/
  ├── pytorch_model.bin
@@ -29,12 +29,12 @@ path/to/pretrained_model_dir/
 You can load pretrained BERT as following:
 ```python
 import libai
-from libai.models.utils import BertLoaderHuugerFace, BertLoaderLiBai
+from libai.models.utils import BertLoaderHuggerFace, BertLoaderLiBai
 from libai.config.configs.common.models.bert import cfg
 
 
 # load huggingface weight
-loader = BertLoaderHuugerFace(
+loader = BertLoaderHuggerFace(
     model=libai.models.BertModel,
     libai_cfg=cfg,
     pretrained_model_path='path/to/my_pretrained_model_directory',
@@ -55,14 +55,14 @@ bert = loader.load()
 
 # Use Custom ModelLoader
 
-## ModelLoaderHuggerFace
-If you want to define your own ModelLoaderHuggerFace, you can inherit the base ModelLoaderHuggerFace in `libai.models.utils.model_utils.base_loader`.
+## Model Loader for HuggerFace
+If you want to define your own HuggerFace's model loader, you can inherit the base `ModelLoaderHuggerFace` in `libai.models.utils.model_utils.base_loader`.
 
-Then you need to overwrite the `_convert_state_dict` and `_load_config_from_json` method to use your own ModelLoaderHuggerFace which can be implemented to load HuggingFace's pretrained model in LiBai. 
+Then you need to overwrite the `_convert_state_dict` and `_load_config_from_json` method to load HuggingFace's pretrained model in LiBai. 
 
-Finally, you need set `base_model_prefix_1` and `base_model_prefix_2` argument, which represent the base model name in HuggingFace and the base model name in LiBai.
+Finally, you need set `base_model_prefix_1` and `base_model_prefix_2` argument, which represent the base model name for HuggingFace and LiBai respectively.
 
-## ModelLoaderLiBai
-If you want to define your own ModelLoaderLiBai, you can inherit the base ModelLoaderLiBai in `libai.models.utils.model_utils.base_loader`.
+## Model Loader for LiBai
+If you want to define your own LiBai's model loader, you can inherit the base `ModelLoaderLiBai` class in `libai.models.utils.model_utils.base_loader`.
 
-You just need set `base_model_prefix_2` argument to load LiBai's pretrained model.
+You just need to set `base_model_prefix_2` argument to load LiBai's pretrained model.
