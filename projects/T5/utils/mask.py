@@ -21,13 +21,11 @@ from libai.utils import distributed as dist
 class ExtendedMask(flow.nn.Module):
     def forward(self, x, input_tensor=None, is_decoder=False):
         if x.dim() == 3:
-            # extended_mask = x.unsqueeze(1)
             extended_mask = x[:, None, :, :]
         elif x.dim() == 2:
             if is_decoder:
                 extended_mask = self.create_extended_mask_for_decoder(x, input_tensor)
             else:
-                # extended_mask = x.unsqueeze(1).unsqueeze(1)
                 extended_mask = x[:, None, None, :]
 
         return extended_mask
@@ -39,9 +37,6 @@ class ExtendedMask(flow.nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=x.placement,
         )
-        # causal_mask = seq_ids.unsqueeze(0).unsqueeze(0).repeat(
-        #     batch_size, seq_len, 1
-        # ) <= seq_ids.unsqueeze(0).unsqueeze(-1)
         causal_mask = (
             seq_ids[None, None, :].repeat(batch_size, seq_len, 1) <= seq_ids[None, :, None]
         )
@@ -63,6 +58,5 @@ class ExtendedMask(flow.nn.Module):
                 axis=-1,
             )
 
-        # extended_mask = causal_mask.unsqueeze(1) * x.unsqueeze(1).unsqueeze(1)
         extended_mask = causal_mask[:, None, :, :] * x[:, None, None, :]
         return extended_mask

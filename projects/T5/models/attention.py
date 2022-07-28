@@ -25,11 +25,6 @@ from libai.utils import distributed as dist
 from projects.T5.models.embedding import Embedding
 
 
-class AttnMaskType(enum.Enum):
-    padding = 1
-    causal = 2
-
-
 class MultiheadAttention(nn.Module):
     """Multi-head attention layer, support self attention and cross attention.
 
