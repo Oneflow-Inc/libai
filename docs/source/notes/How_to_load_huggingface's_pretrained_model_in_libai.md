@@ -37,7 +37,7 @@ from libai.config.configs.common.models.bert import cfg
 loader = BertLoaderHuggerFace(
     model=libai.models.BertModel,
     libai_cfg=cfg,
-    pretrained_model_path='path/to/my_pretrained_model_directory',
+    pretrained_model_path='path/to/huggingface_pretrained_model_directory',
     hidden_dropout_prob=0,
 )
 bert = loader.load()
@@ -46,7 +46,7 @@ bert = loader.load()
 loader = BertLoaderLiBai(
     model=libai.models.BertModel,
     libai_cfg=cfg,
-    pretrained_model_path='path/to/my_pretrained_model_directory',
+    pretrained_model_path='path/to/libai_pretrained_model_directory',
     hidden_dropout_prob=0,
 )
 bert = loader.load()
@@ -62,7 +62,55 @@ Then you need to overwrite the `_convert_state_dict` and `_load_config_from_json
 
 Finally, you need set `base_model_prefix_1` and `base_model_prefix_2` argument, which represent the base model name for HuggingFace and LiBai respectively.
 
+The following code shows how to use custom ModelLoaderHuggerFace:
+
+```python
+from libai.models.utils import ModelLoaderHuggerFace
+
+
+class ToyModelLoaderHuggerFace(ModelLoaderHuggerFace):
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+
+        """NOTE: base_model_prefix_1 is ToyModel's prefix in Transformers.
+        base_model_prefix_2 is ToyModel's prefix in LiBai."""
+        self.base_model_prefix_1 = "toy_model"
+        self.base_model_prefix_2 = "toy_model"
+
+    def _convert_state_dict(self, flow_state_dict, cfg):
+        """Convert state_dict's keys to match model.
+
+        Args:
+            flow_state_dict (OrderedDict): model state dict.
+            cfg (dict): model's default config dict in LiBai.
+
+        Returns:
+            OrderedDict: flow state dict.
+        """
+        ...
+
+    def _load_config_from_json(self, config_file):
+        """load config from `config.json`, and update default config.
+
+        Args:
+            config_file (str): Path of config file.
+        """
+        ...
+```
+
 ## Model Loader for LiBai
 If you want to define your own LiBai's model loader, you can inherit the base `ModelLoaderLiBai` class in `libai.models.utils.model_utils.base_loader`.
 
 You just need to set `base_model_prefix_2` argument to load LiBai's pretrained model.
+
+The following code shows how to use custom ModelLoaderLiBai:
+
+```python
+from libai.models.utils import ModelLoaderLiBai
+
+
+class ToyModelLoaderLiBai(ModelLoaderLiBai):
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix_2 = "toy_model"
+```
