@@ -154,6 +154,7 @@ class RobertaLoss(nn.Module):
 class RobertaModel(BertModel):
     """The bare Roberta Model transformer outputting raw hidden-states without
     any specific head on top.
+        
         Args:
             vocab_size (int):
                 The size of vocabulary file.
