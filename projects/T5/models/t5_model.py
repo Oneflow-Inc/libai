@@ -22,7 +22,7 @@ from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
-from projects.T5.models.transformer_layer import AttnMaskType, TransformerLayer
+from projects.T5.models.transformer_layer import TransformerLayer
 from projects.T5.utils.mask import ExtendedMask
 
 
@@ -42,11 +42,6 @@ class T5Model(flow.nn.Module):
         relative_attention_num_buckets,
         initializer_range=0.02,
         layernorm_eps=1e-12,
-        bias_gelu_fusion=False,
-        bias_dropout_fusion=False,
-        scale_mask_softmax_fusion=False,
-        apply_query_key_layer_scaling=False,
-        apply_residual_post_layernorm=False,
         amp_enabled=False,
         mlp_type="t5",
     ) -> None:
@@ -76,12 +71,6 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    bias_gelu_fusion=bias_gelu_fusion,
-                    bias_dropout_fusion=bias_dropout_fusion,
-                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-                    apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-                    apply_residual_post_layernorm=apply_residual_post_layernorm,
-                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                     mlp_type=mlp_type,
                     has_relative_attention_bias=bool(i == 0),
@@ -114,11 +103,6 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    bias_gelu_fusion=bias_gelu_fusion,
-                    bias_dropout_fusion=bias_dropout_fusion,
-                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-                    apply_query_key_layer_scaling=apply_query_key_layer_scaling,
-                    attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
                     mlp_type=mlp_type,
                     has_relative_attention_bias=bool(i - hidden_layers == 0),
@@ -157,11 +141,6 @@ class T5Model(flow.nn.Module):
             "relative_attention_num_buckets": cfg.relative_attention_num_buckets,
             "initializer_range": cfg.initializer_range,
             "layernorm_eps": cfg.layernorm_eps,
-            "bias_gelu_fusion": cfg.bias_gelu_fusion,
-            "bias_dropout_fusion": cfg.bias_dropout_fusion,
-            "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
-            "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
-            "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
             "mlp_type": cfg.mlp_type,
         }
@@ -231,8 +210,8 @@ class T5Model(flow.nn.Module):
             self.set_cache(encoder_states, past_key_values=presents)
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
-        logits = self.lm_head(decoder_states)
-        return logits
+        self.lm_head(decoder_states)
+        return decoder_states
 
     def set_cache(self, encoder_states, past_key_values):
         self.encoder_states = encoder_states

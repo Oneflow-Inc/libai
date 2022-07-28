@@ -30,7 +30,7 @@ class LMLogits(nn.Module):
                     flow.zeros(
                         (vocab_size,),
                         dtype=flow.float32,
-                        placement=dist.get_layer_placement(-1),
+                        placement=dist.get_layer_placement(layer_idx),
                         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
                     )
                 )

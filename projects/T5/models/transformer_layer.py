@@ -17,7 +17,7 @@ import oneflow.nn as nn
 
 from libai.layers.droppath import DropPath
 from libai.utils import distributed as dist
-from projects.T5.models.attention import AttnMaskType, MultiheadAttention
+from projects.T5.models.attention import MultiheadAttention
 from projects.T5.models.layer_norm import LayerNorm
 from projects.T5.models.mlp import MT5MLP, T5MLP
 
@@ -41,16 +41,6 @@ class TransformerLayer(nn.Module):
         init_method: method to initialize the input layer weights.
         output_layer_init_method: method to initialize the output layer weights.
             If None, use `init_method`.
-        bias_gelu_fusion: whether fuse add bias and gelu. Default: ``False``.
-        bias_dropout_fusion: whether fuse add bias and dropout. Default: ``False``.
-        scale_mask_softmax_fusion: whether to fuse scale, mask and softmax. Default: ``False``.
-        apply_query_key_layer_scaling: if `true`, scaling the attention score by layer index.
-            Default: ``False``.
-        apply_residual_post_layernorm: if ``true``, use original BERT residual
-            connection ordering. Otherwise, use Megatron BERT residual connection which
-            is more stable when scaling model size introduced in
-            https://arxiv.org/pdf/1909.08053.pdf.
-            Default: ``False``.
         layer_idx: the layer index, which determines the placement.
     """
 
@@ -68,12 +58,6 @@ class TransformerLayer(nn.Module):
         layernorm_epsilon=1e-5,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
-        bias_gelu_fusion=False,
-        bias_dropout_fusion=False,
-        scale_mask_softmax_fusion=False,
-        apply_query_key_layer_scaling=False,
-        apply_residual_post_layernorm=False,
-        attn_mask_type=AttnMaskType.padding,
         *,
         layer_idx=0,
         mlp_type="t5",
@@ -87,16 +71,8 @@ class TransformerLayer(nn.Module):
         self.attention_dropout_prob = attention_dropout_prob
         self.output_dropout_prob = output_dropout_prob
         self.layernorm_epsilon = layernorm_epsilon
-        self.attn_mask_type = attn_mask_type
-
         self.layer_idx = layer_idx
         self.is_decoder = is_decoder
-
-        self.bias_gelu_fusion = bias_gelu_fusion
-        self.bias_dropout_fusion = bias_dropout_fusion
-        self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
-        self.apply_query_key_layer_scaling = apply_query_key_layer_scaling
-        self.apply_residual_post_layernorm = apply_residual_post_layernorm
 
         self.init_method = init_method
         if output_layer_init_method is None:
@@ -135,8 +111,6 @@ class TransformerLayer(nn.Module):
                 self.output_dropout_prob,
                 self.init_method,
                 output_layer_init_method=self.output_layer_init_method,
-                bias_gelu_fusion=self.bias_gelu_fusion,
-                bias_dropout_fusion=self.bias_dropout_fusion,
                 layer_idx=self.layer_idx,
             )
         elif mlp_type == "t5":
@@ -146,8 +120,6 @@ class TransformerLayer(nn.Module):
                 self.output_dropout_prob,
                 self.init_method,
                 output_layer_init_method=self.output_layer_init_method,
-                bias_gelu_fusion=self.bias_gelu_fusion,
-                bias_dropout_fusion=self.bias_dropout_fusion,
                 layer_idx=self.layer_idx,
             )
 
@@ -217,12 +189,7 @@ class TransformerLayer(nn.Module):
         else:
             presents = None
 
-        if self.apply_residual_post_layernorm:
-            residual = layernorm_output
-        else:
-            residual = hidden_states
-
-        hidden_states = residual + attention_output
+        hidden_states = hidden_states + attention_output
 
         layernorm_output = self.post_attention_layernorm(hidden_states)
 
@@ -246,23 +213,14 @@ class TransformerLayer(nn.Module):
                 presents = presents + decoder_presents
 
             attention_output = self.drop_path(attention_output)
-            if self.apply_residual_post_layernorm:
-                residual = layernorm_output
-            else:
-                residual = hidden_states
 
-            hidden_states = residual + attention_output
+            hidden_states = hidden_states + attention_output
             layernorm_output = self.post_cross_attention_layernorm(hidden_states)
 
         mlp_output = self.mlp(layernorm_output)
         mlp_output = self.drop_path(mlp_output)
 
-        if self.apply_residual_post_layernorm:
-            residual = layernorm_output
-        else:
-            residual = hidden_states
-
-        output = residual + mlp_output
+        output = hidden_states + mlp_output
 
         if use_cache:
             output = (output, presents)
@@ -288,10 +246,6 @@ class TransformerLayer(nn.Module):
             output_dropout_prob=self.output_dropout_prob,
             init_method=self.init_method,
             output_layer_init_method=self.output_layer_init_method,
-            bias_dropout_fusion=self.bias_dropout_fusion,
-            scale_mask_softmax_fusion=self.scale_mask_softmax_fusion,
-            apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
-            attn_mask_type=self.attn_mask_type,
             layer_idx=self.layer_idx,
             has_relative_attention_bias=has_relative_attention_bias,
             is_decoder=is_decoder,

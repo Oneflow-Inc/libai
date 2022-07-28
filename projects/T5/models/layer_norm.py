@@ -30,9 +30,7 @@ class LayerNorm(flow.nn.Module):
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )
-        self.variance_epsilon = eps
+        self.l2norm_epsilon = eps
 
     def forward(self, hidden_states):
-        variance = hidden_states.to(flow.float32).pow(2).mean(-1, keepdim=True)
-        hidden_states = hidden_states * flow.rsqrt(variance + self.variance_epsilon)
-        return self.weight * hidden_states
+        return flow._C.rms_layer_norm(hidden_states, self.weight, self.l2norm_epsilon)
