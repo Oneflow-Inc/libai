@@ -110,7 +110,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
         logits = model(input_ids)
         self.assertTrue(
             np.allclose(
-                np.array(-93525470.0),
+                np.array(-93505072.0),
                 logits.sum().data.numpy(),
             )
         )
@@ -155,7 +155,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
         logits = model(input_ids)
         self.assertTrue(
             np.allclose(
-                np.array(-93525470.0),
+                np.array(-93505072.0),
                 logits.sum().data.numpy(),
             )
         )
