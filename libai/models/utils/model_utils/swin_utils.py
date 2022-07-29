@@ -30,16 +30,9 @@ class LoadPretrainedSwin(LoadPretrainedBase):
         # The converted checkpoint.
         oneflow_state_dict = flow_state_dict.copy()
 
-        # Get configs
-        num_heads = cfg.get("num_heads")     # 3 6 12 24
-        embed_dim = [cfg.get("embed_dim") * 2**i for i in range(0, 4)]  # 96 192 384 768
-        
-        head_size = [int(dim/head) for dim, head in  zip(embed_dim, num_heads)] # 32 32 32 32
-
         # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
 
-        prefix = "swin." if has_prefix else ""
         index_idx_1 = 3 if has_prefix else 2
         index_idx_2 = 5 if has_prefix else 4
         # qkv_idx = 7
