@@ -318,9 +318,7 @@ class ModelLoaderLiBai(ModelLoader):
             unexpected_keys,
             mismatched_keys,
             error_msgs,
-        ) = self._load_pretrained_model(
-            self.model, flow_state_dict, self.pretrained_model_path
-        )
+        ) = self._load_pretrained_model(self.model, flow_state_dict, self.pretrained_model_path)
 
         if self.output_loading_info:
             loading_info = {
@@ -488,9 +486,7 @@ class ModelLoaderHuggerFace(ModelLoader):
             unexpected_keys,
             mismatched_keys,
             error_msgs,
-        ) = self._load_pretrained_model(
-            self.model, flow_state_dict, self.pretrained_model_path
-        )
+        ) = self._load_pretrained_model(self.model, flow_state_dict, self.pretrained_model_path)
 
         if self.output_loading_info:
             loading_info = {
