@@ -16,7 +16,6 @@ scipy
 sentencepiece>=0.1
 tabulate
 termcolor
-torch
 tqdm
 pybind11
 portalocker
