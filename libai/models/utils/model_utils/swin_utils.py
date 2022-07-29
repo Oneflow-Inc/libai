@@ -30,7 +30,7 @@ class LoadPretrainedSwin(LoadPretrainedBase):
         # The converted checkpoint.
         oneflow_state_dict = flow_state_dict.copy()
 
-        # Get configs tiny swin
+        # Get configs
         num_heads = cfg.get("num_heads")     # 3 6 12 24
         embed_dim = [cfg.get("embed_dim") * 2**i for i in range(0, 4)]  # 96 192 384 768
         
@@ -91,13 +91,14 @@ class LoadPretrainedSwin(LoadPretrainedBase):
                 index_layer = key.split(".")[index_idx_1]
                 index_block = key.split(".")[index_idx_2]
                 if "self" in key:
-                    if "relative_position_bias_table" in key:  # convert relative_position_bias_table/index
+                    # convert swin's relative_position_bias_table but not relative_position_index
+                    if "relative_position_bias_table" in key:
                         new_key = "layers." + index_layer + ".blocks." + index_block + ".attn.relative_position_bias_table"
                         oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                     elif "relative_position_index" in key:
                         new_key = "layers." + index_layer + ".blocks." + index_block + ".attn.relative_position_index"
-                        oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                    else:   # qkv
+                        oneflow_state_dict.pop(key)
+                    else:
                         if (
                             "layers." + index_layer + ".blocks." + index_block + ".attn.qkv.weight" in oneflow_state_dict.keys()
                         ):
@@ -125,9 +126,6 @@ class LoadPretrainedSwin(LoadPretrainedBase):
                             ),
                             dim=-1,
                         )
-
-                        qkv_w = self._fix_qkv_ordering(qkv_w, head_size[int(index_layer)], num_heads[int(index_layer)])
-                        qkv_b = self._fix_qkv_ordering(qkv_b, head_size[int(index_layer)], num_heads[int(index_layer)])
 
                         new_key = (
                            "layers."  + index_layer + ".blocks." + index_block + ".attn.qkv.weight"
@@ -237,7 +235,3 @@ class LoadPretrainedSwin(LoadPretrainedBase):
         # update default_cfg by kwargs
         for k, v in self.kwargs.items():
             self.default_cfg[k] = v
-
-if __name__ == "__main__":
-    model = SwinTransformer()
-    print(model)
