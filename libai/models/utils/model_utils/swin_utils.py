@@ -35,8 +35,7 @@ class LoadPretrainedSwin(LoadPretrainedBase):
 
         index_idx_1 = 3 if has_prefix else 2
         index_idx_2 = 5 if has_prefix else 4
-        # qkv_idx = 7
-        
+    
         old_keys = oneflow_state_dict.keys()
 
         for key in list(old_keys):
