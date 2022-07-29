@@ -33,7 +33,7 @@ Here we explain the evaluation indicators in the following tables:
 - **ac**: enable activation checkpointing
 - **mb**: micro-batch size per gpu
 - **gb**: global batch size total
-- **dxmxp**:
+- **d x m x p**:
   - d: data-parallel-size
   - m: tensor-model-parallel-size
   - p: pipeline-model-parallel-size
@@ -46,7 +46,7 @@ Here we explain the evaluation indicators in the following tables:
 
 ### Data Parallel
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>BERT</th>
@@ -103,7 +103,7 @@ Here we explain the evaluation indicators in the following tables:
     </tbody>
 </table>
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>GPT-2</th>
@@ -162,7 +162,7 @@ Here we explain the evaluation indicators in the following tables:
 
 ### Tensor Model Parallel 
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>BERT</th>
@@ -201,7 +201,7 @@ Here we explain the evaluation indicators in the following tables:
     </tbody>
 </table>
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>GPT-2</th>
@@ -242,7 +242,7 @@ Here we explain the evaluation indicators in the following tables:
 
 ### Pipeline Model Parallel
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>BERT</th>
@@ -281,7 +281,7 @@ Here we explain the evaluation indicators in the following tables:
     </tbody>
 </table>
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>GPT-2</th>
@@ -324,7 +324,7 @@ Here we explain the evaluation indicators in the following tables:
 
 #### Data Parallel + Tensor Model Parallel
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>BERT</th>
@@ -381,7 +381,7 @@ Here we explain the evaluation indicators in the following tables:
     </tbody>
 </table>
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>GPT-2</th>
@@ -440,7 +440,7 @@ Here we explain the evaluation indicators in the following tables:
 
 #### Data Parallel + Pipeline Model Parallel
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>BERT</th>
@@ -479,7 +479,7 @@ Here we explain the evaluation indicators in the following tables:
     </tbody>
 </table>
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>GPT-2</th>
@@ -520,7 +520,7 @@ Here we explain the evaluation indicators in the following tables:
 
 ### 3-D Parallel
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>BERT</th>
@@ -559,7 +559,7 @@ Here we explain the evaluation indicators in the following tables:
     </tbody>
 </table>
 
-<table>
+<table class="docutils">
     <thead>
         <tr class="header">
             <th>GPT-2</th>
