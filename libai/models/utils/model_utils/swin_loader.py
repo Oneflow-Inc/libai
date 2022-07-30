@@ -5,15 +5,15 @@ import oneflow as flow
 from .base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
 
 
-class SwinLoaderHuggingface(ModelLoaderHuggerFace):
-    def __init__(self, model, default_cfg, pretrained_model_path, **kwargs):
-        super().__init__(model, default_cfg, pretrained_model_path, **kwargs)
+class SwinLoaderHuggerface(ModelLoaderHuggerFace):
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
         
         """NOTE: base_model_prefix_1 is SWIN's prefix in Transformers.
         base_model_prefix_2 is SWIN's prefix in LiBai."""
     
         self.base_model_prefix_1 = "swin"
-        self.base_model_prefix_2 = "swin"
+        self.base_model_prefix_2 = ""
         
     def _convert_state_dict(self, flow_state_dict, cfg):
         """Convert state_dict's keys to match model.
@@ -87,7 +87,7 @@ class SwinLoaderHuggingface(ModelLoaderHuggerFace):
                     elif "relative_position_index" in key:
                         new_key = "layers." + index_layer + ".blocks." + index_block + ".attn.relative_position_index"
                         oneflow_state_dict.pop(key)
-                    else:   # qkv
+                    else:
                         if (
                             "layers." + index_layer + ".blocks." + index_block + ".attn.qkv.weight" in oneflow_state_dict.keys()
                         ):
@@ -209,22 +209,22 @@ class SwinLoaderHuggingface(ModelLoaderHuggerFace):
         with open(config_file, mode="r", encoding="utf-8") as f:
             cfg_dict = json.load(f)
 
-        # update default_cfg by config.json
-        self.default_cfg.img_size = cfg_dict["image_size"]
-        self.default_cfg.patch_size = cfg_dict["patch_size"]
-        self.default_cfg.embed_dim = cfg_dict["embed_dim"]
-        self.default_cfg.depths = cfg_dict["depths"]
-        self.default_cfg.num_heads = cfg_dict["num_heads"]
-        self.default_cfg.window_size = cfg_dict["window_size"]
-        self.default_cfg.mlp_ratio = cfg_dict["mlp_ratio"]
-        self.default_cfg.qkv_bias = cfg_dict["qkv_bias"]
-        self.default_cfg.drop_path_rate = cfg_dict["drop_path_rate"]
+        # update libai_cfg by config.json
+        self.libai_cfg.img_size = cfg_dict["image_size"]
+        self.libai_cfg.patch_size = cfg_dict["patch_size"]
+        self.libai_cfg.embed_dim = cfg_dict["embed_dim"]
+        self.libai_cfg.depths = cfg_dict["depths"]
+        self.libai_cfg.num_heads = cfg_dict["num_heads"]
+        self.libai_cfg.window_size = cfg_dict["window_size"]
+        self.libai_cfg.mlp_ratio = cfg_dict["mlp_ratio"]
+        self.libai_cfg.qkv_bias = cfg_dict["qkv_bias"]
+        self.libai_cfg.drop_path_rate = cfg_dict["drop_path_rate"]
         
-        # update default_cfg by kwargs
+        # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
-            self.default_cfg[k] = v
+            self.libai_cfg[k] = v
 
 class SwinLoaderLiBai(ModelLoaderLiBai):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
-        self.base_model_prefix_2 = "swin"
+        self.base_model_prefix_2 = ""
