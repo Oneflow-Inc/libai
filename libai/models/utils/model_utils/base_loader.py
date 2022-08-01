@@ -422,7 +422,7 @@ class ModelLoaderHuggerFace(ModelLoader):
         try:
             import torch
         except ImportError:
-            raise ImportError(f"Load torch state dict need torch.")
+            raise ImportError("Load torch state dict need torch.")
 
         # load pytorch_model.bin
         state_dict = torch.load(state_dict_file, map_location="cpu")

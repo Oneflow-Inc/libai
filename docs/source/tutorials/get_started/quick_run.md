@@ -55,6 +55,31 @@ train.dist.tensor_parallel_size=2
 bash tools/train.sh tools/train_net.py configs/bert_large_pretrain.py 8
 ```
 
+- To train `BertForPreTraining` model on 2 nodes with 16 GPUs, 
+  
+  in `node0`, run:
+  ```bash
+  NODE=2 NODE_RANK=0 ADDR=192.168.0.0 PORT=12345 bash tools/train.sh tools/train_net.py configs/bert_large_pretrain.py 8
+  ``` 
+  `NODE=2` means total number of nodes
+  
+  `NODE_RANK=0` means current node is node0
+
+  `ADDR=192.168.0.0` means the ip address of node0
+
+  `PORT=12345` means the port of node0
+
+  in `node1`, run:
+  ```bash
+  NODE=2 NODE_RANK=1 ADDR=192.168.0.0 PORT=12345 bash tools/train.sh tools/train_net.py configs/bert_large_pretrain.py 8
+  ``` 
+  `NODE=2` means total number of nodes
+  
+  `NODE_RANK=1` means current node is node1
+
+  `ADDR=192.168.0.0` means the ip address of node0
+
+  `PORT=12345` means the port of node0
 
 ## Train VisionTransformer on ImageNet Dataset
 ### Prepare the Data
