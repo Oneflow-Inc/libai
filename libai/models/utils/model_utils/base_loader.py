@@ -2,7 +2,6 @@ import logging
 import os
 
 import oneflow as flow
-import torch
 from yaml import warnings
 
 import libai.utils.distributed as dist
@@ -420,6 +419,11 @@ class ModelLoaderHuggerFace(ModelLoader):
         raise NotImplementedError("_load_config_from_json not implemented")
 
     def _load_torch_state_dict(self, state_dict_file):
+        try:
+            import torch
+        except ImportError:
+            raise ImportError(f"Load torch state dict need torch.")
+
         # load pytorch_model.bin
         state_dict = torch.load(state_dict_file, map_location="cpu")
         return state_dict
