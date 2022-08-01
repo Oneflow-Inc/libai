@@ -56,7 +56,7 @@ class PositionEmbeddingSine(nn.Module):
             y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
             x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
 
-        dim_t = flow.arange(self.num_pos_feats)
+        dim_t = flow.arange(self.num_pos_feats, dtype=flow.float32)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
         if x_embed.is_global:
             pos_x = x_embed[:, :, :, None] / dim_t.to_global(sbp=x_embed.sbp, placement=x_embed.placement)
