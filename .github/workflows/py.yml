@@ -62,6 +62,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --pre oneflow -f https://staging.oneflow.info/branch/master/cpu
           python -m pip install pybind11
+          python -m pip install torch torchvision torchaudio
       
       - name: Build and install
         run: |
