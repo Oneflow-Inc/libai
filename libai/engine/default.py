@@ -565,7 +565,7 @@ class DefaultTrainer(TrainerBase):
     def build_optimizer(cls, cfg, model):
         """
         Returns:
-            torch.optim.Optimizer:
+            flow.optim.Optimizer:
 
         It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.

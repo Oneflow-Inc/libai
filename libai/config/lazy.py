@@ -47,7 +47,7 @@ def locate(name: str) -> Any:
     """
     obj = pydoc.locate(name)
 
-    # Some cases (e.g. torch.optim.sgd.SGD) not handled correctly
+    # Some cases (e.g. flow.optim.sgd.SGD) not handled correctly
     # by pydoc.locate. Try a private function from hydra.
     if obj is None:
         try:
