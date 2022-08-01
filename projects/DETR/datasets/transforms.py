@@ -23,7 +23,6 @@ def crop(image, target, region):
     target = target.copy()
     i, j, h, w = region
 
-    # should we do something wrt the original size?
     target["size"] = flow.tensor([h, w])
 
     fields = ["labels", "area", "iscrowd"]
@@ -43,7 +42,6 @@ def crop(image, target, region):
         fields.append("boxes")
 
     if "masks" in target:
-        # FIXME should we update the area here if there are no boxes?
         target['masks'] = target['masks'][:, i:i + h, j:j + w]
         fields.append("masks")
 
@@ -56,7 +54,6 @@ def crop(image, target, region):
             keep = flow.all(cropped_boxes[:, 1, :] > cropped_boxes[:, 0, :], dim=1)
         else:
             keep = target['masks'].flatten(1).any(1)
-
         for field in fields:
             target[field] = target[field][keep]
     return cropped_image, target
@@ -87,14 +84,23 @@ def resize(image, target, size, max_size=None):
 
         if (w <= h and w == size) or (h <= w and h == size):
             return (h, w)
-
+        # (ziqiu chi)
+        # Without min op, it will generate shape > max_size.
+        # Since I fix the max_size in padding_tensor_from_tensor_list func, 
+        # I use the min op here, which is different from the original implementation.
         if w < h:
             ow = size
-            oh = int(size * h / w)
+            if max_size is not None:
+                oh = min(int(size * h / w), max_size)
+            else:
+                oh = int(size * h / w)    
         else:
             oh = size
-            ow = int(size * w / h)
-
+            if max_size is not None:
+                ow = min(int(size * w / h), max_size)
+            else:
+                ow = int(size * w / h)
+                
         return (oh, ow)
 
     def get_size(image_size, size, max_size=None):
@@ -103,6 +109,7 @@ def resize(image, target, size, max_size=None):
         else:
             return get_size_with_aspect_ratio(image_size, size, max_size)
     size = get_size(image.size, size, max_size)
+
     rescaled_image = F.resize(image, size)
     if target is None:
         return rescaled_image, None
@@ -188,8 +195,6 @@ class RandomHorizontalFlip(object):
 
 class RandomResize(object):
     def __init__(self, sizes, max_size=None):
-        # if LazyCall(RandomResize), assert sizes->list fail 
-        # assert isinstance(sizes, (list, tuple))
         self.sizes = sizes
         self.max_size = max_size
 
@@ -285,7 +290,6 @@ def make_coco_transforms(image_set):
     ])
 
     scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
-    # NOTE RandomResize makes parallel training stuck
     if image_set == 'train':
         return LazyCall(Compose)(
             transforms=[

@@ -81,9 +81,6 @@ class DetrTransformerLayer(TransformerLayer):
                 query = key = self.with_pos_embed(hidden_states, query_position_embedding)
             else:
                 query = key = self.with_pos_embed(hidden_states, position_embedding) 
-                # query shape
-                # when position_embedding.sbp is split(0), (1764, 8, 256)
-                # when position_embedding.sbp is broadcast, (1764, 8, 256)
         attention_output = self.self_attention(
             (query, key, hidden_states),
             attention_mask=attention_mask,

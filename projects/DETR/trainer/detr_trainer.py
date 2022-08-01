@@ -12,12 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pynvml
 import time
 from typing import Callable
-
-import oneflow as flow
-import matplotlib.pyplot as plt
 
 from libai.engine.trainer import TrainerBase
 
@@ -64,13 +60,4 @@ class DetrEagerTrainer(TrainerBase):
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()
-            self.optimizer.zero_grad()
-        flow.cuda.empty_cache()
-        pynvml.nvmlInit()
-        NUM_EXPAND = 1024 * 1024
-        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-        meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
-        print(meminfo.used / NUM_EXPAND)
-        self.mem.append(meminfo.used / NUM_EXPAND)
-        plt.plot(self.mem)
-        plt.savefig("./mem_backbone_dataloader_transformer.png")
+            self.optimizer.zero_grad()                                

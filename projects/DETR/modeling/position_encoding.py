@@ -68,7 +68,7 @@ class PositionEmbeddingSine(nn.Module):
         pos_x = flow.stack((pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4).flatten(3)
         pos_y = flow.stack((pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4).flatten(3)
         pos = flow.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)
-        return pos.to_global(sbp=flow.sbp.split(0), placement=pos.placement)
+        return pos.to_global(sbp=flow.sbp.split(1), placement=pos.placement)
  
 
 class PositionEmbeddingLearned(nn.Module):
@@ -99,7 +99,7 @@ class PositionEmbeddingLearned(nn.Module):
         pos = flow.cat([
             x_emb.unsqueeze(0).repeat(h, 1, 1), 
             y_emb.unsqueeze(1).repeat(1, w, 1)], dim=-1).permute(2, 0, 1).unsqueeze(0).repeat(x.shape[0], 1, 1, 1)
-        return pos.to_global(sbp=flow.sbp.split(0), placement=pos.placement)
+        return pos.to_global(sbp=flow.sbp.split(1), placement=pos.placement)
 
 
 

@@ -67,9 +67,7 @@ class Transformer(nn.Module):
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)
 
-        # BUG: view op in memory.permute(1, 2, 0).view(bs, c, h, w) makes terrible bug/
-        # It makes me can not visit inputs after this view op.
-        # return hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)
+        # return hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)  # .permute(1, 2, 0).view(bs, c, h, w)
         return hs.transpose(1, 2)
 
 

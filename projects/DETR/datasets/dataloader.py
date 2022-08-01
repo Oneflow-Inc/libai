@@ -15,20 +15,10 @@ from libai.data.build import build_image_train_loader, build_image_test_loader
 from libai.data.structures import DistTensorData, Instance
 
 
-# def _max_by_axis(the_list):
-#     # type: (List[List[int]]) -> List[int]
-#     maxes = the_list[0]
-#     for sublist in the_list[1:]:
-#         for index, item in enumerate(sublist):
-#             maxes[index] = max(maxes[index], item)
-#     return maxes
-
-
 def padding_tensor_from_tensor_list(tensor_list: List[tuple]):
     
-
     # image padding
-    max_size_img = [3, 1334, 1334]
+    max_size_img = [3, 1333, 1333]
     batch_shape_img = [len(tensor_list)] + max_size_img
     b, c, h, w = batch_shape_img
     dtype = tensor_list[0][0].dtype
@@ -50,8 +40,8 @@ def padding_tensor_from_tensor_list(tensor_list: List[tuple]):
     for i, sample in enumerate(tensor_list):
         img, targets = sample
         # image
-        tensor[i, : img.shape[0], : img.shape[1], : img.shape[2]] = img
-        tensor_mask[i, : img.shape[1], :img.shape[2]] = False
+        tensor[i, :img.shape[0], :img.shape[1], :img.shape[2]] = img
+        tensor_mask[i, :img.shape[1], :img.shape[2]] = False
         # target
         valid_length = len(targets["boxes"])
         target_mask[i, :valid_length] = True

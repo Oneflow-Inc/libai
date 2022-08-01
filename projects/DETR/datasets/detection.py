@@ -9,8 +9,6 @@ import oneflow as flow
 import flowvision
 from pycocotools import mask as coco_mask
 
-from libai.data.structures import DistTensorData, Instance
-
 
 def convert_coco_poly_to_mask(segmentations, height, width):
     masks = []
@@ -55,7 +53,6 @@ class ConvertCocoPolysToMask(object):
         # boxes[:, 1::2].clamp_(min=0, max=h)
         boxes[:, 0::2] = flow.clamp(boxes[:, 0::2], min=0, max=w)
         boxes[:, 1::2] = flow.clamp(boxes[:, 1::2], min=0, max=h)
-        
         classes = [obj["category_id"] for obj in anno]
         classes = flow.tensor(classes, dtype=flow.int64)
 
@@ -70,7 +67,6 @@ class ConvertCocoPolysToMask(object):
             num_keypoints = keypoints.shape[0]
             if num_keypoints:
                 keypoints = keypoints.view(num_keypoints, -1, 3)
-
         keep = (boxes[:, 3] > boxes[:, 1]) & (boxes[:, 2] > boxes[:, 0])
         boxes = boxes[keep]
         classes = classes[keep]
