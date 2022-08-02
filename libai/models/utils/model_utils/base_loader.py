@@ -383,7 +383,9 @@ class ModelLoaderHuggerFace(ModelLoader):
             state_dict[new_key] = state_dict.pop(old_key)
         return state_dict
 
-    def _fix_qkv_ordering(self, qkv, head_size, num_heads, hidden_size=None, checkpoint_version=0.0):
+    def _fix_qkv_ordering(
+        self, qkv, head_size, num_heads, hidden_size=None, checkpoint_version=0.0
+    ):
         # TODO(xzp): Different versions checkpoint
 
         hidden_size = (head_size * num_heads) if hidden_size is None else hidden_size
