@@ -5,7 +5,7 @@ import oneflow as flow
 from .base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
 
 
-class SwinLoaderHuggerface(ModelLoaderHuggerFace):
+class SwinLoaderHuggerFace(ModelLoaderHuggerFace):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
         

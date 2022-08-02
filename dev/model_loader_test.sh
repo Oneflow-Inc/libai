@@ -12,4 +12,6 @@ python3 -m oneflow.distributed.launch --nproc_per_node 4 -m pytest -s --disable-
 
 python3 -m oneflow.distributed.launch --nproc_per_node 4 -m pytest -s --disable-warnings tests/model_utils/test_gpt_loader.py
 
+python3 -m oneflow.distributed.launch --nproc_per_node 4 -m pytest -s --disable-warnings tests/model_utils/test_swin_loader.py
+
 rm -rf $TEST_OUTPUT
