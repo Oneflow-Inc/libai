@@ -389,11 +389,11 @@ class ModelLoaderHuggerFace(ModelLoader):
         # TODO(xzp): Different versions checkpoint
 
         hidden_size = (head_size * num_heads) if hidden_size is None else hidden_size
-        num_of_qkv = qkv.shape[0] // hidden_size
+        num_of_qkv = qkv.shape[0] // (head_size * num_heads)
         mode = "weight" if qkv.ndim > 1 else "bias"
         if mode == "weight":
             qkv = qkv.view([num_of_qkv, num_heads, head_size, hidden_size])
-            qkv = qkv.permute(1, 0, 2, 3).contiguous().view(num_of_qkv * hidden_size, hidden_size)
+            qkv = qkv.permute(1, 0, 2, 3).contiguous().view(num_of_qkv * head_size * num_heads, hidden_size)
         elif mode == "bias":
             qkv = qkv.view(num_of_qkv, num_heads, head_size)
             qkv = qkv.permute(1, 0, 2).contiguous().view(-1)
