@@ -53,7 +53,7 @@ BERT
         BertForPreTraining,
 
 RoBERTa
-----
+-------
 .. automodule:: libai.models.roberta_model
     :members: 
         RobertaModel,

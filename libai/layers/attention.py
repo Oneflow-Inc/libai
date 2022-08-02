@@ -248,6 +248,7 @@ class MultiheadAttention(nn.Module):
                     p=self.attention_dropout_prob,
                     diagonal=0,
                     tril_scale_value=self.coeff,
+                    tril_fill_value=-10000.0,
                 )[0]
             else:
                 attention_weights = flow.softmax(attention_scores, dim=-1)
