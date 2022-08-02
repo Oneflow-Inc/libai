@@ -393,7 +393,11 @@ class ModelLoaderHuggerFace(ModelLoader):
         mode = "weight" if qkv.ndim > 1 else "bias"
         if mode == "weight":
             qkv = qkv.view([num_of_qkv, num_heads, head_size, hidden_size])
-            qkv = qkv.permute(1, 0, 2, 3).contiguous().view(num_of_qkv * head_size * num_heads, hidden_size)
+            qkv = (
+                qkv.permute(1, 0, 2, 3)
+                .contiguous()
+                .view(num_of_qkv * head_size * num_heads, hidden_size)
+            )
         elif mode == "bias":
             qkv = qkv.view(num_of_qkv, num_heads, head_size)
             qkv = qkv.permute(1, 0, 2).contiguous().view(-1)
