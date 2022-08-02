@@ -30,17 +30,17 @@ from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
 
-PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/swin_utils/pytorch_model.bin"  # noqa  # to be modified
+
+PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/swin_utils/pytorch_model.bin"  # noqa
 PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/swin_utils/config.json"  # noqa
 
-PRETRAINED_MODEL_MD5 = "ea97b42698d3b5f6d8e8011eba3d1611"   # to be modified
-PRETRAINED_MODEL_CONFIG_MD5 = "0939b914fc32135f6c12d8ef281dbd7a"
+PRETRAINED_MODEL_MD5 = "cd8c03d9cd4a9c536a5a245f663035b6"   # to be modified
+PRETRAINED_MODEL_CONFIG_MD5 = "a8a71ed22b99323edd6a1457bede5819"
 
 TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_swin_utils")
 
 
 setup_logger(distributed_rank=dist.get_rank())
-np.random.seed(2022)
 
 
 class TestSwinLoder(flow.unittest.TestCase):
@@ -61,7 +61,8 @@ class TestSwinLoder(flow.unittest.TestCase):
         dist.synchronize()
 
         # prepare input data
-        self.input = np.random.randn(1, 3, 224, 224)
+        np.random.seed(2022)
+        self.input_image = np.random.randn(1, 3, 224, 224)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -69,7 +70,7 @@ class TestSwinLoder(flow.unittest.TestCase):
             shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
-    def test_bert_utils_with_data_tensor_parallel(self):
+    def test_swin_utils_with_data_tensor_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -89,20 +90,20 @@ class TestSwinLoder(flow.unittest.TestCase):
         model = load_func.load()
         model.eval()
 
-        input = flow.tensor(
-            self.input,
+        input_image = flow.tensor(
+            self.input_image.tolist(),
             dtype=flow.float32,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=model.patch_embed.proj.weight.placement,   # to be modified
         )
         
-        prediction_scores = model(input)['prediction_scores']
+        prediction_scores = model(input_image)['prediction_scores']
         self.assertTrue(
             np.allclose(np.array(3.2147), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
 
     @flow.unittest.skip_unless_1n4d()
-    def test_bert_utils_with_data_tensor_pipeline_parallel(self):
+    def test_swin_utils_with_data_tensor_pipeline_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -116,21 +117,21 @@ class TestSwinLoder(flow.unittest.TestCase):
 
         # load model
         load_func = SwinLoaderHuggerFace(
-            model=libai.models.BertModel,
+            model=libai.models.SwinTransformer,
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
         )
         model = load_func.load()
         model.eval()
 
-        input = flow.tensor(
-            self.input,
-            dtype=flow.long,
+        input_image = flow.tensor(
+            self.input_image,
+            dtype=flow.float32,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=model.patch_embed.proj.weight.placement,
         )
         
-        prediction_scores = model(input)['prediction_scores']
+        prediction_scores = model(input_image)['prediction_scores']
         self.assertTrue(
             np.allclose(np.array(3.2147), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
