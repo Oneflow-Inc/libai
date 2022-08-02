@@ -7,9 +7,10 @@ def load_model(basic_path, model: flow.nn.Module):
     Args:
         basic_path: pytorch pre-training file path
         model: oneflow model,type: flow.nn.Module()
-
-    Returns: None
-    TODO: This file is used to import the pytorch version of swinv2 pre-training weights
+    References:
+        This file is used to import the pytorch version of swinv2 pre-training weights
+    Returns:
+        None
     """
     import torch
 

@@ -86,7 +86,7 @@ model.num_classes = 1000
 model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 # Refine optimizer cfg for vit model
-optim.lr = 5e-4
+optim.lr = 1e-3  # The pytorch version is 1024 as the total batch size, 1e-3 as the learning rate
 optim.eps = 1e-8
 optim.weight_decay = 0.05
 
@@ -113,7 +113,6 @@ def set_weight_decay(model, skip_list=(), skip_keywords=()):
             or check_keywords_in_name(name, skip_keywords)
         ):
             no_decay.append(param)
-            # print(f"{name} has no weight decay")
         else:
             has_decay.append(param)
     return [{"params": has_decay}, {"params": no_decay, "weight_decay": 0.0}]

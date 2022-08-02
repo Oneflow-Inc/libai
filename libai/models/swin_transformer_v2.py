@@ -113,9 +113,9 @@ class WindowAttention(nn.Module):
             nn.ReLU(inplace=True),
             Linear(512, num_heads, bias=False, layer_idx=layer_idx),
         ).to_global(
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            )
+            placement=dist.get_layer_placement(layer_idx),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
 
         # TODO: get relative_coords_table
         relative_coords_h = flow.arange(
@@ -140,8 +140,12 @@ class WindowAttention(nn.Module):
             relative_coords_table[:, :, :, 1] /= self.window_size[1] - 1
         relative_coords_table *= 8
         # TODO: y=sign(x)*log(|x|+1), and the bottom number of the log in the official facebook code is 8
-        relative_coords_table =  flow.sign(relative_coords_table) * flow.log2(flow.abs(relative_coords_table) + 1.0) / math.log2(8.)
-        self.relative_coords_table=relative_coords_table
+        relative_coords_table = (
+            flow.sign(relative_coords_table)
+            * flow.log2(flow.abs(relative_coords_table) + 1.0)
+            / math.log2(8.0)
+        )
+        self.relative_coords_table = relative_coords_table
 
         # TODO: get pair-wise relative position index for each token inside the window
         coords_h = flow.arange(self.window_size[0])
@@ -225,7 +229,9 @@ class WindowAttention(nn.Module):
         attn = attn * logit_scale
 
         # TODO: use relative_coords_table and meta network to generate relative_position_bias
-        relative_position_bias_table = self.cpb_mlp(self.relative_coords_table.to_global(sbp=attn.sbp,placement=attn.placement)).view( -1, self.num_heads )
+        relative_position_bias_table = self.cpb_mlp(
+            self.relative_coords_table.to_global(sbp=attn.sbp, placement=attn.placement)
+        ).view(-1, self.num_heads)
         relative_position_bias = relative_position_bias_table[
             self.relative_position_index.view(-1)
         ].view(
