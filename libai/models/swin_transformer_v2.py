@@ -107,7 +107,7 @@ class WindowAttention(nn.Module):
             requires_grad=True,
         )
 
-        # TODO: generate meta network, using mlp to generate continuous relative position bias
+        # NOTE: generate meta network, using mlp to generate continuous relative position bias
         self.cpb_mlp = nn.Sequential(
             Linear(2, 512, bias=True, layer_idx=layer_idx),
             nn.ReLU(inplace=True),
@@ -117,7 +117,7 @@ class WindowAttention(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
 
-        # TODO: get relative_coords_table
+        # NOTE: get relative_coords_table
         relative_coords_h = flow.arange(
             -(self.window_size[0] - 1), self.window_size[0], dtype=flow.float32
         )
@@ -131,7 +131,7 @@ class WindowAttention(nn.Module):
             .unsqueeze(0)
         )  # 1, 2*Wh-1, 2*Ww-1, 2
 
-        # TODO: For any relative coordinate, constrain it to -8~8
+        # NOTE: For any relative coordinate, constrain it to -8~8 (window size)
         if pretrained_window_size[0] > 0:
             relative_coords_table[:, :, :, 0] /= pretrained_window_size[0] - 1
             relative_coords_table[:, :, :, 1] /= pretrained_window_size[1] - 1
@@ -139,7 +139,7 @@ class WindowAttention(nn.Module):
             relative_coords_table[:, :, :, 0] /= self.window_size[0] - 1
             relative_coords_table[:, :, :, 1] /= self.window_size[1] - 1
         relative_coords_table *= 8
-        # TODO: y=sign(x)*log(|x|+1), and the bottom number of the log in the official facebook code is 8
+        # NOTE: y=sign(x)*log(|x|+1)
         relative_coords_table = (
             flow.sign(relative_coords_table)
             * flow.log2(flow.abs(relative_coords_table) + 1.0)
@@ -147,7 +147,7 @@ class WindowAttention(nn.Module):
         )
         self.relative_coords_table = relative_coords_table
 
-        # TODO: get pair-wise relative position index for each token inside the window
+        # NOTE: get pair-wise relative position index for each token inside the window
         coords_h = flow.arange(self.window_size[0])
         coords_w = flow.arange(self.window_size[1])
         coords = flow.stack(flow.meshgrid(*[coords_h, coords_w]))  # 2, Wh, Ww
@@ -166,7 +166,6 @@ class WindowAttention(nn.Module):
             ),
         )
 
-        # TODO: generate fully connected layer for calculating kqv
         self.qkv = Linear(dim, dim * 3, bias=False, layer_idx=layer_idx)
         if qkv_bias:
             self.q_bias = nn.Parameter(
@@ -199,7 +198,6 @@ class WindowAttention(nn.Module):
         """
         B_, N, C = x.shape
 
-        # TODO: generate a new bias for kqv
         qkv_bias = None
         if self.q_bias is not None:
             qkv_bias = flow.concat(
@@ -221,14 +219,14 @@ class WindowAttention(nn.Module):
         qkv = qkv.reshape(B_, N, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
-        # TODO: cosine attention
+        # NOTE: cosine attention
         attn = F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(-2, -1)
 
-        # TODO: a learnable scalar
+        # NOTE: a learnable scalar
         logit_scale = flow.clamp(self.logit_scale, min=-1e6, max=math.log(1.0 / 0.01)).exp()
         attn = attn * logit_scale
 
-        # TODO: use relative_coords_table and meta network to generate relative_position_bias
+        # NOTE: use relative_coords_table and meta network to generate relative_position_bias
         relative_position_bias_table = self.cpb_mlp(
             self.relative_coords_table.to_global(sbp=attn.sbp, placement=attn.placement)
         ).view(-1, self.num_heads)
@@ -241,7 +239,7 @@ class WindowAttention(nn.Module):
             2, 0, 1
         ).contiguous()  # nH, Wh*Ww, Wh*Ww
 
-        # TODO: constrained to a range of -16~16
+        # NOTE: constrained to a range of -16~16
         relative_position_bias = 16 * flow.sigmoid(relative_position_bias).unsqueeze(0)
         attn = attn + relative_position_bias
 
@@ -315,10 +313,8 @@ class SwinTransformerBlock(nn.Module):
             self.window_size = min(self.input_resolution)
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
-        # TODO: LayerNorm
         self.norm1 = norm_layer(dim, layer_idx=layer_idx)
 
-        # TODO: WindowAttention
         self.attn = WindowAttention(
             dim,
             window_size=to_2tuple(self.window_size),
@@ -332,10 +328,8 @@ class SwinTransformerBlock(nn.Module):
         )
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
-        # TODO: LayerNorm
         self.norm2 = norm_layer(dim, layer_idx=layer_idx)
 
-        # TODO: MLP
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = MLP(
             hidden_size=dim,
@@ -419,10 +413,10 @@ class SwinTransformerBlock(nn.Module):
         else:
             x = shifted_x
         x = x.view(B, H * W, C)
-        # TODO: res-post-norm
+        # NOTE: res-post-norm
         x = shortcut + self.drop_path(self.norm1(x))
 
-        # TODO: res-post-norm
+        # NOTE: res-post-norm
         x = x + self.drop_path(self.norm2(self.mlp(x)))
         return x
 
@@ -441,7 +435,7 @@ class PatchMerging(nn.Module):
         self.dim = dim
         self.reduction = Linear(4 * dim, 2 * dim, bias=False, layer_idx=layer_idx)
 
-        # TODO: swinv2-> 2*dim, swin-> 4*dim
+        # NOTE: swinv2-> 2*dim, swin-> 4*dim
         self.norm = norm_layer(2 * dim, layer_idx=layer_idx)
         self.layer_idx = layer_idx
 
@@ -463,7 +457,7 @@ class PatchMerging(nn.Module):
         x = flow.cat([x0, x1, x2, x3], -1)  # B H/2 W/2 4*C
         x = x.view(B, -1, 4 * C)  # B H/2*W/2 4*C
 
-        # TODO: post-res-norm, a change that swin-v2 compared to swin
+        # NOTE: post-res-norm, a change that swin-v2 compared to swin
         x = self.reduction(x)
         x = self.norm(x)
 
