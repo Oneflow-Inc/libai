@@ -355,7 +355,7 @@ class EvalHook(HookBase):
 
 class LRScheduler(HookBase):
     """
-    A hook which executes a torch builtin LR scheduler and summarizes the LR.
+    A hook which executes a oneflow builtin LR scheduler and summarizes the LR.
     It is executed after every iteration.
     """
 

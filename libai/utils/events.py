@@ -145,7 +145,7 @@ class TensorboardXWriter(EventWriter):
             log_dir (str): the directory to save the output events
             window_size (int): the scalars will be median-smoothed by this window size
 
-            kwargs: other arguments passed to `torch.utils.tensorboard.SummaryWriter(...)`
+            kwargs: other arguments passed to `tensorboardX.SummaryWriter(...)`
         """
         self._window_size = window_size
         from tensorboardX import SummaryWriter

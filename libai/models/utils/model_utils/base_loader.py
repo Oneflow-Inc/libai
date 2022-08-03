@@ -2,7 +2,6 @@ import logging
 import os
 
 import oneflow as flow
-import torch
 from yaml import warnings
 
 import libai.utils.distributed as dist
@@ -384,15 +383,21 @@ class ModelLoaderHuggerFace(ModelLoader):
             state_dict[new_key] = state_dict.pop(old_key)
         return state_dict
 
-    def _fix_qkv_ordering(self, qkv, head_size, num_heads, checkpoint_version=0.0):
+    def _fix_qkv_ordering(
+        self, qkv, head_size, num_heads, hidden_size=None, checkpoint_version=0.0
+    ):
         # TODO(xzp): Different versions checkpoint
 
-        hidden_size = head_size * num_heads
-        num_of_qkv = qkv.shape[0] // hidden_size
+        hidden_size = (head_size * num_heads) if hidden_size is None else hidden_size
+        num_of_qkv = qkv.shape[0] // (head_size * num_heads)
         mode = "weight" if qkv.ndim > 1 else "bias"
         if mode == "weight":
             qkv = qkv.view([num_of_qkv, num_heads, head_size, hidden_size])
-            qkv = qkv.permute(1, 0, 2, 3).contiguous().view(num_of_qkv * hidden_size, hidden_size)
+            qkv = (
+                qkv.permute(1, 0, 2, 3)
+                .contiguous()
+                .view(num_of_qkv * head_size * num_heads, hidden_size)
+            )
         elif mode == "bias":
             qkv = qkv.view(num_of_qkv, num_heads, head_size)
             qkv = qkv.permute(1, 0, 2).contiguous().view(-1)
@@ -420,6 +425,11 @@ class ModelLoaderHuggerFace(ModelLoader):
         raise NotImplementedError("_load_config_from_json not implemented")
 
     def _load_torch_state_dict(self, state_dict_file):
+        try:
+            import torch
+        except ImportError:
+            raise ImportError("Load torch state dict need torch.")
+
         # load pytorch_model.bin
         state_dict = torch.load(state_dict_file, map_location="cpu")
         return state_dict
