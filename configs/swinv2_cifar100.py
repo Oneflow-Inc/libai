@@ -1,19 +1,16 @@
 from libai.config import LazyCall
-from libai.layers import LayerNorm
-from libai.optim.build import reduce_param_groups
+
 from .common.models.swinv2.swinv2_tiny_patch4_window8_256 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
 from .common.data.cifar100 import dataloader
-from omegaconf import OmegaConf
+
 from flowvision import transforms
-from flowvision.data.mixup import Mixup
 from flowvision.transforms import InterpolationMode
 from flowvision.transforms.functional import str_to_interp_mode
 from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
-import oneflow as flow
 
 CIFAR100_TRAIN_MEAN = (0.5070751592371323, 0.48654887331495095, 0.4409178433670343)
 CIFAR100_TRAIN_STD = (0.2673342858792401, 0.2564384629170883, 0.27615047132568404)
@@ -89,7 +86,6 @@ def set_weight_decay(model, skip_list=(), skip_keywords=()):
             or check_keywords_in_name(name, skip_keywords)
         ):
             no_decay.append(param)
-            # print(f"{name} has no weight decay")
         else:
             has_decay.append(param)
     return [{"params": has_decay}, {"params": no_decay, "weight_decay": 0.0}]
