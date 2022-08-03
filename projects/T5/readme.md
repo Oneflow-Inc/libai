@@ -24,6 +24,12 @@ wget http://oneflow-static.oss-cn-beijing.aliyuncs.com/libai/mt5_init/pytorch_mo
 
 ### 3.Prepare the training data
 
+```bash
+# /path/to/projects/T5/data/training_data/
+wget http://oneflow-static.oss-cn-beijing.aliyuncs.com/libai/mt5_init/wudao_180g_test_bert_tokenized_512_demo.zip
+unzip wudao_180g_test_bert_tokenized_512_demo.zip
+```
+
 The structure of the training data folder should be like:
 ```bash
 $ tree training_data_dir
