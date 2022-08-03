@@ -15,7 +15,7 @@ from projects.T5.datasets.dataset import UnsuperviseT5Dataset, collate_fn
 from projects.T5.models.t5_model import T5ForPreTraining
 
 train_data_path = "/home/xiezipeng/libai/projects/T5/data/wudao_180g_test_bert_tokenized_512_train/part_0"
-pretrained_model_path = "/home/xiezipeng/libai/projects/T5/data/pretrained-t5/t5_init"
+pretrained_model_path = "/path/to/projects/T5/data/init_mt5/"
 
 micro_batch_size = 64
 optim["lr"] = 1e-4
