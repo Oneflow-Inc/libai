@@ -5,16 +5,12 @@ from functools import partial, wraps
 
 from .vector_quantize_flow import VectorQuantize as VQ
 
-#import flow
-#from flow import nn, einsum
-#import flow.nn.functional as F
-#from flow.autograd import grad as flow_grad
-#import flowvision
 import oneflow as flow
 from oneflow import nn, einsum
 import oneflow.nn.functional as F
 from oneflow.autograd import grad as flow_grad
 import flowvision
+from libai.layers import Linear
 
 from einops import rearrange, reduce, repeat
 from .einops_exts import Rearrange, rearrange_many
@@ -193,12 +189,12 @@ class ContinuousPositionBias(nn.Module):
     def __init__(self, *, dim, heads, layers = 2):
         super().__init__()
         self.net = MList([])
-        self.net.append(nn.Sequential(nn.Linear(2, dim), leaky_relu()))
+        self.net.append(nn.Sequential(Linear(2, dim), leaky_relu()))
 
         for _ in range(layers - 1):
-            self.net.append(nn.Sequential(nn.Linear(dim, dim), leaky_relu()))
+            self.net.append(nn.Sequential(Linear(dim, dim), leaky_relu()))
 
-        self.net.append(nn.Linear(dim, heads))
+        self.net.append(Linear(dim, heads))
         self.register_buffer('rel_pos', None, persistent = False)
 
     def forward(self, x):
@@ -479,7 +475,7 @@ class ViTEncDec(nn.Module):
 
         self.encoder = nn.Sequential(
             Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1 = patch_size, p2 = patch_size),
-            nn.Linear(input_dim, dim),
+            Linear(input_dim, dim),
             Transformer(
                 dim = dim,
                 dim_head = dim_head,
@@ -501,9 +497,9 @@ class ViTEncDec(nn.Module):
                 layers = layers
             ),
             nn.Sequential(
-                nn.Linear(dim, dim * 4, bias = False),
+                Linear(dim, dim * 4, bias = False),
                 nn.Tanh(),
-                nn.Linear(dim * 4, input_dim, bias = False),
+                Linear(dim * 4, input_dim, bias = False),
             ),
             RearrangeImage(),
             Rearrange('b h w (p1 p2 c) -> b c (h p1) (w p2)', p1 = patch_size, p2 = patch_size)

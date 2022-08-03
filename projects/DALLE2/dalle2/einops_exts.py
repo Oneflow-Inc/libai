@@ -2,14 +2,15 @@
 from typing import Optional, Dict
 
 import oneflow as flow
-
+from oneflow import nn
+from einops import rearrange, reduce, repeat
 from einops.layers import RearrangeMixin, ReduceMixin
+from einops._backends import AbstractBackend
 
 class Rearrange(RearrangeMixin, flow.nn.Module):
     def forward(self, input):
         return self._apply_recipe(input)
 
-from einops._backends import AbstractBackend
 
 class OneFlowBackend(AbstractBackend):
     framework_name = "oneflow"
@@ -17,7 +18,6 @@ class OneFlowBackend(AbstractBackend):
     def __init__(self):
         import oneflow as flow
         self.flow = flow
-        print("using oneflow")
 
     def is_appropriate_type(self, tensor):
         return isinstance(tensor, self.flow.Tensor)
@@ -69,18 +69,12 @@ class OneFlowBackend(AbstractBackend):
     def is_float_type(self, x):
         return x.dtype in [self.flow.float16, self.flow.float32, self.flow.float64]
 
-    def layers(self):
-        from .layers import oneflow
-        return oneflow
-
     def einsum(self, pattern, *x):
         return self.flow.einsum(pattern, *x)
 
 
 
 #From https://github.com/lucidrains/einops-exts/tree/main/einops_exts
-from oneflow import nn
-from einops import rearrange, reduce, repeat
 
 class EinopsToAndFrom(nn.Module):
     def __init__(self, from_einops, to_einops, fn):

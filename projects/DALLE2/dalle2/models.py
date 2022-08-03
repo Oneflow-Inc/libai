@@ -162,27 +162,22 @@ def normalize_neg_one_to_one(img):
 def unnormalize_zero_to_one(normed_img):
     return (normed_img + 1) * 0.5
 
-# clip related adapters
-
-EmbeddedText = namedtuple('EmbedTextReturn', ['text_embed', 'text_encodings'])
-EmbeddedImage = namedtuple('EmbedImageReturn', ['image_embed', 'image_encodings'])
-
 
 # classifier free guidance functions
 
-def prob_mask_like(shape, prob, device):
+def prob_mask_like(shape, prob, placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast):
     if prob == 1:
-        return flow.ones(shape, device = device, dtype = flow.bool)
+        return flow.ones(shape,  dtype = flow.bool, placement=placement, sbp =sbp)
     elif prob == 0:
-        return flow.zeros(shape, device = device, dtype = flow.bool)
+        return flow.zeros(shape, dtype = flow.bool, placement=placement, sbp=sbp)
     else:
-        return flow.zeros(shape, device = device).float().uniform_(0, 1) < prob
+        return flow.zeros(shape, placement=placement, sbp=sbp).float().uniform_(0, 1) < prob
 
 # gaussian diffusion helper functions
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
-    out = a.gather(-1, t)
+    out = a.gather(len(a.shape)-1, t)
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
 
 def meanflat(x):
@@ -329,6 +324,8 @@ class NoiseScheduler(nn.Module):
         return flow.randint(0, self.num_timesteps, (batch,), device = self.betas.device, dtype = flow.long)
 
     def q_posterior(self, x_start, x_t, t):
+        t = t.to_global(placement = dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
+        x_t = x_t.to_global(placement = dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
         posterior_mean = (
             extract(self.posterior_mean_coef1, t, x_t.shape) * x_start +
             extract(self.posterior_mean_coef2, t, x_t.shape) * x_t
@@ -357,14 +354,19 @@ class NoiseScheduler(nn.Module):
         return x_from * (alpha_next / alpha) + noise * (sigma_next * alpha - sigma * alpha_next) / alpha
 
     def predict_start_from_noise(self, x_t, t, noise):
+        t = t.to_global(placement = dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
+        x_t = x_t.to_global(placement = dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
+
         return (
             extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t -
             extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * noise
         )
 
     def predict_noise_from_start(self, x_t, t, x0):
+        t = t.to_global(placement = dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
+        x_t = x_t.to_global(placement = dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
         return (
-            (extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t - x0) / \
+            (extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t - x0.to_local().to('cpu')) / \
             extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape)
         )
 
@@ -375,7 +377,7 @@ class NoiseScheduler(nn.Module):
 
 # diffusion prior
 
-class LayerNorm(nn.Module):
+class LayerNormFlow(nn.Module):
     def __init__(self, dim, eps = 1e-5, fp16_eps = 1e-3, stable = False):
         super().__init__()
         self.eps = eps
@@ -418,7 +420,6 @@ class Residual(nn.Module):
 
     def forward(self, x, **kwargs):
         return self.fn(x, **kwargs) + x
-
 # mlp
 
 class MLP(nn.Module):
@@ -433,22 +434,22 @@ class MLP(nn.Module):
     ):
         super().__init__()
         hidden_dim = int(expansion_factor * dim_out)
-        norm_fn = lambda: nn.LayerNorm(hidden_dim) if norm else nn.Identity()
+        norm_fn = lambda: LayerNorm(hidden_dim) if norm else nn.Identity()
 
         layers = [nn.Sequential(
-            nn.Linear(dim_in, hidden_dim),
+            Linear(dim_in, hidden_dim),
             nn.SiLU(),
             norm_fn()
         )]
 
         for _ in range(depth - 1):
             layers.append(nn.Sequential(
-                nn.Linear(hidden_dim, hidden_dim),
+                Linear(hidden_dim, hidden_dim),
                 nn.SiLU(),
                 norm_fn()
             ))
 
-        layers.append(nn.Linear(hidden_dim, dim_out))
+        layers.append(Linear(hidden_dim, dim_out))
         self.net = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -466,7 +467,7 @@ class RelPosBias(nn.Module):
         super().__init__()
         self.num_buckets = num_buckets
         self.max_distance = max_distance
-        self.relative_attention_bias = nn.Embedding(num_buckets, heads)
+        self.relative_attention_bias = Embedding(num_buckets, heads)
 
     @staticmethod
     def _relative_position_bucket(
@@ -475,21 +476,21 @@ class RelPosBias(nn.Module):
         max_distance = 128
     ):
         n = -relative_position
-        n = flow.max(n, flow.zeros_like(n))
+        n = flow.max(n, flow.zeros_like(n)).long()
 
         max_exact = num_buckets // 2
         is_small = n < max_exact
 
         val_if_large = max_exact + (flow.log(n.float() / max_exact) / math.log(max_distance / max_exact) * (num_buckets - max_exact)).long()
-        val_if_large = flow.min(val_if_large, flow.full_like(val_if_large, num_buckets - 1))
+        val_if_large = flow.min(val_if_large, flow.zeros_like(val_if_large) + (num_buckets - 1))
         return flow.where(is_small, n, val_if_large)
 
-    def forward(self, i, j, *, device):
-        q_pos = flow.arange(i, dtype = flow.long, device = device)
-        k_pos = flow.arange(j, dtype = flow.long, device = device)
+    def forward(self, i, j):
+        q_pos = flow.arange(i, dtype = flow.long)
+        k_pos = flow.arange(j, dtype = flow.long)
         rel_pos = rearrange(k_pos, 'j -> 1 j') - rearrange(q_pos, 'i -> i 1')
         rp_bucket = self._relative_position_bucket(rel_pos, num_buckets = self.num_buckets, max_distance = self.max_distance)
-        values = self.relative_attention_bias(rp_bucket)
+        values = self.relative_attention_bias(rp_bucket.to_global(sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0)))
         return rearrange(values, 'i j h -> h i j')
 
 # feedforward
@@ -511,11 +512,11 @@ def FeedForward(
     inner_dim = int(mult * dim)
     return nn.Sequential(
         LayerNorm(dim),
-        nn.Linear(dim, inner_dim * 2, bias = False),
+        Linear(dim, inner_dim * 2, bias = False),
         SwiGLU(),
         LayerNorm(inner_dim) if post_activation_norm else nn.Identity(),
         nn.Dropout(dropout),
-        nn.Linear(inner_dim, dim, bias = False)
+        Linear(inner_dim, dim, bias = False)
     )
 
 # attention
@@ -544,21 +545,21 @@ class Attention(nn.Module):
         self.norm = LayerNorm(dim)
         self.dropout = nn.Dropout(dropout)
 
-        self.null_kv = nn.Parameter(flow.randn(2, dim_head))
-        self.to_q = nn.Linear(dim, inner_dim, bias = False)
-        self.to_kv = nn.Linear(dim, dim_head * 2, bias = False)
+        self.null_kv = nn.Parameter(flow.randn(2, dim_head, sbp=flow.sbp.broadcast, placement=dist.get_layer_placement(0)))
+        self.to_q = Linear(dim, inner_dim, bias = False)
+        self.to_kv = Linear(dim, dim_head * 2, bias = False)
 
         self.rotary_emb = rotary_emb
 
         self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim, bias = False),
+            Linear(inner_dim, dim, bias = False),
             LayerNorm(dim)
         )
 
     def forward(self, x, mask = None, attn_bias = None):
-        b, n, device = *x.shape[:2], x.device
+        b, n = x.shape[:2]
 
-        x = self.norm(x)
+        x = self.norm(x.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast))
         q, k, v = (self.to_q(x), *self.to_kv(x).chunk(2, dim = -1))
 
         q = rearrange(q, 'b n (h d) -> b h n d', h = self.heads)
@@ -571,7 +572,8 @@ class Attention(nn.Module):
 
         # add null key / value for classifier free guidance in prior net
 
-        nk, nv = repeat_many(self.null_kv.unbind(dim = -2), 'd -> b 1 d', b = b)
+        #nk, nv = repeat_many(self.null_kv.unbind(dim = -2), 'd -> b 1 d', b = b)
+        nk, nv = repeat_many([x.squeeze(0) for x in self.null_kv.chunk(2, dim = -2)], 'd -> b 1 d', b = b)
         k = flow.cat((nk, k), dim = -2)
         v = flow.cat((nv, v), dim = -2)
 
@@ -593,7 +595,7 @@ class Attention(nn.Module):
 
         # masking
 
-        max_neg_value = -flow.finfo(sim.dtype).max
+        max_neg_value = -1e15 #-flow.finfo(sim.dtype).max
 
         if exists(mask):
             mask = F.pad(mask, (1, 0), value = True)
@@ -602,7 +604,7 @@ class Attention(nn.Module):
 
         if self.causal:
             i, j = sim.shape[-2:]
-            causal_mask = flow.ones((i, j), dtype = flow.bool, device = device).triu(j - i + 1)
+            causal_mask = flow.ones((i, j), placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast).triu(j - i + 1) > 0.5 #dtype=flow.bool
             sim = sim.masked_fill(causal_mask, max_neg_value)
 
         # attention
@@ -648,15 +650,15 @@ class CausalTransformer(nn.Module):
                 FeedForward(dim = dim, mult = ff_mult, dropout = ff_dropout, post_activation_norm = normformer)
             ]))
 
-        self.norm = LayerNorm(dim, stable = True) if norm_out else nn.Identity()  # unclear in paper whether they projected after the classic layer norm for the final denoised image embedding, or just had the transformer output it directly: plan on offering both options
-        self.project_out = nn.Linear(dim, dim, bias = False) if final_proj else nn.Identity()
+        self.norm = LayerNorm(dim) if norm_out else nn.Identity()  # unclear in paper whether they projected after the classic layer norm for the final denoised image embedding, or just had the transformer output it directly: plan on offering both options
+        self.project_out = Linear(dim, dim, bias = False) if final_proj else nn.Identity()
 
     def forward(self, x):
-        n, device = x.shape[1], x.device
+        n = x.shape[1]
 
         x = self.init_norm(x)
 
-        attn_bias = self.rel_pos_bias(n, n + 1, device = device)
+        attn_bias = self.rel_pos_bias(n, n + 1).to_global(placement = dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
 
         for attn, ff in self.layers:
             x = attn(x, attn_bias = attn_bias) + x
@@ -682,17 +684,17 @@ class DiffusionPriorNetwork(nn.Module):
         self.num_text_embeds = num_text_embeds
 
         self.to_text_embeds = nn.Sequential(
-            nn.Linear(dim, dim * num_text_embeds) if num_text_embeds > 1 else nn.Identity(),
+            Linear(dim, dim * num_text_embeds) if num_text_embeds > 1 else nn.Identity(),
             Rearrange('b (n d) -> b n d', n = num_text_embeds)
         )
 
         self.to_time_embeds = nn.Sequential(
-            nn.Embedding(num_timesteps, dim * num_time_embeds) if exists(num_timesteps) else nn.Sequential(SinusoidalPosEmb(dim), MLP(dim, dim * num_time_embeds)), # also offer a continuous version of timestep embeddings, with a 2 layer MLP
+            Embedding(num_timesteps, dim * num_time_embeds) if exists(num_timesteps) else nn.Sequential(SinusoidalPosEmb(dim), MLP(dim, dim * num_time_embeds)), # also offer a continuous version of timestep embeddings, with a 2 layer MLP
             Rearrange('b (n d) -> b n d', n = num_time_embeds)
         )
 
         self.to_image_embeds = nn.Sequential(
-            nn.Linear(dim, dim * num_image_embeds) if num_image_embeds > 1 else nn.Identity(),
+            Linear(dim, dim * num_image_embeds) if num_image_embeds > 1 else nn.Identity(),
             Rearrange('b (n d) -> b n d', n = num_image_embeds)
         )
 
@@ -727,7 +729,7 @@ class DiffusionPriorNetwork(nn.Module):
         text_encodings = None,
         cond_drop_prob = 0.
     ):
-        batch, dim, device, dtype = *image_embed.shape, image_embed.device, image_embed.dtype
+        batch, dim, dtype = *image_embed.shape, image_embed.dtype
 
         num_time_embeds, num_image_embeds, num_text_embeds = self.num_time_embeds, self.num_image_embeds, self.num_text_embeds
 
@@ -741,7 +743,7 @@ class DiffusionPriorNetwork(nn.Module):
         # although the paper seems to suggest it is present <--
 
         if not exists(text_encodings):
-            text_encodings = flow.empty((batch, 0, dim), device = device, dtype = dtype)
+            text_encodings = flow.empty((batch, 0, dim), placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast, dtype = dtype)
     
         mask = flow.any(text_encodings != 0., dim = -1)
 
@@ -758,6 +760,7 @@ class DiffusionPriorNetwork(nn.Module):
             mask = F.pad(mask, (0, remainder), value = False)
 
         null_text_embeds = self.null_text_embed.to(text_encodings.dtype)
+        null_text_embeds = null_text_embeds.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
 
         text_encodings = flow.where(
             rearrange(mask, 'b n -> b n 1').clone(),
@@ -767,8 +770,8 @@ class DiffusionPriorNetwork(nn.Module):
 
         # classifier free guidance
 
-        keep_mask = prob_mask_like((batch,), 1 - cond_drop_prob, device = device)
-        keep_mask = rearrange(keep_mask, 'b -> b 1')
+        keep_mask = prob_mask_like((batch,), 1 - cond_drop_prob)
+        keep_mask = rearrange(keep_mask, 'b -> b 1').to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
 
         mask &= keep_mask
 
@@ -781,12 +784,15 @@ class DiffusionPriorNetwork(nn.Module):
         # but let's just do it right
 
         attend_padding = 1 + num_time_embeds + num_image_embeds # 1 for learned queries + number of image embeds + time embeds
-        mask = F.pad(mask, (0, attend_padding), value = True) # extend mask for text embedding, noised image embedding, time step embedding, and learned query
+        mask = F.pad(mask * 1.0, (0, attend_padding), value = 1.0) > 0.5 # extend mask for text embedding, noised image embedding, time step embedding, and learned query
 
-        time_embed = self.to_time_embeds(diffusion_timesteps)
+        time_embed = self.to_time_embeds(diffusion_timesteps.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast))
 
         learned_queries = repeat(self.learned_query, 'd -> b 1 d', b = batch)
 
+        time_embed = time_embed.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
+        image_embed = image_embed.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
+        learned_queries = learned_queries.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
         tokens = flow.cat((
             text_encodings,
             text_embed,
@@ -902,23 +908,25 @@ class DiffusionPrior(nn.Module):
 
     @flow.no_grad()
     def p_sample(self, x, t, text_cond = None, clip_denoised = True, cond_scale = 1.):
-        b, *_, device = *x.shape, x.device
+        b = x.shape[0]
         model_mean, _, model_log_variance = self.p_mean_variance(x = x, t = t, text_cond = text_cond, clip_denoised = clip_denoised, cond_scale = cond_scale)
-        noise = flow.randn_like(x)
+        noise = flow.randn(*x.shape)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
+        nonzero_mask = nonzero_mask.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
+        noise = noise.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @flow.no_grad()
     def p_sample_loop_ddpm(self, shape, text_cond, cond_scale = 1.):
-        batch, device = shape[0], self.device
-        image_embed = flow.randn(shape, device = device)
+        batch = shape[0]
+        image_embed = flow.randn(*shape)
 
         if self.init_image_embed_l2norm:
             image_embed = l2norm(image_embed) * self.image_embed_scale
 
         for i in tqdm(reversed(range(0, self.noise_scheduler.num_timesteps)), desc='sampling loop time step', total=self.noise_scheduler.num_timesteps):
-            times = flow.full((batch,), i, device = device, dtype = flow.long)
+            times = flow.full((batch,), i, dtype = flow.long)
             image_embed = self.p_sample(image_embed, times, text_cond = text_cond, cond_scale = cond_scale)
 
         if self.sampling_final_clamp_l2norm and self.predict_x_start:
@@ -935,7 +943,7 @@ class DiffusionPrior(nn.Module):
         times = list(reversed(times.int().tolist()))
         time_pairs = list(zip(times[:-1], times[1:]))
 
-        image_embed = flow.randn(shape, device = device)
+        image_embed = flow.randn(*shape)
 
         if self.init_image_embed_l2norm:
             image_embed = l2norm(image_embed) * self.image_embed_scale
@@ -963,11 +971,11 @@ class DiffusionPrior(nn.Module):
 
             c1 = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
             c2 = ((1 - alpha_next) - flow.square(c1)).sqrt()
-            noise = flow.randn_like(image_embed) if time_next > 0 else 0.
+            noise = flow.randn(*image_embed.size()) if time_next > 0 else 0.
 
-            image_embed = x_start * alpha_next.sqrt() + \
-                          c1 * noise + \
-                          c2 * pred_noise
+            image_embed = x_start.to_local().to('cpu') * alpha_next.sqrt() 
+            image_embed += c1 * noise
+            image_embed += c2 * pred_noise
 
         if self.predict_x_start and self.sampling_final_clamp_l2norm:
             image_embed = self.l2norm_clamp_embed(image_embed)
@@ -1053,8 +1061,9 @@ class DiffusionPrior(nn.Module):
         text_embeds = rearrange(text_embeds, '(b r) d -> b r d', r = num_samples_per_batch)
         image_embeds = rearrange(image_embeds, '(b r) d -> b r d', r = num_samples_per_batch)
 
+        image_embeds = image_embeds.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
         text_image_sims = einsum('b r d, b r d -> b r', l2norm(text_embeds), l2norm(image_embeds))
-        top_sim_indices = text_image_sims.topk(k = 1).indices
+        top_sim_indices = text_image_sims.topk(k = 1)[1] #.indices
 
         top_sim_indices = repeat(top_sim_indices, 'b 1 -> b 1 d', d = image_embed_dim)
 
@@ -1152,12 +1161,12 @@ class SinusoidalPosEmb(nn.Module):
         self.dim = dim
 
     def forward(self, x):
-        dtype, device = x.dtype, x.device
+        dtype = x.dtype
         half_dim = self.dim // 2
         emb = math.log(10000) / (half_dim - 1)
-        emb = flow.exp(flow.arange(half_dim, device = device, dtype = dtype) * -emb)
+        emb = flow.exp(flow.arange(half_dim, placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast, dtype = dtype) * -emb)
         emb = rearrange(x, 'i -> i 1') * rearrange(emb, 'j -> 1 j')
-        return flow.cat((emb.sin(), emb.cos()), dim = -1).type(dtype)
+        return flow.cat((emb.sin(), emb.cos()), dim = -1).to(dtype)
 
 class Block(nn.Module):
     def __init__(
@@ -1200,7 +1209,7 @@ class ResnetBlock(nn.Module):
         if exists(time_cond_dim):
             self.time_mlp = nn.Sequential(
                 nn.SiLU(),
-                nn.Linear(time_cond_dim, dim_out * 2)
+                Linear(time_cond_dim, dim_out * 2)
             )
 
         self.cross_attn = None
@@ -1232,10 +1241,11 @@ class ResnetBlock(nn.Module):
 
         if exists(self.cross_attn):
             assert exists(cond)
-            h = self.cross_attn(h, context = cond) + h
+            h += self.cross_attn(h, context = cond) 
 
         h = self.block2(h)
-        return h + self.res_conv(x)
+        res = self.res_conv(x)
+        return h + res
 
 class CrossAttention(nn.Module):
     def __init__(
@@ -1262,19 +1272,19 @@ class CrossAttention(nn.Module):
         self.norm_context = LayerNorm(context_dim) if norm_context else nn.Identity()
         self.dropout = nn.Dropout(dropout)
 
-        self.null_kv = nn.Parameter(flow.randn(2, dim_head))
-        self.to_q = nn.Linear(dim, inner_dim, bias = False)
-        self.to_kv = nn.Linear(context_dim, inner_dim * 2, bias = False)
+        self.null_kv = nn.Parameter(flow.randn(2, dim_head, placement=dist.get_layer_placement(0), sbp = flow.sbp.broadcast))
+        self.to_q = Linear(dim, inner_dim, bias = False)
+        self.to_kv = Linear(context_dim, inner_dim * 2, bias = False)
 
         self.to_out = nn.Sequential(
-            nn.Linear(inner_dim, dim, bias = False),
+            Linear(inner_dim, dim, bias = False),
             LayerNorm(dim)
         )
 
     def forward(self, x, context, mask = None):
-        b, n, device = *x.shape[:2], x.device
+        b, n = x.shape[:2]
 
-        x = self.norm(x)
+        x = self.norm(x.to_global(placement=dist.get_layer_placement(0),sbp = flow.sbp.broadcast))
         context = self.norm_context(context)
 
         q, k, v = (self.to_q(x), *self.to_kv(context).chunk(2, dim = -1))
@@ -1283,7 +1293,8 @@ class CrossAttention(nn.Module):
 
         # add null key / value for classifier free guidance in prior net
 
-        nk, nv = repeat_many(self.null_kv.unbind(dim = -2), 'd -> b h 1 d', h = self.heads,  b = b)
+        #nk, nv = repeat_many(self.null_kv.unbind(dim = -2), 'd -> b h 1 d', h = self.heads,  b = b)
+        nk, nv = repeat_many([x.squeeze(0) for x in self.null_kv.chunk(2, dim = -2)], 'd -> b h 1 d', h = self.heads,b = b)
 
         k = flow.cat((nk, k), dim = -2)
         v = flow.cat((nv, v), dim = -2)
@@ -1294,7 +1305,7 @@ class CrossAttention(nn.Module):
         q, k = map(lambda t: t * math.sqrt(self.scale), (q, k))
 
         sim = einsum('b h i d, b h j d -> b h i j', q, k)
-        max_neg_value = -flow.finfo(sim.dtype).max
+        max_neg_value = -1e15 #-flow.finfo(sim.dtype).max
 
         if exists(mask):
             mask = F.pad(mask, (1, 0), value = True)
@@ -1376,6 +1387,7 @@ class CrossEmbedLayer(nn.Module):
             self.convs.append(nn.Conv2d(dim_in, dim_scale, kernel, stride = stride, padding = (kernel - stride) // 2))
 
     def forward(self, x):
+        x = x.to_global(placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
         fmaps = tuple(map(lambda conv: conv(x), self.convs))
         return flow.cat(fmaps, dim = 1)
 
@@ -1486,31 +1498,31 @@ class Unet(nn.Module):
 
         self.to_time_hiddens = nn.Sequential(
             SinusoidalPosEmb(dim),
-            nn.Linear(dim, time_cond_dim),
+            Linear(dim, time_cond_dim),
             nn.GELU()
         )
 
         self.to_time_tokens = nn.Sequential(
-            nn.Linear(time_cond_dim, cond_dim * num_time_tokens),
+            Linear(time_cond_dim, cond_dim * num_time_tokens),
             Rearrange('b (r d) -> b r d', r = num_time_tokens)
         )
 
         self.to_time_cond = nn.Sequential(
-            nn.Linear(time_cond_dim, time_cond_dim)
+            Linear(time_cond_dim, time_cond_dim)
         )
 
         self.image_to_tokens = nn.Sequential(
-            nn.Linear(image_embed_dim, cond_dim * num_image_tokens),
+            Linear(image_embed_dim, cond_dim * num_image_tokens),
             Rearrange('b (n d) -> b n d', n = num_image_tokens)
         ) if cond_on_image_embeds and image_embed_dim != cond_dim else nn.Identity()
 
         self.to_image_hiddens = nn.Sequential(
-            nn.Linear(image_embed_dim, time_cond_dim),
+            Linear(image_embed_dim, time_cond_dim),
             nn.GELU()
         ) if cond_on_image_embeds and add_image_embeds_to_time else None
 
-        self.norm_cond = nn.LayerNorm(cond_dim)
-        self.norm_mid_cond = nn.LayerNorm(cond_dim)
+        self.norm_cond = LayerNorm(cond_dim)
+        self.norm_mid_cond = LayerNorm(cond_dim)
 
         # text encoding conditioning (optional)
 
@@ -1519,7 +1531,7 @@ class Unet(nn.Module):
 
         if cond_on_text_encodings:
             assert exists(text_embed_dim), 'text_embed_dim must be given to the unet if cond_on_text_encodings is True'
-            self.text_to_cond = nn.Linear(text_embed_dim, cond_dim)
+            self.text_to_cond = Linear(text_embed_dim, cond_dim)
             self.text_embed_dim = text_embed_dim
 
         # low resolution noise conditiong, based on Imagen's upsampler training technique
@@ -1528,9 +1540,9 @@ class Unet(nn.Module):
 
         self.to_lowres_noise_cond = nn.Sequential(
             SinusoidalPosEmb(dim),
-            nn.Linear(dim, time_cond_dim),
+            Linear(dim, time_cond_dim),
             nn.GELU(),
-            nn.Linear(time_cond_dim, time_cond_dim)
+            Linear(time_cond_dim, time_cond_dim)
         ) if lowres_noise_cond else None
 
         # finer control over whether to condition on image embeddings and text encodings
@@ -1720,7 +1732,7 @@ class Unet(nn.Module):
         blur_sigma = None,
         blur_kernel_size = None
     ):
-        batch_size, device = x.shape[0], x.device
+        batch_size= x.shape[0]
 
         # add low resolution conditioning, if present
 
@@ -1751,8 +1763,8 @@ class Unet(nn.Module):
 
         # conditional dropout
 
-        image_keep_mask = prob_mask_like((batch_size,), 1 - image_cond_drop_prob, device = device)
-        text_keep_mask = prob_mask_like((batch_size,), 1 - text_cond_drop_prob, device = device)
+        image_keep_mask = prob_mask_like((batch_size,), 1 - image_cond_drop_prob)
+        text_keep_mask = prob_mask_like((batch_size,), 1 - text_cond_drop_prob)
 
         text_keep_mask = rearrange(text_keep_mask, 'b -> b 1 1')
 
@@ -1765,9 +1777,9 @@ class Unet(nn.Module):
             null_image_hiddens = self.null_image_hiddens.to(image_hiddens.dtype)
 
             image_hiddens = flow.where(
-                image_keep_mask_hidden,
+                image_keep_mask_hidden.to_global(placement=image_hiddens.placement, sbp = image_hiddens.sbp),
                 image_hiddens,
-                null_image_hiddens
+                null_image_hiddens.to_global(placement=image_hiddens.placement, sbp = image_hiddens.sbp)
             )
 
             t = t + image_hiddens
@@ -1783,9 +1795,9 @@ class Unet(nn.Module):
             null_image_embed = self.null_image_embed.to(image_tokens.dtype) # for some reason pyflow AMP not working
 
             image_tokens = flow.where(
-                image_keep_mask_embed,
+                image_keep_mask_embed.to_global(placement=image_tokens.placement, sbp = image_tokens.sbp),
                 image_tokens,
-                null_image_embed
+                null_image_embed.to_global(placement=image_tokens.placement, sbp = image_tokens.sbp)
             )
 
         # take care of text encodings (optional)
@@ -1808,19 +1820,19 @@ class Unet(nn.Module):
 
             if remainder > 0:
                 text_tokens = F.pad(text_tokens, (0, 0, 0, remainder))
-                text_mask = F.pad(text_mask, (0, remainder), value = False)
+                text_mask = F.pad(text_mask * 1.0, (0, remainder), value = 0.) > 0.5
 
             text_mask = rearrange(text_mask, 'b n -> b n 1')
 
             assert text_mask.shape[0] == text_keep_mask.shape[0], f'text_mask has shape of {text_mask.shape} while text_keep_mask has shape {text_keep_mask.shape}. text encoding is of shape {text_encodings.shape}'
-            text_keep_mask = text_mask & text_keep_mask
+            text_keep_mask = text_mask & text_keep_mask.to_global(placement = text_mask.placement, sbp = text_mask.sbp)
 
             null_text_embed = self.null_text_embed.to(text_tokens.dtype) # for some reason pyflow AMP not working
 
             text_tokens = flow.where(
                 text_keep_mask,
                 text_tokens,
-                null_text_embed
+                null_text_embed.to_global(placement=text_tokens.placement, sbp=text_tokens.sbp)
             )
 
         # main conditioning tokens (c)
@@ -2313,9 +2325,9 @@ class Decoder(nn.Module):
 
     @flow.no_grad()
     def p_sample(self, unet, x, t, image_embed, noise_scheduler, text_encodings = None, cond_scale = 1., lowres_cond_img = None, predict_x_start = False, learned_variance = False, clip_denoised = True, lowres_noise_level = None):
-        b, *_, device = *x.shape, x.device
+        b = x.shape[0]
         model_mean, _, model_log_variance = self.p_mean_variance(unet, x = x, t = t, image_embed = image_embed, text_encodings = text_encodings, cond_scale = cond_scale, lowres_cond_img = lowres_cond_img, clip_denoised = clip_denoised, predict_x_start = predict_x_start, noise_scheduler = noise_scheduler, learned_variance = learned_variance, lowres_noise_level = lowres_noise_level)
-        noise = flow.randn_like(x)
+        noise = flow.randn(*x.shape, placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
@@ -2339,10 +2351,8 @@ class Decoder(nn.Module):
         inpaint_mask = None,
         inpaint_resample_times = 5
     ):
-        device = self.device
-
         b = shape[0]
-        img = flow.randn(shape, device = device)
+        img = flow.randn(*shape)
 
         is_inpaint = exists(inpaint_image)
         resample_times = inpaint_resample_times if is_inpaint else 1
@@ -2363,7 +2373,7 @@ class Decoder(nn.Module):
             for r in reversed(range(0, resample_times)):
                 is_last_resample_step = r == 0
 
-                times = flow.full((b,), time, device = device, dtype = flow.long)
+                times = flow.full((b,), time, placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast, dtype = flow.long)
 
                 if is_inpaint:
                     # following the repaint paper
@@ -2781,7 +2791,7 @@ class DALLE2(nn.Module):
         images = self.decoder.sample(image_embed = image_embed, text = text_cond, cond_scale = cond_scale)
 
         if return_pil_images:
-            images = list(map(self.to_pil, images.unbind(dim = 0)))
+            images = list(map(self.to_pil, [images[i] for i in range(images.shape[0])]))
 
         if one_text:
             return first(images)

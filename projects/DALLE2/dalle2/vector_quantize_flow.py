@@ -2,8 +2,7 @@
 import oneflow as flow
 from oneflow import nn, einsum
 import oneflow.nn.functional as F
-import oneflow.distributed as distributed
-#from oneflow.cuda.amp import autocast
+from libai.utils import distributed
 
 from einops import rearrange, repeat
 from contextlib import contextmanager

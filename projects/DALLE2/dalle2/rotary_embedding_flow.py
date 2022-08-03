@@ -33,12 +33,12 @@ def broadcat(tensors, dim = -1):
 
 def rotate_half(x):
     x = rearrange(x, '... (d r) -> ... d r', r = 2)
-    x1, x2 = x.unbind(dim = -1)
+    x1, x2 = [i.squeeze(-1) for i in x.chunk(2, -1)] #x.unbind(dim = -1)
     x = flow.stack((-x2, x1), dim = -1)
     return rearrange(x, '... d r -> ... (d r)')
 
 def apply_rotary_emb(freqs, t, start_index = 0):
-    freqs = freqs.to(t)
+    freqs = freqs.to(t.dtype)
     rot_dim = freqs.shape[-1]
     end_index = start_index + rot_dim
     assert rot_dim <= t.shape[-1], f'feature dimension {t.shape[-1]} is not of sufficient size to rotate in all the positions {rot_dim}'
@@ -89,9 +89,9 @@ class RotaryEmbedding(nn.Module):
             self.register_buffer('freqs', freqs)
 
     def rotate_queries_or_keys(self, t, seq_dim = -2):
-        device = t.device
+        placement, sbp = t.placement, t.sbp
         seq_len = t.shape[seq_dim]
-        freqs = self.forward(lambda: flow.arange(seq_len, device = device), cache_key = seq_len)
+        freqs = self.forward(lambda: flow.arange(seq_len, placement = placement, sbp = sbp), cache_key = seq_len)
         return apply_rotary_emb(freqs, t)
 
     def forward(self, t, cache_key = None):
@@ -100,10 +100,11 @@ class RotaryEmbedding(nn.Module):
 
         if isfunction(t):
             t = t()
-
+        
+        self.freqs = self.freqs.to_global(placement=t.placement, sbp=t.sbp)
         freqs = self.freqs
 
-        freqs = flow.einsum('..., f -> ... f', t.type(freqs.dtype), freqs)
+        freqs = flow.einsum('..., f -> ... f', t.to(freqs.dtype), freqs)
         freqs = repeat(freqs, '... n -> ... (n r)', r = 2)
 
         if exists(cache_key):

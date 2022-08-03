@@ -1,16 +1,23 @@
+import os
+import sys
 import oneflow as flow
 import oneflow.nn.functional as F
 from oneflow import nn
 from libai.utils import distributed as dist
-import os
-import sys
+from collections import namedtuple
+from .models import l2norm
 
 def import_libai_clip_ctx_mgr(fn):
+
     def wrapper(*args, **kwargs):
         sys.path.append(os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")), "CLIP"))
         fn(*args, **kwargs)
         sys.path.pop()
+
     return wrapper
+
+EmbeddedText = namedtuple('EmbedTextReturn', ['text_embed', 'text_encodings'])
+EmbeddedImage = namedtuple('EmbedImageReturn', ['image_embed', 'image_encodings'])
 
 class BaseClipAdapter(nn.Module):
     def __init__(self, clip, **kwargs):
@@ -100,13 +107,14 @@ class OpenAIClipAdapter(BaseClipAdapter):
         text_mask_excluding_eos = flow.cumsum(is_eos_id, dim = -1) == 0
         #todo: F.pad not support bool
         #text_mask = F.pad(text_mask_excluding_eos, (1, -1), value = True)
-        text_mask = F.pad(text_mask_excluding_eos * 1.0, (1, -1), value = 1.0) > 0.5
+        text_mask = F.pad(text_mask_excluding_eos * 1.0, (1, -1), value = 1.0) < 0.5
         assert not self.cleared
     
-        #text = text.to_global(placement=dist.get_layer_placement(0, "cpu"),sbp=flow.sbp.split(0))
+        text = text.to_global(placement=flow.placement(type='cuda', ranks=[0]), sbp=flow.sbp.broadcast)
         text_embed = self.clip.encode_text(text)
         text_encodings = self.text_encodings
-        text_encodings = text_encodings.masked_fill(~text_mask[..., None], 0.)
+        text_mask = text_mask.to_global(placement=flow.placement(type='cuda', ranks=[0]), sbp=flow.sbp.broadcast)
+        text_encodings = text_encodings.masked_fill(text_mask[..., None], 0.)
         del self.text_encodings
         return EmbeddedText(l2norm(text_embed.float()), text_encodings.float())
 
