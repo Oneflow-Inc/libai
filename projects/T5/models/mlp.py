@@ -66,11 +66,6 @@ class T5MLP(nn.Module):
         output = self.dropout(output)
         return output
 
-    def extra_repr(self) -> str:
-        return "bias_gelu_fusion={}, bias_dropout_fusion={}, dropout={}".format(
-            self.bias_gelu_fusion, self.bias_dropout_fusion, self.output_dropout_prob
-        )
-
 
 class MT5MLP(nn.Module):
     def __init__(

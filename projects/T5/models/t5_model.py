@@ -17,10 +17,11 @@ import oneflow as flow
 
 from libai.config import configurable
 from libai.layers import Linear
-from libai.models.t5_model import T5ForPreTraining as PretrainingModel
+from libai.models.utils import T5LoaderHuggerFace
 from libai.models.t5_model import T5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
+from projects.T5.configs.t5_model_config import cfg as libai_cfg
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
 from projects.T5.models.transformer_layer import TransformerLayer
@@ -231,6 +232,9 @@ class T5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.t5_model = T5Model(cfg)
+        if cfg.pretrained_model_path is not None:
+            loader = T5LoaderHuggerFace(T5Model, libai_cfg, cfg.pretrained_model_path)
+            self.t5_model = loader.load()
         self.loss_func = T5Loss()
 
     def set_cache(self, encoder_states, past_key_values):

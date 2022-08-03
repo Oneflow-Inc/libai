@@ -2,7 +2,6 @@ import logging
 import os
 
 import oneflow as flow
-from yaml import warnings
 
 import libai.utils.distributed as dist
 from libai.config import LazyCall
@@ -470,6 +469,8 @@ class ModelLoaderHuggerFace(ModelLoader):
                 # Load config and update config.
                 self._load_config_from_json(config_file)
             else:
+                import warnings
+
                 warnings.warn(
                     f"Error no file named {CONFIG_NAME} found in directory"
                     f"{self.pretrained_model_path}",
