@@ -1,7 +1,8 @@
+from omegaconf import DictConfig
 from libai.config import LazyCall
 from libai.models import SwinTransformerV2
 
-model = LazyCall(SwinTransformerV2)(
+cfg = dict(
     img_size=256,
     patch_size=4,
     in_chans=3,
@@ -19,3 +20,7 @@ model = LazyCall(SwinTransformerV2)(
     use_checkpoint=False,
     pretrained_window_sizes=[0, 0, 0, 0],
 )
+
+cfg = DictConfig(cfg)
+
+model = LazyCall(SwinTransformerV2)(cfg=cfg)
