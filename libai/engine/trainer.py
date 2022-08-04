@@ -23,6 +23,8 @@ import oneflow as flow
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
 
+import pdb
+
 # --------------------------------------------------------
 # References:
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/train_loop.py
@@ -211,6 +213,12 @@ class TrainerBase:
             # }
             metrics_dict = all_metrics_dict
             total_losses_reduced = sum(metrics_dict.values())
+            
+            ### 新增
+            total_losses_reduced = sum(metrics_dict.values())
+            if dist.is_main_process():
+                txt = open("/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_V4/results/exp7_libai.txt", "a")
+                txt.write(str(total_losses_reduced.item())+"\n")
 
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
             if len(metrics_dict) > 1:
@@ -256,6 +264,7 @@ class EagerTrainer(TrainerBase):
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
+        # pdb.set_trace()
         self.grad_acc_steps = grad_acc_steps
 
     def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
@@ -270,9 +279,15 @@ class EagerTrainer(TrainerBase):
         data = get_batch(
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
+
+   
         data_time = time.perf_counter() - start
 
+
+
         loss_dict = self.model(**data)
+
+        # pdb.set_trace()
         losses = sum(loss_dict.values()) / self.grad_acc_steps
 
         losses.backward()
@@ -331,10 +346,16 @@ class GraphTrainer(TrainerBase):
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
 
+        # data
+        # pdb.set_trace()
+
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
+
+        # pdb.set_trace()
+
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step
         loss_dict = {key: value.mean() for key, value in loss_dict.items()}
