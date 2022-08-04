@@ -23,8 +23,6 @@ import oneflow as flow
 from libai.utils import distributed as dist
 from libai.utils.events import EventStorage, get_event_storage
 
-import pdb
-
 # --------------------------------------------------------
 # References:
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/train_loop.py
@@ -264,7 +262,6 @@ class EagerTrainer(TrainerBase):
         self.data_loader = data_loader
         self._data_loader_iter = iter(data_loader)
         self.optimizer = optimizer
-        # pdb.set_trace()
         self.grad_acc_steps = grad_acc_steps
 
     def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
@@ -287,7 +284,6 @@ class EagerTrainer(TrainerBase):
 
         loss_dict = self.model(**data)
 
-        # pdb.set_trace()
         losses = sum(loss_dict.values()) / self.grad_acc_steps
 
         losses.backward()
@@ -345,16 +341,11 @@ class GraphTrainer(TrainerBase):
         data = get_batch(
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
-
         # data
-        # pdb.set_trace()
-
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
-
-        # pdb.set_trace()
 
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step

@@ -16,7 +16,6 @@
 import logging
 import sys
 import numpy as np
-import pdb
 
 # 
 import oneflow as flow
@@ -153,7 +152,6 @@ model.load_state_dict(m)
 with flow.no_grad():
     out_flow=model_oneflow(input_flow)
     out_torch=model(input)
-pdb.set_trace()
 
 out1=out_flow['x'].numpy()
 out2=out_torch['x'].detach().cpu().numpy()
@@ -164,7 +162,6 @@ print(np.allclose(out1, out2, 1e-4, 1e-4))
 # dict2=set(list(out_torch))
 # print(dict1-dict2)
 # print(dict2-dict1)
-# pdb.set_trace()
 
 # print('*********')
 # print(para.keys())

@@ -8,7 +8,6 @@ from libai.config import configurable
 from libai.layers import LayerNorm, Linear, LMLogits, VocabEmbedding
 from libai.models.utils import init_method_normal
 from libai.utils import distributed as dist
-import pdb
 logger = logging.getLogger(__name__)
 
 RWKV_HEAD_QK_DIM = 256
@@ -277,16 +276,6 @@ class GPT(nn.Module):
             k = self.head_k(x)[:, :T, :]
             c = (q @ k.transpose(-2, -1)) * (1.0 / RWKV_HEAD_QK_DIM)
             # c = c.masked_fill(self.copy_mask[:T, :T] == 0, 0)
-            # pdb.set_trace()
-            # (Pdb) p c
-            # tensor(..., placement=oneflow.placement(type="cuda", ranks=[0]), sbp=(oneflow.sbp.broadcast,), is_lazy='True',
-            #        size=(32, 1024, 1024), dtype=oneflow.float32)
-            # (Pdb) 
-            # tensor(..., placement=oneflow.placement(type="cuda", ranks=[0]), sbp=(oneflow.sbp.broadcast,), is_lazy='True',
-            #        size=(32, 1024, 1024), dtype=oneflow.float32)
-            # (Pdb) 
-            # tensor(..., placement=oneflow.placement(type="cuda", ranks=[0]), sbp=(oneflow.sbp.broadcast,), is_lazy='True',
-            #        size=(32, 1024, 1024), dtype=oneflow.float32)
             c = c.float()
             c = c @ F.one_hot(idx, num_classes=6064).float()
             # https://github.com/Chenqll/libai/pull/1#issuecomment-1193328369
