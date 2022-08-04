@@ -82,8 +82,8 @@ dataloader.test[0].dataset.transform = LazyCall(transforms.Compose)(
 
 
 # Refine model cfg for vit training on imagenet
-model.num_classes = 1000
-model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+model.cfg.num_classes = 1000
+model.cfg.loss_func = SoftTargetCrossEntropy()
 
 # Refine optimizer cfg for vit model
 optim.lr = 1e-3  # The pytorch version is 1024 as the total batch size, 1e-3 as the learning rate

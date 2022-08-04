@@ -55,10 +55,10 @@ dataloader.test[0].dataset.transform = LazyCall(transforms.Compose)(
 )
 
 # Refine model cfg for vit training on cifar100
-model.num_classes = 100
-model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+model.cfg.num_classes = 100
+model.cfg.loss_func = SoftTargetCrossEntropy()
 
-# Refine optimizer cfg for swin model
+# Refine optimizer cfg for swinv2 model
 optim.lr = 5e-4
 optim.eps = 1e-8
 optim.weight_decay = 0.05
@@ -98,7 +98,7 @@ optim.params = LazyCall(set_weight_decay)(
 )
 # Refine train cfg for swin model
 train.train_micro_batch_size = 32
-train.num_accumulation_steps = 1
+train.num_accumulation_steps = 8
 train.test_micro_batch_size = 32
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300
@@ -114,7 +114,7 @@ train.scheduler.warmup_method = "linear"
 train.dist.data_parallel_size = 1
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
-train.dist.pipeline_num_layers = sum(model.depths)
+train.dist.pipeline_num_layers = sum(model.cfg.depths)
 train.output_dir = "./output"
 
 train.rdma_enabled = False

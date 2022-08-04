@@ -634,7 +634,7 @@ class SwinTransformerV2(nn.Module):
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
         pretrained_window_sizes (tuple(int)): Pretrained window sizes of each layer.
     """
-
+    @configurable
     def __init__(
         self,
         img_size=224,
@@ -762,13 +762,13 @@ class SwinTransformerV2(nn.Module):
             "window_size": cfg.window_size,
             "mlp_ratio": cfg.mlp_ratio,
             "qkv_bias": cfg.qkv_bias,
-            "qk_scale": cfg.qk_scale,
             "drop_rate": cfg.drop_rate,
             "drop_path_rate": cfg.drop_path_rate,
             "ape": cfg.ape,
             "patch_norm": cfg.patch_norm,
             "use_checkpoint": cfg.use_checkpoint,
             "pretrained_window_sizes": cfg.pretrained_window_sizes,
+            "loss_func": cfg.loss_func,
         }
 
     def forward_features(self, x):
