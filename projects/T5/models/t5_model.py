@@ -17,9 +17,8 @@ import oneflow as flow
 
 from libai.config import configurable
 from libai.layers import Linear
-from libai.models.utils import T5LoaderHuggerFace
 from libai.models.t5_model import T5Loss
-from libai.models.utils import init_method_normal, scaled_init_method_normal
+from libai.models.utils import T5LoaderHuggerFace, init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
