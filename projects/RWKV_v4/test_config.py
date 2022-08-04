@@ -122,7 +122,7 @@ para=dict()
 para=load_torch_checkpoint(model)
 
 # 转入config
-cfg = LazyConfig.load('/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_V4/configs/config.py')
+cfg = LazyConfig.load('/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_v4/configs/config.py')
 model_oneflow = DefaultTrainer.build_model(cfg)
 
 model_oneflow.load_state_dict(para, strict=False)

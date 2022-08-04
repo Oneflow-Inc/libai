@@ -5,11 +5,11 @@ from libai.config import LazyCall
 from libai.tokenizer import GPT2Tokenizer
 
 # 配置 model
-from projects.RWKV_V4.modeling.model import GPT ,GPTConfig
+from projects.RWKV_v4.modeling.model import GPT ,GPTConfig
 # 配置 dataloader `build_image_train_loader` 和 `build_image_test_loader` 是 LiBai 提供的用于创建图像数据的训练集和测试集 DataLoader 的两个函数
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 # 导入自定义的 dataset
-from projects.RWKV_V4.dataset import RWKVDataset
+from projects.RWKV_v4.dataset import RWKVDataset
 
 graph = get_config("common/models/graph.py").graph
 train = get_config("common/train.py").train
@@ -48,7 +48,7 @@ train.train_iter=0
 train.train_epoch=1
 
 train.output_dir = "output/rwkv_output_loss_compare"
-train.load_weight = "/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_V4/model/output_model/" # 采用同一个model进行初始化
+train.load_weight = "/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_v4/model/output_model/" # 采用同一个model进行初始化
 train.rdma_enabled = False
 
 # model.cfg.hidden_dropout_prob= 0.0 # 关闭所有的dropout

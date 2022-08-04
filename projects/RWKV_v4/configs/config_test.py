@@ -3,19 +3,19 @@ from omegaconf import OmegaConf
 from libai.config import get_config
 from libai.config import LazyCall
 from libai.tokenizer import GPT2Tokenizer
+# 配置 dataloader `build_image_train_loader` 和 `build_image_test_loader` 是 LiBai 提供的用于创建图像数据的训练集和测试集 DataLoader 的两个函数
+from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 import oneflow as flow
 
 # 配置 model
-from projects.RWKV_V4.modeling.model import GPT ,GPTConfig
-# 配置 dataloader `build_image_train_loader` 和 `build_image_test_loader` 是 LiBai 提供的用于创建图像数据的训练集和测试集 DataLoader 的两个函数
-from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
+from projects.RWKV_v4.modeling.model import GPT ,GPTConfig
 # 导入自定义的 dataset
-from projects.RWKV_V4.dataset import RWKVDataset
-from projects.RWKV_V4.utils.config_optimizer import get_RWKV_V4_config_optim
+from projects.RWKV_v4.dataset import RWKVDataset
+from projects.RWKV_v4.utils.config_optimizer import get_RWKV_v4_config_optim
 
 
 test=OmegaConf.create()
-test.enable=True
+test.enable=False
 test.weight_style=(
     "pytorch"
 )
@@ -30,7 +30,7 @@ graph.enabled=True
 
 # optim = get_config("common/optim.py").optim
 optim = LazyCall(flow.optim.Adam)(
-    params=LazyCall(get_RWKV_V4_config_optim)(),
+    params=LazyCall(get_RWKV_v4_config_optim)(),
     lr=8e-4,
 )
 
@@ -55,7 +55,7 @@ train.scheduler=LazyCall(flow.optim.lr_scheduler.StepLR)(
 ) 
 train.amp.enabled=False
 
-datafile="/home/chenqiaoling/RWKV-LM/data/enwik8"
+datafile="data_test/enwik8"
 # 获得一个 DataLoader 的配置对象
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
@@ -73,7 +73,7 @@ train.train_iter=0
 train.train_epoch=1
 
 train.output_dir = "output/rwkv_output_loss_compare"
-# train.load_weight = "/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_V4/model/output_model/" # 采用同一个model进行初始化
+# train.load_weight = "/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_v4/model/output_model/" # 采用同一个model进行初始化
 train.rdma_enabled = False
 
 # model.cfg.hidden_dropout_prob= 0.0 # 关闭所有的dropout

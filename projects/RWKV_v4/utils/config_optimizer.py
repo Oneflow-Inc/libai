@@ -1,4 +1,4 @@
-def get_RWKV_V4_config_optim(model):
+def get_RWKV_v4_config_optim(model):
     no_decay = set()
 
     for mn, m in model.named_modules():  # here we disable weight_decay
