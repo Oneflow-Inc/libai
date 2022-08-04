@@ -96,7 +96,7 @@ class TestSwinLoder(flow.unittest.TestCase):
             self.input_image.tolist(),
             dtype=flow.float32,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=model.patch_embed.proj.weight.placement,  # to be modified
+            placement=model.patch_embed.proj.weight.placement,
         )
 
         prediction_scores = model(input_image)["prediction_scores"]
