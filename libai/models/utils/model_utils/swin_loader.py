@@ -15,7 +15,7 @@ class SwinLoaderHuggerFace(ModelLoaderHuggerFace):
         self.base_model_prefix_1 = "swin"
         self.base_model_prefix_2 = ""
 
-    def _convert_state_dict(self, flow_state_dict, cfg):
+    def _convert_state_dict(self, flow_state_dict):
         """Convert state_dict's keys to match model.
 
         Args:
