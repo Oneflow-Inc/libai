@@ -130,5 +130,5 @@ def save_images(images):
         images[i].save(f"./result_{i}.png")
 
 download_dalle2_weights()
-#gen_text_and_img_emb()
+gen_text_and_img_emb()
 save_images(gen_images())
