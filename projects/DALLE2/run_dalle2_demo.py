@@ -121,7 +121,6 @@ def gen_images():
     return images
 
 def save_images(images):
-
     import flowvision.transforms as T
     to_pil = T.ToPILImage()
     images = images.to_local().to("cpu")
