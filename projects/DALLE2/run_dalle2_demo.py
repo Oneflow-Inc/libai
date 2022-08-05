@@ -126,8 +126,8 @@ def save_images(images):
     to_pil = T.ToPILImage()
     images = images.to_local().to("cpu")
     images = list(map(to_pil, [images[i] for i in range(images.shape[0])]))
-    for i in range(images.shape[0]):
-        images[i].save(f"./result_{i}.png")
+    for i,image in enumerate(images):
+        image.save(f"./result_{i}.png")
 
 download_dalle2_weights()
 gen_text_and_img_emb()
