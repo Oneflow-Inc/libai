@@ -101,7 +101,6 @@ class RotaryEmbedding(nn.Module):
         if isfunction(t):
             t = t()
         
-        self.freqs = self.freqs.to_global(placement=t.placement, sbp=t.sbp)
         freqs = self.freqs
 
         freqs = flow.einsum('..., f -> ... f', t.to(freqs.dtype), freqs)
