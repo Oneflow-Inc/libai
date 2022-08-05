@@ -96,7 +96,7 @@ def gen_images():
         image_sizes = [64,],
         clip = clip,
         channels = 3,
-        timesteps = 2000,
+        timesteps = 1000,
         loss_type = "l2",
         beta_schedule = ["cosine"],
         learned_variance = True
