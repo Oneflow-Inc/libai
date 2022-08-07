@@ -15,7 +15,6 @@
 
 import math
 
-import numpy as np
 import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
@@ -24,7 +23,6 @@ from flowvision.models import to_2tuple
 
 from libai.config.config import configurable
 from libai.layers import MLP, DropPath, LayerNorm, Linear
-from libai.layers.activation import Activation, build_activation
 from libai.utils import distributed as dist
 
 
@@ -101,7 +99,8 @@ class WindowAttention(nn.Module):
                     1,
                     1,
                     placement=dist.get_layer_placement(layer_idx),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, \
+                                         flow.sbp.broadcast]),
                 )
             ),
             requires_grad=True,
@@ -634,6 +633,7 @@ class SwinTransformerV2(nn.Module):
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
         pretrained_window_sizes (tuple(int)): Pretrained window sizes of each layer.
     """
+
     @configurable
     def __init__(
         self,
