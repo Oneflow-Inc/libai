@@ -23,6 +23,7 @@ from .vision_transformer import VisionTransformer
 from .swin_transformer import SwinTransformer
 from .swin_transformer_v2 import SwinTransformerV2
 from .resmlp import ResMLP
+from .wrn import WideResNet
 
 __all__ = [
     "build_model",
@@ -41,4 +42,5 @@ __all__ = [
     "SwinTransformer",
     "SwinTransformerV2",
     "ResMLP",
+    "WideResNet"
 ]
