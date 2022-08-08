@@ -61,7 +61,8 @@ def get_default_optimizer_params(
         weight_decay_bias: override weight decay for bias parameters
         lr_factor_func: function to calculate lr decay rate by mapping the parameter names to
                     corresponding lr decay rate. Note that setting this option requires
-                    also setting ``base_lr``.
+                    also setting ``base_lr``. e.g.
+                    "lr_factor_func = lambda module_name: 0.1 if "transformer" in module_name else 1"
         overrides: if not `None`, provides values for optimizer hyperparameters
             (LR, weight decay) for module parameters with a given name; e.g.
             ``{"embedding": {"lr": 0.01, "weight_decay": 0.1}}`` will set the LR and
