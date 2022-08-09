@@ -266,22 +266,42 @@ class EagerTrainer(TrainerBase):
         start = time.perf_counter()
 
         # If you want to do something with the data, you can wrap the dataloader.
+        flow._oneflow_internal.profiler.RangePush('next')
         data = next(self._data_loader_iter)
+        flow._oneflow_internal.profiler.RangePop()
+        flow._oneflow_internal.profiler.RangePush('get batch')
         data = get_batch(
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
+        flow._oneflow_internal.profiler.RangePop()
+
         data_time = time.perf_counter() - start
 
+        flow._oneflow_internal.profiler.RangePush('forward')
         loss_dict = self.model(**data)
+        flow._oneflow_internal.profiler.RangePop()
+        flow._oneflow_internal.profiler.RangePush('copy to tmp')
+
+        with flow.tmp_compute_stream():
+            tmp_loss_dict = {key: t.clone() for key, t in loss_dict.items()}
+        flow._oneflow_internal.profiler.RangePop()
         losses = sum(loss_dict.values()) / self.grad_acc_steps
 
+        flow._oneflow_internal.profiler.RangePush('backward')
         losses.backward()
-        self.write_metrics(loss_dict, data_time)
+        flow._oneflow_internal.profiler.RangePop()
+        flow._oneflow_internal.profiler.RangePush('write_metrics')
+        with flow.tmp_compute_stream():
+            self.write_metrics(tmp_loss_dict, data_time)
+        flow._oneflow_internal.profiler.RangePop()
 
+        flow._oneflow_internal.profiler.RangePush('optimize')
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()
             self.optimizer.zero_grad()
+        flow._oneflow_internal.profiler.RangePop()
+
 
 
 class GraphTrainer(TrainerBase):
@@ -340,3 +360,4 @@ class GraphTrainer(TrainerBase):
         loss_dict = {key: value.mean() for key, value in loss_dict.items()}
 
         self.write_metrics(loss_dict, data_time)
+
