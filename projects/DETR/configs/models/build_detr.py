@@ -23,33 +23,30 @@ from ...modeling.detr import DETR
 from ...modeling.criterion import SetCriterion
 from ...modeling.position_encoding import PositionEmbeddingLearned, PositionEmbeddingSine
 
-    
+
 def build_criterion(args):
-    num_classes = 20 if args.dataset_file != 'coco' else 91
-    weight_dict = {
-        "loss_ce": 1, 
-        "loss_bbox": args.bbox_loss_coef,
-        "loss_giou": args.giou_loss_coef}
+    num_classes = 20 if args.dataset_file != "coco" else 91
+    weight_dict = {"loss_ce": 1, "loss_bbox": args.bbox_loss_coef, "loss_giou": args.giou_loss_coef}
 
     if args.aux_loss:
         aux_weight_dict = {}
         for i in range(args.dec_layers - 1):
-            aux_weight_dict.update({k + f'_{i}': v for k, v in weight_dict.items()})
+            aux_weight_dict.update({k + f"_{i}": v for k, v in weight_dict.items()})
         weight_dict.update(aux_weight_dict)
-        
-    losses = ['labels', 'boxes']
-    
+
+    losses = ["labels", "boxes"]
+
     return SetCriterion(
-        num_classes=num_classes, 
+        num_classes=num_classes,
         matcher=HungarianMatcher(
-        cost_class=args.set_cost_class, 
-        cost_bbox=args.set_cost_bbox, 
-        cost_giou=args.set_cost_giou
-        ), 
-        weight_dict=weight_dict, 
-        eos_coef=args.eos_coef, 
-        losses=losses
-        )
+            cost_class=args.set_cost_class,
+            cost_bbox=args.set_cost_bbox,
+            cost_giou=args.set_cost_giou,
+        ),
+        weight_dict=weight_dict,
+        eos_coef=args.eos_coef,
+        losses=losses,
+    )
 
 
 def build_transformer(args):
@@ -63,13 +60,13 @@ def build_transformer(args):
         normalize_before=args.pre_norm,
         return_intermediate_dec=True,
     )
-    
+
 
 def build_position_encoding(args):
     N_steps = args.hidden_dim // 2
-    if args.position_embedding in ('v2', 'sine'):
+    if args.position_embedding in ("v2", "sine"):
         position_embedding = PositionEmbeddingSine(N_steps, normalize=True)
-    elif args.position_embedding in ('v3', 'learned'):
+    elif args.position_embedding in ("v3", "learned"):
         position_embedding = PositionEmbeddingLearned(N_steps)
     else:
         raise ValueError(f"not supported {args.position_embedding}")
@@ -82,13 +79,12 @@ def build_backbone(args):
     # TODO (ziqiu chi): return_interm_layers works for segmentation task
     return_interm_layers = args.masks
     backbone = Backbone(
-        name=args.backbone, 
-        train_backbone=args.train_backbone, 
-        return_interm_layers=return_interm_layers, 
-        dilation=args.dilation)
-    model = Joiner(
-        backbone=backbone, 
-        position_embedding=position_embedding)
+        name=args.backbone,
+        train_backbone=args.train_backbone,
+        return_interm_layers=return_interm_layers,
+        dilation=args.dilation,
+    )
+    model = Joiner(backbone=backbone, position_embedding=position_embedding)
     model.num_channels = backbone.num_channels
     return model
 
@@ -98,12 +94,12 @@ def build(args):
     Build the DETR model for detection
     """
 
-    num_classes = 20 if args.dataset_file != 'coco' else 91
+    num_classes = 20 if args.dataset_file != "coco" else 91
 
     backbone = LazyCall(build_backbone)(args=args)
     transformer = LazyCall(build_transformer)(args=args)
     criterion = LazyCall(build_criterion)(args=args)
-            
+
     model = LazyCall(DETR)(
         backbone=backbone,
         transformer=transformer,

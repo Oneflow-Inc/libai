@@ -21,7 +21,6 @@ import oneflow.nn as nn
 from libai.layers import LayerNorm
 from libai.optim.build import reduce_param_groups
 
-from modeling.backbone import FrozenBatchNorm2d
 # --------------------------------------------------------
 # References:
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/solver/build.py
@@ -41,7 +40,7 @@ def get_default_optimizer_params(
     """
     Get default param list for optimizer, with suport for a few types of overrides.
     If no overrides are needed, it is equivalent to `model.parameters()`.
-    
+
     For detr, we make lr of backbone (1e-5) different with transformer (1e-4).
 
     Arguments:
@@ -66,7 +65,7 @@ def get_default_optimizer_params(
             lr=0.01,
             weight_decay=1e-4
         )
-        
+
     """
     if overrides is None:
         overrides = {}
@@ -101,7 +100,7 @@ def get_default_optimizer_params(
     )
     params = []
     memo = set()
-    for module in model.modules():
+    for module_name, module in model.named_modules():
         for model_param_name, value in module.named_parameters(recurse=False):
             if not value.requires_grad:
                 continue
@@ -109,12 +108,12 @@ def get_default_optimizer_params(
             if value in memo:
                 continue
             memo.add(value)
-
             hyperparams = copy.copy(defaults)
             if isinstance(module, norm_module_types) and weight_decay_norm is not None:
                 hyperparams["weight_decay"] = weight_decay_norm
             # Modify the learning rate of backbone
-            if isinstance(module, nn.Conv2d):
+            # if isinstance(module, nn.Conv2d):
+            if "backbone" in module_name:
                 hyperparams.update(overrides.get("backbone", {}))
             params.append({"params": [value], **hyperparams})
     return reduce_param_groups(params)

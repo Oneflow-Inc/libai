@@ -4,9 +4,10 @@ COCO dataset which returns image_id for evaluation.
 Mostly copy-paste from https://github.com/pytorch/vision/blob/13b35ff/references/detection/coco_utils.py
 """
 
-from matplotlib.pyplot import box
-import oneflow as flow
 import flowvision
+import oneflow as flow
+from matplotlib.pyplot import box
+from numpy import dtype
 from pycocotools import mask as coco_mask
 
 
@@ -39,7 +40,7 @@ class ConvertCocoPolysToMask(object):
 
         anno = target["annotations"]
 
-        anno = [obj for obj in anno if 'iscrowd' not in obj or obj['iscrowd'] == 0]
+        anno = [obj for obj in anno if "iscrowd" not in obj or obj["iscrowd"] == 0]
 
         boxes = [obj["bbox"] for obj in anno]
 
@@ -51,8 +52,14 @@ class ConvertCocoPolysToMask(object):
         # BUG: inplace version returns error results
         # boxes[:, 0::2].clamp_(min=0, max=w)
         # boxes[:, 1::2].clamp_(min=0, max=h)
-        boxes[:, 0::2] = flow.clamp(boxes[:, 0::2], min=0, max=w)
-        boxes[:, 1::2] = flow.clamp(boxes[:, 1::2], min=0, max=h)
+
+        # BUG: https://github.com/Oneflow-Inc/oneflow/issues/8834
+        # boxes[:, 0::2] = flow.clamp(boxes[:, 0::2], min=0, max=w)
+        # boxes[:, 1::2] = flow.clamp(boxes[:, 1::2], min=0, max=h)
+        boxes[:, 0] = flow.clamp(boxes[:, 0], min=0, max=w)
+        boxes[:, 2] = flow.clamp(boxes[:, 2], min=0, max=w)
+        boxes[:, 1] = flow.clamp(boxes[:, 1], min=0, max=h)
+        boxes[:, 3] = flow.clamp(boxes[:, 3], min=0, max=h)
         classes = [obj["category_id"] for obj in anno]
         classes = flow.tensor(classes, dtype=flow.int64)
 
@@ -101,12 +108,22 @@ class CocoDetection(flowvision.datasets.CocoDetection):
         super(CocoDetection, self).__init__(root=img_folder, annFile=ann_file)
         self._transforms = transforms
         self.prepare = ConvertCocoPolysToMask(return_masks=return_masks)
-        
+
     def __getitem__(self, idx: int):
         img, target = super().__getitem__(idx)
         image_id = self.ids[idx]
-        target = {'image_id': image_id, 'annotations': target}
+        target = {"image_id": image_id, "annotations": target}
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
+        # img = flow.ones((3, 873, 1201), dtype=flow.float32)
+        # target = {
+        #     "boxes": flow.tensor([[0.2107, 0.4918, 0.3994, 0.2495]], dtype=flow.float32),
+        #     "labels": flow.tensor([72], dtype=flow.int64),
+        #     "image_id": flow.tensor([139], dtype=flow.int64),
+        #     "iscrowd": flow.tensor([0], dtype=flow.int64),
+        #     "orig_size": flow.tensor([426, 640], dtype=flow.int64),
+        #     "size": flow.tensor([873, 1201], dtype=flow.int64),
+        #     "area": flow.tensor([46674.9805], dtype=flow.float32),
+        # }
         return (img, target)

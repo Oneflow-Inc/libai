@@ -36,8 +36,8 @@ class ParallelCrossEntropyLoss(nn.Module):
         assert target.ndim == 2
         assert logits.shape[0:2] == target.shape
         lm_loss = flow._C.sparse_softmax_cross_entropy(
-            logits.view(-1, logits.shape[-1]),
-            target.view(-1))
+            logits.view(-1, logits.shape[-1]), target.view(-1)
+        )
         weight = weight[target.view(-1)]
         weight = weight / weight.sum()
         lm_loss = (lm_loss * weight).sum()

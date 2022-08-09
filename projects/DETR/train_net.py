@@ -18,16 +18,16 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.engine import DefaultTrainer, default_setup
-
 from trainer.detr_default import DetrDefaultTrainer as DefaultTrainer
 from utils.checkpoint import detr_checkpointer
+
+from libai.config import LazyConfig, default_argument_parser, try_get_key
+from libai.engine import default_setup
 
 logger = logging.getLogger("libai." + __name__)
 
 
-def main(args): 
+def main(args):
 
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
@@ -56,7 +56,6 @@ def main(args):
 
         DefaultTrainer.test(cfg, test_loader, model)
         return
-
     trainer = DefaultTrainer(cfg)
     return trainer.train()
 

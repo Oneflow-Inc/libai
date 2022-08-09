@@ -17,19 +17,19 @@
 import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
-
 from modeling.cross_entropy import ParallelCrossEntropyLoss
 from utils import box_ops
 
 
 class SetCriterion(nn.Module):
-    """ This class computes the loss for DETR.
+    """This class computes the loss for DETR.
     The process happens in two steps:
         1) we compute hungarian assignment between ground truth boxes and the outputs of the model
         2) we supervise each pair of matched ground-truth / prediction (supervise class and box)
     """
+
     def __init__(self, num_classes, matcher, weight_dict, eos_coef, losses):
-        """ Create the criterion.
+        """Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
             matcher: module able to compute a matching between targets and proposals
@@ -45,7 +45,7 @@ class SetCriterion(nn.Module):
         self.losses = losses
         empty_weight = flow.ones(self.num_classes + 1)
         empty_weight[-1] = self.eos_coef
-        self.register_buffer('empty_weight', empty_weight)
+        self.register_buffer("empty_weight", empty_weight)
         self.l1_loss = nn.L1Loss(reduction="none")
         # self.cross_entropy = ParallelCrossEntropyLoss()
 
@@ -53,45 +53,55 @@ class SetCriterion(nn.Module):
         """Classification loss (NLL)
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
-        assert 'pred_logits' in outputs
-        src_logits = outputs['pred_logits']
+        assert "pred_logits" in outputs
+        src_logits = outputs["pred_logits"]
         target_classes_o = flow.cat([t[J] for t, (_, J) in zip(targets["labels"], indices)])
         # check here
         target_classes_o = target_classes_o.to_local()
         target_classes = flow.full(src_logits.shape[:2], self.num_classes, dtype=flow.int64)
         idx = self._get_src_permutation_idx(indices)
         target_classes[idx] = target_classes_o
-        target_classes = target_classes.to_global(sbp=src_logits.sbp, placement=src_logits.placement)
+        target_classes = target_classes.to_global(
+            sbp=src_logits.sbp, placement=src_logits.placement
+        )
         # loss_ce = self.cross_entropy(
-        #     src_logits, 
+        #     src_logits,
         #     target_classes,
         #     self.empty_weight)
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
-        losses = {'loss_ce': loss_ce}
+        losses = {"loss_ce": loss_ce}
         return losses
 
     def loss_boxes(self, outputs, targets, indices, num_boxes):
         """Compute the losses related to the bounding boxes, the L1 regression loss and the GIoU loss
-           targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 4]
-           The target boxes are expected in format (center_x, center_y, w, h), normalized by the image size.
+        targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 4]
+        The target boxes are expected in format (center_x, center_y, w, h), normalized by the image size.
         """
-        assert 'pred_boxes' in outputs
+        assert "pred_boxes" in outputs
         idx = self._get_src_permutation_idx(indices)
-        src_boxes = outputs['pred_boxes'][idx]
+        src_boxes = outputs["pred_boxes"][idx]
         target_boxes = flow.cat([t[i] for t, (_, i) in zip(targets["boxes"], indices)], dim=0)
         loss_bbox = self.l1_loss(src_boxes, target_boxes).sum()
         losses = {}
-        losses['loss_bbox'] = (loss_bbox / num_boxes)
-        loss_giou = 1 -  box_ops.generalized_box_iou(
-            box_ops.box_cxcywh_to_xyxy(src_boxes),
-            box_ops.box_cxcywh_to_xyxy(target_boxes)).diag()
-        losses['loss_giou'] = (loss_giou.sum() / num_boxes)
+        losses["loss_bbox"] = loss_bbox / num_boxes
+        loss_giou = (
+            1
+            - box_ops.generalized_box_iou(
+                box_ops.box_cxcywh_to_xyxy(src_boxes), box_ops.box_cxcywh_to_xyxy(target_boxes)
+            ).diag()
+        )
+        losses["loss_giou"] = loss_giou.sum() / num_boxes
         return losses
 
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
         # NOTE: flow does not support flow.full_like
-        batch_idx = flow.cat([flow.full(src.size(),i).to(dtype=src.dtype, device=src.device) for i, (src, _) in enumerate(indices)])
+        batch_idx = flow.cat(
+            [
+                flow.full(src.size(), i).to(dtype=src.dtype, device=src.device)
+                for i, (src, _) in enumerate(indices)
+            ]
+        )
         src_idx = flow.cat([src for (src, _) in indices])
         return batch_idx, src_idx
 
@@ -103,24 +113,24 @@ class SetCriterion(nn.Module):
 
     def get_loss(self, loss, outputs, targets, indices, num_boxes):
         loss_map = {
-            'labels': self.loss_labels,
-            'boxes': self.loss_boxes,
+            "labels": self.loss_labels,
+            "boxes": self.loss_boxes,
         }
-        assert loss in loss_map, f'do you really want to compute {loss} loss?'
+        assert loss in loss_map, f"do you really want to compute {loss} loss?"
         return loss_map[loss](outputs, targets, indices, num_boxes)
 
     def forward(self, outputs, targets):
-        """ This performs the loss computation.
+        """This performs the loss computation.
         Parameters:
              outputs: dict of tensors, see the output specification of the model for the format
                       For coco dataset:
-                      outputs["pred_logits"].shape: oneflow.Size([bsz, num_queries, 92])  
+                      outputs["pred_logits"].shape: oneflow.Size([bsz, num_queries, 92])
                       outputs["pred_boxes"].shape: oneflow.Size([bsz, num_queries, 4])
              targets: list of dicts, such that len(targets) == batch_size.
                       The expected keys in each dict depends on the losses applied, see each loss' doc
         """
 
-        outputs_without_aux = {k: v for k, v in outputs.items() if k != 'aux_outputs'}
+        outputs_without_aux = {k: v for k, v in outputs.items() if k != "aux_outputs"}
         # Retrieve the matching between the outputs of the last layer and the targets
         indices = self.matcher(outputs_without_aux, targets)
         # Compute the average number of target boxes accross all nodes, for normalization purposes
@@ -133,15 +143,15 @@ class SetCriterion(nn.Module):
         for loss in self.losses:
             losses.update(self.get_loss(loss, outputs, targets, indices, num_boxes))
         # In case of auxiliary losses, we repeat this process with the output of each intermediate layer.
-        if 'aux_outputs' in outputs:
-            for i, aux_outputs in enumerate(outputs['aux_outputs']):
+        if "aux_outputs" in outputs:
+            for i, aux_outputs in enumerate(outputs["aux_outputs"]):
                 indices = self.matcher(aux_outputs, targets)
                 for loss in self.losses:
-                    if loss == 'masks':
+                    if loss == "masks":
                         # Intermediate masks losses are too costly to compute.
                         continue
                     l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes)
-                    l_dict = {k + f'_{i}': v for k, v in l_dict.items()}
+                    l_dict = {k + f"_{i}": v for k, v in l_dict.items()}
                     losses.update(l_dict)
         return losses
 

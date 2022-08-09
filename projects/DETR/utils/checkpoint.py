@@ -1,8 +1,5 @@
-import os
-
 import oneflow as flow
 import oneflow.nn as nn
-
 import torch
 
 from libai.utils.checkpoint import Checkpointer
@@ -11,12 +8,17 @@ from .load_detr_weight import convert_state, load_tensor
 
 
 class detr_checkpointer(Checkpointer):
-    
-    def __init__(self, model: nn.Module, save_dir: str = "", *, save_to_disk: bool = True, **checkpointables: object):
+    def __init__(
+        self,
+        model: nn.Module,
+        save_dir: str = "",
+        *,
+        save_to_disk: bool = True,
+        **checkpointables: object
+    ):
         super().__init__(model, save_dir, save_to_disk=save_to_disk, **checkpointables)
-        
-    
-    def resume_or_load(self, path: str, *, resume: bool = True, weight_style: str = ""):
+
+    def resume_or_load(self, path: str, *, resume: bool = True, weight_style: str = "pytorch"):
         """
         If `resume` is True, this method attempts to resume from the last
         checkpoint (if exists). Otherwise, load checkpoint from the given path.
@@ -36,7 +38,7 @@ class detr_checkpointer(Checkpointer):
                 return self.load(path, checkpointables=[])
             if weight_style == "pytorch":
                 return self.load_torch_weight(path)
-    
+
     def load_torch_weight(self, path):
 
         if not path:

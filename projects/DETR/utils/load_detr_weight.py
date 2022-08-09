@@ -25,6 +25,7 @@ def convert_tensor(tensor):
     tensor = tensor.float()
     return flow.Tensor(tensor.cpu().numpy())
 
+
 def convert_state(state):
     save = OrderedDict()
     for name, tensor in state.items():
@@ -32,14 +33,22 @@ def convert_state(state):
             if "in_proj" in name:
                 if "weight" in name:
                     if "multihead_attn" in name:
-                        save[name[:29] + "cross_attention.query_key_value.weight"] = convert_tensor(tensor)                        
+                        save[name[:29] + "cross_attention.query_key_value.weight"] = convert_tensor(
+                            tensor
+                        )
                     else:
-                        save[name[:29] + "self_attention.query_key_value.weight"] = convert_tensor(tensor)
+                        save[name[:29] + "self_attention.query_key_value.weight"] = convert_tensor(
+                            tensor
+                        )
                 else:
                     if "multihead_attn" in name:
-                        save[name[:29] + "cross_attention.query_key_value.bias"] = convert_tensor(tensor)
+                        save[name[:29] + "cross_attention.query_key_value.bias"] = convert_tensor(
+                            tensor
+                        )
                     else:
-                        save[name[:29] + "self_attention.query_key_value.bias"] = convert_tensor(tensor)
+                        save[name[:29] + "self_attention.query_key_value.bias"] = convert_tensor(
+                            tensor
+                        )
             elif "out_proj" in name:
                 if "weight" in name:
                     if "multihead_attn" in name:
@@ -71,21 +80,25 @@ def convert_state(state):
                     if "encoder" in name:
                         save[name[:29] + "post_attention_layernorm.weight"] = convert_tensor(tensor)
                     else:
-                        save[name[:29] + "post_cross_attention_layernorm.weight"] = convert_tensor(tensor)
+                        save[name[:29] + "post_cross_attention_layernorm.weight"] = convert_tensor(
+                            tensor
+                        )
                 else:
                     if "encoder" in name:
                         save[name[:29] + "post_attention_layernorm.bias"] = convert_tensor(tensor)
                     else:
-                        save[name[:29] + "post_cross_attention_layernorm.bias"] = convert_tensor(tensor)
+                        save[name[:29] + "post_cross_attention_layernorm.bias"] = convert_tensor(
+                            tensor
+                        )
             elif "norm3" in name:
                 if "weight" in name:
                     save[name[:29] + "post_attention_layernorm.weight"] = convert_tensor(tensor)
                 else:
                     save[name[:29] + "post_attention_layernorm.bias"] = convert_tensor(tensor)
             else:
-                save[name] = convert_tensor(tensor)       
+                save[name] = convert_tensor(tensor)
         else:
-            save[name] = convert_tensor(tensor)       
+            save[name] = convert_tensor(tensor)
     return save
 
 
@@ -111,5 +124,8 @@ def load_detr_weights(model, path, hidden_size, num_heads, layers=12):
         num_heads=num_heads,
         head_size=head_size,
     )
+    import pdb
+    pdb.set_trace()
+    flow.save(of_state_dict)
     for key, value in of_state_dict.items():
         load_tensor(model.state_dict()[key], value)

@@ -20,7 +20,7 @@ path_train_ann = "/dataset/mscoco_2017/annotations/instances_train2017.json"
 path_val_img = "/dataset/mscoco_2017/val2017"
 path_val_ann = "/dataset/mscoco_2017/annotations/instances_val2017.json"
 
-dataloader.train.dataset[0].img_folder= path_train_img
+dataloader.train.dataset[0].img_folder = path_train_img
 dataloader.train.dataset[0].ann_file = path_train_ann
 dataloader.train.dataset_mixer = None
 
@@ -30,6 +30,7 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 
 # For inference
 # train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
+# train.load_weight = "projects/DETR/checkpoint/of"
 
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
@@ -37,34 +38,35 @@ train.test_micro_batch_size = 2
 train.train_epoch = 300
 
 coco_detection = LazyCall(CocoDetection)(
-    img_folder = path_val_img, 
-    ann_file = path_val_ann, 
-    return_masks = False,
-    transforms = make_coco_transforms("val")
-    )
+    img_folder=path_val_img,
+    ann_file=path_val_ann,
+    return_masks=False,
+    transforms=make_coco_transforms("val"),
+)
 train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detection)
 train.evaluation.eval_metric = "bbox@AP"
 
 # Refine optimizer cfg for detr model
 optim.weight_decay = 1e-4
 optim.lr = 1e-4
-backbone_lr = 1e-5
+backbone_lr = 1e-4
 
 optim.params = LazyCall(get_default_optimizer_params)(
-        clip_grad_max_norm=0.1,
-        clip_grad_norm_type=2.0,
-        weight_decay_norm=0.0,
-        weight_decay_bias=0.0,   
-        overrides = {"backbone": {"lr": backbone_lr}})
+    clip_grad_max_norm=0.1,
+    clip_grad_norm_type=2.0,
+    weight_decay_norm=0.0,
+    weight_decay_bias=0.0,
+    overrides={"backbone": {"lr": backbone_lr}},
+)
 
 # Scheduler
 epoch_step_size = 200
 train.scheduler = LazyCall(WarmupStepLR)(
-        warmup_factor=0,
-        warmup_iter=0,
-        step_size=epoch_step_size,
-        warmup_method="linear",
-    )
+    warmup_factor=0,
+    warmup_iter=0,
+    step_size=epoch_step_size,
+    warmup_method="linear",
+)
 
 graph.enabled = False
 

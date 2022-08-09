@@ -19,7 +19,6 @@ from libai.engine.trainer import TrainerBase
 
 
 class DetrEagerTrainer(TrainerBase):
-
     def __init__(self, model, data_loader, optimizer, grad_acc_steps=1):
         """
         Args:
@@ -41,12 +40,13 @@ class DetrEagerTrainer(TrainerBase):
         self.optimizer = optimizer
         self.grad_acc_steps = grad_acc_steps
         self.mem = []
-        
-    def run_step(self, get_batch: Callable,  input_placement_device: str = "cuda"):
+
+    def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
         """
         Implement the standard training logic described above.
         """
-        assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        self.model.eval()
+        # assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
         data = next(self._data_loader_iter)
         data = get_batch(data)
@@ -54,10 +54,16 @@ class DetrEagerTrainer(TrainerBase):
         loss_dict, _ = self.model(data)
         weight_dict = self.model.criterion.weight_dict
         losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+        loss_value = losses.item()
+        print(loss_value)
+        txt_file = open("projects/DETR/checkpoint/libai.txt", "a", encoding="utf-8")
+        txt_file.write(str(loss_value))
+        txt_file.write("\n")
+        txt_file.close()
         losses.backward()
         loss_dict_scaled = {k: v * weight_dict[k] for k, v in loss_dict.items() if k in weight_dict}
-        self.write_metrics(loss_dict_scaled, data_time)
+        # self.write_metrics(loss_dict_scaled, data_time)
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()
-            self.optimizer.zero_grad()                                
+            self.optimizer.zero_grad()

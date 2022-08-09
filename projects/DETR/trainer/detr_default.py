@@ -15,36 +15,30 @@
 
 
 import logging
-from collections import OrderedDict
-
-import oneflow as flow
-
-from libai.data import Instance
-from libai.data.structures import Instance
-from libai.engine.default import DefaultTrainer
-from libai.config import instantiate, try_get_key
-from libai.data import Instance
-from libai.models import  build_model
-from libai.utils import distributed as dist
-from libai.scheduler import build_lr_scheduler
 
 from trainer.detr_trainer import DetrEagerTrainer
-from projects.DETR.datasets.evaluation import inference_on_coco_dataset
 
+from libai.config import instantiate, try_get_key
+from libai.engine.default import DefaultTrainer
+from libai.models import build_model
+from libai.scheduler import build_lr_scheduler
+from libai.utils import distributed as dist
+from projects.DETR.datasets.evaluation import inference_on_coco_dataset
+from utils.checkpoint import detr_checkpointer
 
 class DetrDefaultTrainer(DefaultTrainer):
-
     def __init__(self, cfg):
 
         super().__init__(cfg)
 
         self.model.max_iter = cfg.train.train_iter
-
         self._trainer = DetrEagerTrainer(
             self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
         )
-
-    
+        # for loss align only
+        self.load_torch_weight = detr_checkpointer(self.model, 
+                                                   save_dir="/dataset/czq_home/projects/libai/projects/DETR/checkpoint")
+        self.load_torch_weight.resume_or_load(path="projects/DETR/checkpoint/detr-r50-e632da11.pth", resume=False)
     @classmethod
     def build_evaluator(cls, cfg):
         evaluator = instantiate(cfg.train.evaluation.evaluator)
@@ -62,9 +56,9 @@ class DetrDefaultTrainer(DefaultTrainer):
             cls.get_batch,
             evaluator,
         )
-        
+
         return results
-            
+
     @classmethod
     def build_model(cls, cfg):
         """
@@ -101,6 +95,7 @@ class DetrDefaultTrainer(DefaultTrainer):
         ), "cfg.train must contain `scheduler` namespace"
         if cfg.train.train_epoch:
             assert cfg.train.train_epoch > cfg.train.scheduler.step_size
-            cfg.train.scheduler.step_size = (cfg.train.scheduler.step_size / 
-                                            cfg.train.train_epoch) * cfg.train.train_iter
-        return build_lr_scheduler(cfg.train.scheduler, optimizer)    
+            cfg.train.scheduler.step_size = (
+                cfg.train.scheduler.step_size / cfg.train.train_epoch
+            ) * cfg.train.train_iter
+        return build_lr_scheduler(cfg.train.scheduler, optimizer)

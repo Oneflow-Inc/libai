@@ -14,11 +14,9 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.optimize import linear_sum_assignment
-
 import oneflow as flow
 from oneflow import nn
-
+from scipy.optimize import linear_sum_assignment
 from utils.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
 
 from libai.utils import distributed as dist
@@ -48,7 +46,7 @@ class HungarianMatcher(nn.Module):
 
     @flow.no_grad()
     def forward(self, outputs, targets):
-        """ Performs the matching
+        """Performs the matching
 
         Params:
             outputs: This is a dict that contains at least these entries:
@@ -74,8 +72,12 @@ class HungarianMatcher(nn.Module):
         out_bbox = outputs["pred_boxes"].flatten(0, 1)  # [bsz * num_queries, 4]
         # Also concat the target labels and boxes
         tgt_orig_size = targets["target_orig_size"]
-        tgt_ids = flow.cat([targets["labels"][i, :tgt_orig_size[i]] for i in range(len(tgt_orig_size))])
-        tgt_bbox = flow.cat([targets["boxes"][i, :tgt_orig_size[i], :] for i in range(len(tgt_orig_size))])
+        tgt_ids = flow.cat(
+            [targets["labels"][i, : tgt_orig_size[i]] for i in range(len(tgt_orig_size))]
+        )
+        tgt_bbox = flow.cat(
+            [targets["boxes"][i, : tgt_orig_size[i], :] for i in range(len(tgt_orig_size))]
+        )
 
         # Compute the classification cost. Contrary to the loss, we don't use the NLL,
         # but approximate it in 1 - proba[target class].
@@ -83,7 +85,7 @@ class HungarianMatcher(nn.Module):
         cost_class = -out_prob[:, tgt_ids]
 
         # Compute the L1 cost between boxes
-        cost_bbox = (out_bbox.unsqueeze(1)-tgt_bbox.unsqueeze(0)).norm(p=1, dim=2)
+        cost_bbox = (out_bbox.unsqueeze(1) - tgt_bbox.unsqueeze(0)).norm(p=1, dim=2)
         # TODO (ziqiu chi): oneflow does not support cdist
         # cost_bbox = flow.cdist(out_bbox, tgt_bbox, p=1)
 
@@ -96,4 +98,7 @@ class HungarianMatcher(nn.Module):
         indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
         # NOTE: setting dtype=flow.int64 returns bug: numpy-ndarray holds elements of unsupported datatype
         # return [(flow.as_tensor(i, dtype=flow.int64), flow.as_tensor(j, dtype=flow.int64)) for i, j in indices]
-        return [(flow.as_tensor(i).to(dtype=flow.int64), flow.as_tensor(j).to(dtype=flow.int64)) for i, j in indices]
+        return [
+            (flow.as_tensor(i).to(dtype=flow.int64), flow.as_tensor(j).to(dtype=flow.int64))
+            for i, j in indices
+        ]
