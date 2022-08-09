@@ -63,7 +63,8 @@ class WindowAttention(nn.Module):
         dim (int): Number of input channels.
         window_size (tuple[int]): The height and width of the window.
         num_heads (int): Number of attention heads.
-        qkv_bias (bool, optional):  If True, add a learnable bias to query, key, value. Default: True
+        qkv_bias (bool, optional): If True, add a learnable bias to query, key, value.
+                                    Default: True
         attn_drop (float, optional): Dropout ratio of attention weight. Default: 0.0
         proj_drop (float, optional): Dropout ratio of output. Default: 0.0
         pretrained_window_size (tuple[int]): The height and width of the window in pre-training.
@@ -99,8 +100,7 @@ class WindowAttention(nn.Module):
                     1,
                     1,
                     placement=dist.get_layer_placement(layer_idx),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, \
-                                         flow.sbp.broadcast]),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 )
             ),
             requires_grad=True,
@@ -477,7 +477,8 @@ class BasicLayer(nn.Module):
         attn_drop (float, optional): Attention dropout rate. Default: 0.0
         drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
         norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm
-        downsample (nn.Module | None, optional): Downsample layer at the end of the layer. Default: None
+        downsample (nn.Module | None, optional): Downsample layer at the end of the layer.
+                                                                            Default: None
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
         pretrained_window_size (int): Local window size in pre-training.
     """
@@ -604,7 +605,8 @@ class PatchEmbed(nn.Module):
         # FIXME look at relaxing size constraints
         assert (
             H == self.img_size[0] and W == self.img_size[1]
-        ), f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        ), f"Input image size ({H}*{W}) doesn't match model \
+        ({self.img_size[0]}*{self.img_size[1]})."
         x = self.proj(x).flatten(2).transpose(1, 2)  # B Ph*Pw C
         if self.norm is not None:
             x = self.norm(x)
