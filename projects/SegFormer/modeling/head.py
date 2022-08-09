@@ -1,15 +1,12 @@
-import math
-
 import oneflow as flow
 import oneflow.nn as nn
 from flowvision.layers import trunc_normal_
 from flowvision.models import to_2tuple
 
-from libai.config.config import configurable
 from libai.layers import Linear, LayerNorm, DropPath
 from libai.utils import distributed as dist
 
-class BaseDecodeHead(nn.Module):
+class DecodeHead(nn.Module):
     """Base class for BaseDecodeHead.
 
     Args:
@@ -42,37 +39,60 @@ class BaseDecodeHead(nn.Module):
     """
     def __init__(self,
                  in_channels,
-                 channels,
                  *,
                  num_classes,
+                 feature_strides=[4, 8, 16, 32],
                  dropout_ratio=0.1,
-                 in_index=-1,
-                 input_transform=None,
-                 embedding_dim=768,
+                 in_index=[0, 1, 2, 3],
+                 input_transform='multiple_select',
+                 embedding_dim=256,
                  ignore_index=255,
                  align_corners=False,
+                 layer_idx=0,
                  ):
-        super(BaseDecodeHead, self).__init__()
+        super(DecodeHead, self).__init__()
         self._init_inputs(in_channels, in_index, input_transform)
-        self.channels = channels
+        
+        assert len(feature_strides) == len(self.in_channels)
+        assert min(feature_strides) == feature_strides[0]
         self.num_classes = num_classes
         self.embedding_dim = embedding_dim
         self.dropout_ratio = dropout_ratio
         self.in_index = in_index
         self.ignore_index = ignore_index
         self.align_corners = align_corners
-       
+        self.feature_strides = feature_strides
+        
         if dropout_ratio > 0:
-            self.dropout = nn.Dropout2d(dropout_ratio)
+            # self.dropout = nn.Dropout2d(dropout_ratio)    modified
+            self.dropout = nn.Dropout(dropout_ratio)
         else:
             self.dropout = None
+        
+        c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
+        
+        self.linear_c4 = MLP(input_dim=c4_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
+        self.linear_c3 = MLP(input_dim=c3_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
+        self.linear_c2 = MLP(input_dim=c2_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
+        self.linear_c1 = MLP(input_dim=c1_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
             
-    def extra_repr(self):
-        """Extra repr."""
-        s = f'input_transform={self.input_transform}, ' \
-            f'ignore_index={self.ignore_index}, ' \
-            f'align_corners={self.align_corners}'
-        return s
+        self.linear_fuse = nn.Conv2d(
+            in_channels=self.embedding_dim*4,
+            out_channels=self.embedding_dim,
+            kernel_size=1,
+            bias=False,
+        ).to_global(
+            placement=dist.get_layer_placement(layer_idx),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
+        self.batch_norm = nn.BatchNorm2d(self.embedding_dim)
+        self.activation = nn.ReLU()
+        
+        self.linear_pred = nn.Conv2d(self.embedding_dim, self.num_classes, kernel_size=1).to_global(
+            placement=dist.get_layer_placement(layer_idx),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
+            
         
     def _init_inputs(self, in_channels, in_index, input_transform):
         """Check and initialize input transforms.
@@ -135,52 +155,6 @@ class BaseDecodeHead(nn.Module):
 
         return inputs
         
-
-class MLP(nn.Module):
-    """
-    Linear Embedding
-    """
-    def __init__(self, input_dim=2048, embed_dim=768, layer_idx=0):
-        super().__init__()
-        self.proj = Linear(input_dim, embed_dim, layer_idx=layer_idx)
-
-    def forward(self, x):
-        x = x.flatten(2).transpose(1, 2)
-        x = self.proj(x)
-        return x
-
-
-class SegFormerHead(BaseDecodeHead):
-    def __init__(self, feature_strides, layer_idx=0,**kwargs):
-        super(SegFormerHead, self).__init__(input_transform='multiple_select', **kwargs)
-        assert len(feature_strides) == len(self.in_channels)
-        assert min(feature_strides) == feature_strides[0]
-        self.feature_strides = feature_strides
-            
-        c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
-        
-        self.linear_c4 = MLP(input_dim=c4_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
-        self.linear_c3 = MLP(input_dim=c3_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
-        self.linear_c2 = MLP(input_dim=c2_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
-        self.linear_c1 = MLP(input_dim=c1_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
-        
-        self.linear_fuse = nn.Conv2d(
-            in_channels=self.embedding_dim*4,
-            out_channels=self.embedding_dim,
-            kernel_size=1,
-            bias=False,
-        ).to_global(
-            placement=dist.get_layer_placement(layer_idx),
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        )
-        self.batch_norm = nn.BatchNorm2d(self.embedding_dim)
-        self.activation = nn.ReLU()
-        
-        self.linear_pred = nn.Conv2d(self.embedding_dim, self.num_classes, kernel_size=1).to_global(
-            placement=dist.get_layer_placement(layer_idx),
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        )
-        
     def forward(self, inputs):
         x = self._transform_inputs(inputs)  # len=4, 1/4,1/8,1/16,1/32
         c1, c2, c3, c4 = x
@@ -205,4 +179,17 @@ class SegFormerHead(BaseDecodeHead):
         x = self.linear_pred(x)
 
         return x
-    
+
+
+class MLP(nn.Module):
+    """
+    Linear Embedding
+    """
+    def __init__(self, input_dim=2048, embed_dim=768, layer_idx=0):
+        super().__init__()
+        self.proj = Linear(input_dim, embed_dim, layer_idx=layer_idx)
+
+    def forward(self, x):
+        x = x.flatten(2).transpose(1, 2)
+        x = self.proj(x)
+        return x

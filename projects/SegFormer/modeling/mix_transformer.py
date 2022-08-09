@@ -8,7 +8,7 @@ from flowvision.models import to_2tuple
 from libai.config.config import configurable
 from libai.layers import MLP, Linear, LayerNorm, DropPath
 from libai.utils import distributed as dist
-from head import SegFormerHead
+from head import DecodeHead
 
 
 class Mlp(MLP):
@@ -145,23 +145,31 @@ class Block(nn.Module):
 
 
 class MixVisionTransformer(nn.Module):
+    """_summary_
+
+    Args:
+        nn (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     @configurable
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
-                 num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
+    def __init__(self, img_size=224, patch_sizes=[7, 3, 3, 3], in_chans=3, num_classes=19, embed_dims=[32, 64, 160, 256],
+                 num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=True, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=LayerNorm, loss_func=None,
-                 depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1]):
+                 depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1], decoder_in_channels=[32, 64, 160, 256], decoder_embedding_dim=256, decoder_dropout_prob=0.1):
         super().__init__()
         self.num_classes = num_classes
         self.depths = depths
 
         # patch_embed
-        self.patch_embed1 = OverlapPatchEmbed(img_size=img_size, patch_size=7, stride=4, in_chans=in_chans,
+        self.patch_embed1 = OverlapPatchEmbed(img_size=img_size, patch_size=patch_sizes[0], stride=4, in_chans=in_chans,
                                               embed_dim=embed_dims[0], layer_idx=0)
-        self.patch_embed2 = OverlapPatchEmbed(img_size=img_size // 4, patch_size=3, stride=2, in_chans=embed_dims[0],
+        self.patch_embed2 = OverlapPatchEmbed(img_size=img_size // 4, patch_size=patch_sizes[1], stride=2, in_chans=embed_dims[0],
                                               embed_dim=embed_dims[1], layer_idx=0)
-        self.patch_embed3 = OverlapPatchEmbed(img_size=img_size // 8, patch_size=3, stride=2, in_chans=embed_dims[1],
+        self.patch_embed3 = OverlapPatchEmbed(img_size=img_size // 8, patch_size=patch_sizes[2], stride=2, in_chans=embed_dims[1],
                                               embed_dim=embed_dims[2], layer_idx=0)
-        self.patch_embed4 = OverlapPatchEmbed(img_size=img_size // 16, patch_size=3, stride=2, in_chans=embed_dims[2],
+        self.patch_embed4 = OverlapPatchEmbed(img_size=img_size // 16, patch_size=patch_sizes[3], stride=2, in_chans=embed_dims[2],
                                               embed_dim=embed_dims[3], layer_idx=0)
 
         # transformer encoder
@@ -199,14 +207,14 @@ class MixVisionTransformer(nn.Module):
         self.norm4 = norm_layer(embed_dims[3], layer_idx=0)
 
         # classification head
-        self.head = SegFormerHead(in_channels=[32, 64, 160, 256],
-                                  in_index=[0, 1, 2, 3],
-                                  feature_strides=[4, 8, 16, 32],
-                                  channels=128,
-                                  dropout_ratio=0.1,
-                                  num_classes=num_classes,
-                                  align_corners=False,
-                                  layer_idx=0) if num_classes > 0 else nn.Identity()
+        self.head = DecodeHead( in_channels=decoder_in_channels,
+                                in_index=[0, 1, 2, 3],
+                                feature_strides=[4, 8, 16, 32],
+                                dropout_ratio=decoder_dropout_prob,
+                                embedding_dim=decoder_embedding_dim,
+                                num_classes=num_classes,
+                                align_corners=False,
+                                layer_idx=0) if num_classes > 0 else nn.Identity()
         
         # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
@@ -251,7 +259,7 @@ class MixVisionTransformer(nn.Module):
 
     
     def no_weight_decay(self):
-        return {'pos_embed1', 'pos_embed2', 'pos_embed3', 'pos_embed4', 'cls_token'}  # has pos_embed may be better
+        return {'pos_embed1', 'pos_embed2', 'pos_embed3', 'pos_embed4', 'cls_token'}
 
     def get_classifier(self):
         return self.head
@@ -264,7 +272,7 @@ class MixVisionTransformer(nn.Module):
     def from_config(cls, cfg):
         return {
             'img_size': cfg.img_size,
-            'patch_size': cfg.patch_size,
+            'patch_sizes': cfg.patch_sizes,
             'in_chans': cfg.in_chans,
             'num_classes': cfg.num_classes,
             'embed_dims': cfg.embed_dims,
@@ -277,7 +285,10 @@ class MixVisionTransformer(nn.Module):
             'drop_path_rate': cfg.drop_path_rate,
             'depths': cfg.depths,
             'sr_ratios': cfg.sr_ratios,
-            'loss_func': cfg.lossfunc
+            'loss_func': cfg.lossfunc,
+            'decoder_in_channels': cfg.decoder_in_channels,
+            'decoder_embedding_dim': cfg.decoder_embedding_dim,
+            'decoder_dropout_prob': cfg.decoder_dropout_prob
         }
     
 
@@ -365,7 +376,12 @@ class DWConv(nn.Module):
 
 if __name__ == '__main__':
     model = MixVisionTransformer()
-    print(model)
-    input = flow.rand(1, 3, 224, 224)
+    
+    for param_tensor in model.state_dict():
+        print(param_tensor,'\t',model.state_dict()[param_tensor].size())
+
+    import numpy as np
+    input = np.random.rand(1, 3, 224, 224)
+    input = flow.tensor(input, dtype=flow.float32, sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]), placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),)
     output = model(input)
-    print(output.shape)
+    print(output['prediction_scores'].shape)
