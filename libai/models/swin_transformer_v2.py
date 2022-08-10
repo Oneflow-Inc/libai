@@ -214,7 +214,7 @@ class WindowAttention(nn.Module):
                         placement=dist.get_layer_placement(
                             self.layer_idx, device_type=self.v_bias.placement.type
                         ),
-                        sbp=flow.sbp.broadcast,
+                        sbp=dist.get_nd_sbp([flow.sbp.broadcast,flow.sbp.broadcast]),
                     ),
                     self.v_bias,
                 ],
