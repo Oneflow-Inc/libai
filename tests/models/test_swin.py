@@ -47,8 +47,8 @@ class TestSwinModel(flow.unittest.TestCase):
 
         # set model
         cfg.model = model
-        cfg.model.num_classes = 10
-        cfg.model.loss_func = SoftTargetCrossEntropy()
+        cfg.model.cfg.num_classes = 10
+        cfg.model.cfg.loss_func = SoftTargetCrossEntropy()
 
         # prepare data path
         if dist.get_local_rank() == 0:
@@ -84,7 +84,6 @@ class TestSwinModel(flow.unittest.TestCase):
         cfg.train.output_dir = TEST_OUTPUT
         cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
-
         cfg.train.rdma_enabled = False
 
         self.cfg = cfg
@@ -133,7 +132,7 @@ class TestSwinModel(flow.unittest.TestCase):
         # change to 2 when 2d sbp bugfix
         self.cfg.train.dist.tensor_parallel_size = 1
         self.cfg.train.dist.pipeline_parallel_size = 2
-        self.cfg.train.dist.pipeline_num_layers = sum(self.cfg.model.depths)
+        self.cfg.train.dist.pipeline_num_layers = sum(self.cfg.model.cfg.depths)
 
         dist.setup_dist_util(self.cfg.train.dist)
         _check_batch_size(self.cfg)

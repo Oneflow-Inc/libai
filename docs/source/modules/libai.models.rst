@@ -4,6 +4,7 @@ Supported models in LiBai(李白)
 
 - `VisionTransformer`_
 - `SwinTransformer`_
+- `SwinTransformerV2`_
 - `ResMLP`_
 - `BERT`_
 - `RoBERTa`_
@@ -12,6 +13,7 @@ Supported models in LiBai(李白)
 
 .. _VisionTransformer: https://arxiv.org/abs/2010.11929
 .. _SwinTransformer: https://arxiv.org/abs/2103.14030
+.. _SwinTransformerV2: https://arxiv.org/abs/2111.09883
 .. _ResMLP: https://arxiv.org/abs/2105.03404
 .. _BERT: https://arxiv.org/abs/1810.04805
 .. _RoBERTa: https://arxiv.org/abs/1907.11692
@@ -40,7 +42,7 @@ SwinTransformer
         SwinTransformer,
 
 SwinTransformerV2
----------------
+-----------------
 .. automodule:: libai.models.swin_transformer_v2
     :members:
         SwinTransformerV2,
