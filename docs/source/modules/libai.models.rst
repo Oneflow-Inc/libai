@@ -39,6 +39,12 @@ SwinTransformer
     :members: 
         SwinTransformer,
 
+SwinTransformerV2
+---------------
+.. automodule:: libai.models.swin_transformer_v2
+    :members:
+        SwinTransformerV2,
+
 ResMLP
 -------
 .. automodule:: libai.models.resmlp
