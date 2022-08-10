@@ -144,7 +144,13 @@ class WindowAttention(nn.Module):
             * flow.log2(flow.abs(relative_coords_table) + 1.0)
             / math.log2(8.0)
         )
-        self.relative_coords_table = relative_coords_table
+        self.register_buffer(
+            "relative_coords_table",
+            relative_coords_table.to_global(
+                placement=dist.get_layer_placement(layer_idx),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            ),
+        )
 
         # NOTE: get pair-wise relative position index for each token inside the window
         coords_h = flow.arange(self.window_size[0])
@@ -208,7 +214,7 @@ class WindowAttention(nn.Module):
                         placement=dist.get_layer_placement(
                             self.layer_idx, device_type=self.v_bias.placement.type
                         ),
-                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                        sbp=flow.sbp.broadcast,
                     ),
                     self.v_bias,
                 ],
@@ -226,9 +232,9 @@ class WindowAttention(nn.Module):
         attn = attn * logit_scale
 
         # NOTE: use relative_coords_table and meta network to generate relative_position_bias
-        relative_position_bias_table = self.cpb_mlp(
-            self.relative_coords_table.to_global(sbp=attn.sbp, placement=attn.placement)
-        ).view(-1, self.num_heads)
+        relative_position_bias_table = self.cpb_mlp(self.relative_coords_table).view(
+            -1, self.num_heads
+        )
         relative_position_bias = relative_position_bias_table[
             self.relative_position_index.view(-1)
         ].view(
