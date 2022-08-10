@@ -387,18 +387,18 @@ def get_num_nodes():
     return flow.env.get_node_size()
 
 
-def convert_to_distributed_default_setting(module):
+def convert_to_distributed_default_setting(t):
     """
     Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
     global tensor with data parallelism as default.
     """
-    for _, v in module.state_dict().items():
-        if not v.is_global:
-            module.to_global(
-                sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=get_layer_placement(0),
-            )
-            return
+    if not t.is_global:
+        return t.to_global(
+            sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=get_layer_placement(0),
+        )
+    else:
+        return t
 
 
 def ttol(tensor, pure_local=False, ranks=None):
