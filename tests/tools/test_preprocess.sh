@@ -1,10 +1,12 @@
 #!/bin/bash
 
 IMPL=lazy
+KEYS=text
 
 python tools/preprocess_data.py \
-        --input data/test_sample_cn.json \
-        --vocab-file bert-base-chinese-vocab.txt \
+        --input path/to/test_sample_cn.json \
+        --json-keys ${KEYS} \
+        --vocab-file path/to/bert-base-chinese-vocab.txt \
         --dataset-impl ${IMPL} \
         --tokenizer-name BertTokenizer \
         --do-lower-case \
