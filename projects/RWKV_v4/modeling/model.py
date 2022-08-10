@@ -8,10 +8,12 @@ from libai.config import configurable
 from libai.layers import LayerNorm, Linear, LMLogits, VocabEmbedding
 from libai.models.utils import init_method_normal
 from libai.utils import distributed as dist
+import pdb
 logger = logging.getLogger(__name__)
 
 RWKV_HEAD_QK_DIM = 256
 print(f'\nRWKV_HEAD_QK_DIM {RWKV_HEAD_QK_DIM}\n')
+
 
 class RWKV_TimeMix(nn.Module):
     def __init__(
@@ -79,8 +81,9 @@ class RWKV_TimeMix(nn.Module):
         k = self.key(xk)
         v = self.value(xv)
         r = self.receptance(xr)
-
-        rwkv = flow.sigmoid(r)
+        rwkv = flow.sigmoid(r) * flow._C.wkv(B, T, C, self.time_decay, self.time_first, k, v)
+        # rwkv = flow.sigmoid(r)* RUN_CUDA(B, T, C, self.time_decay, self.time_first, k, v)
+        # pdb.set_trace()
         rwkv = self.output(rwkv)
   
         return rwkv

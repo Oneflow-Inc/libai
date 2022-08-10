@@ -22,16 +22,12 @@ test.weight_style=(
 test.path="/home/chenqiaoling/RWKV-LM/RWKV-v4/trained-1.pth"
 
 graph = get_config("common/models/graph.py").graph
-
 graph.enabled=True
-
-
-
 
 # optim = get_config("common/optim.py").optim
 optim = LazyCall(flow.optim.Adam)(
     params=LazyCall(get_RWKV_v4_config_optim)(),
-    lr=8e-4,
+    lr=3e-4,
 )
 
 
@@ -41,7 +37,7 @@ model=LazyCall(GPT)(
     ctx_len=1024,
     model_type='RWKV',
     n_layer=6,
-    n_embd=512
+    n_embd=1024
 )
 
 # 训练过程
@@ -53,9 +49,11 @@ train.scheduler=LazyCall(flow.optim.lr_scheduler.StepLR)(
         step_size=1000, 
         gamma=1.0
 ) 
-train.amp.enabled=False
 
-datafile="data_test/enwik8"
+# false = fp32
+train.amp.enabled=True
+
+datafile="/home/chenqiaoling/RWKV-LM/data/enwik8"
 # 获得一个 DataLoader 的配置对象
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
