@@ -2,16 +2,16 @@
 In this tutorial, we will introduce to users how to instantiate a pretrained oneflow model.
 
 ## Steps
-1. Prepare pretrained model weights file, which can be the form of `OneFlow` or `HuggingFace`.
+Firstly, Prepare pretrained model weights file, which can be the form of `OneFlow` or `HuggingFace`.
 - `OneFlow`'s pretrained model weights saved using [`oneflow.save()`].
 - `Huggingface`'s pretrained model weights file(`pytorch_model.bin`) can be downloaded from https://huggingface.co/models.
 
-2. Prepare config file.
+Secondly, Prepare config file.
 > The config file is required when loading the `HuggingFace` model.
 > `OneFlow`'s config file can be import directly from `configs/common/models`.
 - `Huggingface`'s config file(`config.json`) can be downloaded from https://huggingface.co/models.
 
-3. The structure of the pretrained model folder should be like:
+Lastly, The structure of the pretrained model folder should be like:
 ```bash
 # OneFlow pretrained model
 $ tree pretrained_model_dir

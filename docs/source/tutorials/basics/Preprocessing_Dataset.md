@@ -35,4 +35,4 @@ python tools/preprocess_data.py \
         --log-interval 2
 ```
 
-Further command line arguments are described in the source file [`preprocess_data.py`](../../../../tools/preprocess_data.py).
+Further command line arguments are described in the source file [`preprocess_data.py`](https://github.com/Oneflow-Inc/libai/blob/main/tools/preprocess_data.py).
