@@ -133,7 +133,7 @@ class TestSwinV2Model(flow.unittest.TestCase):
         # change to 2 when 2d sbp bugfix
         self.cfg.train.dist.tensor_parallel_size = 1
         self.cfg.train.dist.pipeline_parallel_size = 2
-        self.cfg.train.dist.pipeline_num_layers = self.cfg.model.depth
+        self.cfg.train.dist.pipeline_num_layers = sum(self.cfg.model.depths)
 
         dist.setup_dist_util(self.cfg.train.dist)
         _check_batch_size(self.cfg)
