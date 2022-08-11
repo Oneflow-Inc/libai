@@ -17,7 +17,7 @@
 import oneflow as flow
 import oneflow.nn as nn
 import oneflow.nn.functional as F
-from modeling.cross_entropy import ParallelCrossEntropyLoss
+
 from utils import box_ops
 
 
@@ -47,7 +47,6 @@ class SetCriterion(nn.Module):
         empty_weight[-1] = self.eos_coef
         self.register_buffer("empty_weight", empty_weight)
         self.l1_loss = nn.L1Loss(reduction="none")
-        # self.cross_entropy = ParallelCrossEntropyLoss()
 
     def loss_labels(self, outputs, targets, indices, num_boxes):
         """Classification loss (NLL)
@@ -56,18 +55,15 @@ class SetCriterion(nn.Module):
         assert "pred_logits" in outputs
         src_logits = outputs["pred_logits"]
         target_classes_o = flow.cat([t[J] for t, (_, J) in zip(targets["labels"], indices)])
-        # check here
-        target_classes_o = target_classes_o.to_local()
+        target_classes_o = target_classes_o.to_global(
+            sbp=flow.sbp.broadcast, placement=target_classes_o.placement
+            ).to_local()
         target_classes = flow.full(src_logits.shape[:2], self.num_classes, dtype=flow.int64)
         idx = self._get_src_permutation_idx(indices)
         target_classes[idx] = target_classes_o
         target_classes = target_classes.to_global(
             sbp=src_logits.sbp, placement=src_logits.placement
         )
-        # loss_ce = self.cross_entropy(
-        #     src_logits,
-        #     target_classes,
-        #     self.empty_weight)
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
         losses = {"loss_ce": loss_ce}
         return losses
@@ -81,9 +77,9 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
         src_boxes = outputs["pred_boxes"][idx]
         target_boxes = flow.cat([t[i] for t, (_, i) in zip(targets["boxes"], indices)], dim=0)
-        loss_bbox = self.l1_loss(src_boxes, target_boxes).sum()
+        loss_bbox = self.l1_loss(src_boxes, target_boxes)
         losses = {}
-        losses["loss_bbox"] = loss_bbox / num_boxes
+        losses["loss_bbox"] = loss_bbox.sum() / num_boxes
         loss_giou = (
             1
             - box_ops.generalized_box_iou(
@@ -134,7 +130,6 @@ class SetCriterion(nn.Module):
         # Retrieve the matching between the outputs of the last layer and the targets
         indices = self.matcher(outputs_without_aux, targets)
         # Compute the average number of target boxes accross all nodes, for normalization purposes
-        # num_boxes = sum(len(t["labels"][t["target_mask"]]) for t in targets)
         num_boxes = targets["target_orig_size"].sum()
         num_boxes = flow.as_tensor([num_boxes], dtype=flow.float64)
         num_boxes = flow.clamp(num_boxes, min=1).item()
