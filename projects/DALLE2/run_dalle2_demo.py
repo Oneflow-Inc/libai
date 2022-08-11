@@ -7,13 +7,14 @@ from dalle2 import tokenizer
 from dalle2 import OpenAIClipAdapter, DALLE2, DiffusionPriorNetwork, DiffusionPrior, Unet, Decoder 
 from libai.layers import Embedding
 
-def gen_text_and_img_emb(text = ['cute puppy chasing after a squirrel']):
+def gen_text_and_img_emb():
     #clip use openai's ViT-L/14
     clip=OpenAIClipAdapter("./dalle2/model_weights/ViT-L-14.pt").eval()
     clip.to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
     
+    text = ["a tiger and a lion are fighting"] * 5
     tokens = tokenizer.tokenize(text).to_global(placement = flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast) 
-    _, text_encodings = clip.embed_text(tokens)
+    _, text_encodings, text_mask = clip.embed_text(tokens)
     np.save("text_encodings.npy", text_encodings.to_local().numpy())
     
     # prior networks (with transformer)
@@ -47,7 +48,7 @@ def gen_text_and_img_emb(text = ['cute puppy chasing after a squirrel']):
     #https://huggingface.co/nousr/conditioned-prior/blob/main/vit-l-14/prior_aes_finetune.pth
     state_dict = torch.load("./dalle2/model_weights/prior_aes_finetune.pth", map_location="cpu")['ema_model']
     for k,torch_tensor in state_dict.items():
-        if "clip" in k:
+        if "clip." in k:
             continue
         if k.endswith(".g"):
             k= k[:-1] + "weight" 
@@ -71,7 +72,10 @@ def gen_images():
 
     text_encodings = np.load("text_encodings.npy")[0:1]
     text_encodings = flow.tensor(text_encodings).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
+    text_mask = np.load("text_mask.npy")
+    text_mask = flow.tensor(text_mask).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
     clip =None
+
     #https://huggingface.co/laion/DALLE2-PyTorch/resolve/main/decoder/1.5B_laion2B/latest.pth
     #https://huggingface.co/laion/DALLE2-PyTorch/raw/main/decoder/1.5B_laion2B/decoder_config.json
     unet1 = Unet(
@@ -105,7 +109,7 @@ def gen_images():
     state_dict = torch.load("./dalle2/model_weights/latest.pth", map_location = "cpu")
                 
     for k, torch_tensor in state_dict.items():
-        if 'clip' in k: continue
+        if 'clip.' in k: continue
         if k.endswith(".g"):
             k = k[:-1] + "weight"
         elif 'cross_attn' in k:
@@ -128,6 +132,7 @@ def save_images(images):
     for i,image in enumerate(images):
         image.save(f"./result_{i}.png")
 
-download_dalle2_weights()
-gen_text_and_img_emb()
-save_images(gen_images())
+if __name__ == '__main__':
+    download_dalle2_weights()
+    gen_text_and_img_emb()
+    save_images(gen_images())

@@ -547,7 +547,7 @@ class DefaultTrainer(TrainerBase):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
-        model.apply(dist.convert_to_distributed_default_setting)
+        model._apply(dist.convert_to_distributed_default_setting)
         return model
 
     @classmethod
@@ -565,7 +565,7 @@ class DefaultTrainer(TrainerBase):
     def build_optimizer(cls, cfg, model):
         """
         Returns:
-            torch.optim.Optimizer:
+            flow.optim.Optimizer:
 
         It now calls :func:`libai.optim.build_optimizer`.
         Overwrite it if you'd like a different optimizer.
