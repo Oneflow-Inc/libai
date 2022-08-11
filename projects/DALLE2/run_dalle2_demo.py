@@ -12,7 +12,8 @@ def gen_text_and_img_emb():
     clip=OpenAIClipAdapter("./dalle2/model_weights/ViT-L-14.pt").eval()
     clip.to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
     
-    text = ["a tiger and a lion are fighting"] * 5
+    #text = ["a tiger and a lion are fighting"] * 5
+    text = ["A beautiful painting of a singular lighthouse, shining its light across a tumultuous sea of blood by greg rutkowski and thomas kinkade, Trending on artstation."] * 5
     tokens = tokenizer.tokenize(text).to_global(placement = flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast) 
     _, text_encodings, text_mask = clip.embed_text(tokens)
     np.save("text_encodings.npy", text_encodings.to_local().numpy())
