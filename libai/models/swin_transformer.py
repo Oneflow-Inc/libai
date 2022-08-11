@@ -88,9 +88,11 @@ class WindowAttention(nn.Module):
         coords_flatten = flow.flatten(coords, 1)  # 2, Wh*Ww
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
-        relative_coords[:, :, 0] += self.window_size[0] - 1  # shift to start from 0
-        relative_coords[:, :, 1] += self.window_size[1] - 1
-        relative_coords[:, :, 0] *= 2 * self.window_size[1] - 1
+        relative_coords[:, :, 0] = (
+            relative_coords[:, :, 0] + self.window_size[0] - 1
+        )  # shift to start from 0
+        relative_coords[:, :, 1] = relative_coords[:, :, 1] + self.window_size[1] - 1
+        relative_coords[:, :, 0] = relative_coords[:, :, 0] * (2 * self.window_size[1] - 1)
         relative_position_index = relative_coords.sum(-1)  # Wh*Ww, Wh*Ww
         self.register_buffer(
             "relative_position_index",
@@ -251,7 +253,7 @@ class SwinTransformerBlock(nn.Module):
             for h in h_slices:
                 for w in w_slices:
                     img_mask[:, h, w, :] = cnt
-                    cnt += 1
+                    cnt = cnt + 1
 
             mask_windows = window_partition(
                 img_mask, self.window_size
