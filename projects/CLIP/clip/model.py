@@ -184,13 +184,13 @@ class ModifiedResNet(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, width: int, layers: int, heads: int, attn_mask: flow.Tensor = None):
+    def __init__(self, width: int, layers: int, heads: int, attn_mask: flow.Tensor = None, mlp_use_quick_gelu = False):
         super().__init__()
         self.width = width
         self.layers = layers
         self.attn_mask = attn_mask
         self.resblocks = nn.ModuleList(
-            [TransformerLayer(width, 4 * width, heads, layer_idx=i) for i in range(layers)]
+            [TransformerLayer(width, 4 * width, heads, mlp_use_quick_gelu = mlp_use_quick_gelu, layer_idx=i) for i in range(layers)]
         )
 
     def forward(self, x: flow.Tensor):
@@ -271,6 +271,7 @@ class CLIP(nn.Module):
         transformer_width: int,
         transformer_heads: int,
         transformer_layers: int,
+        mlp_use_quick_gelu = True, #NOTE: mlp_use_quick_gelu should be True when using CLIP's pretrained model weights.
     ):
         super().__init__()
 
@@ -301,6 +302,7 @@ class CLIP(nn.Module):
             layers=transformer_layers,
             heads=transformer_heads,
             attn_mask=self.build_attention_mask(),
+            mlp_use_quick_gelu = mlp_use_quick_gelu,
         )
 
         self.vocab_size = vocab_size
@@ -358,8 +360,8 @@ class CLIP(nn.Module):
         attn_std = self.transformer.width ** -0.5
         fc_std = (2 * self.transformer.width) ** -0.5
         for block in self.transformer.resblocks:
-            nn.init.normal_(block.attention.query_key_value.weight, std=attn_std)
-            nn.init.normal_(block.attention.dense.weight, std=proj_std)
+            nn.init.normal_(block.self_attention.query_key_value.weight, std=attn_std)
+            nn.init.normal_(block.self_attention.dense.weight, std=proj_std)
             nn.init.normal_(block.mlp.dense_h_to_4h.weight, std=fc_std)
             nn.init.normal_(block.mlp.dense_4h_to_h.weight, std=proj_std)
 
@@ -563,7 +565,9 @@ def change_vit_state_dict(state_dict, visual_num_heads, text_num_heads):
         if "visual.proj" == key:
             key = "visual.head.weight"
             value = value.transpose(0, 1)
-
+        
+        #added by huangwei
+        key = key.replace("attention.query_key_value", "self_attention.query_key_value").replace("attention.dense", "self_attention.dense")
         new_state_dict[key] = value
 
     return new_state_dict

@@ -34,8 +34,12 @@ from .rotary_embedding_flow import RotaryEmbedding
 default_placement_cpu = flow.placement(type='cpu', ranks=[0])
 default_placement_cuda = flow.placement(type='cuda', ranks=[0])
 
+np.random.seed(666)
+
 NAT = 1. / math.log(2.)
 
+random.seed(666)
+np.random.seed(666)
 # helper functions
 
 def exists(val):
@@ -51,10 +55,10 @@ def first(arr, d = None):
 
 def maybe(fn):
     @wraps(fn)
-    def inner(x, *args, **kwargs):
+    def inner(x):
         if not exists(x):
             return x
-        return fn(x, *args, **kwargs)
+        return fn(x)
     return inner
 
 def default(val, d):
@@ -62,22 +66,20 @@ def default(val, d):
         return val
     return d() if callable(d) else d
 
-def cast_tuple(val, length = None, validate = True):
+def cast_tuple(val, length = None):
     if isinstance(val, list):
         val = tuple(val)
 
     out = val if isinstance(val, tuple) else ((val,) * default(length, 1))
 
-    if exists(length) and validate:
+    if exists(length):
         assert len(out) == length
 
     return out
 
 def module_device(module):
-    if isinstance(module, nn.Identity):
-        return 'cpu' # It doesn't matter
-    #todo return next(module.parameters()).device
-    return 'cpu'
+    return next(module.parameters()).device
+
 
 def zero_init_(m):
     nn.init.zeros_(m.weight)
@@ -132,28 +134,14 @@ def log(t, eps = 1e-12):
 def l2norm(t):
     return F.normalize(t, dim = -1)
 
-def resize_image_to(
-    image,
-    target_image_size,
-    clamp_range = None,
-    nearest = False,
-    **kwargs
-):
+def resize_image_to(image, target_image_size):
     orig_image_size = image.shape[-1]
 
     if orig_image_size == target_image_size:
         return image
 
-    if not nearest:
-        scale_factors = target_image_size / orig_image_size
-        out = resize(image, scale_factors = scale_factors, **kwargs)
-    else:
-        out = F.interpolate(image, target_image_size, mode = 'nearest')
-
-    if exists(clamp_range):
-        out = out.clamp(*clamp_range)
-
-    return out
+    scale_factors = target_image_size / orig_image_size
+    return resize(image, scale_factors = scale_factors)
 
 # image normalization functions
 # ddpms expect images to be in the range of -1 to 1
@@ -164,7 +152,6 @@ def normalize_neg_one_to_one(img):
 
 def unnormalize_zero_to_one(normed_img):
     return (normed_img + 1) * 0.5
-
 
 # classifier free guidance functions
 
@@ -180,7 +167,7 @@ def prob_mask_like(shape, prob, placement=default_placement_cuda, sbp=flow.sbp.b
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
-    out = a.gather(len(a.shape)-1, t)
+    out = a.gather(len(a.shape) - 1, t)
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
 
 def meanflat(x):
@@ -194,7 +181,7 @@ def approx_standard_normal_cdf(x):
 
 def discretized_gaussian_log_likelihood(x, *, means, log_scales, thres = 0.999):
     assert x.shape == means.shape == log_scales.shape
-
+    
     # attempting to correct nan gradients when learned variance is turned on
     # in the setting of deepspeed fp16
     eps = 1e-12 if x.dtype == flow.float32 else 1e-3
@@ -205,15 +192,15 @@ def discretized_gaussian_log_likelihood(x, *, means, log_scales, thres = 0.999):
     cdf_plus = approx_standard_normal_cdf(plus_in)
     min_in = inv_stdv * (centered_x - 1. / 255.)
     cdf_min = approx_standard_normal_cdf(min_in)
-    log_cdf_plus = log(cdf_plus, eps = eps)
-    log_one_minus_cdf_min = log(1. - cdf_min, eps = eps)
+    log_cdf_plus = log(cdf_plus)
+    log_one_minus_cdf_min = log(1. - cdf_min)
     cdf_delta = cdf_plus - cdf_min
 
     log_probs = flow.where(x < -thres,
         log_cdf_plus,
         flow.where(x > thres,
             log_one_minus_cdf_min,
-            log(cdf_delta, eps = eps)))
+            log(cdf_delta, eps)))
 
     return log_probs
 
@@ -268,10 +255,10 @@ class NoiseScheduler(nn.Module):
             betas = sigmoid_beta_schedule(timesteps)
         else:
             raise NotImplementedError()
-
+        
         betas = betas.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast)
         alphas = 1. - betas
-        alphas_cumprod = flow.cumprod(alphas, dim = 0)
+        alphas_cumprod = flow.cumprod(alphas, dim= 0)
         alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value = 1.)
 
         timesteps, = betas.shape
@@ -324,9 +311,6 @@ class NoiseScheduler(nn.Module):
         self.has_p2_loss_reweighting = p2_loss_weight_gamma > 0.
         register_buffer('p2_loss_weight', (p2_loss_weight_k + alphas_cumprod / (1 - alphas_cumprod)) ** -p2_loss_weight_gamma)
 
-    def sample_random_times(self, batch):
-        return flow.randint(0, self.num_timesteps, (batch,), placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.long)
-
     def q_posterior(self, x_start, x_t, t):
         posterior_mean = (
             extract(self.posterior_mean_coef1, t, x_t.shape) * x_start +
@@ -344,32 +328,10 @@ class NoiseScheduler(nn.Module):
             extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
         )
 
-    def q_sample_from_to(self, x_from, from_t, to_t, noise = None):
-        shape = x_from.shape
-        noise = default(noise, lambda: flow.randn(*shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast))
-
-        alpha = extract(self.sqrt_alphas_cumprod, from_t, shape)
-        sigma = extract(self.sqrt_one_minus_alphas_cumprod, from_t, shape)
-        alpha_next = extract(self.sqrt_alphas_cumprod, to_t, shape)
-        sigma_next = extract(self.sqrt_one_minus_alphas_cumprod, to_t, shape)
-
-        return x_from * (alpha_next / alpha) + noise * (sigma_next * alpha - sigma * alpha_next) / alpha
-
     def predict_start_from_noise(self, x_t, t, noise):
-        t = t.to_global(placement = default_placement_cuda, sbp=flow.sbp.broadcast)
-        x_t = x_t.to_global(placement = default_placement_cuda, sbp=flow.sbp.broadcast)
-
         return (
             extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t -
             extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * noise
-        )
-
-    def predict_noise_from_start(self, x_t, t, x0):
-        t = t.to_global(placement = default_placement_cuda, sbp=flow.sbp.broadcast)
-        x_t = x_t.to_global(placement = default_placement_cuda, sbp=flow.sbp.broadcast)
-        return (
-            (extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t - x0) / \
-            extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape)
         )
 
     def p2_reweigh_loss(self, loss, times):
@@ -380,22 +342,16 @@ class NoiseScheduler(nn.Module):
 # diffusion prior
 
 class ChanLayerNorm(nn.Module):
-    def __init__(self, dim, eps = 1e-5, fp16_eps = 1e-3, stable = False):
+    def __init__(self, dim, eps = 1e-5):
         super().__init__()
         self.eps = eps
-        self.fp16_eps = fp16_eps
-        self.stable = stable
         self.weight = nn.Parameter(flow.ones(1, dim, 1, 1, placement = default_placement_cuda, sbp=flow.sbp.broadcast))
 
     def forward(self, x):
-        eps = self.eps if x.dtype == flow.float32 else self.fp16_eps
-
-        if self.stable:
-            x = x / x.amax(dim = 1, keepdim = True).detach()
-
         var = flow.var(x, dim = 1, unbiased = False, keepdim = True)
         mean = flow.mean(x, dim = 1, keepdim = True)
-        return (x - mean) * (var + eps).rsqrt() * self.weight
+        return (x - mean) / (var + self.eps).sqrt() * self.weight
+
 
 class Residual(nn.Module):
     def __init__(self, fn):
@@ -404,6 +360,7 @@ class Residual(nn.Module):
 
     def forward(self, x, **kwargs):
         return self.fn(x, **kwargs) + x
+
 # mlp
 
 class MLP(nn.Module):
@@ -421,7 +378,7 @@ class MLP(nn.Module):
         norm_fn = lambda: LayerNorm(hidden_dim) if norm else nn.Identity()
 
         layers = [nn.Sequential(
-            Linear(dim_in, hidden_dim),
+            nn.Linear(dim_in, hidden_dim),
             nn.SiLU(),
             norm_fn()
         )]
@@ -451,7 +408,7 @@ class RelPosBias(nn.Module):
         super().__init__()
         self.num_buckets = num_buckets
         self.max_distance = max_distance
-        self.relative_attention_bias = Embedding(num_buckets, heads)
+        self.relative_attention_bias = nn.Embedding(num_buckets, heads)
 
     @staticmethod
     def _relative_position_bucket(
@@ -466,7 +423,7 @@ class RelPosBias(nn.Module):
         is_small = n < max_exact
 
         val_if_large = max_exact + (flow.log(n.float() / max_exact) / math.log(max_distance / max_exact) * (num_buckets - max_exact)).long()
-        val_if_large = flow.min(val_if_large, flow.zeros_like(val_if_large) + (num_buckets - 1))
+        val_if_large = flow.min(val_if_large, flow.zeros_like(val_if_large) + num_buckets - 1)
         return flow.where(is_small, n, val_if_large)
 
     def forward(self, i, j):
@@ -514,14 +471,10 @@ class Attention(nn.Module):
         heads = 8,
         dropout = 0.,
         causal = False,
-        rotary_emb = None,
-        cosine_sim = True,
-        cosine_sim_scale = 16
+        rotary_emb = None
     ):
         super().__init__()
-        self.scale = cosine_sim_scale if cosine_sim else (dim_head ** -0.5)
-        self.cosine_sim = cosine_sim
-
+        self.scale = dim_head ** -0.5
         self.heads = heads
         inner_dim = dim_head * heads
 
@@ -543,7 +496,7 @@ class Attention(nn.Module):
     def forward(self, x, mask = None, attn_bias = None):
         b, n = x.shape[:2]
 
-        x = self.norm(x.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast))
+        x = self.norm(x)
         q, k, v = (self.to_q(x), *self.to_kv(x).chunk(2, dim = -1))
 
         q = rearrange(q, 'b n (h d) -> b h n d', h = self.heads)
@@ -556,17 +509,9 @@ class Attention(nn.Module):
 
         # add null key / value for classifier free guidance in prior net
 
-        #nk, nv = repeat_many(self.null_kv.unbind(dim = -2), 'd -> b 1 d', b = b)
         nk, nv = repeat_many([x.squeeze(0) for x in self.null_kv.chunk(2, dim = -2)], 'd -> b 1 d', b = b)
         k = flow.cat((nk, k), dim = -2)
         v = flow.cat((nv, v), dim = -2)
-
-        # whether to use cosine sim
-
-        if self.cosine_sim:
-            q, k = map(l2norm, (q, k))
-
-        q, k = map(lambda t: t * math.sqrt(self.scale), (q, k))
 
         # calculate query / key similarities
 
@@ -579,16 +524,16 @@ class Attention(nn.Module):
 
         # masking
 
-        max_neg_value = -1e15 #-flow.finfo(sim.dtype).max
+        max_neg_value = -3.4028e+38# flow.finfo(sim.dtype).max
 
         if exists(mask):
-            mask = F.pad(mask, (1, 0), value = True)
+            mask = F.pad(mask*1.0, (1, 0), value = 1.0) <0.5
             mask = rearrange(mask, 'b j -> b 1 1 j')
-            sim = sim.masked_fill(~mask, max_neg_value)
+            sim = sim.masked_fill(mask, max_neg_value)
 
         if self.causal:
             i, j = sim.shape[-2:]
-            causal_mask = flow.ones((i, j), placement=default_placement_cuda, sbp=flow.sbp.broadcast).triu(j - i + 1) > 0.5 #dtype=flow.bool
+            causal_mask = flow.ones((i, j), placement=default_placement_cuda, sbp=flow.sbp.broadcast).triu(j - i + 1) > 0.5
             sim = sim.masked_fill(causal_mask, max_neg_value)
 
         # attention
@@ -612,7 +557,6 @@ class CausalTransformer(nn.Module):
         dim_head = 64,
         heads = 8,
         ff_mult = 4,
-        norm_in = False,
         norm_out = True,
         attn_dropout = 0.,
         ff_dropout = 0.,
@@ -621,8 +565,6 @@ class CausalTransformer(nn.Module):
         rotary_emb = True
     ):
         super().__init__()
-        self.init_norm = LayerNorm(dim) if norm_in else nn.Identity() # from latest BLOOM model and Yandex's YaLM
-
         self.rel_pos_bias = RelPosBias(heads = heads)
 
         rotary_emb = RotaryEmbedding(dim = min(32, dim_head)) if rotary_emb else None
@@ -637,15 +579,17 @@ class CausalTransformer(nn.Module):
         self.norm = LayerNorm(dim) if norm_out else nn.Identity()  # unclear in paper whether they projected after the classic layer norm for the final denoised image embedding, or just had the transformer output it directly: plan on offering both options
         self.project_out = Linear(dim, dim, bias = False) if final_proj else nn.Identity()
 
-    def forward(self, x):
+    def forward(
+        self,
+        x,
+        mask = None    # we will need a mask here, due to variable length of the text encodings - also offer dalle1 strategy with padding token embeddings
+    ):
         n = x.shape[1]
-
-        x = self.init_norm(x)
 
         attn_bias = self.rel_pos_bias(n, n + 1).to_global(placement = default_placement_cuda, sbp=flow.sbp.broadcast)
 
         for attn, ff in self.layers:
-            x = attn(x, attn_bias = attn_bias) + x
+            x = attn(x, mask = mask, attn_bias = attn_bias) + x
             x = ff(x) + x
 
         out = self.norm(x)
@@ -685,11 +629,6 @@ class DiffusionPriorNetwork(nn.Module):
         self.learned_query = nn.Parameter(flow.randn(dim, placement=default_placement_cuda, sbp=flow.sbp.broadcast))
         self.causal_transformer = CausalTransformer(dim = dim, **kwargs)
 
-        # dalle1 learned padding strategy
-
-        self.max_text_len = max_text_len
-        self.null_text_embed = nn.Parameter(flow.randn(1, max_text_len, dim, placement=default_placement_cuda, sbp=flow.sbp.broadcast))
-
     def forward_with_cond_scale(
         self,
         *args,
@@ -711,6 +650,7 @@ class DiffusionPriorNetwork(nn.Module):
         *,
         text_embed,
         text_encodings = None,
+        mask = None,
         cond_drop_prob = 0.
     ):
         batch, dim, dtype = *image_embed.shape, image_embed.dtype
@@ -728,29 +668,9 @@ class DiffusionPriorNetwork(nn.Module):
 
         if not exists(text_encodings):
             text_encodings = flow.empty((batch, 0, dim), placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = dtype)
-    
-        mask = flow.any(text_encodings != 0., dim = -1)
 
-        # replace any padding in the text encodings with learned padding tokens unique across position
-
-        text_encodings = text_encodings[:, :self.max_text_len]
-        mask = mask[:, :self.max_text_len]
-
-        text_len = text_encodings.shape[-2]
-        remainder = self.max_text_len - text_len
-
-        if remainder > 0:
-            text_encodings = F.pad(text_encodings, (0, 0, 0, remainder), value = 0.)
-            mask = F.pad(mask, (0, remainder), value = False)
-
-        null_text_embeds = self.null_text_embed.to(text_encodings.dtype)
-        null_text_embeds = null_text_embeds.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast)
-
-        text_encodings = flow.where(
-            rearrange(mask, 'b n -> b n 1').clone(),
-            text_encodings,
-            null_text_embeds
-        )
+        if not exists(mask):
+            mask = flow.ones((batch, text_encodings.shape[-2]), placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.bool)
 
         # classifier free guidance
 
@@ -767,16 +687,14 @@ class DiffusionPriorNetwork(nn.Module):
         # whether text embedding is used for conditioning depends on whether text encodings are available for attention (for classifier free guidance, even though it seems from the paper it was not used in the prior ddpm, as the objective is different)
         # but let's just do it right
 
-        attend_padding = 1 + num_time_embeds + num_image_embeds # 1 for learned queries + number of image embeds + time embeds
-        mask = F.pad(mask * 1.0, (0, attend_padding), value = 1.0) > 0.5 # extend mask for text embedding, noised image embedding, time step embedding, and learned query
+        if exists(mask):
+            attend_padding = 1 + num_time_embeds + num_image_embeds # 1 for learned queries + number of image embeds + time embeds
+            mask = F.pad(mask * 1.0, (0, attend_padding), value = 1.0) > 0.5 # extend mask for text embedding, noised image embedding, time step embedding, and learned query
 
         time_embed = self.to_time_embeds(diffusion_timesteps.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast))
 
         learned_queries = repeat(self.learned_query, 'd -> b 1 d', b = batch)
 
-        time_embed = time_embed.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast)
-        image_embed = image_embed.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast)
-        learned_queries = learned_queries.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast)
         tokens = flow.cat((
             text_encodings,
             text_embed,
@@ -787,7 +705,7 @@ class DiffusionPriorNetwork(nn.Module):
 
         # attend
 
-        tokens = self.causal_transformer(tokens)
+        tokens = self.causal_transformer(tokens, mask = mask)
 
         # get learned query, which should predict the image embedding (per DDPM timestep)
 
@@ -805,21 +723,18 @@ class DiffusionPrior(nn.Module):
         image_size = None,
         image_channels = 3,
         timesteps = 1000,
-        sample_timesteps = None,
         cond_drop_prob = 0.,
         loss_type = "l2",
         predict_x_start = True,
         beta_schedule = "cosine",
-        condition_on_text_encodings = True,  # the paper suggests this is needed, but you can turn it off for your CLIP preprocessed text embed -> image embed training
-        sampling_clamp_l2norm = False,       # whether to l2norm clamp the image embed at each denoising iteration (analogous to -1 to 1 clipping for usual DDPMs)
-        sampling_final_clamp_l2norm = False, # whether to l2norm the final image embedding output (this is also done for images in ddpm)
+        condition_on_text_encodings = True, # the paper suggests this is needed, but you can turn it off for your CLIP preprocessed text embed -> image embed training
+        sampling_clamp_l2norm = False,
         training_clamp_l2norm = False,
         init_image_embed_l2norm = False,
-        image_embed_scale = None           # this is for scaling the l2-normed image embedding, so it is more suitable for gaussian diffusion, as outlined by Katherine (@crowsonkb) https://github.com/lucidrains/DALLE2-pyflow/issues/60#issue-1226116132
+        image_embed_scale = None,           # this is for scaling the l2-normed image embedding, so it is more suitable for gaussian diffusion, as outlined by Katherine (@crowsonkb) https://github.com/lucidrains/DALLE2-pytorch/issues/60#issue-1226116132
+        clip_adapter_overrides = dict()
     ):
         super().__init__()
-
-        self.sample_timesteps = sample_timesteps
 
         self.noise_scheduler = NoiseScheduler(
             beta_schedule = beta_schedule,
@@ -845,31 +760,22 @@ class DiffusionPrior(nn.Module):
         self.condition_on_text_encodings = condition_on_text_encodings
 
         # in paper, they do not predict the noise, but predict x0 directly for image embedding, claiming empirically better results. I'll just offer both.
-
         self.predict_x_start = predict_x_start
 
-        # @crowsonkb 's suggestion - https://github.com/lucidrains/DALLE2-pyflow/issues/60#issue-1226116132
-
+        # @crowsonkb 's suggestion - https://github.com/lucidrains/DALLE2-pytorch/issues/60#issue-1226116132
         self.image_embed_scale = default(image_embed_scale, self.image_embed_dim ** 0.5)
 
         # whether to force an l2norm, similar to clipping denoised, when sampling
-
         self.sampling_clamp_l2norm = sampling_clamp_l2norm
-        self.sampling_final_clamp_l2norm = sampling_final_clamp_l2norm
-
         self.training_clamp_l2norm = training_clamp_l2norm
         self.init_image_embed_l2norm = init_image_embed_l2norm
 
         # device tracker
-
         self.register_buffer('_dummy', flow.tensor([True]), persistent = False)
 
     @property
     def device(self):
-        return 'cpu' if self.placement== default_placement_cuda else 'cuda' #self._dummy.device
-
-    def l2norm_clamp_embed(self, image_embed):
-        return l2norm(image_embed) * self.image_embed_scale
+        return 'cpu' if self.placement== default_placement_cpu else 'cuda' #self._dummy.device
 
     def p_mean_variance(self, x, t, text_cond, clip_denoised = False, cond_scale = 1.):
         assert not (cond_scale != 1. and not self.can_classifier_guidance), 'the model was not trained with conditional dropout, and thus one cannot use classifier free guidance (cond_scale anything other than 1)'
@@ -878,6 +784,8 @@ class DiffusionPrior(nn.Module):
 
         if self.predict_x_start:
             x_recon = pred
+            # not 100% sure of this above line - for any spectators, let me know in the github issues (or through a pull request) if you know how to correctly do this
+            # i'll be rereading https://arxiv.org/abs/2111.14822, where i think a similar approach is taken
         else:
             x_recon = self.noise_scheduler.predict_start_from_noise(x, t = t, noise = pred)
 
@@ -894,89 +802,29 @@ class DiffusionPrior(nn.Module):
     def p_sample(self, x, t, text_cond = None, clip_denoised = True, cond_scale = 1.):
         b = x.shape[0]
         model_mean, _, model_log_variance = self.p_mean_variance(x = x, t = t, text_cond = text_cond, clip_denoised = clip_denoised, cond_scale = cond_scale)
-        noise = flow.randn(*x.shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
+        #noise = flow.randn(*x.shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
+        noise = flow.tensor(np.random.randn(*x.shape).astype(np.float32), placement=default_placement_cuda, sbp=flow.sbp.broadcast)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
-        nonzero_mask = nonzero_mask.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast)
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @flow.no_grad()
-    def p_sample_loop_ddpm(self, shape, text_cond, cond_scale = 1.):
-        batch = shape[0]
-        image_embed = flow.randn(*shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
+    def p_sample_loop(self, shape, text_cond, cond_scale = 1.):
+        b = shape[0]
+        #image_embed = flow.randn(*shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
+        image_embed = flow.tensor(np.random.randn(*shape).astype(np.float32), placement=default_placement_cuda, sbp=flow.sbp.broadcast)
 
         if self.init_image_embed_l2norm:
             image_embed = l2norm(image_embed) * self.image_embed_scale
 
         for i in tqdm(reversed(range(0, self.noise_scheduler.num_timesteps)), desc='sampling loop time step', total=self.noise_scheduler.num_timesteps):
-            times = flow.full((batch,), i, dtype = flow.long, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
+            times = flow.full((b,), i, placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.long)
             image_embed = self.p_sample(image_embed, times, text_cond = text_cond, cond_scale = cond_scale)
 
-        if self.sampling_final_clamp_l2norm and self.predict_x_start:
-            image_embed = self.l2norm_clamp_embed(image_embed)
-
         return image_embed
-
-    @flow.no_grad()
-    def p_sample_loop_ddim(self, shape, text_cond, *, timesteps, eta = 1., cond_scale = 1.):
-        batch, alphas, total_timesteps = shape[0], self.noise_scheduler.alphas_cumprod_prev, self.noise_scheduler.num_timesteps
-
-        times = flow.linspace(0., total_timesteps, steps = timesteps + 2, placement=default_placement_cuda, sbp=flow.sbp.broadcast)[:-1]
-
-        times = list(reversed(times.int().tolist()))
-        time_pairs = list(zip(times[:-1], times[1:]))
-
-        image_embed = flow.randn(*shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
-
-        if self.init_image_embed_l2norm:
-            image_embed = l2norm(image_embed) * self.image_embed_scale
-
-        for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
-            alpha = alphas[time]
-            alpha_next = alphas[time_next]
-
-            time_cond = flow.full((batch,), time, placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.long)
-
-            pred = self.net.forward_with_cond_scale(image_embed, time_cond, cond_scale = cond_scale, **text_cond)
-
-            if self.predict_x_start:
-                x_start = pred
-                pred_noise = self.noise_scheduler.predict_noise_from_start(image_embed, t = time_cond, x0 = pred)
-            else:
-                x_start = self.noise_scheduler.predict_start_from_noise(image_embed, t = time_cond, noise = pred)
-                pred_noise = pred
-
-            if not self.predict_x_start:
-                x_start.clamp_(-1., 1.)
-
-            if self.predict_x_start and self.sampling_clamp_l2norm:
-                x_start = self.l2norm_clamp_embed(x_start)
-            c1 = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
-            c2 = ((1 - alpha_next) - flow.square(c1)).sqrt()
-            noise = flow.randn(*image_embed.size(), placement=default_placement_cuda, sbp=flow.sbp.broadcast) if time_next > 0 else 0.
-
-            image_embed = x_start * alpha_next.sqrt() 
-            image_embed += c1 * noise
-            image_embed += c2 * pred_noise
-
-        if self.predict_x_start and self.sampling_final_clamp_l2norm:
-            image_embed = self.l2norm_clamp_embed(image_embed)
-
-        return image_embed
-
-    @flow.no_grad()
-    def p_sample_loop(self, *args, timesteps = None, **kwargs):
-        timesteps = default(timesteps, self.noise_scheduler.num_timesteps)
-        assert timesteps <= self.noise_scheduler.num_timesteps
-        is_ddim = timesteps < self.noise_scheduler.num_timesteps
-
-        if not is_ddim:
-            return self.p_sample_loop_ddpm(*args, **kwargs)
-
-        return self.p_sample_loop_ddim(*args, **kwargs, timesteps = timesteps)
 
     def p_losses(self, image_embed, times, text_cond, noise = None):
-        noise = default(noise, lambda: flow.randn(*image_embed, placement=default_placement_cuda, sbp=flow.sbp.broadcast))
+        noise = default(noise, lambda: flow.randn(*image_embed.shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast))
 
         image_embed_noisy = self.noise_scheduler.q_sample(x_start = image_embed, t = times, noise = noise)
 
@@ -988,7 +836,7 @@ class DiffusionPrior(nn.Module):
         )
 
         if self.predict_x_start and self.training_clamp_l2norm:
-            pred = self.l2norm_clamp_embed(pred)
+            pred = l2norm(pred) * self.image_embed_scale
 
         target = noise if not self.predict_x_start else image_embed
 
@@ -1000,7 +848,7 @@ class DiffusionPrior(nn.Module):
     def sample_batch_size(self, batch_size, text_cond, cond_scale = 1.):
         shape = (batch_size, self.image_embed_dim)
 
-        img = flow.randn(*shape, placement=default_placement_cuda, sbp=flow.sbp.broadcaste)
+        img = flow.randn(*shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
 
         for i in tqdm(reversed(range(0, self.noise_scheduler.num_timesteps)), desc = 'sampling loop time step', total = self.noise_scheduler.num_timesteps):
             img = self.p_sample(img, flow.full((batch_size,), i, placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.long), text_cond = text_cond, cond_scale = cond_scale)
@@ -1008,15 +856,7 @@ class DiffusionPrior(nn.Module):
 
     @flow.no_grad()
     @eval_decorator
-    def sample(
-        self,
-        text,
-        num_samples_per_batch = 2,
-        cond_scale = 1.,
-        timesteps = None
-    ):
-        timesteps = default(timesteps, self.sample_timesteps)
-
+    def sample(self, text, num_samples_per_batch = 2, cond_scale = 1.):
         # in the paper, what they did was
         # sample 2 image embeddings, choose the top 1 similarity, as judged by CLIP
         text = repeat(text, 'b ... -> (b r) ...', r = num_samples_per_batch)
@@ -1024,16 +864,17 @@ class DiffusionPrior(nn.Module):
         batch_size = text.shape[0]
         image_embed_dim = self.image_embed_dim
 
-        text_embed, text_encodings = self.clip.embed_text(text)
+        text_embed, text_encodings, text_mask = self.clip.embed_text(text)
 
         text_cond = dict(text_embed = text_embed)
 
         if self.condition_on_text_encodings:
-            text_cond = {**text_cond, 'text_encodings': text_encodings}
+            text_cond = {**text_cond, 'text_encodings': text_encodings, 'mask': text_mask}
 
-        image_embeds = self.p_sample_loop((batch_size, image_embed_dim), text_cond = text_cond, cond_scale = cond_scale, timesteps = timesteps)
+        image_embeds = self.p_sample_loop((batch_size, image_embed_dim), text_cond = text_cond, cond_scale = cond_scale)
 
         # retrieve original unscaled image embed
+
         image_embeds /= self.image_embed_scale
 
         text_embeds = text_cond['text_embed']
@@ -1041,7 +882,6 @@ class DiffusionPrior(nn.Module):
         text_embeds = rearrange(text_embeds, '(b r) d -> b r d', r = num_samples_per_batch)
         image_embeds = rearrange(image_embeds, '(b r) d -> b r d', r = num_samples_per_batch)
 
-        image_embeds = image_embeds
         text_image_sims = einsum('b r d, b r d -> b r', l2norm(text_embeds), l2norm(image_embeds))
         top_sim_indices = text_image_sims.topk(k = 1)[1] #.indices
 
@@ -1057,6 +897,7 @@ class DiffusionPrior(nn.Module):
         text_embed = None,      # allow for training on preprocessed CLIP text and image embeddings
         image_embed = None,
         text_encodings = None,  # as well as CLIP text encodings
+        text_mask = None,       # text mask <- may eventually opt for the learned padding tokens technique from DALL-E1 to reduce complexity
         *args,
         **kwargs
     ):
@@ -1070,18 +911,18 @@ class DiffusionPrior(nn.Module):
         # calculate text conditionings, based on what is passed in
 
         if exists(text):
-            text_embed, text_encodings = self.clip.embed_text(text)
+            text_embed, text_encodings, text_mask = self.clip.embed_text(text)
 
         text_cond = dict(text_embed = text_embed)
 
         if self.condition_on_text_encodings:
             assert exists(text_encodings), 'text encodings must be present for diffusion prior if specified'
-            text_cond = {**text_cond, 'text_encodings': text_encodings}
+            text_cond = {**text_cond, 'text_encodings': text_encodings, 'mask': text_mask}
 
         # timestep conditioning from ddpm
 
         batch = image_embed.shape[0]
-        times = self.noise_scheduler.sample_random_times(batch)
+        times = flow.randint(0, self.noise_scheduler.num_timesteps, (batch,), placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.long)
 
         # scale image embed (Katherine)
 
@@ -1093,53 +934,20 @@ class DiffusionPrior(nn.Module):
 
 # decoder
 
-#from https://github.com/lucidrains/DALLE2-pytorch/blob/v0.15.4/dalle2_pytorch/dalle2_pytorch.py#L1101
 def ConvTransposeUpsample(dim, dim_out = None):
     dim_out = default(dim_out, dim)
-    return ConvTranspose2d(dim, dim_out, 4, 2, 1)
-
+    return nn.ConvTranspose2d(dim, dim_out, 4, 2, 1)
 
 def NearestUpsample(dim, dim_out = None):
     dim_out = default(dim_out, dim)
-
     return nn.Sequential(
         nn.Upsample(scale_factor = 2, mode = 'nearest'),
-        Conv2d(dim, dim_out, 3, padding = 1)
+        nn.Conv2d(dim, dim_out, 3, padding = 1)
     )
-
-class PixelShuffleUpsample(nn.Module):
-    """
-    code shared by @MalumaDev at DALLE2-pyflow for addressing checkboard artifacts
-    https://arxiv.org/ftp/arxiv/papers/1707/1707.02937.pdf
-    """
-    def __init__(self, dim, dim_out = None):
-        super().__init__()
-        dim_out = default(dim_out, dim)
-        conv = Conv2d(dim, dim_out * 4, 1)
-
-        self.net = nn.Sequential(
-            conv,
-            nn.SiLU(),
-            nn.PixelShuffle(2)
-        )
-
-        self.init_conv_(conv)
-
-    def init_conv_(self, conv):
-        o, i, h, w = conv.weight.shape
-        conv_weight = flow.empty(o // 4, i, h, w, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
-        nn.init.kaiming_uniform_(conv_weight)
-        conv_weight = repeat(conv_weight, 'o ... -> (o 4) ...')
-
-        conv.weight.data.copy_(conv_weight)
-        nn.init.zeros_(conv.bias.data)
-
-    def forward(self, x):
-        return self.net(x)
 
 def Downsample(dim, *, dim_out = None):
     dim_out = default(dim_out, dim)
-    return Conv2d(dim, dim_out, 4, 2, 1)
+    return nn.Conv2d(dim, dim_out, 4, 2, 1)
 
 class SinusoidalPosEmb(nn.Module):
     def __init__(self, dim):
@@ -1147,12 +955,11 @@ class SinusoidalPosEmb(nn.Module):
         self.dim = dim
 
     def forward(self, x):
-        dtype = x.dtype
         half_dim = self.dim // 2
         emb = math.log(10000) / (half_dim - 1)
-        emb = flow.exp(flow.arange(half_dim, placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = dtype) * -emb)
+        emb = flow.exp(flow.arange(half_dim, placement=default_placement_cuda, sbp=flow.sbp.broadcast) * -emb)
         emb = rearrange(x, 'i -> i 1') * rearrange(emb, 'j -> 1 j')
-        return flow.cat((emb.sin(), emb.cos()), dim = -1).to(dtype)
+        return flow.cat((emb.sin(), emb.cos()), dim = -1)
 
 class Block(nn.Module):
     def __init__(
@@ -1185,8 +992,7 @@ class ResnetBlock(nn.Module):
         *,
         cond_dim = None,
         time_cond_dim = None,
-        groups = 8,
-        cosine_sim_cross_attn = False
+        groups = 8
     ):
         super().__init__()
 
@@ -1206,14 +1012,13 @@ class ResnetBlock(nn.Module):
                 'b (h w) c',
                 CrossAttention(
                     dim = dim_out,
-                    context_dim = cond_dim,
-                    cosine_sim = cosine_sim_cross_attn
+                    context_dim = cond_dim
                 )
             )
 
         self.block1 = Block(dim, dim_out, groups = groups)
         self.block2 = Block(dim_out, dim_out, groups = groups)
-        self.res_conv = Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
+        self.res_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
 
     def forward(self, x, time_emb = None, cond = None):
 
@@ -1227,11 +1032,10 @@ class ResnetBlock(nn.Module):
 
         if exists(self.cross_attn):
             assert exists(cond)
-            h += self.cross_attn(h, context = cond) 
+            h = self.cross_attn(h, context = cond) + h
 
         h = self.block2(h)
-        res = self.res_conv(x)
-        return h + res
+        return h + self.res_conv(x)
 
 class CrossAttention(nn.Module):
     def __init__(
@@ -1242,13 +1046,10 @@ class CrossAttention(nn.Module):
         dim_head = 64,
         heads = 8,
         dropout = 0.,
-        norm_context = False,
-        cosine_sim = False,
-        cosine_sim_scale = 16
+        norm_context = False
     ):
         super().__init__()
-        self.cosine_sim = cosine_sim
-        self.scale = cosine_sim_scale if cosine_sim else (dim_head ** -0.5)
+        self.scale = dim_head ** -0.5
         self.heads = heads
         inner_dim = dim_head * heads
 
@@ -1258,7 +1059,7 @@ class CrossAttention(nn.Module):
         self.norm_context = LayerNorm(context_dim) if norm_context else nn.Identity()
         self.dropout = nn.Dropout(dropout)
 
-        self.null_kv = nn.Parameter(flow.randn(2, dim_head, placement=default_placement_cuda, sbp = flow.sbp.broadcast))
+        self.null_kv = nn.Parameter(flow.randn(2, dim_head, placement=default_placement_cuda, sbp=flow.sbp.broadcast))
         self.to_q = Linear(dim, inner_dim, bias = False)
         self.to_kv = Linear(context_dim, inner_dim * 2, bias = False)
 
@@ -1270,7 +1071,7 @@ class CrossAttention(nn.Module):
     def forward(self, x, context, mask = None):
         b, n = x.shape[:2]
 
-        x = self.norm(x.to_global(placement=default_placement_cuda,sbp = flow.sbp.broadcast))
+        x = self.norm(x)
         context = self.norm_context(context)
 
         q, k, v = (self.to_q(x), *self.to_kv(context).chunk(2, dim = -1))
@@ -1279,19 +1080,15 @@ class CrossAttention(nn.Module):
 
         # add null key / value for classifier free guidance in prior net
 
-        #nk, nv = repeat_many(self.null_kv.unbind(dim = -2), 'd -> b h 1 d', h = self.heads,  b = b)
         nk, nv = repeat_many([x.squeeze(0) for x in self.null_kv.chunk(2, dim = -2)], 'd -> b h 1 d', h = self.heads,b = b)
 
         k = flow.cat((nk, k), dim = -2)
         v = flow.cat((nv, v), dim = -2)
 
-        if self.cosine_sim:
-            q, k = map(l2norm, (q, k))
-
-        q, k = map(lambda t: t * math.sqrt(self.scale), (q, k))
+        q = q * self.scale
 
         sim = einsum('b h i d, b h j d -> b h i j', q, k)
-        max_neg_value = -1e15 #-flow.finfo(sim.dtype).max
+        max_neg_value = -3.4028e+38 #-flow.finfo(sim.dtype).max
 
         if exists(mask):
             mask = F.pad(mask, (1, 0), value = True)
@@ -1309,8 +1106,7 @@ class LinearAttention(nn.Module):
         self,
         dim,
         dim_head = 32,
-        heads = 8,
-        **kwargs
+        heads = 8
     ):
         super().__init__()
         self.scale = dim_head ** -0.5
@@ -1328,7 +1124,6 @@ class LinearAttention(nn.Module):
 
     def forward(self, fmap):
         h, x, y = self.heads, *fmap.shape[-2:]
-        seq_len = x * y
 
         fmap = self.norm(fmap)
         q, k, v = self.to_qkv(fmap).chunk(3, dim = 1)
@@ -1338,9 +1133,6 @@ class LinearAttention(nn.Module):
         k = k.softmax(dim = -2)
 
         q = q * self.scale
-        v = l2norm(v)
-
-        k, v = map(lambda t: t / math.sqrt(seq_len), (k, v))
 
         context = einsum('b n d, b n e -> b d e', k, v)
         out = einsum('b n d, b d e -> b n e', q, context)
@@ -1373,41 +1165,8 @@ class CrossEmbedLayer(nn.Module):
             self.convs.append(Conv2d(dim_in, dim_scale, kernel, stride = stride, padding = (kernel - stride) // 2))
 
     def forward(self, x):
-        x = x.to_global(placement=default_placement_cuda, sbp=flow.sbp.broadcast)
         fmaps = tuple(map(lambda conv: conv(x), self.convs))
         return flow.cat(fmaps, dim = 1)
-
-class UpsampleCombiner(nn.Module):
-    def __init__(
-        self,
-        dim,
-        *,
-        enabled = False,
-        dim_ins = tuple(),
-        dim_outs = tuple()
-    ):
-        super().__init__()
-        assert len(dim_ins) == len(dim_outs)
-        self.enabled = enabled
-
-        if not self.enabled:
-            self.dim_out = dim
-            return
-
-        self.fmap_convs = nn.ModuleList([Block(dim_in, dim_out) for dim_in, dim_out in zip(dim_ins, dim_outs)])
-        self.dim_out = dim + (sum(dim_outs) if len(dim_outs) > 0 else 0)
-
-    def forward(self, x, fmaps = None):
-        target_size = x.shape[-1]
-
-        fmaps = default(fmaps, tuple())
-
-        if not self.enabled or len(fmaps) == 0 or len(self.fmap_convs) == 0:
-            return x
-
-        fmaps = [resize_image_to(fmap, target_size) for fmap in fmaps]
-        outs = [conv(fmap) for fmap, conv in zip(fmaps, self.fmap_convs)]
-        return flow.cat((x, *outs), dim = 1)
 
 class Unet(nn.Module):
     def __init__(
@@ -1426,12 +1185,9 @@ class Unet(nn.Module):
         self_attn = False,
         attn_dim_head = 32,
         attn_heads = 16,
-        lowres_cond = False,             # for cascading diffusion - https://cascaded-diffusion.github.io/
-        lowres_noise_cond = False,       # for conditioning on low resolution noising, based on Imagen
+        lowres_cond = False, # for cascading diffusion - https://cascaded-diffusion.github.io/
         sparse_attn = False,
-        cosine_sim_cross_attn = False,
-        cosine_sim_self_attn = False,
-        attend_at_middle = True,         # whether to have a layer of attention at the bottleneck (can turn off for higher resolution in cascading DDPM, before bringing in efficient attention)
+        attend_at_middle = True, # whether to have a layer of attention at the bottleneck (can turn off for higher resolution in cascading DDPM, before bringing in efficient attention)
         cond_on_text_encodings = False,
         max_text_len = 256,
         cond_on_image_embeds = False,
@@ -1440,15 +1196,13 @@ class Unet(nn.Module):
         init_conv_kernel_size = 7,
         resnet_groups = 8,
         num_resnet_blocks = 2,
-        init_cross_embed = True,
         init_cross_embed_kernel_sizes = (3, 7, 15),
         cross_embed_downsample = False,
         cross_embed_downsample_kernel_sizes = (2, 4),
         memory_efficient = False,
         scale_skip_connection = False,
-        pixel_shuffle_upsample = True,
+        nearest_upsample = False,
         final_conv_kernel_size = 1,
-        combine_upsample_fmaps = False, # whether to combine the outputs of all upsample blocks, as in unet squared paper
         **kwargs
     ):
         super().__init__()
@@ -1470,7 +1224,7 @@ class Unet(nn.Module):
         init_channels = channels if not lowres_cond else channels * 2 # in cascading diffusion, one concats the low resolution image, blurred, for conditioning the higher resolution synthesis
         init_dim = default(init_dim, dim)
 
-        self.init_conv = CrossEmbedLayer(init_channels, dim_out = init_dim, kernel_sizes = init_cross_embed_kernel_sizes, stride = 1) if init_cross_embed else Conv2d(init_channels, init_dim, init_conv_kernel_size, padding = init_conv_kernel_size // 2)
+        self.init_conv = CrossEmbedLayer(init_channels, dim_out = init_dim, kernel_sizes = init_cross_embed_kernel_sizes, stride = 1)
 
         dims = [init_dim, *map(lambda m: dim * m, dim_mults)]
         in_out = list(zip(dims[:-1], dims[1:]))
@@ -1513,23 +1267,10 @@ class Unet(nn.Module):
         # text encoding conditioning (optional)
 
         self.text_to_cond = None
-        self.text_embed_dim = None
 
         if cond_on_text_encodings:
             assert exists(text_embed_dim), 'text_embed_dim must be given to the unet if cond_on_text_encodings is True'
             self.text_to_cond = Linear(text_embed_dim, cond_dim)
-            self.text_embed_dim = text_embed_dim
-
-        # low resolution noise conditiong, based on Imagen's upsampler training technique
-
-        self.lowres_noise_cond = lowres_noise_cond
-
-        self.to_lowres_noise_cond = nn.Sequential(
-            SinusoidalPosEmb(dim),
-            Linear(dim, time_cond_dim),
-            nn.GELU(),
-            Linear(time_cond_dim, time_cond_dim)
-        ) if lowres_noise_cond else None
 
         # finer control over whether to condition on image embeddings and text encodings
         # so one can have the latter unets in the cascading DDPMs only focus on super-resoluting
@@ -1551,7 +1292,7 @@ class Unet(nn.Module):
 
         # attention related params
 
-        attn_kwargs = dict(heads = attn_heads, dim_head = attn_dim_head, cosine_sim = cosine_sim_self_attn)
+        attn_kwargs = dict(heads = attn_heads, dim_head = attn_dim_head)
 
         self_attn = cast_tuple(self_attn, num_stages)
 
@@ -1572,15 +1313,11 @@ class Unet(nn.Module):
 
         # upsample klass
 
-        upsample_klass = ConvTransposeUpsample #NearestUpsample if not pixel_shuffle_upsample else PixelShuffleUpsample
-
-        # prepare resnet klass
-
-        resnet_block = partial(ResnetBlock, cosine_sim_cross_attn = cosine_sim_cross_attn)
+        upsample_klass = ConvTransposeUpsample if not nearest_upsample else NearestUpsample
 
         # give memory efficient unet an initial resnet block
 
-        self.init_resnet_block = resnet_block(init_dim, init_dim, time_cond_dim = time_cond_dim, groups = top_level_resnet_group) if memory_efficient else None
+        self.init_resnet_block = ResnetBlock(init_dim, init_dim, time_cond_dim = time_cond_dim, groups = top_level_resnet_group) if memory_efficient else None
 
         # layers
 
@@ -1588,8 +1325,7 @@ class Unet(nn.Module):
         self.ups = nn.ModuleList([])
         num_resolutions = len(in_out)
 
-        skip_connect_dims = []          # keeping track of skip connection dimensions
-        upsample_combiner_dims = []     # keeping track of dimensions for final upsample feature map combiner
+        skip_connect_dims = [] # keeping track of skip connection dimensions
 
         for ind, ((dim_in, dim_out), groups, layer_num_resnet_blocks, layer_self_attn) in enumerate(zip(in_out, resnet_groups, num_resnet_blocks, self_attn)):
             is_first = ind == 0
@@ -1607,17 +1343,17 @@ class Unet(nn.Module):
 
             self.downs.append(nn.ModuleList([
                 downsample_klass(dim_in, dim_out = dim_out) if memory_efficient else None,
-                resnet_block(dim_layer, dim_layer, time_cond_dim = time_cond_dim, groups = groups),
-                nn.ModuleList([resnet_block(dim_layer, dim_layer, cond_dim = layer_cond_dim, time_cond_dim = time_cond_dim, groups = groups) for _ in range(layer_num_resnet_blocks)]),
+                ResnetBlock(dim_layer, dim_layer, time_cond_dim = time_cond_dim, groups = groups),
+                nn.ModuleList([ResnetBlock(dim_layer, dim_layer, cond_dim = layer_cond_dim, time_cond_dim = time_cond_dim, groups = groups) for _ in range(layer_num_resnet_blocks)]),
                 attention,
-                downsample_klass(dim_layer, dim_out = dim_out) if not is_last and not memory_efficient else Conv2d(dim_layer, dim_out, 1)
+                downsample_klass(dim_layer, dim_out = dim_out) if not is_last and not memory_efficient else nn.Conv2d(dim_layer, dim_out, 1)
             ]))
 
         mid_dim = dims[-1]
 
-        self.mid_block1 = resnet_block(mid_dim, mid_dim, cond_dim = cond_dim, time_cond_dim = time_cond_dim, groups = resnet_groups[-1])
+        self.mid_block1 = ResnetBlock(mid_dim, mid_dim, cond_dim = cond_dim, time_cond_dim = time_cond_dim, groups = resnet_groups[-1])
         self.mid_attn = create_self_attn(mid_dim)
-        self.mid_block2 = resnet_block(mid_dim, mid_dim, cond_dim = cond_dim, time_cond_dim = time_cond_dim, groups = resnet_groups[-1])
+        self.mid_block2 = ResnetBlock(mid_dim, mid_dim, cond_dim = cond_dim, time_cond_dim = time_cond_dim, groups = resnet_groups[-1])
 
         for ind, ((dim_in, dim_out), groups, layer_num_resnet_blocks, layer_self_attn) in enumerate(zip(reversed(in_out), reversed(resnet_groups), reversed(num_resnet_blocks), reversed(self_attn))):
             is_last = ind >= (len(in_out) - 1)
@@ -1631,33 +1367,15 @@ class Unet(nn.Module):
             elif sparse_attn:
                 attention = Residual(LinearAttention(dim_out, **attn_kwargs))
 
-            upsample_combiner_dims.append(dim_out)
-
             self.ups.append(nn.ModuleList([
-                resnet_block(dim_out + skip_connect_dim, dim_out, cond_dim = layer_cond_dim, time_cond_dim = time_cond_dim, groups = groups),
-                nn.ModuleList([resnet_block(dim_out + skip_connect_dim, dim_out, cond_dim = layer_cond_dim, time_cond_dim = time_cond_dim, groups = groups)  for _ in range(layer_num_resnet_blocks)]),
+                ResnetBlock(dim_out + skip_connect_dim, dim_out, cond_dim = layer_cond_dim, time_cond_dim = time_cond_dim, groups = groups),
+                nn.ModuleList([ResnetBlock(dim_out + skip_connect_dim, dim_out, cond_dim = layer_cond_dim, time_cond_dim = time_cond_dim, groups = groups)  for _ in range(layer_num_resnet_blocks)]),
                 attention,
                 upsample_klass(dim_out, dim_in) if not is_last or memory_efficient else nn.Identity()
             ]))
 
-        # whether to combine outputs from all upsample blocks for final resnet block
-
-        self.upsample_combiner = UpsampleCombiner(
-            dim = dim,
-            enabled = combine_upsample_fmaps,
-            dim_ins = upsample_combiner_dims,
-            dim_outs = (dim,) * len(upsample_combiner_dims)
-        )
-
-        # a final resnet block
-
-        self.final_resnet_block = resnet_block(self.upsample_combiner.dim_out + dim, dim, time_cond_dim = time_cond_dim, groups = top_level_resnet_group)
-
-        out_dim_in = dim + (channels if lowres_cond else 0)
-
-        self.to_out = Conv2d(out_dim_in, self.channels_out, kernel_size = final_conv_kernel_size, padding = final_conv_kernel_size // 2)
-
-        zero_init_(self.to_out) # since both OpenAI and @crowsonkb are doing it
+        self.final_resnet_block = ResnetBlock(dim * 2, dim, time_cond_dim = time_cond_dim, groups = top_level_resnet_group)
+        self.to_out = Conv2d(dim, self.channels_out, kernel_size = final_conv_kernel_size, padding = final_conv_kernel_size // 2)
 
     # if the current settings for the unet are not correct
     # for cascading DDPM, then reinit the unet with the right settings
@@ -1665,17 +1383,15 @@ class Unet(nn.Module):
         self,
         *,
         lowres_cond,
-        lowres_noise_cond,
         channels,
         channels_out,
         cond_on_image_embeds,
-        cond_on_text_encodings,
+        cond_on_text_encodings
     ):
         if lowres_cond == self.lowres_cond and \
             channels == self.channels and \
             cond_on_image_embeds == self.cond_on_image_embeds and \
             cond_on_text_encodings == self.cond_on_text_encodings and \
-            lowres_noise_cond == self.lowres_noise_cond and \
             channels_out == self.channels_out:
             return self
 
@@ -1684,8 +1400,7 @@ class Unet(nn.Module):
             channels = channels,
             channels_out = channels_out,
             cond_on_image_embeds = cond_on_image_embeds,
-            cond_on_text_encodings = cond_on_text_encodings,
-            lowres_noise_cond = lowres_noise_cond
+            cond_on_text_encodings = cond_on_text_encodings
         )
 
         return self.__class__(**{**self._locals, **updated_kwargs})
@@ -1711,14 +1426,14 @@ class Unet(nn.Module):
         *,
         image_embed,
         lowres_cond_img = None,
-        lowres_noise_level = None,
         text_encodings = None,
+        text_mask = None,
         image_cond_drop_prob = 0.,
         text_cond_drop_prob = 0.,
         blur_sigma = None,
         blur_kernel_size = None
     ):
-        batch_size= x.shape[0]
+        batch_size = x.shape[0]
 
         # add low resolution conditioning, if present
 
@@ -1734,18 +1449,10 @@ class Unet(nn.Module):
 
         # time conditioning
 
-        time = time.type_as(x)
         time_hiddens = self.to_time_hiddens(time)
 
         time_tokens = self.to_time_tokens(time_hiddens)
         t = self.to_time_cond(time_hiddens)
-
-        # low res noise conditioning (similar to time above)
-
-        if exists(lowres_noise_level):
-            assert exists(self.to_lowres_noise_cond), 'lowres_noise_cond must be set to True on instantiation of the unet in order to conditiong on lowres noise'
-            lowres_noise_level = lowres_noise_level.type_as(x)
-            t = t + self.to_lowres_noise_cond(lowres_noise_level)
 
         # conditional dropout
 
@@ -1763,9 +1470,9 @@ class Unet(nn.Module):
             null_image_hiddens = self.null_image_hiddens.to(image_hiddens.dtype)
 
             image_hiddens = flow.where(
-                image_keep_mask_hidden.to_global(placement=image_hiddens.placement, sbp = image_hiddens.sbp),
+                image_keep_mask_hidden,
                 image_hiddens,
-                null_image_hiddens.to_global(placement=image_hiddens.placement, sbp = image_hiddens.sbp)
+                null_image_hiddens
             )
 
             t = t + image_hiddens
@@ -1781,9 +1488,9 @@ class Unet(nn.Module):
             null_image_embed = self.null_image_embed.to(image_tokens.dtype) # for some reason pyflow AMP not working
 
             image_tokens = flow.where(
-                image_keep_mask_embed.to_global(placement=image_tokens.placement, sbp = image_tokens.sbp),
+                image_keep_mask_embed,
                 image_tokens,
-                null_image_embed.to_global(placement=image_tokens.placement, sbp = image_tokens.sbp)
+                null_image_embed
             )
 
         # take care of text encodings (optional)
@@ -1791,34 +1498,29 @@ class Unet(nn.Module):
         text_tokens = None
 
         if exists(text_encodings) and self.cond_on_text_encodings:
-            assert text_encodings.shape[0] == batch_size, f'the text encodings being passed into the unet does not have the proper batch size - text encoding shape {text_encodings.shape} - required batch size is {batch_size}'
-            assert self.text_embed_dim == text_encodings.shape[-1], f'the text encodings you are passing in have a dimension of {text_encodings.shape[-1]}, but the unet was created with text_embed_dim of {self.text_embed_dim}.'
-
-            text_mask = flow.any(text_encodings != 0., dim = -1)
-
             text_tokens = self.text_to_cond(text_encodings)
-
             text_tokens = text_tokens[:, :self.max_text_len]
-            text_mask = text_mask[:, :self.max_text_len]
 
             text_tokens_len = text_tokens.shape[1]
             remainder = self.max_text_len - text_tokens_len
 
             if remainder > 0:
                 text_tokens = F.pad(text_tokens, (0, 0, 0, remainder))
-                text_mask = F.pad(text_mask * 1.0, (0, remainder), value = 0.) > 0.5
 
-            text_mask = rearrange(text_mask, 'b n -> b n 1')
+            if exists(text_mask):
+                if remainder > 0:
+                    #text_mask = F.pad(text_mask, (0, remainder), value = False)
+                    text_mask = F.pad(text_mask*1.0, (0, remainder), value = 0.0) > 0.5
 
-            assert text_mask.shape[0] == text_keep_mask.shape[0], f'text_mask has shape of {text_mask.shape} while text_keep_mask has shape {text_keep_mask.shape}. text encoding is of shape {text_encodings.shape}'
-            text_keep_mask = text_mask & text_keep_mask.to_global(placement = text_mask.placement, sbp = text_mask.sbp)
+                text_mask = rearrange(text_mask, 'b n -> b n 1')
+                text_keep_mask = text_mask & text_keep_mask
 
             null_text_embed = self.null_text_embed.to(text_tokens.dtype) # for some reason pyflow AMP not working
 
             text_tokens = flow.where(
                 text_keep_mask,
                 text_tokens,
-                null_text_embed.to_global(placement=text_tokens.placement, sbp=text_tokens.sbp)
+                null_text_embed
             )
 
         # main conditioning tokens (c)
@@ -1845,8 +1547,7 @@ class Unet(nn.Module):
 
         # go through the layers of the unet, down and up
 
-        down_hiddens = []
-        up_hiddens = []
+        hiddens = []
 
         for pre_downsample, init_block, resnet_blocks, attn, post_downsample in self.downs:
             if exists(pre_downsample):
@@ -1856,10 +1557,10 @@ class Unet(nn.Module):
 
             for resnet_block in resnet_blocks:
                 x = resnet_block(x, t, c)
-                down_hiddens.append(x.contiguous())
+                hiddens.append(x)
 
             x = attn(x)
-            down_hiddens.append(x.contiguous())
+            hiddens.append(x)
 
             if exists(post_downsample):
                 x = post_downsample(x)
@@ -1871,7 +1572,7 @@ class Unet(nn.Module):
 
         x = self.mid_block2(x, t, mid_c)
 
-        connect_skip = lambda fmap: flow.cat((fmap, down_hiddens.pop() * self.skip_connect_scale), dim = 1)
+        connect_skip = lambda fmap: flow.cat((fmap, hiddens.pop() * self.skip_connect_scale), dim = 1)
 
         for init_block, resnet_blocks, attn, upsample in self.ups:
             x = connect_skip(x)
@@ -1882,59 +1583,24 @@ class Unet(nn.Module):
                 x = resnet_block(x, t, c)
 
             x = attn(x)
-
-            up_hiddens.append(x.contiguous())
             x = upsample(x)
-
-        x = self.upsample_combiner(x, up_hiddens)
 
         x = flow.cat((x, r), dim = 1)
 
         x = self.final_resnet_block(x, t)
-
-        if exists(lowres_cond_img):
-            x = flow.cat((x, lowres_cond_img), dim = 1)
-
         return self.to_out(x)
 
 class LowresConditioner(nn.Module):
     def __init__(
         self,
         downsample_first = True,
-        use_blur = True,
-        blur_prob = 0.5,
         blur_sigma = 0.6,
         blur_kernel_size = 3,
-        use_noise = False,
-        input_image_range = None,
-        normalize_img_fn = identity,
-        unnormalize_img_fn = identity
     ):
         super().__init__()
         self.downsample_first = downsample_first
-        self.input_image_range = input_image_range
-
-        self.use_blur = use_blur
-        self.blur_prob = blur_prob
         self.blur_sigma = blur_sigma
         self.blur_kernel_size = blur_kernel_size
-
-        self.use_noise = use_noise
-        self.normalize_img = normalize_img_fn
-        self.unnormalize_img = unnormalize_img_fn
-        self.noise_scheduler = NoiseScheduler(beta_schedule = 'linear', timesteps = 1000, loss_type = 'l2') if use_noise else None
-
-    def noise_image(self, cond_fmap, noise_levels = None):
-        assert exists(self.noise_scheduler)
-
-        batch = cond_fmap.shape[0]
-        cond_fmap = self.normalize_img(cond_fmap)
-
-        random_noise_levels = default(noise_levels, lambda: self.noise_scheduler.sample_random_times(batch))
-        cond_fmap = self.noise_scheduler.q_sample(cond_fmap, t = random_noise_levels, noise = flow.randn_like(cond_fmap))
-
-        cond_fmap = self.unnormalize_img(cond_fmap)
-        return cond_fmap, random_noise_levels
 
     def forward(
         self,
@@ -1942,31 +1608,23 @@ class LowresConditioner(nn.Module):
         *,
         target_image_size,
         downsample_image_size = None,
-        should_blur = True,
         blur_sigma = None,
         blur_kernel_size = None
     ):
-        if self.downsample_first and exists(downsample_image_size):
-            cond_fmap = resize_image_to(cond_fmap, downsample_image_size, clamp_range = self.input_image_range, nearest = True)
+        if self.training and self.downsample_first and exists(downsample_image_size):
+            cond_fmap = resize_image_to(cond_fmap, downsample_image_size)
 
-        # blur is only applied 50% of the time
-        # section 3.1 in https://arxiv.org/abs/2106.15282
-
-        if self.use_blur and should_blur and random.random() < self.blur_prob:
-
+        if self.training:
             # when training, blur the low resolution conditional image
-
             blur_sigma = default(blur_sigma, self.blur_sigma)
             blur_kernel_size = default(blur_kernel_size, self.blur_kernel_size)
 
             # allow for drawing a random sigma between lo and hi float values
-
             if isinstance(blur_sigma, tuple):
                 blur_sigma = tuple(map(float, blur_sigma))
                 blur_sigma = random.uniform(*blur_sigma)
 
             # allow for drawing a random kernel size between lo and hi int values
-
             if isinstance(blur_kernel_size, tuple):
                 blur_kernel_size = tuple(map(int, blur_kernel_size))
                 kernel_size_lo, kernel_size_hi = blur_kernel_size
@@ -1974,21 +1632,9 @@ class LowresConditioner(nn.Module):
 
             cond_fmap = gaussian_blur2d(cond_fmap, cast_tuple(blur_kernel_size, 2), cast_tuple(blur_sigma, 2))
 
-        # resize to target image size
+        cond_fmap = resize_image_to(cond_fmap, target_image_size)
 
-        cond_fmap = resize_image_to(cond_fmap, target_image_size, clamp_range = self.input_image_range, nearest = True)
-
-        # noise conditioning, as done in Imagen
-        # as a replacement for the BSR noising, and potentially replace blurring for first stage too
-
-        random_noise_levels = None
-
-        if self.use_noise:
-            cond_fmap, random_noise_levels = self.noise_image(cond_fmap)
-
-        # return conditioning feature map, as well as the augmentation noise levels
-
-        return cond_fmap, random_noise_levels
+        return cond_fmap
 
 class Decoder(nn.Module):
     def __init__(
@@ -2000,7 +1646,6 @@ class Decoder(nn.Module):
         channels = 3,
         vae = tuple(),
         timesteps = 1000,
-        sample_timesteps = None,
         image_cond_drop_prob = 0.1,
         text_cond_drop_prob = 0.5,
         loss_type = 'l2',
@@ -2009,13 +1654,9 @@ class Decoder(nn.Module):
         predict_x_start_for_latent_diffusion = False,
         image_sizes = None,                         # for cascading ddpm, image size at each stage
         random_crop_sizes = None,                   # whether to random crop the image at that stage in the cascade (super resoluting convolutions at the end may be able to generalize on smaller crops)
-        use_noise_for_lowres_cond = False,          # whether to use Imagen-like noising for low resolution conditioning  
-        use_blur_for_lowres_cond = True,            # whether to use the blur conditioning used in the original cascading ddpm paper, as well as DALL-E2
         lowres_downsample_first = True,             # cascading ddpm - resizes to lower resolution, then to next conditional resolution + blur
-        blur_prob = 0.5,                            # cascading ddpm - when training, the gaussian blur is only applied 50% of the time
         blur_sigma = 0.6,                           # cascading ddpm - blur sigma
         blur_kernel_size = 3,                       # cascading ddpm - blur kernel size
-        lowres_noise_sample_level = 0.2,            # in imagen paper, they use a 0.2 noise level at sample time for low resolution conditioning
         clip_denoised = True,
         clip_x_start = True,
         clip_adapter_overrides = dict(),
@@ -2025,10 +1666,9 @@ class Decoder(nn.Module):
         unconditional = False,                      # set to True for generating images without conditioning
         auto_normalize_img = True,                  # whether to take care of normalizing the image from [0, 1] to [-1, 1] and back automatically - you can turn this off if you want to pass in the [-1, 1] ranged image yourself from the dataloader
         use_dynamic_thres = False,                  # from the Imagen paper
-        dynamic_thres_percentile = 0.95,
+        dynamic_thres_percentile = 0.9,
         p2_loss_weight_gamma = 0.,                  # p2 loss weight, from https://arxiv.org/abs/2204.00227 - 0 is equivalent to weight of 1 across time - 1. is recommended
-        p2_loss_weight_k = 1,
-        ddim_sampling_eta = 1.                      # can be set to 0. for deterministic sampling afaict
+        p2_loss_weight_k = 1
     ):
         super().__init__()
 
@@ -2040,7 +1680,6 @@ class Decoder(nn.Module):
             assert channels == clip.image_channels, f'channels of image ({channels}) should be equal to the channels that CLIP accepts ({clip.image_channels})'
 
             freeze_model_and_make_eval_(clip)
-
             self.clip = clip
 
         # determine image size, with image_size and image_sizes taking precedence
@@ -2057,17 +1696,10 @@ class Decoder(nn.Module):
 
         self.channels = channels
 
-
-        # normalize and unnormalize image functions
-
-        self.normalize_img = normalize_neg_one_to_one if auto_normalize_img else identity
-        self.unnormalize_img = unnormalize_zero_to_one if auto_normalize_img else identity
-
         # verify conditioning method
 
         unets = cast_tuple(unet)
         num_unets = len(unets)
-        self.num_unets = num_unets
 
         self.unconditional = unconditional
 
@@ -2083,28 +1715,12 @@ class Decoder(nn.Module):
         self.learned_variance_constrain_frac = learned_variance_constrain_frac # whether to constrain the output of the network (the interpolation fraction) from 0 to 1
         self.vb_loss_weight = vb_loss_weight
 
-        # default and validate conditioning parameters
-
-        use_noise_for_lowres_cond = cast_tuple(use_noise_for_lowres_cond, num_unets - 1, validate = False)
-        use_blur_for_lowres_cond = cast_tuple(use_blur_for_lowres_cond, num_unets - 1, validate = False)
-
-        if len(use_noise_for_lowres_cond) < num_unets:
-            use_noise_for_lowres_cond = (False, *use_noise_for_lowres_cond)
-
-        if len(use_blur_for_lowres_cond) < num_unets:
-            use_blur_for_lowres_cond = (False, *use_blur_for_lowres_cond)
-
-        assert not use_noise_for_lowres_cond[0], 'first unet will never need low res noise conditioning'
-        assert not use_blur_for_lowres_cond[0], 'first unet will never need low res blur conditioning'
-
-        assert num_unets == 1 or all((use_noise or use_blur) for use_noise, use_blur in zip(use_noise_for_lowres_cond[1:], use_blur_for_lowres_cond[1:]))
-
         # construct unets and vaes
 
         self.unets = nn.ModuleList([])
         self.vaes = nn.ModuleList([])
 
-        for ind, (one_unet, one_vae, one_unet_learned_var, lowres_noise_cond) in enumerate(zip(unets, vaes, learned_variance, use_noise_for_lowres_cond)):
+        for ind, (one_unet, one_vae, one_unet_learned_var) in enumerate(zip(unets, vaes, learned_variance)):
             assert isinstance(one_unet, Unet)
             assert isinstance(one_vae, (VQGanVAE, NullVQGanVAE))
 
@@ -2116,7 +1732,6 @@ class Decoder(nn.Module):
 
             one_unet = one_unet.cast_model_parameters(
                 lowres_cond = not is_first,
-                lowres_noise_cond = lowres_noise_cond,
                 cond_on_image_embeds = not unconditional and is_first,
                 cond_on_text_encodings = not unconditional and one_unet.cond_on_text_encodings,
                 channels = unet_channels,
@@ -2126,10 +1741,9 @@ class Decoder(nn.Module):
             self.unets.append(one_unet)
             self.vaes.append(one_vae.copy_for_eval())
 
-        # sampling timesteps, defaults to non-ddim with full timesteps sampling
+        # determine from unets whether conditioning on text encoding is needed
 
-        self.sample_timesteps = cast_tuple(sample_timesteps, num_unets)
-        self.ddim_sampling_eta = ddim_sampling_eta
+        self.condition_on_text_encodings = any([unet.cond_on_text_encodings for unet in self.unets])
 
         # create noise schedulers per unet
 
@@ -2141,9 +1755,7 @@ class Decoder(nn.Module):
 
         self.noise_schedulers = nn.ModuleList([])
 
-        for ind, (unet_beta_schedule, unet_p2_loss_weight_gamma, sample_timesteps) in enumerate(zip(beta_schedule, p2_loss_weight_gamma, self.sample_timesteps)):
-            assert not exists(sample_timesteps) or sample_timesteps <= timesteps, f'sampling timesteps {sample_timesteps} must be less than or equal to the number of training timesteps {timesteps} for unet {ind + 1}'
-
+        for unet_beta_schedule, unet_p2_loss_weight_gamma in zip(beta_schedule, p2_loss_weight_gamma):
             noise_scheduler = NoiseScheduler(
                 beta_schedule = unet_beta_schedule,
                 timesteps = timesteps,
@@ -2159,50 +1771,28 @@ class Decoder(nn.Module):
         image_sizes = default(image_sizes, (image_size,))
         image_sizes = tuple(sorted(set(image_sizes)))
 
-        assert self.num_unets == len(image_sizes), f'you did not supply the correct number of u-nets ({self.num_unets}) for resolutions {image_sizes}'
+        assert len(self.unets) == len(image_sizes), f'you did not supply the correct number of u-nets ({len(self.unets)}) for resolutions {image_sizes}'
         self.image_sizes = image_sizes
         self.sample_channels = cast_tuple(self.channels, len(image_sizes))
 
         # random crop sizes (for super-resoluting unets at the end of cascade?)
 
         self.random_crop_sizes = cast_tuple(random_crop_sizes, len(image_sizes))
-        assert not exists(self.random_crop_sizes[0]), 'you would not need to randomly crop the image for the base unet'
 
         # predict x0 config
 
         self.predict_x_start = cast_tuple(predict_x_start, len(unets)) if not predict_x_start_for_latent_diffusion else tuple(map(lambda t: isinstance(t, VQGanVAE), self.vaes))
 
-        # input image range
-
-        self.input_image_range = (-1. if not auto_normalize_img else 0., 1.)
-
         # cascading ddpm related stuff
 
         lowres_conditions = tuple(map(lambda t: t.lowres_cond, self.unets))
-        assert lowres_conditions == (False, *((True,) * (num_unets - 1))), 'the first unet must be unconditioned (by low resolution image), and the rest of the unets must have `lowres_cond` set to True'
+        assert lowres_conditions == (False, *((True,) * (len(self.unets) - 1))), 'the first unet must be unconditioned (by low resolution image), and the rest of the unets must have `lowres_cond` set to True'
 
-        self.lowres_conds = nn.ModuleList([])
-
-        for unet_index, use_noise, use_blur in zip(range(num_unets), use_noise_for_lowres_cond, use_blur_for_lowres_cond):
-            if unet_index == 0:
-                self.lowres_conds.append(None)
-                continue
-
-            lowres_cond = LowresConditioner(
-                downsample_first = lowres_downsample_first,
-                use_blur = use_blur,
-                use_noise = use_noise,
-                blur_prob = blur_prob,
-                blur_sigma = blur_sigma,
-                blur_kernel_size = blur_kernel_size,
-                input_image_range = self.input_image_range,
-                normalize_img_fn = self.normalize_img,
-                unnormalize_img_fn = self.unnormalize_img
-            )
-
-            self.lowres_conds.append(lowres_cond)
-
-        self.lowres_noise_sample_level = lowres_noise_sample_level
+        self.to_lowres_cond = LowresConditioner(
+            downsample_first = lowres_downsample_first,
+            blur_sigma = blur_sigma,
+            blur_kernel_size = blur_kernel_size,
+        )
 
         # classifier free guidance
 
@@ -2220,65 +1810,45 @@ class Decoder(nn.Module):
         self.use_dynamic_thres = use_dynamic_thres
         self.dynamic_thres_percentile = dynamic_thres_percentile
 
+        # normalize and unnormalize image functions
+
+        self.normalize_img = normalize_neg_one_to_one if auto_normalize_img else identity
+        self.unnormalize_img = unnormalize_zero_to_one if auto_normalize_img else identity
+
         # device tracker
 
         self.register_buffer('_dummy', flow.Tensor([True]), persistent = False)
 
     @property
     def device(self):
-        return 'cpu' if self.placement==default_placement_cuda else 'cuda' #self._dummy.device
-
-    @property
-    def condition_on_text_encodings(self):
-        return any([unet.cond_on_text_encodings for unet in self.unets if isinstance(unet, Unet)])
+        return 'cpu' if self.placement== default_placement_cpu else 'cuda' #self._dummy.device
 
     def get_unet(self, unet_number):
-        assert 0 < unet_number <= self.num_unets
+        assert 0 < unet_number <= len(self.unets)
         index = unet_number - 1
         return self.unets[index]
 
     @contextmanager
     def one_unet_in_gpu(self, unet_number = None, unet = None):
-        assert exists(unet_number) ^ exists(unet)
-        """
+        """assert exists(unet_number) ^ exists(unet)
+
         if exists(unet_number):
             unet = self.get_unet(unet_number)
 
         self.cuda()
 
-        devices = [module_device(unet) for unet in self.unets]
         self.unets.cpu()
         unet.cuda()
         """
         yield
-        """
+        """ 
         for unet, device in zip(self.unets, devices):
             unet.to(device)
         """
-    def dynamic_threshold(self, x):
-        """ proposed in https://arxiv.org/abs/2205.11487 as an improved clamping in the setting of classifier free guidance """
-        
-        # s is the threshold amount
-        # static thresholding would just be s = 1
-        s = 1.
-        if self.use_dynamic_thres:
-            s = flow.quantile(
-                rearrange(x, 'b ... -> b (...)').abs(),
-                self.dynamic_thres_percentile,
-                dim = -1
-            )
-
-            s.clamp_(min = 1.)
-            s = s.view(-1, *((1,) * (x.ndim - 1)))
-
-        # clip by threshold, depending on whether static or dynamic
-        x = x.clamp(-s, s) / s
-        return x
-
-    def p_mean_variance(self, unet, x, t, image_embed, noise_scheduler, text_encodings = None, lowres_cond_img = None, clip_denoised = True, predict_x_start = False, learned_variance = False, cond_scale = 1., model_output = None, lowres_noise_level = None):
+    def p_mean_variance(self, unet, x, t, image_embed, noise_scheduler, text_encodings = None, text_mask = None, lowres_cond_img = None, clip_denoised = True, predict_x_start = False, learned_variance = False, cond_scale = 1., model_output = None):
         assert not (cond_scale != 1. and not self.can_classifier_guidance), 'the decoder was not trained with conditional dropout, and thus one cannot use classifier free guidance (cond_scale anything other than 1)'
 
-        pred = default(model_output, lambda: unet.forward_with_cond_scale(x, t, image_embed = image_embed, text_encodings = text_encodings, cond_scale = cond_scale, lowres_cond_img = lowres_cond_img, lowres_noise_level = lowres_noise_level))
+        pred = default(model_output, lambda: unet.forward_with_cond_scale(x, t, image_embed = image_embed, text_encodings = text_encodings, text_mask = text_mask, cond_scale = cond_scale, lowres_cond_img = lowres_cond_img))
 
         if learned_variance:
             pred, var_interp_frac_unnormalized = pred.chunk(2, dim = 1)
@@ -2289,7 +1859,21 @@ class Decoder(nn.Module):
             x_recon = noise_scheduler.predict_start_from_noise(x, t = t, noise = pred)
 
         if clip_denoised:
-            x_recon = self.dynamic_threshold(x_recon)
+            # s is the threshold amount
+            # static thresholding would just be s = 1
+            s = 1.
+            if self.use_dynamic_thres:
+                s = flow.quantile(
+                    rearrange(x_recon, 'b ... -> b (...)').abs(),
+                    self.dynamic_thres_percentile,
+                    dim = -1
+                )
+
+                s.clamp_(min = 1.)
+                s = s.view(-1, *((1,) * (x_recon.ndim - 1)))
+
+            # clip by threshold, depending on whether static or dynamic
+            x_recon = x_recon.clamp(-s, s) / s
 
         model_mean, posterior_variance, posterior_log_variance = noise_scheduler.q_posterior(x_start=x_recon, x_t=x, t=t)
 
@@ -2310,197 +1894,44 @@ class Decoder(nn.Module):
         return model_mean, posterior_variance, posterior_log_variance
 
     @flow.no_grad()
-    def p_sample(self, unet, x, t, image_embed, noise_scheduler, text_encodings = None, cond_scale = 1., lowres_cond_img = None, predict_x_start = False, learned_variance = False, clip_denoised = True, lowres_noise_level = None):
+    def p_sample(self, unet, x, t, image_embed, noise_scheduler, text_encodings = None, text_mask = None, cond_scale = 1., lowres_cond_img = None, predict_x_start = False, learned_variance = False, clip_denoised = True):
         b = x.shape[0]
-        model_mean, _, model_log_variance = self.p_mean_variance(unet, x = x, t = t, image_embed = image_embed, text_encodings = text_encodings, cond_scale = cond_scale, lowres_cond_img = lowres_cond_img, clip_denoised = clip_denoised, predict_x_start = predict_x_start, noise_scheduler = noise_scheduler, learned_variance = learned_variance, lowres_noise_level = lowres_noise_level)
+        model_mean, _, model_log_variance = self.p_mean_variance(unet, x = x, t = t, image_embed = image_embed, text_encodings = text_encodings, text_mask = text_mask, cond_scale = cond_scale, lowres_cond_img = lowres_cond_img, clip_denoised = clip_denoised, predict_x_start = predict_x_start, noise_scheduler = noise_scheduler, learned_variance = learned_variance)
         noise = flow.randn(*x.shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @flow.no_grad()
-    def p_sample_loop_ddpm(
-        self,
-        unet,
-        shape,
-        image_embed,
-        noise_scheduler,
-        predict_x_start = False,
-        learned_variance = False,
-        clip_denoised = True,
-        lowres_cond_img = None,
-        text_encodings = None,
-        cond_scale = 1,
-        is_latent_diffusion = False,
-        lowres_noise_level = None,
-        inpaint_image = None,
-        inpaint_mask = None,
-        inpaint_resample_times = 5
-    ):
+    def p_sample_loop(self, unet, shape, image_embed, noise_scheduler, predict_x_start = False, learned_variance = False, clip_denoised = True, lowres_cond_img = None, text_encodings = None, text_mask = None, cond_scale = 1, is_latent_diffusion = False):
+
         b = shape[0]
         img = flow.randn(*shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
-
-        is_inpaint = exists(inpaint_image)
-        resample_times = inpaint_resample_times if is_inpaint else 1
-
-        if is_inpaint:
-            inpaint_image = self.normalize_img(inpaint_image)
-            inpaint_image = resize_image_to(inpaint_image, shape[-1], nearest = True)
-            inpaint_mask = rearrange(inpaint_mask, 'b h w -> b 1 h w').float()
-            inpaint_mask = resize_image_to(inpaint_mask, shape[-1], nearest = True)
-            inpaint_mask = inpaint_mask.bool()
 
         if not is_latent_diffusion:
             lowres_cond_img = maybe(self.normalize_img)(lowres_cond_img)
 
-        for time in tqdm(reversed(range(0, noise_scheduler.num_timesteps)), desc = 'sampling loop time step', total = noise_scheduler.num_timesteps):
-            is_last_timestep = time == 0
-
-            for r in reversed(range(0, resample_times)):
-                is_last_resample_step = r == 0
-
-                times = flow.full((b,), time, placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.long)
-
-                if is_inpaint:
-                    # following the repaint paper
-                    # https://arxiv.org/abs/2201.09865
-                    noised_inpaint_image = noise_scheduler.q_sample(inpaint_image, t = times)
-                    img = (img * ~inpaint_mask) + (noised_inpaint_image * inpaint_mask)
-
-                img = self.p_sample(
-                    unet,
-                    img,
-                    times,
-                    image_embed = image_embed,
-                    text_encodings = text_encodings,
-                    cond_scale = cond_scale,
-                    lowres_cond_img = lowres_cond_img,
-                    lowres_noise_level = lowres_noise_level,
-                    predict_x_start = predict_x_start,
-                    noise_scheduler = noise_scheduler,
-                    learned_variance = learned_variance,
-                    clip_denoised = clip_denoised
-                )
-
-                if is_inpaint and not (is_last_timestep or is_last_resample_step):
-                    # in repaint, you renoise and resample up to 10 times every step
-                    img = noise_scheduler.q_sample_from_to(img, times - 1, times)
-
-        if is_inpaint:
-            img = (img * ~inpaint_mask) + (inpaint_image * inpaint_mask)
+        for i in tqdm(reversed(range(0, noise_scheduler.num_timesteps)), desc = 'sampling loop time step', total = noise_scheduler.num_timesteps):
+            img = self.p_sample(
+                unet,
+                img,
+                flow.full((b,), i, placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.long),
+                image_embed = image_embed,
+                text_encodings = text_encodings,
+                text_mask = text_mask,
+                cond_scale = cond_scale,
+                lowres_cond_img = lowres_cond_img,
+                predict_x_start = predict_x_start,
+                noise_scheduler = noise_scheduler,
+                learned_variance = learned_variance,
+                clip_denoised = clip_denoised
+            )
 
         unnormalize_img = self.unnormalize_img(img)
         return unnormalize_img
 
-    @flow.no_grad()
-    def p_sample_loop_ddim(
-        self,
-        unet,
-        shape,
-        image_embed,
-        noise_scheduler,
-        timesteps,
-        eta = 1.,
-        predict_x_start = False,
-        learned_variance = False,
-        clip_denoised = True,
-        lowres_cond_img = None,
-        text_encodings = None,
-        cond_scale = 1,
-        is_latent_diffusion = False,
-        lowres_noise_level = None,
-        inpaint_image = None,
-        inpaint_mask = None,
-        inpaint_resample_times = 5
-    ):
-        batch, total_timesteps, alphas, eta = shape[0], noise_scheduler.num_timesteps, noise_scheduler.alphas_cumprod_prev, self.ddim_sampling_eta
-
-        times = flow.linspace(0., total_timesteps, steps = timesteps + 2)[:-1]
-
-        times = list(reversed(times.int().tolist()))
-        time_pairs = list(zip(times[:-1], times[1:]))
-
-        is_inpaint = exists(inpaint_image)
-        resample_times = inpaint_resample_times if is_inpaint else 1
-
-        if is_inpaint:
-            inpaint_image = self.normalize_img(inpaint_image)
-            inpaint_image = resize_image_to(inpaint_image, shape[-1], nearest = True)
-            inpaint_mask = rearrange(inpaint_mask, 'b h w -> b 1 h w').float()
-            inpaint_mask = resize_image_to(inpaint_mask, shape[-1], nearest = True)
-            inpaint_mask = inpaint_mask.bool()
-
-        img = flow.randn(shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast)
-
-        if not is_latent_diffusion:
-            lowres_cond_img = maybe(self.normalize_img)(lowres_cond_img)
-
-        for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
-            is_last_timestep = time_next == 0
-
-            for r in reversed(range(0, resample_times)):
-                is_last_resample_step = r == 0
-
-                alpha = alphas[time]
-                alpha_next = alphas[time_next]
-
-                time_cond = flow.full((batch,), time, device = device, dtype = flow.long)
-
-                if is_inpaint:
-                    # following the repaint paper
-                    # https://arxiv.org/abs/2201.09865
-                    noised_inpaint_image = noise_scheduler.q_sample(inpaint_image, t = time_cond)
-                    img = (img * ~inpaint_mask) + (noised_inpaint_image * inpaint_mask)
-
-                pred = unet.forward_with_cond_scale(img, time_cond, image_embed = image_embed, text_encodings = text_encodings, cond_scale = cond_scale, lowres_cond_img = lowres_cond_img, lowres_noise_level = lowres_noise_level)
-
-                if learned_variance:
-                    pred, _ = pred.chunk(2, dim = 1)
-
-                if predict_x_start:
-                    x_start = pred
-                    pred_noise = noise_scheduler.predict_noise_from_start(img, t = time_cond, x0 = pred)
-                else:
-                    x_start = noise_scheduler.predict_start_from_noise(img, t = time_cond, noise = pred)
-                    pred_noise = pred
-
-                if clip_denoised:
-                    x_start = self.dynamic_threshold(x_start)
-
-                c1 = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
-                c2 = ((1 - alpha_next) - flow.square(c1)).sqrt()
-                noise = flow.randn_like(img) if not is_last_timestep else 0.
-
-                img = x_start * alpha_next.sqrt() + \
-                      c1 * noise + \
-                      c2 * pred_noise
-
-                if is_inpaint and not (is_last_timestep or is_last_resample_step):
-                    # in repaint, you renoise and resample up to 10 times every step
-                    time_next_cond = flow.full((batch,), time_next, device = device, dtype = flow.long)
-                    img = noise_scheduler.q_sample_from_to(img, time_next_cond, time_cond)
-
-        if exists(inpaint_image):
-            img = (img * ~inpaint_mask) + (inpaint_image * inpaint_mask)
-
-        img = self.unnormalize_img(img)
-        return img
-
-    @flow.no_grad()
-    def p_sample_loop(self, *args, noise_scheduler, timesteps = None, **kwargs):
-        num_timesteps = noise_scheduler.num_timesteps
-
-        timesteps = default(timesteps, num_timesteps)
-        assert timesteps <= num_timesteps
-        is_ddim = timesteps < num_timesteps
-
-        if not is_ddim:
-            return self.p_sample_loop_ddpm(*args, noise_scheduler = noise_scheduler, **kwargs)
-
-        return self.p_sample_loop_ddim(*args, noise_scheduler = noise_scheduler, timesteps = timesteps, **kwargs)
-
-    def p_losses(self, unet, x_start, times, *, image_embed, noise_scheduler, lowres_cond_img = None, text_encodings = None, predict_x_start = False, noise = None, learned_variance = False, clip_denoised = False, is_latent_diffusion = False, lowres_noise_level = None):
-        noise = default(noise, lambda: flow.randn_like(x_start))
+    def p_losses(self, unet, x_start, times, *, image_embed, noise_scheduler, lowres_cond_img = None, text_encodings = None, text_mask = None, predict_x_start = False, noise = None, learned_variance = False, clip_denoised = False, is_latent_diffusion = False):
+        noise = default(noise, lambda: flow.randn(*x_start.shape, placement=default_placement_cuda, sbp=flow.sbp.broadcast))
 
         # normalize to [-1, 1]
 
@@ -2517,8 +1948,8 @@ class Decoder(nn.Module):
             times,
             image_embed = image_embed,
             text_encodings = text_encodings,
+            text_mask = text_mask,
             lowres_cond_img = lowres_cond_img,
-            lowres_noise_level = lowres_noise_level,
             image_cond_drop_prob = self.image_cond_drop_prob,
             text_cond_drop_prob = self.text_cond_drop_prob,
         )
@@ -2575,18 +2006,14 @@ class Decoder(nn.Module):
     @eval_decorator
     def sample(
         self,
-        image = None,
         image_embed = None,
         text = None,
+        text_mask = None,
         text_encodings = None,
         batch_size = 1,
         cond_scale = 1.,
-        start_at_unet_number = 1,
         stop_at_unet_number = None,
         distributed = False,
-        inpaint_image = None,
-        inpaint_mask = None,
-        inpaint_resample_times = 5
     ):
         assert self.unconditional or exists(image_embed), 'image embed must be present on sampling from decoder unless if trained unconditionally'
 
@@ -2595,45 +2022,24 @@ class Decoder(nn.Module):
 
         if exists(text) and not exists(text_encodings) and not self.unconditional:
             assert exists(self.clip)
-            _, text_encodings = self.clip.embed_text(text)
+            _, text_encodings, text_mask = self.clip.embed_text(text)
 
         assert not (self.condition_on_text_encodings and not exists(text_encodings)), 'text or text encodings must be passed into decoder if specified'
         assert not (not self.condition_on_text_encodings and exists(text_encodings)), 'decoder specified not to be conditioned on text, yet it is presented'
 
-        assert not (exists(inpaint_image) ^ exists(inpaint_mask)), 'inpaint_image and inpaint_mask (boolean mask of [batch, height, width]) must be both given for inpainting'
-
         img = None
-        if start_at_unet_number > 1:
-            # Then we are not generating the first image and one must have been passed in
-            assert exists(image), 'image must be passed in if starting at unet number > 1'
-            assert image.shape[0] == batch_size, 'image must have batch size of {} if starting at unet number > 1'.format(batch_size)
-            prev_unet_output_size = self.image_sizes[start_at_unet_number - 2]
-            img = resize_image_to(image, prev_unet_output_size, nearest = True)
         is_cuda = next(self.parameters()).is_cuda
 
-        num_unets = self.num_unets
-        cond_scale = cast_tuple(cond_scale, num_unets)
+        for unet_number, unet, vae, channel, image_size, predict_x_start, learned_variance, noise_scheduler in tqdm(zip(range(1, len(self.unets) + 1), self.unets, self.vaes, self.sample_channels, self.image_sizes, self.predict_x_start, self.learned_variance, self.noise_schedulers)):
 
-        for unet_number, unet, vae, channel, image_size, predict_x_start, learned_variance, noise_scheduler, lowres_cond, sample_timesteps, unet_cond_scale in tqdm(zip(range(1, num_unets + 1), self.unets, self.vaes, self.sample_channels, self.image_sizes, self.predict_x_start, self.learned_variance, self.noise_schedulers, self.lowres_conds, self.sample_timesteps, cond_scale)):
-            if unet_number < start_at_unet_number:
-                continue  # It's the easiest way to do it
-
-            context = self.one_unet_in_gpu(unet = unet) if is_cuda else null_context()
+            context = self.one_unet_in_gpu(unet = unet) if is_cuda and not distributed else null_context()
 
             with context:
-                # prepare low resolution conditioning for upsamplers
-
-                lowres_cond_img = lowres_noise_level = None
+                lowres_cond_img = None
                 shape = (batch_size, channel, image_size, image_size)
 
                 if unet.lowres_cond:
-                    lowres_cond_img = resize_image_to(img, target_image_size = image_size, clamp_range = self.input_image_range, nearest = True)
-
-                    if lowres_cond.use_noise:
-                        lowres_noise_level = flow.full((batch_size,), int(self.lowres_noise_sample_level * 1000), dtype = flow.long, device = self.device)
-                        lowres_cond_img, _ = lowres_cond.noise_image(lowres_cond_img, lowres_noise_level)
-
-                # latent diffusion
+                    lowres_cond_img = self.to_lowres_cond(img, target_image_size = image_size)
 
                 is_latent_diffusion = isinstance(vae, VQGanVAE)
                 image_size = vae.get_encoded_fmap_size(image_size)
@@ -2641,25 +2047,19 @@ class Decoder(nn.Module):
 
                 lowres_cond_img = maybe(vae.encode)(lowres_cond_img)
 
-                # denoising loop for image
-
                 img = self.p_sample_loop(
                     unet,
                     shape,
                     image_embed = image_embed,
                     text_encodings = text_encodings,
-                    cond_scale = unet_cond_scale,
+                    text_mask = text_mask,
+                    cond_scale = cond_scale,
                     predict_x_start = predict_x_start,
                     learned_variance = learned_variance,
                     clip_denoised = not is_latent_diffusion,
                     lowres_cond_img = lowres_cond_img,
-                    lowres_noise_level = lowres_noise_level,
                     is_latent_diffusion = is_latent_diffusion,
-                    noise_scheduler = noise_scheduler,
-                    timesteps = sample_timesteps,
-                    inpaint_image = inpaint_image,
-                    inpaint_mask = inpaint_mask,
-                    inpaint_resample_times = inpaint_resample_times
+                    noise_scheduler = noise_scheduler
                 )
 
                 img = vae.decode(img)
@@ -2675,10 +2075,11 @@ class Decoder(nn.Module):
         text = None,
         image_embed = None,
         text_encodings = None,
+        text_mask = None,
         unet_number = None,
         return_lowres_cond_image = False # whether to return the low resolution conditioning images, for debugging upsampler purposes
     ):
-        assert not (self.num_unets > 1 and not exists(unet_number)), f'you must specify which unet you want trained, from a range of 1 to {self.num_unets}, if you are training cascading DDPM (multiple unets)'
+        assert not (len(self.unets) > 1 and not exists(unet_number)), f'you must specify which unet you want trained, from a range of 1 to {len(self.unets)}, if you are training cascading DDPM (multiple unets)'
         unet_number = default(unet_number, 1)
         unet_index = unet_number - 1
 
@@ -2686,7 +2087,6 @@ class Decoder(nn.Module):
 
         vae                 = self.vaes[unet_index]
         noise_scheduler     = self.noise_schedulers[unet_index]
-        lowres_conditioner  = self.lowres_conds[unet_index]
         target_image_size   = self.image_sizes[unet_index]
         predict_x_start     = self.predict_x_start[unet_index]
         random_crop_size    = self.random_crop_sizes[unet_index]
@@ -2696,7 +2096,7 @@ class Decoder(nn.Module):
         check_shape(image, 'b c h w', c = self.channels)
         assert h >= target_image_size and w >= target_image_size
 
-        times = flow.randint(0, noise_scheduler.num_timesteps, (b,), device = device, dtype = flow.long)
+        times = flow.randint(0, noise_scheduler.num_timesteps, (b,), placement=default_placement_cuda, sbp=flow.sbp.broadcast, dtype = flow.long)
 
         if not exists(image_embed) and not self.unconditional:
             assert exists(self.clip), 'if you want to derive CLIP image embeddings automatically, you must supply `clip` to the decoder on init'
@@ -2704,13 +2104,13 @@ class Decoder(nn.Module):
 
         if exists(text) and not exists(text_encodings) and not self.unconditional:
             assert exists(self.clip), 'if you are passing in raw text, you need to supply `clip` to the decoder'
-            _, text_encodings = self.clip.embed_text(text)
+            _, text_encodings, text_mask = self.clip.embed_text(text)
 
         assert not (self.condition_on_text_encodings and not exists(text_encodings)), 'text or text encodings must be passed into decoder if specified'
         assert not (not self.condition_on_text_encodings and exists(text_encodings)), 'decoder specified not to be conditioned on text, yet it is presented'
 
-        lowres_cond_img, lowres_noise_level = lowres_conditioner(image, target_image_size = target_image_size, downsample_image_size = self.image_sizes[unet_index - 1]) if exists(lowres_conditioner) else (None, None)
-        image = resize_image_to(image, target_image_size, nearest = True)
+        lowres_cond_img = self.to_lowres_cond(image, target_image_size = target_image_size, downsample_image_size = self.image_sizes[unet_index - 1]) if unet_number > 1 else None
+        image = resize_image_to(image, target_image_size)
 
         if exists(random_crop_size):
             aug = K.RandomCrop((random_crop_size, random_crop_size), p = 1.)
@@ -2727,7 +2127,7 @@ class Decoder(nn.Module):
             image = vae.encode(image)
             lowres_cond_img = maybe(vae.encode)(lowres_cond_img)
 
-        losses = self.p_losses(unet, image, times, image_embed = image_embed, text_encodings = text_encodings, lowres_cond_img = lowres_cond_img, predict_x_start = predict_x_start, learned_variance = learned_variance, is_latent_diffusion = is_latent_diffusion, noise_scheduler = noise_scheduler, lowres_noise_level = lowres_noise_level)
+        losses = self.p_losses(unet, image, times, image_embed = image_embed, text_encodings = text_encodings, text_mask = text_mask, lowres_cond_img = lowres_cond_img, predict_x_start = predict_x_start, learned_variance = learned_variance, is_latent_diffusion = is_latent_diffusion, noise_scheduler = noise_scheduler)
 
         if not return_lowres_cond_image:
             return losses
@@ -2770,18 +2170,16 @@ class DALLE2(nn.Module):
         if isinstance(text, str) or is_list_str(text):
             text = [text] if not isinstance(text, (list, tuple)) else text
             text = tokenizer.tokenize(text).to(device)
-        text = text.to_global(placement = default_placement_cuda, sbp=flow.sbp.broadcast)
 
         image_embed = self.prior.sample(text, num_samples_per_batch = self.prior_num_samples, cond_scale = prior_cond_scale)
 
         text_cond = text if self.decoder_need_text_cond else None
-        images = self.decoder.sample(image_embed = image_embed, text = text_cond, cond_scale = cond_scale)
+        images = self.decoder.sample(image_embed, text = text_cond, cond_scale = cond_scale)
 
         if return_pil_images:
-            images = list(map(self.to_pil, [images[i] for i in range(images.shape[0])]))
+            images = list(map(self.to_pil, images.unbind(dim = 0)))
 
         if one_text:
             return first(images)
 
         return images
-

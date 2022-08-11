@@ -101,19 +101,13 @@ class OpenAIClipAdapter(BaseClipAdapter):
     def embed_text(self, text):
         text = text[..., :self.max_text_len]
 
-        is_eos_id = (text == self.eos_id)
-        #text_mask_excluding_eos = is_eos_id.cumsum(dim = -1) == 0
-        text_mask_excluding_eos = flow.cumsum(is_eos_id, dim = -1) == 0
-        #todo: F.pad not support bool
-        #text_mask = F.pad(text_mask_excluding_eos, (1, -1), value = True)
-        text_mask = F.pad(text_mask_excluding_eos * 1.0, (1, -1), value = 1.0) < 0.5
         assert not self.cleared
-    
+        text_mask = (text != 0) #v0.15.4
+
         text_embed = self.clip.encode_text(text)
         text_encodings = self.text_encodings
-        text_encodings = text_encodings.masked_fill(text_mask[..., None], 0.)
         del self.text_encodings
-        return EmbeddedText(l2norm(text_embed.float()), text_encodings.float())
+        return l2norm(text_embed.float()), text_encodings.float(), text_mask
 
     @flow.no_grad()
     def embed_image(self, image):
