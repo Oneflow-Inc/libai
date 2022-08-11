@@ -40,6 +40,7 @@ class BasePipeline(metaclass=ABCMeta):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        pipeline_stage_id=None,
         model_path=None,
         **kwargs,
     ):
@@ -51,7 +52,12 @@ class BasePipeline(metaclass=ABCMeta):
         flow.boxing.nccl.set_fusion_max_ops_num(
             try_get_key(self.cfg, "train.nccl_fusion_max_ops", default=24)
         )
-        self.update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
+        self.update_cfg(
+            data_parallel, 
+            tensor_parallel, 
+            pipeline_parallel,
+            pipeline_stage_id,
+        )
         dist.setup_dist_util(self.cfg.train.dist)
         assert (
             self.cfg.train.dist.data_parallel_size == 1
@@ -77,10 +83,12 @@ class BasePipeline(metaclass=ABCMeta):
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
+        pipeline_stage_id=None,
     ):
         self.cfg.train.dist.data_parallel_size = data_parallel
         self.cfg.train.dist.tensor_parallel_size = tensor_parallel
         self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
+        self.cfg.train.dist.custom_pipeline_stage_id = pipeline_stage_id
         if self.cfg.train.dist.pipeline_parallel_size > 1:
             assert (
                 try_get_key(self.cfg.train.dist, "pipeline_num_layers") is not None
