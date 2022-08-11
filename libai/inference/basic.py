@@ -65,8 +65,7 @@ class BasePipeline(metaclass=ABCMeta):
         logger.info(self.cfg.train.dist)
 
         # initial and load model
-        self.model = DefaultTrainer.build_model(self.cfg).eval()
-        self.load_pretrain_weight(self.model, self.cfg, model_path)
+        self.model = self.load_pretrain_weight(self.cfg.model, model_path)
 
         # initial tokenizer
         self.tokenizer = self.build_tokenizer(self.cfg)
@@ -94,8 +93,36 @@ class BasePipeline(metaclass=ABCMeta):
                 try_get_key(self.cfg.train.dist, "pipeline_num_layers") is not None
             ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
 
-    def load_pretrain_weight(self, model, cfg, model_path):
-        Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(model_path, resume=False)
+    def load_pretrain_weight(
+            self, 
+            libai_cfg_model, 
+            model_path,
+            base_model_prefix_1=None,
+            base_model_prefix_2="",
+            mode="libai"
+        ):
+        """load pretrained model.
+
+        Args:
+            libai_cfg_model (libai.models): Lazy config Model in Libai, you can import it 
+                by `from libai.config.configs.common.models.bert 
+                    import pretrain_model as libai_cfg_model` 
+            model_path (str): The directory path of pretrained model,
+        """
+        assert mode in ["libai", "huggingface"], "only support libai or huggingface model currently."
+        if mode == "libai":
+            from libai.models.utils.model_utils.base_loader import ModelLoaderLiBai
+
+            model_loader = ModelLoaderLiBai(
+                libai_cfg_model, 
+                libai_cfg_model.cfg,
+                model_path
+                )
+            model_loader.base_model_prefix_1 = base_model_prefix_1
+            model_loader.base_model_prefix_2 = base_model_prefix_2
+            return model_loader.load()
+        else:
+            pass
 
     def build_tokenizer(self, cfg):
         tokenizer = None
