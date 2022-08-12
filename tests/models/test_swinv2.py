@@ -22,8 +22,8 @@ import oneflow.unittest
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 import libai.utils.distributed as dist
-from configs.common.models.vit.vit_small_patch16_224 import model
-from libai.config import LazyCall, LazyConfig
+from configs.common.models.swinv2.swinv2_tiny_patch4_window8_256 import model
+from libai.config import LazyConfig
 from libai.data.datasets import CIFAR10Dataset
 from libai.engine import DefaultTrainer
 from libai.engine.default import _check_batch_size
@@ -34,22 +34,21 @@ DATA_URL = "https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/
 
 DATA_MD5 = "c58f30108f718f92721af3b95e74349a"
 
-TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_vit")
+TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_swinv2")
 
 setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestViTModel(flow.unittest.TestCase):
+class TestSwinV2Model(flow.unittest.TestCase):
     def setUp(self) -> None:
-        cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "vit_data")
+        cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "swinv2_data")
 
-        cfg = LazyConfig.load("configs/vit_imagenet.py")
+        cfg = LazyConfig.load("configs/swinv2_cifar100.py")
 
         # set model
         cfg.model = model
-        cfg.model.num_classes = 10
-        cfg.model.depth = 6
-        cfg.model.loss_func = LazyCall(SoftTargetCrossEntropy)()
+        cfg.model.cfg.num_classes = 10
+        cfg.model.cfg.loss_func = SoftTargetCrossEntropy()
 
         # prepare data path
         if dist.get_local_rank() == 0:
@@ -95,7 +94,7 @@ class TestViTModel(flow.unittest.TestCase):
             shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
-    def test_vit_eager_with_data_tensor_parallel(self):
+    def test_swinv2_eager_with_data_tensor_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
@@ -110,7 +109,7 @@ class TestViTModel(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_vit_graph_with_data_tensor_parallel(self):
+    def test_swinv2_graph_with_data_tensor_parallel(self):
         self.cfg.train.num_accumulation_steps = 1
 
         # set distributed config
@@ -126,14 +125,14 @@ class TestViTModel(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_vit_graph_with_data_tensor_pipeline_parallel(self):
+    def test_swinv2_graph_with_data_tensor_pipeline_parallel(self):
         self.cfg.train.num_accumulation_steps = 4
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         # change to 2 when 2d sbp bugfix
         self.cfg.train.dist.tensor_parallel_size = 1
         self.cfg.train.dist.pipeline_parallel_size = 2
-        self.cfg.train.dist.pipeline_num_layers = self.cfg.model.depth
+        self.cfg.train.dist.pipeline_num_layers = sum(self.cfg.model.cfg.depths)
 
         dist.setup_dist_util(self.cfg.train.dist)
         _check_batch_size(self.cfg)
@@ -144,7 +143,7 @@ class TestViTModel(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     @unittest.skip("There are still bugs in ZeRO")
-    def test_vit_with_zero(self):
+    def test_swinv2_with_zero(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 4
         self.cfg.train.dist.tensor_parallel_size = 1
