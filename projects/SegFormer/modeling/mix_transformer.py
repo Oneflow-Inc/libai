@@ -333,7 +333,7 @@ class MixVisionTransformer(nn.Module):
     def forward(self, images, labels=None):
         x = self.forward_features(images)
         x = self.head(x)
-        
+                
         if labels is not None and self.training:
             losses = self.loss_func(x, labels)
             return {"losses": losses}

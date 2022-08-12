@@ -17,7 +17,7 @@ from libai.data.build import build_image_train_loader, build_image_test_loader
 train_aug = LazyCall(transforms.Compose)(
     transforms=[
         LazyCall(transforms.RandomResizedCrop)(
-            size=512,
+            size=(512, 1024),
             interpolation=InterpolationMode.BICUBIC,
         ),
         LazyCall(transforms.RandomHorizontalFlip)(p=0.5),
@@ -33,7 +33,7 @@ train_aug = LazyCall(transforms.Compose)(
 test_aug = LazyCall(transforms.Compose)(
     transforms=[
         LazyCall(transforms.Resize)(
-            size=512,
+            size=(512, 1024),
             interpolation=InterpolationMode.BICUBIC,
         ),
         LazyCall(transforms.ToTensor)(),
