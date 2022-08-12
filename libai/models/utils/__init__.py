@@ -21,3 +21,4 @@ from .model_utils.roberta_loader import RobertaLoaderHuggerFace, RobertaLoaderLi
 from .model_utils.gpt_loader import GPT2LoaderHuggerFace, GPT2LoaderLiBai
 from .model_utils.t5_loader import T5LoaderHuggerFace, T5LoaderLibai
 from .model_utils.swin_loader import SwinLoaderHuggerFace, SwinLoaderLiBai
+from .model_utils.swinv2_loader import SwinV2LoaderHuggerFace, SwinV2LoaderLiBai
