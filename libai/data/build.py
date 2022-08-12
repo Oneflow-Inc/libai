@@ -32,7 +32,7 @@ def build_nlp_train_val_test_loader(
     train_val_test_num_samples,
     train_batch_size,
     test_batch_size,
-    train_sampler=LazyCall(CyclicSampler)(shuffle=True),
+    train_sampler=LazyCall(CyclicSampler)(shuffle=False),
     test_sampler=LazyCall(SingleRoundSampler)(shuffle=False, drop_last=False),
     num_workers=4,
     consumed_samples=0,
@@ -152,7 +152,7 @@ def build_nlp_train_loader(
     dataset,
     train_batch_size,
     test_batch_size=None,
-    sampler=LazyCall(CyclicSampler)(shuffle=True),
+    sampler=LazyCall(CyclicSampler)(shuffle=False),
     num_workers=4,
     consumed_samples=0,
     seed=0,
@@ -211,7 +211,7 @@ def build_nlp_train_loader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
-        persistent_workers=True if num_workers > 0 else False,
+        # persistent_workers=True if num_workers > 0 else False,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )
@@ -263,7 +263,7 @@ def build_nlp_test_loader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
-        persistent_workers=True if num_workers > 0 else False,
+        # persistent_workers=True if num_workers > 0 else False,
         collate_fn=collate_fn,
     )
     return test_loader
@@ -273,7 +273,7 @@ def build_image_train_loader(
     dataset,
     train_batch_size,
     test_batch_size=None,
-    sampler=LazyCall(CyclicSampler)(shuffle=True),
+    sampler=LazyCall(CyclicSampler)(shuffle=False),
     num_workers=4,
     consumed_samples=0,
     seed=0,
@@ -335,7 +335,7 @@ def build_image_train_loader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
-        persistent_workers=True if num_workers > 0 else False,
+        # persistent_workers=True if num_workers > 0 else False,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )
@@ -389,7 +389,7 @@ def build_image_test_loader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
-        persistent_workers=True if num_workers > 0 else False,
+        # persistent_workers=True if num_workers > 0 else False,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )

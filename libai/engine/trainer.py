@@ -214,9 +214,9 @@ class TrainerBase:
             
             # ### 新增
             # total_losses_reduced = sum(metrics_dict.values())
-            # if dist.is_main_process():
-            #     txt = open("/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_V4/results/exp7_libai.txt", "a")
-            #     txt.write(str(total_losses_reduced.item())+"\n")
+            if dist.is_main_process():
+                txt = open("/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_V4/results/rwkv_libai_wkv_fixgrad_graph.txt", "a")
+                txt.write(str(total_losses_reduced.item())+"\n")
 
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
             if len(metrics_dict) > 1:

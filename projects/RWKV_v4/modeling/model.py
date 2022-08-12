@@ -9,6 +9,7 @@ from libai.layers import LayerNorm, Linear, LMLogits, VocabEmbedding
 from libai.models.utils import init_method_normal
 from libai.utils import distributed as dist
 import pdb
+import pickle
 logger = logging.getLogger(__name__)
 
 RWKV_HEAD_QK_DIM = 256
@@ -81,9 +82,43 @@ class RWKV_TimeMix(nn.Module):
         k = self.key(xk)
         v = self.value(xv)
         r = self.receptance(xr)
+        
         rwkv = flow.sigmoid(r) * flow._C.wkv(B, T, C, self.time_decay, self.time_first, k, v)
-        # rwkv = flow.sigmoid(r)* RUN_CUDA(B, T, C, self.time_decay, self.time_first, k, v)
+
+        # 错误的找 grad 的方法（微笑）
+        # g_rwkv=rwkv.grad
+        # g_td=self.time_decay.grad
+        # g_tf=self.time_first.grad
+        # g_k=k.grad
+        # g_v=v.grad
         # pdb.set_trace()
+
+        # 得到 wkv 算子的输入，用于复现梯度数值问题
+        # B=B.to_local().numpy()
+        # T=T.to_local().numpy()
+        # C=C.to_local().numpy()
+        # time_decay = self.time_decay.to_local().numpy()
+        # time_first = self.time_first.to_local().numpy()
+        # k = k.to_local().numpy()
+        # v = v.to_local().numpy()
+        # input = {
+        #     "B": B,
+        #     "T": T,
+        #     "C": C,
+        #     "time_decay": time_decay,
+        #     "time_first": time_first,
+        #     "k": k,
+        #     "v": v
+        # }
+
+        # f=open('input.pkl','wb')
+        # pickle.dump(input,f)
+        # f.close()
+
+        # exit(0)
+
+        # rwkv = flow.sigmoid(r)
+        # # pdb.set_trace()
         rwkv = self.output(rwkv)
   
         return rwkv

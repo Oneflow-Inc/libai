@@ -19,15 +19,16 @@ test.enable=False
 test.weight_style=(
     "pytorch"
 )
-test.path="/home/chenqiaoling/RWKV-LM/RWKV-v4/trained-1.pth"
+test.path="/home/chenqiaoling/RWKV-LM/RWKV-v4/for_load.pth"
 
 graph = get_config("common/models/graph.py").graph
+
 graph.enabled=True
 
 # optim = get_config("common/optim.py").optim
 optim = LazyCall(flow.optim.Adam)(
     params=LazyCall(get_RWKV_v4_config_optim)(),
-    lr=3e-4,
+    lr=8e-4,
 )
 
 
@@ -36,8 +37,8 @@ model=LazyCall(GPT)(
     vocab_size=6064,
     ctx_len=1024,
     model_type='RWKV',
-    n_layer=6,
-    n_embd=1024
+    n_layer=12,
+    n_embd=2048
 )
 
 # 训练过程
@@ -51,7 +52,7 @@ train.scheduler=LazyCall(flow.optim.lr_scheduler.StepLR)(
 ) 
 
 # false = fp32
-train.amp.enabled=True
+train.amp.enabled=False
 
 datafile="/home/chenqiaoling/RWKV-LM/data/enwik8"
 # 获得一个 DataLoader 的配置对象
@@ -67,7 +68,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
     num_workers=4,
 )
 
-train.train_iter=0
+# train.train_iter=3
 train.train_epoch=1
 
 train.output_dir = "output/rwkv_output_loss_compare"
@@ -81,6 +82,6 @@ train.rdma_enabled = False
 # train.dist.pipeline_parallel_size=2
 train.evaluation.enabled = False
 
-
-train.dist.tensor_parallel_size = 2  # 并行度为 4 的模型并行
+# train.train_iter=5
+# train.dist.tensor_parallel_size = 2  # 并行度为 4 的模型并行
 # train.dist.tensor_parallel_size = 4  # 并行度为 4 的模型并行
