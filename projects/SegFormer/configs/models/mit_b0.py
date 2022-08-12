@@ -1,12 +1,13 @@
+from pydoc import importfile
 from omegaconf import DictConfig
 from libai.config import LazyCall
-from modeling.mix_transformer import MixVisionTransformer
+from projects.SegFormer.modeling.mix_transformer import MixVisionTransformer
 
 cfg = dict(
     img_size=224,
-    patch_size=[7,3,3,3],
+    patch_sizes=[7,3,3,3],
     in_chans=3,
-    num_classes=150,
+    num_classes=19,
     embed_dims=[32, 64, 160, 256],
     num_heads=[1, 2, 5, 8],
     mlp_ratios=[4, 4, 4, 4],

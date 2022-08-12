@@ -8,7 +8,7 @@ from flowvision.models import to_2tuple
 from libai.config.config import configurable
 from libai.layers import MLP, Linear, LayerNorm, DropPath
 from libai.utils import distributed as dist
-from head import DecodeHead
+from projects.SegFormer.modeling.head import DecodeHead
 
 
 class Mlp(MLP):
@@ -285,7 +285,7 @@ class MixVisionTransformer(nn.Module):
             'drop_path_rate': cfg.drop_path_rate,
             'depths': cfg.depths,
             'sr_ratios': cfg.sr_ratios,
-            'loss_func': cfg.lossfunc,
+            'loss_func': cfg.loss_func,
             'decoder_in_channels': cfg.decoder_in_channels,
             'decoder_embedding_dim': cfg.decoder_embedding_dim,
             'decoder_dropout_prob': cfg.decoder_dropout_prob
@@ -330,8 +330,8 @@ class MixVisionTransformer(nn.Module):
 
         return outs
 
-    def forward(self, x, labels=None):
-        x = self.forward_features(x)
+    def forward(self, images, labels=None):
+        x = self.forward_features(images)
         x = self.head(x)
         
         if labels is not None and self.training:
@@ -381,7 +381,7 @@ if __name__ == '__main__':
         print(param_tensor,'\t',model.state_dict()[param_tensor].size())
 
     import numpy as np
-    input = np.random.rand(1, 3, 224, 224)
+    input = np.random.rand(1, 3, 512, 1024)
     input = flow.tensor(input, dtype=flow.float32, sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]), placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),)
     output = model(input)
     print(output['prediction_scores'].shape)

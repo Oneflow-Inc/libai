@@ -1,9 +1,8 @@
 import oneflow as flow
 import oneflow.nn as nn
 from flowvision.layers import trunc_normal_
-from flowvision.models import to_2tuple
 
-from libai.layers import Linear, LayerNorm, DropPath
+from libai.layers import Linear, BatchNorm2d
 from libai.utils import distributed as dist
 
 class DecodeHead(nn.Module):
@@ -85,7 +84,7 @@ class DecodeHead(nn.Module):
             placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
-        self.batch_norm = nn.BatchNorm2d(self.embedding_dim)
+        self.batch_norm = BatchNorm2d(self.embedding_dim, layer_idx=layer_idx)
         self.activation = nn.ReLU()
         
         self.linear_pred = nn.Conv2d(self.embedding_dim, self.num_classes, kernel_size=1).to_global(
@@ -120,8 +119,6 @@ class DecodeHead(nn.Module):
         self.input_transform = input_transform
         self.in_index = in_index
         if input_transform is not None:
-            assert isinstance(in_channels, (list, tuple))
-            assert isinstance(in_index, (list, tuple))
             assert len(in_channels) == len(in_index)
             if input_transform == 'resize_concat':
                 self.in_channels = sum(in_channels)
@@ -174,6 +171,8 @@ class DecodeHead(nn.Module):
         _c1 = self.linear_c1(c1).permute(0,2,1).reshape(n, -1, c1.shape[2], c1.shape[3])
 
         _c = self.linear_fuse(flow.cat([_c4, _c3, _c2, _c1], dim=1))
+        _c = self.batch_norm(_c)
+        _c = self.activation(_c)
 
         x = self.dropout(_c)
         x = self.linear_pred(x)
