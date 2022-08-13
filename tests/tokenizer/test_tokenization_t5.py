@@ -19,7 +19,7 @@ import shutil
 import tempfile
 import unittest
 
-from libai.tokenizer.tokenization_t5 import GoogleT5Tokenizer
+from libai.tokenizer.tokenization_t5 import T5Tokenizer
 from tests.fixtures.utils import get_fixtures
 from tests.tokenizer.test_tokenization_common import TokenizerTesterMixin
 
@@ -30,16 +30,16 @@ SAMPLE_VOCAB = os.path.join(
 )
 
 
-class GoogleT5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
+class T5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
-    tokenizer_class = GoogleT5Tokenizer
+    tokenizer_class = T5Tokenizer
 
     def setUp(self):
         super().setUp()
 
         # We have a SentencePiece fixture for testing
         get_fixtures(SAMPLE_VOCAB)
-        tokenizer = GoogleT5Tokenizer(SAMPLE_VOCAB)
+        tokenizer = T5Tokenizer(SAMPLE_VOCAB)
         tokenizer.save_pretrained(self.tmpdirname)
 
     def test_convert_token_and_id(self):
@@ -62,7 +62,7 @@ class GoogleT5TokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         self.assertEqual(self.get_tokenizer().vocab_size, 1_100)
 
     def test_full_tokenizer(self):
-        tokenizer = GoogleT5Tokenizer(SAMPLE_VOCAB)
+        tokenizer = T5Tokenizer(SAMPLE_VOCAB)
 
         tokens = tokenizer.tokenize("This is a test")
         self.assertListEqual(tokens, ["▁This", "▁is", "▁a", "▁t", "est"])
