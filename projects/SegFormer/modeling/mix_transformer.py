@@ -2,6 +2,7 @@ import math
 
 import oneflow as flow
 import oneflow.nn as nn
+import oneflow.nn.functional as F
 from flowvision.layers import trunc_normal_
 from flowvision.models import to_2tuple
 
@@ -333,8 +334,13 @@ class MixVisionTransformer(nn.Module):
     def forward(self, images, labels=None):
         x = self.forward_features(images)
         x = self.head(x)
-                
+       ### TODO reshape the predict to label
         if labels is not None and self.training:
+            if len(labels.shape) == 3:
+                x = F.interpolate(x, labels.shape[1:], mode='bilinear')
+            if len(labels.shape) == 4:
+                x = F.interpolate(x, labels.shape[2:], mode='bilinear')
+                labels = labels.squeeze(1)
             losses = self.loss_func(x, labels)
             return {"losses": losses}
         else:
