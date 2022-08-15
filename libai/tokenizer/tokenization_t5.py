@@ -37,7 +37,7 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 }
 
 
-class GoogleT5Tokenizer(PreTrainedTokenizer):
+class T5Tokenizer(PreTrainedTokenizer):
     """
     Construct a T5 tokenizer. Based on `SentencePiece <https://github.com/google/sentencepiece>`.
 
