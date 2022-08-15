@@ -85,7 +85,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
 
         # load model
         load_func = SwinV2LoaderHuggerFace(
-            model=libai.models.SwinTransformerv2,
+            model=libai.models.SwinTransformerV2,
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
         )
@@ -102,7 +102,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         prediction_scores = model(input_image)["prediction_scores"]
 
         self.assertTrue(
-            np.allclose(np.array(373.4227), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
+            np.allclose(np.array(221.7827), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
 
     @flow.unittest.skip_unless_1n4d()
@@ -120,7 +120,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
 
         # load model
         load_func = SwinV2LoaderHuggerFace(
-            model=libai.models.SwinTransformerv2,
+            model=libai.models.SwinTransformerV2,
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
         )
@@ -137,7 +137,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         prediction_scores = model(input_image)["prediction_scores"]
 
         self.assertTrue(
-            np.allclose(np.array(373.4227), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
+            np.allclose(np.array(221.7827), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
 
 
