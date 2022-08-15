@@ -124,8 +124,5 @@ def load_detr_weights(model, path, hidden_size, num_heads, layers=12):
         num_heads=num_heads,
         head_size=head_size,
     )
-    import pdb
-    pdb.set_trace()
-    flow.save(of_state_dict)
     for key, value in of_state_dict.items():
         load_tensor(model.state_dict()[key], value)

@@ -299,18 +299,18 @@ def make_coco_transforms(image_set):
     if image_set == "train":
         return LazyCall(Compose)(
             transforms=[
-                # LazyCall(RandomHorizontalFlip)(p=0.5),
-                # LazyCall(RandomSelect)(
-                #     transforms1=LazyCall(RandomResize)(sizes=scales, max_size=1333),
-                #     transforms2=LazyCall(Compose)(
-                #         transforms=[
-                #             LazyCall(RandomResize)(sizes=[400, 500, 600], max_size=None),
-                #             LazyCall(RandomSizeCrop)(min_size=384, max_size=600),
-                #             LazyCall(RandomResize)(sizes=scales, max_size=1333),
-                #         ],
-                #     ),
-                #     p=0.5,
-                # ),
+                LazyCall(RandomHorizontalFlip)(p=0.5),
+                LazyCall(RandomSelect)(
+                    transforms1=LazyCall(RandomResize)(sizes=scales, max_size=1333),
+                    transforms2=LazyCall(Compose)(
+                        transforms=[
+                            LazyCall(RandomResize)(sizes=[400, 500, 600], max_size=None),
+                            LazyCall(RandomSizeCrop)(min_size=384, max_size=600),
+                            LazyCall(RandomResize)(sizes=scales, max_size=1333),
+                        ],
+                    ),
+                    p=0.5,
+                ),
                 normalize,
             ]
         )

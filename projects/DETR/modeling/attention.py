@@ -46,18 +46,6 @@ class DetrMultiheadAttention(MultiheadAttention):
         attention_mask: flow.Tensor = None,
         key_padding_mask: flow.Tensor = None,
     ):
-        """
-
-        Args:
-            hidden_states (flow.Tensor): shape is [bsz, tgt_len, hidden_size].
-            attention_mask (flow.Tensor, optional): shape is [bsz, 1, tgt_len, src_len].
-                It should be the combination of padding mask and casual mask.
-                It is the padding mask of source input when used with self-attention in encoder.
-                And it is the combination of padding mask of target input and casual mask when
-                used with self-attention in decoder. It is the padding mask of source input when
-                used with cross-attention in decoder.
-                Defaults to None.
-        """
 
         query, key, value = hidden_states
 

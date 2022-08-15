@@ -29,11 +29,6 @@ class DetrEagerTrainer(TrainerBase):
         """
         super().__init__()
 
-        # We set the model to training mode in the trainer.
-        # However it's valid to train a model that's in eval mode.
-        # If you want your model (or a submodule of it) to behave
-        # like evaluation during training, you can overwrite its train() method.
-
         model.train()
         self.model = model
         self._data_loader_iter = iter(data_loader)
@@ -45,8 +40,7 @@ class DetrEagerTrainer(TrainerBase):
         """
         Implement the standard training logic described above.
         """
-        self.model.eval()
-        # assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        assert self.model.training, "[SimpleTrainer] model was changed to eval mode!"
         start = time.perf_counter()
         data = next(self._data_loader_iter)
         data = get_batch(data)
@@ -54,15 +48,9 @@ class DetrEagerTrainer(TrainerBase):
         loss_dict, _ = self.model(data)
         weight_dict = self.model.criterion.weight_dict
         losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
-        loss_value = losses.item()
-        print(loss_value)
-        txt_file = open("projects/DETR/checkpoint/libai.txt", "a", encoding="utf-8")
-        txt_file.write(str(loss_value))
-        txt_file.write("\n")
-        txt_file.close()
         losses.backward()
         loss_dict_scaled = {k: v * weight_dict[k] for k, v in loss_dict.items() if k in weight_dict}
-        # self.write_metrics(loss_dict_scaled, data_time)
+        self.write_metrics(loss_dict_scaled, data_time)
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()

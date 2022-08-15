@@ -30,12 +30,12 @@ dataloader.test[0].dataset.ann_file = path_val_ann
 
 # For inference
 # train.load_weight = "projects/DETR/checkpoint/detr-r50-e632da11.pth"
-# train.load_weight = "projects/DETR/checkpoint/of"
 
 # Refine train cfg for detr model
 train.train_micro_batch_size = 2
 train.test_micro_batch_size = 2
 train.train_epoch = 300
+train.evaluation.eval_period = 100
 
 coco_detection = LazyCall(CocoDetection)(
     img_folder=path_val_img,
@@ -47,16 +47,17 @@ train.evaluation.evaluator = LazyCall(CocoEvaluator)(coco_detection=coco_detecti
 train.evaluation.eval_metric = "bbox@AP"
 
 # Refine optimizer cfg for detr model
+base_lr = 1e-4
 optim.weight_decay = 1e-4
-optim.lr = 1e-4
-backbone_lr = 1e-4
+optim.lr = base_lr
 
 optim.params = LazyCall(get_default_optimizer_params)(
     clip_grad_max_norm=0.1,
     clip_grad_norm_type=2.0,
     weight_decay_norm=0.0,
     weight_decay_bias=0.0,
-    overrides={"backbone": {"lr": backbone_lr}},
+    base_lr = base_lr,
+    lr_factor_func = lambda module_name: 0.1 if "backbone" in module_name else 1,
 )
 
 # Scheduler

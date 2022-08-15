@@ -56,15 +56,6 @@ class DetrTransformerLayer(TransformerLayer):
         position_embedding=None,
         query_position_embedding=None,
     ):
-        """
-        Args:
-            hidden_states: shape is (batch_size, seq_length, hidden_size),
-                sbp signature is (S(0), B).
-            attention_mask: the combination of key padding mask and casual mask of hidden states
-                with shape (batch_size, 1, seq_length, seq_length) and the sbp
-                signature is (S(0), B),
-        """
-
         if self.normalize_before:
             layernorm_hidden_states = self.input_layernorm(hidden_states)
             if self.is_decoder:

@@ -14,17 +14,14 @@
 # limitations under the License.
 
 
-import logging
-
 from trainer.detr_trainer import DetrEagerTrainer
+from datasets.evaluation import inference_on_coco_dataset
 
 from libai.config import instantiate, try_get_key
 from libai.engine.default import DefaultTrainer
-from libai.models import build_model
 from libai.scheduler import build_lr_scheduler
 from libai.utils import distributed as dist
-from projects.DETR.datasets.evaluation import inference_on_coco_dataset
-from utils.checkpoint import detr_checkpointer
+
 
 class DetrDefaultTrainer(DefaultTrainer):
     def __init__(self, cfg):
@@ -35,10 +32,7 @@ class DetrDefaultTrainer(DefaultTrainer):
         self._trainer = DetrEagerTrainer(
             self.model, self.train_loader, self.optimizer, cfg.train.num_accumulation_steps
         )
-        # for loss align only
-        self.load_torch_weight = detr_checkpointer(self.model, 
-                                                   save_dir="/dataset/czq_home/projects/libai/projects/DETR/checkpoint")
-        self.load_torch_weight.resume_or_load(path="projects/DETR/checkpoint/detr-r50-e632da11.pth", resume=False)
+
     @classmethod
     def build_evaluator(cls, cfg):
         evaluator = instantiate(cfg.train.evaluation.evaluator)
@@ -58,31 +52,6 @@ class DetrDefaultTrainer(DefaultTrainer):
         )
 
         return results
-
-    @classmethod
-    def build_model(cls, cfg):
-        """
-        Returns:
-            flow.nn.Module:
-
-        It now calls :func:`libai.models.build_model`.
-        Overwrite it if you'd like a different model.
-        """
-        assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
-        # Set model fp16 option because of embedding layer `white_identity` manual
-        # insert for amp training if provided.
-        if try_get_key(cfg.model, "cfg.amp_enabled") is not None:
-            cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
-        # In case some model define without cfg keyword.
-        elif try_get_key(cfg.model, "amp_enabled") is not None:
-            cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
-        model = build_model(cfg.model)
-        logger = logging.getLogger(__name__)
-        logger.info("Model:\n{}".format(model))
-
-        model.apply(dist.convert_to_distributed_default_setting)
-
-        return model
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):

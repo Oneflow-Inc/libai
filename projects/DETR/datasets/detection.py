@@ -116,14 +116,4 @@ class CocoDetection(flowvision.datasets.CocoDetection):
         img, target = self.prepare(img, target)
         if self._transforms is not None:
             img, target = self._transforms(img, target)
-        # img = flow.ones((3, 873, 1201), dtype=flow.float32)
-        # target = {
-        #     "boxes": flow.tensor([[0.2107, 0.4918, 0.3994, 0.2495]], dtype=flow.float32),
-        #     "labels": flow.tensor([72], dtype=flow.int64),
-        #     "image_id": flow.tensor([139], dtype=flow.int64),
-        #     "iscrowd": flow.tensor([0], dtype=flow.int64),
-        #     "orig_size": flow.tensor([426, 640], dtype=flow.int64),
-        #     "size": flow.tensor([873, 1201], dtype=flow.int64),
-        #     "area": flow.tensor([46674.9805], dtype=flow.float32),
-        # }
         return (img, target)

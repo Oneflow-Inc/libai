@@ -82,7 +82,7 @@ dataloader.train = LazyCall(build_image_train_loader)(
             transforms=make_coco_transforms("train"),
         ),
     ],
-    num_workers=0,
+    num_workers=4,
     mixup_func=None,
     collate_fn=collate_fn,
 )
@@ -95,7 +95,7 @@ dataloader.test = [
             return_masks=False,
             transforms=make_coco_transforms("val"),
         ),
-        num_workers=0,
+        num_workers=4,
         collate_fn=collate_fn,
     )
 ]
