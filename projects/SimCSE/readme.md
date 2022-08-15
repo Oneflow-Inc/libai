@@ -29,12 +29,12 @@ learning_rate=1e-5, batch_size=64
 Training SimCSE on 8 GPUs using data parallelism.
 ```bash
 cd /path/to/libai
-bash projects/SimCSE/train.sh tools/train_net.py projects/SimCSE/configs/config_simcse_unsup.py 8
+bash projects/SimCSE/train.sh tools/train_net.py projects/SimCSE/config/config_simcse_unsup.py 8
 ```
 
 ## Evaluation
 Evaluate SimCSE on 8 GPUs using data parallelism:
 ```bash
 cd /path/to/libai
-bash projects/SimCSE/train.sh tools/train_net.py projects/SimCSE/configs/config_simcse_unsup.py 8 --eval-only
+bash projects/SimCSE/train.sh tools/train_net.py projects/SimCSE/config/config_simcse_unsup.py 8 --eval-only
 ```

@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import oneflow as flow
 import oneflow.nn as nn
+import oneflow.nn.functional as F
 from flowvision.layers import trunc_normal_
 from flowvision.models import to_2tuple
 
@@ -24,6 +27,13 @@ from libai.utils import distributed as dist
 
 
 def window_partition(x, window_size):
+    """
+    Args:
+        x: (B, H, W, C)
+        window_size (int): window size
+    Returns:
+        windows: (num_windows*B, window_size, window_size, C)
+    """
     B, H, W, C = x.shape
     x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
     windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
@@ -31,6 +41,15 @@ def window_partition(x, window_size):
 
 
 def window_reverse(windows, window_size, H, W):
+    """
+    Args:
+        windows: (num_windows*B, window_size, window_size, C)
+        window_size (int): Window size
+        H (int): Height of image
+        W (int): Width of image
+    Returns:
+        x: (B, H, W, C)
+    """
     B = int(windows.shape[0] / (H * W / window_size / window_size))
     x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
     x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
@@ -38,16 +57,17 @@ def window_reverse(windows, window_size, H, W):
 
 
 class WindowAttention(nn.Module):
-    """Window based multi-head self attention (W-MSA) module with relative position bias.
+    r"""Window based multi-head self attention (W-MSA) module with relative position bias.
     It supports both of shifted and non-shifted window.
     Args:
         dim (int): Number of input channels.
         window_size (tuple[int]): The height and width of the window.
         num_heads (int): Number of attention heads.
-        qkv_bias (bool, optional): If True, add a learnable bias to query,key,value. Default: True
-        qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set
+        qkv_bias (bool, optional): If True, add a learnable bias to query, key, value.
+                                    Default: True
         attn_drop (float, optional): Dropout ratio of attention weight. Default: 0.0
         proj_drop (float, optional): Dropout ratio of output. Default: 0.0
+        pretrained_window_size (tuple[int]): The height and width of the window in pre-training.
     """
 
     def __init__(
@@ -56,9 +76,9 @@ class WindowAttention(nn.Module):
         window_size,
         num_heads,
         qkv_bias=True,
-        qk_scale=None,
         attn_drop=0.0,
         proj_drop=0.0,
+        pretrained_window_size=[0, 0],
         fused_bias_add_dropout=False,
         layer_idx=0,
     ):
@@ -66,22 +86,81 @@ class WindowAttention(nn.Module):
         super().__init__()
         self.dim = dim
         self.window_size = window_size  # Wh, Ww
+        self.pretrained_window_size = pretrained_window_size
+        self.fused_bias_add_dropout = fused_bias_add_dropout
         self.num_heads = num_heads
-        head_dim = dim // num_heads
-        self.scale = qk_scale or head_dim ** -0.5
+        self.layer_idx = layer_idx
+        self.p = proj_drop
+        self.logit_scale = nn.Parameter(
+            flow.log(
+                10
+                * flow.ones(
+                    1,
+                    num_heads,
+                    1,
+                    1,
+                    placement=dist.get_layer_placement(layer_idx),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
+            ),
+            requires_grad=True,
+        )
 
-        # define a parameter table of relative position bias
-        self.relative_position_bias_table = nn.Parameter(
-            flow.zeros(
-                (2 * window_size[0] - 1) * (2 * window_size[1] - 1),
-                num_heads,
+        # NOTE: generate meta network, using mlp to generate continuous relative position bias
+        self.cpb_mlp = nn.Sequential(
+            Linear(2, 512, bias=True, layer_idx=layer_idx),
+            nn.ReLU(inplace=True),
+            Linear(512, num_heads, bias=False, layer_idx=layer_idx),
+        ).to_global(
+            placement=dist.get_layer_placement(layer_idx),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
+
+        # NOTE: get relative_coords_table
+        relative_coords_h = flow.arange(
+            -(self.window_size[0] - 1), self.window_size[0], dtype=flow.float32
+        )
+        relative_coords_w = flow.arange(
+            -(self.window_size[1] - 1), self.window_size[1], dtype=flow.float32
+        )
+        relative_coords_table = (
+            flow.stack(flow.meshgrid(*[relative_coords_h, relative_coords_w]))
+            .permute(1, 2, 0)
+            .contiguous()
+            .unsqueeze(0)
+        )  # 1, 2*Wh-1, 2*Ww-1, 2
+
+        # NOTE: For any relative coordinate, constrain it to -8~8 (window size)
+        if pretrained_window_size[0] > 0:
+            relative_coords_table[:, :, :, 0] = relative_coords_table[:, :, :, 0] / (
+                pretrained_window_size[0] - 1
+            )
+            relative_coords_table[:, :, :, 1] = relative_coords_table[:, :, :, 1] / (
+                pretrained_window_size[1] - 1
+            )
+        else:
+            relative_coords_table[:, :, :, 0] = relative_coords_table[:, :, :, 0] / (
+                self.window_size[0] - 1
+            )
+            relative_coords_table[:, :, :, 1] = relative_coords_table[:, :, :, 1] / (
+                self.window_size[1] - 1
+            )
+        relative_coords_table = relative_coords_table * 8
+        # NOTE: y=sign(x)*log(|x|+1)
+        relative_coords_table = (
+            flow.sign(relative_coords_table)
+            * flow.log2(flow.abs(relative_coords_table) + 1.0)
+            / math.log2(8.0)
+        )
+        self.register_buffer(
+            "relative_coords_table",
+            relative_coords_table.to_global(
                 placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            )
-        )  # 2*Wh-1 * 2*Ww-1, nH
-        trunc_normal_(self.relative_position_bias_table, std=0.02)
+            ),
+        )
 
-        # get pair-wise relative position index for each token inside the window
+        # NOTE: get pair-wise relative position index for each token inside the window
         coords_h = flow.arange(self.window_size[0])
         coords_w = flow.arange(self.window_size[1])
         coords = flow.stack(flow.meshgrid(*[coords_h, coords_w]))  # 2, Wh, Ww
@@ -102,44 +181,82 @@ class WindowAttention(nn.Module):
             ),
         )
 
-        self.qkv = Linear(dim, dim * 3, bias=qkv_bias, layer_idx=layer_idx)
+        self.qkv = Linear(dim, dim * 3, bias=False, layer_idx=layer_idx)
+        if qkv_bias:
+            self.q_bias = nn.Parameter(
+                flow.zeros(
+                    dim,
+                    placement=dist.get_layer_placement(layer_idx),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
+            )
+            self.v_bias = nn.Parameter(
+                flow.zeros(
+                    dim,
+                    placement=dist.get_layer_placement(layer_idx),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
+            )
+        else:
+            self.q_bias = None
+            self.v_bias = None
         self.attn_drop = nn.Dropout(attn_drop)
         self.proj = Linear(dim, dim, layer_idx=layer_idx)
         self.proj_drop = nn.Dropout(proj_drop)
         self.softmax = nn.Softmax(dim=-1)
-        self.fused_bias_add_dropout = fused_bias_add_dropout
-        self.p = proj_drop
 
-    def forward(self, x, mask):
+    def forward(self, x, mask=None):
         """
         Args:
             x: input features with shape of (num_windows*B, N, C)
             mask: (0/-inf) mask with shape of (num_windows, Wh*Ww, Wh*Ww) or None
         """
         B_, N, C = x.shape
-        qkv = (
-            self.qkv(x)
-            .reshape(B_, N, 3, self.num_heads, C // self.num_heads)
-            .permute(2, 0, 3, 1, 4)
-        )
+
+        qkv_bias = None
+        if self.q_bias is not None:
+            qkv_bias = flow.concat(
+                [
+                    self.q_bias,
+                    flow.zeros(
+                        self.v_bias.shape,
+                        requires_grad=False,
+                        placement=dist.get_layer_placement(
+                            self.layer_idx, device_type=self.v_bias.placement.type
+                        ),
+                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    ),
+                    self.v_bias,
+                ],
+                dim=0,
+            )
+        qkv = self.qkv(x) + qkv_bias.unsqueeze(0).unsqueeze(0)
+        qkv = qkv.reshape(B_, N, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
-        q = q * self.scale
-        # attn = flow.matmul(q, k.transpose(-2, -1))
-        attn = flow.matmul(q, k, transpose_b=True)
+        # NOTE: cosine attention
+        attn = F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(-2, -1)
 
-        relative_position_bias = self.relative_position_bias_table[
+        # NOTE: a learnable scalar
+        logit_scale = flow.clamp(self.logit_scale, min=-1e6, max=math.log(1.0 / 0.01)).exp()
+        attn = attn * logit_scale
+
+        # NOTE: use relative_coords_table and meta network to generate relative_position_bias
+        relative_position_bias_table = self.cpb_mlp(self.relative_coords_table).view(
+            -1, self.num_heads
+        )
+        relative_position_bias = relative_position_bias_table[
             self.relative_position_index.view(-1)
         ].view(
-            self.window_size[0] * self.window_size[1],
-            self.window_size[0] * self.window_size[1],
-            -1,
+            self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1
         )  # Wh*Ww,Wh*Ww,nH
         relative_position_bias = relative_position_bias.permute(
             2, 0, 1
         ).contiguous()  # nH, Wh*Ww, Wh*Ww
-        unsqueeze_relative_position_bias = relative_position_bias.unsqueeze(0)
-        attn = attn + unsqueeze_relative_position_bias
+
+        # NOTE: constrained to a range of -16~16
+        relative_position_bias = 16 * flow.sigmoid(relative_position_bias).unsqueeze(0)
+        attn = attn + relative_position_bias
 
         if mask is not None:
             nW = mask.shape[0]
@@ -151,7 +268,7 @@ class WindowAttention(nn.Module):
 
         attn = self.attn_drop(attn)
 
-        x = flow.matmul(attn, v).transpose(1, 2).reshape(B_, N, C)
+        x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
         if self.fused_bias_add_dropout:
             x = flow._C.matmul(x, self.proj.weight, transpose_a=False, transpose_b=True)
             x = flow._C.fused_bias_add_dropout(x, self.proj.bias, p=self.p, axis=2)
@@ -162,7 +279,8 @@ class WindowAttention(nn.Module):
 
 
 class SwinTransformerBlock(nn.Module):
-    """Swin Transformer Block.
+    r"""Swin Transformer Block.
+
     Args:
         dim (int): Number of input channels.
         input_resolution (tuple[int]): Input resulotion.
@@ -171,12 +289,12 @@ class SwinTransformerBlock(nn.Module):
         shift_size (int): Shift size for SW-MSA.
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim.
         qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
-        qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set.
         drop (float, optional): Dropout rate. Default: 0.0
         attn_drop (float, optional): Attention dropout rate. Default: 0.0
         drop_path (float, optional): Stochastic depth rate. Default: 0.0
         act_layer (nn.Module, optional): Activation layer. Default: nn.GELU
-        norm_layer (nn.Module, optional): Normalization layer.  Default: libai.layers.LayerNorm
+        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
+        pretrained_window_size (int): Window size in pre-training.
     """
 
     def __init__(
@@ -188,12 +306,12 @@ class SwinTransformerBlock(nn.Module):
         shift_size=0,
         mlp_ratio=4.0,
         qkv_bias=True,
-        qk_scale=None,
         drop=0.0,
         attn_drop=0.0,
         drop_path=0.0,
         act_layer=nn.GELU,
         norm_layer=LayerNorm,
+        pretrained_window_size=0,
         layer_idx=0,
     ):
         super().__init__()
@@ -211,20 +329,22 @@ class SwinTransformerBlock(nn.Module):
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
         self.norm1 = norm_layer(dim, layer_idx=layer_idx)
+
         self.attn = WindowAttention(
             dim,
             window_size=to_2tuple(self.window_size),
             num_heads=num_heads,
             qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
             attn_drop=attn_drop,
             proj_drop=drop,
+            pretrained_window_size=to_2tuple(pretrained_window_size),
             fused_bias_add_dropout=True,
             layer_idx=layer_idx,
         )
-
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+
         self.norm2 = norm_layer(dim, layer_idx=layer_idx)
+
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = MLP(
             hidden_size=dim,
@@ -260,12 +380,13 @@ class SwinTransformerBlock(nn.Module):
             )  # nW, window_size, window_size, 1
             mask_windows = mask_windows.view(-1, self.window_size * self.window_size)
             attn_mask = mask_windows.unsqueeze(1) - mask_windows.unsqueeze(2)
-            attn_mask = attn_mask.masked_fill(attn_mask != 0, float(-100.0)).masked_fill(
-                attn_mask == 0, float(0.0)
-            )
-            attn_mask = attn_mask.to_global(
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            attn_mask = (
+                attn_mask.masked_fill(attn_mask != 0, float(-100.0))
+                .masked_fill(attn_mask == 0, float(0.0))
+                .to_global(
+                    placement=dist.get_layer_placement(layer_idx),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
             )
         else:
             attn_mask = None
@@ -278,7 +399,6 @@ class SwinTransformerBlock(nn.Module):
         assert L == H * W, "input feature has wrong size"
 
         shortcut = x
-        x = self.norm1(x)
         x = x.view(B, H, W, C)
 
         # cyclic shift
@@ -296,7 +416,7 @@ class SwinTransformerBlock(nn.Module):
         )  # nW*B, window_size*window_size, C
 
         # W-MSA/SW-MSA
-        attn_windows = self.attn(x_windows, self.attn_mask)  # nW*B, window_size*window_size, C
+        attn_windows = self.attn(x_windows, mask=self.attn_mask)  # nW*B, window_size*window_size, C
 
         # merge windows
         attn_windows = attn_windows.view(-1, self.window_size, self.window_size, C)
@@ -308,11 +428,11 @@ class SwinTransformerBlock(nn.Module):
         else:
             x = shifted_x
         x = x.view(B, H * W, C)
+        # NOTE: res-post-norm
+        x = shortcut + self.drop_path(self.norm1(x))
 
-        # FFN
-        x = shortcut + self.drop_path(x)
-        x = x + self.drop_path(self.mlp(self.norm2(x)))
-
+        # NOTE: res-post-norm
+        x = x + self.drop_path(self.norm2(self.mlp(x)))
         return x
 
 
@@ -329,7 +449,9 @@ class PatchMerging(nn.Module):
         self.input_resolution = input_resolution
         self.dim = dim
         self.reduction = Linear(4 * dim, 2 * dim, bias=False, layer_idx=layer_idx)
-        self.norm = norm_layer(4 * dim, layer_idx=layer_idx)
+
+        # NOTE: swinv2-> 2*dim, swin-> 4*dim
+        self.norm = norm_layer(2 * dim, layer_idx=layer_idx)
         self.layer_idx = layer_idx
 
     def forward(self, x):
@@ -350,60 +472,10 @@ class PatchMerging(nn.Module):
         x = flow.cat([x0, x1, x2, x3], -1)  # B H/2 W/2 4*C
         x = x.view(B, -1, 4 * C)  # B H/2*W/2 4*C
 
-        x = self.norm(x)
+        # NOTE: post-res-norm, a change that swin-v2 compared to swin
         x = self.reduction(x)
+        x = self.norm(x)
 
-        return x
-
-
-class PatchEmbed(nn.Module):
-    """Image to Patch Embedding
-    Args:
-        img_size (int): Image size.  Default: 224.
-        patch_size (int): Patch token size. Default: 4.
-        in_chans (int): Number of input image channels. Default: 3.
-        embed_dim (int): Number of linear projection output channels. Default: 96.
-        norm_layer (nn.Module, optional): Normalization layer. Default: None
-    """
-
-    def __init__(
-        self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None, layer_idx=0
-    ):
-        super().__init__()
-        img_size = to_2tuple(img_size)
-        patch_size = to_2tuple(patch_size)
-        patches_resolution = [
-            img_size[0] // patch_size[0],
-            img_size[1] // patch_size[1],
-        ]
-        self.img_size = img_size
-        self.patch_size = patch_size
-        self.patches_resolution = patches_resolution
-        self.num_patches = patches_resolution[0] * patches_resolution[1]
-
-        self.in_chans = in_chans
-        self.embed_dim = embed_dim
-
-        self.proj = nn.Conv2d(
-            in_chans, embed_dim, kernel_size=patch_size, stride=patch_size
-        ).to_global(
-            placement=dist.get_layer_placement(layer_idx),
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        )
-        if norm_layer is not None:
-            self.norm = norm_layer(embed_dim, layer_idx=layer_idx)
-        else:
-            self.norm = None
-
-    def forward(self, x):
-        B, C, H, W = x.shape
-        # FIXME look at relaxing size constraints
-        assert (
-            H == self.img_size[0] and W == self.img_size[1]
-        ), f"Input image size ({H}*{W}) doesn't match model({self.img_size[0]}*{self.img_size[1]})."
-        x = self.proj(x).flatten(2).transpose(1, 2)  # B Ph*Pw C
-        if self.norm is not None:
-            x = self.norm(x)
         return x
 
 
@@ -417,13 +489,14 @@ class BasicLayer(nn.Module):
         window_size (int): Local window size.
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim.
         qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
-        qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set.
         drop (float, optional): Dropout rate. Default: 0.0
         attn_drop (float, optional): Attention dropout rate. Default: 0.0
         drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
-        norm_layer (nn.Module, optional): Normalization layer. Default: libai.layers.LayerNorm
-        downsample (nn.Module | None, optional): Downsample at the end of the layer. Default: None
+        norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm
+        downsample (nn.Module | None, optional): Downsample layer at the end of the layer.
+                                                                            Default: None
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
+        pretrained_window_size (int): Local window size in pre-training.
     """
 
     def __init__(
@@ -435,13 +508,13 @@ class BasicLayer(nn.Module):
         window_size,
         mlp_ratio=4.0,
         qkv_bias=True,
-        qk_scale=None,
         drop=0.0,
         attn_drop=0.0,
         drop_path=0.0,
         norm_layer=LayerNorm,
         downsample=None,
         use_checkpoint=False,
+        pretrained_window_size=0,
         layer_id_offset=0,
     ):
 
@@ -462,11 +535,11 @@ class BasicLayer(nn.Module):
                     shift_size=0 if (i % 2 == 0) else window_size // 2,
                     mlp_ratio=mlp_ratio,
                     qkv_bias=qkv_bias,
-                    qk_scale=qk_scale,
                     drop=drop,
                     attn_drop=attn_drop,
                     drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
                     norm_layer=norm_layer,
+                    pretrained_window_size=pretrained_window_size,
                     layer_idx=layer_id_offset + i,
                 )
                 for i in range(depth)
@@ -486,28 +559,81 @@ class BasicLayer(nn.Module):
 
     def forward(self, x):
         layer_idx = self.layer_id_offset
-        for i in range(len(self.blocks)):
-            x = x.to_global(placement=dist.get_layer_placement(layer_idx))
+        for blk in self.blocks:
+            x = x.to_global(
+                placement=dist.get_layer_placement(layer_idx, device_type=x.placement.type)
+            )
             if self.use_checkpoint:
                 raise Exception("Not Support Checkpointing yet!")
             else:
-                x = self.blocks[i](x)
+                x = blk(x)
             layer_idx += 1
         if self.downsample is not None:
             x = self.downsample(x)
         return x
 
+    def _init_respostnorm(self):
+        for blk in self.blocks:
+            nn.init.constant_(blk.norm1.bias, 0)
+            nn.init.constant_(blk.norm1.weight, 0)
+            nn.init.constant_(blk.norm2.bias, 0)
+            nn.init.constant_(blk.norm2.weight, 0)
 
-class SwinTransformer(nn.Module):
-    """Swin Transformer in LiBai.
 
-    LiBai implement of:
-    `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows
-    <https://arxiv.org/pdf/2103.14030>`_
-
+class PatchEmbed(nn.Module):
+    r"""Image to Patch Embedding
     Args:
-        img_size (int, tuple(int)): Input image size. Default 224
-        patch_size (int, tuple(int)): Patch size. Default: 4
+        img_size (int): Image size.  Default: 224.
+        patch_size (int): Patch token size. Default: 4.
+        in_chans (int): Number of input image channels. Default: 3.
+        embed_dim (int): Number of linear projection output channels. Default: 96.
+        norm_layer (nn.Module, optional): Normalization layer. Default: None
+    """
+
+    def __init__(
+        self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None, layer_idx=0
+    ):
+        super().__init__()
+        img_size = to_2tuple(img_size)
+        patch_size = to_2tuple(patch_size)
+        patches_resolution = [img_size[0] // patch_size[0], img_size[1] // patch_size[1]]
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.patches_resolution = patches_resolution
+        self.num_patches = patches_resolution[0] * patches_resolution[1]
+
+        self.in_chans = in_chans
+        self.embed_dim = embed_dim
+
+        self.proj = nn.Conv2d(
+            in_chans, embed_dim, kernel_size=patch_size, stride=patch_size
+        ).to_global(
+            placement=dist.get_layer_placement(layer_idx),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
+        if norm_layer is not None:
+            self.norm = norm_layer(embed_dim)
+        else:
+            self.norm = None
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        # FIXME look at relaxing size constraints
+        assert (
+            H == self.img_size[0] and W == self.img_size[1]
+        ), f"Input image size ({H}*{W}) doesn't match model \
+        ({self.img_size[0]}*{self.img_size[1]})."
+        x = self.proj(x).flatten(2).transpose(1, 2)  # B Ph*Pw C
+        if self.norm is not None:
+            x = self.norm(x)
+        return x
+
+
+class SwinTransformerV2(nn.Module):
+    r"""Swin Transformer
+    Args:
+        img_size (int | tuple(int)): Input image size. Default 224
+        patch_size (int | tuple(int)): Patch size. Default: 4
         in_chans (int): Number of input image channels. Default: 3
         num_classes (int): Number of classes for classification head. Default: 1000
         embed_dim (int): Patch embedding dimension. Default: 96
@@ -516,16 +642,14 @@ class SwinTransformer(nn.Module):
         window_size (int): Window size. Default: 7
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4
         qkv_bias (bool): If True, add a learnable bias to query, key, value. Default: True
-        qk_scale (float): Override default qk scale of head_dim ** -0.5 if set. Default: None
         drop_rate (float): Dropout rate. Default: 0
         attn_drop_rate (float): Attention dropout rate. Default: 0
         drop_path_rate (float): Stochastic depth rate. Default: 0.1
-        norm_layer (nn.Module): Normalization layer. Default: libai.layers.LayerNorm.
+        norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm.
         ape (bool): If True, add absolute position embedding to the patch embedding. Default: False
         patch_norm (bool): If True, add normalization after patch embedding. Default: True
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
-        loss_func (callable, optional): Loss function for computing the total loss
-                                    between logits and labels
+        pretrained_window_sizes (tuple(int)): Pretrained window sizes of each layer.
     """
 
     @configurable
@@ -541,7 +665,6 @@ class SwinTransformer(nn.Module):
         window_size=7,
         mlp_ratio=4.0,
         qkv_bias=True,
-        qk_scale=None,
         drop_rate=0.0,
         attn_drop_rate=0.0,
         drop_path_rate=0.1,
@@ -549,8 +672,8 @@ class SwinTransformer(nn.Module):
         ape=False,
         patch_norm=True,
         use_checkpoint=False,
+        pretrained_window_sizes=[0, 0, 0, 0],
         loss_func=None,
-        **kwargs,
     ):
         super().__init__()
 
@@ -578,9 +701,13 @@ class SwinTransformer(nn.Module):
         # absolute position embedding
         if self.ape:
             self.absolute_pos_embed = nn.Parameter(
-                flow.zeros(1, num_patches, embed_dim),
-                placement=dist.get_layer_placement(0),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                flow.zeros(
+                    1,
+                    num_patches,
+                    embed_dim,
+                    placement=dist.get_layer_placement(0),
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                )
             )
             trunc_normal_(self.absolute_pos_embed, std=0.02)
 
@@ -606,13 +733,13 @@ class SwinTransformer(nn.Module):
                 window_size=window_size,
                 mlp_ratio=self.mlp_ratio,
                 qkv_bias=qkv_bias,
-                qk_scale=qk_scale,
                 drop=drop_rate,
                 attn_drop=attn_drop_rate,
                 drop_path=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],
                 norm_layer=norm_layer,
                 downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
                 use_checkpoint=use_checkpoint,
+                pretrained_window_size=pretrained_window_sizes[i_layer],
                 layer_id_offset=layer_id_offset,
             )
             layer_id_offset += depths[i_layer]
@@ -625,11 +752,11 @@ class SwinTransformer(nn.Module):
             if num_classes > 0
             else nn.Identity()
         )
-
-        # Loss func
         self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
         self.apply(self._init_weights)
+        for bly in self.layers:
+            bly._init_respostnorm()
 
     def _init_weights(self, m):
         if isinstance(m, Linear):
@@ -653,16 +780,17 @@ class SwinTransformer(nn.Module):
             "window_size": cfg.window_size,
             "mlp_ratio": cfg.mlp_ratio,
             "qkv_bias": cfg.qkv_bias,
-            "qk_scale": cfg.qk_scale,
             "drop_rate": cfg.drop_rate,
             "drop_path_rate": cfg.drop_path_rate,
             "ape": cfg.ape,
             "patch_norm": cfg.patch_norm,
             "use_checkpoint": cfg.use_checkpoint,
+            "pretrained_window_sizes": cfg.pretrained_window_sizes,
             "loss_func": cfg.loss_func,
         }
 
     def forward_features(self, x):
+
         x = self.patch_embed(x)
         if self.ape:
             x = x + self.absolute_pos_embed
