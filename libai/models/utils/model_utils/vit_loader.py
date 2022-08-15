@@ -42,7 +42,7 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
         """
         # The converted checkpoint.
         oneflow_state_dict = flow_state_dict.copy()
-        
+
         # Get configs
         num_heads = cfg.get("num_heads")
         hidden_size = cfg.get("embed_dim")
@@ -52,7 +52,7 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
 
         index_idx = 3 if has_prefix else 2
-        
+
         old_keys = oneflow_state_dict.keys()
 
         for key in list(old_keys):
@@ -72,7 +72,7 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
                     elif "bias" in key:
                         new_key = "patch_embed.proj.bias"
                         oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                
+
             # Convert vit's layernorm layers
             elif "layernorm_before" in key:
                 index_block = key.split(".")[index_idx]
@@ -124,13 +124,11 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
                         ),
                         dim=-1,
                     )
-                    
+
                     qkv_w = self._fix_qkv_ordering(qkv_w, head_size, num_heads)
                     qkv_b = self._fix_qkv_ordering(qkv_b, head_size, num_heads)
 
-                    new_key = (
-                        "blocks." + index_block + ".self_attention.query_key_value.weight"
-                    )
+                    new_key = "blocks." + index_block + ".self_attention.query_key_value.weight"
                     oneflow_state_dict[new_key] = qkv_w
 
                     new_key = new_key.replace("weight", "bias")
@@ -139,37 +137,23 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
                 elif "output" in key:
                     if "dense" in key:
                         if "weight" in key:
-                            new_key = (
-                                "blocks."
-                                + index_block
-                                + ".self_attention.dense.weight"
-                            )
+                            new_key = "blocks." + index_block + ".self_attention.dense.weight"
                             oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                         if "bias" in key:
-                            new_key = (
-                                "blocks."
-                                + index_block
-                                + ".self_attention.dense.bias"
-                            )
+                            new_key = "blocks." + index_block + ".self_attention.dense.bias"
                             oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
 
             elif "intermediate" in key:
                 index_block = key.split(".")[index_idx]
                 if "weight" in key:
                     if (
-                        "blocks."
-                        + index_block
-                        + ".mlp.dense_h_to_4h.weight"
+                        "blocks." + index_block + ".mlp.dense_h_to_4h.weight"
                         in oneflow_state_dict.keys()
                     ):
                         continue
                     w = key
                     b = key.replace("weight", "bias")
-                    new_key = (
-                        "blocks."
-                        + index_block
-                        + ".mlp.dense_h_to_4h.weight"
-                    )
+                    new_key = "blocks." + index_block + ".mlp.dense_h_to_4h.weight"
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(w)
                     new_key = new_key.replace("weight", "bias")
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
@@ -178,19 +162,13 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
                 index_block = key.split(".")[index_idx]
                 if "dense.weight" in key:
                     if (
-                        "blocks."
-                        + index_block
-                        + ".mlp.dense_4h_to_h.weight"
+                        "blocks." + index_block + ".mlp.dense_4h_to_h.weight"
                         in oneflow_state_dict.keys()
                     ):
                         continue
                     w = key
                     b = w.replace("weight", "bias")
-                    new_key = (
-                        "blocks."
-                        + index_block
-                        + ".mlp.dense_4h_to_h.weight"
-                    )
+                    new_key = "blocks." + index_block + ".mlp.dense_4h_to_h.weight"
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(w)
                     new_key = new_key.replace("weight", "bias")
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(b)
@@ -231,10 +209,9 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
         self.libai_cfg.embed_dim = cfg_dict["hidden_size"]
         self.libai_cfg.depth = cfg_dict["num_hidden_layers"]
         self.libai_cfg.num_heads = cfg_dict["num_attention_heads"]
-                
         self.libai_cfg.attn_drop_rate = cfg_dict["attention_probs_dropout_prob"]
         self.libai_cfg.drop_rate = cfg_dict["hidden_dropout_prob"]
-        
+
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
             self.libai_cfg[k] = v
