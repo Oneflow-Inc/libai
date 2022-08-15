@@ -30,12 +30,12 @@ from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
 
-PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/vit_utils/pytorch_model.bin"  # noqa to bo modified
+PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/vit_utils/pytorch_model.bin"  # noqa
 PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/vit_utils/config.json"  # noqa
 INIT_DATA = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/vit_utils/init_data.npz"  # noqa
 
-PRETRAINED_MODEL_MD5 = "cd8c03d9cd4a9c536a5a245f663035b6"   # to bo modified
-PRETRAINED_MODEL_CONFIG_MD5 = "a8a71ed22b99323edd6a1457bede5819"
+PRETRAINED_MODEL_MD5 = "c587693e5e312064c56f27aa2d4f1e81"
+PRETRAINED_MODEL_CONFIG_MD5 = "9ea94d9e5bc3543b1de7d12956321c50"
 INIT_DATA_MD5 = "5fecdcd8d46bfefa310d19e084bd4815"
 
 TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_vit_utils")
@@ -102,7 +102,7 @@ class TestViTLoder(flow.unittest.TestCase):
         prediction_scores = model(input_image)["prediction_scores"]
 
         self.assertTrue(
-            np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
+            np.allclose(np.array(3.1374), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
 
     @flow.unittest.skip_unless_1n4d()
@@ -137,7 +137,7 @@ class TestViTLoder(flow.unittest.TestCase):
         prediction_scores = model(input_image)["prediction_scores"]
 
         self.assertTrue(
-            np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
+            np.allclose(np.array(3.1374), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
 
 
