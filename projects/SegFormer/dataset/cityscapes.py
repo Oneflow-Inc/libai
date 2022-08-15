@@ -1,59 +1,53 @@
-import os.path as osp
-import numpy as np
-import random
-import cv2
-import pickle
-
-from PIL import Image
-import oneflow as flow
-import flowvision.transforms as Transformer
 import flowvision
-import oneflow.utils.data as data
+from PIL import Image
+
 from libai.data.structures import DistTensorData, Instance
 
 
 class CityScapes(flowvision.datasets.Cityscapes):
-    
-    color2index = {}
-    color2index[(0,0,0)] = 0
-    for obj in flowvision.datasets.Cityscapes.classes:
-        if obj.ignore_in_eval:
-            continue
-        idx = obj.train_id
-        label = obj.name
-        color = obj.color
-        color2index[color] = idx
-        
+           
     def __init__(self, root, split = "train", mode = "fine", target_type = "instance", transform = None, target_transform = None, transforms = None):
         super().__init__(root, split, mode, target_type, transform, target_transform, transforms)
-    
-    def color2trainid(self, target):
-        height = target.shape[1]
-        weight = target.shape[2]
-        id_map = np.zeros((height, weight))
-        # TODO fix label
-        for h in range(height):
-            for w in range(weight):
-                color = tuple(target[:, h, w])
-                print(color)
-                try:
-                    trainid = self.color2index[color]
-                    id_map[h, w] = trainid
-                except:
-                    id_map[h, w] = 0
-        return  flow.tensor(id_map, dtype=flow.long) 
-        
-        
+       
     def __getitem__(self, index: int):
-        image, target = super().__getitem__(index)
-        print("---------------")
-        print(target.shape)
-        print("---------------")
-        target = self.color2trainid(target)
+        """
+        Args:
+            index (int): Index
+        Returns:
+            tuple: (image, target) where target is a tuple of all target types if target_type is a list with more
+            than one item. Otherwise target is a json object if target_type="polygon", else the image segmentation.
+        """
+
+        image = Image.open(self.images[index]).convert("RGB")
+
+        targets = []
+        for i, t in enumerate(self.target_type):
+            if t == "polygon":
+                target = self._load_json(self.targets[index][i])
+            else:
+                target = Image.open(self.targets[index][i])
+
+            targets.append(target)
+
+        target = tuple(targets) if len(targets) > 1 else targets[0]
         
+   
+        if self.transforms is not None:
+            image, target = self.transforms(image, target)
+                
         data_sample = Instance(
             images=DistTensorData(image, placement_idx=0),
-            labels=DistTensorData(target, placement_idx=-1),
+            labels=DistTensorData(target.long(), placement_idx=-1),
         )
         
         return data_sample
+    
+    def _get_target_suffix(self, mode: str, target_type: str) -> str:
+        if target_type == "instance":
+            return f"{mode}_instanceIds.png"
+        elif target_type == "semantic":
+            return f"{mode}_labelTrainids.png"
+        elif target_type == "color":
+            return f"{mode}_color.png"
+        else:
+            return f"{mode}_polygons.json"

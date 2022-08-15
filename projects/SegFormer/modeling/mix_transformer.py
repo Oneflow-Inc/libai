@@ -164,49 +164,41 @@ class MixVisionTransformer(nn.Module):
         self.depths = depths
 
         # patch_embed
-        self.patch_embed1 = OverlapPatchEmbed(img_size=img_size, patch_size=patch_sizes[0], stride=4, in_chans=in_chans,
-                                              embed_dim=embed_dims[0], layer_idx=0)
-        self.patch_embed2 = OverlapPatchEmbed(img_size=img_size // 4, patch_size=patch_sizes[1], stride=2, in_chans=embed_dims[0],
-                                              embed_dim=embed_dims[1], layer_idx=0)
-        self.patch_embed3 = OverlapPatchEmbed(img_size=img_size // 8, patch_size=patch_sizes[2], stride=2, in_chans=embed_dims[1],
-                                              embed_dim=embed_dims[2], layer_idx=0)
-        self.patch_embed4 = OverlapPatchEmbed(img_size=img_size // 16, patch_size=patch_sizes[3], stride=2, in_chans=embed_dims[2],
-                                              embed_dim=embed_dims[3], layer_idx=0)
-
+        strides = [4, 2, 2, 2]
+        patch_embeds = []
+        for i in range(4):
+            patch_embeds.append(
+                OverlapPatchEmbed(patch_size=patch_sizes[i], stride=strides[i], in_chans=in_chans if i == 0 else embed_dims[i-1],
+                                  embed_dim=embed_dims[i], layer_idx=0)
+            )
+        
+        self.patch_embeds = nn.ModuleList(patch_embeds)
+        
         # transformer encoder
         dpr = [x.item() for x in flow.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
+        
+        blocks = []
         cur = 0
-        self.block1 = nn.ModuleList([Block(
-            dim=embed_dims[0], num_heads=num_heads[0], mlp_ratio=mlp_ratios[0], qkv_bias=qkv_bias, qk_scale=qk_scale,
-            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
-            sr_ratio=sr_ratios[0], layer_idx=0)
-            for i in range(depths[0])])
-        self.norm1 = norm_layer(embed_dims[0], )
-
-        cur += depths[0]
-        self.block2 = nn.ModuleList([Block(
-            dim=embed_dims[1], num_heads=num_heads[1], mlp_ratio=mlp_ratios[1], qkv_bias=qkv_bias, qk_scale=qk_scale,
-            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
-            sr_ratio=sr_ratios[1])
-            for i in range(depths[1])])
-        self.norm2 = norm_layer(embed_dims[1], layer_idx=0)
-
-        cur += depths[1]
-        self.block3 = nn.ModuleList([Block(
-            dim=embed_dims[2], num_heads=num_heads[2], mlp_ratio=mlp_ratios[2], qkv_bias=qkv_bias, qk_scale=qk_scale,
-            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
-            sr_ratio=sr_ratios[2], layer_idx=0)
-            for i in range(depths[2])])
-        self.norm3 = norm_layer(embed_dims[2], layer_idx=0)
-
-        cur += depths[2]
-        self.block4 = nn.ModuleList([Block(
-            dim=embed_dims[3], num_heads=num_heads[3], mlp_ratio=mlp_ratios[3], qkv_bias=qkv_bias, qk_scale=qk_scale,
-            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
-            sr_ratio=sr_ratios[3], layer_idx=0)
-            for i in range(depths[3])])
-        self.norm4 = norm_layer(embed_dims[3], layer_idx=0)
-
+        for i in range(len(depths)):
+            layers = []
+            if i != 0:
+                cur += depths[i - 1]
+            for j in range(depths[i]):
+                layers.append(
+                    Block(
+                        dim=embed_dims[i], num_heads=num_heads[i], mlp_ratio=mlp_ratios[i], qkv_bias=qkv_bias, qk_scale=qk_scale,
+                        drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + j], norm_layer=norm_layer,
+                        sr_ratio=sr_ratios[i], layer_idx=0)
+                )
+            blocks.append(nn.ModuleList(layers))
+            
+        self.blocks = nn.ModuleList(blocks)
+            
+        # Layer norms
+        self.layer_norms = nn.ModuleList(
+            [norm_layer(embed_dims[i], layer_idx=0) for i in range(len(depths))]
+        )
+        
         # classification head
         self.head = DecodeHead( in_channels=decoder_in_channels,
                                 in_index=[0, 1, 2, 3],
@@ -236,38 +228,6 @@ class MixVisionTransformer(nn.Module):
             m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
             if m.bias is not None:
                 m.bias.data.zero_()
-
-    def reset_drop_path(self, drop_path_rate):
-        dpr = [x.item() for x in flow.linspace(0, drop_path_rate, sum(self.depths))]
-        cur = 0
-        for i in range(self.depths[0]):
-            self.block1[i].drop_path.drop_prob = dpr[cur + i]
-
-        cur += self.depths[0]
-        for i in range(self.depths[1]):
-            self.block2[i].drop_path.drop_prob = dpr[cur + i]
-
-        cur += self.depths[1]
-        for i in range(self.depths[2]):
-            self.block3[i].drop_path.drop_prob = dpr[cur + i]
-
-        cur += self.depths[2]
-        for i in range(self.depths[3]):
-            self.block4[i].drop_path.drop_prob = dpr[cur + i]
-
-    def freeze_patch_emb(self):
-        self.patch_embed1.requires_grad = False
-
-    
-    def no_weight_decay(self):
-        return {'pos_embed1', 'pos_embed2', 'pos_embed3', 'pos_embed4', 'cls_token'}
-
-    def get_classifier(self):
-        return self.head
-
-    def reset_classifier(self, num_classes, global_pool=''):
-        self.num_classes = num_classes
-        self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
         
     @classmethod
     def from_config(cls, cfg):
@@ -296,51 +256,23 @@ class MixVisionTransformer(nn.Module):
     def forward_features(self, x):
         B = x.shape[0]
         outs = []
-
-        # stage 1
-        x, H, W = self.patch_embed1(x)
-        for i, blk in enumerate(self.block1):
-            x = blk(x, H, W)
-        x = self.norm1(x)
-        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-        outs.append(x)
-
-        # stage 2
-        x, H, W = self.patch_embed2(x)
-        for i, blk in enumerate(self.block2):
-            x = blk(x, H, W)
-        x = self.norm2(x)
-        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-        outs.append(x)
-
-        # stage 3
-        x, H, W = self.patch_embed3(x)
-        for i, blk in enumerate(self.block3):
-            x = blk(x, H, W)
-        x = self.norm3(x)
-        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-        outs.append(x)
-
-        # stage 4
-        x, H, W = self.patch_embed4(x)
-        for i, blk in enumerate(self.block4):
-            x = blk(x, H, W)
-        x = self.norm4(x)
-        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-        outs.append(x)
+        
+        for idx, m in enumerate(zip(self.patch_embeds, self.blocks, self.layer_norms)):
+            embedding_layer, block_layer, norm_layer = m
+            x, H, W = embedding_layer(x)
+            for i, blk in enumerate(block_layer):
+                x = blk(x, H, W)
+            x = norm_layer(x)
+            x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+            outs.append(x)    
 
         return outs
 
     def forward(self, images, labels=None):
         x = self.forward_features(images)
         x = self.head(x)
-       ### TODO reshape the predict to label
         if labels is not None and self.training:
-            if len(labels.shape) == 3:
-                x = F.interpolate(x, labels.shape[1:], mode='bilinear')
-            if len(labels.shape) == 4:
-                x = F.interpolate(x, labels.shape[2:], mode='bilinear')
-                labels = labels.squeeze(1)
+            x = F.interpolate(x, labels.shape[1:], mode='bilinear')
             losses = self.loss_func(x, labels)
             return {"losses": losses}
         else:

@@ -1,28 +1,32 @@
-from posixpath import split
 from omegaconf import OmegaConf
-from flowvision import transforms
-from flowvision.transforms import InterpolationMode
-from flowvision.transforms.functional import str_to_interp_mode
+
+from libai.config import LazyCall
 from flowvision.data.constants import (
     IMAGENET_DEFAULT_MEAN,
     IMAGENET_DEFAULT_STD,
 )
-from flowvision.data.auto_augment import rand_augment_transform
-from flowvision.data.random_erasing import RandomErasing
-
-from libai.config import LazyCall
+from libai.data.build import build_image_test_loader, build_image_train_loader
 from projects.SegFormer.dataset.cityscapes import CityScapes
-from libai.data.build import build_image_train_loader, build_image_test_loader
+from projects.SegFormer.dataset.transform import (
+    Compose,
+    Normalize,
+    RandomCrop,
+    RandomHorizontalFlip,
+    Resize,
+    ToTensor,
+)
 
-train_aug = LazyCall(transforms.Compose)(
+train_aug = LazyCall(Compose)(
     transforms=[
-        LazyCall(transforms.RandomResizedCrop)(
-            size=(512, 1024),
-            interpolation=InterpolationMode.BICUBIC,
+        LazyCall(Resize)(
+            size=(2048, 1024),
         ),
-        LazyCall(transforms.RandomHorizontalFlip)(p=0.5),
-        LazyCall(transforms.ToTensor)(),
-        LazyCall(transforms.Normalize)(
+        LazyCall(RandomCrop)(
+            size=(1024, 1024),
+        ),
+        LazyCall(RandomHorizontalFlip)(p=0.5),
+        LazyCall(ToTensor)(),
+        LazyCall(Normalize)(
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD,
         )
@@ -30,14 +34,16 @@ train_aug = LazyCall(transforms.Compose)(
 )
 
 
-test_aug = LazyCall(transforms.Compose)(
+test_aug = LazyCall(Compose)(
     transforms=[
-        LazyCall(transforms.Resize)(
-            size=(512, 1024),
-            interpolation=InterpolationMode.BICUBIC,
+        LazyCall(Resize)(
+            size=(2048, 1024),
         ),
-        LazyCall(transforms.ToTensor)(),
-        LazyCall(transforms.Normalize)(
+        LazyCall(RandomCrop)(
+            size=(1024, 1024),
+        ),
+        LazyCall(ToTensor)(),
+        LazyCall(Normalize)(
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD,
         ),
@@ -49,13 +55,12 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_image_train_loader)(
     dataset=[
         LazyCall(CityScapes)(
-            root="/dataset/cityscapes",
+            root="./dataset",
             split="train",
-            transform=train_aug,
-            target_transform=train_aug,
+            transforms=train_aug,
         ),
     ],
-    num_workers=4,
+    num_workers=16,
     mixup_func=None,
 )
 
@@ -63,11 +68,10 @@ dataloader.train = LazyCall(build_image_train_loader)(
 dataloader.test = [
     LazyCall(build_image_test_loader)(
         dataset=LazyCall(CityScapes)(
-            root="/dataset/cityscapes",
+            root="./dataset",
             split="test",
-            transform=test_aug,
-            target_transform=test_aug,
+            transforms=test_aug,
         ),
-        num_workers=4,
+        num_workers=16,
     )
 ]
