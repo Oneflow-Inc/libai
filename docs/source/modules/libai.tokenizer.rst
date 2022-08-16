@@ -8,5 +8,5 @@ libai.tokenizer
         BertTokenizer,
         RobertaTokenizer,
         GPT2Tokenizer,
-        GoogleT5Tokenizer,
+        T5Tokenizer,
         PreTrainedTokenizer,
