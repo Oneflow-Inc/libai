@@ -5,18 +5,17 @@ import os,sys
 from download_utils import download_dalle2_weights
 from dalle2 import tokenizer
 from dalle2 import OpenAIClipAdapter, DALLE2, DiffusionPriorNetwork, DiffusionPrior, Unet, Decoder 
-from libai.layers import Embedding
 
 def gen_text_and_img_emb():
     #clip use openai's ViT-L/14
     clip=OpenAIClipAdapter("./dalle2/model_weights/ViT-L-14.pt").eval()
     clip.to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
     
-    #text = ["a tiger and a lion are fighting"] * 5
-    text = ["A beautiful painting of a singular lighthouse, shining its light across a tumultuous sea of blood by greg rutkowski and thomas kinkade, Trending on artstation."] * 5
+    text = ["A beautiful painting of a singular lighthouse, shining its light across a tumultuous sea of blood by greg rutkowski and thomas kinkade, Trending on artstation."] * 3
     tokens = tokenizer.tokenize(text).to_global(placement = flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast) 
     _, text_encodings, text_mask = clip.embed_text(tokens)
     np.save("text_encodings.npy", text_encodings.to_local().numpy())
+    np.save("text_mask.npy", text_mask.to_local().numpy())
     
     # prior networks (with transformer)
     prior_network = DiffusionPriorNetwork(
@@ -71,7 +70,7 @@ def gen_images():
     image_embed = np.load("image_embed.npy")
     image_embed = flow.tensor(image_embed).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
 
-    text_encodings = np.load("text_encodings.npy")[0:1]
+    text_encodings = np.load("text_encodings.npy")
     text_encodings = flow.tensor(text_encodings).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
     text_mask = np.load("text_mask.npy")
     text_mask = flow.tensor(text_mask).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
@@ -94,6 +93,7 @@ def gen_images():
         cond_on_text_encodings = True,    # set to True for any unets that need to be conditioned on text encodings
         self_attn = [False, True, True, True]
     ).eval()
+    unet1.to_global(placement = flow.placement(type = 'cuda', ranks = [0]), sbp = flow.sbp.broadcast)
     
     
     decoder = Decoder(
@@ -115,14 +115,14 @@ def gen_images():
             k = k[:-1] + "weight"
         elif 'cross_attn' in k:
             if k.endswith('gamma'):
-                k = k[:-5] + weight
+                k = k[:-5] + "weight"
             elif k.endswith('beta'):
-                k = k[:-4] + bias
+                k = k[:-4] + "bias"
         assert k in decoder.state_dict().keys(), k
         flow_tensor = flow.tensor(torch_tensor.cpu().numpy()).to(flow.float32).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
         decoder.state_dict()[k].data.copy_(flow_tensor.data)
     
-    images = decoder.sample(image_embed = image_embed, text_encodings = text_encodings, cond_scale = 2.)
+    images = decoder.sample(image_embed = image_embed, text_encodings = text_encodings, text_mask = text_mask, cond_scale = 3.5)
     return images
 
 def save_images(images):
