@@ -61,11 +61,11 @@ train.update(
         output_dir="projects/T5/output/mt5_output",
         train_micro_batch_size=micro_batch_size,
         train_epoch=1,
-        train_iter=240,
+        train_iter=24000,
         log_period=10,
         amp=dict(enabled=True),
         warmup_ratio=1 / 24,
-        checkpointer=dict(period=10, max_to_keep=20),
+        # checkpointer=dict(period=10, max_to_keep=20),
         dist=dict(
             data_parallel_size=2,
             tensor_parallel_size=2,
