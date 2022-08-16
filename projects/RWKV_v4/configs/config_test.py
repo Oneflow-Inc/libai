@@ -15,7 +15,7 @@ from projects.RWKV_v4.utils.config_optimizer import get_RWKV_v4_config_optim
 
 
 test=OmegaConf.create()
-test.enable=False
+test.enable=True
 test.weight_style=(
     "pytorch"
 )
@@ -37,8 +37,8 @@ model=LazyCall(GPT)(
     vocab_size=6064,
     ctx_len=1024,
     model_type='RWKV',
-    n_layer=12,
-    n_embd=2048
+    n_layer=6,
+    n_embd=512
 )
 
 # 训练过程
