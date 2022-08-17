@@ -6,17 +6,12 @@ from libai.layers import Linear, BatchNorm2d
 from libai.utils import distributed as dist
 
 class DecodeHead(nn.Module):
-    """Base class for BaseDecodeHead.
+    """Class for DecodeHead.
 
     Args:
         in_channels (int|Sequence[int]): Input channels.
-        channels (int): Channels after modules, before conv_seg.
         num_classes (int): Number of classes.
         dropout_ratio (float): Ratio of dropout layer. Default: 0.1.
-        conv_cfg (dict|None): Config of conv layers. Default: None.
-        norm_cfg (dict|None): Config of norm layers. Default: None.
-        act_cfg (dict): Config of activation layers.
-            Default: dict(type='ReLU')
         in_index (int|Sequence[int]): Input feature index. Default: -1
         input_transform (str|None): Transformation type of input features.
             Options: 'resize_concat', 'multiple_select', None.
@@ -26,13 +21,7 @@ class DecodeHead(nn.Module):
             'multiple_select': Multiple feature maps will be bundle into
                 a list and passed into decode head.
             None: Only one select feature map is allowed.
-            Default: None.
-        loss_decode (dict): Config of decode loss.
-            Default: dict(type='CrossEntropyLoss').
-        ignore_index (int | None): The label index to be ignored. When using
-            masked BCE loss, ignore_index should be set to None. Default: 255
-        sampler (dict|None): The config of segmentation map sampler.
-            Default: None.
+            Default: None
         align_corners (bool): align_corners argument of F.interpolate.
             Default: False.
     """
@@ -45,7 +34,6 @@ class DecodeHead(nn.Module):
                  in_index=[0, 1, 2, 3],
                  input_transform='multiple_select',
                  embedding_dim=256,
-                 ignore_index=255,
                  align_corners=False,
                  layer_idx=0,
                  ):
@@ -58,7 +46,6 @@ class DecodeHead(nn.Module):
         self.embedding_dim = embedding_dim
         self.dropout_ratio = dropout_ratio
         self.in_index = in_index
-        self.ignore_index = ignore_index
         self.align_corners = align_corners
         self.feature_strides = feature_strides
         

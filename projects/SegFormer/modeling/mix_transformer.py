@@ -158,7 +158,7 @@ class MixVisionTransformer(nn.Module):
     def __init__(self, img_size=224, patch_sizes=[7, 3, 3, 3], in_chans=3, num_classes=19, embed_dims=[32, 64, 160, 256],
                  num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=True, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=LayerNorm, loss_func=None,
-                 depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1], decoder_in_channels=[32, 64, 160, 256], decoder_embedding_dim=256, decoder_dropout_prob=0.1):
+                 depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1], decoder_in_channels=[32, 64, 160, 256], decoder_embedding_dim=256, decoder_dropout_prob=0.1, ignore_index=255):
         super().__init__()
         self.num_classes = num_classes
         self.depths = depths
@@ -166,10 +166,10 @@ class MixVisionTransformer(nn.Module):
         # patch_embed
         strides = [4, 2, 2, 2]
         patch_embeds = []
-        for i in range(4):
+        for i in range(len(depths)):
             patch_embeds.append(
                 OverlapPatchEmbed(patch_size=patch_sizes[i], stride=strides[i], in_chans=in_chans if i == 0 else embed_dims[i-1],
-                                  embed_dim=embed_dims[i], layer_idx=0)
+                                  embed_dim=embed_dims[i], layer_idx=i if i == 0 else sum(depths[:i]))
             )
         
         self.patch_embeds = nn.ModuleList(patch_embeds)
@@ -188,7 +188,7 @@ class MixVisionTransformer(nn.Module):
                     Block(
                         dim=embed_dims[i], num_heads=num_heads[i], mlp_ratio=mlp_ratios[i], qkv_bias=qkv_bias, qk_scale=qk_scale,
                         drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + j], norm_layer=norm_layer,
-                        sr_ratio=sr_ratios[i], layer_idx=0)
+                        sr_ratio=sr_ratios[i], layer_idx=cur + j)
                 )
             blocks.append(nn.ModuleList(layers))
             
@@ -196,7 +196,7 @@ class MixVisionTransformer(nn.Module):
             
         # Layer norms
         self.layer_norms = nn.ModuleList(
-            [norm_layer(embed_dims[i], layer_idx=0) for i in range(len(depths))]
+            [norm_layer(embed_dims[i], layer_idx=sum(depths[:i+1]) - 1) for i in range(len(depths))]
         )
         
         # classification head
@@ -207,10 +207,10 @@ class MixVisionTransformer(nn.Module):
                                 embedding_dim=decoder_embedding_dim,
                                 num_classes=num_classes,
                                 align_corners=False,
-                                layer_idx=0) if num_classes > 0 else nn.Identity()
+                                layer_idx=-1) if num_classes > 0 else nn.Identity()
         
         # Loss func
-        self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
+        self.loss_func = nn.CrossEntropyLoss(ignore_index=ignore_index) if loss_func is None else loss_func
 
         self.apply(self._init_weights)
 
@@ -283,11 +283,31 @@ class MixVisionTransformer(nn.Module):
         ### TODO set_pipeline_stage_id 
         dist_utils = dist.get_dist_util()
         
-        model.patch_embed1.congif.set_stage(
-            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, Block):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
+            elif isinstance(module_block.origin, OverlapPatchEmbed):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
+            elif isinstance(module_block.origin, LayerNorm):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
+                
+        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+        model.loss_func.config.set_stage(
+            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
         )
-        pass
-    
+        
+        
     @staticmethod
     def set_activation_checkpoint(model):
         ### TODO set_activation_checkpoint 
