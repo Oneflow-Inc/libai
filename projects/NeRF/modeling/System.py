@@ -414,6 +414,17 @@ class NerfSystem(nn.Module):
             for key,value in results.items():
                 re[key] = value.unsqueeze(0)
             re["rgbs"] = rgbs.unsqueeze(0)
+            """
+            Notes:
+            这里首先不支持传出str，int等类型，且输出为一个字典，
+            后续代码会对这些指标进行计算，但通常情况下我想要传到
+            evaluator的不是相应指标，而是需要保存的中间值。因为
+            在这里我取不到forward的第一个batch_idx，所以只能
+            在evaluator进行运算。
+
+            可以的话在这里加入一个额外的字典，其中这个字典存储的元
+            素不会经过检查会直接传到evaluator，而供用户进行扩展。
+            """
             return re
 
 

@@ -33,6 +33,10 @@ class NerfEvaluator(ClsEvaluator):
             outputs["losses"],
             outputs["rgbs"].squeeze(0),
         )
+        """
+        Notes:
+        这里也是一样，我需要通过额外的squeeze(0)操作来恢复原有的变量
+        """
         typ = list(outputs.keys())[1]
         outputs.pop(typ)
         outputs.pop("losses")

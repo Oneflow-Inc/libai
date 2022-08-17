@@ -38,7 +38,7 @@ train = get_config("common/train.py").train
 train.train_micro_batch_size = 1024
 train.test_micro_batch_size = 1
 train.dataset_type = "Blender"
-train.blender_dataset_path = "/path/to/llff"
+train.blender_dataset_path = "/home/Bigdata/Nerf/nerf_synthetic/chair"
 train.llff_dataset_path = "/path/to/llff"
 train.train_epoch = 16 if train.dataset_type == "Blender" else 30
 train.warmup_ratio = 0 / train.train_epoch
