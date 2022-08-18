@@ -20,8 +20,8 @@ train.train_micro_batch_size = 4
 train.num_accumulation_steps = 1
 train.test_micro_batch_size = 4
 
-train.dist.data_parallel_size=2
-train.dist.tensor_parallel_size=2
+train.dist.data_parallel_size=1
+train.dist.tensor_parallel_size=1
 train.dist.pipeline_parallel_size = 1
 # train.dist.pipeline_num_layers=8
 

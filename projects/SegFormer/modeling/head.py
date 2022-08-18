@@ -48,6 +48,7 @@ class DecodeHead(nn.Module):
         self.in_index = in_index
         self.align_corners = align_corners
         self.feature_strides = feature_strides
+        self.layer_idx = layer_idx
         
         if dropout_ratio > 0:
             # self.dropout = nn.Dropout2d(dropout_ratio)    modified
@@ -141,6 +142,7 @@ class DecodeHead(nn.Module):
         
     def forward(self, inputs):
         x = self._transform_inputs(inputs)  # len=4, 1/4,1/8,1/16,1/32
+        x = [i.to_global(placement=dist.get_layer_placement(self.layer_idx)) for i in x]
         c1, c2, c3, c4 = x
 
         ############## MLP decoder on C1-C4 ###########
