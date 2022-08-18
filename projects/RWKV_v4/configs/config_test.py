@@ -15,7 +15,7 @@ from projects.RWKV_v4.utils.config_optimizer import get_RWKV_v4_config_optim
 
 
 test=OmegaConf.create()
-test.enable=True
+test.enable=False
 test.weight_style=(
     "pytorch"
 )
@@ -38,7 +38,7 @@ model=LazyCall(GPT)(
     ctx_len=1024,
     model_type='RWKV',
     n_layer=6,
-    n_embd=512
+    n_embd=2048
 )
 
 # 训练过程
@@ -52,7 +52,7 @@ train.scheduler=LazyCall(flow.optim.lr_scheduler.StepLR)(
 ) 
 
 # false = fp32
-train.amp.enabled=False
+train.amp.enabled=True
 
 datafile="/home/chenqiaoling/RWKV-LM/data/enwik8"
 # 获得一个 DataLoader 的配置对象
@@ -85,3 +85,4 @@ train.evaluation.enabled = False
 # train.train_iter=5
 # train.dist.tensor_parallel_size = 2  # 并行度为 4 的模型并行
 # train.dist.tensor_parallel_size = 4  # 并行度为 4 的模型并行
+train.activation_checkpoint.enabled=True 

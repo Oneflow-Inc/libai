@@ -235,7 +235,7 @@ class GPT(nn.Module):
 
         self.emb = VocabEmbedding(vocab_size, n_embd)
 
-        self.blocks = nn.Sequential(*[Block(vocab_size, ctx_len,model_type, n_layer,n_embd, i)
+        self.blocks = nn.ModuleList([Block(vocab_size, ctx_len,model_type, n_layer,n_embd, i)
                                     for i in range(n_layer)])
 
         self.ln_out = LayerNorm(n_embd)
@@ -305,7 +305,8 @@ class GPT(nn.Module):
         
 
         x = self.emb(idx)
-        x = self.blocks(x)
+        for layer in self.blocks:
+            x=layer(x)
         x = self.ln_out(x)
         
         
@@ -326,3 +327,11 @@ class GPT(nn.Module):
             return {"loss": loss}
         else:
             return {"x": x}
+    
+    def set_activation_checkpoint(self):
+        for module_block in self.modules():
+            if isinstance(module_block.origin, Block):
+                module_block.config.activation_checkpointing = True
+                    
+
+
