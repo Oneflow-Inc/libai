@@ -15,7 +15,7 @@ from projects.SegFormer.modeling.head import DecodeHead
 class Mlp(MLP):
     def __init__(self, hidden_size, ffn_hidden_size, output_dropout_prob=0, init_method=nn.init.xavier_normal_, output_layer_init_method=None, bias_gelu_fusion=False, bias_dropout_fusion=False, *, layer_idx=0):
         super(Mlp, self).__init__(hidden_size, ffn_hidden_size, output_dropout_prob, init_method, output_layer_init_method, bias_gelu_fusion, bias_dropout_fusion, layer_idx=layer_idx)
-        self.dwconv = DWConv(ffn_hidden_size)
+        self.dwconv = DWConv(ffn_hidden_size, layer_idx=layer_idx)
         
     def forward(self, hidden_states, H, W):
         intermediate = self.dense_h_to_4h(hidden_states)
@@ -48,9 +48,9 @@ class OverlapPatchEmbed(nn.Module):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
-
         self.img_size = img_size
         self.patch_size = patch_size
+        self.layer_idx = layer_idx
         self.H, self.W = img_size[0] // patch_size[0], img_size[1] // patch_size[1]
         self.num_patches = self.H * self.W
         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
@@ -61,6 +61,7 @@ class OverlapPatchEmbed(nn.Module):
         self.norm = LayerNorm(embed_dim, layer_idx=layer_idx)
 
     def forward(self, x):
+        x = x.to_global(placement=dist.get_layer_placement(self.layer_idx))
         x = self.proj(x)
         _, _, H, W = x.shape
         x = x.flatten(2).transpose(1, 2)
@@ -122,6 +123,7 @@ class Block(nn.Module):
                  drop_path=0., act_layer=nn.GELU, norm_layer=LayerNorm, sr_ratio=1, layer_idx=0):
         super().__init__()
         self.norm1 = norm_layer(dim, layer_idx=layer_idx)
+        self.layer_idx = layer_idx
         self.attn = Attention(
             dim,
             num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
@@ -139,6 +141,7 @@ class Block(nn.Module):
 
 
     def forward(self, x, H, W):
+        x = x.to_global(placement=dist.get_layer_placement(self.layer_idx))
         x = x + self.drop_path(self.attn(self.norm1(x), H, W))
         x = x + self.drop_path(self.mlp(self.norm2(x), H, W))
 

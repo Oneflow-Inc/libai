@@ -20,11 +20,10 @@ train.train_micro_batch_size = 4
 train.num_accumulation_steps = 1
 train.test_micro_batch_size = 4
 
-train.dist.data_parallel_size=1
-train.dist.tensor_parallel_size=1
-train.dist.pipeline_parallel_size = 4
-train.dist.pipeline_num_layers=8
-# train.dist.custom_pipeline_stage_id=[0,0,1,1,2,2,3,3]
+train.dist.data_parallel_size=2
+train.dist.tensor_parallel_size=2
+train.dist.pipeline_parallel_size = 1
+# train.dist.pipeline_num_layers=8
 
 train.train_epoch = 100
 train.warmup_ratio = 20 / 300
