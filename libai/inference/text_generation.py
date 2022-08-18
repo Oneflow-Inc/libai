@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import numpy as np
+from omegaconf import OmegaConf
 import oneflow as flow
 
 from libai.config import LazyCall
@@ -59,6 +60,12 @@ class TextGenerationPipeline(BasePipeline):
         self.cfg.model.cfg.hidden_dropout_prob = 0.0
         self.cfg.model.cfg.embedding_dropout_prob = 0.0
         self.cfg.model.cfg.attention_probs_dropout_prob = 0.0
+        self.cfg.model.cfg.mlp_type = "t5"
+        self.cfg.model.cfg.pretrained_model_path = None
+        self.cfg.dataloader = None
+        self.cfg.tokenization = OmegaConf.create()
+        self.cfg.tokenization.append_eod = False
+        self.cfg.tokenization.make_vocab_size_divisible_by = 128
         self.cfg.tokenization.tokenizer = LazyCall(T5Tokenizer)(
             vocab_file="data_test/t5_inference_model/spiece.model",
         )
@@ -156,9 +163,7 @@ class TextGenerationPipeline(BasePipeline):
         encoder_nparray_ids = encoder_input_dict["encoder_ids"]
         encoder_nparray_mask = encoder_input_dict["encoder_padding_mask"]
 
-        decoder_ids = [
-            123,
-        ]
+        decoder_ids = [6536,  504,   24]
 
         for _ in range(max_generate_length):
             # generate decoder input
@@ -201,6 +206,8 @@ class TextGenerationPipeline(BasePipeline):
             # get_next_word
             # change it by yourself according to your needs
             logits = self.model(**model_input_dict)["prediction_scores"]
+            import pdb
+            pdb.set_trace()
             next_word = self.get_next_word(logits)
             decoder_ids = decoder_ids + [next_word]
             if next_word == self.tokenizer.eos_token_id:
