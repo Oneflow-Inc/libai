@@ -66,6 +66,7 @@ class BasePipeline(metaclass=ABCMeta):
 
         # initial and load model
         self.model = self.load_pretrain_weight(self.cfg.model, model_path)
+        self.model = self.model.eval()
 
         # initial tokenizer
         self.tokenizer = self.build_tokenizer(self.cfg)
@@ -109,7 +110,7 @@ class BasePipeline(metaclass=ABCMeta):
                     import pretrain_model as libai_cfg_model` 
             model_path (str): The directory path of pretrained model,
         """
-        assert mode in ["libai", "huggingface"], "only support libai or huggingface model currently."
+        print(mode)
         if mode == "libai":
             from libai.models.utils.model_utils.base_loader import ModelLoaderLiBai
 
@@ -121,8 +122,10 @@ class BasePipeline(metaclass=ABCMeta):
             model_loader.base_model_prefix_1 = base_model_prefix_1
             model_loader.base_model_prefix_2 = base_model_prefix_2
             return model_loader.load()
+        elif mode == "random":
+            return DefaultTrainer.build_model(self.cfg)
         else:
-            pass
+            raise NotImplementedError
 
     def build_tokenizer(self, cfg):
         tokenizer = None
