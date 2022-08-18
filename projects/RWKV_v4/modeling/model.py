@@ -235,8 +235,10 @@ class GPT(nn.Module):
 
         self.emb = VocabEmbedding(vocab_size, n_embd)
 
-        self.blocks = nn.ModuleList([Block(vocab_size, ctx_len,model_type, n_layer,n_embd, i)
+        self.blocks = nn.Sequential(*[Block(vocab_size, ctx_len,model_type, n_layer,n_embd, i)
                                     for i in range(n_layer)])
+        # self.blocks = nn.ModuleList([Block(vocab_size, ctx_len,model_type, n_layer,n_embd, i)
+        #                     for i in range(n_layer)])
 
         self.ln_out = LayerNorm(n_embd)
         self.head = Linear(n_embd, vocab_size, bias=False,parallel = "row")
@@ -305,8 +307,9 @@ class GPT(nn.Module):
         
 
         x = self.emb(idx)
-        for layer in self.blocks:
-            x=layer(x)
+        x=self.blocks(x)
+        # for layer in self.blocks:
+        #     x=layer(x)
         x = self.ln_out(x)
         
         

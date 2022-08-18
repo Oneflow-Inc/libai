@@ -90,6 +90,6 @@ def load_torch_checkpoint(model, cfg, path="/home/chenqiaoling/RWKV-LM/RWKV-v4/t
                 sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])
             )
             new_parameters[key] = val
-    model.load_state_dict(new_parameters, strict=False)
+    model.load_state_dict(new_parameters, strict=True)
     print("Successfully load torch RWKV checkpoint.")
     return model
