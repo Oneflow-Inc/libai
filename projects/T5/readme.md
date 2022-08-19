@@ -31,7 +31,7 @@ unzip wudao_180g_test_bert_tokenized_512_demo.zip
 ```
 
 The structure of the training data folder should be like:
-```bash
+```
 $ tree training_data_dir
 path/to/projects/T5/data/training_data/
  ├──part_0
@@ -45,6 +45,14 @@ path/to/projects/T5/data/training_data/
 
 ### 4. Run the following code
 ```bash
-cd /path/to/libai
+# cd /path/to/libai
 bash tools/train.sh tools/train_net.py projects/T5/configs/mt5_pretrain.py 8
+```
+
+### 5. Convert OneFlow Checkpoint to PyTorch
+Suppose you need to put the final checkpoint to huggingface, run the following code, and ensure the parameters are set correctly in `weight_convert.sh`:
+
+```bash
+# cd /path/to/libai
+bash projects/T5/Utils/weight_convert.sh
 ```
