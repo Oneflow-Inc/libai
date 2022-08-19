@@ -144,21 +144,23 @@ class GPT2LoaderHuggerFace(ModelLoaderHuggerFace):
             cfg_dict = json.load(f)
 
         # update libai_cfg by config.json
-        self.libai_cfg.num_layers = cfg_dict["n_layer"]
-        self.libai_cfg.hidden_size = cfg_dict["n_embd"]
-        self.libai_cfg.num_attention_heads = cfg_dict["n_head"]
-        self.libai_cfg.max_seq_length = cfg_dict["n_positions"]
-        self.libai_cfg.embedding_dropout_prob = cfg_dict["embd_pdrop"]
-        self.libai_cfg.attention_dropout_prob = cfg_dict["attn_pdrop"]
-        self.libai_cfg.output_dropout_prob = cfg_dict["resid_pdrop"]
-        self.libai_cfg.layernorm_epsilon = cfg_dict["layer_norm_epsilon"]
-        self.libai_cfg.vocab_size = cfg_dict["vocab_size"]
-        self.libai_cfg.initializer_range = cfg_dict["initializer_range"]
-        self.libai_cfg.ffn_hidden_size = cfg_dict.get("n_inner", 4 * self.libai_cfg["hidden_size"])
-
+        self._update_cfg("num_layers", cfg_dict["n_layer"])
+        self._update_cfg("hidden_size", cfg_dict["n_embd"])
+        self._update_cfg("num_attention_heads", cfg_dict["n_head"])
+        self._update_cfg("max_seq_length", cfg_dict["n_positions"])
+        self._update_cfg("embedding_dropout_prob", cfg_dict["embd_pdrop"])
+        self._update_cfg("attention_dropout_prob", cfg_dict["attn_pdrop"])
+        self._update_cfg("output_dropout_prob", cfg_dict["resid_pdrop"])
+        self._update_cfg("layernorm_epsilon", cfg_dict["layer_norm_epsilon"])
+        self._update_cfg("vocab_size", cfg_dict["vocab_size"])
+        self._update_cfg("initializer_range", cfg_dict["initializer_range"])
+        self._update_cfg("ffn_hidden_size", cfg_dict.get("n_inner", 4 * self.libai_cfg["hidden_size"]))
+        
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
-            self.libai_cfg[k] = v
+            self._update_cfg(k, v)
+
+        self._update_cfg_log()
 
 
 class GPT2LoaderLiBai(ModelLoaderLiBai):

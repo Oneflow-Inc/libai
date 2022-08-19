@@ -203,18 +203,20 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
             cfg_dict = json.load(f)
 
         # update libai_cfg by config.json
-        self.libai_cfg.img_size = cfg_dict["image_size"]
-        self.libai_cfg.patch_size = cfg_dict["patch_size"]
-        self.libai_cfg.in_chans = cfg_dict["num_channels"]
-        self.libai_cfg.embed_dim = cfg_dict["hidden_size"]
-        self.libai_cfg.depth = cfg_dict["num_hidden_layers"]
-        self.libai_cfg.num_heads = cfg_dict["num_attention_heads"]
-        self.libai_cfg.attn_drop_rate = cfg_dict["attention_probs_dropout_prob"]
-        self.libai_cfg.drop_rate = cfg_dict["hidden_dropout_prob"]
+        self._update_cfg("img_size", cfg_dict["image_size"])
+        self._update_cfg("patch_size", cfg_dict["patch_size"])
+        self._update_cfg("in_chans", cfg_dict["num_channels"])
+        self._update_cfg("embed_dim", cfg_dict["hidden_size"])
+        self._update_cfg("depth", cfg_dict["num_hidden_layers"])
+        self._update_cfg("num_heads", cfg_dict["num_attention_heads"])
+        self._update_cfg("attn_drop_rate", cfg_dict["attention_probs_dropout_prob"])
+        self._update_cfg("drop_rate", cfg_dict["hidden_dropout_prob"])
 
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
-            self.libai_cfg[k] = v
+            self._update_cfg(k, v)
+        
+        self._update_cfg_log()
 
 
 class ViTLoaderLiBai(ModelLoaderLiBai):
