@@ -111,3 +111,7 @@ If you find this project useful for your research, consider cite:
   year =         {2021}
 }
 ```
+
+## Join the WeChat group
+
+![LiBai_Wechat_QRcode](./docs/source/tutorials/assets/LiBai_Wechat.png)
