@@ -184,6 +184,22 @@ class TestGPTModel(flow.unittest.TestCase):
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
 
+    @flow.unittest.skip_unless_1n4d()
+    def test_gpt_with_auto_parallel(self):
+        self.cfg.train.num_accumulation_steps = 1
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 2
+        self.cfg.train.dist.tensor_parallel_size = 2
+        self.cfg.train.dist.pipeline_parallel_size = 1
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = True
+        self.cfg.graph.auto_parallel.enabled = True
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
+
 
 if __name__ == "__main__":
     unittest.main()
