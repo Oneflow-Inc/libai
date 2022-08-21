@@ -30,14 +30,26 @@ class ImageClassificationPipeline(BasePipeline):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        pipeline_stage_id=None,
         model_path=None,
         **kwargs,
     ):
         super().__init__(
-            config_file, data_parallel, tensor_parallel, pipeline_parallel, model_path, **kwargs
+            config_file, 
+            data_parallel, 
+            tensor_parallel, 
+            pipeline_parallel, 
+            pipeline_stage_id, 
+            model_path, 
+            **kwargs
         )
-        assert "num_classes" in self.cfg.model, "The model's config must contain num_classes"
-        label2id = self.label2id(self.cfg.model.num_classes)
+        if "num_classes" in self.cfg.model:
+            self.num_classes = self.cfg.model.num_classes
+        elif "num_classes" in self.cfg.model.cfg:
+            self.num_classes = self.cfg.model.cfg.num_classes
+        else:
+            raise AttributeError("The model's config must contain num_classes")
+        label2id = self.label2id(self.num_classes)
         self.id2label = {ind: label for label, ind in label2id.items()}
         self.transform = instantiate(self.cfg.dataloader.test[0].dataset.transform)
 
@@ -76,7 +88,7 @@ class ImageClassificationPipeline(BasePipeline):
         self, model_outputs_dict, function_to_apply=None, return_all_scores=False, **kwargs
     ) -> dict:
         # prepare
-        num_labels = self.cfg.model.num_classes
+        num_labels = self.num_classes
         if function_to_apply is not None:
             function_to_apply = function_to_apply.lower()
             assert function_to_apply in [

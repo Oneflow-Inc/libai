@@ -15,6 +15,7 @@
 
 import logging
 import os
+import omegaconf
 
 import oneflow as flow
 
@@ -26,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 
 WEIGHTS_NAME_PT = "pytorch_model.bin"
-WEIGHTS_NAME_OF = "oneflow_model"
 CONFIG_NAME = "config.json"
 
 
@@ -304,22 +304,18 @@ class ModelLoaderLiBai(ModelLoader):
             >>> bert = loder.load()
 
         """
-        if os.path.isdir(self.pretrained_model_path):
-            # state_dict file oneflow
-            if os.path.isdir(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)):
-                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)
-            else:
-                raise EnvironmentError(
-                    f"Error no file named {WEIGHTS_NAME_OF} found"
-                    f"in directory {self.pretrained_model_path}."
-                )
-        else:
-            raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
-        flow_state_dict = self._load_flow_state_dict(model_file)
+        assert os.path.isdir(self.pretrained_model_path), \
+            f"{self.pretrained_model_path} must be a directory"
+
+        flow_state_dict = self._load_flow_state_dict(self.pretrained_model_path)
 
         # Instance model
-        self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
+        if isinstance(self.model, omegaconf.dictconfig.DictConfig):
+            self.model.cfg = self.libai_cfg
+            self.model = build_model(self.model)
+        else:
+            self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
         self._state_dict_to_global(flow_state_dict)
@@ -500,7 +496,11 @@ class ModelLoaderHuggerFace(ModelLoader):
         flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
 
         # Instance model
-        self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
+        if isinstance(self.model, omegaconf.dictconfig.DictConfig):
+            self.model.cfg = self.libai_cfg
+            self.model = build_model(self.model)
+        else:
+            self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
         self._state_dict_to_global(flow_state_dict)
