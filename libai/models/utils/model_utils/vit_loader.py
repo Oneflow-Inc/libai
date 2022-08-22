@@ -215,7 +215,7 @@ class ViTLoaderHuggerFace(ModelLoaderHuggerFace):
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
             self._update_cfg(k, v)
-        
+
         self._update_cfg_log()
 
 

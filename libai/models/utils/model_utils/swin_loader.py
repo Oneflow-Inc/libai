@@ -275,7 +275,7 @@ class SwinLoaderHuggerFace(ModelLoaderHuggerFace):
             cfg_dict = json.load(f)
 
         # update libai_cfg by config.json
-        self._update_cfg('img_size', cfg_dict["image_size"])
+        self._update_cfg("img_size", cfg_dict["image_size"])
         self._update_cfg("patch_size", cfg_dict["patch_size"])
         self._update_cfg("embed_dim", cfg_dict["embed_dim"])
         self._update_cfg("depths", cfg_dict["depths"])
@@ -288,7 +288,7 @@ class SwinLoaderHuggerFace(ModelLoaderHuggerFace):
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
             self._update_cfg(k, v)
-        
+
         self._update_cfg_log()
 
 

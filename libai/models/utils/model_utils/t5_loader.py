@@ -264,7 +264,7 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         """
         with open(config_file, mode="r", encoding="utf-8") as f:
             cfg_dict = json.load(f)
-        
+
         self._update_cfg("vocab_size", cfg_dict["vocab_size"])
         self._update_cfg("hidden_size", cfg_dict["d_model"])
         self._update_cfg("hidden_layers", cfg_dict["num_layers"])
@@ -273,7 +273,9 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         self._update_cfg("hidden_dropout_prob", cfg_dict["dropout_rate"])
         self._update_cfg("attention_probs_dropout_prob", cfg_dict["dropout_rate"])
         self._update_cfg("max_position_embeddings", cfg_dict.get("n_positions", 512))
-        self._update_cfg("relative_attention_num_buckets", cfg_dict["relative_attention_num_buckets"])
+        self._update_cfg(
+            "relative_attention_num_buckets", cfg_dict["relative_attention_num_buckets"]
+        )
         self._update_cfg("embedding_dropout_prob", cfg_dict["dropout_rate"])
         self._update_cfg("initializer_range", cfg_dict["initializer_factor"])
         self._update_cfg("layernorm_eps", cfg_dict["layer_norm_epsilon"])
@@ -282,7 +284,7 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
             self._update_cfg(k, v)
-        
+
         self._update_cfg_log()
 
 

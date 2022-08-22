@@ -218,7 +218,7 @@ class ModelLoader(object):
                 ignore_mismatched_sizes,
             )
             error_msgs = _load_state_dict_into_model(model_to_load, state_dict, start_prefix)
-        
+
         if dist.get_local_rank() == 0:
             if len(error_msgs) > 0:
                 error_msg = "\n\t".join(error_msgs)
@@ -460,7 +460,7 @@ class ModelLoaderHuggerFace(ModelLoader):
         """
         if self.libai_cfg[keys_libai] != value_target:
             self.libai_cfg[keys_libai] = value_target
-            self.changed_keys.append(keys_libai)            
+            self.changed_keys.append(keys_libai)
 
     def _update_cfg_log(self):
         if dist.get_local_rank() == 0 and len(self.changed_keys) > 0:
