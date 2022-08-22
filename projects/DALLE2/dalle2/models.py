@@ -7,12 +7,14 @@ from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
+from omegaconf import ListConfig
 from libai.utils import distributed as dist
 from libai.layers import Embedding, LayerNorm, Linear, MultiheadAttention, TransformerLayer
 import oneflow as flow
 import oneflow.nn.functional as F
 from oneflow import nn, einsum
 import flowvision.transforms as T
+from .layers import layer_norm
 
 from einops import rearrange, repeat, reduce
 from .einops_exts import Rearrange, rearrange_many, repeat_many, check_shape, EinopsToAndFrom
@@ -28,17 +30,16 @@ from resize_right import resize
 
 # rotary embeddings
 
-from .rotary_embedding_flow import RotaryEmbedding
+from .rotary_embedding_flow import RotaryEmbedding, broadcat
+from time import time
 
 # constants
 default_placement = flow.placement(type='cuda', ranks=[0])
 
-np.random.seed(666)
-
 NAT = 1. / math.log(2.)
 
 random.seed(666)
-np.random.seed(666)
+np.random.seed(6666)
 # helper functions
 
 def exists(val):
@@ -66,7 +67,7 @@ def default(val, d):
     return d() if callable(d) else d
 
 def cast_tuple(val, length = None):
-    if isinstance(val, list):
+    if isinstance(val, list) or isinstance(val, ListConfig):
         val = tuple(val)
 
     out = val if isinstance(val, tuple) else ((val,) * default(length, 1))
@@ -344,13 +345,15 @@ class ChanLayerNorm(nn.Module):
     def __init__(self, dim, eps = 1e-5):
         super().__init__()
         self.eps = eps
-        self.weight = nn.Parameter(flow.ones(1, dim, 1, 1, placement = default_placement, sbp=flow.sbp.broadcast))
+        self.weight = nn.Parameter(flow.ones(1, dim, 1, 1, placement = default_placement, sbp= flow.sbp.broadcast))
 
     def forward(self, x):
-        var = flow.var(x, dim = 1, unbiased = False, keepdim = True)
-        mean = flow.mean(x, dim = 1, keepdim = True)
-        return (x - mean) / (var + self.eps).sqrt() * self.weight
-
+        # var = flow.var(x, dim = 1, unbiased = False, keepdim = True)
+        # mean = flow.mean(x, dim = 1, keepdim = True)
+        #return (x - mean) / (var + self.eps).sqrt() * self.weight
+        x = x.permute(0, 2, 3, 1)
+        out = layer_norm(x, normalized_shape = (x.shape[-1:]), eps = self.eps)
+        return out.permute(0, 3, 1, 2) * self.weight
 
 class Residual(nn.Module):
     def __init__(self, fn):
@@ -422,7 +425,7 @@ class RelPosBias(nn.Module):
         is_small = n < max_exact
 
         val_if_large = max_exact + (flow.log(n.float() / max_exact) / math.log(max_distance / max_exact) * (num_buckets - max_exact)).long()
-        val_if_large = flow.min(val_if_large, flow.full_like(val_if_large, num_buckets - 1))
+        val_if_large = flow.min(val_if_large, flow.zeros_like(val_if_large) + num_buckets - 1)
         return flow.where(is_small, n, val_if_large)
 
     def forward(self, i, j):
@@ -507,17 +510,14 @@ class Attention(nn.Module):
             q, k = map(self.rotary_emb.rotate_queries_or_keys, (q, k))
 
         # add null key / value for classifier free guidance in prior net
-
         #nk, nv = repeat_many([x.squeeze(0) for x in self.null_kv.chunk(2, dim = -2)], 'd -> b 1 d', b = b)
         nk, nv = repeat_many(self.null_kv.unbind(dim = -2), 'd -> b 1 d', b = b)
-
+        
         k = flow.cat((nk, k), dim = -2)
         v = flow.cat((nv, v), dim = -2)
 
         # calculate query / key similarities
-
         sim = einsum('b h i d, b j d -> b h i j', q, k)
-
         # relative positional encoding (T5 style)
 
         if exists(attn_bias):
@@ -526,9 +526,9 @@ class Attention(nn.Module):
         # masking
 
         max_neg_value = -3.4028e+38# flow.finfo(sim.dtype).max
-
+        
         if exists(mask):
-            mask = F.pad(mask.to(flow.int), (1, 0), value = 1)
+            mask = F.pad(mask, (1, 0), value = 1)
             mask = rearrange(mask, 'b j -> b 1 1 j')
             sim = sim.masked_fill(1-mask, max_neg_value) #~mask
         if self.causal:
@@ -567,16 +567,16 @@ class CausalTransformer(nn.Module):
         self.rel_pos_bias = RelPosBias(heads = heads)
 
         rotary_emb = RotaryEmbedding(dim = min(32, dim_head)) if rotary_emb else None
-
+        
         self.layers = nn.ModuleList([])
         for _ in range(depth):
             self.layers.append(nn.ModuleList([
                 Attention(dim = dim, causal = True, dim_head = dim_head, heads = heads, dropout = attn_dropout, rotary_emb = rotary_emb),
                 FeedForward(dim = dim, mult = ff_mult, dropout = ff_dropout, post_activation_norm = normformer)
             ]))
-
         self.norm = LayerNorm(dim) if norm_out else nn.Identity()  # unclear in paper whether they projected after the classic layer norm for the final denoised image embedding, or just had the transformer output it directly: plan on offering both options
         self.project_out = Linear(dim, dim, bias = False) if final_proj else nn.Identity()
+        
 
     def forward(
         self,
@@ -625,7 +625,7 @@ class DiffusionPriorNetwork(nn.Module):
             Rearrange('b (n d) -> b n d', n = num_image_embeds)
         )
 
-        self.learned_query = nn.Parameter(flow.randn(dim, placement=default_placement, sbp=flow.sbp.broadcast))
+        self.learned_query = nn.Parameter(flow.randn(dim, placement=default_placement, sbp=flow.sbp.split(0)))
         self.causal_transformer = CausalTransformer(dim = dim, **kwargs)
 
     def forward_with_cond_scale(
@@ -688,7 +688,7 @@ class DiffusionPriorNetwork(nn.Module):
 
         if exists(mask):
             attend_padding = 1 + num_time_embeds + num_image_embeds # 1 for learned queries + number of image embeds + time embeds
-            mask = F.pad(mask * 1.0, (0, attend_padding), value = 1.0) > 0.5 # extend mask for text embedding, noised image embedding, time step embedding, and learned query
+            mask = F.pad(mask.to(flow.int32), (0, attend_padding), value = 1) # extend mask for text embedding, noised image embedding, time step embedding, and learned query
 
         time_embed = self.to_time_embeds(diffusion_timesteps.to_global(placement=default_placement, sbp=flow.sbp.broadcast))
 
@@ -802,7 +802,6 @@ class DiffusionPrior(nn.Module):
         b = x.shape[0]
         model_mean, _, model_log_variance = self.p_mean_variance(x = x, t = t, text_cond = text_cond, clip_denoised = clip_denoised, cond_scale = cond_scale)
         noise = flow.randn(*x.shape, placement=default_placement, sbp=flow.sbp.broadcast)
-        #noise = flow.tensor(np.random.randn(*x.shape).astype(np.float32), placement=default_placement, sbp=flow.sbp.broadcast)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
@@ -811,7 +810,6 @@ class DiffusionPrior(nn.Module):
     def p_sample_loop(self, shape, text_cond, cond_scale = 1.):
         b = shape[0]
         image_embed = flow.randn(*shape, placement=default_placement, sbp=flow.sbp.broadcast)
-        #image_embed = flow.tensor(np.random.randn(*shape).astype(np.float32), placement=default_placement, sbp=flow.sbp.broadcast)
 
         if self.init_image_embed_l2norm:
             image_embed = l2norm(image_embed) * self.image_embed_scale
@@ -855,7 +853,7 @@ class DiffusionPrior(nn.Module):
 
     @flow.no_grad()
     @eval_decorator
-    def sample(self, text, num_samples_per_batch = 2, cond_scale = 1.):
+    def sample(self, text, num_samples_per_batch = 2, cond_scale = 1., text_embed = None, text_encodings = None, text_mask = None):
         # in the paper, what they did was
         # sample 2 image embeddings, choose the top 1 similarity, as judged by CLIP
         text = repeat(text, 'b ... -> (b r) ...', r = num_samples_per_batch)
@@ -863,7 +861,9 @@ class DiffusionPrior(nn.Module):
         batch_size = text.shape[0]
         image_embed_dim = self.image_embed_dim
 
-        text_embed, text_encodings, text_mask = self.clip.embed_text(text)
+        if text_embed is None:
+            assert self.clip is not None
+            text_embed, text_encodings, text_mask = self.clip.embed_text(text)
 
         text_cond = dict(text_embed = text_embed)
 
@@ -922,7 +922,6 @@ class DiffusionPrior(nn.Module):
 
         batch = image_embed.shape[0]
         times = flow.randint(0, self.noise_scheduler.num_timesteps, (batch,), placement=default_placement, sbp=flow.sbp.broadcast, dtype = flow.long)
-        #times = flow.tensor(np.random.randint(0, self.noise_scheduler.num_timesteps, (batch,)).astype(np.float32), placement=default_placement, sbp=flow.sbp.broadcast, dtype = flow.long)
 
         # scale image embed (Katherine)
 
@@ -1059,7 +1058,7 @@ class CrossAttention(nn.Module):
         self.norm_context = LayerNorm(context_dim) if norm_context else nn.Identity()
         self.dropout = nn.Dropout(dropout)
 
-        self.null_kv = nn.Parameter(flow.randn(2, dim_head, placement=default_placement, sbp=flow.sbp.broadcast))
+        self.null_kv = nn.Parameter(flow.randn(2, dim_head, placement=default_placement, sbp=flow.sbp.split(0)))
         self.to_q = Linear(dim, inner_dim, bias = False)
         self.to_kv = Linear(context_dim, inner_dim * 2, bias = False)
 
@@ -1092,9 +1091,9 @@ class CrossAttention(nn.Module):
         max_neg_value = -3.4028e+38 #-flow.finfo(sim.dtype).max
 
         if exists(mask):
-            mask = F.pad(mask, (1, 0), value = True)
+            mask = F.pad(mask, (1, 0), value = 1)
             mask = rearrange(mask, 'b j -> b 1 1 j')
-            sim = sim.masked_fill(~mask, max_neg_value)
+            sim = sim.masked_fill(1-mask, max_neg_value)
 
         attn = sim.softmax(dim = -1)
 
@@ -1510,7 +1509,7 @@ class Unet(nn.Module):
             if exists(text_mask):
                 if remainder > 0:
                     #text_mask = F.pad(text_mask, (0, remainder), value = False)
-                    text_mask = F.pad(text_mask*1.0, (0, remainder), value = 0.0) > 0.5
+                    text_mask = F.pad(text_mask.to(flow.int32), (0, remainder), value = 0)
 
                 text_mask = rearrange(text_mask, 'b n -> b n 1')
                 text_keep_mask = text_mask & text_keep_mask
@@ -1884,7 +1883,6 @@ class Decoder(nn.Module):
         b = x.shape[0]
         model_mean, _, model_log_variance = self.p_mean_variance(unet, x = x, t = t, image_embed = image_embed, text_encodings = text_encodings, text_mask = text_mask, cond_scale = cond_scale, lowres_cond_img = lowres_cond_img, clip_denoised = clip_denoised, predict_x_start = predict_x_start, noise_scheduler = noise_scheduler, learned_variance = learned_variance)
         noise = flow.randn(*x.shape, placement=default_placement, sbp=flow.sbp.broadcast)
-        #noise = flow.tensor(np.random.randn(*x.shape).astype(np.float32), placement=default_placement, sbp=flow.sbp.broadcast)
         # no noise when t == 0
         nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
@@ -1894,7 +1892,6 @@ class Decoder(nn.Module):
 
         b = shape[0]
         img = flow.randn(*shape, placement=default_placement, sbp=flow.sbp.broadcast)
-        #img = flow.tensor(np.random.randn(*shape).astype(np.float32), placement=default_placement, sbp=flow.sbp.broadcast)
 
         if not is_latent_diffusion:
             lowres_cond_img = maybe(self.normalize_img)(lowres_cond_img)
@@ -2087,7 +2084,6 @@ class Decoder(nn.Module):
         assert h >= target_image_size and w >= target_image_size
 
         times = flow.randint(0, noise_scheduler.num_timesteps, (b,), placement=default_placement, sbp=flow.sbp.broadcast, dtype = flow.long)
-        #times = flow.tensor(np.random.randint(0, noise_scheduler.num_timesteps, (b,)), placement=default_placement, sbp=flow.sbp.broadcast, dtype = flow.long)
 
         if not exists(image_embed) and not self.unconditional:
             assert exists(self.clip), 'if you want to derive CLIP image embeddings automatically, you must supply `clip` to the decoder on init'
@@ -2133,11 +2129,12 @@ class DALLE2(nn.Module):
         *,
         prior,
         decoder,
-        prior_num_samples = 2
+        prior_num_samples = 2,
+        **kwargs
     ):
         super().__init__()
-        assert isinstance(prior, DiffusionPrior)
-        assert isinstance(decoder, Decoder)
+        # assert isinstance(prior, DiffusionPrior)
+        # assert isinstance(decoder, Decoder)
         self.prior = prior
         self.decoder = decoder
 
