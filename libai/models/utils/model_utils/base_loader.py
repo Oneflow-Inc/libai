@@ -218,46 +218,48 @@ class ModelLoader(object):
                 ignore_mismatched_sizes,
             )
             error_msgs = _load_state_dict_into_model(model_to_load, state_dict, start_prefix)
-        if len(error_msgs) > 0:
-            error_msg = "\n\t".join(error_msgs)
-            raise RuntimeError(
-                f"Error(s) in loading state_dict for {model.__class__.__name__}:\n\t{error_msg}"
-            )
-        if len(unexpected_keys) > 0:
-            logger.warning(
-                f"Some weights of the model checkpoint at {pretrained_model_path} "
-                "were not used when "
-                f"initializing {model.__class__.__name__}: {unexpected_keys}\n"
-            )
-        else:
-            logger.info(
-                f"All model checkpoint weights were used when initializing "
-                f"{model.__class__.__name__}.\n"
-            )
-        if len(missing_keys) > 0:
-            logger.warning(
-                f"Some weights of {model.__class__.__name__} were not initialized "
-                f"from the model checkpoint at {pretrained_model_path} "
-            )
-        elif len(mismatched_keys) == 0:
-            logger.info(
-                f"All the weights of {model.__class__.__name__} were initialized "
-                f"from the model checkpoint at {pretrained_model_path}.\n"
-            )
-        if len(mismatched_keys) > 0:
-            mismatched_warning = "\n".join(
-                [
-                    f"- {key}: found shape {shape1} in the checkpoint and {shape2}"
-                    "in the model instantiated"
-                    for key, shape1, shape2 in mismatched_keys
-                ]
-            )
-            logger.warning(
-                f"Some weights of {model.__class__.__name__} were not initialized"
-                f"from the model checkpoint at {pretrained_model_path} "
-                f"and are newly initialized because the shapes did not"
-                f"match:\n{mismatched_warning}\n"
-            )
+
+        if dist.get_local_rank() == 0:
+            if len(error_msgs) > 0:
+                error_msg = "\n\t".join(error_msgs)
+                raise RuntimeError(
+                    f"Error(s) in loading state_dict for {model.__class__.__name__}:\n\t{error_msg}"
+                )
+            if len(unexpected_keys) > 0:
+                logger.warning(
+                    f"Some weights of the model checkpoint at {pretrained_model_path} "
+                    "were not used when "
+                    f"initializing {model.__class__.__name__}:\n {unexpected_keys}\n"
+                )
+            else:
+                logger.info(
+                    f"All model checkpoint weights were used when initializing "
+                    f"{model.__class__.__name__}.\n"
+                )
+            if len(missing_keys) > 0:
+                logger.warning(
+                    f"Some weights of {model.__class__.__name__} were not initialized "
+                    f"from the model checkpoint at {pretrained_model_path} "
+                )
+            elif len(mismatched_keys) == 0:
+                logger.info(
+                    f"All the weights of {model.__class__.__name__} were initialized "
+                    f"from the model checkpoint at {pretrained_model_path}.\n"
+                )
+            if len(mismatched_keys) > 0:
+                mismatched_warning = "\n".join(
+                    [
+                        f"- {key}: found shape {shape1} in the checkpoint and {shape2}"
+                        "in the model instantiated"
+                        for key, shape1, shape2 in mismatched_keys
+                    ]
+                )
+                logger.warning(
+                    f"Some weights of {model.__class__.__name__} were not initialized"
+                    f"from the model checkpoint at {pretrained_model_path} "
+                    f"and are newly initialized because the shapes did not"
+                    f"match:\n{mismatched_warning}\n"
+                )
 
         return model, missing_keys, unexpected_keys, mismatched_keys, error_msgs
 
@@ -349,6 +351,7 @@ class ModelLoaderHuggerFace(ModelLoader):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
         self.base_model_prefix_1 = None  # prefix in Transformers
         self.base_model_prefix_2 = None  # prefix in LiBai
+        self.changed_keys = []  # Store the changed configuration
 
     def _convert_tensor(self, tensor):
         """Convert PyTorch tensor to OneFlow tensor.
@@ -443,6 +446,30 @@ class ModelLoaderHuggerFace(ModelLoader):
         # load pytorch_model.bin
         state_dict = torch.load(state_dict_file, map_location="cpu")
         return state_dict
+
+    def _update_cfg(self, keys_libai, value_target):
+        """Update the libai_cfg according to target_cfg.
+
+        Args:
+            keys_libai (str): The key of libai_cfg.
+            value_target (int | float): The value of target_cfg.
+        """
+        if self.libai_cfg[keys_libai] != value_target:
+            self.libai_cfg[keys_libai] = value_target
+            self.changed_keys.append(keys_libai)
+
+    def _update_cfg_log(self):
+        if dist.get_local_rank() == 0 and len(self.changed_keys) > 0:
+            logger.warning(
+                "The following model configurations has been modified according "
+                "to `config.json` or kwargs: \n"
+                f"{self.changed_keys} \n"
+            )
+            if dist.get_pipeline_parallel_size() > 1:
+                logger.warning(
+                    "If you use pipeline parallel, please "
+                    "confirm the setting of `train.dist.pipeline_num_layers` \n"
+                )
 
     def load(self):
         """Load model.

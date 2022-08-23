@@ -275,19 +275,21 @@ class SwinLoaderHuggerFace(ModelLoaderHuggerFace):
             cfg_dict = json.load(f)
 
         # update libai_cfg by config.json
-        self.libai_cfg.img_size = cfg_dict["image_size"]
-        self.libai_cfg.patch_size = cfg_dict["patch_size"]
-        self.libai_cfg.embed_dim = cfg_dict["embed_dim"]
-        self.libai_cfg.depths = cfg_dict["depths"]
-        self.libai_cfg.num_heads = cfg_dict["num_heads"]
-        self.libai_cfg.window_size = cfg_dict["window_size"]
-        self.libai_cfg.mlp_ratio = cfg_dict["mlp_ratio"]
-        self.libai_cfg.qkv_bias = cfg_dict["qkv_bias"]
-        self.libai_cfg.drop_path_rate = cfg_dict["drop_path_rate"]
+        self._update_cfg("img_size", cfg_dict["image_size"])
+        self._update_cfg("patch_size", cfg_dict["patch_size"])
+        self._update_cfg("embed_dim", cfg_dict["embed_dim"])
+        self._update_cfg("depths", cfg_dict["depths"])
+        self._update_cfg("num_heads", cfg_dict["num_heads"])
+        self._update_cfg("window_size", cfg_dict["window_size"])
+        self._update_cfg("mlp_ratio", cfg_dict["mlp_ratio"])
+        self._update_cfg("qkv_bias", cfg_dict["qkv_bias"])
+        self._update_cfg("drop_path_rate", cfg_dict["drop_path_rate"])
 
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
-            self.libai_cfg[k] = v
+            self._update_cfg(k, v)
+
+        self._update_cfg_log()
 
 
 class SwinLoaderLiBai(ModelLoaderLiBai):
