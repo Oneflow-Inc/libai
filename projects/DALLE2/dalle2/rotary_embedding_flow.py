@@ -86,7 +86,7 @@ class RotaryEmbedding(nn.Module):
         if learned_freq:
             self.freqs = nn.Parameter(freqs)
         else:
-            self.register_buffer('freqs', freqs)
+            self.register_buffer('freqs', freqs.to_global(placement=flow.placement(type='cuda', ranks=[0, 1, 2, 3]), sbp=flow.sbp.broadcast))
 
     def rotate_queries_or_keys(self, t, seq_dim = -2):
         placement, sbp = t.placement, t.sbp

@@ -275,7 +275,6 @@ class Conv2d(nn.Module):
             s += ", padding_mode={padding_mode}"
         return s.format(**self.__dict__)
 
-
 class ConvTranspose2d(nn.Module):
 
     def __init__(
@@ -290,11 +289,13 @@ class ConvTranspose2d(nn.Module):
         bias: bool = True,
         dilation: int = 1,
         padding_mode: str = "zeros",
-    ):
+        *,
+        layer_idx = 0
+    ) -> None:
         super().__init__()
         assert padding_mode == "zeros"
         self.kernel_size = _pair(kernel_size)
-        self.stride =  _pair(stride)
+        self.stride = _pair(stride)
         self.padding = _pair(padding)
         self.output_padding = _pair(output_padding)
         self.dilation = _pair(dilation)
@@ -302,14 +303,18 @@ class ConvTranspose2d(nn.Module):
         assert in_channels % groups == 0
         assert out_channels % groups == 0
         self.weight = flow.nn.Parameter(
-            flow.Tensor(in_channels, out_channels // groups, *self.kernel_size, placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast)
+            flow.Tensor(in_channels, out_channels // groups, *self.kernel_size,
+                        placement=dist.get_layer_placement(layer_idx=layer_idx),
+                        sbp=flow.sbp.broadcast)
         )
         self.in_channel_groups = in_channels // groups
         self.filters = out_channels
         self.bias = None
         self._bias_add_op = None
         if bias:
-            self.bias = flow.nn.Parameter(flow.Tensor(out_channels, placement=dist.get_layer_placement(0), sbp=flow.sbp.broadcast))
+            self.bias = flow.nn.Parameter(flow.Tensor(out_channels,
+                         placement=dist.get_layer_placement(layer_idx=layer_idx),
+                        sbp=flow.sbp.broadcast))
 
         self.reset_parameters()
 
@@ -325,13 +330,11 @@ class ConvTranspose2d(nn.Module):
             x,
             self.weight,
             self.bias,
-            self.filters,
-            self.padding,
-            "channels_first",
-            self.kernel_size,
-            self.output_padding,
             self.stride,
-            self.dilation,
+            self.padding,
+            self.output_padding,
             self.groups,
+            self.dilation,
+            "channels_first",
         )
         return res

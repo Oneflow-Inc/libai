@@ -14,8 +14,6 @@ import oneflow as flow
 import oneflow.nn.functional as F
 from oneflow import nn, einsum
 import flowvision.transforms as T
-from .layers import layer_norm
-
 from einops import rearrange, repeat, reduce
 from .einops_exts import Rearrange, rearrange_many, repeat_many, check_shape, EinopsToAndFrom
 
@@ -24,7 +22,7 @@ import kornia.augmentation as K
 
 from .tokenizer import tokenizer
 from .vqgan_vae import NullVQGanVAE, VQGanVAE
-from .layers import GroupNorm, Conv2d, ConvTranspose2d
+from .layers import GroupNorm, Conv2d, ConvTranspose2d, layer_norm
 
 from resize_right import resize
 
@@ -34,7 +32,7 @@ from .rotary_embedding_flow import RotaryEmbedding, broadcat
 from time import time
 
 # constants
-default_placement = flow.placement(type='cuda', ranks=[0])
+default_placement = flow.placement(type='cuda', ranks=[0, 1, 2, 3])
 
 NAT = 1. / math.log(2.)
 
@@ -625,7 +623,7 @@ class DiffusionPriorNetwork(nn.Module):
             Rearrange('b (n d) -> b n d', n = num_image_embeds)
         )
 
-        self.learned_query = nn.Parameter(flow.randn(dim, placement=default_placement, sbp=flow.sbp.split(0)))
+        self.learned_query = nn.Parameter(flow.randn(dim, placement=default_placement, sbp=flow.sbp.broadcast))
         self.causal_transformer = CausalTransformer(dim = dim, **kwargs)
 
     def forward_with_cond_scale(
@@ -935,18 +933,18 @@ class DiffusionPrior(nn.Module):
 
 def ConvTransposeUpsample(dim, dim_out = None):
     dim_out = default(dim_out, dim)
-    return nn.ConvTranspose2d(dim, dim_out, 4, 2, 1)
+    return ConvTranspose2d(dim, dim_out, 4, 2, 1)
 
 def NearestUpsample(dim, dim_out = None):
     dim_out = default(dim_out, dim)
     return nn.Sequential(
         nn.Upsample(scale_factor = 2, mode = 'nearest'),
-        nn.Conv2d(dim, dim_out, 3, padding = 1)
+        Conv2d(dim, dim_out, 3, padding = 1)
     )
 
 def Downsample(dim, *, dim_out = None):
     dim_out = default(dim_out, dim)
-    return nn.Conv2d(dim, dim_out, 4, 2, 1)
+    return Conv2d(dim, dim_out, 4, 2, 1)
 
 class SinusoidalPosEmb(nn.Module):
     def __init__(self, dim):
@@ -1017,7 +1015,7 @@ class ResnetBlock(nn.Module):
 
         self.block1 = Block(dim, dim_out, groups = groups)
         self.block2 = Block(dim_out, dim_out, groups = groups)
-        self.res_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
+        self.res_conv = Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
 
     def forward(self, x, time_emb = None, cond = None):
 
@@ -1058,7 +1056,7 @@ class CrossAttention(nn.Module):
         self.norm_context = LayerNorm(context_dim) if norm_context else nn.Identity()
         self.dropout = nn.Dropout(dropout)
 
-        self.null_kv = nn.Parameter(flow.randn(2, dim_head, placement=default_placement, sbp=flow.sbp.split(0)))
+        self.null_kv = nn.Parameter(flow.randn(2, dim_head, placement=default_placement, sbp=flow.sbp.broadcast))
         self.to_q = Linear(dim, inner_dim, bias = False)
         self.to_kv = Linear(context_dim, inner_dim * 2, bias = False)
 
@@ -1280,11 +1278,11 @@ class Unet(nn.Module):
 
         # for classifier free guidance
 
-        self.null_image_embed = nn.Parameter(flow.randn(1, num_image_tokens, cond_dim))
-        self.null_image_hiddens = nn.Parameter(flow.randn(1, time_cond_dim))
+        self.null_image_embed = nn.Parameter(flow.randn(1, num_image_tokens, cond_dim, placement = default_placement, sbp = flow.sbp.broadcast))
+        self.null_image_hiddens = nn.Parameter(flow.randn(1, time_cond_dim, placement = default_placement, sbp = flow.sbp.broadcast))
 
         self.max_text_len = max_text_len
-        self.null_text_embed = nn.Parameter(flow.randn(1, max_text_len, cond_dim))
+        self.null_text_embed = nn.Parameter(flow.randn(1, max_text_len, cond_dim, placement = default_placement, sbp = flow.sbp.broadcast))
 
         # whether to scale skip connection, adopted in Imagen
 
@@ -1346,7 +1344,7 @@ class Unet(nn.Module):
                 ResnetBlock(dim_layer, dim_layer, time_cond_dim = time_cond_dim, groups = groups),
                 nn.ModuleList([ResnetBlock(dim_layer, dim_layer, cond_dim = layer_cond_dim, time_cond_dim = time_cond_dim, groups = groups) for _ in range(layer_num_resnet_blocks)]),
                 attention,
-                downsample_klass(dim_layer, dim_out = dim_out) if not is_last and not memory_efficient else nn.Conv2d(dim_layer, dim_out, 1)
+                downsample_klass(dim_layer, dim_out = dim_out) if not is_last and not memory_efficient else Conv2d(dim_layer, dim_out, 1)
             ]))
 
         mid_dim = dims[-1]

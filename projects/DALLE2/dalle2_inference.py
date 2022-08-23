@@ -53,7 +53,7 @@ class Dalle2Pipeline(BasePipeline):
 
     def load_prior_weight(self, prior, prior_weight_path):
         if isinstance(prior, omegaconf.dictconfig.DictConfig):
-            prior = build_model(prior).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast).eval()
+            prior = build_model(prior)#.to_global(placement=flow.placement(type='cuda',ranks=[0, 1, 2, 3]), sbp=flow.sbp.broadcast)
         import torch
         state_dict = torch.load(prior_weight_path, map_location="cpu")['ema_model']
         for k,torch_tensor in state_dict.items():
@@ -67,14 +67,17 @@ class Dalle2Pipeline(BasePipeline):
                 elif k.endswith('beta'):
                     k = k[:-4] + 'bias'
             assert k in prior.state_dict(), k
-            flow_tensor = flow.tensor(torch_tensor.cpu().numpy()).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
+            if(prior.state_dict()[k].is_local):
+                print("@@",k)
+                exit(0)
+            flow_tensor = flow.tensor(torch_tensor.cpu().numpy(), placement=prior.state_dict()[k].placement, sbp=prior.state_dict()[k].sbp)
             prior.state_dict()[k].data.copy_(flow_tensor.data)
             
-        return prior
+        return prior.eval()
 
     def load_decoder_weight(self, decoder, decoder_weight_path):
         if isinstance(decoder, omegaconf.dictconfig.DictConfig):
-            decoder = build_model(decoder).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast).eval()
+            decoder = build_model(decoder)#.to_global(placement=flow.placement(type='cuda',ranks=[0, 1, 2, 3]), sbp=flow.sbp.broadcast).eval()
         import torch
         state_dict = torch.load(decoder_weight_path, map_location = "cpu")
         for k, torch_tensor in state_dict.items():
@@ -87,9 +90,11 @@ class Dalle2Pipeline(BasePipeline):
                 elif k.endswith('beta'):
                     k = k[:-4] + "bias"
             assert k in decoder.state_dict().keys(), k
-            flow_tensor = flow.tensor(torch_tensor.cpu().numpy()).to(flow.float32).to_global(placement=flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast)
+            if(decoder.state_dict()[k].is_local):
+                print(k)
+            flow_tensor = flow.tensor(torch_tensor.cpu().numpy(), placement=decoder.state_dict()[k].placement, sbp=decoder.state_dict()[k].sbp)
             decoder.state_dict()[k].data.copy_(flow_tensor.data)
-        return decoder
+        return decoder.eval()
 
     def load_pretrain_weight(
             self, 
@@ -128,11 +133,12 @@ class Dalle2Pipeline(BasePipeline):
         return self.forward(text)
 
     def forward(self, text) -> dict:
-        tokens = self.tokenizer.tokenize(text).to_global(placement = flow.placement(type='cuda',ranks=[0]), sbp=flow.sbp.broadcast) 
+        tokens = self.tokenizer.tokenize(text).to_global(placement = flow.placement(type='cuda',ranks=[0,1,2,3]), sbp=flow.sbp.broadcast) 
         prior = self.load_prior_weight(self.cfg.model.prior, self.cfg.model.prior_weight_path)
         text_embed, text_encodings, text_mask = prior.clip.embed_text(tokens)
         image_embed = prior.sample(tokens, num_samples_per_batch = 2, cond_scale = 1.)
         del prior
+        flow.cuda.empty_cache()
 
         decoder = self.load_decoder_weight(self.cfg.model.decoder, self.cfg.model.decoder_weight_path)
         image_embed = decoder.sample(image_embed = image_embed, text_encodings = text_encodings, text_mask = text_mask, cond_scale = 3.5)
@@ -153,5 +159,9 @@ if __name__ == "__main__":
         data_parallel=1,
         tensor_parallel=4,
         pipeline_parallel=1)
-    imgs = model(["a man is playing basketball with his friends!"] * 3)
-    model.save_images(imgs)
+    imgs = model(["a man is playing basketball with his friends!"] * 10)
+    imgs = imgs['image_embed']
+    rank = flow.env.get_rank()
+    if rank == 0:
+        imgs = imgs.to_global(placement=flow.placement(type='cuda', ranks=[0]), sbp=flow.sbp.broadcast)
+        model.save_images(imgs)
