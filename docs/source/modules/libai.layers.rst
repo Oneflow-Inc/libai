@@ -15,6 +15,7 @@ libai.layers
         Linear1D,
         MLP,
         LayerNorm,
+        RMSLayerNorm,
         MultiheadAttention,
         TransformerLayer,
         ParallelCrossEntropyLoss
