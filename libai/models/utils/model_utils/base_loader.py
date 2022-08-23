@@ -16,8 +16,11 @@
 import logging
 import os
 import omegaconf
+import collections
+from termcolor import colored
 
 import oneflow as flow
+from oneflow.framework.check_point_v2 import _broadcast_py_object
 
 import libai.utils.distributed as dist
 from libai.config import LazyCall
@@ -83,23 +86,31 @@ class ModelLoader(object):
         self.kwargs = kwargs
         self.output_loading_info = kwargs.pop("output_loading_info", False)
 
-    def _state_dict_to_global(self, flow_state_dict):
+    def _state_dict_to_global(self, flow_state_dict=None):
         """Tensor in OneFlow state dict to global according to model's sbp and placement.
 
         Args:
             flow_state_dict (OrderedDict): State dict of OneFlow's pretrained model.
         """
-        prefix = self.base_model_prefix_2
+        if dist.is_main_process():
+            prefix = self.base_model_prefix_2
 
-        # Checkpoint
-        has_prefix_module = any(
-            s.startswith(self.base_model_prefix_2) for s in flow_state_dict.keys()
-        )
-        # Module
-        expects_prefix_module = any(s.startswith(prefix) for s in self.model.state_dict().keys())
+            # Checkpoint
+            has_prefix_module = any(
+                s.startswith(self.base_model_prefix_2) for s in flow_state_dict.keys()
+            )
+            # Module
+            expects_prefix_module = any(s.startswith(prefix) for s in self.model.state_dict().keys())
 
-        start_prefix = "" if has_prefix_module else prefix + "."
-        loaded_keys = [start_prefix + key for key in flow_state_dict.keys()]
+            start_prefix = "" if has_prefix_module else prefix + "."
+            loaded_keys = [start_prefix + key for key in flow_state_dict.keys()]
+        else:
+            has_prefix_module, expects_prefix_module, loaded_keys = [None] * 3
+            flow_state_dict = collections.OrderedDict()
+        
+        has_prefix_module = _broadcast_py_object(has_prefix_module, src=0)
+        expects_prefix_module = _broadcast_py_object(expects_prefix_module, src=0)
+        loaded_keys = _broadcast_py_object(loaded_keys, src=0) 
 
         # to global
         for key, value in self.model.state_dict().items():
@@ -109,11 +120,17 @@ class ModelLoader(object):
                 if not has_prefix_module:
                     key = ".".join(key.split(".")[1:])
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key],
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=value.placement,
+                    flow_state_dict[key] if dist.is_main_process() else flow.Tensor(None),
+                    sbp=flow.sbp.broadcast,
+                    placement=flow.placement("cpu", ranks=[0]),
                 )
-                flow_state_dict[key] = flow.to_global(flow_state_dict[key], sbp=value.sbp)
+
+                flow_state_dict[key] = flow.to_global(
+                    flow_state_dict[key],
+                    sbp=value.sbp,
+                    placement=value.placement
+                )
+        return flow_state_dict
 
     def _load_pretrained_model(
         self,
@@ -455,6 +472,9 @@ class ModelLoaderHuggerFace(ModelLoader):
             value_target (int | float): The value of target_cfg.
         """
         if self.libai_cfg[keys_libai] != value_target:
+            temp_key = colored(keys_libai, "yellow")
+            logger.info(f"changed libai model cfg {temp_key} : "
+                        f"{self.libai_cfg[keys_libai]} -> {value_target} ")
             self.libai_cfg[keys_libai] = value_target
             self.changed_keys.append(keys_libai)
 
@@ -467,8 +487,11 @@ class ModelLoaderHuggerFace(ModelLoader):
             )
             if dist.get_pipeline_parallel_size() > 1:
                 logger.warning(
-                    "If you use pipeline parallel, please "
-                    "confirm the setting of `train.dist.pipeline_num_layers` \n"
+                    colored(
+                        "If you use pipeline parallel, please "
+                        "confirm the setting of `train.dist.pipeline_num_layers` \n",
+                        "red"
+                    )
                 )
 
     def load(self):
@@ -517,10 +540,13 @@ class ModelLoaderHuggerFace(ModelLoader):
         else:
             raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
-        torch_state_dict = self._load_torch_state_dict(model_file)
-        torch_state_dict = self._fix_key(torch_state_dict)
-        flow_state_dict = self._convert_tensors(torch_state_dict)
-        flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
+        if dist.is_main_process():
+            torch_state_dict = self._load_torch_state_dict(model_file)
+            torch_state_dict = self._fix_key(torch_state_dict)
+            flow_state_dict = self._convert_tensors(torch_state_dict)
+            flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
+        else:
+            flow_state_dict=None
 
         # Instance model
         if isinstance(self.model, omegaconf.dictconfig.DictConfig):
@@ -530,7 +556,7 @@ class ModelLoaderHuggerFace(ModelLoader):
             self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
-        self._state_dict_to_global(flow_state_dict)
+        flow_state_dict = self._state_dict_to_global(flow_state_dict)
 
         # Load
         (
