@@ -19,6 +19,11 @@ from libai.utils import distributed as dist
 
 
 class LayerNorm(flow.nn.Module):
+    """
+    T5 uses a layer_norm which only scales and doesn't shift, 
+    which is also known as Root Mean Square Layer Normalization 
+    thus varience is calculated w/o mean and there is no bias. more details see:(https://arxiv.org/abs/1910.07467)
+    """
     def __init__(self, normalized_shape, eps=1e-6, layer_idx=0):
         super().__init__()
         self.layer_idx = layer_idx
