@@ -105,9 +105,10 @@ class ModelLoader(object):
             start_prefix = "" if has_prefix_module else prefix + "."
             loaded_keys = [start_prefix + key for key in flow_state_dict.keys()]
         else:
-            has_prefix_module, expects_prefix_module, loaded_keys = [None] * 3
+            prefix, has_prefix_module, expects_prefix_module, loaded_keys = [None] * 4
             flow_state_dict = collections.OrderedDict()
         
+        prefix = _broadcast_py_object(prefix, src=0)
         has_prefix_module = _broadcast_py_object(has_prefix_module, src=0)
         expects_prefix_module = _broadcast_py_object(expects_prefix_module, src=0)
         loaded_keys = _broadcast_py_object(loaded_keys, src=0) 
