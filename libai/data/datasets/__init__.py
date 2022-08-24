@@ -20,3 +20,4 @@ from .bert_dataset import BertDataset
 from .roberta_dataset import RobertaDataset
 from .gpt_dataset import GPT2Dataset
 from .t5_dataset import T5Dataset
+from .nerf_dataset import BlenderDataset, LLFFDataset
