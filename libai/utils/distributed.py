@@ -353,6 +353,11 @@ def get_tensor_parallel_size():
     return dist_util.tensor_parallel_size
 
 
+def get_pipeline_parallel_size():
+    dist_util = get_dist_util()
+    return dist_util.pipeline_parallel_size
+
+
 def same_sbp(lhs_sbp, rhs_sbp):
     """Determine if two sbp signatures are the same."""
     assert len(lhs_sbp) == len(rhs_sbp)
