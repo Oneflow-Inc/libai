@@ -756,7 +756,7 @@ class PreTrainedTokenizer(object):
         if isinstance(tokens, str):
             return self._convert_token_to_id_with_added_voc(tokens)
 
-        if isinstance(tokens[0], list):
+        if len(tokens) > 0 and isinstance(tokens[0], list):
             ids = []
             for ts in tokens:
                 ids_x = []

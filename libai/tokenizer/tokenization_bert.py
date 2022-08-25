@@ -124,6 +124,7 @@ class BertTokenizer(PreTrainedTokenizer):
         mask_token="[MASK]",
         tokenize_chinese_chars=True,
         do_chinese_wwm=False,
+        add_bos_token=False,
         **kwargs,
     ):
         super(BertTokenizer, self).__init__(
@@ -161,6 +162,7 @@ class BertTokenizer(PreTrainedTokenizer):
                     tokenize_chinese_chars=tokenize_chinese_chars,
                 )
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab, unk_token=self.unk_token)
+        self.add_bos_token = add_bos_token
 
     @property
     def vocab_size(self):
@@ -220,8 +222,12 @@ class BertTokenizer(PreTrainedTokenizer):
         Returns:
             :obj:`List[str]`: The sequence after adding special toekens.
         """
-        cls = [self.cls_token_id]
-        sep = [self.sep_token_id]
+        if self.add_bos_token:
+            cls = [self.cls_token_id]
+            sep = [self.sep_token_id]
+        else:
+            cls = []
+            sep = []
 
         if token_ids_1 is None:
             return cls + token_ids_0 + sep

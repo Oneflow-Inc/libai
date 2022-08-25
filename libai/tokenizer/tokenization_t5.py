@@ -77,6 +77,7 @@ class T5Tokenizer(PreTrainedTokenizer):
         pad_token="<pad>",
         extra_ids=100,
         additional_special_tokens=None,
+        add_bos_token=False,
         **kwargs,
     ):
         # Add extra_ids to the special token list
@@ -106,6 +107,7 @@ class T5Tokenizer(PreTrainedTokenizer):
 
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(vocab_file)
+        self.add_bos_token = add_bos_token
 
     @property
     def vocab_size(self):
@@ -152,6 +154,8 @@ class T5Tokenizer(PreTrainedTokenizer):
         return out_string.strip()
 
     def _add_eos_if_not_present(self, token_ids):
+        if not self.add_bos_token:
+            return token_ids
         if len(token_ids) > 0 and token_ids[-1] == self.eos_token_id:
             warnings.warn("This sequence already has {self.eos_token}.")
             return token_ids

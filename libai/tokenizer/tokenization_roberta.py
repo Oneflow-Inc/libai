@@ -140,6 +140,7 @@ class RobertaTokenizer(PreTrainedTokenizer):
         unk_token="<unk>",
         pad_token="<pad>",
         mask_token="<mask>",
+        add_bos_token=False,
         **kwargs,
     ):
         super(RobertaTokenizer, self).__init__(
@@ -168,6 +169,7 @@ class RobertaTokenizer(PreTrainedTokenizer):
         self.pat = re.compile(
             r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
         )
+        self.add_bos_token = add_bos_token
 
     @property
     def vocab_size(self):
@@ -256,8 +258,12 @@ class RobertaTokenizer(PreTrainedTokenizer):
         Returns:
             :obj:`List[str]`: The sequence after adding special toekens.
         """
-        cls = [self.cls_token_id]
-        sep = [self.sep_token_id]
+        if self.add_bos_token:
+            cls = [self.cls_token_id]
+            sep = [self.sep_token_id]
+        else:
+            cls = []
+            sep = []
 
         if token_ids_1 is None:
             return cls + token_ids_0 + sep
