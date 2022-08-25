@@ -756,6 +756,15 @@ class PreTrainedTokenizer(object):
         if isinstance(tokens, str):
             return self._convert_token_to_id_with_added_voc(tokens)
 
+        if isinstance(tokens[0], list):
+            ids = []
+            for ts in tokens:
+                ids_x = []
+                for token in ts:
+                    ids_x.append(self._convert_token_to_id_with_added_voc(token))
+                ids.append(ids_x)
+            return ids
+
         ids = []
         for token in tokens:
             ids.append(self._convert_token_to_id_with_added_voc(token))
@@ -775,10 +784,16 @@ class PreTrainedTokenizer(object):
     def encode(self, text):
         if isinstance(text, str):
             tokens = self.tokenize(text)
-            return self.convert_tokens_to_ids(tokens)
+            token_ids = self.convert_tokens_to_ids(tokens)
+            token_ids = self.build_inputs_with_special_tokens(token_ids)
+            return token_ids
         elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], str):
             tokens = [self.tokenize(t) for t in text]
-            return self.convert_tokens_to_ids(tokens)
+            token_ids_list = self.convert_tokens_to_ids(tokens)
+            token_ids_list = [
+                self.build_inputs_with_special_tokens(token_ids) for token_ids in token_ids_list
+            ]
+            return token_ids_list
         elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], int):
             return text
         else:

@@ -19,40 +19,37 @@ import sys
 
 
 def default_argument_parser(epilog=None):
-    """
-    Create a parser with some common arguments used by libai users.
+    """Create a parser with some common arguments used by libai users.
 
     Args:
         epilog (str): epilog passed to ArgumentParser describing the usage.
 
     Returns:
-        argparse.ArgumentParser:
+        argparse.ArgumentParser.
     """
     parser = argparse.ArgumentParser(
         epilog=epilog
-        or f"""
-Examples:
+        or f"""Examples:
+        
+            Run on single machine:
+                $ python3 -m oneflow.distributed.launch \
+                --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
+                --config-file cfg.yaml
 
-Run on single machine:
-    $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
-    --config-file cfg.yaml
+            Change some config options:
+                $ python3 -m oneflow.distributed.launch \
+                --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
+                --config-file cfg.yaml train.load_weight=/path/to/weight.pth optim.lr=0.001
 
-Change some config options:
-    $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
-    --config-file cfg.yaml train.load_weight=/path/to/weight.pth optim.lr=0.001
+            Run on multiple machines:
+                (machine0)$ python3 -m oneflow.distributed.launch \
+                --nproc_per_node 8 --nnodes 2 --node_rank 0 --master_addr <URL> {sys.argv[0]} \
+                --config-file cfg.yaml
 
-Run on multiple machines:
-    (machine0)$ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 2 --node_rank 0 --master_addr <URL> {sys.argv[0]} \
-    --config-file cfg.yaml
-
-    $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 2 --node_rank 1 --master_addr <URL> {sys.argv[0]} \
-    --config-file cfg.yaml
-
-""",
+                $ python3 -m oneflow.distributed.launch \
+                --nproc_per_node 8 --nnodes 2 --node_rank 1 --master_addr <URL> {sys.argv[0]} \
+                --config-file cfg.yaml
+        """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--config-file", default="", metavar="FILE", help="path to config file")
@@ -72,9 +69,9 @@ Run on multiple machines:
     parser.add_argument(
         "opts",
         help="""
-Modify config options at the end of the command. For Yacs configs, use
-space-separated "path.key value" pairs.
-For python-based LazyConfig, use "path.key=value".
+            Modify config options at the end of the command. For Yacs configs, use
+            space-separated "path.key value" pairs.
+            For python-based LazyConfig, use "path.key=value".
         """.strip(),
         default=None,
         nargs=argparse.REMAINDER,
