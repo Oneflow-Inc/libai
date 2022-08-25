@@ -97,11 +97,11 @@ class LayerNorm(nn.Module):
         )
 
 
-class RMSLayerNorm(flow.nn.Module):
+class RMSLayerNorm(nn.Module):
     """T5 uses a layer_norm which only scales and doesn't shift, which is also known as
     Root Mean Square Layer Normalization thus varience is calculated w/o mean and
     there is no bias. More details see: https://arxiv.org/abs/1910.07467.
-    
+
     Args:
         normalized_shape: input shape from an expected input of size.
         eps: a value added to the denominator for numerical stability. Defaults to 1e-5.
