@@ -9,3 +9,6 @@ libai.evaluation
         print_csv_format,
         flatten_results_dict,
         ClsEvaluator,
+        PPLEvaluator,
+        RegEvaluator,
+        BLEUEvaluator,

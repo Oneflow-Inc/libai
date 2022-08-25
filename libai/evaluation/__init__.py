@@ -18,3 +18,4 @@ from .utils import print_csv_format, flatten_results_dict
 from .cls_evaluator import ClsEvaluator
 from .ppl_evaluator import PPLEvaluator
 from .reg_evaluator import RegEvaluator
+from .bleu_evaluator import BLEUEvaluator
