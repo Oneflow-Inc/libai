@@ -1,0 +1,55 @@
+dataloader:
+  train:
+    _target_: libai.data.build.build_nlp_train_loader
+    dataset:
+    - {_target_: projects.RWKV_v4.dataset.RWKVDataset, ctx_len: 1024, data_dir: /home/zhangxiaoyu/RWKV-LM/data/enwik8, epoch_length_fixed: 9996}
+    num_workers: 4
+graph:
+  auto_parallel: {enabled: false, mainstem_algo: true, prune_parallel_cast_ops: false, sbp_collector: false}
+  debug: -1
+  enabled: true
+  eval_graph: {_target_: libai.models.utils.GraphBase, is_train: false}
+  train_graph: {_target_: libai.models.utils.GraphBase, is_train: true}
+model: {_target_: projects.RWKV_v4.modeling.model.GPT, ctx_len: 1024, model_type: RWKV, n_embd: 512, n_layer: 6, vocab_size: 6064}
+optim:
+  _target_: oneflow.nn.optimizer.adam.Adam
+  lr: 0.0008
+  params: {_target_: projects.RWKV_v4.utils.config_optimizer.get_RWKV_v4_config_optim}
+test: {enable: true, path: /home/zhangxiaoyu/RWKV-LM/RWKV-v4/for_load.pth, weight_style: pytorch}
+train:
+  activation_checkpoint: {enabled: true}
+  amp: {enabled: true}
+  checkpointer: {max_to_keep: 100, period: 5000}
+  consumed_train_samples: 0
+  consumed_valid_samples: 0
+  dist: {custom_pipeline_stage_id: null, data_parallel_size: 1, num_gpus_per_node: 1, num_nodes: 1, pipeline_num_layers: 6, pipeline_parallel_size: 1, tensor_parallel_size: 1}
+  evaluation:
+    enabled: false
+    eval_iter: 100000.0
+    eval_metric: Acc@1
+    eval_mode: max
+    eval_period: 5000
+    evaluator:
+      _target_: libai.evaluation.ClsEvaluator
+      topk: [1, 5]
+  global_batch_size: 4
+  input_placement_device: cpu
+  load_weight: ''
+  log_period: 20
+  nccl_fusion_max_ops: 24
+  nccl_fusion_threshold_mb: 16
+  num_accumulation_steps: 1
+  output_dir: output/rwkv_output_loss_compare
+  rdma_enabled: false
+  resume: false
+  samples: 40000
+  scheduler: {_target_: oneflow.nn.optimizer.step_lr.StepLR, gamma: 1.0, step_size: 1000}
+  seed: 1234
+  start_iter: 0
+  test_micro_batch_size: 32
+  train_epoch: 1
+  train_iter: 10000
+  train_micro_batch_size: 4
+  train_samples: null
+  warmup_ratio: 0
+  zero_optimization: {enabled: false, stage: 1}

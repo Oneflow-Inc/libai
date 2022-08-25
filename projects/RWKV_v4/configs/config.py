@@ -30,7 +30,7 @@ train.input_placement_device = "cpu"
 train.dist.pipeline_num_layers = 6
 train.train_micro_batch_size = 12
 
-datafile="/home/chenqiaoling/RWKV-LM/data/enwik8"
+datafile="/home/zhangxiaoyu/RWKV-LM/data/enwik8"
 # 获得一个 DataLoader 的配置对象
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
@@ -48,7 +48,7 @@ train.train_iter=0
 train.train_epoch=1
 
 train.output_dir = "output/rwkv_output_loss_compare"
-train.load_weight = "/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_v4/model/output_model/" # 采用同一个model进行初始化
+train.load_weight = "/home/zhangxiaoyu/RWKV-LM/libai/projects/RWKV_v4/model/output_model/" # 采用同一个model进行初始化
 train.rdma_enabled = False
 
 # model.cfg.hidden_dropout_prob= 0.0 # 关闭所有的dropout

@@ -317,7 +317,7 @@ class GPT(nn.Module):
             q = self.head_q(x)[:, :T, :]
             k = self.head_k(x)[:, :T, :]
             c = (q @ k.transpose(-2, -1)) * (1.0 / RWKV_HEAD_QK_DIM)
-            # c = c.masked_fill(self.copy_mask[:T, :T] == 0, 0)
+            c = c.masked_fill(self.copy_mask[:T, :T] == 0, 0)
             c = c.float()
             c = c @ F.one_hot(idx, num_classes=6064).float()
             # https://github.com/Chenqll/libai/pull/1#issuecomment-1193328369

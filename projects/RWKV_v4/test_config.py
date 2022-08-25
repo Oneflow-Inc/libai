@@ -27,7 +27,7 @@ from libai.config import LazyConfig
 logger = logging.getLogger(__name__)
 
 # 
-sys.path.append('/home/chenqiaoling/RWKV-LM/RWKV-v4')
+sys.path.append('/home/zhangxiaoyu/RWKV-LM/RWKV-v4')
 from src.model import GPT, GPTConfig
 from modeling.model import GPT as model
 
@@ -94,7 +94,7 @@ def filter_keys(key, value):
     return key, value
 
 
-def load_torch_checkpoint(model,  path="/home/chenqiaoling/RWKV-LM/RWKV-v4/trained-1.pth", strict=False):
+def load_torch_checkpoint(model,  path="/home/zhangxiaoyu/RWKV-LM/RWKV-v4/trained-1.pth", strict=False):
     """
     Load checkpoint from the given torch weights.
     Torch weight can be downloaded from the original repo:
@@ -122,7 +122,7 @@ para=dict()
 para=load_torch_checkpoint(model)
 
 # 转入config
-cfg = LazyConfig.load('/home/chenqiaoling/RWKV-LM/libai/projects/RWKV_v4/configs/config.py')
+cfg = LazyConfig.load('/home/zhangxiaoyu/RWKV-LM/libai/projects/RWKV_v4/configs/config.py')
 model_oneflow = DefaultTrainer.build_model(cfg)
 
 model_oneflow.load_state_dict(para, strict=False)
@@ -145,7 +145,7 @@ model = GPT(GPTConfig(6064, 1024, model_type='RWKV',
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device) # 移动模型到cuda
 input=input.to(device)
-m=torch.load('/home/chenqiaoling/RWKV-LM/RWKV-v4/trained-1.pth',map_location=torch.device('cpu'))
+m=torch.load('/home/zhangxiaoyu/RWKV-LM/RWKV-v4/trained-1.pth',map_location=torch.device('cpu'))
 model.load_state_dict(m)
 
 # 在 flow.no_grad() 下进行前向，得到输出
@@ -171,4 +171,4 @@ print(np.allclose(out1, out2, 1e-4, 1e-4))
 # dict1=set(list(para.keys()))
 # dict2=set(list(model_oneflow.state_dict().keys()))
 # 先初始化数据 -- 确保和 model 的 forward 内要求的数据（如 idx）的 shape 一致
-# 分别转为 pytorch 和 oneflow 的 tensor 输入 model 进行前向 可以仿照/home/chenqiaoling/RWKV-LM/RWKV-v4/src/trainer.py 的 L121 进行前向
+# 分别转为 pytorch 和 oneflow 的 tensor 输入 model 进行前向 可以仿照/home/zhangxiaoyu/RWKV-LM/RWKV-v4/src/trainer.py 的 L121 进行前向

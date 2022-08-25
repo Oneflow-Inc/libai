@@ -213,9 +213,9 @@ class TrainerBase:
             total_losses_reduced = sum(metrics_dict.values())
             
             # ### 新增
-            # total_losses_reduced = sum(metrics_dict.values())
+            total_losses_reduced = sum(metrics_dict.values())
             if dist.is_main_process():
-                txt = open("/home/chenqiaoling/libai/projects/RWKV_v4/results/libai_bf16_defaultSize_graph_nolossscale_test2.txt", "a")
+                txt = open("/home/zhangxiaoyu/libai_bfp16.txt", "a")
                 txt.write(str(total_losses_reduced.item())+"\n")
 
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
