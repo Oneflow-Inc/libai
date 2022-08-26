@@ -26,10 +26,6 @@ logger = logging.getLogger("libai." + __name__)
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
-        # if try_get_key(cfg, "graph.enabled") is True:
-        #     raise NotImplementedError(
-        #         "LiBai MAE only support eager global mode now, please set cfg.graph.enabled=False"  # noqa
-        #     )
 
         model = super().build_model(cfg)
         if try_get_key(cfg, "test") is not None:
@@ -37,14 +33,13 @@ class Trainer(DefaultTrainer):
                 from utils.weight_convert import load_torch_checkpoint
 
                 logger.info(f"Loading pretrained weight for test {cfg.test.path}")
-                assert cfg.test.weight_style in ["oneflow", "pytorch"]
-                model = load_torch_checkpoint(model, cfg, path=cfg.test.path, strict=False)
+                assert cfg.test.weight_style == "pytorch"
+                model = load_torch_checkpoint(model, cfg, path=cfg.test.path, strict=True)
 
         return model
 
 
 def main(args):
-    #
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)

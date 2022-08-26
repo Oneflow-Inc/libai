@@ -14,7 +14,7 @@ optim = get_config("common/optim.py").optim
 
 model = LazyCall(GPT)(vocab_size=6064, ctx_len=1024, model_type="RWKV", n_layer=6, n_embd=512)
 
-datafile = "/path/to/data/enwik8"
+datafile = "path/to/data/enwik8"
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
@@ -35,9 +35,10 @@ train.rdma_enabled = False
 train.activation_checkpoint.enabled = True
 
 train.input_placement_device = "cpu"
-train.dist.tensor_parallel_size = 4
-train.dist.pipeline_parallel_size = 2
+train.dist.data_parallel_size = 1
+train.dist.tensor_parallel_size = 2
+train.dist.pipeline_parallel_size = 1
 train.dist.pipeline_num_layers = model.n_layer
 
-train.output_dir = "output/rwkv_output_loss_compare"
-train.load_weight = "/home/zhangxiaoyu/RWKV-LM/libai/projects/RWKV_v4/model/output_model/"
+train.output_dir = "output/RWKV4/"
+# train.load_weight = "output/RWKV_v4/model/model_final/"
