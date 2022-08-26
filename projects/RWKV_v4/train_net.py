@@ -15,13 +15,12 @@
 
 
 import logging
-import sys
-sys.path.append(".")
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-logger = logging.getLogger("libai."+__name__)
+
+logger = logging.getLogger("libai." + __name__)
 
 
 class Trainer(DefaultTrainer):
@@ -36,6 +35,7 @@ class Trainer(DefaultTrainer):
         if try_get_key(cfg, "test") is not None:
             if cfg.test.enable is True:
                 from utils.weight_convert import load_torch_checkpoint
+
                 logger.info(f"Loading pretrained weight for test {cfg.test.path}")
                 assert cfg.test.weight_style in ["oneflow", "pytorch"]
                 model = load_torch_checkpoint(model, cfg, path=cfg.test.path, strict=False)
@@ -44,7 +44,7 @@ class Trainer(DefaultTrainer):
 
 
 def main(args):
-    # 
+    #
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)

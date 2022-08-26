@@ -1,8 +1,8 @@
 import logging
 
+import numpy as np
 import oneflow as flow
 import torch
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,9 @@ def filter_keys(key, value, cfg):
     return key, value
 
 
-def load_torch_checkpoint(model, cfg, path="/home/zhangxiaoyu/RWKV-LM/RWKV-v4/trained-1.pth", strict=False):
+def load_torch_checkpoint(
+    model, cfg, path="/home/zhangxiaoyu/RWKV-LM/RWKV-v4/trained-1.pth", strict=False
+):
     """
     Load checkpoint from the given torch weights.
     Torch weight can be downloaded from the original repo:

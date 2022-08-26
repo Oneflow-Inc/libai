@@ -21,6 +21,7 @@ pybind11
 portalocker
 flake8==3.8.1 
 isort==5.10.1
+click==8.0.2
 black==21.4b2
 autoflake
 tensorboardX

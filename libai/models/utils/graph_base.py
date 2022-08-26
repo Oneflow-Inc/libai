@@ -31,7 +31,7 @@ class GraphBase(nn.Graph):
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
         amp=False,
-        amp_type="fp16"
+        amp_type="fp16",
         activation_checkpoint=False,
         grad_acc_steps=1,
         zero_optim=False,
@@ -49,7 +49,7 @@ class GraphBase(nn.Graph):
             if amp:
                 if amp_type == "fp16":
                     self.config.enable_amp(True)
-                    
+
                     grad_scaler = flow.amp.GradScaler(
                         init_scale=2 ** 12,
                         growth_factor=2.0,

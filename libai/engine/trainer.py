@@ -211,12 +211,12 @@ class TrainerBase:
             # }
             metrics_dict = all_metrics_dict
             total_losses_reduced = sum(metrics_dict.values())
-            
+
             # ### 新增
             total_losses_reduced = sum(metrics_dict.values())
             if dist.is_main_process():
                 txt = open("/home/zhangxiaoyu/libai_bfp16.txt", "a")
-                txt.write(str(total_losses_reduced.item())+"\n")
+                txt.write(str(total_losses_reduced.item()) + "\n")
 
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
             if len(metrics_dict) > 1:
@@ -336,7 +336,7 @@ class GraphTrainer(TrainerBase):
         data = get_batch(
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
-        
+
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
