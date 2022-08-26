@@ -20,8 +20,9 @@ class RWKVDataset(Dataset):
         for u in unique:
             xxObj[xx] = u
             xx += 1
-        with open("vocab.json", "w", encoding="utf-16") as vocab_file:
-            vocab_file.write(json.dumps(xxObj, ensure_ascii=False))
+        # NOTE: comment out write json file.
+        # with open("vocab.json", "w", encoding="utf-16") as vocab_file:
+        #     vocab_file.write(json.dumps(xxObj, ensure_ascii=False))
 
         data_size, vocab_size = len(data), len(unique)
         print("data has %d tokens, %d unique." % (data_size, vocab_size))
@@ -37,8 +38,7 @@ class RWKVDataset(Dataset):
 
     def __getitem__(self, idx):
         # cheat: pick a random spot in dataset
-        # i = np.random.randint(0, len(self.data) - (self.ctx_len + 1))
-        i = 1
+        i = np.random.randint(0, len(self.data) - (self.ctx_len + 1))
         chunk = self.data[i : i + self.ctx_len + 1]
         dix = [self.stoi[s] for s in chunk]
         x = flow.tensor(dix[:-1], dtype=flow.long)
