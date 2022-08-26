@@ -1,20 +1,36 @@
 from omegaconf import OmegaConf
+import oneflow as flow
 
 from libai.config import get_config
 from libai.config import LazyCall
 from libai.tokenizer import GPT2Tokenizer
+from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 
 from projects.RWKV_v4.modeling.model import GPT, GPTConfig
-from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
+from projects.RWKV_v4.utils.config_optimizer import get_RWKV_v4_config_optim
 from projects.RWKV_v4.dataset import RWKVDataset
 
 graph = get_config("common/models/graph.py").graph
 train = get_config("common/train.py").train
-optim = get_config("common/optim.py").optim
+optim = LazyCall(flow.optim.Adam)(
+    params=LazyCall(get_RWKV_v4_config_optim)(),
+    lr=8e-4,
+)
 
-model = LazyCall(GPT)(vocab_size=6064, ctx_len=1024, model_type="RWKV", n_layer=6, n_embd=512)
+model = LazyCall(GPT)(
+    vocab_size=6064, 
+    ctx_len=1024, 
+    model_type="RWKV", 
+    n_layer=6, 
+    n_embd=512
+)
 
-datafile = "path/to/data/enwik8"
+load_torch_checkpoint = OmegaConf.create()
+load_torch_checkpoint.enable = True
+load_torch_checkpoint.weight_style = "pytorch"
+load_torch_checkpoint.path = "data_test/rwkv_test/for_load.pth"
+
+datafile = "data_test/rwkv_test/enwik8"
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
