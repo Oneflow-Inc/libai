@@ -35,10 +35,7 @@ class Trainer(DefaultTrainer):
                 logger.info(f"Loading pretrained weight for test {cfg.load_torch_checkpoint.path}")
                 assert cfg.load_torch_checkpoint.weight_style == "pytorch"
                 model = load_torch_checkpoint(
-                    model, 
-                    cfg, 
-                    path=cfg.load_torch_checkpoint.path, 
-                    strict=True
+                    model, cfg, path=cfg.load_torch_checkpoint.path, strict=True
                 )
 
         return model

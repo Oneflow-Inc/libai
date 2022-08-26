@@ -17,13 +17,7 @@ optim = LazyCall(flow.optim.Adam)(
     lr=8e-4,
 )
 
-model = LazyCall(GPT)(
-    vocab_size=6064, 
-    ctx_len=1024, 
-    model_type="RWKV", 
-    n_layer=6, 
-    n_embd=512
-)
+model = LazyCall(GPT)(vocab_size=6064, ctx_len=1024, model_type="RWKV", n_layer=6, n_embd=512)
 
 load_torch_checkpoint = OmegaConf.create()
 load_torch_checkpoint.enable = True

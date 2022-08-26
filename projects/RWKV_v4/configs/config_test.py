@@ -25,22 +25,13 @@ optim = LazyCall(flow.optim.Adam)(
     lr=8e-4,
 )
 
-model = LazyCall(GPT)(
-    vocab_size=6064, 
-    ctx_len=1024, 
-    model_type="RWKV", 
-    n_layer=6, 
-    n_embd=512
-)
+model = LazyCall(GPT)(vocab_size=6064, ctx_len=1024, model_type="RWKV", n_layer=6, n_embd=512)
 
 train = get_config("common/train.py").train
 train.input_placement_device = "cpu"
 train.dist.pipeline_num_layers = 6
 train.train_micro_batch_size = 4
-train.scheduler = LazyCall(flow.optim.lr_scheduler.StepLR)(
-    step_size=1000, 
-    gamma=1.0
-)
+train.scheduler = LazyCall(flow.optim.lr_scheduler.StepLR)(step_size=1000, gamma=1.0)
 
 train.amp.enabled = True
 train.amp.type = "bf16"
@@ -59,7 +50,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
     num_workers=1,
 )
 
-train.train_iter=300
+train.train_iter = 300
 # train.train_epoch = 1
 
 train.output_dir = "output/rwkv_output_loss_compare"
