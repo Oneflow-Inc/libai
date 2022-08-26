@@ -541,9 +541,11 @@ class DefaultTrainer(TrainerBase):
         # insert for amp training if provided.
         if try_get_key(cfg.model, "cfg.amp_enabled") is not None:
             cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+            cfg.model.cfg.amp_type = cfg.train.amp.type
         # In case some model define without cfg keyword.
         elif try_get_key(cfg.model, "amp_enabled") is not None:
             cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+            cfg.model.cfg.amp_type = cfg.train.amp.type
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
@@ -726,8 +728,8 @@ class DefaultTrainer(TrainerBase):
         logger.info(log_info)
 
         # Global scheduler cfg
-        # cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
-        # cfg.train.scheduler.max_iter = cfg.train.train_iter
+        cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
+        cfg.train.scheduler.max_iter = cfg.train.train_iter
 
     @classmethod
     def build_evaluator(cls, cfg):

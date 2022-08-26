@@ -43,7 +43,11 @@ train = dict(
 
     # Enable automatic mixed precision for training which does not
     # change model's inference behavior.
-    amp=dict(enabled=False),
+    # set type to `fp16` or `bf16` according to your own needs.
+    amp=dict(
+        enabled=False,
+        type="fp16"
+    ),
 
     # Enable activation checkpointing to allow for training
     # with larger models, sequences, and batch sizes.

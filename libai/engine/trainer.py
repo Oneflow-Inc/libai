@@ -276,11 +276,7 @@ class EagerTrainer(TrainerBase):
         data = get_batch(
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
-
-   
         data_time = time.perf_counter() - start
-
-
 
         loss_dict = self.model(**data)
 
@@ -341,12 +337,10 @@ class GraphTrainer(TrainerBase):
         data = get_batch(
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
-        # data
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
         loss_dict = self.graph(**data)
-
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step
         loss_dict = {key: value.mean() for key, value in loss_dict.items()}
