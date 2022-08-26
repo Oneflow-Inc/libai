@@ -1,5 +1,3 @@
-from distutils.command.build import build
-from logging.config import dictConfig
 from typing import Dict
 import numpy as np
 from omegaconf import OmegaConf
@@ -67,9 +65,6 @@ class Dalle2Pipeline(BasePipeline):
                 elif k.endswith('beta'):
                     k = k[:-4] + 'bias'
             assert k in prior.state_dict(), k
-            if(prior.state_dict()[k].is_local):
-                print("@@",k)
-                exit(0)
             flow_tensor = flow.tensor(torch_tensor.cpu().numpy(), placement=prior.state_dict()[k].placement, sbp=prior.state_dict()[k].sbp)
             prior.state_dict()[k].data.copy_(flow_tensor.data)
             
@@ -90,8 +85,6 @@ class Dalle2Pipeline(BasePipeline):
                 elif k.endswith('beta'):
                     k = k[:-4] + "bias"
             assert k in decoder.state_dict().keys(), k
-            if(decoder.state_dict()[k].is_local):
-                print(k)
             flow_tensor = flow.tensor(torch_tensor.cpu().numpy(), placement=decoder.state_dict()[k].placement, sbp=decoder.state_dict()[k].sbp)
             decoder.state_dict()[k].data.copy_(flow_tensor.data)
         return decoder.eval()
