@@ -85,7 +85,6 @@ class TestViTModel(flow.unittest.TestCase):
         cfg.train.output_dir = TEST_OUTPUT
         cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
-
         cfg.train.rdma_enabled = False
 
         self.cfg = cfg
