@@ -8,7 +8,9 @@ from libai.config import LazyCall
 from libai.models.build import build_model
 from libai.data.structures import DistTensorData, Instance
 from libai.inference.basic import BasePipeline
+import libai.utils.distributed as dist
 from dalle2.tokenizer import SimpleTokenizer
+from oneflow.framework import balanced_splitter
 
 
 class Dalle2Pipeline(BasePipeline):
@@ -125,8 +127,14 @@ class Dalle2Pipeline(BasePipeline):
     def __call__(self, text) -> dict:
         return self.forward(text)
 
+    def split_data(self, text):
+        rank = dist.get_rank()
+        indices = balanced_splitter.BalancedRanges(len(text), dist.get_world_size())
+        return text[indices[rank][0]:indices[rank][1]]
+
     def forward(self, text) -> dict:
-        tokens = self.tokenizer.tokenize(text).to_global(placement = flow.placement(type='cuda',ranks=[0,1,2,3]), sbp=flow.sbp.broadcast) 
+        text = self.split_data(text)
+        tokens = self.tokenizer.tokenize(text).to_global(placement = flow.placement(type='cuda',ranks=[0,1,2,3]), sbp=flow.sbp.split(0)) 
         prior = self.load_prior_weight(self.cfg.model.prior, self.cfg.model.prior_weight_path)
         text_embed, text_encodings, text_mask = prior.clip.embed_text(tokens)
         image_embed = prior.sample(tokens, num_samples_per_batch = 2, cond_scale = 1.)
@@ -152,9 +160,9 @@ if __name__ == "__main__":
         data_parallel=1,
         tensor_parallel=4,
         pipeline_parallel=1)
-    imgs = model(["a man is playing basketball with his friends!"] * 10)
+    imgs = model(["a man is playing basketball with his friends!"] * 20)
     imgs = imgs['image_embed']
-    rank = flow.env.get_rank()
+    rank = dist.get_rank()
     if rank == 0:
         imgs = imgs.to_global(placement=flow.placement(type='cuda', ranks=[0]), sbp=flow.sbp.broadcast)
         model.save_images(imgs)
