@@ -60,7 +60,7 @@ class GraphBase(nn.Graph):
                 elif amp_type == "bf16":
                     self.config.enable_amp(True, dtype=flow.bfloat16)
                 else:
-                    raise NotImplementedError
+                    raise NotImplementedError(f"Not support {amp_type}")
 
             if grad_acc_steps > 1:
                 self.config.set_gradient_accumulation_steps(grad_acc_steps)
