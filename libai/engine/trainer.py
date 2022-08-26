@@ -279,7 +279,6 @@ class EagerTrainer(TrainerBase):
         data_time = time.perf_counter() - start
 
         loss_dict = self.model(**data)
-
         losses = sum(loss_dict.values()) / self.grad_acc_steps
 
         losses.backward()
@@ -337,6 +336,7 @@ class GraphTrainer(TrainerBase):
         data = get_batch(
             data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
         )
+        
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
