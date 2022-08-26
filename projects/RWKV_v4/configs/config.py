@@ -41,12 +41,15 @@ train.train_micro_batch_size = 12
 train.train_iter = 0
 train.train_epoch = 1
 
+train.amp.enabled = True
+train.amp.type = "bf16"
+
 train.rdma_enabled = False
 train.activation_checkpoint.enabled = True
 
 train.input_placement_device = "cpu"
 train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 2
+train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
 train.dist.pipeline_num_layers = model.n_layer
 
