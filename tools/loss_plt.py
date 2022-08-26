@@ -1,5 +1,6 @@
-import os
 import argparse
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -13,7 +14,10 @@ def _parse_args():
         help="your txt root dir",
     )
     parser.add_argument(
-        "--save_root", type=str, default="./loss_txt/", help="your draw image save dir",
+        "--save_root",
+        type=str,
+        default="./loss_txt/",
+        help="your draw image save dir",
     )
     return parser.parse_args()
 
@@ -27,7 +31,7 @@ def load_data(file_path):
                 data.append(float(_line.strip()))
         return data
 
-    if type(file_path) == type([]):
+    if isinstance(file_path, type([])):
         total = 0
         for fp in file_path:
             total += np.array(load_txt(fp))
@@ -95,7 +99,7 @@ if __name__ == "__main__":
 
     # draw and save
     os.makedirs(save_root, exist_ok=True)
- 
+
     draw_and_save(
         {
             "title": "libai_rwkv_loss_curve_bench_vs_rwkv_torch --- ADAM",
