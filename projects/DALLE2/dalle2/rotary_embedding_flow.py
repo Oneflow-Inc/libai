@@ -91,7 +91,7 @@ class RotaryEmbedding(nn.Module):
     def rotate_queries_or_keys(self, t, seq_dim = -2):
         placement, sbp = t.placement, t.sbp
         seq_len = t.shape[seq_dim]
-        freqs = self.forward(lambda: flow.arange(seq_len, placement = placement, sbp = sbp), cache_key = seq_len)
+        freqs = self.forward(lambda: flow.arange(seq_len, placement=flow.placement(type='cuda', ranks=[0, 1, 2, 3]), sbp=flow.sbp.broadcast), cache_key = seq_len)
         return apply_rotary_emb(freqs, t)
 
     def forward(self, t, cache_key = None):

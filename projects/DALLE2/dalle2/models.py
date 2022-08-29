@@ -453,11 +453,11 @@ def FeedForward(
     inner_dim = int(mult * dim)
     return nn.Sequential(
         LayerNorm(dim),
-        Linear(dim, inner_dim * 2, bias = False),
+        Linear(dim, inner_dim * 2, bias = False, parallel='col'), 
         SwiGLU(),
         LayerNorm(inner_dim) if post_activation_norm else nn.Identity(),
         nn.Dropout(dropout),
-        Linear(inner_dim, dim, bias = False)
+        Linear(inner_dim, dim, bias = False, parallel='row')
     )
 
 # attention
@@ -483,13 +483,13 @@ class Attention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         self.null_kv = nn.Parameter(flow.randn(2, dim_head, sbp=flow.sbp.broadcast, placement=default_placement))
-        self.to_q = Linear(dim, inner_dim, bias = False)
-        self.to_kv = Linear(dim, dim_head * 2, bias = False)
+        self.to_q = Linear(dim, inner_dim, bias = False, parallel='col')
+        self.to_kv = Linear(dim, dim_head * 2, bias = False, parallel='col') 
 
         self.rotary_emb = rotary_emb
 
         self.to_out = nn.Sequential(
-            Linear(inner_dim, dim, bias = False),
+            Linear(inner_dim, dim, bias = False, parallel='row'), 
             LayerNorm(dim)
         )
 
