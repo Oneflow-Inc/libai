@@ -140,6 +140,7 @@ class RobertaTokenizer(PreTrainedTokenizer):
         unk_token="<unk>",
         pad_token="<pad>",
         mask_token="<mask>",
+        add_bos_token=False,
         **kwargs,
     ):
         super(RobertaTokenizer, self).__init__(
@@ -168,6 +169,7 @@ class RobertaTokenizer(PreTrainedTokenizer):
         self.pat = re.compile(
             r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
         )
+        self.add_bos_token = add_bos_token
 
     @property
     def vocab_size(self):
@@ -240,6 +242,34 @@ class RobertaTokenizer(PreTrainedTokenizer):
         text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
         return text
 
+    def build_inputs_with_special_tokens(
+        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
+    ) -> List[int]:
+        """Add special tokens to a sequence or a pair of sequence.
+        RoBERTa format sentence input:
+
+        - single sequence: [CLS] tokens_a [SEP]
+        - pair of sequences: [CLS] tokens_a [SEP] tokens_b [SEP]
+
+        Args:
+            token_ids_0 (List[int]): The token ids of sentence 0.
+            token_ids_1 (List[int], optional): The token ids of sentence 1. Defaults to None.
+
+        Returns:
+            :obj:`List[str]`: The sequence after adding special toekens.
+        """
+        if self.add_bos_token:
+            cls = [self.cls_token_id]
+            sep = [self.sep_token_id]
+        else:
+            cls = []
+            sep = []
+
+        if token_ids_1 is None:
+            return cls + token_ids_0 + sep
+
+        return cls + token_ids_0 + sep + token_ids_1 + sep
+
     def save_vocabulary(
         self, save_directory: str, filename_prefix: Optional[str] = None
     ) -> Tuple[str]:
@@ -272,33 +302,6 @@ class RobertaTokenizer(PreTrainedTokenizer):
                 index += 1
 
         return vocab_file, merge_file
-
-    def build_inputs_with_special_tokens(
-        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
-    ) -> List[int]:
-        """
-        Build model inputs from a sequence or a pair of sequence for sequence classification
-        tasks by concatenating and adding special tokens. A RoBERTa sequence has the following
-        format:
-
-        - single sequence: `<s> X </s>`
-        - pair of sequences: `<s> A </s></s> B </s>`
-
-        Args:
-            token_ids_0 (`List[int]`):
-                List of IDs to which the special tokens will be added.
-            token_ids_1 (`List[int]`, `optional`):
-                Optional second list of IDs for sequence pairs.
-
-        Returns:
-            `List[int]`: List of [input IDs](../glossary#input-ids) with the
-            appropriate special tokens.
-        """
-        if token_ids_1 is None:
-            return [self.cls_token_id] + token_ids_0 + [self.sep_token_id]
-        cls = [self.cls_token_id]
-        sep = [self.sep_token_id]
-        return cls + token_ids_0 + sep + sep + token_ids_1 + sep
 
     def create_token_type_ids_from_sequences(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
