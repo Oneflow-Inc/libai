@@ -70,9 +70,9 @@ Run on multiple machines:
     parser.add_argument(
         "opts",
         help="""
-            Modify config options at the end of the command. For Yacs configs, use
-            space-separated "path.key value" pairs.
-            For python-based LazyConfig, use "path.key=value".
+Modify config options at the end of the command. For Yacs configs, use
+space-separated "path.key value" pairs.
+For python-based LazyConfig, use "path.key=value".
         """.strip(),
         default=None,
         nargs=argparse.REMAINDER,
