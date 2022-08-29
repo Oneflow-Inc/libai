@@ -19,7 +19,6 @@ cfg = dict(
     drop_path_rate=0.2,
     ape=False,
     patch_norm=True,
-    use_checkpoint=False,
     loss_func=None,
 )
 
