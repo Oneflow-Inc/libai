@@ -10,10 +10,11 @@ optim.weight_decay = 0.0001
 
 model.cfg.num_classes = 19
 
-dataloader.train.dataset[0].root = "/dataset/cityscapes"
-dataloader.test[0].dataset.root = "/dataset/cityscapes"
+dataloader.train.dataset[0].root = "/data/dataset/cityscapes"
+dataloader.test[0].dataset.root = "/data/dataset/cityscapes"
 
 train.output_dir = "./output"
+train.rdma_enabled = False
 
 # Refine train cfg for segformer model
 train.train_micro_batch_size = 4

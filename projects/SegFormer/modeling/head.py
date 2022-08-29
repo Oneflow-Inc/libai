@@ -51,17 +51,16 @@ class DecodeHead(nn.Module):
         self.layer_idx = layer_idx
         
         if dropout_ratio > 0:
-            # self.dropout = nn.Dropout2d(dropout_ratio)    modified
+            # self.dropout = nn.Dropout2d(dropout_ratio)
             self.dropout = nn.Dropout(dropout_ratio)
         else:
             self.dropout = None
         
-        c1_in_channels, c2_in_channels, c3_in_channels, c4_in_channels = self.in_channels
-        
-        self.linear_c4 = MLP(input_dim=c4_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
-        self.linear_c3 = MLP(input_dim=c3_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
-        self.linear_c2 = MLP(input_dim=c2_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
-        self.linear_c1 = MLP(input_dim=c1_in_channels, embed_dim=self.embedding_dim, layer_idx=layer_idx)
+        mlps = []
+        for i in range(4):
+            mlp = MLP(input_dim=self.in_channels[i], embed_dim=self.embedding_dim, layer_idx=layer_idx)
+            mlps.append(mlp)
+        self.linear_c = nn.ModuleList(mlps)
             
         self.linear_fuse = nn.Conv2d(
             in_channels=self.embedding_dim*4,
@@ -116,10 +115,7 @@ class DecodeHead(nn.Module):
             assert isinstance(in_channels, int)
             assert isinstance(in_index, int)
             self.in_channels = in_channels
-            
-    # def init_weights(self):
-    #     """Initialize weights of classification layer."""
-    #     normal_init(self.conv_seg, mean=0, std=0.01)
+
     
     def _transform_inputs(self, inputs):
         """Transform inputs for decoder.
@@ -143,33 +139,24 @@ class DecodeHead(nn.Module):
     def forward(self, inputs):
         x = self._transform_inputs(inputs)  # len=4, 1/4,1/8,1/16,1/32
         x = [i.to_global(placement=dist.get_layer_placement(self.layer_idx)) for i in x]
-        c1, c2, c3, c4 = x
-
+        batch_size = x[0].shape[0]
+        
         ############## MLP decoder on C1-C4 ###########
-        n, _, h, w = c4.shape
+        all_hidden_states = []
+        for x_, mlp in zip(x, self.linear_c):
+            height, weight = x_.shape[-2:]
+            
+            encoder_hidden_state = mlp(x_).permute(0,2,1).reshape(batch_size, -1, height, weight)
+            encoder_hidden_state = nn.functional.interpolate(encoder_hidden_state, size=x[0].size()[2:], mode='bilinear',align_corners=False)
+            all_hidden_states.append(encoder_hidden_state)
+      
+        hidden_states = self.linear_fuse(flow.cat(all_hidden_states[::-1], dim=1))
+        hidden_states = self.batch_norm(hidden_states)
+        hidden_states = self.activation(hidden_states)
+        hidden_states = self.dropout(hidden_states)
+        logits = self.linear_pred(hidden_states)
 
-        _c4 = self.linear_c4(c4).permute(0,2,1).reshape(n, -1, c4.shape[2], c4.shape[3])
-        _c4 = nn.functional.interpolate(_c4, size=c1.size()[2:],mode='bilinear',align_corners=False)
-        # _c4 = flow.reshape(_c4, [8, 256, 256, 256])
-
-        _c3 = self.linear_c3(c3).permute(0,2,1).reshape(n, -1, c3.shape[2], c3.shape[3])
-        _c3 = nn.functional.interpolate(_c3, size=c1.size()[2:],mode='bilinear',align_corners=False)
-        # _c3 = flow.reshape(_c3, [8, 256, 256, 256])
-
-        _c2 = self.linear_c2(c2).permute(0,2,1).reshape(n, -1, c2.shape[2], c2.shape[3])
-        _c2 = nn.functional.interpolate(_c2, size=c1.size()[2:],mode='bilinear',align_corners=False)
-        # _c2 = flow.reshape(_c2, [8, 256, 256, 256])
-
-        _c1 = self.linear_c1(c1).permute(0,2,1).reshape(n, -1, c1.shape[2], c1.shape[3])
-
-        _c = self.linear_fuse(flow.cat([_c4, _c3, _c2, _c1], dim=1))
-        _c = self.batch_norm(_c)
-        _c = self.activation(_c)
-
-        x = self.dropout(_c)
-        x = self.linear_pred(x)
-
-        return x
+        return logits
 
 
 class MLP(nn.Module):

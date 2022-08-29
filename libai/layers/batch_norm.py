@@ -24,14 +24,12 @@ class _NormBase(nn.Module):
         self.affine = affine
         self.track_running_stats = track_running_stats
         if self.affine:
-            self.weight = flow.nn.Parameter(flow.Tensor(num_features)).to_global(
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        )
-            self.bias = flow.nn.Parameter(flow.Tensor(num_features)).to_global(
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        )
+            self.weight = flow.nn.Parameter(flow.Tensor(num_features,
+                                                        placement=dist.get_layer_placement(layer_idx),
+                                                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),))
+            self.bias = flow.nn.Parameter(flow.Tensor(num_features,
+                                                        placement=dist.get_layer_placement(layer_idx),
+                                                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),))
         else:
             self.register_parameter("weight", None)
             self.register_parameter("bias", None)

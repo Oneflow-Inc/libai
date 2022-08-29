@@ -19,6 +19,8 @@ class Mlp(MLP):
         
     def forward(self, hidden_states, H, W):
         intermediate = self.dense_h_to_4h(hidden_states)
+        intermediate = self.dwconv(intermediate, H, W)
+        
         if self.bias_gelu_fusion:
             intermediate, bias = intermediate
             intermediate = flow._C.fused_bias_add_gelu(
@@ -26,8 +28,15 @@ class Mlp(MLP):
             )
         else:
             intermediate = self.activation_func(intermediate)
+        
+        if self.bias_dropout_fusion:
+            intermediate, bias = intermediate
+            intermediate = flow._C.fused_bias_add_dropout(
+                intermediate, bias, p=self.output_dropout_prob, axis=intermediate.ndim - 1
+            )
+        else:
+            intermediate = self.dropout(intermediate)
 
-        intermediate = self.dwconv(intermediate, H, W)
         output = self.dense_4h_to_h(intermediate)
         
         if self.bias_dropout_fusion:
@@ -114,7 +123,7 @@ class Attention(nn.Module):
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
         x = self.proj(x)
         x = self.proj_drop(x)
-
+        
         return x
     
 class Block(nn.Module):
@@ -135,8 +144,8 @@ class Block(nn.Module):
         self.mlp = Mlp(hidden_size=dim,
                        ffn_hidden_size=mlp_hidden_dim,
                        output_dropout_prob=drop,
-                       bias_gelu_fusion=True,
-                       bias_dropout_fusion=True,
+                       bias_gelu_fusion=False,
+                       bias_dropout_fusion=False,
                        layer_idx=layer_idx)
 
 
@@ -158,16 +167,15 @@ class MixVisionTransformer(nn.Module):
         _type_: _description_
     """
     @configurable
-    def __init__(self, img_size=224, patch_sizes=[7, 3, 3, 3], in_chans=3, num_classes=19, embed_dims=[32, 64, 160, 256],
+    def __init__(self, img_size=224, patch_sizes=[7, 3, 3, 3], strides=[4, 2, 2, 2], in_chans=3, num_classes=1000, embed_dims=[32, 64, 160, 256],
                  num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=True, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=LayerNorm, loss_func=None,
-                 depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1], decoder_in_channels=[32, 64, 160, 256], decoder_embedding_dim=256, decoder_dropout_prob=0.1, ignore_index=255):
+                 depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1]):
         super().__init__()
         self.num_classes = num_classes
         self.depths = depths
 
         # patch_embed
-        strides = [4, 2, 2, 2]
         patch_embeds = []
         for i in range(len(depths)):
             patch_embeds.append(
@@ -203,17 +211,10 @@ class MixVisionTransformer(nn.Module):
         )
         
         # classification head
-        self.head = DecodeHead( in_channels=decoder_in_channels,
-                                in_index=[0, 1, 2, 3],
-                                feature_strides=[4, 8, 16, 32],
-                                dropout_ratio=decoder_dropout_prob,
-                                embedding_dim=decoder_embedding_dim,
-                                num_classes=num_classes,
-                                align_corners=False,
-                                layer_idx=-1) if num_classes > 0 else nn.Identity()
+        self.head = Linear(embed_dims[3], num_classes, layer_idx=-1) if num_classes > 0 else nn.Identity()
         
         # Loss func
-        self.loss_func = nn.CrossEntropyLoss(ignore_index=ignore_index) if loss_func is None else loss_func
+        self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
         self.apply(self._init_weights)
 
@@ -237,6 +238,7 @@ class MixVisionTransformer(nn.Module):
         return {
             'img_size': cfg.img_size,
             'patch_sizes': cfg.patch_sizes,
+            'strides': cfg.strides,
             'in_chans': cfg.in_chans,
             'num_classes': cfg.num_classes,
             'embed_dims': cfg.embed_dims,
@@ -250,15 +252,11 @@ class MixVisionTransformer(nn.Module):
             'depths': cfg.depths,
             'sr_ratios': cfg.sr_ratios,
             'loss_func': cfg.loss_func,
-            'decoder_in_channels': cfg.decoder_in_channels,
-            'decoder_embedding_dim': cfg.decoder_embedding_dim,
-            'decoder_dropout_prob': cfg.decoder_dropout_prob
         }
     
 
     def forward_features(self, x):
         B = x.shape[0]
-        outs = []
         
         for idx, m in enumerate(zip(self.patch_embeds, self.blocks, self.layer_norms)):
             embedding_layer, block_layer, norm_layer = m
@@ -266,16 +264,15 @@ class MixVisionTransformer(nn.Module):
             for i, blk in enumerate(block_layer):
                 x = blk(x, H, W)
             x = norm_layer(x)
-            x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-            outs.append(x)    
-
-        return outs
+            if idx != len(self.depths) - 1:
+                x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()    
+        
+        return x.mean(dim=1)
 
     def forward(self, images, labels=None):
         x = self.forward_features(images)
         x = self.head(x)
         if labels is not None and self.training:
-            x = F.interpolate(x, labels.shape[1:], mode='bilinear')
             losses = self.loss_func(x, labels)
             return {"losses": losses}
         else:
@@ -338,11 +335,8 @@ class DWConv(nn.Module):
 if __name__ == '__main__':
     model = MixVisionTransformer()
     
-    for param_tensor in model.state_dict():
-        print(param_tensor,'\t',model.state_dict()[param_tensor].size())
-
     import numpy as np
-    input = np.random.rand(1, 3, 512, 1024)
+    input = np.random.rand(1, 3, 224, 224)
     input = flow.tensor(input, dtype=flow.float32, sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]), placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),)
     output = model(input)
     print(output['prediction_scores'].shape)
