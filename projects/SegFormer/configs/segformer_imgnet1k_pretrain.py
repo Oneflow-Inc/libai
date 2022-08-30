@@ -43,6 +43,7 @@ train.rdma_enabled = False
 train.dist.data_parallel_size=4
 train.dist.tensor_parallel_size=1
 train.dist.pipeline_parallel_size = 1
+# train.dist.pipeline_num_layers=8
 
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300

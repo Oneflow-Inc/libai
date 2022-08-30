@@ -9,7 +9,7 @@ from projects.SegFormer.modeling.segformer_loadmodel import (
 )
 
 model = LazyCall(SegformerSegmentationLoadImageNetPretrain)(cfg=cfg)
-cfg.pretrained_model_path = '/home/zhangguangjun/libai/projects/SegFormer/pretrained'
+model.cfg.pretrained_model_path = '/home/zhangguangjun/libai/projects/SegFormer/pretrained'
 
 optim.lr = 0.00006
 optim.weight_decay = 0.0001
@@ -23,9 +23,9 @@ train.output_dir = "./output"
 train.rdma_enabled = False
 
 # Refine train cfg for segformer model
-train.train_micro_batch_size = 4
+train.train_micro_batch_size = 2
 train.num_accumulation_steps = 1
-train.test_micro_batch_size = 4
+train.test_micro_batch_size = 2
 
 train.dist.data_parallel_size=4
 train.dist.tensor_parallel_size=1
