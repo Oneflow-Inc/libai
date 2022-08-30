@@ -2,7 +2,7 @@ import json
 
 import oneflow as flow
 
-from libai.models.utils.model_utils.base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
+from libai.models.utils.model_utils.base_loader import ModelLoaderHuggerFace
 
 class SegFLoaderImageNet1kPretrain(ModelLoaderHuggerFace):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):

@@ -1,13 +1,11 @@
-from pydoc import importfile
 from omegaconf import DictConfig
-from libai.config import LazyCall
-from projects.SegFormer.modeling.mix_transformer_segmentation import MixVisionTransformerForSegmentation
 
 cfg = dict(
     img_size=224,
     patch_sizes=[7,3,3,3],
     strides=[4,2,2,2],
     in_chans=3,
+    num_blocks=4,
     num_classes=19,
     embed_dims=[32, 64, 160, 256],
     num_heads=[1, 2, 5, 8],
@@ -22,9 +20,8 @@ cfg = dict(
     loss_func=None,
     decoder_in_channels=[32, 64, 160, 256],
     decoder_embedding_dim=256,
-    decoder_dropout_prob=0.1
+    decoder_dropout_prob=0.1,
+    ignore_index=255
 )
 
 cfg = DictConfig(cfg)
-
-model = LazyCall(MixVisionTransformerForSegmentation)(cfg=cfg)

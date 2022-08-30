@@ -1,9 +1,15 @@
-from projects.SegFormer.configs.models.mit_b0 import model
-from projects.SegFormer.configs.data.cityscapes import dataloader
 from configs.common.models.graph import graph
-from configs.common.train import train
 from configs.common.optim import optim
+from configs.common.train import train
+from libai.config import LazyCall
+from projects.SegFormer.configs.data.cityscapes import dataloader
+from projects.SegFormer.configs.models.mit_b0 import cfg
+from projects.SegFormer.modeling.segformer_loadmodel import (
+    SegformerSegmentationLoadImageNetPretrain,
+)
 
+model = LazyCall(SegformerSegmentationLoadImageNetPretrain)(cfg=cfg)
+cfg.pretrained_model_path = '/home/zhangguangjun/libai/projects/SegFormer/pretrained'
 
 optim.lr = 0.00006
 optim.weight_decay = 0.0001
@@ -21,7 +27,7 @@ train.train_micro_batch_size = 4
 train.num_accumulation_steps = 1
 train.test_micro_batch_size = 4
 
-train.dist.data_parallel_size=1
+train.dist.data_parallel_size=4
 train.dist.tensor_parallel_size=1
 train.dist.pipeline_parallel_size = 1
 # train.dist.pipeline_num_layers=8

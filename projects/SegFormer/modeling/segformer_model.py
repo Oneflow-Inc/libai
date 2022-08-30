@@ -12,6 +12,23 @@ from libai.utils import distributed as dist
 from projects.SegFormer.modeling.head import DecodeHead
 
 
+
+class DWConv(nn.Module):
+    def __init__(self, dim=768, layer_idx=0):
+        super(DWConv, self).__init__()
+        self.dwconv = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim).to_global(
+            placement=dist.get_layer_placement(layer_idx),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
+    
+    def forward(self, x, H, W):
+        B, N, C = x.shape
+        x = x.transpose(1, 2).view(B, C, H, W)
+        x = self.dwconv(x)
+        x = x.flatten(2).transpose(1, 2)
+
+        return x
+
 class Mlp(MLP):
     def __init__(self, hidden_size, ffn_hidden_size, output_dropout_prob=0, init_method=nn.init.xavier_normal_, output_layer_init_method=None, bias_gelu_fusion=False, bias_dropout_fusion=False, *, layer_idx=0):
         super(Mlp, self).__init__(hidden_size, ffn_hidden_size, output_dropout_prob, init_method, output_layer_init_method, bias_gelu_fusion, bias_dropout_fusion, layer_idx=layer_idx)
@@ -157,7 +174,7 @@ class Block(nn.Module):
         return x
 
 
-class MixVisionTransformer(nn.Module):
+class SegformerPreTrainModel(nn.Module):
     """_summary_
 
     Args:
@@ -167,17 +184,18 @@ class MixVisionTransformer(nn.Module):
         _type_: _description_
     """
     @configurable
-    def __init__(self, img_size=224, patch_sizes=[7, 3, 3, 3], strides=[4, 2, 2, 2], in_chans=3, num_classes=1000, embed_dims=[32, 64, 160, 256],
+    def __init__(self, img_size=224, patch_sizes=[7, 3, 3, 3], strides=[4, 2, 2, 2], in_chans=3, num_blocks=4, embed_dims=[32, 64, 160, 256],
                  num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=True, qk_scale=None, drop_rate=0.,
-                 attn_drop_rate=0., drop_path_rate=0., norm_layer=LayerNorm, loss_func=None,
+                 attn_drop_rate=0., drop_path_rate=0., norm_layer=LayerNorm,
                  depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1]):
         super().__init__()
-        self.num_classes = num_classes
+        
         self.depths = depths
+        self.num_blocks = num_blocks
 
         # patch_embed
         patch_embeds = []
-        for i in range(len(depths)):
+        for i in range(num_blocks):
             patch_embeds.append(
                 OverlapPatchEmbed(patch_size=patch_sizes[i], stride=strides[i], in_chans=in_chans if i == 0 else embed_dims[i-1],
                                   embed_dim=embed_dims[i], layer_idx=i if i == 0 else sum(depths[:i]))
@@ -190,7 +208,7 @@ class MixVisionTransformer(nn.Module):
         
         blocks = []
         cur = 0
-        for i in range(len(depths)):
+        for i in range(num_blocks):
             layers = []
             if i != 0:
                 cur += depths[i - 1]
@@ -207,14 +225,8 @@ class MixVisionTransformer(nn.Module):
             
         # Layer norms
         self.layer_norms = nn.ModuleList(
-            [norm_layer(embed_dims[i], layer_idx=sum(depths[:i+1]) - 1) for i in range(len(depths))]
+            [norm_layer(embed_dims[i], layer_idx=sum(depths[:i+1]) - 1) for i in range(num_blocks)]
         )
-        
-        # classification head
-        self.head = Linear(embed_dims[3], num_classes, layer_idx=-1) if num_classes > 0 else nn.Identity()
-        
-        # Loss func
-        self.loss_func = nn.CrossEntropyLoss() if loss_func is None else loss_func
 
         self.apply(self._init_weights)
 
@@ -240,7 +252,7 @@ class MixVisionTransformer(nn.Module):
             'patch_sizes': cfg.patch_sizes,
             'strides': cfg.strides,
             'in_chans': cfg.in_chans,
-            'num_classes': cfg.num_classes,
+            'num_blocks': cfg.num_blocks,
             'embed_dims': cfg.embed_dims,
             'num_heads': cfg.num_heads,
             'mlp_ratios': cfg.mlp_ratios,
@@ -251,10 +263,8 @@ class MixVisionTransformer(nn.Module):
             'drop_path_rate': cfg.drop_path_rate,
             'depths': cfg.depths,
             'sr_ratios': cfg.sr_ratios,
-            'loss_func': cfg.loss_func,
         }
     
-
     def forward_features(self, x):
         B = x.shape[0]
         
@@ -264,23 +274,61 @@ class MixVisionTransformer(nn.Module):
             for i, blk in enumerate(block_layer):
                 x = blk(x, H, W)
             x = norm_layer(x)
-            if idx != len(self.depths) - 1:
+            if idx != self.num_blocks - 1:
                 x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()    
         
         return x.mean(dim=1)
 
+    def forward(self, x):
+        encoder_output = self.forward_features(x)
+        return encoder_output
+        
+    
+        
+
+class SegformerModel(SegformerPreTrainModel):
+    @configurable
+    def __init__(self, img_size=224, patch_sizes=[7, 3, 3, 3], strides=[4, 2, 2, 2], in_chans=3, num_blocks=4, embed_dims=[32, 64, 160, 256], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=True, qk_scale=None, drop_rate=0, attn_drop_rate=0, drop_path_rate=0, norm_layer=LayerNorm, depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1]):
+        super(SegformerModel, self).__init__(img_size, patch_sizes, strides, in_chans, num_blocks, embed_dims, num_heads, mlp_ratios, qkv_bias, qk_scale, drop_rate, attn_drop_rate, drop_path_rate, norm_layer, depths, sr_ratios)
+    
+    def forward_features(self, x):
+        B = x.shape[0]
+        outs = []
+        
+        for idx, m in enumerate(zip(self.patch_embeds, self.blocks, self.layer_norms)):
+            embedding_layer, block_layer, norm_layer = m
+            x, H, W = embedding_layer(x)
+            for i, blk in enumerate(block_layer):
+                x = blk(x, H, W)
+            x = norm_layer(x)
+            x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+            outs.append(x)    
+
+        return outs
+
+
+class SegformerForImageClassification(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        self.num_classes = cfg.num_classes
+        
+        self.segformer = SegformerPreTrainModel(cfg)
+        self.head = Linear(cfg.embed_dims[3], cfg.num_classes, layer_idx=-1) if cfg.num_classes > 0 else nn.Identity()
+        
+        self.loss_func = nn.CrossEntropyLoss() if cfg.loss_func is None else cfg.loss_func
+        
     def forward(self, images, labels=None):
-        x = self.forward_features(images)
-        x = self.head(x)
+        output = self.segformer(images)
+        logits = self.head(output)
         if labels is not None and self.training:
-            losses = self.loss_func(x, labels)
+            losses = self.loss_func(logits, labels)
             return {"losses": losses}
         else:
-            return {"prediction_scores": x}
+            return {"prediction_scores": logits}
         
     @staticmethod
     def set_pipeline_stage_id(model):
-        ### TODO set_pipeline_stage_id 
         dist_utils = dist.get_dist_util()
         
         # Set pipeline parallelism stage_id
@@ -307,36 +355,80 @@ class MixVisionTransformer(nn.Module):
             dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
         )
         
+    
+
+class SegformerForSemanticSegmentation(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        self.num_classes = cfg.num_classes
+        
+        self.segformer = SegformerModel(cfg)
+        self.head = DecodeHead(in_channels=cfg.decoder_in_channels,
+                                in_index=[0, 1, 2, 3],
+                                feature_strides=[4, 8, 16, 32],
+                                dropout_ratio=cfg.decoder_dropout_prob,
+                                embedding_dim=cfg.decoder_embedding_dim,
+                                num_classes=cfg.num_classes,
+                                align_corners=False,
+                                layer_idx=-1) if cfg.num_classes > 0 else nn.Identity()
+        
+        self.loss_func = nn.CrossEntropyLoss(ignore_index=cfg.ignore_index) if cfg.loss_func is None else cfg.loss_func
+        
+    def forward(self, images, labels=None):
+        output = self.segformer(images)
+        logits = self.head(output)
+        if labels is not None and self.training:
+            x = F.interpolate(logits, labels.shape[1:], mode='bilinear')
+            losses = self.loss_func(x, labels)
+            return {"losses": losses}
+        else:
+            return {"prediction_scores": logits}
         
     @staticmethod
-    def set_activation_checkpoint(model):
-        ### TODO set_activation_checkpoint 
-        pass    
-
-
-
-class DWConv(nn.Module):
-    def __init__(self, dim=768, layer_idx=0):
-        super(DWConv, self).__init__()
-        self.dwconv = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim).to_global(
-            placement=dist.get_layer_placement(layer_idx),
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+        
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, Block):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
+            elif isinstance(module_block.origin, OverlapPatchEmbed):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
+            elif isinstance(module_block.origin, LayerNorm):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
+                
+        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+        model.loss_func.config.set_stage(
+            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
         )
-    
-    def forward(self, x, H, W):
-        B, N, C = x.shape
-        x = x.transpose(1, 2).view(B, C, H, W)
-        x = self.dwconv(x)
-        x = x.flatten(2).transpose(1, 2)
 
-        return x
-    
-
+ 
 if __name__ == '__main__':
-    model = MixVisionTransformer()
+    from projects.SegFormer.configs.models.mit_b0 import cfg as cfg_seg
+    from projects.SegFormer.configs.models.classification.mit_cls_b0 import cfg as cfg_cls
+    print(cfg_seg)
+    print(cfg_cls)
+    
+    model_seg = SegformerForSemanticSegmentation(cfg_seg)
+    for param in model_seg.state_dict():
+        print(param, model_seg.state_dict()[param].size())
+    model_cls = SegformerForImageClassification(cfg_cls)
     
     import numpy as np
     input = np.random.rand(1, 3, 224, 224)
     input = flow.tensor(input, dtype=flow.float32, sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]), placement=flow.placement("cuda" if flow.cuda.is_available() else "cpu", [0]),)
-    output = model(input)
-    print(output['prediction_scores'].shape)
+    output_seg = model_seg(input)
+    output_cls = model_cls(input)
+    print(output_seg['prediction_scores'].shape)
+    print(output_cls['prediction_scores'].shape)
