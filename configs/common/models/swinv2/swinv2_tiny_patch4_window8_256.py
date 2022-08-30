@@ -17,8 +17,8 @@ cfg = dict(
     drop_path_rate=0.2,
     ape=False,
     patch_norm=True,
-    use_checkpoint=False,
     pretrained_window_sizes=[0, 0, 0, 0],
+    loss_func=None,
 )
 
 cfg = DictConfig(cfg)
