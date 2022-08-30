@@ -243,7 +243,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
         loss.backward()
         
         self.assertTrue(np.allclose(-24882176., model.transformer.layernorm_f.weight.grad.sum().numpy()))
-        self.assertTrue(np.allclose(3.1779e+08, model.embeddings.token_embeddings.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(np.allclose(317785760.0, model.embeddings.token_embeddings.weight.grad.sum().numpy()))
 
 if __name__ == "__main__":
     unittest.main()
