@@ -18,6 +18,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Any, Dict
 
 import oneflow as flow
+from oneflow.framework.check_point_v2 import _broadcast_py_object
 
 from libai.config import LazyConfig, try_get_key
 from libai.engine import DefaultTrainer
@@ -69,7 +70,11 @@ class BasePipeline(metaclass=ABCMeta):
         self.model = self.model.eval()
 
         # initial tokenizer
-        self.tokenizer = self.build_tokenizer(self.cfg)
+        if dist.is_main_process():
+            self.tokenizer = self.build_tokenizer(self.cfg)
+        else:
+            self.tokenizer = None
+        self.tokenizer = _broadcast_py_object(self.tokenizer, src=0)
 
         # set parameters
         (

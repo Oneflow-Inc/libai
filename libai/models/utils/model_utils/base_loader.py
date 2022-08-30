@@ -131,6 +131,7 @@ class ModelLoader(object):
                     sbp=value.sbp,
                     placement=value.placement
                 )
+                dist.synchronize()
         return flow_state_dict
 
     def _load_pretrained_model(
@@ -514,40 +515,42 @@ class ModelLoaderHuggerFace(ModelLoader):
             >>> bert = loader.load()
 
         """
-        if os.path.isdir(self.pretrained_model_path):
-            # state_dict file pytorch
-            if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)):
-                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)
-            else:
-                raise EnvironmentError(
-                    f"Error no file named {WEIGHTS_NAME_PT} found"
-                    f"in directory {self.pretrained_model_path}."
-                )
-
-            # config file
-            if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
-                config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
-
-                # Load config and update config.
-                self._load_config_from_json(config_file)
-            else:
-                import warnings
-
-                warnings.warn(
-                    f"Error no file named {CONFIG_NAME} found in directory"
-                    f"{self.pretrained_model_path}",
-                    RuntimeWarning,
-                )
-        else:
-            raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
-
         if dist.is_main_process():
+            if os.path.isdir(self.pretrained_model_path):
+                # state_dict file pytorch
+                if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)):
+                    model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)
+                else:
+                    raise EnvironmentError(
+                        f"Error no file named {WEIGHTS_NAME_PT} found"
+                        f"in directory {self.pretrained_model_path}."
+                    )
+
+                # config file
+                if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
+                    config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
+
+                    # Load config and update config.
+                    self._load_config_from_json(config_file)
+                else:
+                    import warnings
+
+                    warnings.warn(
+                        f"Error no file named {CONFIG_NAME} found in directory"
+                        f"{self.pretrained_model_path}",
+                        RuntimeWarning,
+                    )
+            else:
+                raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
+        
             torch_state_dict = self._load_torch_state_dict(model_file)
             torch_state_dict = self._fix_key(torch_state_dict)
             flow_state_dict = self._convert_tensors(torch_state_dict)
             flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
         else:
             flow_state_dict=None
+
+        self.libai_cfg = _broadcast_py_object(self.libai_cfg, src=0)
 
         # Instance model
         if isinstance(self.model, omegaconf.dictconfig.DictConfig):
