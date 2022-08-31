@@ -57,7 +57,7 @@ SegFormer
 
 ## 训练
 1. 加载official imagenet1k pretrain weight 在分割任务数据集如cityscapes上进行训练
-下载在Imagenet1K上预训练的权重 [google drive](https://drive.google.com/drive/folders/1b7bwrInTW4VLEm27YawHOAMSMikga2Ia?usp=sharing)|[one drive](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/xieenze_connect_hku_hk/EvOn3l1WyM5JpnMQFSEO5b8B7vrHw9kDaJGII-3N9KNhrg?e=cpydzZ),放在pretrained文件夹
+下载在Imagenet1K上预训练的权重 [google drive](https://drive.google.com/drive/folders/1b7bwrInTW4VLEm27YawHOAMSMikga2Ia?usp=sharing)|[one drive](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/xieenze_connect_hku_hk/EvOn3l1WyM5JpnMQFSEO5b8B7vrHw9kDaJGII-3N9KNhrg?e=cpydzZ),放在pretrained文件夹, 并修改权重文件名为pytorch_model.bin
 ```
 bash tool/train.sh tool/train_net.py projects/Segformer/configs/segformer_city.py 4
 ```
