@@ -139,7 +139,79 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         self.assertTrue(
             np.allclose(np.array(221.7827), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
+    
+    @flow.unittest.skip_unless_1n4d()
+    def test_swinv2_utils_with_data_tensor_parallel_backward(self):
+        # set distributed config
+        dist_cfg = DictConfig(
+            dict(
+                data_parallel_size=2,
+                tensor_parallel_size=2,
+                pipeline_parallel_size=1,
+            )
+        )
+        dist.setup_dist_util(dist_cfg)
 
+        # load model
+        load_func = SwinV2LoaderHuggerFace(
+            model=libai.models.SwinTransformerV2,
+            libai_cfg=libai_cfg,
+            pretrained_model_path=self.pretrained_model_path,
+            drop_rate=0,
+            drop_path_rate=0
+        )
+        model = load_func.load()
+
+        input_image = flow.tensor(
+            self.input_image.tolist(),
+            dtype=flow.float32,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=model.patch_embed.proj.weight.placement,
+        )
+
+        prediction_scores = model(input_image)["prediction_scores"]
+        loss = prediction_scores.sum()
+        loss.backward()
+
+        self.assertTrue(np.allclose(373520.47, model.head.weight.grad.sum().numpy()))
+        self.assertTrue(np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy()))
+
+    @flow.unittest.skip_unless_1n4d()
+    def test_swinv2_utils_with_data_tensor_pipeline_parallel_backward(self):
+        # set distributed config
+        dist_cfg = DictConfig(
+            dict(
+                data_parallel_size=2,
+                tensor_parallel_size=1,
+                pipeline_parallel_size=2,
+                pipeline_num_layers=12,
+            )
+        )
+        dist.setup_dist_util(dist_cfg)
+
+        # load model
+        load_func = SwinV2LoaderHuggerFace(
+            model=libai.models.SwinTransformerV2,
+            libai_cfg=libai_cfg,
+            pretrained_model_path=self.pretrained_model_path,
+            drop_rate=0,
+            drop_path_rate=0
+        )
+        model = load_func.load()
+
+        input_image = flow.tensor(
+            self.input_image.tolist(),
+            dtype=flow.float32,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=model.patch_embed.proj.weight.placement,
+        )
+
+        prediction_scores = model(input_image)["prediction_scores"]
+        loss = prediction_scores.sum()
+        loss.backward()
+
+        self.assertTrue(np.allclose(373520.47, model.head.weight.grad.sum().numpy()))
+        self.assertTrue(np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy()))
 
 if __name__ == "__main__":
     unittest.main()
