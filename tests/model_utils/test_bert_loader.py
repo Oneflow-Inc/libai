@@ -203,14 +203,14 @@ class TestBertLoder(flow.unittest.TestCase):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=model.embeddings.vocab_embeddings.weight.placement,
         )
-        last_hidden_state, _ = model(input_ids, mask)
+        last_hidden_state, pooled_output = model(input_ids, mask)
 
         # backward
-        loss = last_hidden_state.sum()
+        loss = pooled_output.sum()
         loss.backward()
         
-        self.assertTrue(np.allclose(7.6293945e-06, model.final_layernorm.weight.grad.sum().detach().numpy()))
-        self.assertTrue(np.allclose(3.0517578e-05, model.embeddings.vocab_embeddings.weight.grad.sum().numpy()))
+        self.assertTrue(np.allclose(-10725.5088, model.pooler.dense.weight.grad.sum()))
+        self.assertTrue(np.allclose(6.151199e-05, model.embeddings.vocab_embeddings.weight.grad.sum().numpy()))
     
     @flow.unittest.skip_unless_1n4d()
     def test_bert_loader_with_data_tensor_pipeline_parallel_backward(self):
@@ -253,15 +253,15 @@ class TestBertLoder(flow.unittest.TestCase):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=model.embeddings.vocab_embeddings.weight.placement,
         )
-        last_hidden_state, _ = model(input_ids, mask)
+        last_hidden_state, pooled_output = model(input_ids, mask)
 
         # backward
-        loss = last_hidden_state.sum()
+        loss = pooled_output.sum()
         loss.backward()
         
-        self.assertTrue(np.allclose(7.6293945e-06, model.final_layernorm.weight.grad.sum().detach().numpy()))
-        self.assertTrue(np.allclose(3.0517578e-05, model.embeddings.vocab_embeddings.weight.grad.sum().numpy()))
-        
+        self.assertTrue(np.allclose(-10725.5088, model.pooler.dense.weight.grad.sum()))
+        self.assertTrue(np.allclose(6.151199e-05, model.embeddings.vocab_embeddings.weight.grad.sum().numpy()))
+
 
 if __name__ == "__main__":
     unittest.main()
