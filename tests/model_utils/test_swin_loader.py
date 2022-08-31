@@ -102,7 +102,7 @@ class TestSwinLoder(flow.unittest.TestCase):
         prediction_scores = model(input_image)["prediction_scores"]
 
         self.assertTrue(
-            np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
+            np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-3)
         )
 
     @flow.unittest.skip_unless_1n4d()
@@ -137,7 +137,7 @@ class TestSwinLoder(flow.unittest.TestCase):
         prediction_scores = model(input_image)["prediction_scores"]
 
         self.assertTrue(
-            np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
+            np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-3)
         )
 
     @flow.unittest.skip_unless_1n4d()
@@ -173,11 +173,11 @@ class TestSwinLoder(flow.unittest.TestCase):
         loss = prediction_scores.sum()
         loss.backward()
 
-        self.assertTrue(np.allclose(108775.88, model.head.weight.grad.sum().numpy()))
-        self.assertTrue(np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy()))
+        self.assertTrue(np.allclose(108775.88, model.head.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3))
 
     @flow.unittest.skip_unless_1n4d()
-    def test_swin_utils_with_data_tensor_pipeline_parallel(self):
+    def test_swin_utils_with_data_tensor_pipeline_parallel_backward(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -210,8 +210,8 @@ class TestSwinLoder(flow.unittest.TestCase):
         loss = prediction_scores.sum()
         loss.backward()
 
-        self.assertTrue(np.allclose(108775.88, model.head.weight.grad.sum().numpy()))
-        self.assertTrue(np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy()))
+        self.assertTrue(np.allclose(108775.88, model.head.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3))
 
 
 if __name__ == "__main__":

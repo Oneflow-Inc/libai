@@ -173,8 +173,8 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         loss = prediction_scores.sum()
         loss.backward()
 
-        self.assertTrue(np.allclose(373520.47, model.head.weight.grad.sum().numpy()))
-        self.assertTrue(np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy()))
+        self.assertTrue(np.allclose(373520.47, model.head.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3))
 
     @flow.unittest.skip_unless_1n4d()
     def test_swinv2_utils_with_data_tensor_pipeline_parallel_backward(self):
@@ -210,8 +210,8 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         loss = prediction_scores.sum()
         loss.backward()
 
-        self.assertTrue(np.allclose(373520.47, model.head.weight.grad.sum().numpy()))
-        self.assertTrue(np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy()))
+        self.assertTrue(np.allclose(373520.47, model.head.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3))
 
 if __name__ == "__main__":
     unittest.main()
