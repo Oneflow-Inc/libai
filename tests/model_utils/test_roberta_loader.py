@@ -163,6 +163,110 @@ class TestRobertaLoader(flow.unittest.TestCase):
             np.allclose(np.array(341.5831), last_hidden_state.sum().data.numpy(), 1e-4, 1e-4)
         )
 
+    @flow.unittest.skip_unless_1n4d()
+    def test_roberta_utils_with_data_tensor_parallel_backward(self):
+        # set distributed config
+        dist_cfg = DictConfig(
+            dict(
+                data_parallel_size=2,
+                tensor_parallel_size=2,
+                pipeline_parallel_size=1,
+            )
+        )
+        dist.setup_dist_util(dist_cfg)
+
+        # load model
+        load_func = RobertaLoaderHuggerFace(
+            model=libai.models.RobertaModel,
+            libai_cfg=libai_cfg,
+            pretrained_model_path=self.pretrained_model_path,
+            bias_gelu_fusion=False,
+            bias_dropout_fusion=False,
+            scale_mask_softmax_fusion=False,
+            apply_query_key_layer_scaling=False,
+            apply_residual_post_layernorm=True,
+            amp_enabled=False,
+            hidden_dropout_prob=0,
+            attention_probs_dropout_prob=0,
+        )
+        model = load_func.load()
+
+        input_ids = flow.tensor(
+            self.input_ids,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=model.embeddings.vocab_embeddings.weight.placement,
+        )
+        mask = flow.tensor(
+            self.mask,
+            dtype=flow.bool,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=model.embeddings.vocab_embeddings.weight.placement,
+        )
+        last_hidden_state, pooled_output = model(input_ids, mask)
+
+        # backward
+        loss = pooled_output.sum()
+        loss.backward()
+
+        self.assertTrue(np.allclose(33871.89, model.pooler.dense.weight.grad.sum()))
+        self.assertTrue(
+            np.allclose(-7.748604e-07, model.embeddings.vocab_embeddings.weight.grad.sum().numpy())
+        )
+
+    @flow.unittest.skip_unless_1n4d()
+    def test_roberta_utils_with_data_tensor_pipeline_parallel_backward(self):
+        # set distributed config
+        dist_cfg = DictConfig(
+            dict(
+                data_parallel_size=2,
+                tensor_parallel_size=1,
+                pipeline_parallel_size=2,
+                pipeline_num_layers=12,
+            )
+        )
+        dist.setup_dist_util(dist_cfg)
+
+        # load model
+        load_func = RobertaLoaderHuggerFace(
+            model=libai.models.RobertaModel,
+            libai_cfg=libai_cfg,
+            pretrained_model_path=self.pretrained_model_path,
+            bias_gelu_fusion=False,
+            bias_dropout_fusion=False,
+            scale_mask_softmax_fusion=False,
+            apply_query_key_layer_scaling=False,
+            apply_residual_post_layernorm=True,
+            amp_enabled=False,
+            hidden_dropout_prob=0,
+            attention_probs_dropout_prob=0,
+        )
+        model = load_func.load()
+
+        input_ids = flow.tensor(
+            self.input_ids,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=model.embeddings.vocab_embeddings.weight.placement,
+        )
+        mask = flow.tensor(
+            self.mask,
+            dtype=flow.bool,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=model.embeddings.vocab_embeddings.weight.placement,
+        )
+
+        last_hidden_state, pooled_output = model(input_ids, mask)
+
+        # backward
+        loss = pooled_output.sum()
+        loss.backward()
+
+        self.assertTrue(np.allclose(33871.89, model.pooler.dense.weight.grad.sum()))
+        self.assertTrue(
+            np.allclose(-7.748604e-07, model.embeddings.vocab_embeddings.weight.grad.sum().numpy())
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

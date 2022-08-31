@@ -139,7 +139,7 @@ class TestViTLoder(flow.unittest.TestCase):
         self.assertTrue(
             np.allclose(np.array(3.1374), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
-        
+
     @flow.unittest.skip_unless_1n4d()
     def test_vit_utils_with_data_tensor_parallel_backward(self):
         # set distributed config
@@ -157,8 +157,8 @@ class TestViTLoder(flow.unittest.TestCase):
             model=libai.models.VisionTransformer,
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
-            drop_rate=0, 
-            attn_drop_rate=0, 
+            drop_rate=0,
+            attn_drop_rate=0,
             drop_path_rate=0,
         )
         model = load_func.load()
@@ -194,8 +194,8 @@ class TestViTLoder(flow.unittest.TestCase):
             model=libai.models.VisionTransformer,
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
-            drop_rate=0, 
-            attn_drop_rate=0, 
+            drop_rate=0,
+            attn_drop_rate=0,
             drop_path_rate=0,
         )
         model = load_func.load()

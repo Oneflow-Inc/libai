@@ -139,7 +139,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         self.assertTrue(
             np.allclose(np.array(221.7827), prediction_scores.sum().data.numpy(), 1e-4, 1e-4)
         )
-    
+
     @flow.unittest.skip_unless_1n4d()
     def test_swinv2_utils_with_data_tensor_parallel_backward(self):
         # set distributed config
@@ -158,7 +158,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
             drop_rate=0,
-            drop_path_rate=0
+            drop_path_rate=0,
         )
         model = load_func.load()
 
@@ -174,7 +174,9 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         loss.backward()
 
         self.assertTrue(np.allclose(373520.47, model.head.weight.grad.sum().numpy(), 1e-3))
-        self.assertTrue(np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(
+            np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3)
+        )
 
     @flow.unittest.skip_unless_1n4d()
     def test_swinv2_utils_with_data_tensor_pipeline_parallel_backward(self):
@@ -195,7 +197,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
             drop_rate=0,
-            drop_path_rate=0
+            drop_path_rate=0,
         )
         model = load_func.load()
 
@@ -211,7 +213,10 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         loss.backward()
 
         self.assertTrue(np.allclose(373520.47, model.head.weight.grad.sum().numpy(), 1e-3))
-        self.assertTrue(np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(
+            np.allclose(259.379, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

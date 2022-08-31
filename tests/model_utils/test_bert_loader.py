@@ -208,10 +208,12 @@ class TestBertLoder(flow.unittest.TestCase):
         # backward
         loss = pooled_output.sum()
         loss.backward()
-        
+
         self.assertTrue(np.allclose(-10725.5088, model.pooler.dense.weight.grad.sum()))
-        self.assertTrue(np.allclose(6.151199e-05, model.embeddings.vocab_embeddings.weight.grad.sum().numpy()))
-    
+        self.assertTrue(
+            np.allclose(6.151199e-05, model.embeddings.vocab_embeddings.weight.grad.sum().numpy())
+        )
+
     @flow.unittest.skip_unless_1n4d()
     def test_bert_loader_with_data_tensor_pipeline_parallel_backward(self):
         # set distributed config
@@ -258,9 +260,11 @@ class TestBertLoder(flow.unittest.TestCase):
         # backward
         loss = pooled_output.sum()
         loss.backward()
-        
+
         self.assertTrue(np.allclose(-10725.5088, model.pooler.dense.weight.grad.sum()))
-        self.assertTrue(np.allclose(6.151199e-05, model.embeddings.vocab_embeddings.weight.grad.sum().numpy()))
+        self.assertTrue(
+            np.allclose(6.151199e-05, model.embeddings.vocab_embeddings.weight.grad.sum().numpy())
+        )
 
 
 if __name__ == "__main__":

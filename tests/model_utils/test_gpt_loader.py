@@ -159,7 +159,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
                 logits.sum().data.numpy(),
             )
         )
-    
+
     @flow.unittest.skip_unless_1n4d()
     def test_gpt_loader_with_data_tensor_parallel_backward(self):
         # set distributed config
@@ -171,7 +171,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
             )
         )
         dist.setup_dist_util(dist_cfg)
-        
+
         # load model
         load_func = GPT2LoaderHuggerFace(
             model=libai.models.GPTModel,
@@ -188,7 +188,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
             embedding_dropout_prob=0,
         )
         model = load_func.load()
-        
+
         input_ids = flow.tensor(
             self.input_ids,
             dtype=flow.long,
@@ -198,9 +198,15 @@ class TestGPT2Loader(flow.unittest.TestCase):
         logits = model(input_ids)
         loss = logits.sum()
         loss.backward()
-        
-        self.assertTrue(np.allclose(-24882176., model.transformer.layernorm_f.weight.grad.sum().numpy()))
-        self.assertTrue(np.allclose(3.1779e+08, model.embeddings.token_embeddings.weight.grad.sum().numpy(), 1e-3))
+
+        self.assertTrue(
+            np.allclose(-24882176.0, model.transformer.layernorm_f.weight.grad.sum().numpy())
+        )
+        self.assertTrue(
+            np.allclose(
+                3.1779e08, model.embeddings.token_embeddings.weight.grad.sum().numpy(), 1e-3
+            )
+        )
 
     @flow.unittest.skip_unless_1n4d()
     def test_gpt_loader_with_data_tensor_pipeline_parallel_backward(self):
@@ -214,7 +220,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
             )
         )
         dist.setup_dist_util(dist_cfg)
-        
+
         # load model
         load_func = GPT2LoaderHuggerFace(
             model=libai.models.GPTModel,
@@ -231,7 +237,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
             embedding_dropout_prob=0,
         )
         model = load_func.load()
-        
+
         input_ids = flow.tensor(
             self.input_ids,
             dtype=flow.long,
@@ -241,9 +247,14 @@ class TestGPT2Loader(flow.unittest.TestCase):
         logits = model(input_ids)
         loss = logits.sum()
         loss.backward()
-        
-        self.assertTrue(np.allclose(-24882176., model.transformer.layernorm_f.weight.grad.sum().numpy()))
-        self.assertTrue(np.allclose(317785760.0, model.embeddings.token_embeddings.weight.grad.sum().numpy()))
+
+        self.assertTrue(
+            np.allclose(-24882176.0, model.transformer.layernorm_f.weight.grad.sum().numpy())
+        )
+        self.assertTrue(
+            np.allclose(317785760.0, model.embeddings.token_embeddings.weight.grad.sum().numpy())
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

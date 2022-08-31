@@ -101,9 +101,7 @@ class TestSwinLoder(flow.unittest.TestCase):
 
         prediction_scores = model(input_image)["prediction_scores"]
 
-        self.assertTrue(
-            np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-3)
-        )
+        self.assertTrue(np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-3))
 
     @flow.unittest.skip_unless_1n4d()
     def test_swin_utils_with_data_tensor_pipeline_parallel(self):
@@ -136,9 +134,7 @@ class TestSwinLoder(flow.unittest.TestCase):
 
         prediction_scores = model(input_image)["prediction_scores"]
 
-        self.assertTrue(
-            np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-3)
-        )
+        self.assertTrue(np.allclose(np.array(80.9373), prediction_scores.sum().data.numpy(), 1e-3))
 
     @flow.unittest.skip_unless_1n4d()
     def test_swin_utils_with_data_tensor_parallel_backward(self):
@@ -174,7 +170,9 @@ class TestSwinLoder(flow.unittest.TestCase):
         loss.backward()
 
         self.assertTrue(np.allclose(108775.88, model.head.weight.grad.sum().numpy(), 1e-3))
-        self.assertTrue(np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(
+            np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3)
+        )
 
     @flow.unittest.skip_unless_1n4d()
     def test_swin_utils_with_data_tensor_pipeline_parallel_backward(self):
@@ -211,7 +209,9 @@ class TestSwinLoder(flow.unittest.TestCase):
         loss.backward()
 
         self.assertTrue(np.allclose(108775.88, model.head.weight.grad.sum().numpy(), 1e-3))
-        self.assertTrue(np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3))
+        self.assertTrue(
+            np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-3)
+        )
 
 
 if __name__ == "__main__":
