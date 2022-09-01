@@ -110,7 +110,7 @@ class TestBertModel(flow.unittest.TestCase):
         self.cfg.graph.enabled = False
         trainer = DefaultTrainer(self.cfg)
         trainer.train()
-    
+
     @flow.unittest.skip_unless_1n4d()
     def test_bert_eager_with_pipeline_parallel(self):
         # set distributed config
