@@ -109,7 +109,7 @@ class TestSwinV2Model(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_swinv2_eager_with_data_tensor_parallel(self):
+    def test_swinv2_eager_with_pipeline_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 1
         self.cfg.train.dist.tensor_parallel_size = 1
