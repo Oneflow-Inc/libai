@@ -137,6 +137,5 @@ train.rdma_enabled = True
 train.scheduler.warmup_factor = 0.001
 train.scheduler.alpha = 0.01
 train.scheduler.warmup_method = "linear"
-
 # Set fp16 ON
 train.amp.enabled = True

@@ -423,7 +423,6 @@ class BasicLayer(nn.Module):
         drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
         norm_layer (nn.Module, optional): Normalization layer. Default: libai.layers.LayerNorm
         downsample (nn.Module | None, optional): Downsample at the end of the layer. Default: None
-        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
     """
 
     def __init__(
@@ -441,7 +440,6 @@ class BasicLayer(nn.Module):
         drop_path=0.0,
         norm_layer=LayerNorm,
         downsample=None,
-        use_checkpoint=False,
         layer_id_offset=0,
     ):
 
@@ -449,7 +447,6 @@ class BasicLayer(nn.Module):
         self.dim = dim
         self.input_resolution = input_resolution
         self.depth = depth
-        self.use_checkpoint = use_checkpoint
         self.layer_id_offset = layer_id_offset
         # build blocks
         self.blocks = nn.ModuleList(
@@ -488,10 +485,7 @@ class BasicLayer(nn.Module):
         layer_idx = self.layer_id_offset
         for i in range(len(self.blocks)):
             x = x.to_global(placement=dist.get_layer_placement(layer_idx))
-            if self.use_checkpoint:
-                raise Exception("Not Support Checkpointing yet!")
-            else:
-                x = self.blocks[i](x)
+            x = self.blocks[i](x)
             layer_idx += 1
         if self.downsample is not None:
             x = self.downsample(x)
@@ -523,7 +517,6 @@ class SwinTransformer(nn.Module):
         norm_layer (nn.Module): Normalization layer. Default: libai.layers.LayerNorm.
         ape (bool): If True, add absolute position embedding to the patch embedding. Default: False
         patch_norm (bool): If True, add normalization after patch embedding. Default: True
-        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
         loss_func (callable, optional): Loss function for computing the total loss
                                     between logits and labels
     """
@@ -548,7 +541,6 @@ class SwinTransformer(nn.Module):
         norm_layer=LayerNorm,
         ape=False,
         patch_norm=True,
-        use_checkpoint=False,
         loss_func=None,
         **kwargs,
     ):
@@ -612,7 +604,6 @@ class SwinTransformer(nn.Module):
                 drop_path=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],
                 norm_layer=norm_layer,
                 downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
-                use_checkpoint=use_checkpoint,
                 layer_id_offset=layer_id_offset,
             )
             layer_id_offset += depths[i_layer]
@@ -658,7 +649,6 @@ class SwinTransformer(nn.Module):
             "drop_path_rate": cfg.drop_path_rate,
             "ape": cfg.ape,
             "patch_norm": cfg.patch_norm,
-            "use_checkpoint": cfg.use_checkpoint,
             "loss_func": cfg.loss_func,
         }
 

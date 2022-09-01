@@ -160,7 +160,7 @@ class T5Tokenizer(PreTrainedTokenizer):
             warnings.warn("This sequence already has {self.eos_token}.")
             return token_ids
         else:
-            return token_ids + [self.eos_token]
+            return token_ids + [self.eos_token_id]
 
     def build_inputs_with_special_tokens(
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
