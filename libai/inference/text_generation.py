@@ -14,8 +14,8 @@
 # limitations under the License.
 
 import numpy as np
-from omegaconf import OmegaConf
 import oneflow as flow
+from omegaconf import OmegaConf
 
 from libai.config import LazyCall
 from libai.data.structures import DistTensorData, Instance
@@ -36,14 +36,14 @@ class TextGenerationPipeline(BasePipeline):
         **kwargs,
     ):
         super().__init__(
-            config_file, 
-            data_parallel, 
-            tensor_parallel, 
-            pipeline_parallel, 
-            pipeline_stage_id, 
+            config_file,
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
             model_path,
-            mode, 
-            **kwargs
+            mode,
+            **kwargs,
         )
 
     def update_cfg(
@@ -53,12 +53,7 @@ class TextGenerationPipeline(BasePipeline):
         pipeline_parallel=1,
         pipeline_stage_id=None,
     ):
-        super().update_cfg(
-            data_parallel, 
-            tensor_parallel, 
-            pipeline_parallel,
-            pipeline_stage_id
-        )
+        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel, pipeline_stage_id)
         self.cfg.model.cfg.hidden_dropout_prob = 0.0
         self.cfg.model.cfg.embedding_dropout_prob = 0.0
         self.cfg.model.cfg.attention_probs_dropout_prob = 0.0
@@ -72,32 +67,23 @@ class TextGenerationPipeline(BasePipeline):
             vocab_file="data_test/t5_inference_model/spiece.model",
         )
 
-    def load_pretrain_weight(
-            self, 
-            libai_cfg_model, 
-            model_path,
-            mode = "huggingface"
-        ):
+    def load_pretrain_weight(self, libai_cfg_model, model_path, mode="huggingface"):
         """load pretrained model.
 
         Args:
-            libai_cfg_model (libai.models): Lazy config Model in Libai, you can import it 
-                by `from libai.config.configs.common.models.bert 
-                    import pretrain_model as libai_cfg_model` 
+            libai_cfg_model (libai.models): Lazy config Model in Libai, you can import it
+                by `from libai.config.configs.common.models.bert
+                    import pretrain_model as libai_cfg_model`
             model_path (str): The directory path of pretrained model,
         """
         if mode == "huggingface":
             from libai.models.utils.model_utils.t5_loader import T5LoaderHuggerFace
 
-            model_loader = T5LoaderHuggerFace(
-                    libai_cfg_model,
-                    libai_cfg_model.cfg,
-                    model_path
-                )
+            model_loader = T5LoaderHuggerFace(libai_cfg_model, libai_cfg_model.cfg, model_path)
             return model_loader.load()
         else:
             return super().load_pretrain_weight(
-                libai_cfg_model, 
+                libai_cfg_model,
                 model_path,
                 mode=mode,
             )
@@ -165,7 +151,7 @@ class TextGenerationPipeline(BasePipeline):
         encoder_nparray_ids = encoder_input_dict["encoder_ids"]
         encoder_nparray_mask = encoder_input_dict["encoder_padding_mask"]
 
-        decoder_ids = [6536,  504,   24]
+        decoder_ids = [6536, 504, 24]
 
         for _ in range(max_generate_length):
             # generate decoder input

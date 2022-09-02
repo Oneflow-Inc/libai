@@ -33,14 +33,14 @@ class TextClassificationPipeline(BasePipeline):
         **kwargs,
     ):
         super().__init__(
-            config_file, 
-            data_parallel, 
-            tensor_parallel, 
-            pipeline_parallel, 
-            pipeline_stage_id, 
-            model_path, 
-            mode, 
-            **kwargs
+            config_file,
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            model_path,
+            mode,
+            **kwargs,
         )
 
     def update_cfg(

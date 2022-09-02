@@ -36,14 +36,14 @@ class ImageClassificationPipeline(BasePipeline):
         **kwargs,
     ):
         super().__init__(
-            config_file, 
-            data_parallel, 
-            tensor_parallel, 
-            pipeline_parallel, 
-            pipeline_stage_id, 
-            model_path, 
-            mode, 
-            **kwargs
+            config_file,
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            model_path,
+            mode,
+            **kwargs,
         )
         if "num_classes" in self.cfg.model:
             self.num_classes = self.cfg.model.num_classes

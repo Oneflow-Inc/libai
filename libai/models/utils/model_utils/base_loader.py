@@ -13,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import logging
 import os
-import omegaconf
-import collections
-from termcolor import colored
 
+import omegaconf
 import oneflow as flow
 from oneflow.framework.check_point_v2 import _broadcast_py_object
+from termcolor import colored
 
 import libai.utils.distributed as dist
 from libai.config import LazyCall
@@ -93,7 +93,7 @@ class ModelLoader(object):
             flow_state_dict (OrderedDict): State dict of OneFlow's pretrained model.
         """
         assert mode in ["libai", "pytorch"], f"not support for mode {mode}"
-        if mode=="libai" or dist.is_main_process():
+        if mode == "libai" or dist.is_main_process():
             prefix = self.base_model_prefix_2
 
             # Checkpoint
@@ -101,18 +101,20 @@ class ModelLoader(object):
                 s.startswith(self.base_model_prefix_2) for s in flow_state_dict.keys()
             )
             # Module
-            expects_prefix_module = any(s.startswith(prefix) for s in self.model.state_dict().keys())
+            expects_prefix_module = any(
+                s.startswith(prefix) for s in self.model.state_dict().keys()
+            )
 
             start_prefix = "" if has_prefix_module else prefix + "."
             loaded_keys = [start_prefix + key for key in flow_state_dict.keys()]
         else:
             prefix, has_prefix_module, expects_prefix_module, loaded_keys = [None] * 4
             flow_state_dict = collections.OrderedDict()
-        
+
         prefix = _broadcast_py_object(prefix, src=0)
         has_prefix_module = _broadcast_py_object(has_prefix_module, src=0)
         expects_prefix_module = _broadcast_py_object(expects_prefix_module, src=0)
-        loaded_keys = _broadcast_py_object(loaded_keys, src=0) 
+        loaded_keys = _broadcast_py_object(loaded_keys, src=0)
 
         # to global
         for key, value in self.model.state_dict().items():
@@ -130,9 +132,7 @@ class ModelLoader(object):
                     )
 
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key],
-                    sbp=value.sbp,
-                    placement=value.placement
+                    flow_state_dict[key], sbp=value.sbp, placement=value.placement
                 )
                 dist.synchronize()
         return flow_state_dict
@@ -330,8 +330,9 @@ class ModelLoaderLiBai(ModelLoader):
         """
 
         if dist.is_main_process():
-            assert os.path.isdir(self.pretrained_model_path), \
-                f"{self.pretrained_model_path} must be a directory"
+            assert os.path.isdir(
+                self.pretrained_model_path
+            ), f"{self.pretrained_model_path} must be a directory"
 
         flow_state_dict = self._load_flow_state_dict(self.pretrained_model_path)
 
@@ -479,8 +480,10 @@ class ModelLoaderHuggerFace(ModelLoader):
         """
         if self.libai_cfg[keys_libai] != value_target:
             temp_key = colored(keys_libai, "yellow")
-            logger.info(f"changed libai model cfg {temp_key} : "
-                        f"{self.libai_cfg[keys_libai]} -> {value_target} ")
+            logger.info(
+                f"changed libai model cfg {temp_key} : "
+                f"{self.libai_cfg[keys_libai]} -> {value_target} "
+            )
             self.libai_cfg[keys_libai] = value_target
             self.changed_keys.append(keys_libai)
 
@@ -496,7 +499,7 @@ class ModelLoaderHuggerFace(ModelLoader):
                     colored(
                         "If you use pipeline parallel, please "
                         "confirm the setting of `train.dist.pipeline_num_layers` \n",
-                        "red"
+                        "red",
                     )
                 )
 
@@ -546,13 +549,13 @@ class ModelLoaderHuggerFace(ModelLoader):
                     )
             else:
                 raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
-        
+
             torch_state_dict = self._load_torch_state_dict(model_file)
             torch_state_dict = self._fix_key(torch_state_dict)
             flow_state_dict = self._convert_tensors(torch_state_dict)
             flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
         else:
-            flow_state_dict=None
+            flow_state_dict = None
 
         self.libai_cfg = _broadcast_py_object(self.libai_cfg, src=0)
 

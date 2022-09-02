@@ -14,9 +14,10 @@
 # limitations under the License.
 
 import warnings
+
 try:
     import datasets
-except:
+except: #noqa
     warnings.warn("datasets library is needed")
 import numpy as np
 import oneflow as flow

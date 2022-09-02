@@ -23,7 +23,6 @@ from oneflow.framework.check_point_v2 import _broadcast_py_object
 from libai.config import LazyConfig, try_get_key
 from libai.engine import DefaultTrainer
 from libai.utils import distributed as dist
-from libai.utils.checkpoint import Checkpointer
 from libai.utils.logger import setup_logger
 
 logger = setup_logger(distributed_rank=dist.get_rank())
@@ -55,8 +54,8 @@ class BasePipeline(metaclass=ABCMeta):
             try_get_key(self.cfg, "train.nccl_fusion_max_ops", default=24)
         )
         self.update_cfg(
-            data_parallel, 
-            tensor_parallel, 
+            data_parallel,
+            tensor_parallel,
             pipeline_parallel,
             pipeline_stage_id,
         )
@@ -101,30 +100,26 @@ class BasePipeline(metaclass=ABCMeta):
             ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
 
     def load_pretrain_weight(
-            self, 
-            libai_cfg_model, 
-            model_path,
-            base_model_prefix_1=None,
-            base_model_prefix_2="",
-            mode="libai"
-        ):
+        self,
+        libai_cfg_model,
+        model_path,
+        base_model_prefix_1=None,
+        base_model_prefix_2="",
+        mode="libai",
+    ):
         """load pretrained model.
 
         Args:
-            libai_cfg_model (libai.models): Lazy config Model in Libai, you can import it 
-                by `from libai.config.configs.common.models.bert 
-                    import pretrain_model as libai_cfg_model` 
+            libai_cfg_model (libai.models): Lazy config Model in Libai, you can import it
+                by `from libai.config.configs.common.models.bert
+                    import pretrain_model as libai_cfg_model`
             model_path (str): The directory path of pretrained model,
         """
         print(mode)
         if mode == "libai":
             from libai.models.utils.model_utils.base_loader import ModelLoaderLiBai
 
-            model_loader = ModelLoaderLiBai(
-                libai_cfg_model, 
-                libai_cfg_model.cfg,
-                model_path
-                )
+            model_loader = ModelLoaderLiBai(libai_cfg_model, libai_cfg_model.cfg, model_path)
             model_loader.base_model_prefix_1 = base_model_prefix_1
             model_loader.base_model_prefix_2 = base_model_prefix_2
             return model_loader.load()
