@@ -303,7 +303,7 @@ class ModelLoaderLiBai(ModelLoader):
 
     def _load_flow_state_dict(self, state_dict_file):
         # load oneflow_model
-        state_dict = flow.load(state_dict_file)
+        state_dict = flow.load(state_dict_file, global_src_rank=0)
         return state_dict
 
     def load(self):
@@ -326,8 +326,9 @@ class ModelLoaderLiBai(ModelLoader):
 
         """
 
-        assert os.path.isdir(self.pretrained_model_path), \
-            f"{self.pretrained_model_path} must be a directory"
+        if dist.is_main_process():
+            assert os.path.isdir(self.pretrained_model_path), \
+                f"{self.pretrained_model_path} must be a directory"
 
         flow_state_dict = self._load_flow_state_dict(self.pretrained_model_path)
 

@@ -32,6 +32,7 @@ class ImageClassificationPipeline(BasePipeline):
         pipeline_parallel=None,
         pipeline_stage_id=None,
         model_path=None,
+        mode="libai",
         **kwargs,
     ):
         super().__init__(
@@ -41,6 +42,7 @@ class ImageClassificationPipeline(BasePipeline):
             pipeline_parallel, 
             pipeline_stage_id, 
             model_path, 
+            mode, 
             **kwargs
         )
         if "num_classes" in self.cfg.model:

@@ -32,6 +32,7 @@ class TextGenerationPipeline(BasePipeline):
         pipeline_parallel=None,
         pipeline_stage_id=None,
         model_path=None,
+        mode="libai",
         **kwargs,
     ):
         super().__init__(
@@ -40,7 +41,8 @@ class TextGenerationPipeline(BasePipeline):
             tensor_parallel, 
             pipeline_parallel, 
             pipeline_stage_id, 
-            model_path, 
+            model_path,
+            mode, 
             **kwargs
         )
 

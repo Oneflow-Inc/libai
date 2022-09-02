@@ -43,6 +43,7 @@ class BasePipeline(metaclass=ABCMeta):
         pipeline_parallel=None,
         pipeline_stage_id=None,
         model_path=None,
+        mode="libai",
         **kwargs,
     ):
         # init cfg
@@ -66,7 +67,7 @@ class BasePipeline(metaclass=ABCMeta):
         logger.info(self.cfg.train.dist)
 
         # initial and load model
-        self.model = self.load_pretrain_weight(self.cfg.model, model_path)
+        self.model = self.load_pretrain_weight(self.cfg.model, model_path, mode=mode)
         self.model = self.model.eval()
 
         # initial tokenizer
