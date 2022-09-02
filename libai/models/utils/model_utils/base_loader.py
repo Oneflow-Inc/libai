@@ -86,13 +86,14 @@ class ModelLoader(object):
         self.kwargs = kwargs
         self.output_loading_info = kwargs.pop("output_loading_info", False)
 
-    def _state_dict_to_global(self, flow_state_dict=None):
+    def _state_dict_to_global(self, flow_state_dict=None, mode="libai"):
         """Tensor in OneFlow state dict to global according to model's sbp and placement.
 
         Args:
             flow_state_dict (OrderedDict): State dict of OneFlow's pretrained model.
         """
-        if dist.is_main_process():
+        assert mode in ["libai", "pytorch"], f"not support for mode {mode}"
+        if mode=="libai" or dist.is_main_process():
             prefix = self.base_model_prefix_2
 
             # Checkpoint
@@ -120,11 +121,13 @@ class ModelLoader(object):
             if key in loaded_keys:
                 if not has_prefix_module:
                     key = ".".join(key.split(".")[1:])
-                flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key] if dist.is_main_process() else flow.Tensor(None),
-                    sbp=flow.sbp.broadcast,
-                    placement=flow.placement("cpu", ranks=[0]),
-                )
+
+                if mode == "pytorch":
+                    flow_state_dict[key] = flow.to_global(
+                        flow_state_dict[key] if dist.is_main_process() else flow.Tensor(None),
+                        sbp=flow.sbp.broadcast,
+                        placement=flow.placement("cpu", ranks=[0]),
+                    )
 
                 flow_state_dict[key] = flow.to_global(
                     flow_state_dict[key],
@@ -340,7 +343,7 @@ class ModelLoaderLiBai(ModelLoader):
             self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
-        self._state_dict_to_global(flow_state_dict)
+        self._state_dict_to_global(flow_state_dict, mode="libai")
 
         # Load
         (
@@ -561,7 +564,7 @@ class ModelLoaderHuggerFace(ModelLoader):
             self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
-        flow_state_dict = self._state_dict_to_global(flow_state_dict)
+        flow_state_dict = self._state_dict_to_global(flow_state_dict, mode="pytorch")
 
         # Load
         (
