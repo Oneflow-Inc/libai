@@ -19,14 +19,13 @@ import sys
 
 
 def default_argument_parser(epilog=None):
-    """
-    Create a parser with some common arguments used by libai users.
+    """Create a parser with some common arguments used by libai users.
 
     Args:
         epilog (str): epilog passed to ArgumentParser describing the usage.
 
     Returns:
-        argparse.ArgumentParser:
+        argparse.ArgumentParser.
     """
     parser = argparse.ArgumentParser(
         epilog=epilog
@@ -35,23 +34,22 @@ Examples:
 
 Run on single machine:
     $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
-    --config-file cfg.yaml
+    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 --master_port 12345 \
+    {sys.argv[0]} --config-file cfg.yaml
 
 Change some config options:
     $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 {sys.argv[0]} \
-    --config-file cfg.yaml train.load_weight=/path/to/weight.pth optim.lr=0.001
+    --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 127.0.0.1 --master_port 12345 \
+    {sys.argv[0]} --config-file cfg.yaml train.load_weight=/path/to/weight.pth optim.lr=0.001
 
 Run on multiple machines:
     (machine0)$ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 2 --node_rank 0 --master_addr <URL> {sys.argv[0]} \
-    --config-file cfg.yaml
+    --nproc_per_node 8 --nnodes 2 --node_rank 0 --master_addr <URL> --master_port 12345 \
+    {sys.argv[0]} --config-file cfg.yaml
 
     $ python3 -m oneflow.distributed.launch \
-    --nproc_per_node 8 --nnodes 2 --node_rank 1 --master_addr <URL> {sys.argv[0]} \
-    --config-file cfg.yaml
-
+    --nproc_per_node 8 --nnodes 2 --node_rank 1 --master_addr <URL> --master_port 12345 \
+    {sys.argv[0]} --config-file cfg.yaml
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
