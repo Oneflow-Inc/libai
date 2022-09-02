@@ -115,7 +115,6 @@ class BasePipeline(metaclass=ABCMeta):
                     import pretrain_model as libai_cfg_model`
             model_path (str): The directory path of pretrained model,
         """
-        print(mode)
         if mode == "libai":
             from libai.models.utils.model_utils.base_loader import ModelLoaderLiBai
 
