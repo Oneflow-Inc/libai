@@ -40,6 +40,7 @@ class Embedding(nn.Module):
                 placement=dist.get_layer_placement(0),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             ),
+            persistent=False
         )
 
     def forward(self, x):

@@ -84,7 +84,6 @@ class NerfSystem(nn.Module):
                 skips=skips,
             )
             self.models += [self.nerf_fine]
-        self.models = nn.ModuleList(self.models)
 
     @classmethod
     def from_config(cls, cfg):
