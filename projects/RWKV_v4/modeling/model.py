@@ -22,11 +22,39 @@ import oneflow as flow
 import oneflow.nn.functional as F
 from oneflow import nn
 
-from libai.layers import LayerNorm, Linear, VocabEmbedding
+from libai.layers import LayerNorm, Linear1D, VocabEmbedding
+LinearBF16 = Linear1D
+
+# from libai.layers import LayerNorm, LinearBF16, VocabEmbedding
 
 logger = logging.getLogger(__name__)
 
-RWKV_HEAD_QK_DIM = 256
+if int(os.environ['USE_L2_REG']) > 0:
+    USE_L2_REG = True
+else:
+    USE_L2_REG = False
+
+for i in range(10):
+    print('USE_L2_REG', USE_L2_REG)
+
+if USE_L2_REG:
+    class L2Wrap(flow.autograd.Function):
+        @staticmethod
+        def forward(ctx, loss, y):
+            ctx.save_for_backward(y)
+            return loss
+        @staticmethod
+        def backward(ctx, grad_output):
+            y = ctx.saved_tensors[0]
+            # Gopher: 1e-4 · log(Z)^2 to encourage the softmax normalizer log(Z) to be close to 0
+            factor = 1e-4 / (y.shape[0] * y.shape[1])
+            maxx, ids = flow.max(y, -1, keepdim=True)
+            gy = flow.zeros_like(y)
+            gy = flow.scatter(gy, -1, ids, maxx * factor)
+            return (grad_output, gy)
+
+
+RWKV_HEAD_QK_DIM = 0
 
 
 class RWKV_TimeMix(nn.Module):
@@ -40,7 +68,10 @@ class RWKV_TimeMix(nn.Module):
         attn_sz = n_embd
 
         with flow.no_grad():  # fancy init
-            ratio_0_to_1 = layer_id / (n_layer - 1)  # 0 to 1
+            if n_layer > 1:
+                ratio_0_to_1 = layer_id / (n_layer - 1)  # 0 to 1
+            else:
+                ratio_0_to_1 = 0.5
             ratio_1_to_almost0 = 1.0 - (layer_id / n_layer)  # 1 to ~0
 
             # fancy time_decay
@@ -63,11 +94,11 @@ class RWKV_TimeMix(nn.Module):
 
         self.time_shift = nn.ZeroPad2d((0, 0, 1, -1))
 
-        self.key = Linear(n_embd, attn_sz, bias=False, parallel="col")
-        self.value = Linear(n_embd, attn_sz, bias=False, parallel="col")
-        self.receptance = Linear(n_embd, attn_sz, bias=False, parallel="col")
+        self.key = LinearBF16(n_embd, attn_sz, bias=False, parallel="col")
+        self.value = LinearBF16(n_embd, attn_sz, bias=False, parallel="col")
+        self.receptance = LinearBF16(n_embd, attn_sz, bias=False, parallel="col")
 
-        self.output = Linear(attn_sz, n_embd, bias=False, parallel="row")
+        self.output = LinearBF16(attn_sz, n_embd, bias=False, parallel="row")
 
         self.key.scale_init = 0
         self.receptance.scale_init = 0
@@ -87,7 +118,7 @@ class RWKV_TimeMix(nn.Module):
         v = self.value(xv)
         r = self.receptance(xr)
 
-        rwkv = flow.sigmoid(r) * flow._C.wkv(B, T, C, self.time_decay, self.time_first, k, v)
+        rwkv = flow.sigmoid(r) * (k + v) #flow._C.wkv(B, T, C, self.time_decay, self.time_first, k, v) # 
         rwkv = self.output(rwkv)
 
         return rwkv
@@ -112,9 +143,9 @@ class RWKV_ChannelMix(nn.Module):
             self.time_mix_r = nn.Parameter(flow.pow(x, ratio_1_to_almost0))
 
         hidden_sz = 4 * n_embd
-        self.key = Linear(n_embd, hidden_sz, bias=False, parallel="col")
-        self.receptance = Linear(n_embd, n_embd, bias=False, parallel="col")
-        self.value = Linear(hidden_sz, n_embd, bias=False, parallel="row")
+        self.key = LinearBF16(n_embd, hidden_sz, bias=False, parallel="col")
+        self.receptance = LinearBF16(n_embd, n_embd, bias=False, parallel="col")
+        self.value = LinearBF16(hidden_sz, n_embd, bias=False, parallel="row")
 
         self.value.scale_init = 0
         self.receptance.scale_init = 0
@@ -191,22 +222,22 @@ class GPT(nn.Module):
         )
 
         self.ln_out = LayerNorm(n_embd)
-        self.head = Linear(n_embd, vocab_size, bias=False, parallel="row")
+        self.head = LinearBF16(n_embd, vocab_size, bias=False, parallel="row")
 
         if RWKV_HEAD_QK_DIM > 0:
-            self.head_q = Linear(n_embd, RWKV_HEAD_QK_DIM, bias=False, parallel="col")
+            self.head_q = LinearBF16(n_embd, RWKV_HEAD_QK_DIM, bias=False, parallel="col")
             self.head_q.scale_init = 0
-            self.head_k = Linear(n_embd, RWKV_HEAD_QK_DIM, bias=False, parallel="col")
+            self.head_k = LinearBF16(n_embd, RWKV_HEAD_QK_DIM, bias=False, parallel="col")
             self.head_k.scale_init = 0.1
             self.register_buffer("copy_mask", flow.tril(flow.ones(ctx_len, ctx_len)))
 
         self.ctx_len = ctx_len
 
-        try:
-            if os.environ["RWKV_LOAD_MODEL"] == str(False):
-                RWKV_Init(self, vocab_size, ctx_len, model_type, n_layer, n_embd)  # noqa
-        except:  # noqa
-            pass
+        # try:
+        #     if os.environ["RWKV_LOAD_MODEL"] == str(False):
+        #         RWKV_Init(self, vocab_size, ctx_len, model_type, n_layer, n_embd)  # noqa
+        # except:  # noqa
+        #     pass
 
         logger.info("number of parameters: %e", sum(p.numel() for p in self.parameters()))
 
@@ -245,11 +276,16 @@ class GPT(nn.Module):
         else:
             x = self.head(x)
 
+        # x = self.head(x)
+
         if self.training and targets is not None:
             loss = F.cross_entropy(
                 x.view(-1, x.size(-1)), targets.to_global(placement=x.placement).view(-1)
             )
-            return {"loss": loss}
+            if USE_L2_REG:
+                return {"loss": L2Wrap.apply(loss, x)}
+            else:
+                return {"loss": loss}
         else:
             return {"x": x}
 

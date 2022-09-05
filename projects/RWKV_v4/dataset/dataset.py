@@ -16,63 +16,178 @@
 
 import json
 import random
-
+import os
 import numpy as np
 import oneflow as flow
 import oneflow.nn.functional as F
 from oneflow.utils.data import Dataset
 
 from libai.data.structures import DistTensorData, Instance
+from .binidx import MMapIndexedDataset
 
+############################################################################################
+
+import math
+prime_x = 324331313
+
+def FermatPrimalityTest(number):
+    if (number > 1):
+        for time in range(3):
+            randomNumber = random.randint(2, number)-1
+            if (pow(randomNumber, number-1, number) != 1):
+                return False
+        return True
+    else:
+        return False
+
+def MillerRabinPrimalityTest(number):
+    if number == 2:
+        return True
+    elif number == 1 or number % 2 == 0:
+        return False
+    oddPartOfNumber = number - 1
+    timesTwoDividNumber = 0
+    while oddPartOfNumber % 2 == 0:
+        oddPartOfNumber = oddPartOfNumber // 2
+        timesTwoDividNumber = timesTwoDividNumber + 1
+
+    for time in range(3):
+        while True:
+            randomNumber = random.randint(2, number)-1
+            if randomNumber != 0 and randomNumber != 1:
+                break
+
+        randomNumberWithPower = pow(randomNumber, oddPartOfNumber, number)
+
+        if (randomNumberWithPower != 1) and (randomNumberWithPower != number - 1):
+            iterationNumber = 1
+
+            while (iterationNumber <= timesTwoDividNumber - 1) and (randomNumberWithPower != number - 1):
+                randomNumberWithPower = pow(randomNumberWithPower, 2, number)
+                iterationNumber = iterationNumber + 1
+            if (randomNumberWithPower != (number - 1)):
+                return False
+
+    return True
+
+############################################################################################
 
 class RWKVDataset(Dataset):
-    def __init__(self, data_dir, ctx_len, epoch_length_fixed):
-        data = open(data_dir, "r", encoding="utf-8").read()
-        print("building token list...", end=" ")
-        unique = sorted(list(set(data)))
-
-        xx = 0
-        xxObj = {}
-        for u in unique:
-            xxObj[xx] = u
-            xx += 1
-        # NOTE: comment out write json file.
-        # with open("vocab.json", "w", encoding="utf-16") as vocab_file:
-        #     vocab_file.write(json.dumps(xxObj, ensure_ascii=False))
-
-        data_size, vocab_size = len(data), len(unique)
-        print("data has %d tokens, %d unique." % (data_size, vocab_size))
-        self.stoi = {ch: i for i, ch in enumerate(unique)}
-        self.itos = {i: ch for i, ch in enumerate(unique)}
+    def __init__(self, datacfg, ctx_len, idx_begin):
         self.ctx_len = ctx_len
-        self.epoch_length_fixed = epoch_length_fixed
-        self.vocab_size = vocab_size
-        self.data = data
+        if datacfg[0] == 'idx_bin':
+            self.data = MMapIndexedDataset(datacfg[1])
+            self.vocab_size = int(os.environ['VOCAB_SIZE'])
+            print('current vocab size =', self.vocab_size, "(make sure it's correct)")
+            self.data_size = len(self.data._bin_buffer) // 2
+            print(f'data has {self.data_size} tokens.')
+        elif datacfg[0] == 'numpy':
+            self.data = np.load(datacfg[1]).astype('int')
+            self.vocab_size = int(os.environ['VOCAB_SIZE'])
+            print('current vocab size =', self.vocab_size, "(make sure it's correct)")
+            self.data_size = len(self.data)
+            print(f'data has {self.data_size} tokens.')
+        if datacfg[0] == 'txt':
+            self.data = open(datacfg[1], "r", encoding="utf-8").read()
+            print('building token list...', end=' ')
+            unique = sorted(list(set(self.data)))
+            self.vocab_size = len(unique)
+
+            xx = 0
+            xxObj = {}
+            for u in unique:
+                xxObj[xx] = u
+                xx += 1
+
+            self.data_size = len(self.data)
+            print('data has %d tokens, %d unique.' % (self.data_size, self.vocab_size))
+            self.stoi = {ch: i for i, ch in enumerate(unique)}
+            self.itos = {i: ch for i, ch in enumerate(unique)}
+
+        self.idx = 0
+        self.idx_begin = idx_begin
+        self.cuda_id = flow.env.get_rank()
+        self.cuda_count = flow.env.get_world_size()
+        if datacfg[0] == 'idx_bin':
+            self.dataset_slot = self.data_size // ctx_len
+            print(self.dataset_slot, 'prime', prime_x, round(prime_x/self.dataset_slot, 4), FermatPrimalityTest(prime_x),
+                MillerRabinPrimalityTest(prime_x), (prime_x % 3 != 1))
+            assert FermatPrimalityTest(prime_x)
+            assert MillerRabinPrimalityTest(prime_x)
+            assert prime_x % 3 != 1
+            assert prime_x/self.dataset_slot > 0.999999 and prime_x/self.dataset_slot <= 1
+        else:
+            self.dataset_slot = self.data_size
 
     def __len__(self):
-        return self.epoch_length_fixed
+        return self.dataset_slot
 
-    def __getitem__(self, idx):
-        # cheat: pick a random spot in dataset
-        i = np.random.randint(0, len(self.data) - (self.ctx_len + 1))
-        chunk = self.data[i : i + self.ctx_len + 1]
-        dix = [self.stoi[s] for s in chunk]
+    def __getitem__(self, useless):
+
+        if 'MMapIndexedDataset' in str(type(self.data)):
+            idx = self.idx
+            need_len = self.ctx_len + 1
+            ii = self.idx_begin + (idx * self.cuda_count) + self.cuda_id
+            # print(ii)
+
+            factor = (math.sqrt(5) - 1) / 2
+            factor = int(prime_x * factor)
+            r = ((factor * ii * ii * ii) % prime_x) * self.ctx_len # x^3 requires (prime_x % 3 != 1)
+
+            # print(f'[{self.cuda_id} {ii} {round(r / self.data_size, 3)} {factor}]')#, end='')
+            self.idx += 1
+            
+            dix = self.data.get(idx=0, offset=r, length=need_len).astype(int)
+            
+            if len(dix) != need_len:
+                print(len(dix), need_len, r)
+        else:
+            #
+            # we are cheating: pick a random spot in dataset
+            #
+            i = np.random.randint(0, self.data_size - (self.ctx_len + 1))
+            i = 0
+
+            # i = (self.cuda_id + idx * self.cuda_count) % (self.data_size - (self.ctx_len + 1))
+            # i = idx - 2
+            # if i < 0:
+            #     i = 0
+            # print(self.cuda_id, i)
+
+            if 'MMapIndexedDataset' in str(type(self.data)):
+                dix = self.data.get(idx=0, offset=i, length=self.ctx_len + 1).astype(int)
+            elif 'numpy' in str(type(self.data)):
+                dix = self.data[i:i+self.ctx_len+1]
+            else:
+                dix = [self.stoi[s] for s in self.data[i:i+self.ctx_len+1]]
+            # print(dix)
+
         x = flow.tensor(dix[:-1], dtype=flow.long)
         y = flow.tensor(dix[1:], dtype=flow.long)
         return Instance(idx=DistTensorData(x), targets=DistTensorData(y))
 
 
 class TOKENIZER:
-    def __init__(self, WORD_NAME, UNKNOWN_CHAR="\ue083"):
-        with open(WORD_NAME + ".json", "r", encoding="utf-16") as result_file:
-            self.word_table = json.load(result_file)
+    def __init__(self, WORD_NAME, UNKNOWN_CHAR=None):
+        if 'list' in str(type(WORD_NAME)):
+            self.charMode = False
+            if WORD_NAME[0] == WORD_NAME[1]:
+                from transformers import PreTrainedTokenizerFast
+                self.tokenizer = PreTrainedTokenizerFast(tokenizer_file=WORD_NAME[0])
+            else:
+                from transformers import GPT2TokenizerFast
+                self.tokenizer = GPT2TokenizerFast(WORD_NAME[0], WORD_NAME[1])
+        else:
+            self.charMode = True
+            with open(WORD_NAME + '.json', "r", encoding="utf-16") as result_file:
+                self.word_table = json.load(result_file)
 
-        self.vocab_size = len(self.word_table)
+            self.vocab_size = len(self.word_table)
 
-        self.stoi = {v: int(k) for k, v in self.word_table.items()}
-        self.itos = {int(k): v for k, v in self.word_table.items()}
+            self.stoi = {v: int(k) for k, v in self.word_table.items()}
+            self.itos = {int(k): v for k, v in self.word_table.items()}
 
-        self.UNKNOWN_CHAR = self.stoi[UNKNOWN_CHAR]
+            self.UNKNOWN_CHAR = self.stoi[UNKNOWN_CHAR]
 
     def refine_context(self, context):
 
@@ -93,8 +208,11 @@ class TOKENIZER:
 
         probs = F.softmax(flow.tensor(out), dim=-1)
 
-        if self.itos[lastChar] == "\n":
-            top_p = top_p_newline
+        if self.charMode:
+            if self.itos[lastChar] == '\n':
+                top_p = top_p_newline
+            else:
+                top_p = top_p_usual
         else:
             top_p = top_p_usual
 

@@ -18,6 +18,7 @@ from .cross_entropy import ParallelCrossEntropyLoss
 from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding, PatchEmbedding
 from .layer_norm import LayerNorm, RMSLayerNorm
 from .linear import Linear, Linear1D
+from .linearBF16 import LinearBF16
 from .lm_logits import LMLogits
 from .mlp import MLP
 from .transformer_layer import TransformerLayer
@@ -31,6 +32,7 @@ __all__ = [
     "PatchEmbedding",
     "build_activation",
     "Linear",
+    "LinearBF16",
     "Linear1D",
     "MLP",
     "LayerNorm",

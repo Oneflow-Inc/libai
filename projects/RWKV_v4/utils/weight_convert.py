@@ -37,7 +37,7 @@ def load_torch_checkpoint(model, cfg, path="path/to/pytorch/model.pth", strict=F
     for key, value in parameters.items():
         if "num_batches_tracked" not in key:
             # to global tensor
-            val = value.detach().cpu().numpy().astype(np.float32)
+            val = value.detach().float().cpu().numpy()
             val = flow.tensor(val).to_global(
                 sbp=flow.sbp.broadcast, placement=flow.placement("cpu", ranks=[0])
             )

@@ -1,3 +1,19 @@
+events.out.*
+log.txt*
+enwik8
+*.qdrep
+*.sqlite
+rwkv_out/
+train.npy
+imagenet_21k_winter21_whole.txt
+libai/config/configs
+libai/version.py
+data_test/
+output/
+log_*/
+testwkv/
+gogogo.py
+*.gz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

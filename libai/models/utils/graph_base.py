@@ -109,7 +109,7 @@ class GraphBase(nn.Graph):
                 "Start compling the train graph which may take some time. "
                 "Please wait for a moment ..."
             )
-            loss_dict = self.model(**kwargs)
+            loss_dict = self.model(**kwargs) # , xx
             losses = sum(loss_dict.values())
             losses.backward()
             # set loss_dict on rank0
@@ -123,7 +123,7 @@ class GraphBase(nn.Graph):
                 )
                 for k, v in loss_dict.items()
             }
-            return loss_dict
+            return loss_dict#, xx
         else:
             logger.info(
                 "Start compling the eval graph which may take some time. "
