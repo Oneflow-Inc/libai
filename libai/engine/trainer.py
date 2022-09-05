@@ -16,6 +16,7 @@
 import logging
 import time
 import weakref
+from contextlib import contextmanager
 from typing import Callable, List, Mapping
 
 import oneflow as flow
@@ -272,17 +273,36 @@ class EagerTrainer(TrainerBase):
         )
         data_time = time.perf_counter() - start
 
+        tmp_worker_thread = self.tmp_worker_thread()
         loss_dict = self.model(**data)
+        with self.thread(tmp_worker_thread):
+            tmp_loss_dict = {key: t.clone() for key, t in loss_dict.items()}
         losses = sum(loss_dict.values()) / self.grad_acc_steps
 
         losses.backward()
-        self.write_metrics(loss_dict, data_time)
+        with self.thread(tmp_worker_thread):
+            self.write_metrics(tmp_loss_dict, data_time)
 
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()
             self.optimizer.zero_grad()
 
+    def tmp_worker_thread(self):
+        if not hasattr(flow, 'asyncs'):
+            return None
+        if not hasattr(flow.asyncs, 'Thread'):
+            return None
+        return flow.asyncs.Thread()
+
+    @contextmanager
+    def thread(self, t):
+        if not hasattr(flow, 'asyncs'):
+            yield
+        if not hasattr(flow.asyncs, 'thread'):
+            yield
+        with flow.asyncs.thread(t):
+            yield
 
 class GraphTrainer(TrainerBase):
     """
