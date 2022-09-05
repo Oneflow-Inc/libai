@@ -273,8 +273,8 @@ class EagerTrainer(TrainerBase):
         )
         data_time = time.perf_counter() - start
 
-        tmp_worker_thread = self.tmp_worker_thread()
         loss_dict = self.model(**data)
+        tmp_worker_thread = self.tmp_worker_thread()
         with self.thread(tmp_worker_thread):
             tmp_loss_dict = {key: t.clone() for key, t in loss_dict.items()}
         losses = sum(loss_dict.values()) / self.grad_acc_steps
