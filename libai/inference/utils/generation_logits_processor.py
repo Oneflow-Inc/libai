@@ -17,7 +17,7 @@ class LogitsProcessorList(list):
             else:
                 scores = processor(input_ids, scores)
         return scores
-    
+
 
 class NormalizationLogitsProcessor(object):
     def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
@@ -57,7 +57,7 @@ class ForcedBOSTokenLogitsProcessor(object):
             scores[:, [i for i in range(num_tokens) if i != self.bos_token_id]] = -float("inf")
             scores[:, self.bos_token_id] = 0
         return scores
-    
+
 
 class TopKLogitsProcessor(object):
     def __init__(self, top_k: int, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
@@ -67,7 +67,7 @@ class TopKLogitsProcessor(object):
         self.top_k = top_k
         self.filter_value = filter_value
         self.min_tokens_to_keep = min_tokens_to_keep
-    
+
     def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
         top_k = min(max(self.top_k, self.min_tokens_to_keep), scores.size(-1))
         index_to_remove = scores < flow.topk(scores, top_k)[0][..., -1, None]
