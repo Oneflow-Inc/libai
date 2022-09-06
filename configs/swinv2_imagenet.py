@@ -129,8 +129,8 @@ train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300
-train.eval_period = 1000
-train.log_period = 1
+train.eval_period = 1562
+train.log_period = 100
 graph.enabled = False
 train.rdma_enabled = True
 # Scheduler

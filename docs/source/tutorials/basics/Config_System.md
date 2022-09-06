@@ -372,7 +372,7 @@ train.train_iter = 100
 ...
 ```
 
-If you install LiBai by `pip`, you can use `get_config` function to get all default ocnfig files as follows:
+If you install LiBai by `pip`, you can use `get_config` function to get all default config files as follows:
 
 ```python
 from libai.config import get_config
