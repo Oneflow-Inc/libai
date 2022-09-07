@@ -48,6 +48,7 @@ class BasePipeline(metaclass=ABCMeta):
     ):
         # init cfg
         self.cfg = LazyConfig.load(config_file)
+        print(self.cfg.model.cfg)
         flow.boxing.nccl.set_fusion_threshold_mbytes(
             try_get_key(self.cfg, "train.nccl_fusion_threshold_mb", default=16)
         )
@@ -68,6 +69,7 @@ class BasePipeline(metaclass=ABCMeta):
         logger.info(self.cfg.train.dist)
 
         # initial and load model
+
         self.model = self.load_pretrain_weight(self.cfg.model, model_path, mode=mode)
         self.model = self.model.eval()
 
