@@ -63,10 +63,7 @@ class TextGenerationPipeline(BasePipeline):
             pipeline_stage_id,
             pipeline_num_layers,
         )
-        self.cfg.model.cfg.hidden_dropout_prob = 0.0
-        self.cfg.model.cfg.embedding_dropout_prob = 0.0
-        self.cfg.model.cfg.attention_probs_dropout_prob = 0.0
-        self.cfg.model.cfg.mlp_type = "mt5"
+        self.cfg.model.cfg.mlp_type = "t5"
         self.cfg.model.cfg.pretrained_model_path = None
         self.cfg.dataloader = None
         self.cfg.tokenization = OmegaConf.create()
@@ -88,7 +85,15 @@ class TextGenerationPipeline(BasePipeline):
         if mode == "huggingface":
             from libai.models.utils.model_utils.t5_loader import T5LoaderHuggerFace
 
-            model_loader = T5LoaderHuggerFace(libai_cfg_model, libai_cfg_model.cfg, model_path)
+            model_loader = T5LoaderHuggerFace(
+                libai_cfg_model,
+                libai_cfg_model.cfg,
+                model_path,
+                hidden_dropout_prob=0.0,
+                attention_probs_dropout_prob=0.0,
+                embedding_dropout_prob=0.0,
+                mlp_type="t5",
+            )
             return model_loader.load()
         else:
             return super().load_pretrain_weight(
