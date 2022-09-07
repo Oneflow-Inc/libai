@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import collections
+import copy
 import logging
 import os
 
@@ -261,7 +262,8 @@ class ModelLoader(object):
             if len(missing_keys) > 0:
                 logger.warning(
                     f"Some weights of {model.__class__.__name__} were not initialized "
-                    f"from the model checkpoint at {pretrained_model_path} "
+                    f"from the model checkpoint at {pretrained_model_path}:\n "
+                    f"{missing_keys} \n"
                 )
             elif len(mismatched_keys) == 0:
                 logger.info(
@@ -375,7 +377,8 @@ class ModelLoaderHuggerFace(ModelLoader):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
         self.base_model_prefix_1 = None  # prefix in Transformers
         self.base_model_prefix_2 = None  # prefix in LiBai
-        self.changed_keys = []  # Store the changed configuration
+        self.origin_libai_cfg = copy.deepcopy(self.libai_cfg)
+        self.changed_keys = set()  # Store the changed configuration
 
     def _convert_tensor(self, tensor):
         """Convert PyTorch tensor to OneFlow tensor.
@@ -479,21 +482,25 @@ class ModelLoaderHuggerFace(ModelLoader):
             value_target (int | float): The value of target_cfg.
         """
         if self.libai_cfg[keys_libai] != value_target:
-            temp_key = colored(keys_libai, "yellow")
-            logger.info(
-                f"changed libai model cfg {temp_key} : "
-                f"{self.libai_cfg[keys_libai]} -> {value_target} "
-            )
             self.libai_cfg[keys_libai] = value_target
-            self.changed_keys.append(keys_libai)
 
     def _update_cfg_log(self):
-        if dist.get_local_rank() == 0 and len(self.changed_keys) > 0:
+        if dist.get_local_rank() == 0:
+            for key in sorted(self.libai_cfg):
+                if self.origin_libai_cfg[key] == self.libai_cfg[key]:
+                    continue
+                self.changed_keys.add(key)
+                temp_key = colored(key, "yellow")
+                logger.info(
+                    f"changed libai model cfg {temp_key} : "
+                    f"{self.origin_libai_cfg[key]} -> {self.libai_cfg[key]} "
+                )
             logger.warning(
                 "The following model configurations has been modified according "
                 "to `config.json` or kwargs: \n"
                 f"{self.changed_keys} \n"
             )
+
             if dist.get_pipeline_parallel_size() > 1:
                 logger.warning(
                     colored(
