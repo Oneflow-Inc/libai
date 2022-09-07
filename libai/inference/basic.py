@@ -41,6 +41,7 @@ class BasePipeline(metaclass=ABCMeta):
         tensor_parallel=None,
         pipeline_parallel=None,
         pipeline_stage_id=None,
+        pipeline_num_layers=None,
         model_path=None,
         mode="libai",
         **kwargs,
@@ -58,6 +59,7 @@ class BasePipeline(metaclass=ABCMeta):
             tensor_parallel,
             pipeline_parallel,
             pipeline_stage_id,
+            pipeline_num_layers,
         )
         dist.setup_dist_util(self.cfg.train.dist)
         assert (
@@ -89,11 +91,15 @@ class BasePipeline(metaclass=ABCMeta):
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_stage_id=None,
+        pipeline_num_layers=None,
     ):
         self.cfg.train.dist.data_parallel_size = data_parallel
         self.cfg.train.dist.tensor_parallel_size = tensor_parallel
         self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
         self.cfg.train.dist.custom_pipeline_stage_id = pipeline_stage_id
+        if pipeline_num_layers is not None:
+            self.cfg.train.dist.pipeline_num_layers = pipeline_num_layers
+
         if self.cfg.train.dist.pipeline_parallel_size > 1:
             assert (
                 try_get_key(self.cfg.train.dist, "pipeline_num_layers") is not None

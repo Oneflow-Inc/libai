@@ -31,6 +31,7 @@ class TextGenerationPipeline(BasePipeline):
         tensor_parallel=None,
         pipeline_parallel=None,
         pipeline_stage_id=None,
+        pipeline_num_layers=None,
         model_path=None,
         mode="libai",
         **kwargs,
@@ -41,6 +42,7 @@ class TextGenerationPipeline(BasePipeline):
             tensor_parallel,
             pipeline_parallel,
             pipeline_stage_id,
+            pipeline_num_layers,
             model_path,
             mode,
             **kwargs,
@@ -52,8 +54,15 @@ class TextGenerationPipeline(BasePipeline):
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_stage_id=None,
+        pipeline_num_layers=None,
     ):
-        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel, pipeline_stage_id)
+        super().update_cfg(
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            pipeline_num_layers,
+        )
         self.cfg.model.cfg.hidden_dropout_prob = 0.0
         self.cfg.model.cfg.embedding_dropout_prob = 0.0
         self.cfg.model.cfg.attention_probs_dropout_prob = 0.0
