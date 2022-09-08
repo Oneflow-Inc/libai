@@ -135,7 +135,6 @@ class ModelLoader(object):
                 flow_state_dict[key] = flow.to_global(
                     flow_state_dict[key], sbp=value.sbp, placement=value.placement
                 )
-                dist.synchronize()
         return flow_state_dict
 
     def _load_pretrained_model(

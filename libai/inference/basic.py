@@ -48,7 +48,6 @@ class BasePipeline(metaclass=ABCMeta):
     ):
         # init cfg
         self.cfg = LazyConfig.load(config_file)
-        print(self.cfg.model.cfg)
         flow.boxing.nccl.set_fusion_threshold_mbytes(
             try_get_key(self.cfg, "train.nccl_fusion_threshold_mb", default=16)
         )
@@ -111,8 +110,6 @@ class BasePipeline(metaclass=ABCMeta):
         self,
         libai_cfg_model,
         model_path,
-        base_model_prefix_1=None,
-        base_model_prefix_2="",
         mode="libai",
     ):
         """load pretrained model.
@@ -121,14 +118,16 @@ class BasePipeline(metaclass=ABCMeta):
             libai_cfg_model (libai.models): Lazy config Model in Libai, you can import it
                 by `from libai.config.configs.common.models.bert
                     import pretrain_model as libai_cfg_model`
-            model_path (str): The directory path of pretrained model,
+            model_path (str): The directory path of pretrained model
+            mode (str): set it to `libai` for loading trained model from libai,
+                set it to `random` for quickly debugging by random initialized model
         """
         if mode == "libai":
             from libai.models.utils.model_utils.base_loader import ModelLoaderLiBai
 
             model_loader = ModelLoaderLiBai(libai_cfg_model, libai_cfg_model.cfg, model_path)
-            model_loader.base_model_prefix_1 = base_model_prefix_1
-            model_loader.base_model_prefix_2 = base_model_prefix_2
+            model_loader.base_model_prefix_1 = None
+            model_loader.base_model_prefix_2 = ""
             return model_loader.load()
         elif mode == "random":
             return DefaultTrainer.build_model(self.cfg)
