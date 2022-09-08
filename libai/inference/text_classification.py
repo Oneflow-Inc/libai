@@ -27,11 +27,22 @@ class TextClassificationPipeline(BasePipeline):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        pipeline_stage_id=None,
+        pipeline_num_layers=None,
         model_path=None,
+        mode="libai",
         **kwargs,
     ):
         super().__init__(
-            config_file, data_parallel, tensor_parallel, pipeline_parallel, model_path, **kwargs
+            config_file,
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            model_path,
+            pipeline_num_layers,
+            mode,
+            **kwargs,
         )
 
     def update_cfg(
@@ -39,9 +50,19 @@ class TextClassificationPipeline(BasePipeline):
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
+        pipeline_stage_id=None,
+        pipeline_num_layers=None,
     ):
-        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
-        self.cfg.model.cfg.bias_dropout_fusion = False
+        super().update_cfg(
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            pipeline_num_layers,
+        )
+        self.cfg.model.cfg.hidden_dropout_prob = 0.0
+        self.cfg.model.cfg.attention_probs_dropout_prob = 0.0
+
         assert "num_labels" in self.cfg.model.cfg, "The model's config must contain num_labels"
         if "label2id" not in self.cfg.model.cfg:
             label2id = {"Label_" + str(i): i for i in range(self.cfg.model.cfg.num_labels)}
@@ -63,7 +84,7 @@ class TextClassificationPipeline(BasePipeline):
     ) -> dict:
         # tokenizer encoder
         input_ids = flow.tensor(np.array(self.tokenizer.encode(inputs)))
-        padding_mask = flow.tensor(np.ones(input_ids.shape))
+        padding_mask = flow.tensor(np.ones(input_ids.shape), dtype=flow.bool)
         # set batch size = 1
         input_ids = input_ids.unsqueeze(0)
         padding_mask = padding_mask.unsqueeze(0)

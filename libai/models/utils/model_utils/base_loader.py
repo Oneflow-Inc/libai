@@ -13,10 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import copy
 import logging
 import os
 
+import omegaconf
 import oneflow as flow
+from oneflow.framework.check_point_v2 import _broadcast_py_object
+from termcolor import colored
 
 import libai.utils.distributed as dist
 from libai.config import LazyCall
@@ -26,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 WEIGHTS_NAME_PT = "pytorch_model.bin"
-WEIGHTS_NAME_OF = "oneflow_model"
 CONFIG_NAME = "config.json"
 
 
@@ -83,23 +87,35 @@ class ModelLoader(object):
         self.kwargs = kwargs
         self.output_loading_info = kwargs.pop("output_loading_info", False)
 
-    def _state_dict_to_global(self, flow_state_dict):
+    def _state_dict_to_global(self, flow_state_dict=None, mode="libai"):
         """Tensor in OneFlow state dict to global according to model's sbp and placement.
 
         Args:
             flow_state_dict (OrderedDict): State dict of OneFlow's pretrained model.
         """
-        prefix = self.base_model_prefix_2
+        assert mode in ["libai", "pytorch"], f"not support for mode {mode}"
+        if mode == "libai" or dist.is_main_process():
+            prefix = self.base_model_prefix_2
 
-        # Checkpoint
-        has_prefix_module = any(
-            s.startswith(self.base_model_prefix_2) for s in flow_state_dict.keys()
-        )
-        # Module
-        expects_prefix_module = any(s.startswith(prefix) for s in self.model.state_dict().keys())
+            # Checkpoint
+            has_prefix_module = any(
+                s.startswith(self.base_model_prefix_2) for s in flow_state_dict.keys()
+            )
+            # Module
+            expects_prefix_module = any(
+                s.startswith(prefix) for s in self.model.state_dict().keys()
+            )
 
-        start_prefix = "" if has_prefix_module else prefix + "."
-        loaded_keys = [start_prefix + key for key in flow_state_dict.keys()]
+            start_prefix = "" if has_prefix_module else prefix + "."
+            loaded_keys = [start_prefix + key for key in flow_state_dict.keys()]
+        else:
+            prefix, has_prefix_module, expects_prefix_module, loaded_keys = [None] * 4
+            flow_state_dict = collections.OrderedDict()
+
+        prefix = _broadcast_py_object(prefix, src=0)
+        has_prefix_module = _broadcast_py_object(has_prefix_module, src=0)
+        expects_prefix_module = _broadcast_py_object(expects_prefix_module, src=0)
+        loaded_keys = _broadcast_py_object(loaded_keys, src=0)
 
         # to global
         for key, value in self.model.state_dict().items():
@@ -108,12 +124,18 @@ class ModelLoader(object):
             if key in loaded_keys:
                 if not has_prefix_module:
                     key = ".".join(key.split(".")[1:])
+
+                if mode == "pytorch":
+                    flow_state_dict[key] = flow.to_global(
+                        flow_state_dict[key] if dist.is_main_process() else flow.Tensor(None),
+                        sbp=flow.sbp.broadcast,
+                        placement=flow.placement("cpu", ranks=[0]),
+                    )
+
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key],
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=value.placement,
+                    flow_state_dict[key], sbp=value.sbp, placement=value.placement
                 )
-                flow_state_dict[key] = flow.to_global(flow_state_dict[key], sbp=value.sbp)
+        return flow_state_dict
 
     def _load_pretrained_model(
         self,
@@ -239,7 +261,8 @@ class ModelLoader(object):
             if len(missing_keys) > 0:
                 logger.warning(
                     f"Some weights of {model.__class__.__name__} were not initialized "
-                    f"from the model checkpoint at {pretrained_model_path} "
+                    f"from the model checkpoint at {pretrained_model_path}:\n "
+                    f"{missing_keys} \n"
                 )
             elif len(mismatched_keys) == 0:
                 logger.info(
@@ -284,7 +307,7 @@ class ModelLoaderLiBai(ModelLoader):
 
     def _load_flow_state_dict(self, state_dict_file):
         # load oneflow_model
-        state_dict = flow.load(state_dict_file)
+        state_dict = flow.load(state_dict_file, global_src_rank=0)
         return state_dict
 
     def load(self):
@@ -306,25 +329,23 @@ class ModelLoaderLiBai(ModelLoader):
             >>> bert = loder.load()
 
         """
-        if os.path.isdir(self.pretrained_model_path):
-            # state_dict file oneflow
-            if os.path.isdir(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)):
-                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_OF)
-            else:
-                raise EnvironmentError(
-                    f"Error no file named {WEIGHTS_NAME_OF} found"
-                    f"in directory {self.pretrained_model_path}."
-                )
-        else:
-            raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
-        flow_state_dict = self._load_flow_state_dict(model_file)
+        if dist.is_main_process():
+            assert os.path.isdir(
+                self.pretrained_model_path
+            ), f"{self.pretrained_model_path} must be a directory"
+
+        flow_state_dict = self._load_flow_state_dict(self.pretrained_model_path)
 
         # Instance model
-        self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
+        if isinstance(self.model, omegaconf.dictconfig.DictConfig):
+            self.model.cfg = self.libai_cfg
+            self.model = build_model(self.model)
+        else:
+            self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
-        self._state_dict_to_global(flow_state_dict)
+        self._state_dict_to_global(flow_state_dict, mode="libai")
 
         # Load
         (
@@ -355,7 +376,8 @@ class ModelLoaderHuggerFace(ModelLoader):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
         self.base_model_prefix_1 = None  # prefix in Transformers
         self.base_model_prefix_2 = None  # prefix in LiBai
-        self.changed_keys = []  # Store the changed configuration
+        self.origin_libai_cfg = copy.deepcopy(self.libai_cfg)
+        self.changed_keys = set()  # Store the changed configuration
 
     def _convert_tensor(self, tensor):
         """Convert PyTorch tensor to OneFlow tensor.
@@ -460,19 +482,31 @@ class ModelLoaderHuggerFace(ModelLoader):
         """
         if self.libai_cfg[keys_libai] != value_target:
             self.libai_cfg[keys_libai] = value_target
-            self.changed_keys.append(keys_libai)
 
     def _update_cfg_log(self):
-        if dist.get_local_rank() == 0 and len(self.changed_keys) > 0:
+        if dist.get_local_rank() == 0:
+            for key in sorted(self.libai_cfg):
+                if self.origin_libai_cfg[key] == self.libai_cfg[key]:
+                    continue
+                self.changed_keys.add(key)
+                temp_key = colored(key, "yellow")
+                logger.info(
+                    f"changed libai model cfg {temp_key} : "
+                    f"{self.origin_libai_cfg[key]} -> {self.libai_cfg[key]} "
+                )
             logger.warning(
                 "The following model configurations has been modified according "
                 "to `config.json` or kwargs: \n"
                 f"{self.changed_keys} \n"
             )
+
             if dist.get_pipeline_parallel_size() > 1:
                 logger.warning(
-                    "If you use pipeline parallel, please "
-                    "confirm the setting of `train.dist.pipeline_num_layers` \n"
+                    colored(
+                        "If you use pipeline parallel, please "
+                        "confirm the setting of `train.dist.pipeline_num_layers` \n",
+                        "red",
+                    )
                 )
 
     def load(self):
@@ -494,43 +528,52 @@ class ModelLoaderHuggerFace(ModelLoader):
             >>> bert = loader.load()
 
         """
-        if os.path.isdir(self.pretrained_model_path):
-            # state_dict file pytorch
-            if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)):
-                model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)
+        if dist.is_main_process():
+            if os.path.isdir(self.pretrained_model_path):
+                # state_dict file pytorch
+                if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)):
+                    model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)
+                else:
+                    raise EnvironmentError(
+                        f"Error no file named {WEIGHTS_NAME_PT} found"
+                        f"in directory {self.pretrained_model_path}."
+                    )
+
+                # config file
+                if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
+                    config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
+
+                    # Load config and update config.
+                    self._load_config_from_json(config_file)
+                else:
+                    import warnings
+
+                    warnings.warn(
+                        f"Error no file named {CONFIG_NAME} found in directory"
+                        f"{self.pretrained_model_path}",
+                        RuntimeWarning,
+                    )
             else:
-                raise EnvironmentError(
-                    f"Error no file named {WEIGHTS_NAME_PT} found"
-                    f"in directory {self.pretrained_model_path}."
-                )
+                raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
-            # config file
-            if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
-                config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
-
-                # Load config and update config.
-                self._load_config_from_json(config_file)
-            else:
-                import warnings
-
-                warnings.warn(
-                    f"Error no file named {CONFIG_NAME} found in directory"
-                    f"{self.pretrained_model_path}",
-                    RuntimeWarning,
-                )
+            torch_state_dict = self._load_torch_state_dict(model_file)
+            torch_state_dict = self._fix_key(torch_state_dict)
+            flow_state_dict = self._convert_tensors(torch_state_dict)
+            flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
         else:
-            raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
+            flow_state_dict = None
 
-        torch_state_dict = self._load_torch_state_dict(model_file)
-        torch_state_dict = self._fix_key(torch_state_dict)
-        flow_state_dict = self._convert_tensors(torch_state_dict)
-        flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
+        self.libai_cfg = _broadcast_py_object(self.libai_cfg, src=0)
 
         # Instance model
-        self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
+        if isinstance(self.model, omegaconf.dictconfig.DictConfig):
+            self.model.cfg = self.libai_cfg
+            self.model = build_model(self.model)
+        else:
+            self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
-        self._state_dict_to_global(flow_state_dict)
+        flow_state_dict = self._state_dict_to_global(flow_state_dict, mode="pytorch")
 
         # Load
         (

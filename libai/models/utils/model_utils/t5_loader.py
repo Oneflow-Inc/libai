@@ -272,7 +272,6 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         self._update_cfg("intermediate_size", cfg_dict["d_ff"])
         self._update_cfg("hidden_dropout_prob", cfg_dict["dropout_rate"])
         self._update_cfg("attention_probs_dropout_prob", cfg_dict["dropout_rate"])
-        self._update_cfg("max_position_embeddings", cfg_dict.get("n_positions", 512))
         self._update_cfg(
             "relative_attention_num_buckets", cfg_dict["relative_attention_num_buckets"]
         )
