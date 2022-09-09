@@ -1,18 +1,13 @@
-from timeit import repeat
 from typing import Dict
-import numpy as np
-from omegaconf import OmegaConf
-import omegaconf
 import oneflow as flow
+import os
 
-from libai.config import LazyCall, instantiate
 from libai.models.build import build_model
-from libai.data.structures import DistTensorData, Instance
 from libai.inference.basic import BasePipeline
 import libai.utils.distributed as dist
 from dalle2.tokenizer import SimpleTokenizer
 from oneflow.framework import balanced_splitter
-
+from dalle2.dalle2_loader import Dalle2ModelLoader
 
 class Dalle2Pipeline(BasePipeline):
     def __init__(
@@ -54,129 +49,82 @@ class Dalle2Pipeline(BasePipeline):
             pipeline_stage_id,
             pipeline_num_layers,
         )
-        self.cfg.dataloader = None
-        self.cfg.tokenization = OmegaConf.create()
-        self.cfg.tokenization.tokenizer = LazyCall(SimpleTokenizer)()
-
-    def load_prior_weight(self, prior, prior_weight_path):
-        if isinstance(prior, omegaconf.dictconfig.DictConfig):
-            prior = build_model(prior)
-        import torch
-        state_dict = torch.load(prior_weight_path, map_location="cpu")['ema_model']
-        for k, torch_tensor in state_dict.items():
-            if "clip." in k:
-                continue
-            if k.endswith(".g"):
-                k = k[:-1] + "weight"
-            elif k.startswith("net.causal_transformer"):
-                if k.endswith("gamma"):
-                    k = k[:-5] + 'weight'
-                elif k.endswith('beta'):
-                    k = k[:-4] + 'bias'
-            assert k in prior.state_dict(), k
-            flow_tensor = flow.tensor(torch_tensor.cpu().numpy(), placement=prior.state_dict()[
-                                      k].placement, sbp=prior.state_dict()[k].sbp)
-            prior.state_dict()[k].data.copy_(flow_tensor.data)
-
-        return prior.eval()
-
-    def load_decoder_weight(self, decoder, decoder_weight_path):
-        if isinstance(decoder, omegaconf.dictconfig.DictConfig):
-            decoder = build_model(decoder)
-        import torch
-        state_dict = torch.load(decoder_weight_path, map_location="cpu")
-        for k, torch_tensor in state_dict.items():
-            if 'clip.' in k:
-                continue
-            if k.endswith(".g"):
-                k = k[:-1] + "weight"
-            elif 'cross_attn' in k:
-                if k.endswith('gamma'):
-                    k = k[:-5] + "weight"
-                elif k.endswith('beta'):
-                    k = k[:-4] + "bias"
-            assert k in decoder.state_dict().keys(), k
-            flow_tensor = flow.tensor(torch_tensor.cpu().numpy(), placement=decoder.state_dict()[
-                                      k].placement, sbp=decoder.state_dict()[k].sbp)
-            decoder.state_dict()[k].data.copy_(flow_tensor.data)
-        return decoder.eval()
+        self.cfg.clip.name = "./dalle2/model_weights/ViT-L-14.pt"
+        self.cfg.model.prior_weight_path = "./dalle2/model_weights/prior_aes_finetune.pth"
+        self.cfg.model.decoder_weight_path = "./dalle2/model_weights/latest.pth"
+        self.cfg.swinir.swinir_path = "./swinir/weights/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth"
 
     def load_pretrain_weight(
         self,
         libai_cfg_model,
         model_path,
-        mode='libai'
-    ):
-        model = build_model(libai_cfg_model)
-        self.load_prior_weight(model.prior, libai_cfg_model.prior_weight_path)
-        self.load_decoder_weight(model.decoder, libai_cfg_model.decoder_weight_path)
-        return model
+        mode=None
+    ):  
+        model_loader = Dalle2ModelLoader(libai_cfg_model, self.cfg, model_path)
+        return model_loader.load()
 
     def build_tokenizer(self, cfg):
         return SimpleTokenizer()  #return instantiate(cfg.tokenizer)
 
-    def _parse_parameters(self, use_cache=None, max_generate_length=10, **pipeline_parameters):
+    def _parse_parameters(self, model_path=None, save_images=False, upsample_scale=None, **kwargs):
         preprocess_params = {}
-        forward_params = {}
-        postprocess_params = {**pipeline_parameters}
-
-        if use_cache is not None:
-            assert isinstance(use_cache, bool), "use_cache must be True or False"
-            forward_params["use_cache"] = use_cache
-        if max_generate_length is not None:
-            assert isinstance(max_generate_length, int), "max_generate_length must be integer"
-            forward_params["max_generate_length"] = max_generate_length
+        forward_params = {
+                            "model_path": model_path,
+                            "num_samples_per_batch": kwargs.get("num_samples_per_batch", 2),
+                            "prior_cond_scale": kwargs.get("prior_cond_scale", 1.),
+                            "decoder_cond_scale": kwargs.get("decoder_cond_scale", 3.5)
+                        }
+        postprocess_params = {
+                                "save_images": save_images,
+                                "upsample_scale": upsample_scale,
+                                "swinid_path": "./swinir/weights/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth"
+                            }
+        
         return preprocess_params, forward_params, postprocess_params
-
-    def postprocess(self, **kwargs: Dict) -> dict:
-        return kwargs
-
-    def preprocess(self, input_, **preprocess_parameters: Dict) -> dict:
-        return {}
-
-    def __call__(self, text, parallel='data') -> dict:
-        if parallel == 'data':
-            text = self.split_data(text)
-        else:
-            assert parallel == 'col'
-        return self.forward(text, parallel)
 
     def split_data(self, text):
         rank = dist.get_rank()
         indices = balanced_splitter.BalancedRanges(len(text), dist.get_world_size())
         return text[indices[rank][0]:indices[rank][1]]
 
-    def forward(self, text, parallel) -> dict:
-        sbp = flow.sbp.split(0) if parallel == 'data' else flow.sbp.broadcast
-        tokens = self.tokenizer.tokenize(text).to_global(placement=flow.placement(type='cuda', ranks=list(range(dist.get_world_size()))), sbp=sbp)
-        prior = self.model.prior
-        decoder = self.model.decoder
-        text_embed, text_encodings, text_mask = prior.clip.embed_text(tokens)
-        image_embed = prior.sample(tokens, num_samples_per_batch=2, cond_scale=1.)
+    def preprocess(self, input_, **preprocess_parameters: Dict) -> dict:
+        tokens = self.tokenizer.tokenize(text).to_global(placement=flow.placement(type='cuda', ranks=list(range(dist.get_world_size()))), sbp=flow.sbp.broadcast)
+        return {"text" : input_, "tokens" : tokens} 
 
-        image_embed = decoder.sample(
-            image_embed=image_embed, text_encodings=text_encodings, text_mask=text_mask, cond_scale=3.5)
+    def forward(self, model_input_dict, **forward_params) -> dict:
+        tokens = model_input_dict["tokens"]
+        text_embed, text_encodings, text_mask = self.model.prior.clip.embed_text(tokens)
+        image_embed = self.model.prior.sample(tokens, num_samples_per_batch=forward_params['num_samples_per_batch'], cond_scale=forward_params['prior_cond_scale'])
+
+        image_embed = self.model.decoder.sample(
+            image_embed=image_embed, text_encodings=text_encodings, text_mask=text_mask, cond_scale=forward_params['decoder_cond_scale'])
+
         return {"image_embed": image_embed}
 
-    def save_images(self, images, args):
+    def postprocess(self, model_output_dict, **postprocess_params: Dict) -> dict:
+        if not postprocess_params.get("save_images", False):
+            return model_output_dict
+        output_path = postprocess_params.get('output_dit', './outputs')
+        os.makedirs(output_path, exist_ok = True)
+
         import flowvision.transforms as T
         to_pil = T.ToPILImage()
-        images = images.to_local().to("cpu")
+        images = model_output_dict['iamge_embed'].to("cpu")
         images_64x64 = list(map(to_pil, [images[i] for i in range(images.shape[0])]))
         for i, image in enumerate(images_64x64):                
-            image.save(f"{args.output_dir}/{i}.png")
+            image.save(f"{output_path}/{i}.png")
 
-        if args.upsample_scale:
+        if postprocess_params.get('upsample_scale', False):
             from swinir import load_model, upsample4x, upsample16x
-            swinir = load_model(args.swinir_path)
+            swinir = load_model(postprocess_params.get("swinir_path", ""))
             upsample_fun = upsample4x if args.upsample_scale == 4 else upsample16x
             images = upsample_fun(images, swinir).to('cpu')
             images = list(map(to_pil, [images[i] for i in range(images.shape[0])]))
             for i, image in enumerate(images):                
-                image.save(f"{args.output_dir}/{i}_{args.upsample_scale}x.png")
+                image.save(f"{output_path}/{i}_{args.upsample_scale}x.png")
+        return model_output_dict
 
-
-def parser_args():
+def parse_args():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', type=str, default='configs/dalle2_config.py')
@@ -187,23 +135,19 @@ def parser_args():
     parser.add_argument('--upsample_scale', type=int, choices=[4, 16], default=None, help="upsample scale, if 4x, output resolution will be 256 x 256.")
     parser.add_argument('--swinir_path', type=str, default='./swinir/weights/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth')
     parser.add_argument('--output_dir', type=str, default='./outputs')
+    parser.add_argument('--save_images', action='store_true')
     return parser.parse_args()
 
 if __name__ == "__main__":
-    args = parser_args()
+    args = parse_args()
     model = Dalle2Pipeline(
         config_file=args.config_file,
         data_parallel=args.data_parallel,
         tensor_parallel=args.tensor_parallel,
-        pipeline_parallel=args.pipeline_parallel)
+        pipeline_parallel=args.pipeline_parallel,)
     text = args.text if args.text else "a man is playing basketball with his friends!"
     repeats = 4
-    parallel = 'data' if args.data_parallel > 1 else 'col'
-    imgs = model([text] * repeats, parallel)
+    imgs = model([text] * repeats, save_images = args.save_images, output_dir = args.output_dir)
     imgs = imgs['image_embed']
-    rank = dist.get_rank()
-    if rank == 0:
-        imgs = imgs.to_global(placement=flow.placement(
-            type='cuda', ranks=[0]), sbp=flow.sbp.broadcast)
-        model.save_images(imgs, args)
+    
 
