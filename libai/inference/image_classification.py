@@ -31,17 +31,21 @@ class ImageClassificationPipeline(BasePipeline):
         tensor_parallel=None,
         pipeline_parallel=None,
         pipeline_stage_id=None,
+        pipeline_num_layers=None,
         model_path=None,
+        mode="libai",
         **kwargs,
     ):
         super().__init__(
-            config_file, 
-            data_parallel, 
-            tensor_parallel, 
-            pipeline_parallel, 
-            pipeline_stage_id, 
-            model_path, 
-            **kwargs
+            config_file,
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            pipeline_num_layers,
+            model_path,
+            mode,
+            **kwargs,
         )
         if "num_classes" in self.cfg.model:
             self.num_classes = self.cfg.model.num_classes

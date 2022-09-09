@@ -21,6 +21,7 @@ import os
 import re
 import unicodedata
 from io import open
+from typing import List, Optional
 
 from .tokenization_base import PreTrainedTokenizer, _is_control, _is_punctuation, _is_whitespace
 
@@ -123,6 +124,7 @@ class BertTokenizer(PreTrainedTokenizer):
         mask_token="[MASK]",
         tokenize_chinese_chars=True,
         do_chinese_wwm=False,
+        add_bos_token=False,
         **kwargs,
     ):
         super(BertTokenizer, self).__init__(
@@ -160,6 +162,7 @@ class BertTokenizer(PreTrainedTokenizer):
                     tokenize_chinese_chars=tokenize_chinese_chars,
                 )
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab, unk_token=self.unk_token)
+        self.add_bos_token = add_bos_token
 
     @property
     def vocab_size(self):
@@ -202,6 +205,34 @@ class BertTokenizer(PreTrainedTokenizer):
         """Converts a sequence of tokens (string) to a single string."""
         out_string = " ".join(tokens).replace(" ##", "").strip()
         return out_string
+
+    def build_inputs_with_special_tokens(
+        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
+    ) -> List[int]:
+        """Add special tokens to a sequence or a pair of sequence.
+        BERT format sentence input:
+
+        - single sequence: [CLS] tokens_a [SEP]
+        - pair of sequences: [CLS] tokens_a [SEP] tokens_b [SEP]
+
+        Args:
+            token_ids_0 (List[int]): The token ids of sentence 0.
+            token_ids_1 (List[int], optional): The token ids of sentence 1. Defaults to None.
+
+        Returns:
+            :obj:`List[str]`: The sequence after adding special toekens.
+        """
+        if self.add_bos_token:
+            cls = [self.cls_token_id]
+            sep = [self.sep_token_id]
+        else:
+            cls = []
+            sep = []
+
+        if token_ids_1 is None:
+            return cls + token_ids_0 + sep
+
+        return cls + token_ids_0 + sep + token_ids_1 + sep
 
     def save_vocabulary(self, save_directory, filename_prefix=None):
         """Save the tokenizer vocabulary to a directory or file."""

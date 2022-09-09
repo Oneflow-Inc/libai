@@ -28,17 +28,21 @@ class TextClassificationPipeline(BasePipeline):
         tensor_parallel=None,
         pipeline_parallel=None,
         pipeline_stage_id=None,
+        pipeline_num_layers=None,
         model_path=None,
+        mode="libai",
         **kwargs,
     ):
         super().__init__(
-            config_file, 
-            data_parallel, 
-            tensor_parallel, 
-            pipeline_parallel, 
-            pipeline_stage_id, 
-            model_path, 
-            **kwargs
+            config_file,
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            model_path,
+            pipeline_num_layers,
+            mode,
+            **kwargs,
         )
 
     def update_cfg(
@@ -46,8 +50,16 @@ class TextClassificationPipeline(BasePipeline):
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
+        pipeline_stage_id=None,
+        pipeline_num_layers=None,
     ):
-        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
+        super().update_cfg(
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            pipeline_num_layers,
+        )
         self.cfg.model.cfg.hidden_dropout_prob = 0.0
         self.cfg.model.cfg.attention_probs_dropout_prob = 0.0
 

@@ -20,6 +20,7 @@ import logging
 import os
 from functools import lru_cache
 from io import open
+from typing import List, Optional
 
 import regex as re
 
@@ -117,6 +118,7 @@ class GPT2Tokenizer(PreTrainedTokenizer):
         unk_token="<|endoftext|>",
         bos_token="<|endoftext|>",
         eos_token="<|endoftext|>",
+        add_bos_token=False,
         **kwargs,
     ):
         super(GPT2Tokenizer, self).__init__(
@@ -138,6 +140,7 @@ class GPT2Tokenizer(PreTrainedTokenizer):
         self.pat = re.compile(
             r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
         )
+        self.add_bos_token = add_bos_token
 
     @property
     def vocab_size(self):
@@ -210,6 +213,32 @@ class GPT2Tokenizer(PreTrainedTokenizer):
         text = "".join(tokens)
         text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
         return text
+
+    def build_inputs_with_special_tokens(
+        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
+    ) -> List[int]:
+        """Add special tokens to a sequence or a pair of sequence.
+        GPT2 format sentence input:
+
+        - single sequence: <|endoftext|> tokens_a
+        - pair of sequences: <|endoftext|> tokens_a <|endoftext|> tokens_b
+
+        Args:
+            token_ids_0 (List[int]): The token ids of sentence 0.
+            token_ids_1 (List[int], optional): The token ids of sentence 1. Defaults to None.
+
+        Returns:
+            :obj:`List[str]`: The sequence after adding special toekens.
+        """
+        if self.add_bos_token:
+            bos = [self.bos_token_id]
+        else:
+            bos = []
+
+        if token_ids_1 is None:
+            return bos + token_ids_0
+
+        return bos + token_ids_0 + bos + token_ids_1
 
     def save_vocabulary(self, save_directory, filename_prefix=None):
         if not os.path.isdir(save_directory):

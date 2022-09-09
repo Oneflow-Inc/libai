@@ -264,23 +264,27 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         """
         with open(config_file, mode="r", encoding="utf-8") as f:
             cfg_dict = json.load(f)
-        self.libai_cfg.vocab_size = cfg_dict["vocab_size"]
-        self.libai_cfg.hidden_size = cfg_dict["d_model"]
-        self.libai_cfg.hidden_layers = cfg_dict["num_layers"]
-        self.libai_cfg.num_attention_heads = cfg_dict["num_heads"]
-        self.libai_cfg.intermediate_size = cfg_dict["d_ff"]
-        self.libai_cfg.hidden_dropout_prob = cfg_dict["dropout_rate"]
-        self.libai_cfg.attention_probs_dropout_prob = cfg_dict["dropout_rate"]
-        self.libai_cfg.max_position_embeddings = cfg_dict.get("n_positions", 512)
-        self.libai_cfg.relative_attention_num_buckets = cfg_dict["relative_attention_num_buckets"]
-        self.libai_cfg.embedding_dropout_prob = cfg_dict["dropout_rate"]
-        self.libai_cfg.initializer_range = cfg_dict["initializer_factor"]
-        self.libai_cfg.layernorm_eps = cfg_dict["layer_norm_epsilon"]
-        self.libai_cfg.head_size = cfg_dict["d_kv"]
+
+        self._update_cfg("vocab_size", cfg_dict["vocab_size"])
+        self._update_cfg("hidden_size", cfg_dict["d_model"])
+        self._update_cfg("hidden_layers", cfg_dict["num_layers"])
+        self._update_cfg("num_attention_heads", cfg_dict["num_heads"])
+        self._update_cfg("intermediate_size", cfg_dict["d_ff"])
+        self._update_cfg("hidden_dropout_prob", cfg_dict["dropout_rate"])
+        self._update_cfg("attention_probs_dropout_prob", cfg_dict["dropout_rate"])
+        self._update_cfg(
+            "relative_attention_num_buckets", cfg_dict["relative_attention_num_buckets"]
+        )
+        self._update_cfg("embedding_dropout_prob", cfg_dict["dropout_rate"])
+        self._update_cfg("initializer_range", cfg_dict["initializer_factor"])
+        self._update_cfg("layernorm_eps", cfg_dict["layer_norm_epsilon"])
+        self._update_cfg("head_size", cfg_dict["d_kv"])
 
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
-            self.libai_cfg[k] = v
+            self._update_cfg(k, v)
+
+        self._update_cfg_log()
 
 
 class T5LoaderLibai(ModelLoaderLiBai):

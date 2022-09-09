@@ -55,7 +55,7 @@ class ExtendedMask(flow.nn.Module):
                     ones,
                     causal_mask,
                 ],
-                axis=-1,
+                dim=-1,
             )
 
         extended_mask = causal_mask[:, None, :, :] * x[:, None, None, :]
