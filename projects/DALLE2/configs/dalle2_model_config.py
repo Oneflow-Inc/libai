@@ -1,7 +1,6 @@
-from omegaconf import DictConfig
 from libai.config import LazyCall
-from dalle2.models import DiffusionPrior, DiffusionPriorNetwork, Unet, Decoder, DALLE2
-from dalle2._clip import OpenAIClipAdapter
+from ..dalle2.models import DiffusionPrior, DiffusionPriorNetwork, Unet, Decoder, DALLE2
+from ..dalle2._clip import OpenAIClipAdapter
 
 clip = LazyCall(OpenAIClipAdapter)(name="./dalle2/model_weights/ViT-L-14.pt")
 
