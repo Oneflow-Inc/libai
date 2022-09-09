@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import numpy as np
-from omegaconf import OmegaConf
 import oneflow as flow
 from omegaconf import OmegaConf
 
@@ -209,8 +208,6 @@ class TextGenerationPipeline(BasePipeline):
             # get_next_word
             # change it by yourself according to your needs
             logits = self.model(**model_input_dict)["prediction_scores"]
-            import pdb
-            pdb.set_trace()
             next_word = self.get_next_word(logits)
             decoder_ids = decoder_ids + [next_word]
             if next_word == self.tokenizer.eos_token_id:

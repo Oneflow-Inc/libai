@@ -45,7 +45,7 @@ model = LazyCall(T5ForPreTraining)(cfg=cfg)
 # model config
 model.cfg.vocab_size = 12902
 model.cfg.hidden_size = 512
-model.cfg.hidden_layers = 12
+model.cfg.hidden_layers = 8
 model.cfg.num_attention_heads = 6
 model.cfg.head_size = 64
 model.cfg.intermediate_size = 1024
