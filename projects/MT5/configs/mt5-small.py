@@ -1,0 +1,24 @@
+from omegaconf import DictConfig
+
+
+cfg = dict(
+    vocab_size=250112,
+    hidden_size=512,
+    hidden_layers=8,
+    num_attention_heads=6,
+    head_size=64,
+    intermediate_size=1024,
+    hidden_dropout_prob=0.1,
+    attention_probs_dropout_prob=0.1,
+    embedding_dropout_prob=0.1,
+    relative_attention_num_buckets=32,
+    initializer_range=1.0,
+    layernorm_eps=1e-06,
+    amp_enabled=False,
+    model_type="mt5",
+    eos_token_id=1,
+    padding_idx=0,
+    is_encoder_decoder=True,
+)
+
+cfg = DictConfig(cfg)
