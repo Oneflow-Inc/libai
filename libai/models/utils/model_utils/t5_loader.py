@@ -75,6 +75,12 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
             prefix1 + "decoder.final_layer_norm.weight"
         )
 
+        # Convert MT5's lm_head
+        if cfg.model_type == "mt5":
+            new_key = prefix2 + "lm_head.weight"
+            old_keys.remove("lm_head.weight")
+            oneflow_state_dict[new_key] = oneflow_state_dict.pop("lm_head.weight")
+
         # NOTE: Each layers has no bias in Transformer's T5.
         for key in old_keys:
             keys = key.split(".")
@@ -133,7 +139,7 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
                         )
                         oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
                 elif op_name == "DenseReluDense":
-                    if cfg.get("mlp_type") == "t5":
+                    if cfg.get("model_type") == "t5":
                         if keys[op_idx + 1] == "wi":
                             new_key = (
                                 prefix2 + "encoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
@@ -144,7 +150,7 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
                                 prefix2 + "encoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
                             )
                             oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                    elif cfg.get("mlp_type") == "mt5":
+                    elif cfg.get("model_type") == "mt5":
                         if keys[op_idx + 1] == "wi_0":
                             new_key = prefix2 + "encoder.layers." + layer1 + ".mlp.wi_0.weight"
                             oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
@@ -233,7 +239,7 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
                     new_key = prefix2 + "decoder.layers." + layer1 + ".cross_attention.dense.weight"
                     oneflow_state_dict[new_key] = oneflow_state_dict.pop(o_w)
                 elif op_name == "DenseReluDense":
-                    if cfg.get("mlp_type") == "t5":
+                    if cfg.get("model_type") == "t5":
                         if keys[op_idx + 1] == "wi":
                             new_key = (
                                 prefix2 + "decoder.layers." + layer1 + ".mlp.dense_h_to_4h.weight"
@@ -244,7 +250,7 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
                                 prefix2 + "decoder.layers." + layer1 + ".mlp.dense_4h_to_h.weight"
                             )
                             oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
-                    elif cfg.get("mlp_type") == "mt5":
+                    elif cfg.get("model_type") == "mt5":
                         if keys[op_idx + 1] == "wi_0":
                             new_key = prefix2 + "decoder.layers." + layer1 + ".mlp.wi_0.weight"
                             oneflow_state_dict[new_key] = oneflow_state_dict.pop(key)
