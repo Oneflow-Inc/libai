@@ -117,7 +117,7 @@ class MultiheadAttention(nn.Module):
         )
         if self.has_relative_attention_bias:
             self.relative_attention_bias = Embedding(
-                self.relative_attention_num_buckets, 
+                self.relative_attention_num_buckets,
                 self.num_heads,
                 padding_idx=padding_idx,
                 layer_idx=layer_idx,

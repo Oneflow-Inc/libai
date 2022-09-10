@@ -16,13 +16,13 @@
 import oneflow as flow
 
 from libai.config import configurable
-from libai.layers import RMSLayerNorm, Linear, LMLogits
+from libai.layers import Linear, LMLogits, RMSLayerNorm
 from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 from projects.MT5.layers.embed_layer import MT5Embedding
-from projects.MT5.layers.transformer_layer import TransformerLayer
 from projects.MT5.layers.mask_layer import ExtendedMask
+from projects.MT5.layers.transformer_layer import TransformerLayer
 
 
 class MT5Model(flow.nn.Module):
@@ -127,7 +127,9 @@ class MT5Model(flow.nn.Module):
         self.past_length = 0
 
         if model_type == "mt5":
-            self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1)
+            self.lm_head = Linear(
+                hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1
+            )
         else:
             self.lm_head = LMLogits(vocab_size, bias=False)
 
@@ -216,12 +218,12 @@ class MT5Model(flow.nn.Module):
             self.set_cache(encoder_states, past_key_values=presents)
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
-        
+
         if isinstance(self.lm_head, Linear):
             logits = self.lm_head(decoder_states)
         else:
             logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
-        
+
         return logits
 
     def set_cache(self, encoder_states, past_key_values):

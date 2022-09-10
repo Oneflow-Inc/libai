@@ -24,7 +24,7 @@ model.cfg.model_type = "mt5"
 model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
 model.cfg.embedding_dropout_prob = 0.0
-model.cfg.vocab_size=30522
+model.cfg.vocab_size = 30522
 
 train.update(
     dict(

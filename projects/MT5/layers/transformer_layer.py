@@ -19,7 +19,8 @@ from libai.layers.droppath import DropPath
 from libai.layers.layer_norm import RMSLayerNorm as LayerNorm
 from libai.utils import distributed as dist
 from projects.MT5.layers.attention_layer import MultiheadAttention
-from projects.MT5.layers.mlp_layer import T5MLP, MT5MLP
+from projects.MT5.layers.mlp_layer import MT5MLP, T5MLP
+
 
 class TransformerLayer(nn.Module):
     """A single transformer layer.
