@@ -129,7 +129,7 @@ class MT5Model(flow.nn.Module):
         if model_type == "mt5":
             self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1)
         else:
-            self.lm_head = LMLogits(vocab_size, bias=True)
+            self.lm_head = LMLogits(vocab_size, bias=False)
 
     @classmethod
     def from_config(cls, cfg):

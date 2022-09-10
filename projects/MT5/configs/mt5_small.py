@@ -1,13 +1,15 @@
 from omegaconf import DictConfig
+from libai.config import LazyCall
+from projects.MT5.mt5_model import MT5Model, MT5ForPreTraining
 
 
 cfg = dict(
     vocab_size=250112,
-    hidden_size=1024,
-    hidden_layers=24,
-    num_attention_heads=16,
+    hidden_size=512,
+    hidden_layers=8,
+    num_attention_heads=6,
     head_size=64,
-    intermediate_size=2816,
+    intermediate_size=1024,
     hidden_dropout_prob=0.1,
     attention_probs_dropout_prob=0.1,
     embedding_dropout_prob=0.1,
@@ -22,3 +24,6 @@ cfg = dict(
 )
 
 cfg = DictConfig(cfg)
+
+mt5_model = LazyCall(MT5Model)(cfg=cfg)
+pretrain_model = LazyCall(MT5ForPreTraining)(cfg=cfg)

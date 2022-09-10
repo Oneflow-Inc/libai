@@ -1,4 +1,6 @@
 from omegaconf import DictConfig
+from libai.config import LazyCall
+from projects.MT5.mt5_model import MT5Model, MT5ForPreTraining
 
 
 cfg = dict(
@@ -22,3 +24,6 @@ cfg = dict(
 )
 
 cfg = DictConfig(cfg)
+
+mt5_model = LazyCall(MT5Model)(cfg=cfg)
+pretrain_model = LazyCall(MT5ForPreTraining)(cfg=cfg)
