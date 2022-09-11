@@ -280,29 +280,34 @@ class EagerTrainer(TrainerBase):
         losses = sum(loss_dict.values()) / self.grad_acc_steps
 
         losses.backward()
-        with self.thread(tmp_worker_thread):
-            self.write_metrics(tmp_loss_dict, data_time)
 
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()
             self.optimizer.zero_grad()
 
+        with self.thread(tmp_worker_thread):
+            self.write_metrics(tmp_loss_dict, data_time)
+
     def tmp_worker_thread(self):
-        if not hasattr(flow, 'asyncs'):
-            return None
-        if not hasattr(flow.asyncs, 'Thread'):
-            return None
-        return flow.asyncs.Thread()
+        try:
+            create_asyncs_thread = flow.asyncs.Thread
+        except AttributeError:
+            create_asyncs_thread = lambda: None
+        return create_asyncs_thread()
 
     @contextmanager
     def thread(self, t):
-        if not hasattr(flow, 'asyncs'):
+        try:
+            asyncs_thread = flow.asyncs.thread
+        except AttributeError:
+            asyncs_thread = self.nullcontext
+        with asyncs_thread(t):
             yield
-        if not hasattr(flow.asyncs, 'thread'):
-            yield
-        with flow.asyncs.thread(t):
-            yield
+
+    @contextmanager
+    def nullcontext(self, *argc, **kwargs):
+        yield
 
 class GraphTrainer(TrainerBase):
     """
