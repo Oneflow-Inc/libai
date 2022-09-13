@@ -15,9 +15,12 @@
 
 import numpy as np
 import oneflow as flow
+from omegaconf import OmegaConf
 
+from libai.config import LazyCall
 from libai.data.structures import DistTensorData, Instance
 from libai.inference.basic import BasePipeline
+from libai.tokenizer import T5Tokenizer
 
 
 class TextGenerationPipeline(BasePipeline):
@@ -27,11 +30,22 @@ class TextGenerationPipeline(BasePipeline):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        pipeline_stage_id=None,
+        pipeline_num_layers=None,
         model_path=None,
+        mode="libai",
         **kwargs,
     ):
         super().__init__(
-            config_file, data_parallel, tensor_parallel, pipeline_parallel, model_path, **kwargs
+            config_file,
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            pipeline_num_layers,
+            model_path,
+            mode,
+            **kwargs,
         )
 
     def update_cfg(
@@ -39,9 +53,54 @@ class TextGenerationPipeline(BasePipeline):
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
+        pipeline_stage_id=None,
+        pipeline_num_layers=None,
     ):
-        super().update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
-        self.cfg.model.cfg.bias_dropout_fusion = False
+        super().update_cfg(
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            pipeline_num_layers,
+        )
+        self.cfg.model.cfg.mlp_type = "t5"
+        self.cfg.model.cfg.pretrained_model_path = None
+        self.cfg.dataloader = None
+        self.cfg.tokenization = OmegaConf.create()
+        self.cfg.tokenization.append_eod = False
+        self.cfg.tokenization.make_vocab_size_divisible_by = 128
+        self.cfg.tokenization.tokenizer = LazyCall(T5Tokenizer)(
+            vocab_file="data_test/t5_inference_model/spiece.model",
+        )
+
+    def load_pretrain_weight(self, libai_cfg_model, model_path, mode="huggingface"):
+        """load pretrained model.
+
+        Args:
+            libai_cfg_model (libai.models): Lazy config Model in Libai, you can import it
+                by `from libai.config.configs.common.models.bert
+                    import pretrain_model as libai_cfg_model`
+            model_path (str): The directory path of pretrained model,
+        """
+        if mode == "huggingface":
+            from libai.models.utils.model_utils.t5_loader import T5LoaderHuggerFace
+
+            model_loader = T5LoaderHuggerFace(
+                libai_cfg_model,
+                libai_cfg_model.cfg,
+                model_path,
+                hidden_dropout_prob=0.0,
+                attention_probs_dropout_prob=0.0,
+                embedding_dropout_prob=0.0,
+                mlp_type="t5",
+            )
+            return model_loader.load()
+        else:
+            return super().load_pretrain_weight(
+                libai_cfg_model,
+                model_path,
+                mode=mode,
+            )
 
     def _parse_parameters(self, use_cache=None, max_generate_length=10, **pipeline_parameters):
         preprocess_params = {}
@@ -106,9 +165,7 @@ class TextGenerationPipeline(BasePipeline):
         encoder_nparray_ids = encoder_input_dict["encoder_ids"]
         encoder_nparray_mask = encoder_input_dict["encoder_padding_mask"]
 
-        decoder_ids = [
-            self.tokenizer.bos_token_id,
-        ]
+        decoder_ids = [6536, 504, 24]
 
         for _ in range(max_generate_length):
             # generate decoder input
@@ -125,11 +182,11 @@ class TextGenerationPipeline(BasePipeline):
 
             # set batch size = 1
             encoder_input_ids = flow.tensor(encoder_nparray_ids, dtype=flow.long).unsqueeze(0)
-            encoder_padding_mask = flow.tensor(encoder_nparray_mask, dtype=flow.long).unsqueeze(0)
+            encoder_padding_mask = flow.tensor(encoder_nparray_mask, dtype=flow.bool).unsqueeze(0)
             decoder_input_ids = flow.tensor(decoder_input_ids, dtype=flow.long).unsqueeze(0)
-            decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.long).unsqueeze(0)
+            decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.bool).unsqueeze(0)
             encoder_decoder_padding_mask = flow.tensor(
-                encoder_decoder_padding_mask, dtype=flow.long
+                encoder_decoder_padding_mask, dtype=flow.bool
             ).unsqueeze(0)
 
             # to_global for model input
