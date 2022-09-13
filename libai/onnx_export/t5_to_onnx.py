@@ -18,12 +18,7 @@ def get_model(config_file):
     cfg.model.cfg.mlp_type = "t5"
     cfg.model.cfg.pretrained_model_path = None
     cfg.dataloader = None
-    cfg.tokenization = OmegaConf.create()
-    cfg.tokenization.append_eod = False
-    cfg.tokenization.make_vocab_size_divisible_by = 128
-    cfg.tokenization.tokenizer = LazyCall(T5Tokenizer)(
-        vocab_file="data_test/t5_inference_model/spiece.model",
-    )
+    cfg.tokenization = None
 
     model = DefaultTrainer.build_model(cfg)
     # model._apply(convert_to_local_model)
@@ -57,11 +52,11 @@ model.eval()
 t5_graph = t5Graph(model)
 # Build the static graph model
 t5_graph._compile(
-    flow.ones(1, 5, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cpu", ranks=[0])), 
-    flow.ones(1, 5, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cpu", ranks=[0])), 
-    flow.ones(1, 3, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cpu", ranks=[0])), 
-    flow.ones(1, 3, 3, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cpu", ranks=[0])), 
-    flow.ones(1, 3, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cpu", ranks=[0])), 
+    flow.ones(1, 5, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
+    flow.ones(1, 5, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
+    flow.ones(1, 3, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
+    flow.ones(1, 3, 3, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
+    flow.ones(1, 3, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
 )
 
 export_onnx_model(resnet34_graph,
