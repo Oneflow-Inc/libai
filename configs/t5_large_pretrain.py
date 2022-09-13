@@ -7,8 +7,8 @@ from .common.data.t5_dataset import dataloader, tokenization
 
 from .common.models.graph import graph
 
-vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
-data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
+vocab_file = "../bert_data/bert-base-chinese-vocab.txt"
+data_prefix = "../bert_data/loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 dataloader.train.dataset[0].data_prefix = data_prefix
@@ -21,6 +21,9 @@ model.cfg.hidden_layers = 6
 
 train.input_placement_device = "cpu"
 
+train.dist.data_parallel_size=2
+train.dist.tensor_parallel_size=1
+train.dist.pipeline_parallel_size=1
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
 train.train_micro_batch_size = 16
