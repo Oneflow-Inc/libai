@@ -72,7 +72,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
             shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
-    def test_swinv2_utils_with_data_tensor_parallel(self):
+    def test_swinv2_loader_with_data_tensor_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -106,7 +106,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         )
 
     @flow.unittest.skip_unless_1n4d()
-    def test_swinv2_utils_with_data_tensor_pipeline_parallel(self):
+    def test_swinv2_loader_with_data_tensor_pipeline_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -141,7 +141,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         )
 
     @flow.unittest.skip_unless_1n4d()
-    def test_swinv2_utils_with_data_tensor_parallel_backward(self):
+    def test_swinv2_loader_with_data_tensor_parallel_backward(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -179,7 +179,7 @@ class TestSwinV2Loder(flow.unittest.TestCase):
         )
 
     @flow.unittest.skip_unless_1n4d()
-    def test_swinv2_utils_with_data_tensor_pipeline_parallel_backward(self):
+    def test_swinv2_loader_with_data_tensor_pipeline_parallel_backward(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
