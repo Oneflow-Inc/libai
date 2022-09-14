@@ -168,7 +168,7 @@ class TestSwinLoder(flow.unittest.TestCase):
         prediction_scores = model(input_image)["prediction_scores"]
         loss = prediction_scores.sum()
         loss.backward()
-        
+
         self.assertTrue(np.allclose(108775.88, model.head.weight.grad.sum().numpy(), 1e-3))
         self.assertTrue(
             np.allclose(24.320518, model.patch_embed.norm.weight.grad.sum().numpy(), 1e-2)
