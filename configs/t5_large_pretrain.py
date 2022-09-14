@@ -17,7 +17,7 @@ dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
 # T5-large model config
 model.cfg.num_attention_heads = 12
-model.cfg.hidden_size = 384
+model.cfg.hidden_size = 12
 model.cfg.hidden_layers = 6
 model.cfg.scale_mask_softmax_fusion = False
 model.cfg.bias_dropout_fusion = False
@@ -33,7 +33,7 @@ train.dist.pipeline_parallel_size=1
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
 
-train.train_micro_batch_size = 16
+train.train_micro_batch_size = 1
 train.amp.enabled = True
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
