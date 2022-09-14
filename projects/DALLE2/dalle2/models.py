@@ -1057,11 +1057,11 @@ class CrossAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         self.null_kv = nn.Parameter(flow.randn(2, dim_head, placement=default_placement, sbp=flow.sbp.broadcast))
-        self.to_q = Linear(dim, inner_dim, bias = False)
-        self.to_kv = Linear(context_dim, inner_dim * 2, bias = False)
+        self.to_q = Linear(dim, inner_dim, bias = False, parallel='col')
+        self.to_kv = Linear(context_dim, inner_dim * 2, bias = False, parallel='col')
 
         self.to_out = nn.Sequential(
-            Linear(inner_dim, dim, bias = False),
+            Linear(inner_dim, dim, bias = False, parallel='row'),
             LayerNorm(dim)
         )
 
@@ -1236,17 +1236,17 @@ class Unet(nn.Module):
 
         self.to_time_hiddens = nn.Sequential(
             SinusoidalPosEmb(dim),
-            Linear(dim, time_cond_dim),
+            Linear(dim, time_cond_dim, parallel='col'),
             nn.GELU()
         )
 
         self.to_time_tokens = nn.Sequential(
-            Linear(time_cond_dim, cond_dim * num_time_tokens),
+            Linear(time_cond_dim, cond_dim * num_time_tokens, parallel='row'),
             Rearrange('b (r d) -> b r d', r = num_time_tokens)
         )
 
         self.to_time_cond = nn.Sequential(
-            Linear(time_cond_dim, time_cond_dim)
+            Linear(time_cond_dim, time_cond_dim, parallel='row')
         )
 
         self.image_to_tokens = nn.Sequential(

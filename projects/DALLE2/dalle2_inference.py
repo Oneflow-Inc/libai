@@ -77,7 +77,7 @@ class Dalle2Pipeline(BasePipeline):
         postprocess_params = {
                                 "save_images": save_images,
                                 "upsample_scale": upsample_scale,
-                                "swinid_path": "./swinir/weights/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth"
+                                "swinir_path": "./swinir/weights/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth"
                             }
         
         return preprocess_params, forward_params, postprocess_params
@@ -88,7 +88,7 @@ class Dalle2Pipeline(BasePipeline):
         return text[indices[rank][0]:indices[rank][1]]
 
     def preprocess(self, input_, **preprocess_parameters: Dict) -> dict:
-        tokens = self.tokenizer.tokenize(text).to_global(placement=flow.placement(type='cuda', ranks=list(range(dist.get_world_size()))), sbp=flow.sbp.broadcast)
+        tokens = self.tokenizer.tokenize(input_).to_global(placement=flow.placement(type='cuda', ranks=list(range(dist.get_world_size()))), sbp=flow.sbp.broadcast)
         return {"text" : input_, "tokens" : tokens} 
 
     def forward(self, model_input_dict, **forward_params) -> dict:
@@ -109,11 +109,10 @@ class Dalle2Pipeline(BasePipeline):
 
         import flowvision.transforms as T
         to_pil = T.ToPILImage()
-        images = model_output_dict['iamge_embed'].to("cpu")
+        images = model_output_dict['image_embed'].to("cpu")
         images_64x64 = list(map(to_pil, [images[i] for i in range(images.shape[0])]))
         for i, image in enumerate(images_64x64):                
             image.save(f"{output_path}/{i}.png")
-
         if postprocess_params.get('upsample_scale', False):
             from swinir import load_model, upsample4x, upsample16x
             swinir = load_model(postprocess_params.get("swinir_path", ""))
@@ -146,8 +145,14 @@ if __name__ == "__main__":
         tensor_parallel=args.tensor_parallel,
         pipeline_parallel=args.pipeline_parallel,)
     text = args.text if args.text else "a man is playing basketball with his friends!"
-    repeats = 4
-    imgs = model([text] * repeats, save_images = args.save_images, output_dir = args.output_dir)
-    imgs = imgs['image_embed']
+    repeats = 5
+    text = [ 'a shiba inu wearing a beret and black turtleneck', 
+             'a teddy bear on a skateboard in times square',
+             'trump fight with biden in white house',
+             'Donald trump fight with biden in white house',]
     
-
+    imgs = model(text, **vars(args))
+    # if dist.is_main_process():
+    #     imgs = imgs['image_embed']
+    
+    #python -m oneflow.distributed.launch --nproc_per_node 4 dalle2_inference.py --save_images --upsample_scale 4

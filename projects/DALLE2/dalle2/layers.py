@@ -184,6 +184,7 @@ class Conv2d(nn.Module):
         bias: bool = True,
         padding_mode: str = "zeros",
         *,
+        sbp = flow.sbp.broadcast,
         layer_idx=0
     ):
         super().__init__()
@@ -212,13 +213,13 @@ class Conv2d(nn.Module):
             self.weight = flow.nn.Parameter(
                 flow.Tensor(out_channels, in_channels // groups, *self.kernel_size,
                             placement=dist.get_layer_placement(layer_idx=layer_idx),
-                            sbp=flow.sbp.broadcast)
+                            sbp=sbp)
             )
         else:
             self.weight = flow.nn.Parameter(
                 flow.Tensor(out_channels, *self.kernel_size, in_channels // groups,
                             placement=dist.get_layer_placement(layer_idx=layer_idx),
-                            sbp=flow.sbp.broadcast)
+                            sbp=sbp)
             )
 
         self.out_channel_groups = out_channels // groups
@@ -227,7 +228,7 @@ class Conv2d(nn.Module):
             self.bias = flow.nn.Parameter(
                 flow.Tensor(out_channels,
                 placement=dist.get_layer_placement(layer_idx=layer_idx),
-                sbp=flow.sbp.broadcast)
+                sbp=sbp)
             )
         self.reset_parameters()
 
@@ -290,6 +291,7 @@ class ConvTranspose2d(nn.Module):
         dilation: int = 1,
         padding_mode: str = "zeros",
         *,
+        sbp = flow.sbp.broadcast,
         layer_idx = 0
     ) -> None:
         super().__init__()
@@ -305,7 +307,7 @@ class ConvTranspose2d(nn.Module):
         self.weight = flow.nn.Parameter(
             flow.Tensor(in_channels, out_channels // groups, *self.kernel_size,
                         placement=dist.get_layer_placement(layer_idx=layer_idx),
-                        sbp=flow.sbp.broadcast)
+                        sbp=sbp)
         )
         self.in_channel_groups = in_channels // groups
         self.filters = out_channels
@@ -314,7 +316,7 @@ class ConvTranspose2d(nn.Module):
         if bias:
             self.bias = flow.nn.Parameter(flow.Tensor(out_channels,
                          placement=dist.get_layer_placement(layer_idx=layer_idx),
-                        sbp=flow.sbp.broadcast))
+                        sbp=sbp))
 
         self.reset_parameters()
 
