@@ -303,6 +303,7 @@ def get_layer_placement(layer_idx, device_type="cuda"):
     dist_util = get_dist_util()
     if not flow.cuda.is_available() and device_type == "cuda":
         device_type = "cpu"
+    device_type = "cpu"
     return flow.placement(
         device_type,
         dist_util.get_layer_ranks(layer_idx),
