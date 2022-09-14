@@ -133,7 +133,7 @@ class ModelLoader(object):
                     )
 
                 flow_state_dict[key] = flow.to_global(
-                    flow_state_dict[key], sbp=value.sbp, placement=value.placement
+                    flow_state_dict[key], sbp=value.sbp, placement=flow.placement("cpu", ranks=list(value.placement.ranks))
                 )
         return flow_state_dict
 
