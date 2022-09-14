@@ -6,8 +6,8 @@ from .common.train import train
 from .common.optim import optim
 from .common.data.bert_dataset import dataloader, tokenization
 
-vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
-data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
+vocab_file = "..//bert_data/bert-base-chinese-vocab.txt"
+data_prefix = "../bert_data/data/loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 dataloader.train.dataset[0].data_prefix = data_prefix
@@ -20,6 +20,8 @@ model.cfg.hidden_layers = 8
 
 train.input_placement_device = "cpu"
 
+train.dist.data_parallel_size=4
+train.dist.tensor_parallel_size=1
 train.dist.pipeline_num_layers = model.cfg.hidden_layers
 
 train.train_micro_batch_size = 16
