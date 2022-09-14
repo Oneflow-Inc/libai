@@ -42,7 +42,6 @@ class GraphBase(nn.Graph):
 
         self.model = model
         self.is_train = is_train
-        self.debug(1, only_compile=True)
 
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
