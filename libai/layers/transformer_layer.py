@@ -68,7 +68,6 @@ class TransformerLayer(nn.Module):
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
         bias_gelu_fusion=False,
-        mlp_use_quick_gelu=False,
         bias_dropout_fusion=False,
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
@@ -124,7 +123,6 @@ class TransformerLayer(nn.Module):
             self.init_method,
             output_layer_init_method=self.output_layer_init_method,
             bias_gelu_fusion=self.bias_gelu_fusion,
-            mlp_use_quick_gelu=mlp_use_quick_gelu,
             bias_dropout_fusion=self.bias_dropout_fusion,
             layer_idx=self.layer_idx,
         )

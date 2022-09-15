@@ -50,7 +50,6 @@ class MLP(nn.Module):
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
         bias_gelu_fusion=False,
-        mlp_use_quick_gelu=False,
         bias_dropout_fusion=False,
         *,
         layer_idx=0,
@@ -74,7 +73,7 @@ class MLP(nn.Module):
         )
 
         if not bias_gelu_fusion:
-            self.activation_func = build_activation("quick_gelu" if mlp_use_quick_gelu else "gelu")
+            self.activation_func = build_activation("gelu")
 
         self.dense_4h_to_h = Linear(
             ffn_hidden_size,

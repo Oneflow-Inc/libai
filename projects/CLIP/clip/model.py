@@ -5,6 +5,9 @@
 
 from collections import OrderedDict
 from typing import Dict, Tuple, Union
+from libai.layers.activation import build_activation
+from libai.layers import MLP, TransformerLayer
+from libai.layers.attention import AttnMaskType
 
 import numpy as np
 import oneflow as flow
@@ -182,22 +185,40 @@ class ModifiedResNet(nn.Module):
 
         return x
 
+class MLPClip(MLP):
+    def __init__(self, hidden_size, ffn_hidden_size, output_dropout_prob=0, init_method=nn.init.xavier_normal_, output_layer_init_method=None, bias_gelu_fusion=False, bias_dropout_fusion=False, *, layer_idx=0):
+        super().__init__(hidden_size, ffn_hidden_size, output_dropout_prob, init_method, output_layer_init_method, bias_gelu_fusion, bias_dropout_fusion, layer_idx=layer_idx)
+        if not bias_gelu_fusion:
+            self.activation_func = build_activation("quick_gelu")
+
+class TransformerLayerClip(TransformerLayer):
+    def __init__(self, hidden_size, ffn_hidden_size, num_attention_heads, is_decoder=False, attention_dropout_prob=0, output_dropout_prob=0, drop_path_prob=0, layernorm_epsilon=0.00001, init_method=nn.init.xavier_normal_, output_layer_init_method=None, bias_gelu_fusion=False, bias_dropout_fusion=False, scale_mask_softmax_fusion=False, apply_query_key_layer_scaling=False, apply_residual_post_layernorm=False, attn_mask_type=AttnMaskType.padding, *, layer_idx=0):
+        super().__init__(hidden_size, ffn_hidden_size, num_attention_heads, is_decoder, attention_dropout_prob, output_dropout_prob, drop_path_prob, layernorm_epsilon, init_method, output_layer_init_method, bias_gelu_fusion, bias_dropout_fusion, scale_mask_softmax_fusion, apply_query_key_layer_scaling, apply_residual_post_layernorm, attn_mask_type, layer_idx=layer_idx)
+        self.mlp = MLPClip(
+            self.hidden_size,
+            self.ffn_hidden_size,
+            self.output_dropout_prob,
+            self.init_method,
+            output_layer_init_method=self.output_layer_init_method,
+            bias_gelu_fusion=self.bias_gelu_fusion,
+            bias_dropout_fusion=self.bias_dropout_fusion,
+            layer_idx=self.layer_idx,
+        )
 
 class Transformer(nn.Module):
-    def __init__(self, width: int, layers: int, heads: int, attn_mask: flow.Tensor = None, mlp_use_quick_gelu = False):
+    def __init__(self, width: int, layers: int, heads: int, attn_mask: flow.Tensor = None):
         super().__init__()
         self.width = width
         self.layers = layers
         self.attn_mask = attn_mask
         self.resblocks = nn.ModuleList(
-            [TransformerLayer(width, 4 * width, heads, mlp_use_quick_gelu = mlp_use_quick_gelu, layer_idx=i) for i in range(layers)]
+            [TransformerLayerClip(width, 4 * width, heads, layer_idx=i) for i in range(layers)]
         )
 
     def forward(self, x: flow.Tensor):
         for layer in self.resblocks:
             x = layer(x, self.attn_mask)
         return x
-
 
 class VisionTransformer(ViT):
     def __init__(
@@ -271,7 +292,6 @@ class CLIP(nn.Module):
         transformer_width: int,
         transformer_heads: int,
         transformer_layers: int,
-        mlp_use_quick_gelu = True, #NOTE: mlp_use_quick_gelu should be True when using CLIP's pretrained model weights.
     ):
         super().__init__()
 
@@ -302,7 +322,6 @@ class CLIP(nn.Module):
             layers=transformer_layers,
             heads=transformer_heads,
             attn_mask=self.build_attention_mask(),
-            mlp_use_quick_gelu = mlp_use_quick_gelu,
         )
 
         self.vocab_size = vocab_size
