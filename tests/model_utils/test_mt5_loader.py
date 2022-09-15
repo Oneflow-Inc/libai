@@ -23,7 +23,6 @@ import oneflow as flow
 import oneflow.unittest
 from omegaconf import DictConfig
 
-import libai
 from libai.models.utils import T5LoaderHuggerFace
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
