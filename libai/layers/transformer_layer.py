@@ -192,8 +192,9 @@ class TransformerLayer(nn.Module):
             residual = hidden_states
 
         hidden_states = residual + attention_output
-    
+
         layernorm_output = self.post_attention_layernorm(hidden_states)
+
         if self.is_decoder:
             attention_output = self.cross_attention(
                 layernorm_output,
