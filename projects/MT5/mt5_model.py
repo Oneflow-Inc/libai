@@ -46,6 +46,7 @@ class MT5Model(flow.nn.Module):
         model_type="mt5",
     ) -> None:
         super().__init__()
+        self.model_type = model_type
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         self.embedding = MT5Embedding(
@@ -219,7 +220,7 @@ class MT5Model(flow.nn.Module):
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
 
-        if isinstance(self.lm_head, Linear):
+        if self.model_type == "mt5":
             logits = self.lm_head(decoder_states)
         else:
             logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
