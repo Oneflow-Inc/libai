@@ -17,7 +17,7 @@ import json
 
 import oneflow as flow
 
-from .base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
+from libai.models.utils import ModelLoaderHuggerFace, ModelLoaderLiBai
 
 
 class T5LoaderHuggerFace(ModelLoaderHuggerFace):
@@ -27,7 +27,7 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         """NOTE: base_model_prefix_1 is T5's prefix in Transformers.
         base_model_prefix_2 is T5's prefix in LiBai."""
         self.base_model_prefix_1 = "transformer"
-        self.base_model_prefix_2 = "t5_model"
+        self.base_model_prefix_2 = "mt5_model"
 
     def _convert_state_dict(self, flow_state_dict, cfg):
         """Convert state_dict's keys to match model.
@@ -296,4 +296,4 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
 class T5LoaderLibai(ModelLoaderLiBai):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
-        self.base_model_prefix_2 = "t5_model"
+        self.base_model_prefix_2 = "mt5_model"
