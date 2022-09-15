@@ -5,7 +5,7 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 from libai.config import LazyCall, get_config
 from .models.vit_base_patch16 import model
-from ..utils.scheduler import warmup_layerscale_cosine_lr_scheduler
+from ..utils.scheduler import warmup_layerscale_cosine_lr_scheduler, warmup_cosine_lr_scheduler
 from ..utils.lr_decay import param_groups_lrd
 
 
@@ -13,9 +13,10 @@ from ..utils.lr_decay import param_groups_lrd
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
 finetune.weight_style = (
-    "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+    # "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+    "pytorch"
 )
-finetune.path = "/path/to/pretrained_mae_weight"
+finetune.path = "/home/zhangwenxiao/wksp/mae/mae_pretrain_vit_base.pth"
 
 
 # Get train, optim and graph configs
@@ -26,12 +27,11 @@ dataloader = get_config("common/data/imagenet.py").dataloader
 
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/path/to/imagenet"
-dataloader.test[0].dataset.root = "/path/to/imagenet"
-
+dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
+dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
 
 # Graph training
-graph.enabled = False
+graph.enabled = True
 
 
 # Refine model cfg for vit training on imagenet
@@ -50,49 +50,67 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     num_classes=model.num_classes,
 )
 
+# number devices
+n_gpus = 8
+
+# dataset length
+dataset_train_length = 1281167
+dataset_val_length = 50000
+
 # Refine training settings for MAE finetune
-train.train_micro_batch_size = 128
+train.train_micro_batch_size = 32
+train.num_accumulation_steps = 4
 train.test_micro_batch_size = 32
+
+effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
+epoch_iter = dataset_train_length // effective_batch_size
+
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
-train.log_period = 1
-train.evaluation.eval_period = 1000
+train.log_period = 20
+train.evaluation.eval_period = epoch_iter
+train.checkpointer.period = epoch_iter
 
 # Set layer decay for MAE fine-tune
-train.layer_decay = 0.75
+train.layer_decay = 0.65
+
+# AMP
+train.amp.enabled = True
 
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule as follows:
 # lr = base_lr * batch_size / 256
 # In LiBai, you should refine the actually learning rate due to your on settings
 # Here we use 8 GPUs, 128 batch_size per GPU for training, batch_size equals to 1024
-base_lr = 1e-3
-actual_lr = base_lr * (train.train_micro_batch_size * 8 / 256)
-
+base_lr = 5e-4
+actual_lr = base_lr * effective_batch_size / 256
 
 # Refine optim settings
 optim.params._target_ = param_groups_lrd
 optim.params.weight_decay = 0.05
-optim.params.layer_decay = 0.75
+optim.params.layer_decay = 0.65
 optim.lr = actual_lr
-optim.weight_decay = 0.05
-optim.betas = (0.9, 0.999)
 
 del optim.params.clip_grad_max_norm
 del optim.params.clip_grad_norm_type
 del optim.params.weight_decay_norm
 del optim.params.weight_decay_bias
-
+del optim.weight_decay
 
 # Refine scheduler
-train.scheduler._target_ = warmup_layerscale_cosine_lr_scheduler
-train.scheduler.warmup_factor = 0.001
-train.scheduler.alpha = 0.0
-train.scheduler.warmup_method = "linear"
-
+if graph.enabled:
+    train.scheduler = LazyCall(warmup_cosine_lr_scheduler)(
+        warmup_factor=0.0,
+        min_lr=1e-6,
+    )
+else:
+    train.scheduler = LazyCall(warmup_layerscale_cosine_lr_scheduler)(
+        warmup_factor=0.0,
+        min_lr=1e-6,
+    )
 
 # Distributed Settings
 train.dist.pipeline_num_layers = model.depth
-train.dist.data_parallel_size = 1
+train.dist.data_parallel_size = n_gpus
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1

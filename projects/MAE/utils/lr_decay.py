@@ -18,6 +18,9 @@
 # References:
 # mae: https://github.com/facebookresearch/mae/blob/main/util/lr_decay.py
 # --------------------------------------------------------
+import logging
+
+logger = logging.getLogger("libai.mae." + __name__)
 
 
 def param_groups_lrd(model, weight_decay=0.05, layer_decay=0.75):
@@ -44,6 +47,8 @@ def param_groups_lrd(model, weight_decay=0.05, layer_decay=0.75):
 
         layer_idx = get_layer_idx_for_vit(name, num_layers)
         group_name = "layer_%d_%s" % (layer_idx, g_decay)
+
+        # logger.info(f"{name}, shape={param.shape}, {g_decay}={this_decay}, layer_scale={layer_scales[layer_idx]}")
 
         if group_name not in param_group_names:
             this_scale = layer_scales[layer_idx]
