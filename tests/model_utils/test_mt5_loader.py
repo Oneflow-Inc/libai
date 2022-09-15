@@ -24,13 +24,12 @@ import oneflow.unittest
 from omegaconf import DictConfig
 
 import libai
-from projects.MT5.configs.mt5_base import cfg as libai_cfg
-from projects.MT5.mt5_model import MT5Model
 from libai.models.utils import T5LoaderHuggerFace
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
-
+from projects.MT5.configs.mt5_base import cfg as libai_cfg
+from projects.MT5.mt5_model import MT5Model
 
 PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/pytorch_model.bin"  # noqa
 PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/config.json"  # noqa
@@ -67,7 +66,11 @@ class TestT5Loader(flow.unittest.TestCase):
             [101, 2028, 12314, 3377, 102, 0, 0, 0],
             [101, 2064, 2017, 3305, 2009, 102, 0, 0],
         ]
-        self.encoder_att_mask = [[1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1]]
+        self.encoder_att_mask = [
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1],
+        ]
         self.decoder_input_ids = [
             [101, 2009, 1005, 1055, 2986],
             [101, 2028, 12314, 3377, 102],
@@ -130,10 +133,12 @@ class TestT5Loader(flow.unittest.TestCase):
             placement=dist.get_layer_placement(0),
         )
 
-        logits = model(encoder_input_ids, decoder_input_ids, encode_att_mask, decoder_att_mask, encode_att_mask)
+        logits = model(
+            encoder_input_ids, decoder_input_ids, encode_att_mask, decoder_att_mask, encode_att_mask
+        )
         self.assertTrue(
             np.allclose(
-                np.array(-83584720.),
+                np.array(-83584720.0),
                 logits.sum().data.numpy(),
             )
         )
@@ -189,10 +194,12 @@ class TestT5Loader(flow.unittest.TestCase):
             placement=dist.get_layer_placement(0),
         )
 
-        logits = model(encoder_input_ids, decoder_input_ids, encode_att_mask, decoder_att_mask, encode_att_mask)
+        logits = model(
+            encoder_input_ids, decoder_input_ids, encode_att_mask, decoder_att_mask, encode_att_mask
+        )
         self.assertTrue(
             np.allclose(
-                np.array(-83584720.),
+                np.array(-83584720.0),
                 logits.sum().data.numpy(),
             )
         )
