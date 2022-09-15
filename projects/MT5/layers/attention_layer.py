@@ -152,9 +152,6 @@ class MultiheadAttention(nn.Module):
                 phase and used for incremental decoding. Defaults to False.
         """
 
-        # hidden_states, encoder_states: [S(0), B]
-        # attention_mask: [S(0), B]
-
         if encoder_states is not None:
             encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
@@ -173,8 +170,6 @@ class MultiheadAttention(nn.Module):
         key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
 
         if self.is_cross_attention:
-            # if it is cross attention, key and value should be calculated only once, and the
-            # result can be reused.
             query = self.query(hidden_states)
             query = query.view(bsz, -1, self.num_heads, self.head_size)
             query = query.permute(0, 2, 1, 3)
@@ -190,10 +185,6 @@ class MultiheadAttention(nn.Module):
                     "past_key_value and encoder_states cannot be None at the same time."
                 )
         else:
-            # if it is self attention, query, key, and value are all obtained from hidden_states.
-            # when in the inference phase of an incremental decoder,
-            # hidden_states is the last-added state,
-            # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
             query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
             query_key_value = query_key_value.permute(
@@ -205,11 +196,9 @@ class MultiheadAttention(nn.Module):
                 key = flow.cat((past_key.type_as(key), key), dim=2)
                 value = flow.cat((past_value.type_as(value), value), dim=2)
 
-        # query, key, value: [S(0), S(1)], shape: [bsz, num_heads, seq_length, head_size]
         if use_cache:
             past_key_value = (key, value)
 
-        # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(query, key, transpose_b=True)
 
         if position_bias is None:
@@ -232,30 +221,18 @@ class MultiheadAttention(nn.Module):
         position_bias = position_bias.to_global(placement=attention_scores.placement)
         attention_scores = attention_scores + position_bias
 
-        # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
             attention_scores = flow.mul(attention_scores, attention_mask)
             attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-            # TODO(xingyu.liao): graph will occur `where_scalar` errors
-            # when using `masked_fill`
-            # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
             attention_weights = flow.softmax(attention_scores, dim=-1)
-            # [bsz, num_heads, tgt_len, src_len]
             attention_weights = self.dropout(attention_weights)
         else:
             attention_weights = flow.softmax(attention_scores, dim=-1)
-            # [bsz, num_heads, tgt_len, src_len]
             attention_weights = self.dropout(attention_weights)
 
-        # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
         context = flow.matmul(attention_weights, value)
-        # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
         context = context.transpose(1, 2)
 
-        # Concat multi-head results from
-        # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
-        # SBP sign: [S(0), S(2)]
-        # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context.flatten(2))
 
         output = self.output_dropout(output)
@@ -276,7 +253,6 @@ class MultiheadAttention(nn.Module):
     def _relative_position_bucket(
         self, relative_position, bidirectional=True, num_buckets=32, max_distance=128
     ):
-        # relative_position: (seq_len, seq_len)
         relative_buckets = 0
         if bidirectional:
             num_buckets //= 2

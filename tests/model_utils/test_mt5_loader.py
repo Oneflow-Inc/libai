@@ -30,7 +30,6 @@ from projects.MT5.configs.mt5_base import cfg as libai_cfg
 from projects.MT5.mt5_model import MT5Model
 from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
-
 PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/pytorch_model.bin"  # noqa
 PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/config.json"  # noqa
 
