@@ -508,9 +508,6 @@ class ModelLoaderHuggerFace(ModelLoader):
                         "red",
                     )
                 )
-        self.changed_keys = _broadcast_py_object(self.changed_keys, src = 0)
-        for key in self.changed_keys:
-            self.libai_cfg[key] = _broadcast_py_object(self.libai_cfg[key], src = 0)
 
     def load(self):
         """Load model.
@@ -565,6 +562,8 @@ class ModelLoaderHuggerFace(ModelLoader):
             flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
         else:
             flow_state_dict = None
+
+        self.libai_cfg = _broadcast_py_object(self.libai_cfg, src=0)
 
         # Instance model
         if isinstance(self.model, omegaconf.dictconfig.DictConfig):

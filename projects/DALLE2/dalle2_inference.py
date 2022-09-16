@@ -1,4 +1,5 @@
 from typing import Dict
+from libai.utils.file_utils import download_file
 import oneflow as flow
 import os
 
@@ -8,6 +9,7 @@ import libai.utils.distributed as dist
 from dalle2.tokenizer import SimpleTokenizer
 from oneflow.framework import balanced_splitter
 from dalle2.dalle2_loader import Dalle2ModelLoader
+from dalle2.model_weights.download_utils import download_dalle2_weights
 
 class Dalle2Pipeline(BasePipeline):
     def __init__(
@@ -138,6 +140,7 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
+    download_dalle2_weights()
     args = parse_args()
     model = Dalle2Pipeline(
         config_file=args.config_file,
@@ -147,8 +150,8 @@ if __name__ == "__main__":
     text = args.text if args.text else "a man is playing basketball with his friends!"
     repeats = 5
     text = [ 'a shiba inu wearing a beret and black turtleneck', 
-             'a teddy bear on a skateboard in times square',
-             'trump fight with biden in white house',
+            #  'a teddy bear on a skateboard in times square',
+            #  'trump fight with biden in white house',
              'Donald trump fight with biden in white house',]
     
     imgs = model(text, **vars(args))
