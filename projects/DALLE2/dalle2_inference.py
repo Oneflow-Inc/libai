@@ -51,7 +51,7 @@ class Dalle2Pipeline(BasePipeline):
             pipeline_stage_id,
             pipeline_num_layers,
         )
-        self.cfg.clip.name = "./dalle2/model_weights/ViT-L-14.pt"
+        self.cfg.model.prior.clip.name = "./dalle2/model_weights/ViT-L-14.pt"
         self.cfg.model.prior_weight_path = "./dalle2/model_weights/prior_aes_finetune.pth"
         self.cfg.model.decoder_weight_path = "./dalle2/model_weights/latest.pth"
         self.cfg.swinir.swinir_path = "./swinir/weights/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth"

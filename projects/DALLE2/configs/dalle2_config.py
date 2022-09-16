@@ -4,7 +4,7 @@ from dalle2.models import DiffusionPrior, DiffusionPriorNetwork, Unet, Decoder, 
 from dalle2._clip import OpenAIClipAdapter
 from omegaconf import DictConfig
 
-clip = LazyCall(OpenAIClipAdapter)(name="./dalle2/model_weights/ViT-L-14.pt")
+clip = LazyCall(OpenAIClipAdapter)(name="")
 swinir = DictConfig({"swinir_path":None})
 
 prior = LazyCall(DiffusionPrior)(
