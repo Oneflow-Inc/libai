@@ -73,3 +73,26 @@ class TopKLogitsProcessor(object):
         index_to_remove = scores < flow.topk(scores, top_k)[0][..., -1, None]
         scores = scores.masked_fill(index_to_remove, self.filter_value)
         return scores
+
+
+class RepetitionPenaltyLogitsProcessor(object):
+    def __init__(self, penalty: float):
+        if not isinstance(penalty, float) or not (penalty > 0):
+            raise ValueError(f"`penalty` has to be a strictly positive float, but is {penalty}")
+        self.penalty = penalty
+    
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+        score = flow.gather(scores, 1, input_ids)
+        score = flow.where(score < 0, score * self.penalty, score / self.penalty)
+
+    
+class TemperatureLogitsWarper(object):
+    def __init__(self, temperature: float):
+        if not isinstance(temperature, float) or not (temperature > 0):
+            raise ValueError(f"`temperature` has to be a strictly positive float, but is {temperature}")
+        self.temperature = temperature
+        
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+        scores = scores / self.temperature
+        return scores
+

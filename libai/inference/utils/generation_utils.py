@@ -25,17 +25,16 @@ def _update_model_kwargs_for_generation(outputs, model_kwargs, is_encoder_decode
 def greedy_search(
     model,
     input_ids: flow.Tensor, 
-    logits_processor: Optional[list] = None, 
-    stopping_criteria: Optional[list] = None,
+    logits_processor: Optional[LogitsProcessorList] = None, 
+    stopping_criteria: Optional[StoppingCriteriaList] = None,
     max_length: Optional[int] = None,
     pad_token_id: Optional[int] = None,
     eos_token_id: Optional[int] = None,
     is_encoder_decoder = False,
-    return_dict_in_generate=False,
     output_scores=False,
     **model_kwargs,
 ):
-    scores = () if (return_dict_in_generate and output_scores) else None
+    scores = () if output_scores else None
     logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
     stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
     if max_length is not None:
@@ -59,9 +58,8 @@ def greedy_search(
             model_inputs = {"encoder_input_ids": input_ids, **model_kwargs}
         else:
             model_inputs = {"input_ids": input_ids, **model_kwargs}
-        outputs = model(
-            **model_inputs
-        )
+        
+        outputs = model(**model_inputs)
         
         next_token_logits = outputs[:, -1, :]
 
@@ -69,9 +67,8 @@ def greedy_search(
         next_tokens_scores = logits_processor(input_ids, next_token_logits)
         
         # Store scores
-        if return_dict_in_generate:
-                if output_scores:
-                    scores += (next_tokens_scores,)
+        if output_scores:
+            scores += (next_tokens_scores,)
 
         # argmax
         next_tokens = flow.argmax(next_tokens_scores, dim=-1)
@@ -104,3 +101,50 @@ def greedy_search(
     if is_encoder_decoder:
         return model_kwargs["decoder_input_ids"]
     return input_ids
+
+
+def sample(
+    model,
+    input_ids: flow.Tensor, 
+    logits_processor: Optional[LogitsProcessorList] = None, 
+    stopping_criteria: Optional[StoppingCriteriaList] = None,
+    logits_warper: Optional[LogitsProcessorList] = None,
+    max_length: Optional[int] = None,
+    pad_token_id: Optional[int] = None,
+    eos_token_id: Optional[int] = None,
+    is_encoder_decoder = False,
+    output_scores=False,
+    **model_kwargs,
+):
+    scores = () if output_scores else None
+    logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
+    stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+    if max_length is not None:
+        warnings.warn(
+            "`max_length` is deprecated in this function, use"
+            " `stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))` instead.",
+            UserWarning,
+        )
+        stopping_criteria = MaxLengthCriteria(max_length=max_length)
+    logits_warper = logits_warper if logits_warper is not None else LogitsProcessorList()
+    
+    if is_encoder_decoder:
+        unfinished_sequences = flow.zeros(model_kwargs["decoder_input_ids"].shape[0]).fill_(1)
+        cur_len = model_kwargs["decoder_input_ids"].shape[-1]
+    else:
+        unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
+        cur_len = input_ids.shape[-1]
+    
+    while True:
+        # prepare model inputs
+        if is_encoder_decoder:
+            model_inputs = {"encoder_input_ids": input_ids, **model_kwargs}
+        else:
+            model_inputs = {"input_ids": input_ids, **model_kwargs}
+        
+        outputs = model(**model_inputs)
+        
+        next_token_logits = outputs[:, -1, :]
+        # pre-process distribution
+        next_token_scores = logits_processor(input_ids, next_token_logits)
+        next_token_scores = logits_warper(input_ids, next_token_scores)
