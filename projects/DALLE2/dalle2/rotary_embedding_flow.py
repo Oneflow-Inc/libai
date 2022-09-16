@@ -3,6 +3,7 @@ from math import pi, log
 
 import oneflow as flow
 from oneflow import nn, einsum
+from libai.utils import distributed as dist
 
 from einops import rearrange, repeat
 
@@ -86,12 +87,12 @@ class RotaryEmbedding(nn.Module):
         if learned_freq:
             self.freqs = nn.Parameter(freqs)
         else:
-            self.register_buffer('freqs', freqs.to_global(placement=flow.placement(type='cuda', ranks=[0, 1, 2, 3]), sbp=flow.sbp.broadcast))
+            self.register_buffer('freqs', freqs.to_global(placement=dist.get_layer_placement(0), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])))
 
     def rotate_queries_or_keys(self, t, seq_dim = -2):
         placement, sbp = t.placement, t.sbp
         seq_len = t.shape[seq_dim]
-        freqs = self.forward(lambda: flow.arange(seq_len, placement=flow.placement(type='cuda', ranks=[0, 1, 2, 3]), sbp=flow.sbp.broadcast), cache_key = seq_len)
+        freqs = self.forward(lambda: flow.arange(seq_len, placement=dist.get_layer_placement(0), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])), cache_key = seq_len)
         return apply_rotary_emb(freqs, t)
 
     def forward(self, t, cache_key = None):
