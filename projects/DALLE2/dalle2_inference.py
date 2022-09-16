@@ -140,7 +140,9 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
-    download_dalle2_weights()
+    if dist.is_main_process():
+        download_dalle2_weights()
+    dist.synchronize()
     args = parse_args()
     model = Dalle2Pipeline(
         config_file=args.config_file,
@@ -150,12 +152,10 @@ if __name__ == "__main__":
     text = args.text if args.text else "a man is playing basketball with his friends!"
     repeats = 5
     text = [ 'a shiba inu wearing a beret and black turtleneck', 
-            #  'a teddy bear on a skateboard in times square',
-            #  'trump fight with biden in white house',
+             'a teddy bear on a skateboard in times square',
+             'trump fight with biden in white house',
              'Donald trump fight with biden in white house',]
     
     imgs = model(text, **vars(args))
-    # if dist.is_main_process():
-    #     imgs = imgs['image_embed']
     
     #python -m oneflow.distributed.launch --nproc_per_node 4 dalle2_inference.py --save_images --upsample_scale 4
