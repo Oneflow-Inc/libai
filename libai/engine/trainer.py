@@ -299,6 +299,7 @@ class GraphTrainer(TrainerBase):
         self.grad_acc_steps = grad_acc_steps
         self._temp_data = None
         self._temp_count = 0
+        self._all_count = 0
 
     def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
         """
@@ -332,11 +333,25 @@ class GraphTrainer(TrainerBase):
         )
 
         data_time = time.perf_counter() - start
-
+        
+        # print(self._all_count, data)
         # If you want to do something with the losses, you can wrap the model.
-        loss_dict = self.graph(**data)
+        loss_dict = self.graph(**data) # , x1
+        # print(self.graph)
+        # print(x1)
+        # exit(0)
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step
         loss_dict = {key: value.mean() for key, value in loss_dict.items()}
+
+        lll = loss_dict['loss'].numpy()
+        if flow.env.get_rank() == 0:
+            print(self._all_count, lll)
+        self._all_count += 1
+
+        # if self._all_count > 3:
+        #     exit(0)
+        if self._all_count > 100:
+            input('done. ctrl+c to exit.')
 
         self.write_metrics(loss_dict, data_time)

@@ -542,9 +542,11 @@ class DefaultTrainer(TrainerBase):
         # insert for amp training if provided.
         if try_get_key(cfg.model, "cfg.amp_enabled") is not None:
             cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+            cfg.model.cfg.amp_type = cfg.train.amp.type
         # In case some model define without cfg keyword.
         elif try_get_key(cfg.model, "amp_enabled") is not None:
             cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+            cfg.model.cfg.amp_type = cfg.train.amp.type
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))

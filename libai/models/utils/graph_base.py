@@ -30,7 +30,8 @@ class GraphBase(nn.Graph):
         model: nn.Module,
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
-        fp16=False,
+        amp=False,
+        amp_type="fp16",
         activation_checkpoint=False,
         grad_acc_steps=1,
         zero_optim=False,
@@ -45,15 +46,21 @@ class GraphBase(nn.Graph):
 
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
-            if fp16:
-                self.config.enable_amp(True)
-                grad_scaler = flow.amp.GradScaler(
-                    init_scale=2 ** 30,
-                    growth_factor=2.0,
-                    backoff_factor=0.5,
-                    growth_interval=2000,
-                )
-                self.set_grad_scaler(grad_scaler)
+            if amp:
+                if amp_type == "fp16":
+                    self.config.enable_amp(True)
+
+                    grad_scaler = flow.amp.GradScaler(
+                        init_scale=2 ** 12,
+                        growth_factor=2.0,
+                        backoff_factor=0.5,
+                        growth_interval=1000,
+                    )
+                    self.set_grad_scaler(grad_scaler)
+                elif amp_type == "bf16":
+                    self.config.enable_amp(True, dtype=flow.bfloat16)
+                else:
+                    raise NotImplementedError(f"Not support {amp_type}")
 
             if grad_acc_steps > 1:
                 self.config.set_gradient_accumulation_steps(grad_acc_steps)
@@ -102,7 +109,7 @@ class GraphBase(nn.Graph):
                 "Start compling the train graph which may take some time. "
                 "Please wait for a moment ..."
             )
-            loss_dict = self.model(**kwargs)
+            loss_dict = self.model(**kwargs) # , xx
             losses = sum(loss_dict.values())
             losses.backward()
             # set loss_dict on rank0
@@ -116,7 +123,7 @@ class GraphBase(nn.Graph):
                 )
                 for k, v in loss_dict.items()
             }
-            return loss_dict
+            return loss_dict#, xx
         else:
             logger.info(
                 "Start compling the eval graph which may take some time. "

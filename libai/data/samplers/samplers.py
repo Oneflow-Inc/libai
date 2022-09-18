@@ -45,6 +45,7 @@ class CyclicSampler(Sampler):
         seed=0,
     ):
         self.dataset = dataset
+        self.dataset.iter = 0 # used by my code
         self.data_size = len(self.dataset)
         self.shuffle = shuffle
 

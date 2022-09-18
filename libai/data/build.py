@@ -152,7 +152,7 @@ def build_nlp_train_loader(
     dataset,
     train_batch_size,
     test_batch_size=None,
-    sampler=LazyCall(CyclicSampler)(shuffle=True),
+    sampler=LazyCall(CyclicSampler)(shuffle=False),
     num_workers=4,
     consumed_samples=0,
     seed=0,
@@ -211,7 +211,7 @@ def build_nlp_train_loader(
         dataset,
         batch_sampler=sampler,
         num_workers=num_workers,
-        persistent_workers=True if num_workers > 0 else False,
+        persistent_workers=False,
         collate_fn=trivial_batch_collator if collate_fn is None else collate_fn,
         **kwargs,
     )
