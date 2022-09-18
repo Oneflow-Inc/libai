@@ -13,6 +13,7 @@ from projects.NeRF.optimizers import Ranger, RAdam
 from projects.NeRF.configs.models.config_model import model
 from projects.NeRF.evaluation.nerf_evaluator import NerfEvaluator
 
+
 # TODO: Create a unified interface to Nerf datasets
 
 
@@ -37,15 +38,14 @@ train = get_config("common/train.py").train
 train.train_micro_batch_size = 1024  # Verification by ray
 train.test_micro_batch_size = 1  # Verification by picture
 train.dataset_type = "Blender"  # Blender or LLFF
-train.blender_dataset_path = "/home/Bigdata/Nerf/nerf_synthetic/chair"
+train.blender_dataset_path = "/path/to/blender"
 train.llff_dataset_path = "/path/to/llff"
 train.train_epoch = 16 if train.dataset_type == "Blender" else 30
-train.warmup_ratio = int(0 / train.train_epoch)
+train.warmup_ratio = int(1 / train.train_epoch)
 train.evaluation.eval_period = 1000
 train.log_period = 50
 train.optim_type = "adam"
-train.lr_scheduler_type = "steplr"
-
+train.lr_scheduler_type = "cosine"
 
 # Redefining model config
 
@@ -105,7 +105,7 @@ if train.optim_type == "sgd":
 
 if train.lr_scheduler_type == "steplr":
     scheduler = WarmupMultiStepLR
-elif train.optim_type == "cosine":
+elif train.lr_scheduler_type == "cosine":
     scheduler = WarmupCosineAnnealingLR
 else:
     raise NotImplementedError("Nerf does not support this type of scheduler!")
@@ -122,7 +122,7 @@ if train.lr_scheduler_type == "steplr":
         milestones = [10 / 30, 20 / 30]
     train.scheduler.milestones = milestones
     train.scheduler.gamma = 0.5
-elif train.optim_type == "cosine":
+elif train.lr_scheduler_type == "cosine":
     train.scheduler.eta_min = 1e-8
 
 train.warmup_ratio = (
@@ -148,11 +148,12 @@ dataloader.train = LazyCall(build_image_train_loader)(
             else train.llff_dataset_path,
             spheric_poses=None if dataset.dataset_type == "Blender" else False,
             val_num=None if dataset.dataset_type == "Blender" else 1,  # Number of your GPUs
+            batchsize=train.train_micro_batch_size,
         )
     ],
     num_workers=4,
-    train_batch_size=train.train_micro_batch_size,
-    test_batch_size=1,
+    train_batch_size=1,
+    test_batch_size=train.test_micro_batch_size,
 )
 
 dataloader.test = [
@@ -166,13 +167,14 @@ dataloader.test = [
             spheric_poses=None if dataset.dataset_type == "Blender" else False,
             val_num=None if dataset.dataset_type == "Blender" else 1,  # Number of your GPUs
         ),
-        num_workers=4,
-        test_batch_size=1,
+        num_workers=0,
+        test_batch_size=train.test_micro_batch_size,
     )
 ]
 
 # Distributed Settings
 depth = None
+train.train_micro_batch_size = 1
 train.dist.pipeline_num_layers = depth
 train.dist.data_parallel_size = 1
 train.dist.tensor_parallel_size = 1

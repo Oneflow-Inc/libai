@@ -13,10 +13,10 @@ cfg = dict(
     N_samples=64,
     use_disp=False,
     perturb=1.0,
-    noise_std=1.0,
+    noise_std=0.0,
     N_importance=128,
-    chunk=32 * 1204,
-    dataset_type="blender",
+    chunk=64 * 1204,
+    dataset_type="Blender",
 )
 
 cfg = DictConfig(cfg)

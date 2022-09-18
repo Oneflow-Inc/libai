@@ -108,7 +108,7 @@ def get_rays(directions, c2w):
     """
     # Rotate ray directions from camera coordinate to the world coordinate
     rays_d = directions @ c2w[:, :3].T  # (H, W, 3)
-    rays_d = rays_d / flow.norm(rays_d, dim=-1, keepdim=True)
+    # rays_d = rays_d / flow.norm(rays_d, dim=-1, keepdim=True)
     # The origin of all rays is the camera origin in world coordinate
     rays_o = c2w[:, 3].expand(rays_d.shape)  # (H, W, 3)
 
@@ -334,6 +334,32 @@ def create_spheric_poses(radius, n_poses=120):
     return np.stack(spheric_poses, 0)
 
 
+def pose_spherical(theta, phi, radius):
+    trans_t = lambda t: flow.Tensor([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, t],
+        [0, 0, 0, 1]]).float()
+
+    rot_phi = lambda phi: flow.Tensor([
+        [1, 0, 0, 0],
+        [0, np.cos(phi), -np.sin(phi), 0],
+        [0, np.sin(phi), np.cos(phi), 0],
+        [0, 0, 0, 1]]).float()
+
+    rot_theta = lambda th: flow.Tensor([
+        [np.cos(th), 0, -np.sin(th), 0],
+        [0, 1, 0, 0],
+        [np.sin(th), 0, np.cos(th), 0],
+        [0, 0, 0, 1]]).float()
+
+    c2w = trans_t(radius)
+    c2w = rot_phi(phi / 180. * np.pi) @ c2w
+    c2w = rot_theta(theta / 180. * np.pi) @ c2w
+    c2w = flow.Tensor(np.array([[-1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])) @ c2w
+    return c2w
+
+
 # TODO: Blender and LLFF Datasets
 
 
@@ -355,7 +381,7 @@ class NerfBaseDataset(Dataset):
 
 
 class BlenderDataset(NerfBaseDataset):
-    def __init__(self, root_dir, split="train", img_wh=(800, 800), **kwargs):
+    def __init__(self, root_dir, split="train", img_wh=(800, 800), batchsize=1024, **kwargs):
         """
         Args:
             root_dir: str,
@@ -364,11 +390,18 @@ class BlenderDataset(NerfBaseDataset):
         """
         super(BlenderDataset, self).__init__(root_dir, split, img_wh)
         self.white_back = True
+        self.batchsize = batchsize
         self.load_meta()
+        self.render_poses = flow.stack(
+            [pose_spherical(angle, -30.0, 4.0) for angle in np.linspace(-180, 180, 40 + 1)[:-1]], 0) # use for test
 
     def load_meta(self):
-        with open(os.path.join(self.root_dir, f"transforms_{self.split}.json"), "r") as f:
-            self.meta = json.load(f)
+        if self.split=="vis":
+            with open(os.path.join(self.root_dir, f"transforms_test.json"), "r") as f:
+                self.meta = json.load(f)
+        else:
+            with open(os.path.join(self.root_dir, f"transforms_{self.split}.json"), "r") as f:
+                self.meta = json.load(f)
         w, h = self.img_wh
         camera_angle_x = float(self.meta["camera_angle_x"])
         self.focal = 0.5 * w / np.tan(0.5 * camera_angle_x)
@@ -382,6 +415,9 @@ class BlenderDataset(NerfBaseDataset):
             self.poses = []
             self.all_rays = []
             self.all_rgbs = []
+            self.indexs = [
+                i * self.img_wh[0] * self.img_wh[1] for i in range(len(self.meta["frames"]))
+            ]
             for frame in self.meta["frames"]:
                 pose = np.array(frame["transform_matrix"])[:3, :4]
                 self.poses += [pose]
@@ -408,19 +444,64 @@ class BlenderDataset(NerfBaseDataset):
                 ]  # (h*w, 8)
             self.all_rays = flow.cat(self.all_rays, 0)  # (len(self.meta['frames])*h*w, 3)
             self.all_rgbs = flow.cat(self.all_rgbs, 0)  # (len(self.meta['frames])*h*w, 3)
+            self.num_iter = 0
+            self.dH = int(self.img_wh[0] // 2 * 0.5)
+            self.dW = int(self.img_wh[1] // 2 * 0.5)
 
     def __len__(self):
         if self.split == "train":
-            return len(self.all_rays)
-        if self.split == "val":
+            return int(len(self.all_rays) / self.batchsize)
+        elif self.split == "val":
             return 8  # only validate 8 images (to support <=8 gpus)
-        return len(self.meta["frames"])
+        elif self.split == "vis":
+            return len(self.render_poses)
+        elif self.split == "test":
+            return len(self.meta["frames"])
 
     def __getitem__(self, idx):
         if self.split == "train":  # use data in the buffers
-            sample = OrderedDict(rays=self.all_rays[idx], rgbs=self.all_rgbs[idx])
+            idx = idx % len(self.indexs)
+            if self.num_iter < 500:
+                coords = flow.stack(
+                    flow.meshgrid(
+                        flow.linspace(
+                            self.img_wh[1] // 2 - self.dH,
+                            self.img_wh[1] // 2 + self.dH - 1,
+                            2 * self.dH,
+                        ),
+                        flow.linspace(
+                            self.img_wh[0] // 2 - self.dW,
+                            self.img_wh[0] // 2 + self.dW - 1,
+                            2 * self.dW,
+                        ),
+                    ),
+                    -1,
+                )
+            else:
+                coords = flow.stack(
+                    flow.meshgrid(
+                        flow.linspace(0, self.img_wh[1] - 1, self.img_wh[1]),
+                        flow.linspace(0, self.img_wh[0] - 1, self.img_wh[0]),
+                    ),
+                    -1,
+                )  # (H, W, 2)
+            coords = flow.reshape(coords, [-1, 2])  # (H * W, 2)
+            select_inds = np.random.choice(coords.shape[0], size=[self.batchsize], replace=False)  # (N_rand,)
+            select_coords = coords[select_inds].long()  # (N_rand, 2)
+            rays = self.all_rays[
+                   self.indexs[idx]: self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
+                   ]
+            rgbs = self.all_rgbs[
+                   self.indexs[idx]: self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
+                   ]
+            rays = rays.view(self.img_wh[0], self.img_wh[1], -1)
+            rgbs = rgbs.view(self.img_wh[0], self.img_wh[1], -1)
+            rays = rays[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
+            rgbs = rgbs[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
+            self.num_iter += 1
+            sample = OrderedDict(rays=rays, rgbs=rgbs)  # # a alignment point with nerf_pytorch
 
-        else:  # create data for each image separately
+        elif self.split == "val" or self.split == "test":  # create data for each image separately
             frame = self.meta["frames"][idx]
             c2w = flow.Tensor(frame["transform_matrix"])[:3, :4]
 
@@ -443,11 +524,33 @@ class BlenderDataset(NerfBaseDataset):
                 1,
             )  # (H*W, 8)
             sample = OrderedDict(rays=rays, rgbs=img, c2w=c2w, valid_mask=valid_mask)
+        else:
+            c2w = self.render_poses[idx][:3, :4]
+            rays_o, rays_d = get_rays(self.directions, c2w)
+
+            rays = flow.concat(
+                [
+                    rays_o,
+                    rays_d,
+                    self.near * flow.ones_like(rays_o[:, :1]),
+                    self.far * flow.ones_like(rays_o[:, :1]),
+                ],
+                1,
+            )  # (H*W, 8)
+            sample = OrderedDict(rays=rays, c2w=c2w)
         return trun_dict_to_instance(sample)
 
 
 class LLFFDataset(NerfBaseDataset):
-    def __init__(self, root_dir, split="train", img_wh=(504, 378), spheric_poses=False, val_num=1):
+    def __init__(
+            self,
+            root_dir,
+            split="train",
+            img_wh=(504, 378),
+            spheric_poses=False,
+            val_num=1,
+            batchsize=1024,
+    ):
         """
         Args:
             root_dir: str,
@@ -457,10 +560,12 @@ class LLFFDataset(NerfBaseDataset):
                        default: False (forward-facing)
             val_num: int, number of val images (used for multigpu training, validate same image
                     for all gpus)
+            batchsize: int, batchsize of rays
         """
         super(LLFFDataset, self).__init__(root_dir, split, img_wh)
         self.spheric_poses = spheric_poses
         self.val_num = max(1, val_num)  # at least 1
+        self.batchsize = batchsize
         self.load_meta()
         self.white_back = False
 
@@ -476,7 +581,7 @@ class LLFFDataset(NerfBaseDataset):
         H, W, self.focal = poses[0, :, -1]  # original intrinsics, same for all images
         H, W, self.focal = H.item(), W.item(), self.focal.item()
         assert (
-            H * self.img_wh[0] == W * self.img_wh[1]
+                H * self.img_wh[0] == W * self.img_wh[1]
         ), f"You must set @img_wh to have the same aspect ratio as ({W}, {H}) !"
         self.focal *= self.img_wh[0] / W
         poses = np.concatenate([poses[..., 1:2], -poses[..., :1], poses[..., 2:4]], -1)
@@ -502,7 +607,7 @@ class LLFFDataset(NerfBaseDataset):
                 c2w = flow.Tensor(self.poses[i])
                 img = Image.open(image_path).convert("RGB")
                 assert (
-                    img.size[1] * self.img_wh[0] == img.size[0] * self.img_wh[1]
+                        img.size[1] * self.img_wh[0] == img.size[0] * self.img_wh[1]
                 ), f"""{image_path} has different aspect ratio than img_wh, 
                         please check your data!"""
                 img = img.resize(self.img_wh, Image.LANCZOS)
@@ -534,6 +639,9 @@ class LLFFDataset(NerfBaseDataset):
 
             self.all_rays = flow.cat(self.all_rays, 0)  # ((N_images-1)*h*w, 8)
             self.all_rgbs = flow.cat(self.all_rgbs, 0)  # ((N_images-1)*h*w, 3)
+            self.num_iter = 0
+            self.dH = int(self.img_wh[0] // 2 * 0.5)
+            self.dW = int(self.img_wh[1] // 2 * 0.5)
 
         elif self.split == "val":
             self.c2w_val = self.poses[val_idx]
@@ -554,14 +662,54 @@ class LLFFDataset(NerfBaseDataset):
 
     def __len__(self):
         if self.split == "train":
-            return len(self.all_rays)
+            return int(len(self.all_rays) / self.batchsize)
+
         if self.split == "val":
             return self.val_num
         return len(self.poses_test)
 
     def __getitem__(self, idx):
         if self.split == "train":  # use data in the buffers
-            sample = OrderedDict(rays=self.all_rays[idx], rgbs=self.all_rgbs[idx])
+            idx = idx % len(self.indexs)
+            if self.num_iter < 500:
+                coords = flow.stack(
+                    flow.meshgrid(
+                        flow.linspace(
+                            self.img_wh[1] // 2 - self.dH,
+                            self.img_wh[1] // 2 + self.dH - 1,
+                            2 * self.dH,
+                        ),
+                        flow.linspace(
+                            self.img_wh[0] // 2 - self.dW,
+                            self.img_wh[0] // 2 + self.dW - 1,
+                            2 * self.dW,
+                        ),
+                    ),
+                    -1,
+                )
+            else:
+                coords = flow.stack(
+                    flow.meshgrid(
+                        flow.linspace(0, self.img_wh[1] - 1, self.img_wh[1]),
+                        flow.linspace(0, self.img_wh[0] - 1, self.img_wh[0]),
+                    ),
+                    -1,
+                )  # (H, W, 2)
+            coords = flow.reshape(coords, [-1, 2])  # (H * W, 2)
+            select_inds = np.random.choice(coords.shape[0], size=[self.batchsize], replace=False)  # (N_rand,)
+            select_coords = coords[select_inds].long()  # (N_rand, 2)
+            rays = self.all_rays[
+                   self.indexs[idx]: self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
+                   ]
+            rgbs = self.all_rgbs[
+                   self.indexs[idx]: self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
+                   ]
+            rays = rays.view(self.img_wh[0], self.img_wh[1], -1)
+            rgbs = rgbs.view(self.img_wh[0], self.img_wh[1], -1)
+            rays = rays[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
+            rgbs = rgbs[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
+            self.num_iter += 1
+            sample = OrderedDict(rays=rays, rgbs=rgbs)  # a alignment point with nerf_pytorch
 
         else:
             if self.split == "val":

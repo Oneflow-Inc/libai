@@ -9,6 +9,7 @@ import flowvision.transforms as T
 import numpy as np
 import oneflow as flow
 from PIL import Image
+import imageio
 
 from libai.evaluation.cls_evaluator import ClsEvaluator
 from libai.utils import distributed as dist
@@ -57,7 +58,6 @@ class NerfEvaluator(ClsEvaluator):
         results = {k: v.squeeze(0) for k, v in outputs.items()}
         if len(self._predictions) == 0:
             W, H = self.img_wh
-            print(results[f"rgb_{typ}"].shape)
             img = results[f"rgb_{typ}"].view(H, W, 3).cpu()
             img = img.permute(2, 0, 1)  # (3, H, W)
             img_gt = rgbs.view(H, W, 3).permute(2, 0, 1).cpu()  # (3, H, W)
@@ -121,3 +121,40 @@ class NerfEvaluator(ClsEvaluator):
 
     def psnr(self, image_pred, image_gt, valid_mask=None, reduction="mean"):
         return -10 * flow.log(self.mse(image_pred, image_gt, valid_mask, reduction)) / math.log(10)
+
+
+class NerfVisEvaluator(NerfEvaluator):
+    def __init__(self, img_wh):
+        """
+        Args:
+            img_wh (tuple(int)): the width and height of the images in the validation set
+            image_save_path (str): location of image storage
+        """
+        super().__init__(img_wh=img_wh)
+        self.image_list = []
+        self.pose_dir_len = 40
+        self.mp4_save_path = self.image_save_path
+
+    def to8b(self, x):
+        return (255 * np.clip(x, 0, 1)).astype(np.uint8)
+
+    def process(self, inputs, outputs):
+        """
+        Inputs:
+            inputs (dict): Inputs to NeRF System
+            outputs (dict): Outputs to NeRF System
+
+        Outputs:
+            None
+        """
+        typ = list(outputs.keys())[0]
+        outputs.pop(typ)
+        results = {k: v.squeeze(0) for k, v in outputs.items()}
+        W, H = self.img_wh
+        img = results[f"rgb_{typ}"].view(H, W, 3).cpu().numpy()
+        self.image_list.append(img)
+        self._predictions.append({"losses": 0.0, "psnr": 0.0})
+        if len(self._predictions) == self.pose_dir_len:
+            mp4_save_path = os.path.join(self.mp4_save_path, 'rgb.mp4')
+            imageio.mimwrite(mp4_save_path, self.to8b(np.stack(self.image_list,0)), fps=30, quality=8)
+            print("successfully save mp4 file!")

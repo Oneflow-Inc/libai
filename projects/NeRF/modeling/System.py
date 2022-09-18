@@ -37,7 +37,7 @@ class NerfSystem(nn.Module):
         noise_std=1.0,
         N_importance=128,
         chunk=32 * 1204,
-        dataset_type="blender",
+        dataset_type="Blender",
         loss_func=None,
     ):
         """
@@ -63,15 +63,16 @@ class NerfSystem(nn.Module):
         self.noise_std = noise_std
         self.N_importance = N_importance
         self.chunk = chunk
-        self.white_back = True if dataset_type == "blender" else False
+        self.white_back = True if dataset_type == "Blender" else False
         self.loss_func = nn.MSELoss() if loss_func == None else loss_func
         self.embedding_xyz = Embedding(3, 10)  # 10 is the default number
         self.embedding_dir = Embedding(3, 4)  # 4 is the default number
         self.nerf_coarse = NeRF(
             D=D,
             W=W,
-            in_channels_xyz=in_channels_xyz,
-            in_channels_dir=in_channels_dir,
+            input_ch=in_channels_xyz,
+            input_ch_views=in_channels_dir,
+            output_ch=5,
             skips=skips,
         )
         self.models = [self.nerf_coarse]
@@ -79,8 +80,9 @@ class NerfSystem(nn.Module):
             self.nerf_fine = NeRF(
                 D=D,
                 W=W,
-                in_channels_xyz=in_channels_xyz,
-                in_channels_dir=in_channels_dir,
+                input_ch=in_channels_xyz,
+                input_ch_views=in_channels_dir,
+                output_ch=5,
                 skips=skips,
             )
             self.models += [self.nerf_fine]
@@ -132,19 +134,20 @@ class NerfSystem(nn.Module):
         u = u.contiguous()
 
         inds = flow.searchsorted(cdf, u, right=True)
-        below = flow.clamp(inds - 1, 0, 1e6)
-        above = flow.clamp(inds, -1e6, N_samples_)
+        below = flow.max(flow.zeros_like(inds - 1), inds - 1)
+        above = flow.min((cdf.shape[-1] - 1) * flow.ones_like(inds), inds)
+        inds_g = flow.stack([below, above], -1)  # (batch, N_samples, 2)
 
-        inds_sampled = flow.stack([below, above], -1).view(N_rays, 2 * N_importance)
-        cdf_g = flow.gather(cdf, 1, inds_sampled).view(N_rays, N_importance, 2)
-        bins_g = flow.gather(bins, 1, inds_sampled).view(N_rays, N_importance, 2)
+        # cdf_g = tf.gather(cdf, inds_g, axis=-1, batch_dims=len(inds_g.shape)-2)
+        # bins_g = tf.gather(bins, inds_g, axis=-1, batch_dims=len(inds_g.shape)-2)
+        matched_shape = [inds_g.shape[0], inds_g.shape[1], cdf.shape[-1]]
+        cdf_g = flow.gather(cdf.unsqueeze(1).expand(matched_shape), 2, inds_g)
+        bins_g = flow.gather(bins.unsqueeze(1).expand(matched_shape), 2, inds_g)
 
         denom = cdf_g[..., 1] - cdf_g[..., 0]
-
-        # denom equals 0 means a bin has weight 0, in which case it will not be sampled
-        # anyway, therefore any value for it is fine (set to 1 here)
-        denom = flow.masked_fill(denom, denom < eps, 1)
-        samples = bins_g[..., 0] + (u - cdf_g[..., 0]) / denom * (bins_g[..., 1] - bins_g[..., 0])
+        denom = flow.where(denom < 1e-5, flow.ones_like(denom), denom)
+        t = (u - cdf_g[..., 0]) / denom
+        samples = bins_g[..., 0] + t * (bins_g[..., 1] - bins_g[..., 0])
         return samples
 
     def inference(
@@ -153,6 +156,7 @@ class NerfSystem(nn.Module):
         model,
         embedding_xyz,
         xyz_,
+        no_norm_dir_,
         dir_,
         dir_embedded,
         z_vals,
@@ -172,7 +176,8 @@ class NerfSystem(nn.Module):
                   N_samples_ is the number of sampled points in each ray;
                              = N_samples for coarse model
                              = N_samples+N_importance for fine model
-            dir_ (tensor): (N_rays, 3) ray directions
+            no_norm_dir_ (tensor): (N_rays, 3) ray directions without norm
+            dir_ (tensor): (N_rays, 3) ray directions with norm
             dir_embedded (tensor): (N_rays, embed_dir_channels) embedded directions
             z_vals (tensor): (N_rays, N_samples_) depths of the sampled positions
             weights_only (tensor): do inference on sigma only or not
@@ -189,11 +194,8 @@ class NerfSystem(nn.Module):
         # Embed directions
         xyz_ = xyz_.view(-1, 3)  # (N_rays*N_samples_, 3)
         if not weights_only:
-            dir_embedded = flow.repeat_interleave(
-                dir_embedded.to_local(), repeats=N_samples_, dim=0
-            ).to_global(
-                placement=xyz_.placement, sbp=xyz_.sbp
-            )  # (N_rays*N_samples_, embed_dir_channels)
+            dir_embedded = dir_embedded[:, None].expand(dir_embedded.shape[0],N_samples_,dir_embedded.shape[1])
+            dir_embedded = dir_embedded.reshape(-1,dir_embedded.shape[-1])
 
         # Perform model inference to get rgb and raw sigma
         B = xyz_.shape[0]
@@ -205,7 +207,6 @@ class NerfSystem(nn.Module):
                 xyzdir_embedded = flow.cat([xyz_embedded, dir_embedded[i : i + chunk]], 1)
             else:
                 xyzdir_embedded = xyz_embedded
-            xyzdir_embedded = xyzdir_embedded
             out_chunk = model(xyzdir_embedded)
             out_chunks = out_chunks + [out_chunk]
 
@@ -226,8 +227,8 @@ class NerfSystem(nn.Module):
 
         # Multiply each distance by the norm of its corresponding direction ray
         # to convert to real world distance (accounts for non-unit directions).
-        deltas = deltas * flow.norm(dir_.unsqueeze(1), dim=-1)
-        sigmas = sigmas  # TODO: error in it
+        deltas = deltas * flow.norm(no_norm_dir_.unsqueeze(1), dim=-1)
+
         noise = (
             flow.randn(sigmas.shape).to_global(placement=sigmas.placement, sbp=sigmas.sbp)
             * noise_std
@@ -243,8 +244,6 @@ class NerfSystem(nn.Module):
             ],
             -1,
         )  # [1, a1, a2, ...]
-        alphas = alphas
-        rgbs = rgbs
         weights = alphas * flow.cumprod(alphas_shifted, -1)[:, :-1]  # (N_rays, N_samples_)
         # weights = alphas * alphas_shifted[:, :-1]  # (N_rays, N_samples_)
         weights_sum = weights.sum(1)  # (N_rays), the accumulated opacity along the rays
@@ -255,9 +254,9 @@ class NerfSystem(nn.Module):
         # compute final weighted outputs
         rgb_final = flow.sum(weights.unsqueeze(-1) * rgbs, -2)  # (N_rays, 3)
         depth_final = flow.sum(weights * z_vals, -1)  # (N_rays)
-
         if white_back:
-            rgb_final = rgb_final + 1 - weights_sum.unsqueeze(-1)
+
+            rgb_final = rgb_final + (1 - weights_sum.unsqueeze(-1))
 
         return rgb_final, depth_final, weights
 
@@ -285,9 +284,10 @@ class NerfSystem(nn.Module):
         N_rays = rays.shape[0]
         rays_o, rays_d = rays[:, 0:3], rays[:, 3:6]  # both (N_rays, 3)
         near, far = rays[:, 6:7], rays[:, 7:8]  # both (N_rays, 1)
+        viewdirs = rays_d / flow.norm(rays_d, dim=-1, keepdim=True)
 
         # Embed direction
-        dir_embedded = embedding_dir(rays_d)  # (N_rays, embed_dir_channels)
+        dir_embedded = embedding_dir(viewdirs)  # (N_rays, embed_dir_channels)
 
         # Sample depth points
         z_steps = flow.linspace(0, 1, N_samples).to_global(
@@ -308,15 +308,15 @@ class NerfSystem(nn.Module):
             upper = flow.cat([z_vals_mid, z_vals[:, -1:]], -1)
             lower = flow.cat([z_vals[:, :1], z_vals_mid], -1)
 
-            perturb_rand = perturb * flow.rand(z_vals.shape).to_global(
+            v = flow.rand(z_vals.shape).to_global(
                 sbp=rays.sbp, placement=rays.placement
             )
+            perturb_rand = perturb * v
             z_vals = lower + (upper - lower) * perturb_rand
 
         xyz_coarse_sampled = rays_o.unsqueeze(1) + rays_d.unsqueeze(1) * z_vals.unsqueeze(
             2
         )  # (N_rays, N_samples, 3)
-
         if test_time:
             weights_coarse = self.inference(
                 rays.shape[0],
@@ -324,6 +324,7 @@ class NerfSystem(nn.Module):
                 embedding_xyz,
                 xyz_coarse_sampled,
                 rays_d,
+                viewdirs,
                 dir_embedded,
                 z_vals,
                 noise_std,
@@ -339,6 +340,7 @@ class NerfSystem(nn.Module):
                 embedding_xyz,
                 xyz_coarse_sampled,
                 rays_d,
+                viewdirs,
                 dir_embedded,
                 z_vals,
                 noise_std,
@@ -358,7 +360,7 @@ class NerfSystem(nn.Module):
             )  # (N_rays, N_samples-1) interval mid points
             z_vals_ = self.sample_pdf(
                 z_vals_mid, weights_coarse[:, 1:-1], N_importance, det=(perturb == 0)
-            )
+            ).detach()
             # detach so that grad doesn't propogate to weights_coarse from here
 
             z_vals, _ = flow.sort(flow.cat([z_vals, z_vals_], -1), -1)
@@ -373,6 +375,7 @@ class NerfSystem(nn.Module):
                 embedding_xyz,
                 xyz_fine_sampled,
                 rays_d,
+                viewdirs,
                 dir_embedded,
                 z_vals,
                 noise_std,
@@ -411,7 +414,7 @@ class NerfSystem(nn.Module):
             results[k] = flow.cat(v, 0)
         return results
 
-    def forward(self, rays, rgbs, c2w=None, valid_mask=None):
+    def forward(self, rays, rgbs=None, c2w=None, valid_mask=None):
         """
         Inputs:
             rays (tensor): (batchsize, 3+3+2) the set of input rays samples
@@ -423,23 +426,35 @@ class NerfSystem(nn.Module):
             re (dict): regarding the series of outputs such as rgbs and loss obtained from the model predictions.
         """
         if c2w == None:
-            results = self.forward_features(rays)
-            losses = self.loss_func(results["rgb_coarse"], rgbs)
-            if "rgb_fine" in results:
-                losses += self.loss_func(results["rgb_fine"], rgbs)
-            return {"losses": losses}
-        else:
             rays = rays.squeeze()  # (H*W, 3)
             rgbs = rgbs.squeeze()  # (H*W, 3)
             results = self.forward_features(rays)
             losses = self.loss_func(results["rgb_coarse"], rgbs)
             if "rgb_fine" in results:
                 losses += self.loss_func(results["rgb_fine"], rgbs)
-            typ = "fine" if "rgb_fine" in results else "coarse"
-            re = collections.OrderedDict()
-            re["losses"] = losses
-            re[typ] = flow.Tensor([0.0]).to_global(sbp=losses.sbp, placement=losses.placement)
-            for key, value in results.items():
-                re[key] = value.unsqueeze(0)
-            re["rgbs"] = rgbs.unsqueeze(0)
+            return {"losses": losses}
+        else:
+            if rgbs == None:
+                rays = rays.squeeze()  # (H*W, 3)
+                results = self.forward_features(rays)
+                typ = "fine" if "rgb_fine" in results else "coarse"
+                re = collections.OrderedDict()
+                re[typ] = flow.Tensor([0.0]).to_global(sbp=rays.sbp, placement=rays.placement)
+                for key, value in results.items():
+                    re[key] = value.unsqueeze(0)
+                return re
+            else:
+                rays = rays.squeeze()  # (H*W, 3)
+                rgbs = rgbs.squeeze()  # (H*W, 3)
+                results = self.forward_features(rays)
+                losses = self.loss_func(results["rgb_coarse"], rgbs)
+                if "rgb_fine" in results:
+                    losses += self.loss_func(results["rgb_fine"], rgbs)
+                typ = "fine" if "rgb_fine" in results else "coarse"
+                re = collections.OrderedDict()
+                re["losses"] = losses
+                re[typ] = flow.Tensor([0.0]).to_global(sbp=losses.sbp, placement=losses.placement)
+                for key, value in results.items():
+                    re[key] = value.unsqueeze(0)
+                re["rgbs"] = rgbs.unsqueeze(0)
             return re

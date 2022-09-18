@@ -14,6 +14,7 @@
 # limitations under the License.
 import oneflow as flow
 import oneflow.nn as nn
+import oneflow.nn.functional as F
 
 from libai.utils import distributed as dist
 
@@ -40,7 +41,7 @@ class Embedding(nn.Module):
                 placement=dist.get_layer_placement(0),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             ),
-            persistent=False
+            persistent=False,
         )
 
     def forward(self, x):
@@ -64,48 +65,40 @@ class Embedding(nn.Module):
         return flow.cat(out, -1)
 
 
-class NeRF(nn.Module):
-    def __init__(self, D=8, W=256, in_channels_xyz=63, in_channels_dir=27, skips=[4]):
+class NeRF(nn.Module):  # a alignment point with nerf_pytorch
+    def __init__(
+        self, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=5, skips=[4], use_viewdirs=True
+    ):
         """
         D: number of layers for density (sigma) encoder
         W: number of hidden units in each layer
-        in_channels_xyz: number of input channels for xyz (3+3*10*2=63 by default)
-        in_channels_dir: number of input channels for direction (3+3*4*2=27 by default)
+        input_ch: number of input channels for xyz (3+3*10*2=63 by default)
+        input_ch_views: number of input channels for direction (3+3*4*2=27 by default)
+        output_ch: number of output channels
         skips: add skip connection in the Dth layer
         """
         super(NeRF, self).__init__()
         self.D = D
         self.W = W
-        self.in_channels_xyz = in_channels_xyz
-        self.in_channels_dir = in_channels_dir
+        self.input_ch = input_ch
+        self.input_ch_views = input_ch_views
         self.skips = skips
+        self.use_viewdirs = use_viewdirs
 
-        # xyz encoding layers
-        for i in range(D):
-            if i == 0:
-                layer = nn.Linear(in_channels_xyz, W)
-            elif i in skips:
-                layer = nn.Linear(W + in_channels_xyz, W)
-            else:
-                layer = nn.Linear(W, W)
-            layer = nn.Sequential(layer, nn.ReLU(True))
-            setattr(self, f"xyz_encoding_{i+1}", layer)
-        self.xyz_encoding_final = nn.Linear(W, W)
-
-        # direction encoding layers
-        self.dir_encoding = nn.Sequential(nn.Linear(W + in_channels_dir, W // 2), nn.ReLU(True))
-
-        # output layers
-        self.sigma = nn.Linear(W, 1)
-        self.rgb = nn.Sequential(nn.Linear(W // 2, 3), nn.Sigmoid())
-        self.reset_parameters(self)
-
-    def reset_parameters(self, modules):
-        for module in modules.modules():
-            if isinstance(module, nn.Linear):
-                nn.init.constant_(module.weight.data, 0.1)
-                if module.bias is not None:
-                    nn.init.constant_(module.weight.data, 0.01)
+        self.pts_linears = nn.ModuleList(
+            [nn.Linear(input_ch, W)]
+            + [
+                nn.Linear(W, W) if i not in self.skips else nn.Linear(W + input_ch, W)
+                for i in range(D - 1)
+            ]
+        )
+        self.views_linears = nn.ModuleList([nn.Linear(input_ch_views + W, W // 2)])
+        if use_viewdirs:
+            self.feature_linear = nn.Linear(W, W)
+            self.alpha_linear = nn.Linear(W, 1)
+            self.rgb_linear = nn.Linear(W // 2, 3)
+        else:
+            self.output_linear = nn.Linear(W, output_ch)
 
     def forward(self, x, sigma_only=False):
         """
@@ -113,7 +106,7 @@ class NeRF(nn.Module):
         For rendering this ray, please see rendering.py
 
         Inputs:
-            x (Tensor): (B, self.in_channels_xyz(+self.in_channels_dir))
+            x (Tensor): (B, self.in_channels_xyz+self.in_channels_dir)
                the embedded vector of position and direction
             sigma_only (bool): whether to infer sigma only. If True,
                         x is of shape (B, self.in_channels_xyz)
@@ -125,28 +118,29 @@ class NeRF(nn.Module):
                 out (Tensor): (B, 4), rgb and sigma
         """
         if not sigma_only:
-            input_xyz, input_dir = flow.split(
-                x, [self.in_channels_xyz, self.in_channels_dir], dim=-1
-            )
+            input_pts, input_views = flow.split(x, [self.input_ch, self.input_ch_views], dim=-1)
         else:
-            input_xyz = x
-
-        xyz_ = input_xyz
-        for i in range(self.D):
+            input_pts = x
+        h = input_pts
+        for i, l in enumerate(self.pts_linears):
+            h = self.pts_linears[i](h)
+            h = F.relu(h)
             if i in self.skips:
-                xyz_ = flow.cat([input_xyz, xyz_], -1)
-            xyz_ = getattr(self, f"xyz_encoding_{i+1}")(xyz_)
+                h = flow.cat([input_pts, h], -1)
 
-        sigma = self.sigma(xyz_)
-        if sigma_only:
-            return sigma
+        if self.use_viewdirs:
+            alpha = self.alpha_linear(h)
+            if sigma_only:
+                return alpha
+            feature = self.feature_linear(h)
+            h = flow.cat([feature, input_views], -1)
 
-        xyz_encoding_final = self.xyz_encoding_final(xyz_)
+            for i, l in enumerate(self.views_linears):
+                h = self.views_linears[i](h)
+                h = F.relu(h)
 
-        dir_encoding_input = flow.cat([xyz_encoding_final, input_dir], -1)
-        dir_encoding = self.dir_encoding(dir_encoding_input)
-        rgb = self.rgb(dir_encoding)
-
-        out = flow.cat([rgb, sigma], -1)
-
-        return out
+            rgb = self.rgb_linear(h).sigmoid()  # sigmoid
+            outputs = flow.cat([rgb, alpha], -1)
+        else:
+            outputs = self.output_linear(h)
+        return outputs
