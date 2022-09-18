@@ -2,9 +2,27 @@ import warnings
 
 from typing import Optional
 
-from .generation_logits_processor import LogitsProcessorList
-from .generation_stopping_criteria import MaxLengthCriteria, StoppingCriteriaList
+from generation_logits_processor import LogitsProcessorList
+from generation_stopping_criteria import MaxLengthCriteria, StoppingCriteriaList
+
+import numpy as np
 import oneflow as flow
+from oneflow import nn
+
+
+def multinomial(probs, num_samples, is_global=True):
+    probs = probs.numpy()
+    res = []
+    for i in range(len(probs)):
+        target = probs[i]
+        samples_idx = []
+        for _ in range(num_samples):
+            result = np.random.multinomial(1, target, size=1)
+            prob = target[result.argmax()]
+            samples_idx.append(np.where(probs[i]==prob)[0].tolist()[0])
+            target = np.delete(target, result.argmax())
+        res.append(samples_idx)
+    return flow.tensor(res, sbp=probs.sbp, placement=probs.placement) if is_global else flow.tensor(res)
 
 
 def _update_model_kwargs_for_generation(outputs, model_kwargs, is_encoder_decoder=False):
@@ -64,14 +82,14 @@ def greedy_search(
         next_token_logits = outputs[:, -1, :]
 
         # logits_processor
-        next_tokens_scores = logits_processor(input_ids, next_token_logits)
+        next_token_scores = logits_processor(input_ids, next_token_logits)
         
         # Store scores
         if output_scores:
-            scores += (next_tokens_scores,)
+            scores += (next_token_scores,)
 
         # argmax
-        next_tokens = flow.argmax(next_tokens_scores, dim=-1)
+        next_tokens = flow.argmax(next_token_scores, dim=-1)
         unfinished_sequences = unfinished_sequences.to_global(sbp=next_tokens.sbp, placement=next_tokens.placement)
 
         if eos_token_id is not None:
@@ -103,7 +121,7 @@ def greedy_search(
     return input_ids
 
 
-def sample(
+def multinomial_sample(
     model,
     input_ids: flow.Tensor, 
     logits_processor: Optional[LogitsProcessorList] = None, 
@@ -148,3 +166,40 @@ def sample(
         # pre-process distribution
         next_token_scores = logits_processor(input_ids, next_token_logits)
         next_token_scores = logits_warper(input_ids, next_token_scores)
+
+        # Store scores
+        if output_scores:
+            scores += (next_token_scores,)
+            
+        # sample
+        probs = nn.functional.softmax(next_token_scores, dim=-1)
+        next_tokens = multinomial(probs, num_samples=1) # flow.multinomial(probs, num_samples=1).squeeze(1)
+        unfinished_sequences = unfinished_sequences.to_global(sbp=next_tokens.sbp, placement=next_tokens.placement)
+        
+        if eos_token_id is not None:
+            if pad_token_id is None:
+                raise ValueError("If `eos_token_id` is defined, make sure that `pad_token_id` is defined.")
+            next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
+            
+        next_tokens = next_tokens.to(flow.long)
+        if is_encoder_decoder:
+            model_kwargs["decoder_input_ids"] = flow.cat([model_kwargs["decoder_input_ids"], next_tokens[:, None]], dim=-1)
+        else:    
+            input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
+            
+        model_kwargs = _update_model_kwargs_for_generation(outputs, model_kwargs, is_encoder_decoder = is_encoder_decoder)
+        cur_len = cur_len + 1
+        
+        if eos_token_id is not None:
+            unfinished_sequences = flow.mul(unfinished_sequences, (next_tokens != eos_token_id).long())
+
+        if is_encoder_decoder:
+            if unfinished_sequences.max() == 0 or stopping_criteria(model_kwargs["decoder_input_ids"], scores):
+                break
+        else:
+            if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
+                break
+
+    if is_encoder_decoder:
+        return model_kwargs["decoder_input_ids"]
+    return input_ids

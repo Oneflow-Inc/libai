@@ -100,7 +100,6 @@ class TemperatureLogitsWarper(object):
 
 
 class TopPLogitsWarper(object):
-    # 删除累加概率中大于top_p的概率
     def __init__(self, top_p: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
         top_p = float(top_p)
         if top_p < 0 or top_p > 1.0:
@@ -131,7 +130,6 @@ class TopPLogitsWarper(object):
 
 
 class TopKLogitsWarper(object):
-    # 删除所有小于topk中最小概率的概率
     def __init__(self, top_k: int, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError(f"`top_k` has to be a strictly positive integer, but is {top_k}")
