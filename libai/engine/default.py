@@ -727,8 +727,8 @@ class DefaultTrainer(TrainerBase):
         logger.info(log_info)
 
         # Global scheduler cfg
-        cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
-        cfg.train.scheduler.max_iter = cfg.train.train_iter
+        # cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
+        # cfg.train.scheduler.max_iter = cfg.train.train_iter
 
     @classmethod
     def build_evaluator(cls, cfg):

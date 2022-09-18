@@ -46,12 +46,13 @@ class GraphBase(nn.Graph):
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
             if fp16:
-                self.config.enable_amp(True)
+                self.config.enable_amp(True,dtype=flow.bfloat16)
+                
                 grad_scaler = flow.amp.GradScaler(
-                    init_scale=2 ** 30,
+                    init_scale=2 ** 12,
                     growth_factor=2.0,
                     backoff_factor=0.5,
-                    growth_interval=2000,
+                    growth_interval=1000,
                 )
                 self.set_grad_scaler(grad_scaler)
 
