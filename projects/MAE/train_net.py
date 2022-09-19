@@ -30,11 +30,6 @@ logger = logging.getLogger("libai.mae." + __name__)
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
-        # if try_get_key(cfg, "graph.enabled") is True:
-        #     raise NotImplementedError(
-        #         "LiBai MAE only support eager global mode now, please set cfg.graph.enabled=False"  # noqa
-        #     )
-
         model = super().build_model(cfg)
         if try_get_key(cfg, "finetune") is not None:
             if cfg.finetune.enable is True:

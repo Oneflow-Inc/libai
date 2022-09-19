@@ -13,10 +13,9 @@ from ..utils.lr_decay import param_groups_lrd
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
 finetune.weight_style = (
-    # "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
-    "pytorch"
+    "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
 )
-finetune.path = "/home/zhangwenxiao/wksp/mae/mae_pretrain_vit_base.pth"
+finetune.path = "/path/to/pretrained_mae_weight"
 
 
 # Get train, optim and graph configs
@@ -27,8 +26,8 @@ dataloader = get_config("common/data/imagenet.py").dataloader
 
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
-dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
+dataloader.train.dataset[0].root = "/path/to/imagenet"
+dataloader.test[0].dataset.root = "/path/to/imagenet"
 
 # Graph training
 graph.enabled = True
