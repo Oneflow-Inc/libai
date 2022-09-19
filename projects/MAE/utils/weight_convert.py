@@ -17,7 +17,6 @@ import logging
 
 import oneflow as flow
 import torch
-
 from flowvision.layers.weight_init import trunc_normal_
 
 logger = logging.getLogger("libai.mae." + __name__)
@@ -55,10 +54,7 @@ def convert_qkv_bias(cfg, value):
     hidden_size = cfg.model.embed_dim
     head_size = int(hidden_size / num_heads)
     qkv_bias = (
-        value.view(3, num_heads, head_size)
-        .permute(1, 0, 2)
-        .contiguous()
-        .view(hidden_size * 3)
+        value.view(3, num_heads, head_size).permute(1, 0, 2).contiguous().view(hidden_size * 3)
     )
     return qkv_bias
 
@@ -95,9 +91,7 @@ def log_param(key, value):
     logger.info(f"{key}, shape={value.shape}")
 
 
-def load_torch_checkpoint(
-    model, cfg, path="./mae_finetuned_vit_base.pth", strict=False
-):
+def load_torch_checkpoint(model, cfg, path="./mae_finetuned_vit_base.pth", strict=False):
     """
     Load checkpoint from the given torch weights.
     Torch weight can be downloaded from the original repo:
@@ -118,6 +112,7 @@ def load_torch_checkpoint(
                 sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])
             )
             new_parameters[key] = val
+
     msg = model.load_state_dict(new_parameters, strict=strict)
     logger.info(msg)
     trunc_normal_(model.head.weight, std=2e-5)

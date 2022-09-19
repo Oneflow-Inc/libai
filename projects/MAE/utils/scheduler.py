@@ -46,9 +46,7 @@ class LayerScaleWarmupCosineDecayLR(_LRScheduler):
             lr = base_lr * progress
         elif step < self.total_steps:
             progress = (step - self.warmup_steps) / self.decay_steps
-            lr = self.min_lr + (base_lr - self.min_lr) * 0.5 * (
-                1.0 + math.cos(math.pi * progress)
-            )
+            lr = self.min_lr + (base_lr - self.min_lr) * 0.5 * (1.0 + math.cos(math.pi * progress))
         else:
             lr = self.min_lr
 

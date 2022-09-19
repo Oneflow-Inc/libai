@@ -30,7 +30,9 @@ from utils.lr_decay import param_groups_lrd
 # Path to the weight for fine-tune
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
-finetune.weight_style = "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+finetune.weight_style = (
+    "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+)
 finetune.path = "/path/to/pretrained_mae_weight"
 
 
@@ -77,9 +79,7 @@ train.train_micro_batch_size = 32
 train.num_accumulation_steps = 4
 train.test_micro_batch_size = 32
 
-effective_batch_size = (
-    train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
-)
+effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
 epoch_iter = dataset_train_length // effective_batch_size
 
 train.train_epoch = 100
