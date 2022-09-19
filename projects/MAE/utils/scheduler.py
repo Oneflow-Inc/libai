@@ -17,49 +17,49 @@ import logging
 import math
 
 import oneflow as flow
-from oneflow.optim.lr_scheduler import CosineDecayLR
+from oneflow.optim.lr_scheduler import _LRScheduler
 
 logger = logging.getLogger(__name__)
 
 
-class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
+class LayerScaleWarmupCosineDecayLR(_LRScheduler):
     def __init__(
         self,
         optimizer: flow.optim.Optimizer,
+        steps: int,
         warmup_steps: int,
-        decay_steps: int,
-        alpha: float = 0.0,
+        warmup_factor: float,
+        min_lr: float = 0.0,
         last_step: int = -1,
         verbose: bool = False,
     ):
+        self.total_steps = steps
+        self.decay_steps = steps - warmup_steps
         self.warmup_steps = warmup_steps
-        super().__init__(
-            optimizer=optimizer,
-            decay_steps=decay_steps,
-            alpha=alpha,
-            last_step=last_step,
-            verbose=verbose,
-        )
+        self.warmup_factor = warmup_factor
+        self.min_lr = min_lr
+        super().__init__(optimizer, last_step, verbose)
 
     def get_lr(self, base_lr, step):
         if step < self.warmup_steps:
-            lr = base_lr * step / self.warmup_steps
-            return lr
-        elif step < self.decay_steps:
-            cos_decay = 0.5 * (1 + math.cos(math.pi * step / self.decay_steps))
-            decay_factor = (1 - self.alpha) * cos_decay + self.alpha
+            progress = step / self.warmup_steps
+            lr = base_lr * progress
+        elif step < self.total_steps:
+            progress = (step - self.warmup_steps) / self.decay_steps
+            lr = self.min_lr + (base_lr - self.min_lr) * 0.5 * (1.0 + math.cos(math.pi * progress))
         else:
-            decay_factor = self.alpha
+            lr = self.min_lr
 
-        return base_lr * decay_factor
+        return lr
 
     def update_lrs(self, lrs):
         self._last_lr = []
         for i, (group, lr) in enumerate(zip(self.optimizer.param_groups, lrs)):
-            if "lr_scale" in group.options:
-                group.options["lr"] = lr * group.options["lr_scale"]
+            if "lr_scale" in group:
+                group["lr"] = lr * group["lr_scale"]
             else:
-                group.options["lr"] = lr
+                group["lr"] = lr
+
             self._last_lr.append(lr)
             if self.verbose:
                 self.print_lr(i, lr)
@@ -68,12 +68,41 @@ class WarmupLayerScaleCosineDecayLR(CosineDecayLR):
 def warmup_layerscale_cosine_lr_scheduler(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
-    warmup_factor: float,
     warmup_iter: int,
-    alpha: float = 0.0,
-    warmup_method: str = "linear",
+    warmup_factor: float,
+    min_lr: float = 0.0,
 ):
-    layer_scale_cosine_decay_lr = WarmupLayerScaleCosineDecayLR(
-        optimizer, warmup_steps=warmup_iter, decay_steps=max_iter, alpha=alpha
+    return LayerScaleWarmupCosineDecayLR(
+        optimizer,
+        steps=max_iter,
+        warmup_steps=warmup_iter,
+        warmup_factor=warmup_factor,
+        min_lr=min_lr,
     )
-    return layer_scale_cosine_decay_lr
+
+
+def warmup_cosine_lr_scheduler(
+    optimizer: flow.optim.Optimizer,
+    max_iter: int,
+    warmup_iter: int,
+    warmup_factor: float = 0.0,
+    warmup_method: str = "linear",
+    min_lr: float = 0.0,
+):
+    cosine_lr = flow.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=max_iter - warmup_iter, eta_min=min_lr
+    )
+    if warmup_iter == 0:
+        logger.warning("warmup iters equals to zero, return CosineLR")
+        return cosine_lr
+
+    if warmup_iter > max_iter:
+        logger.warning("warmup iters is larger than the total training iters")
+
+    warmup_cosine_lr = flow.optim.lr_scheduler.WarmupLR(
+        cosine_lr,
+        warmup_factor=warmup_factor,
+        warmup_iters=warmup_iter,
+        warmup_method=warmup_method,
+    )
+    return warmup_cosine_lr
