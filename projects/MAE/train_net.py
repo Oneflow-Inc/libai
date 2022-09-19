@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import logging
 import sys
 
@@ -38,7 +37,9 @@ class Trainer(DefaultTrainer):
                 if cfg.finetune.weight_style == "oneflow":
                     Checkpointer(model).load(cfg.finetune.path)
                 elif cfg.finetune.weight_style == "pytorch":
-                    model = load_torch_checkpoint(model, cfg, path=cfg.finetune.path, strict=False)
+                    model = load_torch_checkpoint(
+                        model, cfg, path=cfg.finetune.path, strict=False
+                    )
                 else:
                     raise NotImplementedError(
                         "Only support loading oneflow & pytorch pretrained weight now."
@@ -70,7 +71,9 @@ def main(args):
             model = Trainer.build_graph(cfg, model, is_train=False)
         test_loader = Trainer.build_test_loader(cfg, tokenizer)
         if len(test_loader) == 0:
-            logger.info("No dataset in dataloader.test, please set dataset for dataloader.test")
+            logger.info(
+                "No dataset in dataloader.test, please set dataset for dataloader.test"
+            )
         _ = Trainer.test(cfg, test_loader, model)
         return
 

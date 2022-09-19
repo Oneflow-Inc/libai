@@ -40,14 +40,15 @@ class LayerScaleWarmupCosineDecayLR(_LRScheduler):
         self.min_lr = min_lr
         super().__init__(optimizer, last_step, verbose)
 
-
     def get_lr(self, base_lr, step):
         if step < self.warmup_steps:
             progress = step / self.warmup_steps
             lr = base_lr * progress
         elif step < self.total_steps:
             progress = (step - self.warmup_steps) / self.decay_steps
-            lr = self.min_lr + (base_lr - self.min_lr) * 0.5 * (1. + math.cos(math.pi * progress))
+            lr = self.min_lr + (base_lr - self.min_lr) * 0.5 * (
+                1.0 + math.cos(math.pi * progress)
+            )
         else:
             lr = self.min_lr
 
@@ -66,7 +67,6 @@ class LayerScaleWarmupCosineDecayLR(_LRScheduler):
                 self.print_lr(i, lr)
 
 
-
 def warmup_layerscale_cosine_lr_scheduler(
     optimizer: flow.optim.Optimizer,
     max_iter: int,
@@ -75,7 +75,11 @@ def warmup_layerscale_cosine_lr_scheduler(
     min_lr: float = 0.0,
 ):
     return LayerScaleWarmupCosineDecayLR(
-        optimizer, steps=max_iter, warmup_steps=warmup_iter, warmup_factor=warmup_factor, min_lr=min_lr
+        optimizer,
+        steps=max_iter,
+        warmup_steps=warmup_iter,
+        warmup_factor=warmup_factor,
+        min_lr=min_lr,
     )
 
 

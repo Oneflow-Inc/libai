@@ -1,3 +1,18 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from omegaconf import OmegaConf
 
 from flowvision.data import Mixup
@@ -5,16 +20,17 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 from libai.config import LazyCall, get_config
 from .models.vit_base_patch16 import model
-from ..utils.scheduler import warmup_layerscale_cosine_lr_scheduler, warmup_cosine_lr_scheduler
+from ..utils.scheduler import (
+    warmup_layerscale_cosine_lr_scheduler,
+    warmup_cosine_lr_scheduler,
+)
 from ..utils.lr_decay import param_groups_lrd
 
 
 # Path to the weight for fine-tune
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
-finetune.weight_style = (
-    "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
-)
+finetune.weight_style = "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
 finetune.path = "/path/to/pretrained_mae_weight"
 
 
@@ -61,7 +77,9 @@ train.train_micro_batch_size = 32
 train.num_accumulation_steps = 4
 train.test_micro_batch_size = 32
 
-effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
+effective_batch_size = (
+    train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
+)
 epoch_iter = dataset_train_length // effective_batch_size
 
 train.train_epoch = 100
