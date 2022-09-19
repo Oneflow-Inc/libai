@@ -294,7 +294,23 @@ class MaskedAutoencoderViT(nn.Module):
         x = self.decoder_embed(x)
 
         # append mask tokens to sequence
-        mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
+        # mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
+        # prev line will bring mask_tokens a huge tensor with shape [B*N, L, D]
+        # (with B = local batch size, N = total num devices),
+        # however we only need a mask_tokens with shape [B, L, D],
+        # since local to global tensor is not avaible in graph mode,
+        # we have to use a two stage repeat way as below.
+        # repeat to (N, 1, D), sbp = B
+        world_size = flow.env.get_world_size()
+        mask_token = self.mask_token.repeat(world_size, 1, 1)
+        # to_global(sbp=S(0)), local shape = (1, 1, D)
+        mask_token = mask_token.to_global(sbp=flow.sbp.split(0))
+        # second repeat from (N, 1, D) to (B*N, L, D) (global shape, sbp=S(0)), local shape = (B, L, D),
+        # so we don't make a (B*N, L, D) tensor locally
+        mask_tokens = mask_token.repeat(
+            x.shape[0] // world_size, ids_restore.shape[1] + 1 - x.shape[1], 1
+        )
+
         x_ = flow.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
         x_ = flow.gather(
             x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2])

@@ -2,28 +2,30 @@ from flowvision.transforms import transforms, InterpolationMode
 from flowvision.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 from libai.config import LazyCall, get_config
-from .models.mae_vit_base_patch16 import model
-from ..data.pretraining_imagenet import PretrainingImageNetDataset
+from configs.models.mae_vit_base_patch16 import model
+from data.pretraining_imagenet import PretrainingImageNetDataset
+from utils.lr_decay import param_groups_weight_decay
+from utils.scheduler import warmup_cosine_lr_scheduler
+
 
 train = get_config("common/train.py").train
 optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
 dataloader = get_config("common/data/imagenet.py").dataloader
 
+
+# MAE Graph training for faster speed
+graph.enabled = True
+
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/imagenet/"
+dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
 dataloader.train.dataset[0]._target_ = PretrainingImageNetDataset
 
+# dataset length
+dataset_train_length = 1281167
 
 # No test data for pretraining
 del dataloader.test
-
-# number devices
-n_gpus = 8
-
-# MAE do not support Graph training
-graph.enabled = True
-
 
 # Refine data transform to MAE's default settings
 transform_train = LazyCall(transforms.Compose)(
@@ -43,16 +45,19 @@ transform_train = LazyCall(transforms.Compose)(
 )
 dataloader.train.dataset[0].transform = transform_train
 
-# dataset length
-dataset_train_length = 1281167
+
+# number devices
+n_gpus = 8
 
 # Refine training settings for MAE
-train.train_micro_batch_size = 256
-train.num_accumulation_steps = 2
+train.train_micro_batch_size = 16
+train.num_accumulation_steps = 1
 train.train_epoch = 800
 train.warmup_ratio = 40 / 800
 train.log_period = 20
-train.rdma_enabled = False
+
+# set rdma enabled when num nodes > 1
+# train.rdma_enabled = False
 
 effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
 epoch_iter = dataset_train_length // effective_batch_size
@@ -64,30 +69,34 @@ train.checkpointer.period = epoch_iter
 # In LiBai, you should refine the actually learning rate due to your on settings
 # Here we use 8 GPUs, 128 batch_size per GPU for training, batch_size equals to 1024
 base_lr = 1.5e-4
-actual_lr = base_lr * (train.train_micro_batch_size * 8 * train.num_accumulation_steps / 256)
-
+actual_lr = base_lr * effective_batch_size / 256
 
 # Refine optim settings
-optim.params.clip_grad_max_norm = None
-optim.params.clip_grad_norm_type = None
-optim.params.weight_decay_norm = None
-optim.params.weight_decay_bias = None
+optim.params._target_ = param_groups_weight_decay
+optim.params.weight_decay = 0.05
 optim.lr = actual_lr
-optim.weight_decay = 0.05
 optim.betas = (0.9, 0.95)
 
+del optim.params.clip_grad_max_norm
+del optim.params.clip_grad_norm_type
+del optim.params.weight_decay_norm
+del optim.params.weight_decay_bias
+del optim.weight_decay
 
 # Refine scheduler
 # Default scheduler in LiBai training config is WarmupCosineLR
-train.scheduler.warmup_factor = 0.001
-train.scheduler.alpha = 0.0
-train.scheduler.warmup_method = "linear"
+train.scheduler = LazyCall(warmup_cosine_lr_scheduler)(
+    warmup_factor=0.0,
+    min_lr=0.0,
+)
+
 
 # AMP
 train.amp.enabled = True
 
+
 # Distributed Settings
-#train.dist.pipeline_num_layers = model.depth
 train.dist.data_parallel_size = n_gpus
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
+# train.dist.pipeline_num_layers = model.depth

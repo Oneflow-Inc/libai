@@ -18,6 +18,6 @@ model = LazyCall(MaskedAutoencoderViT)(
     decoder_num_heads=16,
     mlp_ratio=4,
     norm_layer=partial(LayerNorm, eps=1e-6),
-    norm_pix_loss=False,
+    norm_pix_loss=True,
     mask_ratio=0.75,
 )
