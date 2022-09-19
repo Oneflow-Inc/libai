@@ -19,12 +19,12 @@ from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 from libai.config import LazyCall, get_config
-from .models.vit_base_patch16 import model
-from ..utils.scheduler import (
+from configs.models.vit_base_patch16 import model
+from utils.scheduler import (
     warmup_layerscale_cosine_lr_scheduler,
     warmup_cosine_lr_scheduler,
 )
-from ..utils.lr_decay import param_groups_lrd
+from utils.lr_decay import param_groups_lrd
 
 
 # Path to the weight for fine-tune
