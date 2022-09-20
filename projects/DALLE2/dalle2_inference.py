@@ -123,6 +123,7 @@ class Dalle2Pipeline(BasePipeline):
             images = list(map(to_pil, [images[i] for i in range(images.shape[0])]))
             for i, image in enumerate(images):                
                 image.save(f"{output_path}/{i}_{args.upsample_scale}x.png")
+        print("Images have been saved under {output_path}.")
         return model_output_dict
 
 def parse_args():
@@ -132,7 +133,6 @@ def parse_args():
     parser.add_argument('--data_parallel', type=int, default=1)
     parser.add_argument('--tensor_parallel', type=int, default=4)
     parser.add_argument('--pipeline_parallel', type=int, default=1)
-    parser.add_argument('--text', type=str, default="A man is playing basketball with his friends!")
     parser.add_argument('--upsample_scale', type=int, choices=[4, 16], default=None, help="upsample scale, if 4x, output resolution will be 256 x 256.")
     parser.add_argument('--swinir_path', type=str, default='./swinir/weights/003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth')
     parser.add_argument('--output_dir', type=str, default='./outputs')
@@ -149,13 +149,10 @@ if __name__ == "__main__":
         data_parallel=args.data_parallel,
         tensor_parallel=args.tensor_parallel,
         pipeline_parallel=args.pipeline_parallel,)
-    text = args.text if args.text else "a man is playing basketball with his friends!"
-    repeats = 5
-    text = [ 'a shiba inu wearing a beret and black turtleneck', 
+    
+    texts = [ 'a shiba inu wearing a beret and black turtleneck', 
              'a teddy bear on a skateboard in times square',
              'trump fight with biden in white house',
              'Donald trump fight with biden in white house',]
     
-    imgs = model(text, **vars(args))
-    
-    #python -m oneflow.distributed.launch --nproc_per_node 4 dalle2_inference.py --save_images --upsample_scale 4
+    imgs = model(texts, **vars(args))
