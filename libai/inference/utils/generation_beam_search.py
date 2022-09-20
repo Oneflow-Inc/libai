@@ -1,4 +1,3 @@
-from sre_parse import SubPattern
 import warnings
 from abc import ABC, abstractmethod
 from collections import UserDict
@@ -264,7 +263,7 @@ class BeamSearchScorer(BeamScorer):
         for batch_idx, beam_hyp in enumerate(self._beam_hyps):
             if self._done[batch_idx]:
                 continue
-            
+
             # all open beam hypotheses are added to the beam hypothesis
             # beam hypothesis class automatically keeps the best beams
             for beam_id in range(self.num_beams):
@@ -273,7 +272,7 @@ class BeamSearchScorer(BeamScorer):
                 final_tokens = input_ids[batch_beam_idx]
                 beam_index = beam_indices[batch_beam_idx] if beam_indices is not None else None
                 beam_hyp.add(final_tokens, final_score, beam_indices=beam_index)
-        
+
         # select the best hypotheses
         sent_lengths = input_ids.new(batch_size * self.num_beam_hyps_to_keep)
         best = []
@@ -305,19 +304,23 @@ class BeamSearchScorer(BeamScorer):
 
         # prepare for adding eos
         sent_lengths_max = sent_lengths.max().item() + 1
-        sent_max_len = min(sent_lengths_max, max_length) if max_length is not None else sent_lengths_max
+        sent_max_len = (
+            min(sent_lengths_max, max_length) if max_length is not None else sent_lengths_max
+        )
         decoded = flow.zeros(
             (batch_size * self.num_beam_hyps_to_keep, sent_max_len),
+            dtype=flow.long,
             sbp=input_ids.sbp,
             placement=input_ids.placement,
         )
 
         if len(best_indices) > 0 and best_indices[0] is not None:
             indices = flow.zeros(
-            (batch_size * self.num_beam_hyps_to_keep, sent_max_len),
-            sbp=input_ids.sbp,
-            placement=input_ids.placement,
-        )
+                (batch_size * self.num_beam_hyps_to_keep, sent_max_len),
+                dtype=flow.long,
+                sbp=input_ids.sbp,
+                placement=input_ids.placement,
+            )
         else:
             indices = None
 

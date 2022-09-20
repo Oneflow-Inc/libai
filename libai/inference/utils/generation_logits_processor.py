@@ -10,8 +10,8 @@ class LogitsProcessorList(list):
             if len(function_args) > 2:
                 if not all(arg in kwargs for arg in list(function_args.keys())[2:]):
                     raise ValueError(
-                        f"Make sure that all the required parameters: {list(function_args.keys())} for "
-                        f"{processor.__class__} are passed to the logits processor."
+                        f"Make sure that all the required parameters: {list(function_args.keys())} "
+                        "for {processor.__class__} are passed to the logits processor."
                     )
                 scores = processor(input_ids, scores, **kwargs)
             else:
@@ -36,7 +36,7 @@ class ForcedEOSTokenLogitsProcessor(object):
     def __init__(self, max_length: int, eos_token_id: int):
         self.max_length = max_length
         self.eos_token_id = eos_token_id
-    
+
     def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
         cur_len = input_ids.shape[-1]
         if cur_len == self.max_length - 1:
@@ -49,7 +49,7 @@ class ForcedEOSTokenLogitsProcessor(object):
 class ForcedBOSTokenLogitsProcessor(object):
     def __init__(self, bos_token_id: int):
         self.bos_token_id = bos_token_id
-        
+
     def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
         cur_len = input_ids.shape[-1]
         if cur_len == 1:
@@ -60,7 +60,9 @@ class ForcedBOSTokenLogitsProcessor(object):
 
 
 class TopKLogitsProcessor(object):
-    def __init__(self, top_k: int, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self, top_k: int, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1
+    ):
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError(f"`top_k` has to be a strictly positive integer, but is {top_k}")
 
@@ -80,7 +82,7 @@ class RepetitionPenaltyLogitsProcessor(object):
         if not isinstance(penalty, float) or not (penalty > 0):
             raise ValueError(f"`penalty` has to be a strictly positive float, but is {penalty}")
         self.penalty = penalty
-    
+
     def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
         score = flow.gather(scores, 1, input_ids)
         score = flow.where(score < 0, score * self.penalty, score / self.penalty)
@@ -91,16 +93,20 @@ class RepetitionPenaltyLogitsProcessor(object):
 class TemperatureLogitsWarper(object):
     def __init__(self, temperature: float):
         if not isinstance(temperature, float) or not (temperature > 0):
-            raise ValueError(f"`temperature` has to be a strictly positive float, but is {temperature}")
+            raise ValueError(
+                f"`temperature` has to be a strictly positive float, but is {temperature}"
+            )
         self.temperature = temperature
-        
+
     def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
         scores = scores / self.temperature
         return scores
 
 
 class TopPLogitsWarper(object):
-    def __init__(self, top_p: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self, top_p: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1
+    ):
         top_p = float(top_p)
         if top_p < 0 or top_p > 1.0:
             raise ValueError(f"`top_p` has to be a float > 0 and < 1, but is {top_p}")
@@ -116,7 +122,8 @@ class TopPLogitsWarper(object):
         # Remove tokens with cumulative top_p above the threshold (token with 0 are kept)
         sorted_indices_to_remove = cumulative_probs > self.top_p
         if self.min_tokens_to_keep > 1:
-            # Keep at least min_tokens_to_keep (set to min_tokens_to_keep-1 because we add the first one below)
+            # Keep at least min_tokens_to_keep (set to min_tokens_to_keep-1
+            # because we add the first one below)
             sorted_indices_to_remove[..., : self.min_tokens_to_keep - 1] = 0
 
         # Shift the indices to the right to keep also the first token above the threshold
@@ -124,13 +131,17 @@ class TopPLogitsWarper(object):
         sorted_indices_to_remove[..., 0] = 0
 
         # scatter sorted tensors to original indexing
-        indices_to_remove = flow.scatter(sorted_indices_to_remove, 1, sorted_indices, sorted_indices_to_remove)
+        indices_to_remove = flow.scatter(
+            sorted_indices_to_remove, 1, sorted_indices, sorted_indices_to_remove
+        )
         scores = scores.masked_fill(indices_to_remove, self.filter_value)
         return scores
 
 
 class TopKLogitsWarper(object):
-    def __init__(self, top_k: int, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self, top_k: int, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1
+    ):
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError(f"`top_k` has to be a strictly positive integer, but is {top_k}")
 
@@ -144,10 +155,12 @@ class TopKLogitsWarper(object):
         indices_to_remove = scores < flow.topk(scores, top_k)[0][..., -1, None]
         scores = scores.masked_fill(indices_to_remove, self.filter_value)
         return scores
-    
-    
+
+
 class TypicalLogitsWarper(object):
-    def __init__(self, mass: float = 0.9, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
+    def __init__(
+        self, mass: float = 0.9, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1
+    ):
         mass = float(mass)
         if not (mass > 0 and mass < 1):
             raise ValueError(f"`typical_p` has to be a float > 0 and < 1, but is {mass}")
@@ -178,8 +191,11 @@ class TypicalLogitsWarper(object):
         last_ind[last_ind < 0] = 0
         sorted_indices_to_remove = sorted_scores > sorted_scores.gather(1, last_ind.view(-1, 1))
         if self.min_tokens_to_keep > 1:
-            # Keep at least min_tokens_to_keep (set to min_tokens_to_keep-1 because we add the first one below)
+            # Keep at least min_tokens_to_keep
+            # (set to min_tokens_to_keep-1 because we add the first one below)
             sorted_indices_to_remove[..., : self.min_tokens_to_keep] = 0
-        indices_to_remove = flow.scatter(sorted_indices_to_remove, 1, sorted_indices, sorted_indices_to_remove)
+        indices_to_remove = flow.scatter(
+            sorted_indices_to_remove, 1, sorted_indices, sorted_indices_to_remove
+        )
         scores = scores.masked_fill(indices_to_remove, self.filter_value)
         return scores
