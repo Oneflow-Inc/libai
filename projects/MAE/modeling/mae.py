@@ -279,7 +279,19 @@ class MaskedAutoencoderViT(nn.Module):
 
         # append cls token
         cls_token = self.cls_token + self.pos_embed[:, :1, :]
-        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        # directly expand will bring cls_tokens a huge tensor with shape [B*N, 1, D]
+        # (with B = local batch size, N = total num devices),
+        # however we only need a mask_tokens with shape [B, 1, D],
+        # since local to global tensor is not avaible in graph mode,
+        # we have to use a two stage expand way as below.
+        world_size = flow.env.get_world_size()
+        # repeat to (N, 1, D), sbp = B
+        cls_token = cls_token.expand(world_size, -1, -1)
+        # to_global(sbp=S(0)), local shape = (1, 1, D)
+        cls_token = cls_token.to_global(sbp=flow.sbp.split(0))
+        # second repeat from (N, 1, D) to (B*N, 1, D) (global shape, sbp=S(0)), local shape = (B, 1, D),
+        # so we don't make a (B*N, 1, D) tensor locally
+        cls_tokens = cls_token.repeat(x.shape[0] // world_size, 1, 1)
         x = flow.cat((cls_tokens, x), dim=1)
 
         # apply Transformer blocks
@@ -300,8 +312,8 @@ class MaskedAutoencoderViT(nn.Module):
         # however we only need a mask_tokens with shape [B, L, D],
         # since local to global tensor is not avaible in graph mode,
         # we have to use a two stage repeat way as below.
-        # repeat to (N, 1, D), sbp = B
         world_size = flow.env.get_world_size()
+        # repeat to (N, 1, D), sbp = B
         mask_token = self.mask_token.repeat(world_size, 1, 1)
         # to_global(sbp=S(0)), local shape = (1, 1, D)
         mask_token = mask_token.to_global(sbp=flow.sbp.split(0))

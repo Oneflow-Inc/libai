@@ -50,11 +50,14 @@ dataloader.train.dataset[0].transform = transform_train
 n_gpus = 8
 
 # Refine training settings for MAE
-train.train_micro_batch_size = 16
-train.num_accumulation_steps = 1
+train.train_micro_batch_size = 64
+train.num_accumulation_steps = 8
 train.train_epoch = 800
 train.warmup_ratio = 40 / 800
 train.log_period = 20
+
+# enable activation checkpointing
+# train.activation_checkpoint.enabled = True
 
 # set rdma enabled when num nodes > 1
 # train.rdma_enabled = False
