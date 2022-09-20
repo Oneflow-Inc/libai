@@ -8,15 +8,23 @@ from .common.data.test_t5_dataset import dataloader
 from .common.models.graph import graph
 
 # T5-large model config
-model.cfg.num_attention_heads = 12
-model.cfg.hidden_size = 384
+model.cfg.num_attention_heads = 8
+model.cfg.hidden_size = 8
 model.cfg.hidden_layers = 6
+model.cfg.scale_mask_softmax_fusion = False
+model.cfg.bias_dropout_fusion = False
+model.cfg.bias_gelu_fusion = False
+
+graph.debug = 1
 
 train.input_placement_device = "cpu"
 
+train.dist.data_parallel_size=8
+train.dist.tensor_parallel_size=1
+train.dist.pipeline_parallel_size=1
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
-train.train_micro_batch_size = 4
+train.train_micro_batch_size = 1
 train.amp.enabled = True
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()

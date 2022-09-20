@@ -18,14 +18,17 @@ import oneflow as flow
 from libai.data.structures import DistTensorData, Instance
 
 class T5Dataset(flow.utils.data.Dataset):
-    def __init__(self, vocab_size, num_samples, seq_len):
-        self.tokens_enc = flow.randint(0, vocab_size, (num_samples, seq_len))
-        self.tokens_dec_in = flow.randint(0, vocab_size, (num_samples, seq_len))
-        self.enc_mask = flow.ones(num_samples, seq_len, seq_len).bool()
-        self.dec_mask = flow.ones(num_samples, seq_len, seq_len).bool()
-        self.enc_dec_mask = flow.ones(num_samples, seq_len, seq_len).bool()
-        self.labels = flow.randint(0, vocab_size, (num_samples, seq_len))
-        self.loss_mask = flow.randint(0, 2, (num_samples, seq_len)).bool()
+    def __init__(self, vocab_size, num_samples, enc_seq_len, dec_seq_len):
+        self.tokens_enc = flow.randint(0, vocab_size, (num_samples, enc_seq_len))
+        #self.tokens_dec_in = flow.randint(0, vocab_size, (num_samples, dec_seq_len))
+        self.tokens_dec_in = self.tokens_enc
+        self.enc_mask = flow.ones(num_samples, enc_seq_len, enc_seq_len).bool()
+        #self.dec_mask = flow.ones(num_samples, dec_seq_len, dec_seq_len).bool()
+        self.dec_mask = self.enc_mask
+        #self.enc_dec_mask = flow.ones(num_samples, dec_seq_len, enc_seq_len).bool()
+        self.enc_dec_mask = self.dec_mask
+        self.labels = flow.randint(0, vocab_size, (num_samples, dec_seq_len))
+        self.loss_mask = flow.randint(0, 2, (num_samples, dec_seq_len)).bool()
                 
     def __len__(self):
         return self.tokens_enc.shape[0]
