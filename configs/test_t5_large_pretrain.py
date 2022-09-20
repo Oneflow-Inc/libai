@@ -9,6 +9,7 @@ from .common.models.graph import graph
 
 # T5-large model config
 model.cfg.num_attention_heads = 8
+model.cfg.vocab_size = 8
 model.cfg.hidden_size = 8
 model.cfg.hidden_layers = 6
 model.cfg.scale_mask_softmax_fusion = False
