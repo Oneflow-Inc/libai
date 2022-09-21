@@ -20,12 +20,12 @@ graph.debug = 1
 
 train.input_placement_device = "cpu"
 
-train.dist.data_parallel_size=8
+train.dist.data_parallel_size=10
 train.dist.tensor_parallel_size=1
 train.dist.pipeline_parallel_size=1
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers
 
-train.train_micro_batch_size = 1
+train.train_micro_batch_size =100 
 train.amp.enabled = True
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
