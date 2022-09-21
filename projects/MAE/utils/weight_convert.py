@@ -63,7 +63,9 @@ def filter_keys(key, value, cfg):
     """
     Filtering the state_dict keys and values to match LiBai's MAE model
     """
-    if "norm1" in key:
+    if key.startswith("decoder_"):
+        value = None
+    elif "norm1" in key:
         key = key.replace("norm1", "input_layernorm")
     elif "attn.qkv" in key:
         key = key.replace("attn.qkv", "self_attention.query_key_value")

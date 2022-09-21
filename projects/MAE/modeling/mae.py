@@ -358,6 +358,8 @@ class MaskedAutoencoderViT(nn.Module):
             target = (target - mean) / (var + 1.0e-6) ** 0.5
 
         loss = (pred - target) ** 2
+        loss = flow._C.amp_white_identity(loss)
+        loss = flow._C.amp_black_identity(loss)
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
 
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches

@@ -14,26 +14,17 @@
 # limitations under the License.
 
 from omegaconf import OmegaConf
-
 from flowvision.data import Mixup
-from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
+# from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 from libai.config import LazyCall, get_config
+from modeling.cross_entropy import SoftTargetCrossEntropy
 from configs.models.vit_base_patch16 import model
 from utils.scheduler import (
     warmup_layerscale_cosine_lr_scheduler,
     warmup_cosine_lr_scheduler,
 )
 from utils.lr_decay import param_groups_lrd
-
-
-# Path to the weight for fine-tune
-finetune = OmegaConf.create()
-finetune.enable = True  # only load weight if enable is True
-finetune.weight_style = (
-    "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
-)
-finetune.path = "/path/to/pretrained_mae_weight"
 
 
 # Get train, optim and graph configs
@@ -43,18 +34,29 @@ graph = get_config("common/models/graph.py").graph
 dataloader = get_config("common/data/imagenet.py").dataloader
 
 
-# Refine data path to imagenet
-dataloader.train.dataset[0].root = "/path/to/imagenet"
-dataloader.test[0].dataset.root = "/path/to/imagenet"
+# number devices
+n_gpus = 8
 
 # Graph training
 graph.enabled = True
-
 
 # Refine model cfg for vit training on imagenet
 model.num_classes = 1000
 model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
+# Path to the weight for fine-tune
+finetune = OmegaConf.create()
+finetune.enable = True  # only load weight if enable is True
+finetune.weight_style = (
+    # "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
+    "pytorch"
+)
+finetune.path = "/home/zhangwenxiao/wksp/mae/pretrain_output_dir/checkpoint-40.pth"
+
+
+# Refine data path to imagenet
+dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
+dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
@@ -67,12 +69,10 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     num_classes=model.num_classes,
 )
 
-# number devices
-n_gpus = 8
-
 # dataset length
 dataset_train_length = 1281167
 dataset_val_length = 50000
+
 
 # Refine training settings for MAE finetune
 train.train_micro_batch_size = 32
@@ -93,6 +93,7 @@ train.layer_decay = 0.65
 
 # AMP
 train.amp.enabled = True
+
 
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule as follows:
@@ -125,6 +126,7 @@ else:
         warmup_factor=0.0,
         min_lr=1e-6,
     )
+
 
 # Distributed Settings
 train.dist.pipeline_num_layers = model.depth

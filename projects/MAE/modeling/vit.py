@@ -20,6 +20,7 @@
 # mae: https://github.com/facebookresearch/mae/blob/main/models_vit.py
 # --------------------------------------------------------
 
+import oneflow as flow
 
 import libai.models.vision_transformer
 
@@ -67,7 +68,12 @@ class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
 
     def forward_head(self, x):
         if self.global_pool:
-            x = x[:, 1:, :].mean(dim=1)  # global pool without cls token
+            x = x[:, 1:, :]  # global pool without cls token
+            x = flow._C.amp_white_identity(x)
+            x = flow._C.amp_black_identity(x)
+            x = x.mean(dim=1)
+            x = flow._C.amp_black_identity(x)
+            x = flow._C.amp_white_identity(x)
             outcome = self.norm(x)
             outcome = self.head(outcome)
         else:
