@@ -36,17 +36,17 @@ VOCAB_MD5 = "3b5b76c4aef48ecf8cb3abaafe960f09"
 BIN_DATA_MD5 = "b842467bd5ea7e52f7a612ea6b4faecc"
 IDX_DATA_MD5 = "cf5963b8543f0a7a867361eb980f0372"
 
-TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_t5")
+TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_mt5")
 
 
 setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestT5Model(flow.unittest.TestCase):
+class TestMT5Model(flow.unittest.TestCase):
     def setUp(self) -> None:
         cache_dir = os.path.join(os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "bert_data")
 
-        cfg = LazyConfig.load("configs/t5_large_pretrain.py")
+        cfg = LazyConfig.load("projects/MT5/configs/mt5_pretrain.py")
 
         # prepare dataset
         if dist.get_local_rank() == 0:
@@ -110,7 +110,7 @@ class TestT5Model(flow.unittest.TestCase):
             shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
-    def test_t5_eager_with_data_tensor_parallel(self):
+    def test_mt5_eager_with_data_tensor_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
@@ -125,7 +125,7 @@ class TestT5Model(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_t5_eager_with_pipeline_parallel(self):
+    def test_mt5_eager_with_pipeline_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 1
         self.cfg.train.dist.tensor_parallel_size = 1
@@ -140,7 +140,7 @@ class TestT5Model(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_t5_graph_with_data_tensor_parallel(self):
+    def test_mt5_graph_with_data_tensor_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
         self.cfg.train.dist.tensor_parallel_size = 2
@@ -154,7 +154,7 @@ class TestT5Model(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    def test_t5_graph_with_data_tensor_pipeline_parallel(self):
+    def test_mt5_graph_with_data_tensor_pipeline_parallel(self):
         self.cfg.train.num_accumulation_steps = 4
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
@@ -173,7 +173,7 @@ class TestT5Model(flow.unittest.TestCase):
 
     @flow.unittest.skip_unless_1n4d()
     @unittest.skip("There are still bugs in ZeRO")
-    def test_t5_with_zero(self):
+    def test_mt5_with_zero(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 4
         self.cfg.train.dist.tensor_parallel_size = 1
