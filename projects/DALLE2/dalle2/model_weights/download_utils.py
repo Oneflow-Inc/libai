@@ -20,7 +20,9 @@ def _download_if_not_exist(path, name):
     
 
 def download_dalle2_weights(cfg):
-    download_file("./dalle2/data/bpe_simple_vocab_16e6.txt.gz", url_map["bpe_vocab"])
+    if not os.path.exists("./dalle2/data/bpe_simple_vocab_16e6.txt.gz"):
+        os.makedirs("./dalle2/data", exist_ok=True)
+        download_file("./dalle2/data/bpe_simple_vocab_16e6.txt.gz", url_map["bpe_vocab"])
 
     _download_if_not_exist(cfg.model.prior_weight_path,    "prior"  )
     _download_if_not_exist(cfg.model.decoder_weight_path,  "decoder")
