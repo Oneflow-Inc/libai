@@ -148,7 +148,7 @@ class SimpleTokenizer(object):
 
         return result
 
-tokenizer = SimpleTokenizer()
+# tokenizer = SimpleTokenizer()
 
 # YTTM tokenizer
 
