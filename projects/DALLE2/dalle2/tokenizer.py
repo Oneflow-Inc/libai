@@ -16,7 +16,7 @@ from .utils import import_or_print_error
 
 @lru_cache()
 def default_bpe():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/bpe_simple_vocab_16e6.txt")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/bpe_simple_vocab_16e6.txt.gz")
 
 @lru_cache()
 def bytes_to_unicode():

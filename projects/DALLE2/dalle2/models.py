@@ -20,7 +20,7 @@ from .einops_exts import Rearrange, rearrange_many, repeat_many, check_shape, Ei
 from kornia.filters import gaussian_blur2d
 import kornia.augmentation as K
 
-from .tokenizer import tokenizer
+from .tokenizer import SimpleTokenizer
 from .vqgan_vae import NullVQGanVAE, VQGanVAE
 from .layers import GroupNorm, Conv2d, ConvTranspose2d, layer_norm
 
@@ -2136,6 +2136,7 @@ class DALLE2(nn.Module):
         # assert isinstance(decoder, Decoder)
         self.prior = prior
         self.decoder = decoder
+        self.tokenizer = SimpleTokenizer()
 
         self.prior_num_samples = prior_num_samples
         self.decoder_need_text_cond = self.decoder.condition_on_text_encodings
@@ -2156,7 +2157,7 @@ class DALLE2(nn.Module):
 
         if isinstance(text, str) or is_list_str(text):
             text = [text] if not isinstance(text, (list, tuple)) else text
-            text = tokenizer.tokenize(text).to(device)
+            text = self.tokenizer.tokenize(text).to(device)
 
         image_embed = self.prior.sample(text, num_samples_per_batch = self.prior_num_samples, cond_scale = prior_cond_scale)
 

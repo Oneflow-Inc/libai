@@ -1,9 +1,7 @@
 from typing import Dict
-from libai.utils.file_utils import download_file
 import oneflow as flow
 import os
 
-from libai.models.build import build_model
 from libai.inference.basic import BasePipeline
 import libai.utils.distributed as dist
 from dalle2.tokenizer import SimpleTokenizer
@@ -62,6 +60,9 @@ class Dalle2Pipeline(BasePipeline):
         model_path,
         mode=None
     ):  
+        if dist.is_main_process():
+            download_dalle2_weights(self.cfg)
+        dist.synchronize()
         model_loader = Dalle2ModelLoader(libai_cfg_model, self.cfg, model_path)
         return model_loader.load()
 
@@ -140,9 +141,6 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
-    if dist.is_main_process():
-        download_dalle2_weights()
-    dist.synchronize()
     args = parse_args()
     model = Dalle2Pipeline(
         config_file=args.config_file,
