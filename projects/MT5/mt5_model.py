@@ -156,19 +156,37 @@ class MT5Model(flow.nn.Module):
 
     def forward(
         self,
-        encoder_input_ids,
-        decoder_input_ids,
-        encoder_attn_mask,
-        decoder_attn_mask,
-        encoder_decoder_attn_mask,
+        encoder_input_ids=None,
+        decoder_input_ids=None,
+        encoder_attn_mask=None,
+        decoder_attn_mask=None,
+        encoder_decoder_attn_mask=None,
         use_cache=False,
     ):
-        encoder_input_ids = encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
-        decoder_input_ids = decoder_input_ids.to_global(placement=dist.get_layer_placement(0))
-        encoder_attn_mask = encoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
-        decoder_attn_mask = decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
-        encoder_decoder_attn_mask = encoder_decoder_attn_mask.to_global(
-            placement=dist.get_layer_placement(0)
+        encoder_input_ids = (
+            encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
+            if encoder_input_ids
+            else encoder_input_ids
+        )
+        decoder_input_ids = (
+            decoder_input_ids.to_global(placement=dist.get_layer_placement(0))
+            if decoder_input_ids
+            else decoder_input_ids
+        )
+        encoder_attn_mask = (
+            encoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+            if encoder_attn_mask
+            else encoder_attn_mask
+        )
+        decoder_attn_mask = (
+            decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+            if decoder_attn_mask
+            else decoder_attn_mask
+        )
+        encoder_decoder_attn_mask = (
+            encoder_decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+            if encoder_decoder_attn_mask
+            else encoder_decoder_attn_mask
         )
 
         if use_cache and self.encoder_states is not None:
@@ -263,6 +281,7 @@ class MT5Model(flow.nn.Module):
         input_ids,
         past=None,
         encoder_attn_mask=None,
+        encoder_decoder_attn_mask=None,
         use_cache=None,
         encoder_outputs=None,
     ):
@@ -271,13 +290,15 @@ class MT5Model(flow.nn.Module):
             input_ids = input_ids[:, -1:]
 
         self.past_key_values = past
+        self.encoder_states = encoder_outputs
 
         return {
             "decoder_input_ids": input_ids,
-            "encoder_outputs": encoder_outputs,
             "encoder_attn_mask": encoder_attn_mask,
+            "encoder_decoder_attn_mask": encoder_decoder_attn_mask,
             "use_cache": use_cache,
         }
+
 
 class MT5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
