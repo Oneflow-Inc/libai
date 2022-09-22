@@ -279,18 +279,19 @@ class MaskedAutoencoderViT(nn.Module):
 
         # append cls token
         cls_token = self.cls_token + self.pos_embed[:, :1, :]
-        # directly expand will bring cls_tokens a huge tensor with shape [B*N, 1, D]
-        # (with B = local batch size, N = total num devices),
-        # however we only need a mask_tokens with shape [B, 1, D],
-        # since local to global tensor is not avaible in graph mode,
-        # we have to use a two stage expand way as below.
+        # Directly expanding cls_token (with shape=(1, 1, D) and sbp=B)
+        # will produce a huge tensor with shape [B*N, 1, D]
+        # (while B = local batch size, N = total num devices),
+        # however we only need an expanded cls_token with shape [B, 1, D],
+        # meanwhile local to global tensor is not avaible in graph mode for now,
+        # we have to use a two stage expanding way to expand cls_token as below.
         world_size = flow.env.get_world_size()
         # repeat to (N, 1, D), sbp = B
         cls_token = cls_token.expand(world_size, -1, -1)
         # to_global(sbp=S(0)), local shape = (1, 1, D)
         cls_token = cls_token.to_global(sbp=x.sbp)
-        # second repeat from (N, 1, D) to (B*N, 1, D) (global shape, sbp=S(0)), local shape = (B, 1, D),
-        # so we don't make a (B*N, 1, D) tensor locally
+        # second expand from (N, 1, D) to (B*N, 1, D) (global shape, sbp=S(0)), local shape=(B, 1, D),
+        # by this way we wouldn't produce a (B*N, 1, D) tensor in local view.
         cls_tokens = cls_token.repeat(x.shape[0] // world_size, 1, 1)
         x = flow.cat((cls_tokens, x), dim=1)
 
@@ -307,10 +308,10 @@ class MaskedAutoencoderViT(nn.Module):
 
         # append mask tokens to sequence
         # mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
-        # prev line will bring mask_tokens a huge tensor with shape [B*N, L, D]
-        # (with B = local batch size, N = total num devices),
-        # however we only need a mask_tokens with shape [B, L, D],
-        # since local to global tensor is not avaible in graph mode,
+        # The line above will produce a huge mask_tokens with shape [B*N, L, D]
+        # (while B = local batch size, N = total num devices),
+        # actually we only need a mask_tokens with shape [B, L, D] in local view,
+        # meanwhile local to global tensor is not avaible in graph mode for now,
         # we have to use a two stage repeat way as below.
         world_size = flow.env.get_world_size()
         # repeat to (N, 1, D), sbp = B
@@ -318,7 +319,7 @@ class MaskedAutoencoderViT(nn.Module):
         # to_global(sbp=S(0)), local shape = (1, 1, D)
         mask_token = mask_token.to_global(sbp=x.sbp)
         # second repeat from (N, 1, D) to (B*N, L, D) (global shape, sbp=S(0)), local shape = (B, L, D),
-        # so we don't make a (B*N, L, D) tensor locally
+        # and the originally huge mask_tokens with shape (B*N, L, D) wouldn't be produced in local view.
         mask_tokens = mask_token.repeat(
             x.shape[0] // world_size, ids_restore.shape[1] + 1 - x.shape[1], 1
         )
@@ -358,10 +359,11 @@ class MaskedAutoencoderViT(nn.Module):
             target = (target - mean) / (var + 1.0e-6) ** 0.5
 
         loss = (pred - target) ** 2
-        # use amp white/black identity to explicitly get mean and sum to be calculated by float32
-        # the calculation before amp_white_identity use float16,
-        # and the calculation after amp_black_identity use float32
+        # We want the prev loss to be calculated with float32,
+        # and mean/sum below to be calculated with float16.
+        # this amp_white_identity will affect preceding ops to be float16
         loss = flow._C.amp_white_identity(loss)
+        # this amp_black_identity will affect succeeding ops to be float32
         loss = flow._C.amp_black_identity(loss)
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
