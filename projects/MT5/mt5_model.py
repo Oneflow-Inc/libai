@@ -276,7 +276,7 @@ class MT5Model(flow.nn.Module):
             reordered_decoder_past = reordered_decoder_past + (reordered_layer_past_states,)
         return reordered_decoder_past
 
-    def prepare_inputs_for_generation(
+    def _prepare_inputs_for_generation(
         self,
         input_ids,
         past=None,
