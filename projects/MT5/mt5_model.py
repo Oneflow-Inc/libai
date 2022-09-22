@@ -239,6 +239,25 @@ class MT5Model(flow.nn.Module):
         )
         self.past_key_values = past_key_values
 
+    def _reorder_cache(self, beam_idx):
+        past_key_values = self.past_key_values
+        reordered_decoder_past = ()
+        for layer_past_states in past_key_values:
+            # get the correct batch idx from layer past batch dim
+            # batch dim of `past` is at 2nd position
+            reordered_layer_past_states = ()
+            for layer_past_state in layer_past_states:
+                # need to set correct `past` for each of the four key / value states
+                reordered_layer_past_states = reordered_layer_past_states + (
+                    layer_past_state.index_select(0, beam_idx),
+                )
+
+            assert reordered_layer_past_states[0].shape == layer_past_states[0].shape
+            assert len(reordered_layer_past_states) == len(layer_past_states)
+
+            reordered_decoder_past = reordered_decoder_past + (reordered_layer_past_states,)
+        return reordered_decoder_past
+
 
 class MT5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
