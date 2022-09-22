@@ -258,6 +258,26 @@ class MT5Model(flow.nn.Module):
             reordered_decoder_past = reordered_decoder_past + (reordered_layer_past_states,)
         return reordered_decoder_past
 
+    def prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past=None,
+        encoder_attn_mask=None,
+        use_cache=None,
+        encoder_outputs=None,
+    ):
+        # cut decoder_input_ids if past is used
+        if past is not None:
+            input_ids = input_ids[:, -1:]
+
+        self.past_key_values = past
+
+        return {
+            "decoder_input_ids": input_ids,
+            "encoder_outputs": encoder_outputs,
+            "encoder_attn_mask": encoder_attn_mask,
+            "use_cache": use_cache,
+        }
 
 class MT5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
