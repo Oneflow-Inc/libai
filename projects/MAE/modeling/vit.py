@@ -69,6 +69,9 @@ class VisionTransformer(libai.models.vision_transformer.VisionTransformer):
     def forward_head(self, x):
         if self.global_pool:
             x = x[:, 1:, :]  # global pool without cls token
+            # we want mean to be calculated with float32
+            # the amp_white_identity pair make the calculation before and after mean using float16
+            # the amp_black_identity pair make mean using float32
             x = flow._C.amp_white_identity(x)
             x = flow._C.amp_black_identity(x)
             x = x.mean(dim=1)

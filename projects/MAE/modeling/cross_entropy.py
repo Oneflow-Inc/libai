@@ -23,8 +23,10 @@ class SoftTargetCrossEntropy(nn.Module):
 
     def forward(self, x: flow.Tensor, target: flow.Tensor) -> flow.Tensor:
         pred = flow.log_softmax(x, dim=-1)
-        pred = flow.cast(pred, flow.float32)
         loss = -target * pred
+        # sum and mean should be calculated with float32
+        # amp_white_identity ensure -target * pred using float16
+        # amp_black_identity ensure sum and mean using float32
         loss = flow._C.amp_white_identity(loss)
         loss = flow._C.amp_black_identity(loss)
         loss = flow.sum(loss, dim=-1)

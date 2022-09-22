@@ -48,15 +48,14 @@ model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 finetune = OmegaConf.create()
 finetune.enable = True  # only load weight if enable is True
 finetune.weight_style = (
-    # "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
-    "pytorch"
+    "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
 )
-finetune.path = "/home/zhangwenxiao/wksp/mae/pretrain_output_dir/checkpoint-40.pth"
+finetune.path = "/path/to/pretrained_mae_weight"
 
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
-dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
+dataloader.train.dataset[0].root = "/path/to/imagenet"
+dataloader.test[0].dataset.root = "/path/to/imagenet"
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(

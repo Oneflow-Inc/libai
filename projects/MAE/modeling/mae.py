@@ -288,7 +288,7 @@ class MaskedAutoencoderViT(nn.Module):
         # repeat to (N, 1, D), sbp = B
         cls_token = cls_token.expand(world_size, -1, -1)
         # to_global(sbp=S(0)), local shape = (1, 1, D)
-        cls_token = cls_token.to_global(sbp=flow.sbp.split(0))
+        cls_token = cls_token.to_global(sbp=x.sbp)
         # second repeat from (N, 1, D) to (B*N, 1, D) (global shape, sbp=S(0)), local shape = (B, 1, D),
         # so we don't make a (B*N, 1, D) tensor locally
         cls_tokens = cls_token.repeat(x.shape[0] // world_size, 1, 1)
@@ -316,7 +316,7 @@ class MaskedAutoencoderViT(nn.Module):
         # repeat to (N, 1, D), sbp = B
         mask_token = self.mask_token.repeat(world_size, 1, 1)
         # to_global(sbp=S(0)), local shape = (1, 1, D)
-        mask_token = mask_token.to_global(sbp=flow.sbp.split(0))
+        mask_token = mask_token.to_global(sbp=x.sbp)
         # second repeat from (N, 1, D) to (B*N, L, D) (global shape, sbp=S(0)), local shape = (B, L, D),
         # so we don't make a (B*N, L, D) tensor locally
         mask_tokens = mask_token.repeat(
@@ -358,10 +358,12 @@ class MaskedAutoencoderViT(nn.Module):
             target = (target - mean) / (var + 1.0e-6) ** 0.5
 
         loss = (pred - target) ** 2
+        # use amp white/black identity to explicitly get mean and sum to be calculated by float32
+        # the calculation before amp_white_identity use float16,
+        # and the calculation after amp_black_identity use float32
         loss = flow._C.amp_white_identity(loss)
         loss = flow._C.amp_black_identity(loss)
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
-
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
         return loss
 

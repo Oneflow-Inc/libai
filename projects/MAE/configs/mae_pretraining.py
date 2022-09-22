@@ -18,7 +18,7 @@ dataloader = get_config("common/data/imagenet.py").dataloader
 graph.enabled = True
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
+dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.train.dataset[0]._target_ = PretrainingImageNetDataset
 
 # dataset length
@@ -64,7 +64,7 @@ train.log_period = 20
 
 effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
 epoch_iter = dataset_train_length // effective_batch_size
-train.checkpointer.period = epoch_iter
+train.checkpointer.period = epoch_iter * 20
 
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule as follows:

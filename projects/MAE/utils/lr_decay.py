@@ -87,6 +87,8 @@ def get_layer_idx_for_vit(name, num_layers):
         return num_layers
 
 
+# Refer to: add_weight_decay in
+# https://github.com/rwightman/pytorch-image-models/blob/v0.3.3/timm/optim/optim_factory.py
 def param_groups_weight_decay(model, weight_decay=1e-5, skip_list=()):
     decay_params = []
     no_decay_params = []
