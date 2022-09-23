@@ -558,8 +558,10 @@ class ModelLoaderHuggerFace(ModelLoader):
             else:
                 raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
+            logger.info("loading torch model...")
             torch_state_dict = self._load_torch_state_dict(model_file)
             torch_state_dict = self._fix_key(torch_state_dict)
+            logger.info("transfering torch model into oneflow model...")
             flow_state_dict = self._convert_tensors(torch_state_dict)
             flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
         else:
@@ -568,6 +570,7 @@ class ModelLoaderHuggerFace(ModelLoader):
         self.libai_cfg = _broadcast_py_object(self.libai_cfg, src=0)
 
         # Instance model
+        logger.info("building LiBai model...")
         if isinstance(self.model, omegaconf.dictconfig.DictConfig):
             self.model.cfg = self.libai_cfg
             self.model = build_model(self.model)
@@ -575,8 +578,10 @@ class ModelLoaderHuggerFace(ModelLoader):
             self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
         # State_dict to global
+        logger.info("transfering state_dict local to global...")
         flow_state_dict = self._state_dict_to_global(flow_state_dict, mode="pytorch")
 
+        logger.info("loading model weights into LiBai...")
         # Load
         (
             model,
