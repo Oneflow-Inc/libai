@@ -1,17 +1,18 @@
-#from https://github.com/Oneflow-Inc/oneflow/blob/master/python/oneflow/nn/modules/normalization.py
-from libai.utils import distributed as dist
-from oneflow import nn
+# from https://github.com/Oneflow-Inc/oneflow/blob/master/python/oneflow/nn/modules/normalization.py
+import math
+import os
+from typing import Union
+
 import oneflow as flow
+from oneflow import nn
 from oneflow.nn import init
 from oneflow.nn.common_types import _size_1_t, _size_2_t, _size_3_t
 from oneflow.nn.modules.utils import _pair, _single, _triple
 
-from typing import Union
-import math, os
+from libai.utils import distributed as dist
 
 
 class GroupNorm(nn.Module):
-    
     def __init__(
         self,
         num_groups: int,
@@ -20,7 +21,7 @@ class GroupNorm(nn.Module):
         affine: bool = True,
         bias=True,
         *,
-        layer_idx = 0
+        layer_idx=0,
     ) -> None:
         super().__init__()
         assert num_groups > 0, "The num_groups must larger than zero"
@@ -29,7 +30,7 @@ class GroupNorm(nn.Module):
         self.num_channels = num_channels
         self.eps = eps
         self.affine = affine
-        
+
         if self.affine:
             self.weight = nn.Parameter(
                 flow.ones(
@@ -53,16 +54,12 @@ class GroupNorm(nn.Module):
             self.register_parameter("bias", None)
 
     def forward(self, input: flow.Tensor) -> flow.Tensor:
-        assert (
-            len(input.shape) >= 3
-        ), "The dimensions of input tensor must larger than 2"
+        assert len(input.shape) >= 3, "The dimensions of input tensor must larger than 2"
         assert (
             input.shape[1] == self.num_channels
         ), "The channels of input tensor must equal num_channels"
         origin_shape = input.shape
-        reshape_to_1d = flow.reshape(
-            input, shape=[origin_shape[0], self.num_groups, -1]
-        )
+        reshape_to_1d = flow.reshape(input, shape=[origin_shape[0], self.num_groups, -1])
         # https://github.com/Oneflow-Inc/oneflow/pull/8905
         # mean = flow.mean(reshape_to_1d, dim=2, keepdim=True)
         # variance = flow.var(reshape_to_1d, dim=2, unbiased=False, keepdim=True)
@@ -70,9 +67,7 @@ class GroupNorm(nn.Module):
         normalized = layer_norm(
             reshape_to_1d, normalized_shape=(reshape_to_1d.shape[-1:]), eps=self.eps
         )
-        normalized = flow.reshape(
-            normalized, shape=[origin_shape[0], self.num_channels, -1]
-        )
+        normalized = flow.reshape(normalized, shape=[origin_shape[0], self.num_channels, -1])
         if self.weight is not None:
             normalized = normalized * self.weight.reshape(1, self.num_channels, 1)
         if self.bias is not None:
@@ -81,9 +76,8 @@ class GroupNorm(nn.Module):
         return res
 
     def extra_repr(self) -> str:
-        return "{num_groups}, {num_channels}, eps={eps}, affine={affine}".format(
-            **self.__dict__
-        )
+        return "{num_groups}, {num_channels}, eps={eps}, affine={affine}".format(**self.__dict__)
+
 
 def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):
     assert len(input.shape) > len(
@@ -148,7 +142,7 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-05):
         return res
 
 
-#Conv2d from https://github.com/Oneflow-Inc/oneflow/blob/master/python/oneflow/nn/modules/conv.py
+# Conv2d from https://github.com/Oneflow-Inc/oneflow/blob/master/python/oneflow/nn/modules/conv.py
 def get_padding(padding, kernel_size, dilation, stride):
     valid_padding_strings = {"same", "valid"}
     if isinstance(padding, str):
@@ -171,7 +165,6 @@ def get_padding(padding, kernel_size, dilation, stride):
 
 
 class Conv2d(nn.Module):
-
     def __init__(
         self,
         in_channels: int,
@@ -184,7 +177,7 @@ class Conv2d(nn.Module):
         bias: bool = True,
         padding_mode: str = "zeros",
         *,
-        layer_idx=0
+        layer_idx=0,
     ):
         super().__init__()
         sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
@@ -211,24 +204,32 @@ class Conv2d(nn.Module):
         self.out_channels = out_channels
         if self.channel_pos == "channels_first":
             self.weight = flow.nn.Parameter(
-                flow.Tensor(out_channels, in_channels // groups, *self.kernel_size,
-                            placement=dist.get_layer_placement(layer_idx=layer_idx),
-                            sbp=sbp)
+                flow.Tensor(
+                    out_channels,
+                    in_channels // groups,
+                    *self.kernel_size,
+                    placement=dist.get_layer_placement(layer_idx=layer_idx),
+                    sbp=sbp,
+                )
             )
         else:
             self.weight = flow.nn.Parameter(
-                flow.Tensor(out_channels, *self.kernel_size, in_channels // groups,
-                            placement=dist.get_layer_placement(layer_idx=layer_idx),
-                            sbp=sbp)
+                flow.Tensor(
+                    out_channels,
+                    *self.kernel_size,
+                    in_channels // groups,
+                    placement=dist.get_layer_placement(layer_idx=layer_idx),
+                    sbp=sbp,
+                )
             )
 
         self.out_channel_groups = out_channels // groups
         self.bias = None
         if bias:
             self.bias = flow.nn.Parameter(
-                flow.Tensor(out_channels,
-                placement=dist.get_layer_placement(layer_idx=layer_idx),
-                sbp=sbp)
+                flow.Tensor(
+                    out_channels, placement=dist.get_layer_placement(layer_idx=layer_idx), sbp=sbp
+                )
             )
         self.reset_parameters()
 
@@ -276,8 +277,8 @@ class Conv2d(nn.Module):
             s += ", padding_mode={padding_mode}"
         return s.format(**self.__dict__)
 
-class ConvTranspose2d(nn.Module):
 
+class ConvTranspose2d(nn.Module):
     def __init__(
         self,
         in_channels: int,
@@ -291,7 +292,7 @@ class ConvTranspose2d(nn.Module):
         dilation: int = 1,
         padding_mode: str = "zeros",
         *,
-        layer_idx = 0
+        layer_idx=0,
     ) -> None:
         super().__init__()
         sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
@@ -305,18 +306,24 @@ class ConvTranspose2d(nn.Module):
         assert in_channels % groups == 0
         assert out_channels % groups == 0
         self.weight = flow.nn.Parameter(
-            flow.Tensor(in_channels, out_channels // groups, *self.kernel_size,
-                        placement=dist.get_layer_placement(layer_idx=layer_idx),
-                        sbp=sbp)
+            flow.Tensor(
+                in_channels,
+                out_channels // groups,
+                *self.kernel_size,
+                placement=dist.get_layer_placement(layer_idx=layer_idx),
+                sbp=sbp,
+            )
         )
         self.in_channel_groups = in_channels // groups
         self.filters = out_channels
         self.bias = None
         self._bias_add_op = None
         if bias:
-            self.bias = flow.nn.Parameter(flow.Tensor(out_channels,
-                         placement=dist.get_layer_placement(layer_idx=layer_idx),
-                        sbp=sbp))
+            self.bias = flow.nn.Parameter(
+                flow.Tensor(
+                    out_channels, placement=dist.get_layer_placement(layer_idx=layer_idx), sbp=sbp
+                )
+            )
 
         self.reset_parameters()
 

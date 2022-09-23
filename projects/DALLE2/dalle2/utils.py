@@ -1,12 +1,15 @@
-import time
 import importlib
+import time
 
 # helper functions
+
 
 def exists(val):
     return val is not None
 
+
 # time helpers
+
 
 class Timer:
     def __init__(self):
@@ -18,15 +21,19 @@ class Timer:
     def elapsed(self):
         return time.time() - self.last_time
 
+
 # print helpers
 
-def print_ribbon(s, symbol = '=', repeat = 40):
+
+def print_ribbon(s, symbol="=", repeat=40):
     flank = symbol * repeat
-    return f'{flank} {s} {flank}'
+    return f"{flank} {s} {flank}"
+
 
 # import helpers
 
-def import_or_print_error(pkg_name, err_str = None):
+
+def import_or_print_error(pkg_name, err_str=None):
     try:
         return importlib.import_module(pkg_name)
     except ModuleNotFoundError as e:

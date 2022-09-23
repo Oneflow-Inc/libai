@@ -1,11 +1,12 @@
-#From https://github.com/arogozhnikov/einops/blob/master/einops/layers/oneflow.py
-from typing import Optional, Dict
+# From https://github.com/arogozhnikov/einops/blob/master/einops/layers/oneflow.py
+from typing import Dict, Optional
 
 import oneflow as flow
-from oneflow import nn
 from einops import rearrange, reduce, repeat
-from einops.layers import RearrangeMixin, ReduceMixin
 from einops._backends import AbstractBackend
+from einops.layers import RearrangeMixin, ReduceMixin
+from oneflow import nn
+
 
 class Rearrange(RearrangeMixin, flow.nn.Module):
     def forward(self, input):
@@ -17,6 +18,7 @@ class OneFlowBackend(AbstractBackend):
 
     def __init__(self):
         import oneflow as flow
+
         self.flow = flow
 
     def is_appropriate_type(self, tensor):
@@ -28,7 +30,7 @@ class OneFlowBackend(AbstractBackend):
             # attach grad only to floating types
             variable.requires_grad = True
         return variable
-    
+
     def to_numpy(self, x):
         return x.detach().cpu().numpy()
 
@@ -37,16 +39,16 @@ class OneFlowBackend(AbstractBackend):
 
     def reduce(self, x, operation, reduced_axes):
         for axis in sorted(reduced_axes, reverse=True):
-            if operation == 'min':
+            if operation == "min":
                 x, _ = x.min(dim=axis)
-            elif operation == 'max':
+            elif operation == "max":
                 x, _ = x.max(dim=axis)
-            elif operation in ['sum', 'mean', 'prod']:
+            elif operation in ["sum", "mean", "prod"]:
                 x = getattr(x, operation)(dim=axis)
             else:
-                raise NotImplementedError('Unknown reduction ', operation)
+                raise NotImplementedError("Unknown reduction ", operation)
         return x
-    
+
     def transpose(self, x, axes):
         return x.permute(axes)
 
@@ -73,8 +75,8 @@ class OneFlowBackend(AbstractBackend):
         return self.flow.einsum(pattern, *x)
 
 
+# From https://github.com/lucidrains/einops-exts/tree/main/einops_exts
 
-#From https://github.com/lucidrains/einops-exts/tree/main/einops_exts
 
 class EinopsToAndFrom(nn.Module):
     def __init__(self, from_einops, to_einops, fn):
@@ -85,39 +87,46 @@ class EinopsToAndFrom(nn.Module):
 
     def forward(self, x, **kwargs):
         shape = x.shape
-        reconstitute_kwargs = dict(tuple(zip(self.from_einops.split(' '), shape)))
-        x = rearrange(x, f'{self.from_einops} -> {self.to_einops}')
+        reconstitute_kwargs = dict(tuple(zip(self.from_einops.split(" "), shape)))
+        x = rearrange(x, f"{self.from_einops} -> {self.to_einops}")
         x = self.fn(x, **kwargs)
-        x = rearrange(x, f'{self.to_einops} -> {self.from_einops}', **reconstitute_kwargs)
+        x = rearrange(x, f"{self.to_einops} -> {self.from_einops}", **reconstitute_kwargs)
         return x
 
+
 import re
-from functools import wraps, partial
+from functools import partial, wraps
 
 # checking shape
 # @nils-werner
 # https://github.com/arogozhnikov/einops/issues/168#issuecomment-1042933838
 
+
 def check_shape(tensor, pattern, **kwargs):
     return rearrange(tensor, f"{pattern} -> {pattern}", **kwargs)
 
+
 # do same einops operations on a list of tensors
+
 
 def _many(fn):
     @wraps(fn)
     def inner(tensors, pattern, **kwargs):
         return (fn(tensor, pattern, **kwargs) for tensor in tensors)
+
     return inner
+
 
 # do einops with unflattening of anonymously named dimensions
 # (...flattened) ->  ...flattened
 
+
 def _with_anon_dims(fn):
     @wraps(fn)
     def inner(tensor, pattern, **kwargs):
-        regex = r'(\.\.\.[a-zA-Z]+)'
+        regex = r"(\.\.\.[a-zA-Z]+)"
         matches = re.findall(regex, pattern)
-        get_anon_dim_name = lambda t: t.lstrip('...')
+        get_anon_dim_name = lambda t: t.lstrip("...")
         dim_prefixes = tuple(map(get_anon_dim_name, set(matches)))
 
         update_kwargs_dict = dict()
@@ -125,13 +134,15 @@ def _with_anon_dims(fn):
         for prefix in dim_prefixes:
             assert prefix in kwargs, f'dimension list "{prefix}" was not passed in'
             dim_list = kwargs[prefix]
-            assert isinstance(dim_list, (list, tuple)), f'dimension list "{prefix}" needs to be a tuple of list of dimensions'
-            dim_names = list(map(lambda ind: f'{prefix}{ind}', range(len(dim_list))))
+            assert isinstance(
+                dim_list, (list, tuple)
+            ), f'dimension list "{prefix}" needs to be a tuple of list of dimensions'
+            dim_names = list(map(lambda ind: f"{prefix}{ind}", range(len(dim_list))))
             update_kwargs_dict[prefix] = dict(zip(dim_names, dim_list))
 
         def sub_with_anonymous_dims(t):
             dim_name_prefix = get_anon_dim_name(t.groups()[0])
-            return ' '.join(update_kwargs_dict[dim_name_prefix].keys())
+            return " ".join(update_kwargs_dict[dim_name_prefix].keys())
 
         pattern_new = re.sub(regex, sub_with_anonymous_dims, pattern)
 
@@ -140,7 +151,9 @@ def _with_anon_dims(fn):
             kwargs.update(update_dict)
 
         return fn(tensor, pattern_new, **kwargs)
+
     return inner
+
 
 # generate all helper functions
 

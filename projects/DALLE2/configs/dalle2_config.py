@@ -5,10 +5,10 @@ from dalle2._clip import OpenAIClipAdapter
 from omegaconf import DictConfig
 
 clip = LazyCall(OpenAIClipAdapter)(name="")
-swinir = DictConfig({"swinir_path":None})
+swinir = DictConfig({"swinir_path": None})
 
 prior = LazyCall(DiffusionPrior)(
-    net = LazyCall(DiffusionPriorNetwork)(
+    net=LazyCall(DiffusionPriorNetwork)(
         dim=768,
         depth=24,
         num_timesteps=1000,
@@ -28,7 +28,7 @@ prior = LazyCall(DiffusionPrior)(
     timesteps=1000,
     cond_drop_prob=0.1,
     loss_type="l2",
-    condition_on_text_encodings=True
+    condition_on_text_encodings=True,
 )
 
 unet1 = LazyCall(Unet)(
@@ -43,24 +43,26 @@ unet1 = LazyCall(Unet)(
     attn_dim_head=64,
     sparse_attn=True,
     memory_efficient=True,
-    cond_on_text_encodings=True,    # set to True for any unets that need to be conditioned on text encodings
-    self_attn=[False, True, True, True]
+    cond_on_text_encodings=True,  # set to True for any unets that need to be conditioned on text encodings
+    self_attn=[False, True, True, True],
 )
 
 decoder = LazyCall(Decoder)(
     unet=(unet1,),
-    image_sizes=[64, ],
+    image_sizes=[
+        64,
+    ],
     clip=None,
     channels=3,
     timesteps=1000,
     loss_type="l2",
     beta_schedule=["cosine"],
-    learned_variance=True
+    learned_variance=True,
 )
 
 model = LazyCall(DALLE2)(
     prior=prior,
     decoder=decoder,
-    prior_weight_path='',
-    decoder_weight_path='',
+    prior_weight_path="",
+    decoder_weight_path="",
 )

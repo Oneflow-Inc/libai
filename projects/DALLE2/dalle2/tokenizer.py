@@ -1,27 +1,35 @@
 # take from https://github.com/openai/CLIP/blob/main/clip/simple_tokenizer.py
 # to give users a quick easy start to training DALL-E without doing BPE
 
-import oneflow as flow
-
+import gzip
 import html
 import os
-import ftfy
-import regex as re
 from functools import lru_cache
 from pathlib import Path
-import gzip
+
+import ftfy
+import oneflow as flow
+import regex as re
 
 from .utils import import_or_print_error
 
 # OpenAI simple tokenizer
 
+
 @lru_cache()
 def default_bpe():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/bpe_simple_vocab_16e6.txt.gz")
+    return os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "data/bpe_simple_vocab_16e6.txt.gz"
+    )
+
 
 @lru_cache()
 def bytes_to_unicode():
-    bs = list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
+    bs = (
+        list(range(ord("!"), ord("~") + 1))
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
+    )
     cs = bs[:]
     n = 0
     for b in range(2 ** 8):
@@ -32,6 +40,7 @@ def bytes_to_unicode():
     cs = [chr(n) for n in cs]
     return dict(zip(bs, cs))
 
+
 def get_pairs(word):
     pairs = set()
     prev_char = word[0]
@@ -40,50 +49,56 @@ def get_pairs(word):
         prev_char = char
     return pairs
 
+
 def basic_clean(text):
     text = ftfy.fix_text(text)
     text = html.unescape(html.unescape(text))
     return text.strip()
 
+
 def whitespace_clean(text):
-    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r"\s+", " ", text)
     text = text.strip()
     return text
 
+
 class SimpleTokenizer(object):
-    def __init__(self, bpe_path = default_bpe()):
+    def __init__(self, bpe_path=default_bpe()):
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
-        merges = gzip.open(bpe_path).read().decode("utf-8").split('\n') #Path(bpe_path).read_text(encoding='utf8').split('\n')
-        merges = merges[1:49152 - 256 - 2 + 1]
+        merges = (
+            gzip.open(bpe_path).read().decode("utf-8").split("\n")
+        )  # Path(bpe_path).read_text(encoding='utf8').split('\n')
+        merges = merges[1 : 49152 - 256 - 2 + 1]
         merges = [tuple(merge.split()) for merge in merges]
         vocab = list(bytes_to_unicode().values())
-        vocab = vocab + [v + '</w>' for v in vocab]
+        vocab = vocab + [v + "</w>" for v in vocab]
         for merge in merges:
-            vocab.append(''.join(merge))
-        vocab.extend(['<|startoftext|>', '<|endoftext|>'])
+            vocab.append("".join(merge))
+        vocab.extend(["<|startoftext|>", "<|endoftext|>"])
 
         self.vocab_size = 49408
 
         self.encoder = dict(zip(vocab, range(len(vocab))))
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.bpe_ranks = dict(zip(merges, range(len(merges))))
-        self.cache = {'<|startoftext|>': '<|startoftext|>', '<|endoftext|>': '<|endoftext|>'}
+        self.cache = {"<|startoftext|>": "<|startoftext|>", "<|endoftext|>": "<|endoftext|>"}
         self.pat = re.compile(
             r"""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""",
-            re.IGNORECASE)
+            re.IGNORECASE,
+        )
 
     def bpe(self, token):
         if token in self.cache:
             return self.cache[token]
-        word = tuple(token[:-1]) + (token[-1] + '</w>',)
+        word = tuple(token[:-1]) + (token[-1] + "</w>",)
         pairs = get_pairs(word)
 
         if not pairs:
-            return token + '</w>'
+            return token + "</w>"
 
         while True:
-            bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(pair, float('inf')))
+            bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(pair, float("inf")))
             if bigram not in self.bpe_ranks:
                 break
             first, second = bigram
@@ -110,7 +125,7 @@ class SimpleTokenizer(object):
                 break
             else:
                 pairs = get_pairs(word)
-        word = ' '.join(word)
+        word = " ".join(word)
         self.cache[token] = word
         return word
 
@@ -118,21 +133,25 @@ class SimpleTokenizer(object):
         bpe_tokens = []
         text = whitespace_clean(basic_clean(text)).lower()
         for token in re.findall(self.pat, text):
-            token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
-            bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(' '))
+            token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
+            bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(" "))
         return bpe_tokens
 
-    def decode(self, tokens, remove_start_end = True, pad_tokens = set()):
+    def decode(self, tokens, remove_start_end=True, pad_tokens=set()):
         if flow.is_tensor(tokens):
             tokens = tokens.tolist()
 
         if remove_start_end:
             tokens = [token for token in tokens if token not in (49406, 40407, 0)]
-        text = ''.join([self.decoder[token] for token in tokens if token not in pad_tokens])
-        text = bytearray([self.byte_decoder[c] for c in text]).decode('utf-8', errors="replace").replace('</w>', ' ')
+        text = "".join([self.decoder[token] for token in tokens if token not in pad_tokens])
+        text = (
+            bytearray([self.byte_decoder[c] for c in text])
+            .decode("utf-8", errors="replace")
+            .replace("</w>", " ")
+        )
         return text
 
-    def tokenize(self, texts, context_length = 256, truncate_text = False):
+    def tokenize(self, texts, context_length=256, truncate_text=False):
         if isinstance(texts, str):
             texts = [texts]
 
@@ -144,37 +163,43 @@ class SimpleTokenizer(object):
                 if truncate_text:
                     tokens = tokens[:context_length]
                 else:
-                    raise RuntimeError(f"Input {texts[i]} is too long for context length {context_length}")
-            result[i, :len(tokens)] = flow.tensor(tokens)
+                    raise RuntimeError(
+                        f"Input {texts[i]} is too long for context length {context_length}"
+                    )
+            result[i, : len(tokens)] = flow.tensor(tokens)
 
         return result
+
 
 # tokenizer = SimpleTokenizer()
 
 # YTTM tokenizer
 
+
 class YttmTokenizer:
-    def __init__(self, bpe_path = None):
+    def __init__(self, bpe_path=None):
         bpe_path = Path(bpe_path)
-        assert bpe_path.exists(), f'BPE json path {str(bpe_path)} does not exist'
+        assert bpe_path.exists(), f"BPE json path {str(bpe_path)} does not exist"
 
-        self.yttm = import_or_print_error('youtokentome', 'you need to install youtokentome by `pip install youtokentome`')
+        self.yttm = import_or_print_error(
+            "youtokentome", "you need to install youtokentome by `pip install youtokentome`"
+        )
 
-        tokenizer = self.yttm.BPE(model = str(bpe_path))
+        tokenizer = self.yttm.BPE(model=str(bpe_path))
         self.tokenizer = tokenizer
         self.vocab_size = tokenizer.vocab_size()
 
-    def decode(self, tokens, pad_tokens = set()):
+    def decode(self, tokens, pad_tokens=set()):
         if flow.is_tensor(tokens):
             tokens = tokens.tolist()
 
-        return self.tokenizer.decode(tokens, ignore_ids = pad_tokens.union({0}))
+        return self.tokenizer.decode(tokens, ignore_ids=pad_tokens.union({0}))
 
     def encode(self, texts):
-        encoded = self.tokenizer.encode(texts, output_type = self.yttm.OutputType.ID)
+        encoded = self.tokenizer.encode(texts, output_type=self.yttm.OutputType.ID)
         return list(map(flow.tensor, encoded))
 
-    def tokenize(self, texts, context_length = 256, truncate_text = False):
+    def tokenize(self, texts, context_length=256, truncate_text=False):
         if isinstance(texts, str):
             texts = [texts]
 
@@ -186,7 +211,9 @@ class YttmTokenizer:
                 if truncate_text:
                     tokens = tokens[:context_length]
                 else:
-                    raise RuntimeError(f"Input {texts[i]} is too long for context length {context_length}")
-            result[i, :len(tokens)] = flow.tensor(tokens)
+                    raise RuntimeError(
+                        f"Input {texts[i]} is too long for context length {context_length}"
+                    )
+            result[i, : len(tokens)] = flow.tensor(tokens)
 
         return result

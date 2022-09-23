@@ -1,22 +1,28 @@
 import os
 import sys
+from collections import namedtuple
+
 import oneflow as flow
 import oneflow.nn.functional as F
 from oneflow import nn
-from collections import namedtuple
+
 from .models import l2norm
 
-def import_flow_clip(fn):
 
+def import_flow_clip(fn):
     def wrapper(*args, **kwargs):
-        sys.path.append(os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")), "CLIP"))
+        sys.path.append(
+            os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")), "CLIP")
+        )
         fn(*args, **kwargs)
         sys.path.pop()
 
     return wrapper
 
-EmbeddedText = namedtuple('EmbedTextReturn', ['text_embed', 'text_encodings'])
-EmbeddedImage = namedtuple('EmbedImageReturn', ['image_embed', 'image_encodings'])
+
+EmbeddedText = namedtuple("EmbedTextReturn", ["text_embed", "text_encodings"])
+EmbeddedImage = namedtuple("EmbedImageReturn", ["image_embed", "image_encodings"])
+
 
 class BaseClipAdapter(nn.Module):
     def __init__(self, clip, **kwargs):
@@ -26,7 +32,9 @@ class BaseClipAdapter(nn.Module):
 
     def validate_and_resize_image(self, image):
         image_size = image.shape[-1]
-        assert image_size >= self.image_size, f'you are passing in an image of size {image_size} but CLIP requires the image size to be at least {self.image_size}'
+        assert (
+            image_size >= self.image_size
+        ), f"you are passing in an image of size {image_size} but CLIP requires the image size to be at least {self.image_size}"
         return resize_image_to(image, self.image_size)
 
     @property
@@ -51,24 +59,22 @@ class BaseClipAdapter(nn.Module):
     def embed_image(self, image):
         raise NotImplementedError
 
-class OpenAIClipAdapter(BaseClipAdapter):
 
+class OpenAIClipAdapter(BaseClipAdapter):
     @import_flow_clip
-    def __init__(
-        self,
-        name = 'ViT-L/14'
-    ):
+    def __init__(self, name="ViT-L/14"):
         import clip
+
         openai_clip, preprocess = clip.load(name)
         super().__init__(openai_clip)
-        self.eos_id = 49407 # for handling 0 being also '!'
+        self.eos_id = 49407  # for handling 0 being also '!'
 
-        text_attention_final = self.find_layer('ln_final')
+        text_attention_final = self.find_layer("ln_final")
         self.handle = text_attention_final.register_forward_hook(self._hook)
         self.clip_normalize = preprocess.transforms[-1]
         self.cleared = False
 
-    def find_layer(self,  layer):
+    def find_layer(self, layer):
         modules = dict([*self.clip.named_modules()])
         return modules.get(layer, None)
 
@@ -99,10 +105,10 @@ class OpenAIClipAdapter(BaseClipAdapter):
 
     @flow.no_grad()
     def embed_text(self, text):
-        text = text[..., :self.max_text_len]
+        text = text[..., : self.max_text_len]
 
         assert not self.cleared
-        text_mask = (text != 0) #v0.15.4
+        text_mask = text != 0  # v0.15.4
 
         text_embed = self.clip.encode_text(text)
         text_encodings = self.text_encodings
@@ -116,4 +122,3 @@ class OpenAIClipAdapter(BaseClipAdapter):
         image = self.clip_normalize(image)
         image_embed = self.clip.encode_image(image)
         return EmbeddedImage(l2norm(image_embed.float()), None)
-
