@@ -753,7 +753,8 @@ class DefaultTrainer(TrainerBase):
             )
             logger.info(
                 f"Auto-scaling the config "
-                f"train.checkpointer.save_model_after_n_epoch={cfg.train.checkpointer.save_model_after_n_epoch} "
+                f"train.checkpointer.save_model_after_n_epoch="
+                f"{cfg.train.checkpointer.save_model_after_n_epoch} "
                 f"to train.checkpointer.period={cfg.train.checkpointer.period}"
             )
 

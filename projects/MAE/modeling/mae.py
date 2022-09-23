@@ -290,7 +290,8 @@ class MaskedAutoencoderViT(nn.Module):
         cls_token = cls_token.expand(world_size, -1, -1)
         # to_global(sbp=S(0)), local shape = (1, 1, D)
         cls_token = cls_token.to_global(sbp=x.sbp)
-        # second expand from (N, 1, D) to (B*N, 1, D) (global shape, sbp=S(0)), local shape=(B, 1, D),
+        # second expand from (N, 1, D) to (B*N, 1, D)
+        # (global shape, sbp=S(0)), local shape=(B, 1, D),
         # by this way we wouldn't produce a (B*N, 1, D) tensor in local view.
         cls_tokens = cls_token.repeat(x.shape[0] // world_size, 1, 1)
         x = flow.cat((cls_tokens, x), dim=1)
@@ -318,8 +319,10 @@ class MaskedAutoencoderViT(nn.Module):
         mask_token = self.mask_token.repeat(world_size, 1, 1)
         # to_global(sbp=S(0)), local shape = (1, 1, D)
         mask_token = mask_token.to_global(sbp=x.sbp)
-        # second repeat from (N, 1, D) to (B*N, L, D) (global shape, sbp=S(0)), local shape = (B, L, D),
-        # and the originally huge mask_tokens with shape (B*N, L, D) wouldn't be produced in local view.
+        # second repeat from (N, 1, D) to (B*N, L, D)
+        # (global shape, sbp=S(0)), local shape = (B, L, D),
+        # and the originally huge mask_tokens with shape (B*N, L, D)
+        # wouldn't be produced in local view.
         mask_tokens = mask_token.repeat(
             x.shape[0] // world_size, ids_restore.shape[1] + 1 - x.shape[1], 1
         )
