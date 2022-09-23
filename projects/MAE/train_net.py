@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import logging
 import sys
 
@@ -24,17 +23,12 @@ from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 
 sys.path.append(".")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("libai.mae." + __name__)
 
 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
-        if try_get_key(cfg, "graph.enabled") is True:
-            raise NotImplementedError(
-                "LiBai MAE only support eager global mode now, please set cfg.graph.enabled=False"  # noqa
-            )
-
         model = super().build_model(cfg)
         if try_get_key(cfg, "finetune") is not None:
             if cfg.finetune.enable is True:
