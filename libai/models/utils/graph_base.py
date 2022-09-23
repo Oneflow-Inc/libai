@@ -48,7 +48,7 @@ class GraphBase(nn.Graph):
             if fp16:
                 self.config.enable_amp(True)
                 grad_scaler = flow.amp.GradScaler(
-                    init_scale=65536.0,
+                    init_scale=65536.0 * dist.get_data_parallel_size(),
                     growth_factor=2.0,
                     backoff_factor=0.5,
                     growth_interval=2000,
