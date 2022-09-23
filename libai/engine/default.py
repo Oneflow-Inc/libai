@@ -737,11 +737,13 @@ class DefaultTrainer(TrainerBase):
 
         # rescale eval period
         if try_get_key(cfg, "train.evaluation.eval_after_n_epoch"):
-            cfg.train.evaluation.period = iter_per_epoch * cfg.train.evaluation.eval_after_n_epoch
+            cfg.train.evaluation.eval_period = (
+                iter_per_epoch * cfg.train.evaluation.eval_after_n_epoch
+            )
             logger.info(
                 f"Auto-scaling the config "
                 f"train.evaluation.eval_after_n_epoch={cfg.train.evaluation.eval_after_n_epoch} "
-                f"to train.evaluation.period={cfg.train.evaluation.period}"
+                f"to train.evaluation.eval_period={cfg.train.evaluation.eval_period}"
             )
 
         # rescale save model period
@@ -751,7 +753,7 @@ class DefaultTrainer(TrainerBase):
             )
             logger.info(
                 f"Auto-scaling the config "
-                f"train.evaluation.eval_after_n_epoch={cfg.train.checkpointer.save_model_after_n_epoch} "
+                f"train.checkpointer.save_model_after_n_epoch={cfg.train.checkpointer.save_model_after_n_epoch} "
                 f"to train.checkpointer.period={cfg.train.checkpointer.period}"
             )
 
