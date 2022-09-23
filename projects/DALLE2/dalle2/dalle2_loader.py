@@ -4,7 +4,7 @@ from oneflow.framework.check_point_v2 import _broadcast_py_object
 
 import libai.utils.distributed as dist
 from libai.models.build import build_model
-from libai.models.utils.model_utils.base_loader import ModelLoaderHuggerFace
+from libai.models.utils.model_utils.base_loader import ModelLoaderHuggerFace, _load_state_dict_into_model
 
 class Dalle2ModelLoader(ModelLoaderHuggerFace):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
@@ -69,12 +69,12 @@ class Dalle2ModelLoader(ModelLoaderHuggerFace):
         # State_dict to global
         flow_state_dict = self._state_dict_to_global(flow_state_dict, mode="pytorch") #oom
         # Load
-        (
-            model,
-            missing_keys,
-            unexpected_keys,
-            mismatched_keys,
-            error_msgs,
-        ) = self._load_pretrained_model(self.model, flow_state_dict, self.pretrained_model_path)
-
-        return model
+        # (
+        #     model,
+        #     missing_keys,
+        #     unexpected_keys,
+        #     mismatched_keys,
+        #     error_msgs,
+        # ) = self._load_pretrained_model(self.model, flow_state_dict, self.pretrained_model_path)
+        _load_state_dict_into_model(self.model, flow_state_dict, "")
+        return self.model

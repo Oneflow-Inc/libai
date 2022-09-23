@@ -184,10 +184,10 @@ class Conv2d(nn.Module):
         bias: bool = True,
         padding_mode: str = "zeros",
         *,
-        sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         layer_idx=0
     ):
         super().__init__()
+        sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         assert padding_mode == "zeros"
         self.padding_mode = padding_mode
         self.kernel_size = _pair(kernel_size)
@@ -291,10 +291,10 @@ class ConvTranspose2d(nn.Module):
         dilation: int = 1,
         padding_mode: str = "zeros",
         *,
-        sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         layer_idx = 0
     ) -> None:
         super().__init__()
+        sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         assert padding_mode == "zeros"
         self.kernel_size = _pair(kernel_size)
         self.stride = _pair(stride)
