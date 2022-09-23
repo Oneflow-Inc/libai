@@ -17,30 +17,32 @@ import oneflow as flow
 import oneflow.nn as nn
 
 
-def drop_path(x, drop_prob: float = 0.5, training: bool = False, generator: flow.Generator = None):
+def drop_path(x, drop_prob: float = 0.5, training: bool = False, scale_by_keep: bool = True):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
     if drop_prob == 0.0 or not training:
         return x
     keep_prob = 1 - drop_prob
     shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
-    random_tensor = (
-        flow.rand(*shape, dtype=x.dtype, generator=generator, sbp=x.sbp, placement=x.placement)
-        + keep_prob
-    )
-    random_tensor = random_tensor.floor()  # binarize
-    output = x.div(keep_prob) * random_tensor
-    return output
+
+    # similar opeartion to new_tensor(shape).bernoulli_(keep_prob)
+    random_tensor = flow.rand(*shape, dtype=x.dtype, sbp=x.sbp, placement=x.placement)
+    random_tensor = (random_tensor < keep_prob).to(flow.float32)
+    
+    if keep_prob > 0.0 and scale_by_keep:
+        random_tensor = random_tensor / keep_prob
+    # random_tensor = random_tensor.floor()  # binarize
+    # output = x.div(keep_prob) * random_tensor
+    return x * random_tensor
 
 
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
-    def __init__(self, drop_prob=None, seed=0):
+    def __init__(self, drop_prob: float = 0., scale_by_keep: bool = True):
         super(DropPath, self).__init__()
         self.drop_prob = drop_prob
-        self.generator = flow.Generator()
-        self.generator.manual_seed(seed)
+        self.scale_by_keep = scale_by_keep
 
     def forward(self, x):
-        return drop_path(x, self.drop_prob, self.training, self.generator)
+        return drop_path(x, self.drop_prob, self.training, self.scale_by_keep)
