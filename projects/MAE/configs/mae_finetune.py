@@ -68,24 +68,18 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     num_classes=model.num_classes,
 )
 
-# dataset length
-dataset_train_length = 1281167
-dataset_val_length = 50000
-
 
 # Refine training settings for MAE finetune
 train.train_micro_batch_size = 32
 train.num_accumulation_steps = 4
 train.test_micro_batch_size = 32
-
 effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
-epoch_iter = dataset_train_length // effective_batch_size
 
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
 train.log_period = 20
-train.evaluation.eval_period = epoch_iter
-train.checkpointer.period = epoch_iter
+train.evaluation.eval_after_n_epoch = 1
+train.checkpointer.save_model_after_n_epoch = 1
 
 # Set layer decay for MAE fine-tune
 train.layer_decay = 0.65

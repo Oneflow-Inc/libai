@@ -21,9 +21,6 @@ graph.enabled = True
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.train.dataset[0]._target_ = PretrainingImageNetDataset
 
-# dataset length
-dataset_train_length = 1281167
-
 # No test data for pretraining
 del dataloader.test
 
@@ -52,9 +49,12 @@ n_gpus = 8
 # Refine training settings for MAE
 train.train_micro_batch_size = 64
 train.num_accumulation_steps = 8
+effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
+
 train.train_epoch = 800
 train.warmup_ratio = 40 / 800
 train.log_period = 20
+train.checkpointer.save_model_after_n_epoch = 20
 
 # enable activation checkpointing
 # train.activation_checkpoint.enabled = True
@@ -62,9 +62,6 @@ train.log_period = 20
 # set rdma enabled when num nodes > 1
 # train.rdma_enabled = False
 
-effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
-epoch_iter = dataset_train_length // effective_batch_size
-train.checkpointer.period = epoch_iter * 20
 
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule as follows:

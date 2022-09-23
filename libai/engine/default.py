@@ -611,6 +611,7 @@ class DefaultTrainer(TrainerBase):
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
 
+        # used by nlp dataloader
         if hasattr(cfg.dataloader.train, "train_val_test_num_samples"):
             eval_iter = (
                 (cfg.train.train_iter // cfg.train.evaluation.eval_period + 1)
@@ -626,6 +627,7 @@ class DefaultTrainer(TrainerBase):
                 int(eval_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
                 int(test_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
             ]
+
         if OmegaConf.is_list(cfg.dataloader.train.dataset):
             for dataset in cfg.dataloader.train.dataset:
                 if hasattr(dataset, "seed"):
@@ -729,6 +731,29 @@ class DefaultTrainer(TrainerBase):
         # Global scheduler cfg
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
         cfg.train.scheduler.max_iter = cfg.train.train_iter
+
+        # train iter per epoch
+        iter_per_epoch = len(data_loader.dataset) // cfg.train.global_batch_size
+
+        # rescale eval period
+        if try_get_key(cfg, "train.evaluation.eval_after_n_epoch"):
+            cfg.train.evaluation.period = iter_per_epoch * cfg.train.evaluation.eval_after_n_epoch
+            logger.info(
+                f"Auto-scaling the config "
+                f"train.evaluation.eval_after_n_epoch={cfg.train.evaluation.eval_after_n_epoch} "
+                f"to train.evaluation.period={cfg.train.evaluation.period}"
+            )
+
+        # rescale save model period
+        if try_get_key(cfg, "train.checkpointer.save_model_after_n_epoch"):
+            cfg.train.checkpointer.period = (
+                iter_per_epoch * cfg.train.checkpointer.save_model_after_n_epoch
+            )
+            logger.info(
+                f"Auto-scaling the config "
+                f"train.evaluation.eval_after_n_epoch={cfg.train.checkpointer.save_model_after_n_epoch} "
+                f"to train.checkpointer.period={cfg.train.checkpointer.period}"
+            )
 
     @classmethod
     def build_evaluator(cls, cfg):
