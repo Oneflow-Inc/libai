@@ -8,12 +8,17 @@ url_map = {
     "decoder" : "https://huggingface.co/laion/DALLE2-PyTorch/resolve/main/decoder/1.5B_laion2B/latest.pth",
     "clip"    : "https://openaipublic.azureedge.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt",
     "bpe_vocab" : "https://oneflow-static.oss-cn-beijing.aliyuncs.com/libai/clip/bpe_simple_vocab_16e6.txt.gz",
+    "swinir" : "https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/"
 }
 
 
 def _download_if_not_exist(path, name):
     if os.path.exists(path):
         logger.info((f"using {name}'s weight at {path}"))
+        return
+    if name == 'swinir':
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        download_file(path, url_map[name] + os.path.basename(path))
         return
     os.makedirs(os.path.dirname(path), exist_ok=True)
     download_file(path, url_map[name])
@@ -24,6 +29,7 @@ def download_dalle2_weights(cfg):
         os.makedirs("./dalle2/data", exist_ok=True)
         download_file("./dalle2/data/bpe_simple_vocab_16e6.txt.gz", url_map["bpe_vocab"])
 
+    _download_if_not_exist(cfg.swinir.swinir_path,         "swinir" )
     _download_if_not_exist(cfg.model.prior_weight_path,    "prior"  )
     _download_if_not_exist(cfg.model.decoder_weight_path,  "decoder")
     _download_if_not_exist(cfg.model.prior.clip.name,      "clip"   )

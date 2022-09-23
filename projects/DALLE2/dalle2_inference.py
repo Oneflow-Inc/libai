@@ -98,7 +98,8 @@ class Dalle2Pipeline(BasePipeline):
         tokens = model_input_dict["tokens"]
         text_embed, text_encodings, text_mask = self.model.prior.clip.embed_text(tokens)
         image_embed = self.model.prior.sample(tokens, num_samples_per_batch=forward_params['num_samples_per_batch'], cond_scale=forward_params['prior_cond_scale'])
-
+        del self.model.prior
+        flow.cuda.empty_cache()
         image_embed = self.model.decoder.sample(
             image_embed=image_embed, text_encodings=text_encodings, text_mask=text_mask, cond_scale=forward_params['decoder_cond_scale'])
 
@@ -124,7 +125,7 @@ class Dalle2Pipeline(BasePipeline):
             images = list(map(to_pil, [images[i] for i in range(images.shape[0])]))
             for i, image in enumerate(images):                
                 image.save(f"{output_path}/{i}_{args.upsample_scale}x.png")
-        print("Images have been saved under {output_path}.")
+        print(f"Images have been saved under {output_path}.")
         return model_output_dict
 
 def parse_args():
@@ -151,6 +152,7 @@ if __name__ == "__main__":
     texts = [ 'a shiba inu wearing a beret and black turtleneck', 
              'a teddy bear on a skateboard in times square',
              'trump fight with biden in white house',
-             'Donald trump fight with biden in white house',]
+             'Donald trump fight with biden in white house',
+            ]
     
     imgs = model(texts, **vars(args))
