@@ -98,8 +98,7 @@ class Dalle2Pipeline(BasePipeline):
         tokens = model_input_dict["tokens"]
         text_embed, text_encodings, text_mask = self.model.prior.clip.embed_text(tokens)
         image_embed = self.model.prior.sample(tokens, num_samples_per_batch=forward_params['num_samples_per_batch'], cond_scale=forward_params['prior_cond_scale'])
-        del self.model.prior
-        flow.cuda.empty_cache()
+
         image_embed = self.model.decoder.sample(
             image_embed=image_embed, text_encodings=text_encodings, text_mask=text_mask, cond_scale=forward_params['decoder_cond_scale'])
 
