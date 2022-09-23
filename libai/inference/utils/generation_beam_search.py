@@ -274,7 +274,7 @@ class BeamSearchScorer(BeamScorer):
                 beam_hyp.add(final_tokens, final_score, beam_indices=beam_index)
 
         # select the best hypotheses
-        sent_lengths = input_ids.new(batch_size * self.num_beam_hyps_to_keep)
+        sent_lengths = flow.zeros(input_ids.size(), dtype=flow.long, sbp = input_ids.sbp, placement=input_ids.placement)
         best = []
         best_indices = []
         best_scores = flow.zeros(

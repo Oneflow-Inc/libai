@@ -85,19 +85,12 @@ def greedy_search(
         )
         stopping_criteria = MaxLengthCriteria(max_length=max_length)
 
-    if is_encoder_decoder:
-        unfinished_sequences = flow.zeros(model_kwargs["decoder_input_ids"].shape[0]).fill_(1)
-        cur_len = model_kwargs["decoder_input_ids"].shape[-1]
-    else:
-        unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
-        cur_len = input_ids.shape[-1]
+    unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
+    cur_len = input_ids.shape[-1]
 
     while True:
         # prepare model inputs
-        if is_encoder_decoder:
-            model_inputs = {"encoder_input_ids": input_ids, **model_kwargs}
-        else:
-            model_inputs = {"input_ids": input_ids, **model_kwargs}
+        model_inputs = model._prepare_inputs_for_generation(input_ids, **model_kwargs)
 
         outputs = model(**model_inputs)
 
@@ -126,12 +119,7 @@ def greedy_search(
             )
 
         next_tokens = next_tokens.to(flow.long)
-        if is_encoder_decoder:
-            model_kwargs["decoder_input_ids"] = flow.cat(
-                [model_kwargs["decoder_input_ids"], next_tokens[:, None]], dim=-1
-            )
-        else:
-            input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
+        input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
 
         model_kwargs = _update_model_kwargs_for_generation(
             model, model_kwargs, is_encoder_decoder=is_encoder_decoder
@@ -143,17 +131,9 @@ def greedy_search(
                 unfinished_sequences, (next_tokens != eos_token_id).long()
             )
 
-        if is_encoder_decoder:
-            if unfinished_sequences.max() == 0 or stopping_criteria(
-                model_kwargs["decoder_input_ids"], scores
-            ):
-                break
-        else:
-            if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
-                break
+        if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
+            break
 
-    if is_encoder_decoder:
-        return model_kwargs["decoder_input_ids"]
     return input_ids
 
 
@@ -170,6 +150,7 @@ def multinomial_sample(
     output_scores=False,
     **model_kwargs,
 ):
+    # init values
     scores = () if output_scores else None
     logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
     stopping_criteria = (
@@ -185,19 +166,12 @@ def multinomial_sample(
         stopping_criteria = MaxLengthCriteria(max_length=max_length)
     logits_warper = logits_warper if logits_warper is not None else LogitsProcessorList()
 
-    if is_encoder_decoder:
-        unfinished_sequences = flow.zeros(model_kwargs["decoder_input_ids"].shape[0]).fill_(1)
-        cur_len = model_kwargs["decoder_input_ids"].shape[-1]
-    else:
-        unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
-        cur_len = input_ids.shape[-1]
+    unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
+    cur_len = input_ids.shape[-1]
 
     while True:
         # prepare model inputs
-        if is_encoder_decoder:
-            model_inputs = {"encoder_input_ids": input_ids, **model_kwargs}
-        else:
-            model_inputs = {"input_ids": input_ids, **model_kwargs}
+        model_inputs = model._prepare_inputs_for_generation(input_ids, **model_kwargs)
 
         outputs = model(**model_inputs)
 
@@ -229,12 +203,7 @@ def multinomial_sample(
             )
 
         next_tokens = next_tokens.to(flow.long)
-        if is_encoder_decoder:
-            model_kwargs["decoder_input_ids"] = flow.cat(
-                [model_kwargs["decoder_input_ids"], next_tokens[:, None]], dim=-1
-            )
-        else:
-            input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
+        input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1) 
 
         model_kwargs = _update_model_kwargs_for_generation(
             model, model_kwargs, is_encoder_decoder=is_encoder_decoder
@@ -246,17 +215,9 @@ def multinomial_sample(
                 unfinished_sequences, (next_tokens != eos_token_id).long()
             )
 
-        if is_encoder_decoder:
-            if unfinished_sequences.max() == 0 or stopping_criteria(
-                model_kwargs["decoder_input_ids"], scores
-            ):
-                break
-        else:
-            if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
-                break
+        if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
+            break
 
-    if is_encoder_decoder:
-        return model_kwargs["decoder_input_ids"]
     return input_ids
 
 
@@ -329,6 +290,10 @@ def beam_search(
         next_token_scores = next_token_scores_processed + beam_scores[:, None].expand_as(
             next_token_scores
         )
+        
+        # Store scores
+        if output_scores:
+            scores += (next_token_scores,)
 
         # reshape for beam search
         vocab_size = next_token_scores.shape[-1]
