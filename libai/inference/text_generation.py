@@ -83,7 +83,7 @@ class TextGenerationPipeline(BasePipeline):
             model_path (str): The directory path of pretrained model,
         """
         if mode == "huggingface":
-            from libai.models.utils.model_utils.t5_loader import T5LoaderHuggerFace
+            from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
             model_loader = T5LoaderHuggerFace(
                 libai_cfg_model,
