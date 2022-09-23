@@ -57,16 +57,6 @@ class Dalle2ModelLoader(ModelLoaderHuggerFace):
     def load(self):
         if dist.is_main_process():
             # prior
-<<<<<<< HEAD
-            torch_state_dict = self._load_torch_state_dict(self.libai_cfg.model.prior_weight_path)[
-                "ema_model"
-            ]
-            flow_state_dict = self._convert_tensors(torch_state_dict)
-            prior_state_dict = self._convert_state_dict(flow_state_dict)
-            # decoder
-            torch_state_dict = self._load_torch_state_dict(self.libai_cfg.model.decoder_weight_path)
-            flow_state_dict = self._convert_tensors(torch_state_dict)
-=======
             logger.info("loading torch model prior...")
             torch_state_dict = self._load_torch_state_dict(self.libai_cfg.model.prior_weight_path)[
                 "ema_model"
@@ -79,7 +69,6 @@ class Dalle2ModelLoader(ModelLoaderHuggerFace):
             torch_state_dict = self._load_torch_state_dict(self.libai_cfg.model.decoder_weight_path)
             flow_state_dict = self._convert_tensors(torch_state_dict)
             logger.info("converting torch model decoder into oneflow model...")
->>>>>>> 9a25af65f5d54337bc79831ac305a23d84fdc69d
             decoder_state_dict = self._convert_state_dict(flow_state_dict, module="decoder")
             flow_state_dict = {**prior_state_dict, **decoder_state_dict}
         else:
@@ -92,10 +81,7 @@ class Dalle2ModelLoader(ModelLoaderHuggerFace):
 
         flow.cuda.empty_cache()
         # State_dict to global
-<<<<<<< HEAD
-=======
         logger.info("transfering state_dict local to global...")
->>>>>>> 9a25af65f5d54337bc79831ac305a23d84fdc69d
         flow_state_dict = self._state_dict_to_global(flow_state_dict, mode="pytorch")  # oom
         # Load
         # (
