@@ -44,8 +44,10 @@ class MT5Model(flow.nn.Module):
         layernorm_eps=1e-12,
         amp_enabled=False,
         model_type="mt5",
+        cfg=None,
     ) -> None:
         super().__init__()
+        self.cfg=cfg
         self.model_type = model_type
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
@@ -152,6 +154,7 @@ class MT5Model(flow.nn.Module):
             "layernorm_eps": cfg.layernorm_eps,
             "amp_enabled": cfg.amp_enabled,
             "model_type": cfg.model_type,
+            "cfg": cfg.cfg,
         }
 
     def forward(
@@ -162,30 +165,31 @@ class MT5Model(flow.nn.Module):
         decoder_attn_mask=None,
         encoder_decoder_attn_mask=None,
         use_cache=False,
+        only_encoder=False,
     ):
         encoder_input_ids = (
             encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
-            if encoder_input_ids
+            if encoder_input_ids is not None
             else encoder_input_ids
         )
         decoder_input_ids = (
             decoder_input_ids.to_global(placement=dist.get_layer_placement(0))
-            if decoder_input_ids
+            if decoder_input_ids is not None
             else decoder_input_ids
         )
         encoder_attn_mask = (
             encoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
-            if encoder_attn_mask
+            if encoder_attn_mask is not None
             else encoder_attn_mask
         )
         decoder_attn_mask = (
             decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
-            if decoder_attn_mask
+            if decoder_attn_mask is not None
             else decoder_attn_mask
         )
         encoder_decoder_attn_mask = (
             encoder_decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
-            if encoder_decoder_attn_mask
+            if encoder_decoder_attn_mask is not None
             else encoder_decoder_attn_mask
         )
 
@@ -206,6 +210,9 @@ class MT5Model(flow.nn.Module):
                     position_bias=position_bias,
                 )
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
+
+        if only_encoder:
+            return encoder_states
 
         decoder_attn_mask = self.extended_attn_mask(
             decoder_attn_mask, decoder_input_ids, is_decoder=True
