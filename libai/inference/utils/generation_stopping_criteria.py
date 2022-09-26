@@ -1,5 +1,5 @@
-import warnings
 import time
+import warnings
 from copy import deepcopy
 
 import oneflow as flow

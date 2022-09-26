@@ -47,7 +47,7 @@ class MT5Model(flow.nn.Module):
         cfg=None,
     ) -> None:
         super().__init__()
-        self.cfg=cfg
+        self.cfg = cfg
         self.model_type = model_type
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)

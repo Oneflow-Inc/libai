@@ -194,7 +194,8 @@ class EncoderNoRepeatNGramLogitsProcessor(object):
     def __init__(self, encoder_ngram_size: int, encoder_input_ids: flow.Tensor):
         if not isinstance(encoder_ngram_size, int) or encoder_ngram_size <= 0:
             raise ValueError(
-                f"`encoder_ngram_size` has to be a strictly positive integer, but is {encoder_ngram_size}"
+                "`encoder_ngram_size` has to be a strictly positive integer, but is "
+                f"{encoder_ngram_size}"
             )
         self.ngram_size = encoder_ngram_size
         if len(encoder_input_ids.shape) == 1:
@@ -260,33 +261,6 @@ class PrefixConstrainedLogitsProcessor(object):
                 ] = 0
 
         return scores + mask
-
-
-class ForcedBOSTokenLogitsProcessor(object):
-    def __init__(self, bos_token_id: int):
-        self.bos_token_id = bos_token_id
-
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
-        cur_len = input_ids.shape[-1]
-        if cur_len == 1:
-            num_tokens = scores.shape[1]
-            scores[:, [i for i in range(num_tokens) if i != self.bos_token_id]] = -float("inf")
-            scores[:, self.bos_token_id] = 0
-        return scores
-
-
-class ForcedEOSTokenLogitsProcessor(object):
-    def __init__(self, max_length: int, eos_token_id: int):
-        self.max_length = max_length
-        self.eos_token_id = eos_token_id
-
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
-        cur_len = input_ids.shape[-1]
-        if cur_len == self.max_length - 1:
-            num_tokens = scores.shape[1]
-            scores[:, [i for i in range(num_tokens) if i != self.eos_token_id]] = -float("inf")
-            scores[:, self.eos_token_id] = 0
-        return scores
 
 
 class ExponentialDecayLengthPenalty(object):

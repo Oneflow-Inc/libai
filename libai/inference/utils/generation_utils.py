@@ -345,7 +345,8 @@ def beam_search(
 class GenerationMixin:
     def prepare_inputs_for_generation(self, input_ids: flow.Tensor, **kwargs):
         """
-        Implement in subclasses of [`PreTrainedModel`] for custom behavior to prepare inputs in the generate method.
+        Implement in subclasses of [`PreTrainedModel`] for custom behavior to prepare inputs in the
+        generate method.
         """
         return {"input_ids": input_ids}
 
@@ -458,8 +459,8 @@ class GenerationMixin:
 
     def _reorder_cache(self, past, beam_idx):
         raise NotImplementedError(
-            f"Make sure that a `_reorder_cache` function is correctly implemented in {self.__class__.__module__} to"
-            f" enable beam search for {self.__class__}"
+            "Make sure that a `_reorder_cache` function is correctly implemented in "
+            f"{self.__class__.__module__} to enable beam search for {self.__class__}"
         )
 
     def _get_logits_warper(
@@ -516,8 +517,8 @@ class GenerationMixin:
         renormalize_logits: Optional[bool],
     ):
         """
-        This class returns a [`LogitsProcessorList`] list object that contains all relevant [`LogitsProcessor`]
-        instances used to modify the scores of the language model head.
+        This class returns a [`LogitsProcessorList`] list object that contains all relevant
+        [`LogitsProcessor`] instances used to modify the scores of the language model head.
         """
         processors = LogitsProcessorList()
 
@@ -543,7 +544,8 @@ class GenerationMixin:
                 )
             else:
                 raise ValueError(
-                    "It's impossible to use `encoder_no_repeat_ngram_size` with decoder-only architecture"
+                    "It's impossible to use `encoder_no_repeat_ngram_size` with decoder-only "
+                    "architecture"
                 )
         if min_length is not None and eos_token_id is not None and min_length > 0:
             processors.append(MinLengthLogitsProcessor(min_length, eos_token_id))
@@ -572,10 +574,10 @@ class GenerationMixin:
         return processors
 
     def _get_stopping_criteria(
-        self, 
-        max_length: Optional[int], 
-        max_time: Optional[float], 
-        stopping_criteria: Optional[StoppingCriteriaList]
+        self,
+        max_length: Optional[int],
+        max_time: Optional[float],
+        stopping_criteria: Optional[StoppingCriteriaList],
     ):
         criteria = StoppingCriteriaList()
         if max_length is not None:
@@ -584,17 +586,13 @@ class GenerationMixin:
             criteria.append(MaxTimeCriteria(max_time=max_time))
         criteria = self._merge_criteria_processor_list(criteria, stopping_criteria)
         return criteria
-    
+
     def _merge_criteria_processor_list(self, default_list, custom_list):
         if len(custom_list) == 0:
             return default_list
         for default in default_list:
             for custom in custom_list:
                 if type(custom) is type(default):
-                    raise ValueError(
-                        "Criteria repetition error."
-                    )
+                    raise ValueError("Criteria repetition error.")
         default_list.extend(custom_list)
         return default_list
-    
-    
