@@ -62,8 +62,8 @@ model = LazyCall(Seq2Seq)(cfg=transformer_cfg)
 train.update(
     dict(
         rdma_enabled=False,
-        recompute_grad=dict(enabled=True),
-        amp=dict(enabled=True),
+        recompute_grad=dict(enabled=False),
+        amp=dict(enabled=False),
         output_dir="output/couplet/",
         train_micro_batch_size=128,
         test_micro_batch_size=32,
@@ -74,7 +74,8 @@ train.update(
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=4,
+            pipeline_parallel_size=1,
+            pipeline_stage_id=None,
             pipeline_num_layers=model.cfg.hidden_layers * 2,
         ),
         evaluation=dict(
