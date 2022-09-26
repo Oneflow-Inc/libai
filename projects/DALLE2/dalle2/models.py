@@ -2012,21 +2012,18 @@ class Decoder(nn.Module):
 
     @contextmanager
     def one_unet_in_gpu(self, unet_number=None, unet=None):
-        """assert exists(unet_number) ^ exists(unet)
+        assert exists(unet_number) ^ exists(unet)
 
         if exists(unet_number):
             unet = self.get_unet(unet_number)
 
         self.cuda()
-
+        devices = [module_device(unet) for unet in self.unets]
         self.unets.cpu()
         unet.cuda()
-        """
         yield
-        """ 
         for unet, device in zip(self.unets, devices):
             unet.to(device)
-        """
 
     def p_mean_variance(
         self,
