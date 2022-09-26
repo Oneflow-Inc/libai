@@ -18,7 +18,7 @@ from projects.T5.models.t5_model import T5ForPreTraining
 train_data_path = "projects/T5/data/training_data/part_0"
 pretrained_model_path = None
 
-micro_batch_size = 8
+micro_batch_size = 64
 optim["lr"] = 1e-4
 
 # dataloader
