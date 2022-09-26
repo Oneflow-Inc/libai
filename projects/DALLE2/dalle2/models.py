@@ -2358,9 +2358,7 @@ class Decoder(nn.Module):
             )
         ):
 
-            context = (
-                self.one_unet_in_gpu(unet=unet) if is_cuda and not distributed else null_context()
-            )
+            context = null_context()
 
             with context:
                 lowres_cond_img = None
