@@ -19,8 +19,8 @@ from libai.config import configurable
 from libai.layers import Linear, LMLogits
 from libai.models.t5_model import T5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
-from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 from libai.utils import distributed as dist
+from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
 from projects.T5.models.transformer_layer import TransformerLayer
@@ -222,7 +222,7 @@ class T5Model(flow.nn.Module):
             logits = self.lm_head(decoder_states)
         else:
             logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
-        
+
         return logits
 
     def set_cache(self, encoder_states, past_key_values):
