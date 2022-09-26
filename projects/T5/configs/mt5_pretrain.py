@@ -16,9 +16,9 @@ from projects.T5.models.t5_model import T5ForPreTraining
 
 
 train_data_path = "projects/T5/data/training_data/part_0"
-pretrained_model_path = "projects/T5/data/init_mt5/"
+pretrained_model_path = None
 
-micro_batch_size = 64
+micro_batch_size = 8
 optim["lr"] = 1e-4
 
 # dataloader
@@ -53,7 +53,7 @@ model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
 model.cfg.embedding_dropout_prob = 0.0
 model.cfg.layernorm_eps = 1e-6
-model.cfg.mlp_type = "mt5"
+model.cfg.model_type = "mt5"
 model.cfg.pretrained_model_path = pretrained_model_path
 
 train.update(
@@ -63,7 +63,7 @@ train.update(
         train_epoch=1,
         train_iter=24000,
         log_period=10,
-        amp=dict(enabled=True),
+        amp=dict(enabled=False),
         warmup_ratio=1 / 24,
         # checkpointer=dict(period=10, max_to_keep=20),
         dist=dict(

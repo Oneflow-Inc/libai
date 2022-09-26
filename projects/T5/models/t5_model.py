@@ -16,9 +16,10 @@
 import oneflow as flow
 
 from libai.config import configurable
-from libai.layers import Linear
+from libai.layers import Linear, LMLogits
 from libai.models.t5_model import T5Loss
-from libai.models.utils import T5LoaderHuggerFace, init_method_normal, scaled_init_method_normal
+from libai.models.utils import init_method_normal, scaled_init_method_normal
+from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 from libai.utils import distributed as dist
 from projects.T5.models.embedding import T5Embedding
 from projects.T5.models.layer_norm import LayerNorm
@@ -43,9 +44,10 @@ class T5Model(flow.nn.Module):
         initializer_range=0.02,
         layernorm_eps=1e-12,
         amp_enabled=False,
-        mlp_type="t5",
+        model_type="t5",
     ) -> None:
         super().__init__()
+        self.model_type = model_type
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         self.embedding = T5Embedding(
@@ -72,7 +74,7 @@ class T5Model(flow.nn.Module):
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
                     layer_idx=i,
-                    mlp_type=mlp_type,
+                    model_type=model_type,
                     has_relative_attention_bias=bool(i == 0),
                 )
                 for i in range(hidden_layers)
@@ -104,7 +106,7 @@ class T5Model(flow.nn.Module):
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
                     layer_idx=i,
-                    mlp_type=mlp_type,
+                    model_type=model_type,
                     has_relative_attention_bias=bool(i - hidden_layers == 0),
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
@@ -124,7 +126,12 @@ class T5Model(flow.nn.Module):
         self.encoder_states = None
         self.past_length = 0
 
-        self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1)
+        if model_type == "mt5":
+            self.lm_head = Linear(
+                hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1
+            )
+        else:
+            self.lm_head = LMLogits(vocab_size, bias=False)
 
     @classmethod
     def from_config(cls, cfg):
@@ -142,7 +149,7 @@ class T5Model(flow.nn.Module):
             "initializer_range": cfg.initializer_range,
             "layernorm_eps": cfg.layernorm_eps,
             "amp_enabled": cfg.amp_enabled,
-            "mlp_type": cfg.mlp_type,
+            "model_type": cfg.model_type,
         }
 
     def forward(
@@ -210,7 +217,12 @@ class T5Model(flow.nn.Module):
             self.set_cache(encoder_states, past_key_values=presents)
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
-        logits = self.lm_head(decoder_states)
+
+        if self.model_type == "mt5":
+            logits = self.lm_head(decoder_states)
+        else:
+            logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
+        
         return logits
 
     def set_cache(self, encoder_states, past_key_values):
