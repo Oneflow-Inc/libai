@@ -2334,7 +2334,6 @@ class Decoder(nn.Module):
         ), "decoder specified not to be conditioned on text, yet it is presented"
 
         img = None
-        is_cuda = next(self.parameters()).is_cuda
 
         for (
             unet_number,
