@@ -1,4 +1,5 @@
 import warnings
+import time
 from copy import deepcopy
 
 import oneflow as flow
@@ -22,6 +23,15 @@ class MaxLengthCriteria(object):
 
     def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
         return input_ids.shape[-1] >= self.max_length
+
+
+class MaxTimeCriteria(object):
+    def __init__(self, max_time: float, initial_timestamp: float = None):
+        self.max_time = max_time
+        self.initial_timestamp = time.time() if initial_timestamp is None else initial_timestamp
+
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor, **kwargs):
+        return time.time() - self.initial_timestamp > self.max_time
 
 
 def validate_stopping_criteria(
