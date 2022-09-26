@@ -21,11 +21,11 @@ model.cfg.hidden_layers = 6
 model.cfg.scale_mask_softmax_fusion = False
 model.cfg.bias_dropout_fusion = False
 model.cfg.bias_gelu_fusion = False
-graph.debug = 2
+#graph.debug = 2
 
 train.input_placement_device = "cpu"
 
-train.dist.data_parallel_size=8
+train.dist.data_parallel_size=2
 train.dist.tensor_parallel_size=1
 train.dist.pipeline_parallel_size=1
 train.dist.pipeline_num_layers = 2 * model.cfg.hidden_layers

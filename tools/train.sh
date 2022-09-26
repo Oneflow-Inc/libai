@@ -9,6 +9,8 @@ ADDR=${ADDR:-127.0.0.1}
 PORT=${PORT:-12345}
 
 export ONEFLOW_FUSE_OPTIMIZER_UPDATE_CAST=true
+# export ONEFLOW_LAZY_COMPILE_MODE=rank_per_thread
+export ONEFLOW_LAZY_COMPILE_MODE=rank_per_iter
 
 python3 -m oneflow.distributed.launch \
 --nproc_per_node $GPUS --nnodes $NODE --node_rank $NODE_RANK --master_addr $ADDR --master_port $PORT \
