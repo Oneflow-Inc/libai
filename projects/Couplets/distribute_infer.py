@@ -92,10 +92,10 @@ if __name__ == "__main__":
     pipeline = CoupletPipeline(
         "projects/Couplets/configs/config.py",
         data_parallel=1,
-        tensor_parallel=4,
-        pipeline_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=4,
         pipeline_stage_id=None,
-        pipeline_num_layers=None,
+        pipeline_num_layers=12,
         model_path="output/couplet/model_final/model",
         mode="libai",
     )

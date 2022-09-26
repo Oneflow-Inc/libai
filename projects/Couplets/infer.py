@@ -58,7 +58,7 @@ class GeneratorForEager:
 
 if __name__ == "__main__":
     config_file = "output/couplet/config.yaml"
-    checkpoint_file = "output/couplet/model_0004999"
+    checkpoint_file = "output/couplet/model_final"
     vocab_file = "data_test/couplets/vocab.txt"
     generator = GeneratorForEager(config_file, checkpoint_file, vocab_file)
 

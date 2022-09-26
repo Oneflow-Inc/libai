@@ -244,6 +244,7 @@ class TransformerModel(nn.Module):
         self.lm_head = Linear(
             hidden_size,
             vocab_size,
+            layer_idx=-1,
         )
 
     @classmethod

@@ -67,14 +67,13 @@ train.update(
         test_micro_batch_size=32,
         train_epoch=20,
         train_iter=0,
-        eval_period=100,
         log_period=10,
         warmup_ratio=0.01,
-        topk=(1,),
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=1,
+            pipeline_parallel_size=4,
+            pipeline_num_layers=model.cfg.hidden_layers * 2
         ),
         evaluation=dict(
             enabled=False,

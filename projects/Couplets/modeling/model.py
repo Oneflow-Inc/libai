@@ -95,3 +95,35 @@ class Seq2Seq(nn.Module):
             )
         logits = self.language_model.lm_head(decoder_states)
         return logits
+    
+    @staticmethod
+    def set_pipeline_stage_id(model):
+        dist_utils = dist.get_dist_util()
+
+        from .transformer_model import (
+            ExtendedMask,
+            TransformerEmbedding,
+            TransformerLayer,   
+        )
+
+        # Set pipeline parallelism stage_id
+        for module_block in model.modules():
+            # module.origin can get the original module
+            if isinstance(module_block.origin, TransformerEmbedding):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
+            elif isinstance(module_block.origin, ExtendedMask):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                )
+            elif isinstance(module_block.origin, TransformerLayer):
+                module_block.config.set_stage(
+                    dist_utils.get_layer_stage_id(module_block.layer_idx),
+                    dist.get_layer_placement(module_block.layer_idx),
+                )
+
+        # Set the lm_head stage id
+        model.language_model.lm_head.config.set_stage(
+            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+        )

@@ -69,6 +69,7 @@ class BasePipeline(metaclass=ABCMeta):
         # initial and load model
 
         self.model = self.load_pretrain_weight(self.cfg.model, model_path, mode=mode)
+        self.model._apply(dist.convert_to_distributed_default_setting)
         self.model = self.model.eval()
 
         # initial tokenizer
