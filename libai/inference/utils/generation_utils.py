@@ -1,29 +1,30 @@
 import warnings
-from typing import Optional, List, Callable, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import oneflow as flow
 from generation_beam_search import BeamScorer
 from generation_logits_processor import (
-    LogitsProcessorList, 
-    TemperatureLogitsWarper, 
-    TopKLogitsWarper, 
-    TopPLogitsWarper, 
-    TypicalLogitsWarper, 
-    NormalizationLogitsProcessor, 
-    HammingDiversityLogitsProcessor, 
-    RepetitionPenaltyLogitsProcessor, 
-    NoRepeatNGramLogitsProcessor,
     EncoderNoRepeatNGramLogitsProcessor,
-    MinLengthLogitsProcessor,
-    PrefixConstrainedLogitsProcessor,
+    ExponentialDecayLengthPenalty,
     ForcedBOSTokenLogitsProcessor,
     ForcedEOSTokenLogitsProcessor,
+    HammingDiversityLogitsProcessor,
     InfNanRemoveLogitsProcessor,
-    ExponentialDecayLengthPenalty
+    LogitsProcessorList,
+    MinLengthLogitsProcessor,
+    NoRepeatNGramLogitsProcessor,
+    NormalizationLogitsProcessor,
+    PrefixConstrainedLogitsProcessor,
+    RepetitionPenaltyLogitsProcessor,
+    TemperatureLogitsWarper,
+    TopKLogitsWarper,
+    TopPLogitsWarper,
+    TypicalLogitsWarper,
 )
 from generation_stopping_criteria import (
     MaxLengthCriteria,
+    MaxTimeCriteria,
     StoppingCriteriaList,
     validate_stopping_criteria,
 )
@@ -49,6 +50,7 @@ def multinomial(probs, num_samples, is_global=True):
         if is_global
         else flow.tensor(res)
     )
+
 
 def greedy_search(
     model,
@@ -127,6 +129,7 @@ def greedy_search(
 
     return input_ids
 
+
 def multinomial_sample(
     model,
     input_ids: flow.Tensor,
@@ -193,7 +196,7 @@ def multinomial_sample(
             )
 
         next_tokens = next_tokens.to(flow.long)
-        input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1) 
+        input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
 
         model_kwargs = _update_model_kwargs_for_generation(
             model, model_kwargs, is_encoder_decoder=is_encoder_decoder
@@ -209,6 +212,7 @@ def multinomial_sample(
             break
 
     return input_ids
+
 
 def beam_search(
     model,
@@ -279,7 +283,7 @@ def beam_search(
         next_token_scores = next_token_scores_processed + beam_scores[:, None].expand_as(
             next_token_scores
         )
-        
+
         # Store scores
         if output_scores:
             scores += (next_token_scores,)
@@ -345,25 +349,30 @@ class GenerationMixin:
         """
         return {"input_ids": input_ids}
 
-    def _prepare_input_ids_for_generation(self, bos_token_id:
-        int, encoder_outputs):
+    def _prepare_input_ids_for_generation(self, bos_token_id: int, encoder_outputs):
         if self.is_encoder_decoder and encoder_outputs is not None:
             shape = encoder_outputs.size()[:-1]
-            return flow.ones(
-                shape, 
-                dtype=flow.long, 
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size())))
-            ) * -100
-        
+            return (
+                flow.ones(
+                    shape,
+                    dtype=flow.long,
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                )
+                * -100
+            )
+
         if bos_token_id is None:
             raise ValueError("`bos_token_id` has to be defined when no `input_ids` are provided.")
-        return flow.ones(
-            (1, 1), 
-            dtype=flow.long, 
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size())))
-        ) * bos_token_id
+        return (
+            flow.ones(
+                (1, 1),
+                dtype=flow.long,
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            )
+            * bos_token_id
+        )
 
     def _prepare_attention_mask_for_generation(
         self,
@@ -381,15 +390,13 @@ class GenerationMixin:
             return inputs.ne(pad_token_id).long()
         else:
             return flow.ones(
-                inputs.shape[:2], 
+                inputs.shape[:2],
                 dtype=flow.long,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size())))
+                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
             )
 
-    def _prepare_encoder_decoder_kwargs_for_generation(
-        self, inputs_tensor, model_kwargs
-    ):
+    def _prepare_encoder_decoder_kwargs_for_generation(self, inputs_tensor, model_kwargs):
         only_encoder = True
         model_kwargs["input_ids"] = inputs_tensor
         model_kwargs["encoder_outputs"] = self(**model_kwargs, only_encoder=only_encoder)
@@ -401,16 +408,17 @@ class GenerationMixin:
         if model_kwargs is not None and "decoder_input_ids" in model_kwargs:
             return model_kwargs.pop("decoder_input_ids")
         else:
-            return flow.ones(
-                (batch_size, 1), 
-                dtype=flow.long, 
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
-            ) * decoder_start_token_id
-            
-    def _get_decoder_start_token_id(
-        self, decoder_start_token_id=None, bos_token_id=None
-    ):
+            return (
+                flow.ones(
+                    (batch_size, 1),
+                    dtype=flow.long,
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                )
+                * decoder_start_token_id
+            )
+
+    def _get_decoder_start_token_id(self, decoder_start_token_id=None, bos_token_id=None):
         if decoder_start_token_id is not None:
             return decoder_start_token_id
         elif self.is_encoder_decoder:
@@ -419,7 +427,7 @@ class GenerationMixin:
             return bos_token_id
         else:
             return self.cfg.bos_token_idx
-        
+
     def _update_model_kwargs_for_generation(self, model_kwargs, is_encoder_decoder=False):
         # update past_key_value_state
         if self.past_key_values[-1] is not None:
@@ -431,14 +439,18 @@ class GenerationMixin:
         if "attention_mask" in model_kwargs and not is_encoder_decoder:
             attention_mask = model_kwargs["attention_mask"]
             pad = flow.ones(
-                (attention_mask.shape[0], 1), sbp=attention_mask.sbp, placement=attention_mask.placement
+                (attention_mask.shape[0], 1),
+                sbp=attention_mask.sbp,
+                placement=attention_mask.placement,
             )
             model_kwargs["attention_mask"] = flow.cat([attention_mask, pad], dim=-1)
 
         if "decoder_attn_mask" in model_kwargs and is_encoder_decoder:
             attention_mask = model_kwargs["decoder_attn_mask"]
             pad = flow.ones(
-                (attention_mask.shape[0], 1), sbp=attention_mask.sbp, placement=attention_mask.placement
+                (attention_mask.shape[0], 1),
+                sbp=attention_mask.sbp,
+                placement=attention_mask.placement,
             )
             model_kwargs["decoder_attn_mask"] = flow.cat([attention_mask, pad], dim=-1)
 
@@ -449,33 +461,39 @@ class GenerationMixin:
             f"Make sure that a `_reorder_cache` function is correctly implemented in {self.__class__.__module__} to"
             f" enable beam search for {self.__class__}"
         )
-        
+
     def _get_logits_warper(
-        self, 
-        top_k=None, 
-        top_p=None, 
-        typical_p=None, 
-        temperature=None, 
+        self,
+        top_k=None,
+        top_p=None,
+        typical_p=None,
+        temperature=None,
         num_beams=None,
-        renormalize_logits=None
+        renormalize_logits=None,
     ):
         # instantiate warpers list
         warpers = LogitsProcessorList()
-        
+
         # all samplers can be found in `generation_utils_samplers.py`
         if temperature is not None and temperature != 1.0:
             warpers.append(TemperatureLogitsWarper(temperature))
         if top_k is not None and top_k != 0:
-            warpers.append(TopKLogitsWarper(top_k=top_k, min_tokens_to_keep=(2 if num_beams > 1 else 1)))
+            warpers.append(
+                TopKLogitsWarper(top_k=top_k, min_tokens_to_keep=(2 if num_beams > 1 else 1))
+            )
         if top_p is not None and top_p < 1.0:
-            warpers.append(TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=(2 if num_beams > 1 else 1)))
+            warpers.append(
+                TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=(2 if num_beams > 1 else 1))
+            )
         if typical_p is not None and typical_p < 1.0:
-            warpers.append(TypicalLogitsWarper(mass=typical_p, min_tokens_to_keep=(2 if num_beams > 1 else 1)))
+            warpers.append(
+                TypicalLogitsWarper(mass=typical_p, min_tokens_to_keep=(2 if num_beams > 1 else 1))
+            )
         # `LogitNormalization` should always be the last logit processor, when present
         if renormalize_logits is True:
             warpers.append(NormalizationLogitsProcessor())
         return warpers
-    
+
     def _get_logits_processor(
         self,
         repetition_penalty: float,
@@ -483,7 +501,6 @@ class GenerationMixin:
         encoder_no_repeat_ngram_size: int,
         input_ids_seq_length: int,
         encoder_input_ids: flow.Tensor,
-        bad_words_ids: List[List[int]],
         min_length: int,
         max_length: int,
         eos_token_id: int,
@@ -503,12 +520,14 @@ class GenerationMixin:
         instances used to modify the scores of the language model head.
         """
         processors = LogitsProcessorList()
-        
+
         # instantiate processors list
         if diversity_penalty is not None and diversity_penalty > 0.0:
             processors.append(
                 HammingDiversityLogitsProcessor(
-                    diversity_penalty=diversity_penalty, num_beams=num_beams, num_beam_groups=num_beam_groups
+                    diversity_penalty=diversity_penalty,
+                    num_beams=num_beams,
+                    num_beam_groups=num_beam_groups,
                 )
             )
         if repetition_penalty is not None and repetition_penalty != 1.0:
@@ -517,7 +536,11 @@ class GenerationMixin:
             processors.append(NoRepeatNGramLogitsProcessor(no_repeat_ngram_size))
         if encoder_no_repeat_ngram_size is not None and encoder_no_repeat_ngram_size > 0:
             if self.config.is_encoder_decoder:
-                processors.append(EncoderNoRepeatNGramLogitsProcessor(encoder_no_repeat_ngram_size, encoder_input_ids))
+                processors.append(
+                    EncoderNoRepeatNGramLogitsProcessor(
+                        encoder_no_repeat_ngram_size, encoder_input_ids
+                    )
+                )
             else:
                 raise ValueError(
                     "It's impossible to use `encoder_no_repeat_ngram_size` with decoder-only architecture"
@@ -525,7 +548,11 @@ class GenerationMixin:
         if min_length is not None and eos_token_id is not None and min_length > 0:
             processors.append(MinLengthLogitsProcessor(min_length, eos_token_id))
         if prefix_allowed_tokens_fn is not None:
-            processors.append(PrefixConstrainedLogitsProcessor(prefix_allowed_tokens_fn, num_beams // num_beam_groups))
+            processors.append(
+                PrefixConstrainedLogitsProcessor(
+                    prefix_allowed_tokens_fn, num_beams // num_beam_groups
+                )
+            )
         if forced_bos_token_id is not None:
             processors.append(ForcedBOSTokenLogitsProcessor(forced_bos_token_id))
         if forced_eos_token_id is not None:
@@ -534,10 +561,40 @@ class GenerationMixin:
             processors.append(InfNanRemoveLogitsProcessor())
         if exponential_decay_length_penalty is not None:
             processors.append(
-                ExponentialDecayLengthPenalty(exponential_decay_length_penalty, eos_token_id, input_ids_seq_length)
+                ExponentialDecayLengthPenalty(
+                    exponential_decay_length_penalty, eos_token_id, input_ids_seq_length
+                )
             )
         processors = self._merge_criteria_processor_list(processors, logits_processor)
         # `LogitNormalization` should always be the last logit processor, when present
         if renormalize_logits is True:
             processors.append(NormalizationLogitsProcessor())
         return processors
+
+    def _get_stopping_criteria(
+        self, 
+        max_length: Optional[int], 
+        max_time: Optional[float], 
+        stopping_criteria: Optional[StoppingCriteriaList]
+    ):
+        criteria = StoppingCriteriaList()
+        if max_length is not None:
+            criteria.append(MaxLengthCriteria(max_length=max_length))
+        if max_time is not None:
+            criteria.append(MaxTimeCriteria(max_time=max_time))
+        criteria = self._merge_criteria_processor_list(criteria, stopping_criteria)
+        return criteria
+    
+    def _merge_criteria_processor_list(self, default_list, custom_list):
+        if len(custom_list) == 0:
+            return default_list
+        for default in default_list:
+            for custom in custom_list:
+                if type(custom) is type(default):
+                    raise ValueError(
+                        "Criteria repetition error."
+                    )
+        default_list.extend(custom_list)
+        return default_list
+    
+    
