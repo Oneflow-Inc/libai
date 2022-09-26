@@ -15,6 +15,7 @@
 
 import logging
 
+import dill
 import numpy as np
 import oneflow as flow
 from omegaconf import OmegaConf
@@ -391,6 +392,13 @@ def get_world_size():
 def get_num_nodes():
     return flow.env.get_node_size()
 
+def broadcast_py_object(obj, src: int = 0):
+    rank = flow.env.get_rank()
+    if src == rank:
+        obj_bytes = dill.dumps(obj)
+        return dill.loads(flow._oneflow_internal.cpu_broadcast(obj_bytes, src))
+    else:
+        return dill.loads(flow._oneflow_internal.cpu_broadcast(None, src))
 
 def convert_to_distributed_default_setting(t):
     """
