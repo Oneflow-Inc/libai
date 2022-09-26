@@ -1,4 +1,3 @@
-import logging
 import math
 
 import oneflow as flow
@@ -6,18 +5,14 @@ from oneflow import nn
 
 from libai.config import configurable
 from libai.layers import (
-    Embedding,
     LayerNorm,
     Linear,
-    LMLogits,
-    ParallelCrossEntropyLoss,
+    SinePositionalEmbedding,
     TransformerLayer,
     VocabEmbedding,
-    SinePositionalEmbedding,
-    build_activation,
 )
-from libai.utils import distributed as dist
 from libai.models.utils import init_method_normal, scaled_init_method_normal
+from libai.utils import distributed as dist
 
 
 class ExtendedMask(flow.nn.Module):
@@ -53,7 +48,9 @@ class TransformerEmbedding(nn.Module):
         seq_length = input_ids.size()[1]
 
         word_embeddings = self.word_embedding(input_ids)
-        position_ids = self.position_ids[:, :seq_length].expand_as(input_ids).to_global(sbp=input_ids.sbp)
+        position_ids = (
+            self.position_ids[:, :seq_length].expand_as(input_ids).to_global(sbp=input_ids.sbp)
+        )
         positional_encodings = self.positional_encoding(position_ids)
         embeddings = word_embeddings * math.sqrt(self.hidden_size) + positional_encodings
         embeddings = self.embedding_dropout(embeddings)
@@ -93,16 +90,16 @@ class TransformerEncoder(nn.Module):
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     init_method=init_method_normal(initializer_range),
-                    output_layer_init_method=scaled_init_method_normal(initializer_range, hidden_layers),
+                    output_layer_init_method=scaled_init_method_normal(
+                        initializer_range, hidden_layers
+                    ),
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
             ]
         )
         self.encoder_final_layernorm = LayerNorm(
-            (hidden_size,),
-            eps=layernorm_epsilon,
-            layer_idx=hidden_layers - 1
+            (hidden_size,), eps=layernorm_epsilon, layer_idx=hidden_layers - 1
         )
 
     def forward(self, encoder_input_embeddings, encoder_extended_attn_mask):
@@ -146,16 +143,16 @@ class TransformerDecoder(nn.Module):
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     init_method=init_method_normal(initializer_range),
-                    output_layer_init_method=scaled_init_method_normal(initializer_range, hidden_layers),
+                    output_layer_init_method=scaled_init_method_normal(
+                        initializer_range, hidden_layers
+                    ),
                     layer_idx=i,
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
             ]
         )
         self.decoder_final_layernorm = LayerNorm(
-            (hidden_size,),
-            eps=layernorm_epsilon,
-            layer_idx=2 * hidden_layers - 1
+            (hidden_size,), eps=layernorm_epsilon, layer_idx=2 * hidden_layers - 1
         )
 
     def forward(

@@ -1,11 +1,10 @@
-import oneflow as flow
 from oneflow import nn
 
-from libai.models.utils import init_method_normal
-from libai.utils import distributed as dist
 from libai.layers.cross_entropy import ParallelCrossEntropyLoss
+from libai.utils import distributed as dist
 
 from .transformer_model import TransformerModel
+
 
 class Seq2SeqLoss(nn.Module):
     def __init__(self):
@@ -18,6 +17,7 @@ class Seq2SeqLoss(nn.Module):
         lm_loss = self.lm_loss(logits, lm_labels)
         lm_loss = lm_loss.mean()
         return lm_loss
+
 
 class Seq2Seq(nn.Module):
     def __init__(self, cfg):
@@ -95,16 +95,12 @@ class Seq2Seq(nn.Module):
             )
         logits = self.language_model.lm_head(decoder_states)
         return logits
-    
+
     @staticmethod
     def set_pipeline_stage_id(model):
         dist_utils = dist.get_dist_util()
 
-        from .transformer_model import (
-            ExtendedMask,
-            TransformerEmbedding,
-            TransformerLayer,   
-        )
+        from .transformer_model import ExtendedMask, TransformerEmbedding, TransformerLayer
 
         # Set pipeline parallelism stage_id
         for module_block in model.modules():

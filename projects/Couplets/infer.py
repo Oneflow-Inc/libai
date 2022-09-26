@@ -1,16 +1,18 @@
-import os, sys
+import os
+import sys
+
 dir_path = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(dir_path)
 
-import oneflow as flow
-from libai.config import LazyConfig
-from libai.engine.default import DefaultTrainer
-from libai.utils.checkpoint import Checkpointer
-from libai.data.structures import DistTensorData
+import oneflow as flow  # noqa
+from dataset.mask import make_padding_mask, make_sequence_mask  # noqa
+from modeling.model import Seq2Seq  # noqa
+from tokenizer.tokenizer import CoupletsTokenizer  # noqa
 
-from modeling.model import Seq2Seq
-from tokenizer.tokenizer import CoupletsTokenizer
-from dataset.mask import make_padding_mask, make_sequence_mask
+from libai.config import LazyConfig  # noqa
+from libai.data.structures import DistTensorData  # noqa
+from libai.engine.default import DefaultTrainer  # noqa
+from libai.utils.checkpoint import Checkpointer  # noqa
 
 
 def get_global_tensor(rawdata):
@@ -19,18 +21,23 @@ def get_global_tensor(rawdata):
     dtd.to_global()
     return dtd.tensor
 
+
 class GeneratorForEager:
     def __init__(self, config_file, checkpoint_file, vocab_file):
         cfg = LazyConfig.load(config_file)
         self.model = DefaultTrainer.build_model(cfg).eval()
         Checkpointer(self.model).load(checkpoint_file)
         self.tokenizer = CoupletsTokenizer(vocab_file)
-    
+
     def infer(self, sentence):
         # Encode
         sentence = " ".join([word for word in sentence])
         tokens_list = self.tokenizer.tokenize(sentence)
-        encoder_ids_list = [self.tokenizer.bos_id] + self.tokenizer.convert_tokens_to_ids(tokens_list) + [self.tokenizer.eos_id]
+        encoder_ids_list = (
+            [self.tokenizer.bos_id]
+            + self.tokenizer.convert_tokens_to_ids(tokens_list)
+            + [self.tokenizer.eos_id]
+        )
         seq_len = len(encoder_ids_list)
         encoder_input_ids = get_global_tensor(encoder_ids_list)
         encoder_states = self.model.encode(encoder_input_ids, None)
@@ -51,10 +58,8 @@ class GeneratorForEager:
                 break
         result_tokens_list = self.tokenizer.convert_ids_to_tokens(decoder_ids_list)
 
-        return (
-            "".join(result_tokens_list)
-            .replace("<bos>", "").replace("<eos>", "")
-        )
+        return "".join(result_tokens_list).replace("<bos>", "").replace("<eos>", "")
+
 
 if __name__ == "__main__":
     config_file = "output/couplet/config.yaml"

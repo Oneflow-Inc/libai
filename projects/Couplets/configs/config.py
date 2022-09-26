@@ -1,16 +1,18 @@
-import sys, os
+import os
+import sys
+
 dir_path = os.path.abspath(os.path.dirname(__file__))
 dir_path = "/".join(dir_path.split("/")[:-1])
 sys.path.append(dir_path)
 
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf  # noqa
 
-from libai.config import get_config
-from libai.config import LazyCall
-from libai.data.build import build_nlp_train_loader, build_nlp_test_loader
+from dataset.dataset import CoupletsDataset  # noqa
+from modeling.model import Seq2Seq  # noqa
 
-from dataset.dataset import CoupletsDataset
-from modeling.model import Seq2Seq
+from libai.config import get_config  # noqa
+from libai.config import LazyCall  # noqa
+from libai.data.build import build_nlp_train_loader, build_nlp_test_loader  # noqa
 
 optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
@@ -73,10 +75,10 @@ train.update(
             data_parallel_size=1,
             tensor_parallel_size=1,
             pipeline_parallel_size=4,
-            pipeline_num_layers=model.cfg.hidden_layers * 2
+            pipeline_num_layers=model.cfg.hidden_layers * 2,
         ),
         evaluation=dict(
             enabled=False,
-        )
+        ),
     )
 )

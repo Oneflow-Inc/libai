@@ -1,14 +1,16 @@
-import os, sys
-dir_path = os.path.abspath(os.path.dirname(__file__))
-sys.path.append(dir_path)
+import os
+import sys
 
-import oneflow as flow
-from libai.data.structures import DistTensorData
-from libai.inference.basic import BasePipeline
-from libai.utils import distributed as dist
+dir_path = os.path.abspath(os.path.dirname(__file__))  # noqa
+sys.path.append(dir_path)  # noqa
 
-from tokenizer.tokenizer import CoupletsTokenizer
-from dataset.mask import make_padding_mask, make_sequence_mask
+import oneflow as flow  # noqa
+from dataset.mask import make_sequence_mask  # noqa
+from tokenizer.tokenizer import CoupletsTokenizer  # noqa
+
+from libai.data.structures import DistTensorData  # noqa
+from libai.inference.basic import BasePipeline  # noqa
+from libai.utils import distributed as dist  # noqa
 
 
 def get_global_tensor(rawdata):
@@ -17,6 +19,7 @@ def get_global_tensor(rawdata):
     dtd.to_global()
     return dtd.tensor
 
+
 class CoupletPipeline(BasePipeline):
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {**pipeline_parameters}
@@ -24,7 +27,7 @@ class CoupletPipeline(BasePipeline):
         postprocess_params = {}
 
         return preprocess_params, forward_params, postprocess_params
-    
+
     def update_cfg(
         self,
         data_parallel=1,
@@ -41,15 +44,19 @@ class CoupletPipeline(BasePipeline):
             pipeline_num_layers,
         )
         self.cfg.vocab_file = "data_test/couplets/vocab.txt"
-    
+
     def build_tokenizer(self, cfg):
         return CoupletsTokenizer(cfg.vocab_file)
-    
+
     def generate(self, sentence):
         # Encode
         sentence = " ".join([word for word in sentence])
         tokens_list = self.tokenizer.tokenize(sentence)
-        encoder_ids_list = [self.tokenizer.bos_id] + self.tokenizer.convert_tokens_to_ids(tokens_list) + [self.tokenizer.eos_id]
+        encoder_ids_list = (
+            [self.tokenizer.bos_id]
+            + self.tokenizer.convert_tokens_to_ids(tokens_list)
+            + [self.tokenizer.eos_id]
+        )
         seq_len = len(encoder_ids_list)
         encoder_input_ids = get_global_tensor(encoder_ids_list)
         encoder_states = self.model.encode(encoder_input_ids, None)
@@ -70,11 +77,8 @@ class CoupletPipeline(BasePipeline):
                 break
         result_tokens_list = self.tokenizer.convert_ids_to_tokens(decoder_ids_list)
 
-        return (
-            "".join(result_tokens_list)
-            .replace("<bos>", "").replace("<eos>", "")
-        )
-    
+        return "".join(result_tokens_list).replace("<bos>", "").replace("<eos>", "")
+
     def preprocess(self, sentence) -> dict:
         input_dict = {"sentence": sentence}
         return input_dict
@@ -83,9 +87,10 @@ class CoupletPipeline(BasePipeline):
         model_output = self.generate(input_dict["sentence"])
         model_out_dict = {"下联": model_output}
         return model_out_dict
-    
+
     def postprocess(self, model_out_dict) -> dict:
         return model_out_dict
+
 
 if __name__ == "__main__":
 
