@@ -3,7 +3,6 @@ import sys
 from collections import namedtuple
 
 import oneflow as flow
-import oneflow.nn.functional as F
 from oneflow import nn
 
 from .models import l2norm
@@ -29,13 +28,6 @@ class BaseClipAdapter(nn.Module):
         super().__init__()
         self.clip = clip
         self.overrides = kwargs
-
-    def validate_and_resize_image(self, image):
-        image_size = image.shape[-1]
-        assert (
-            image_size >= self.image_size
-        ), f"you are passing in an image of size {image_size} but CLIP requires the image size to be at least {self.image_size}"
-        return resize_image_to(image, self.image_size)
 
     @property
     def dim_latent(self):

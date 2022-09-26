@@ -1,5 +1,5 @@
 from inspect import isfunction
-from math import log, pi
+from math import pi
 
 import oneflow as flow
 from einops import rearrange, repeat
@@ -51,7 +51,8 @@ def apply_rotary_emb(freqs, t, start_index=0):
     end_index = start_index + rot_dim
     assert (
         rot_dim <= t.shape[-1]
-    ), f"feature dimension {t.shape[-1]} is not of sufficient size to rotate in all the positions {rot_dim}"
+    ), f"feature dimension {t.shape[-1]} is not of sufficient size to \
+         rotate in all the positions {rot_dim}"
     t_left, t, t_right = t[..., :start_index], t[..., start_index:end_index], t[..., end_index:]
     t = (t * freqs.cos()) + (rotate_half(t) * freqs.sin())
     return flow.cat((t_left, t, t_right), dim=-1)
@@ -100,16 +101,9 @@ class RotaryEmbedding(nn.Module):
         if learned_freq:
             self.freqs = nn.Parameter(freqs)
         else:
-            self.register_buffer(
-                "freqs",
-                freqs.to_global(
-                    placement=dist.get_layer_placement(0),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                ),
-            )
+            self.register_buffer("freqs", freqs)
 
     def rotate_queries_or_keys(self, t, seq_dim=-2):
-        placement, sbp = t.placement, t.sbp
         seq_len = t.shape[seq_dim]
         freqs = self.forward(
             lambda: flow.arange(

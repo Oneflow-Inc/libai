@@ -1,5 +1,4 @@
-# from https://github.com/lucidrains/vector-quantize-pytorch/blob/master/vector_quantize_pytorch/vector_quantize_pytorch.py
-from contextlib import contextmanager
+# from https://github.com/lucidrains/vector_quantize_pytorch/vector_quantize_pytorch.py
 
 import oneflow as flow
 import oneflow.nn.functional as F
@@ -144,7 +143,7 @@ def kmeans(
     sample_fn=batched_sample_vectors,
     all_reduce_fn=noop,
 ):
-    num_codebooks, dim, dtype, device = (
+    num_codebooks, dim, dtype, _ = (
         samples.shape[0],
         samples.shape[-1],
         samples.dtype,
@@ -543,7 +542,7 @@ class VectorQuantize(nn.Module):
         return self._codebook.embed
 
     def forward(self, x):
-        shape, device, heads, is_multiheaded, codebook_size = (
+        _, device, heads, is_multiheaded, _ = (
             x.shape,
             x.device,
             self.heads,

@@ -43,7 +43,7 @@ unet1 = LazyCall(Unet)(
     attn_dim_head=64,
     sparse_attn=True,
     memory_efficient=True,
-    cond_on_text_encodings=True,  # set to True for any unets that need to be conditioned on text encodings
+    cond_on_text_encodings=True,
     self_attn=[False, True, True, True],
 )
 

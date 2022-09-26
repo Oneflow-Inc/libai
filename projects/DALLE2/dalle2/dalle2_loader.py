@@ -1,6 +1,5 @@
 import logging
 
-import omegaconf
 import oneflow as flow
 from oneflow.framework.check_point_v2 import _broadcast_py_object
 
@@ -77,6 +76,7 @@ class Dalle2ModelLoader(ModelLoaderHuggerFace):
         logger.info("building LiBai model...")
         self.libai_cfg = _broadcast_py_object(self.libai_cfg, src=0)
         self.model = build_model(self.model)
+        self.model._apply(dist.convert_to_distributed_default_setting)
         self.model = self.model.eval()
 
         flow.cuda.empty_cache()

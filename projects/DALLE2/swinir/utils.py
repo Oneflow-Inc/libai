@@ -1,12 +1,14 @@
 # -----------------------------------------------------------------------------------
-# from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/weight_init.py
+# from
+# https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/weight_init.py
 # -----------------------------------------------------------------------------------
+import collections.abc
 import math
 import warnings
+from itertools import repeat
 
 import oneflow as flow
 import oneflow.nn as nn
-import oneflow.nn.functional as F
 
 
 def _no_grad_trunc_normal_(tensor, mean, std, a, b):
@@ -48,7 +50,7 @@ def _no_grad_trunc_normal_(tensor, mean, std, a, b):
 
 
 def trunc_normal_(tensor, mean=0.0, std=1.0, a=-2.0, b=2.0):
-    # type: (Tensor, float, float, float, float) -> Tensor
+    # type: (flow.Tensor, float, float, float, float) -> flow.Tensor
     r"""Fills the input Tensor with values drawn from a truncated
     normal distribution. The values are effectively drawn from the
     normal distribution :math:`\mathcal{N}(\text{mean}, \text{std}^2)`
@@ -71,13 +73,9 @@ def trunc_normal_(tensor, mean=0.0, std=1.0, a=-2.0, b=2.0):
     return _no_grad_trunc_normal_(tensor, mean, std, a, b)
 
 
-import collections.abc
-
 # -----------------------------------------------------------------------------------
 # from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/helpers.py
 # -----------------------------------------------------------------------------------
-from itertools import repeat
-
 
 # From Pytorch internals
 def _ntuple(n):
@@ -103,10 +101,11 @@ to_ntuple = _ntuple
 def drop_path(x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True):
     """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
     This is the same as the DropConnect impl I created for EfficientNet, etc networks, however,
-    the original name is misleading as 'Drop Connect' is a different form of dropout in a separate paper...
-    See discussion: https://github.com/tensortorch/tpu/issues/494#issuecomment-532968956 ... I've opted for
-    changing the layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use
-    'survival rate' as the argument.
+    the original name is misleading as 'Drop Connect' is a different form of dropout in a
+    separate paper...
+    See discussion: https://github.com/tensortorch/tpu/issues/494#issuecomment-532968956 ...
+    I've opted for changing the layer and argument names to 'drop path' rather than mix DropConnect
+    as a layer name and use 'survival rate' as the argument.
     """
     if drop_prob == 0.0 or not training:
         return x

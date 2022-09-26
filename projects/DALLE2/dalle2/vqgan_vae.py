@@ -1,12 +1,11 @@
 import copy
-import math
 from functools import partial, wraps
 from math import sqrt
 
 import flowvision
 import oneflow as flow
 import oneflow.nn.functional as F
-from einops import rearrange, reduce, repeat
+from einops import rearrange, repeat
 from oneflow import einsum, nn
 from oneflow.autograd import grad as flow_grad
 
@@ -103,7 +102,7 @@ def log(t, eps=1e-10):
 
 
 def gradient_penalty(images, output, weight=10):
-    batch_size = images.shape[0]
+    images.shape[0]
     gradients = flow_grad(
         outputs=output,
         inputs=images,
@@ -292,8 +291,11 @@ class ResnetEncDec(nn.Module):
 
         dim_pairs = zip(dims[:-1], dims[1:])
 
-        append = lambda arr, t: arr.append(t)
-        prepend = lambda arr, t: arr.insert(0, t)
+        def append(arr, t):
+            arr.append(t)
+
+        def prepend(arr, t):
+            arr.insert(0, t)
 
         if not isinstance(num_resnet_blocks, tuple):
             num_resnet_blocks = (*((0,) * (layers - 1)), num_resnet_blocks)
@@ -710,7 +712,7 @@ class VQGanVAE(nn.Module):
         return_recons=False,
         add_gradient_penalty=True,
     ):
-        batch, channels, height, width, device = *img.shape, img.device
+        _, channels, height, width, _ = *img.shape, img.device
         assert (
             height == self.image_size and width == self.image_size
         ), "height and width of input image must be equal to {self.image_size}"

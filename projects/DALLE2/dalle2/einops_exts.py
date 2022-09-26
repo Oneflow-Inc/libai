@@ -1,10 +1,12 @@
 # From https://github.com/arogozhnikov/einops/blob/master/einops/layers/oneflow.py
-from typing import Dict, Optional
+
+import re
+from functools import wraps
 
 import oneflow as flow
 from einops import rearrange, reduce, repeat
 from einops._backends import AbstractBackend
-from einops.layers import RearrangeMixin, ReduceMixin
+from einops.layers import RearrangeMixin
 from oneflow import nn
 
 
@@ -94,9 +96,6 @@ class EinopsToAndFrom(nn.Module):
         return x
 
 
-import re
-from functools import partial, wraps
-
 # checking shape
 # @nils-werner
 # https://github.com/arogozhnikov/einops/issues/168#issuecomment-1042933838
@@ -126,7 +125,10 @@ def _with_anon_dims(fn):
     def inner(tensor, pattern, **kwargs):
         regex = r"(\.\.\.[a-zA-Z]+)"
         matches = re.findall(regex, pattern)
-        get_anon_dim_name = lambda t: t.lstrip("...")
+
+        def get_anon_dim_name(t):
+            return t.lstrip("...")
+
         dim_prefixes = tuple(map(get_anon_dim_name, set(matches)))
 
         update_kwargs_dict = dict()
