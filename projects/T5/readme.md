@@ -54,5 +54,5 @@ Suppose you need to put the final checkpoint to huggingface, run the following c
 
 ```bash
 # cd /path/to/libai
-bash projects/T5/Utils/weight_convert.sh
+bash projects/T5/utils/weight_convert.sh
 ```
