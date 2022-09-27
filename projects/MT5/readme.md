@@ -10,7 +10,9 @@ Training MT5 on 8 GPUs using 3D parallelism and ZERO.
 
 ### 1. Prepare your training config file
 
-set the pretrain parameters in `MT5/configs/mt5_pretrain.py`, such as `vocab_file` and `data_prefix`.
+> set the pretrain parameters in `MT5/configs/mt5_pretrain.py`, such as `vocab_file` and `data_prefix`.
+
+> If you would like to use the t5 model, please set `model_type`="t5".
 
 ### 2. Prepare the demo training data
 

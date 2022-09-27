@@ -41,7 +41,7 @@ train.update(
             data_parallel_size=1,
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
-            # pipeline_num_layers=2 * model.cfg.hidden_layers,
+            pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
             warmup_factor=0.001,
