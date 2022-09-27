@@ -116,7 +116,7 @@ def convert_state_dict(oneflow_state_dict_path, libai_cfg, prefix="t5_model."):
                 torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
 
             elif op_name == "mlp":
-                if libai_cfg.get("mlp_type") == "mt5":
+                if libai_cfg.get("model_type") == "mt5":
                     if keys[op_idx + 1] == "wi_0":
                         new_key = "encoder.block." + layers + ".layer.1.DenseReluDense.wi_0.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
@@ -126,7 +126,7 @@ def convert_state_dict(oneflow_state_dict_path, libai_cfg, prefix="t5_model."):
                     if keys[op_idx + 1] == "wo":
                         new_key = "encoder.block." + layers + ".layer.1.DenseReluDense.wo.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
-                elif libai_cfg.get("mlp_type") == "t5":
+                elif libai_cfg.get("model_type") == "t5":
                     if keys[op_idx + 1] == "dense_h_to_4h":
                         new_key = "encoder.block." + layers + ".layer.1.DenseReluDense.wi.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
@@ -183,7 +183,7 @@ def convert_state_dict(oneflow_state_dict_path, libai_cfg, prefix="t5_model."):
                     torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
 
             elif op_name == "mlp":
-                if libai_cfg.get("mlp_type") == "mt5":
+                if libai_cfg.get("model_type") == "mt5":
                     if keys[op_idx + 1] == "wi_0":
                         new_key = "decoder.block." + layers + ".layer.1.DenseReluDense.wi_0.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
@@ -193,7 +193,7 @@ def convert_state_dict(oneflow_state_dict_path, libai_cfg, prefix="t5_model."):
                     if keys[op_idx + 1] == "wo":
                         new_key = "decoder.block." + layers + ".layer.1.DenseReluDense.wo.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
-                elif libai_cfg.get("mlp_type") == "t5":
+                elif libai_cfg.get("model_type") == "t5":
                     if keys[op_idx + 1] == "dense_h_to_4h":
                         new_key = "decoder.block." + layers + ".layer.1.DenseReluDense.wi.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
