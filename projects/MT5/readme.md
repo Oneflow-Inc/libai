@@ -1,6 +1,6 @@
 # MT5
 
-Reproduce T5Model and MT5Model with OneFlow, whose effect are equivalent to HuggingFace's [T5](https://huggingface.co/docs/transformers/v4.19.4/en/model_doc/t5#overview) and [T5v1.1](https://github.com/google-research/text-to-text-transfer-transformer/blob/main/released_checkpoints.md#t511).
+Reproduce T5Model and MT5Model with OneFlow, which effect are equivalent to HuggingFace's [T5](https://huggingface.co/docs/transformers/v4.19.4/en/model_doc/t5#overview) and [T5v1.1](https://github.com/google-research/text-to-text-transfer-transformer/blob/main/released_checkpoints.md#t511).
 
 ## Introduce
 The t5 and mt5 pretraining project can support 3D parallel and [ZERO](https://arxiv.org/abs/2202.10435).
