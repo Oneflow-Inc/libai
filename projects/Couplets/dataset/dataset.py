@@ -1,3 +1,5 @@
+import os
+
 import oneflow as flow
 from dataset.mask import make_padding_mask, make_sequence_mask
 from oneflow.utils.data import Dataset
@@ -9,9 +11,9 @@ from libai.data.structures import DistTensorData, Instance
 class CoupletsDataset(Dataset):
     def __init__(self, path, is_train=True, maxlen=64):
         if is_train:
-            datapath = path + "/train"
+            datapath = os.path.join(path, "train")
         else:
-            datapath = path + "/test"
+            datapath = os.path.join(path, "test")
 
         src = []
         with open(f"{datapath}/in.txt", "r") as f_src:

@@ -1,6 +1,6 @@
 ## Couplets in LiBai
 
-Contributor{Yulin Zhuang: [https://github.com/ZylOo0](https://github.com/ZylOo0])}
+Contributor{Yulin Zhuang: [https://github.com/ZylOo0](https://github.com/ZylOo0)}
 
 This is the LiBai implementation of Couplets
 
