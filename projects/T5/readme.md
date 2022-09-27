@@ -1,5 +1,7 @@
 # T5
 
+Note: this project uses a special Dataset, which is an **unofficial** version, if you want to use your own dataset and experience complete mt5, please refer to [projects/MT5](../MT5/)
+
 Reproduce T5Model and MT5Model with OneFlow, which effect is equivalent to HuggingFace's [T5](https://huggingface.co/docs/transformers/v4.19.4/en/model_doc/t5#overview) and [T5v1.1](https://github.com/google-research/text-to-text-transfer-transformer/blob/main/released_checkpoints.md#t511).
 
 ## Introduce
