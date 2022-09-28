@@ -128,6 +128,7 @@ if __name__ == "__main__":
             "tqdm",
             "pybind11",
             "portalocker",
+            "dill",
             "flake8==3.8.1 ",
             "isort==5.10.1",
             "black==21.4b ",

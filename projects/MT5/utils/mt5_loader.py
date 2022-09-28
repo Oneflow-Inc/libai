@@ -76,7 +76,7 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         )
 
         # Convert MT5's lm_head
-        if cfg.model_type == "mt5":
+        if cfg.model_type == "mt5" and "lm_head.weight" in oneflow_state_dict:
             new_key = prefix2 + "lm_head.weight"
             old_keys.remove("lm_head.weight")
             oneflow_state_dict[new_key] = oneflow_state_dict.pop("lm_head.weight")

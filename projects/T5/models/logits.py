@@ -21,10 +21,10 @@ from libai.utils import distributed as dist
 
 
 class LMLogits(nn.Module):
-    def __init__(self, vocab_size, hidden_size=None, bias=False, mlp_type="t5", layer_idx=-1):
+    def __init__(self, vocab_size, hidden_size=None, bias=False, model_type="t5", layer_idx=-1):
         super().__init__()
-        self.mlp_type = mlp_type
-        if mlp_type == "t5":
+        self.model_type = model_type
+        if model_type == "t5":
             self.bias = (
                 nn.Parameter(
                     flow.zeros(
@@ -37,11 +37,11 @@ class LMLogits(nn.Module):
                 if bias
                 else None
             )
-        elif mlp_type == "mt5":
+        elif model_type == "mt5":
             self.linear = Linear(hidden_size, vocab_size, bias=False, layer_idx=layer_idx)
 
     def forward(self, input, word_embeddings=None):
-        if self.mlp_type == "t5":
+        if self.model_type == "t5":
             w = word_embeddings.to_global(placement=input.placement)
             input = input.to_global(grad_sbp=input.sbp)
             logits = flow._C.matmul(input, w, transpose_b=True)
