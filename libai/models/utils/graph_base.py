@@ -97,7 +97,6 @@ class GraphBase(nn.Graph):
                     "python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/master/[PLATFORM]"  # noqa
                 )
 
-
     def build(self, **kwargs):
         if self.is_train:
             logger.info(
