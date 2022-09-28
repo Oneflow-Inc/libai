@@ -38,10 +38,10 @@ train.update(
         # checkpointer=dict(period=10, max_to_keep=20),
         input_placement_device="cpu",
         dist=dict(
-            data_parallel_size=1,
-            tensor_parallel_size=1,
-            pipeline_parallel_size=1,
-            # pipeline_num_layers=2 * model.cfg.hidden_layers,
+            data_parallel_size=2,
+            tensor_parallel_size=2,
+            pipeline_parallel_size=2,
+            pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
             warmup_factor=0.001,

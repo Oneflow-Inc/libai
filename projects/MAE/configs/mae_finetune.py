@@ -14,11 +14,11 @@
 # limitations under the License.
 
 from omegaconf import OmegaConf
-
 from flowvision.data import Mixup
-from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
+# from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 from libai.config import LazyCall, get_config
+from modeling.cross_entropy import SoftTargetCrossEntropy
 from configs.models.vit_base_patch16 import model
 from utils.scheduler import (
     warmup_layerscale_cosine_lr_scheduler,
@@ -26,6 +26,23 @@ from utils.scheduler import (
 )
 from utils.lr_decay import param_groups_lrd
 
+
+# Get train, optim and graph configs
+train = get_config("common/train.py").train
+optim = get_config("common/optim.py").optim
+graph = get_config("common/models/graph.py").graph
+dataloader = get_config("common/data/imagenet.py").dataloader
+
+
+# number devices
+n_gpus = 8
+
+# Graph training
+graph.enabled = True
+
+# Refine model cfg for vit training on imagenet
+model.num_classes = 1000
+model.loss_func = LazyCall(SoftTargetCrossEntropy)()
 
 # Path to the weight for fine-tune
 finetune = OmegaConf.create()
@@ -36,25 +53,9 @@ finetune.weight_style = (
 finetune.path = "/path/to/pretrained_mae_weight"
 
 
-# Get train, optim and graph configs
-train = get_config("common/train.py").train
-optim = get_config("common/optim.py").optim
-graph = get_config("common/models/graph.py").graph
-dataloader = get_config("common/data/imagenet.py").dataloader
-
-
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
-
-# Graph training
-graph.enabled = True
-
-
-# Refine model cfg for vit training on imagenet
-model.num_classes = 1000
-model.loss_func = LazyCall(SoftTargetCrossEntropy)()
-
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
@@ -67,32 +68,25 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
     num_classes=model.num_classes,
 )
 
-# number devices
-n_gpus = 8
-
-# dataset length
-dataset_train_length = 1281167
-dataset_val_length = 50000
 
 # Refine training settings for MAE finetune
 train.train_micro_batch_size = 32
 train.num_accumulation_steps = 4
 train.test_micro_batch_size = 32
-
 effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
-epoch_iter = dataset_train_length // effective_batch_size
 
 train.train_epoch = 100
 train.warmup_ratio = 5 / 100
 train.log_period = 20
-train.evaluation.eval_period = epoch_iter
-train.checkpointer.period = epoch_iter
+train.evaluation.eval_after_n_epoch = 1
+train.checkpointer.save_model_after_n_epoch = 1
 
 # Set layer decay for MAE fine-tune
 train.layer_decay = 0.65
 
 # AMP
 train.amp.enabled = True
+
 
 # Base learning in MAE is set to 1.5e-4
 # The actually learning rate should be computed by linear scaling rule as follows:
@@ -125,6 +119,7 @@ else:
         warmup_factor=0.0,
         min_lr=1e-6,
     )
+
 
 # Distributed Settings
 train.dist.pipeline_num_layers = model.depth
