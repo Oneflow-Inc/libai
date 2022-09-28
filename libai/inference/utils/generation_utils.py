@@ -1,10 +1,12 @@
 import warnings
+import logging
+import inspect
 from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import oneflow as flow
-from generation_beam_search import BeamScorer
-from generation_logits_processor import (
+from .generation_beam_search import BeamScorer
+from .generation_logits_processor import (
     EncoderNoRepeatNGramLogitsProcessor,
     ExponentialDecayLengthPenalty,
     ForcedBOSTokenLogitsProcessor,
@@ -22,7 +24,7 @@ from generation_logits_processor import (
     TopPLogitsWarper,
     TypicalLogitsWarper,
 )
-from generation_stopping_criteria import (
+from .generation_stopping_criteria import (
     MaxLengthCriteria,
     MaxTimeCriteria,
     StoppingCriteriaList,
@@ -32,6 +34,8 @@ from oneflow import nn
 
 from libai.utils import distributed as dist
 
+
+logger = logging.getLogger(__name__)
 
 def multinomial(probs, num_samples, is_global=True):
     probs = probs.numpy()
@@ -343,6 +347,28 @@ def beam_search(
 
 
 class GenerationMixin:
+    def _prepare_model_inputs(self, inputs=None, bos_token_id=None, model_kwargs=None):
+        if self.cfg.is_encoder_decoder:
+            input_name = "encoder_input_ids"
+        else:
+            input_name = "input_ids"
+        
+        model_kwargs = {k: v for k, v in model_kwargs.items() if v is not None or k != input_name}
+        
+        inputs_kwarg = model_kwargs.pop(input_name, None)
+        if inputs_kwarg is not None and inputs is not None:
+            raise ValueError(
+                f"`inputs`: {inputs}` were passed alongside "
+                f"{input_name} which is not allowed."
+                f"Make sure to either pass {inputs} or {input_name}=..."
+            )
+        elif inputs_kwarg is not None:
+            inputs = inputs_kwarg
+
+        if inputs is None:
+            inputs = self._prepare_input_ids_for_generation(bos_token_id, model_kwargs.get("encoder_outputs"))
+        return inputs, input_name, model_kwargs
+
     def prepare_inputs_for_generation(self, input_ids: flow.Tensor, **kwargs):
         """
         Implement in subclasses of [`PreTrainedModel`] for custom behavior to prepare inputs in the
@@ -351,7 +377,7 @@ class GenerationMixin:
         return {"input_ids": input_ids}
 
     def _prepare_input_ids_for_generation(self, bos_token_id: int, encoder_outputs):
-        if self.is_encoder_decoder and encoder_outputs is not None:
+        if self.cfg.is_encoder_decoder and encoder_outputs is not None:
             shape = encoder_outputs.size()[:-1]
             return (
                 flow.ones(
@@ -382,7 +408,7 @@ class GenerationMixin:
         eos_token_id: Optional[int],
     ):
         is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [flow.int64]
-        is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs)
+        is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs.squeeze(0))
         is_pad_token_not_equal_to_eos_token_id = (eos_token_id is None) or (
             (eos_token_id is not None) and (pad_token_id != eos_token_id)
         )
@@ -397,9 +423,12 @@ class GenerationMixin:
                 placement=flow.placement("cuda", list(range(dist.get_world_size()))),
             )
 
-    def _prepare_encoder_decoder_kwargs_for_generation(self, inputs_tensor, model_kwargs):
+    def _prepare_encoder_decoder_kwargs_for_generation(self, inputs_tensor, model_kwargs, model_input_name):
         only_encoder = True
-        model_kwargs["input_ids"] = inputs_tensor
+        model_kwargs[model_input_name] = inputs_tensor
+        if "encoder_decoder_attn_mask" in set(inspect.signature(self.forward).parameters):
+            model_kwargs["encoder_decoder_attn_mask"] = model_kwargs["encoder_attn_mask"]
+        # print(model_kwargs)
         model_kwargs["encoder_outputs"] = self(**model_kwargs, only_encoder=only_encoder)
         return model_kwargs
 
@@ -409,6 +438,7 @@ class GenerationMixin:
         if model_kwargs is not None and "decoder_input_ids" in model_kwargs:
             return model_kwargs.pop("decoder_input_ids")
         else:
+            decoder_start_token_id = decoder_start_token_id if decoder_start_token_id else self.cfg.decoder_start_token_id
             return (
                 flow.ones(
                     (batch_size, 1),
@@ -422,7 +452,7 @@ class GenerationMixin:
     def _get_decoder_start_token_id(self, decoder_start_token_id=None, bos_token_id=None):
         if decoder_start_token_id is not None:
             return decoder_start_token_id
-        elif self.is_encoder_decoder:
+        elif self.cfg.is_encoder_decoder:
             return self.cfg.decoder_start_token_id
         elif bos_token_id is not None:
             return bos_token_id
@@ -536,7 +566,7 @@ class GenerationMixin:
         if no_repeat_ngram_size is not None and no_repeat_ngram_size > 0:
             processors.append(NoRepeatNGramLogitsProcessor(no_repeat_ngram_size))
         if encoder_no_repeat_ngram_size is not None and encoder_no_repeat_ngram_size > 0:
-            if self.config.is_encoder_decoder:
+            if self.cfg.is_encoder_decoder:
                 processors.append(
                     EncoderNoRepeatNGramLogitsProcessor(
                         encoder_no_repeat_ngram_size, encoder_input_ids
@@ -596,3 +626,250 @@ class GenerationMixin:
                     raise ValueError("Criteria repetition error.")
         default_list.extend(custom_list)
         return default_list
+
+    def compute_transition_beam_scores(
+        self,
+        sequences: flow.Tensor,
+        scores: Tuple[flow.Tensor],
+        beam_indices: flow.Tensor,
+        eos_token_id: int = None,
+    ):
+        scores = flow.stack(scores).reshape(len(scores), -1).transpose(0, 1)
+        
+        beam_indices_mask = beam_indices < 0
+        max_beam_length = (1 - beam_indices_mask.long()).sum(-1).max()
+        beam_indices = beam_indices[:, :max_beam_length]
+        beam_indices_mask = beam_indices_mask[:, :max_beam_length]
+        
+        beam_indices[beam_indices_mask] = 0
+        
+        beam_sequence_indices = beam_indices * self.cfg.vocab_size
+        
+        cut_idx = sequences.shape[-1] - max_beam_length
+        indices = sequences[:, cut_idx:] + beam_sequence_indices
+        
+        transition_scores = scores.gather(0, indices)
+        
+        transition_scores[beam_indices_mask] = 0
+
+        return transition_scores
+    
+    def _validate_model_kwargs(self, model_kwargs):
+        if self.cfg.is_encoder_decoder:
+            for key in ["decoder_input_ids"]:
+                model_kwargs.pop(key, None)    
+        unused_model_args = []
+        model_args = set(inspect.signature(self.prepare_inputs_for_generation).parameters)
+        if "kwargs" in model_args:
+            model_args |= set(inspect.signature(self.forward).parameters)
+        for key, value in model_kwargs.items():
+            if value is not None and key not in model_args:
+                unused_model_args.append(key)
+        if unused_model_args:
+            raise ValueError(
+                f"The following `model_kwargs` are not used by the model: {unused_model_args} "
+                "(note: typos in the generate arguments will also show up in this list)"
+            )
+
+    @flow.no_grad()
+    def generate(
+        self,
+        inputs=None,
+        max_length=None,
+        min_length=None,
+        do_sample=None,
+        early_stopping=None,
+        num_beams=None,
+        temperature=None,
+        top_k=None,
+        top_p=None,
+        typical_p=None,
+        repetition_penalty=None,
+        bad_words_ids=None,
+        force_words_ids=None, 
+        bos_token_id=None,
+        pad_token_id=None,
+        eos_token_id=None,
+        length_penalty=None,
+        no_repeat_ngram_size=None,
+        encoder_no_repeat_ngram_size=None,
+        num_return_sequences=None,
+        max_time=None,
+        max_new_tokens=None,
+        decoder_start_token_id=None,
+        use_cache=None,
+        num_beam_groups=None,
+        diversity_penalty=None,
+        prefix_allowed_tokens_fn=None,
+        logits_processor=LogitsProcessorList(),
+        renormalize_logits=None,
+        stopping_criteria=StoppingCriteriaList(),
+        constraints=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        output_scores=None,
+        forced_bos_token_id=None,
+        forced_eos_token_id=None,
+        remove_invalid_values=None,
+        exponential_decay_length_penalty=None,
+        **model_kwargs,
+    ):
+        # 0. Validate model kwargs
+        self._validate_model_kwargs(model_kwargs.copy())
+
+        # 1. Set generation parameters if not already defined
+        bos_token_id = bos_token_id if bos_token_id is not None else self.cfg.bos_token_id
+        num_beams = num_beams if num_beams is not None else self.cfg.num_beams
+        length_penalty = length_penalty if length_penalty is not None else self.cfg.length_penalty
+        early_stopping = early_stopping if early_stopping is not None else self.cfg.early_stopping
+        num_beam_groups = num_beam_groups if num_beam_groups is not None else self.cfg.num_beam_groups
+        do_sample = do_sample if do_sample is not None else self.cfg.do_sample
+        num_return_sequences = (
+            num_return_sequences if num_return_sequences is not None else self.cfg.num_return_sequences
+        )
+        
+        pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
+        eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        
+        output_scores = output_scores if output_scores is not None else self.cfg.output_scores
+        
+        # 2. Define model inputs
+        inputs_tensor, model_input_name, model_kwargs = self._prepare_model_inputs(inputs, bos_token_id, model_kwargs)
+        batch_size = inputs_tensor.shape[0]
+        
+        # 3. Define other model kwargs
+        model_kwargs["use_cache"] = use_cache if use_cache is not None else self.cfg.use_cache
+        
+        if self.cfg.is_encoder_decoder:
+            att_mask_name = "encoder_attn_mask"
+            accepts_attention_mask = att_mask_name in set(inspect.signature(self.forward).parameters.keys())
+        else:
+            att_mask_name = "attention_mask"
+            accepts_attention_mask = att_mask_name in set(inspect.signature(self.forward).parameters.keys())
+        requires_attention_mask = "encoder_outputs" not in model_kwargs
+        
+        if model_kwargs.get(att_mask_name, None) is None and requires_attention_mask and accepts_attention_mask:
+            model_kwargs[att_mask_name] = self._prepare_attention_mask_for_generation(
+                inputs_tensor, pad_token_id, eos_token_id
+            )
+        if self.cfg.is_encoder_decoder and "encoder_outputs" not in model_kwargs:
+            # if model is encoder decoder encoder_outputs are created
+            # and added to `model_kwargs`
+            model_kwargs = self._prepare_encoder_decoder_kwargs_for_generation(
+                inputs_tensor, model_kwargs, model_input_name
+            )
+        # 4. Prepare `input_ids` which will be used for auto-regressive generation
+        if self.cfg.is_encoder_decoder:
+            input_ids = self._prepare_decoder_input_ids_for_generation(
+                batch_size,
+                decoder_start_token_id=decoder_start_token_id,
+                bos_token_id=bos_token_id,
+                model_kwargs=model_kwargs,
+            )
+        else:
+            # if decoder-only then inputs_tensor has to be `input_ids`
+            input_ids = inputs_tensor
+        
+        # 5. Prepare `max_length` depending on other stopping criteria.
+        input_ids_seq_length = input_ids.shape[-1]
+        if max_length is None and max_new_tokens is None:
+            warnings.warn(
+                "Neither `max_length` nor `max_new_tokens` has been set, `max_length` will default to "
+                f"{self.cfg.max_length} (`self.cfg.max_length`). Controlling `max_length` via the cfg is "
+                "deprecated and `max_length` will be removed from the cfg in v5 of Transformers -- we recommend "
+                "using `max_new_tokens` to control the maximum length of the generation.",
+                UserWarning,
+            )
+        elif max_length is None and max_new_tokens is not None:
+            max_length = max_new_tokens + input_ids_seq_length
+        elif max_length is not None and max_new_tokens is not None:
+            raise ValueError(
+                "Both `max_new_tokens` and `max_length` have been set but they serve the same purpose -- setting a"
+                " limit to the generated output length. Remove one of those arguments. Please refer to the"
+                " documentation for more information. "
+                "(https://huggingface.co/docs/transformers/main/en/main_classes/text_generation)"
+            )
+        # default to cfg if still None
+        max_length = max_length if max_length is not None else self.cfg.max_length
+        min_length = min_length if min_length is not None else self.cfg.min_length
+        
+        if min_length is not None and min_length > max_length:
+            raise ValueError(
+                f"Unfeasable length constraints: the minimum length ({min_length}) is larger than the maximum "
+                f"length ({max_length})"
+            )
+        if input_ids_seq_length >= max_length:
+            input_ids_string = "decoder_input_ids" if self.cfg.is_encoder_decoder else "input_ids"
+            logger.warning(
+                f"Input length of {input_ids_string} is {input_ids_seq_length}, but `max_length` is set to"
+                f" {max_length}. This can lead to unexpected behavior. You should consider increasing "
+                "`max_new_tokens`."
+            )
+            
+        # 6. determine generation mode
+        is_constraint_gen_mode = constraints is not None or force_words_ids is not None
+        is_greedy_gen_mode = (
+            (num_beams == 1) and (num_beam_groups == 1) and do_sample is False and not is_constraint_gen_mode
+        )
+        is_sample_gen_mode = (
+            (num_beams == 1) and (num_beam_groups == 1) and do_sample is True and not is_constraint_gen_mode
+        )
+        is_beam_gen_mode = (
+            (num_beams > 1) and (num_beam_groups == 1) and do_sample is False and not is_constraint_gen_mode
+        )
+        is_beam_sample_gen_mode = (
+            (num_beams > 1) and (num_beam_groups == 1) and do_sample is True and not is_constraint_gen_mode
+        )
+        is_group_beam_gen_mode = (num_beams > 1) and (num_beam_groups > 1) and not is_constraint_gen_mode
+
+        if num_beam_groups > num_beams:
+            raise ValueError("`num_beam_groups` has to be smaller or equal to `num_beams`")
+        if is_group_beam_gen_mode and do_sample is True:
+            raise ValueError(
+                "Diverse beam search cannot be used in sampling mode. Make sure that `do_sample` is set to `False`."
+            )
+        
+        # 7. prepare distribution pre_processing samplers
+        logits_processor = self._get_logits_processor(
+            repetition_penalty=repetition_penalty,
+            no_repeat_ngram_size=no_repeat_ngram_size,
+            encoder_no_repeat_ngram_size=encoder_no_repeat_ngram_size,
+            input_ids_seq_length=input_ids_seq_length,
+            encoder_input_ids=inputs_tensor,
+            min_length=min_length,
+            max_length=max_length,
+            eos_token_id=eos_token_id,
+            forced_bos_token_id=forced_bos_token_id,
+            forced_eos_token_id=forced_eos_token_id,
+            prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
+            num_beams=num_beams,
+            num_beam_groups=num_beam_groups,
+            diversity_penalty=diversity_penalty,
+            remove_invalid_values=remove_invalid_values,
+            exponential_decay_length_penalty=exponential_decay_length_penalty,
+            logits_processor=logits_processor,
+            renormalize_logits=renormalize_logits,
+        )
+        
+        # 8. prepare stopping criteria
+        stopping_criteria = self._get_stopping_criteria(
+            max_length=max_length, max_time=max_time, stopping_criteria=stopping_criteria
+        )
+        
+        # 9. go into different generation modes
+        if is_greedy_gen_mode:
+            if num_return_sequences > 1:
+                raise ValueError(
+                    f"num_return_sequences has to be 1, but is {num_return_sequences} when doing greedy search."
+                )
+
+            # 10. run greedy search
+            return self.greedy_search(
+                input_ids,
+                logits_processor=logits_processor,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                **model_kwargs,
+            )

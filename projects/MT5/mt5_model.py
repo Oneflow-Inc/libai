@@ -19,13 +19,14 @@ from libai.config import configurable
 from libai.layers import Linear, LMLogits, RMSLayerNorm
 from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
+from libai.inference.utils.generation_utils import GenerationMixin
 from libai.utils import distributed as dist
 from projects.MT5.layers.embed_layer import MT5Embedding
 from projects.MT5.layers.mask_layer import ExtendedMask
 from projects.MT5.layers.transformer_layer import TransformerLayer
 
 
-class MT5Model(flow.nn.Module):
+class MT5Model(flow.nn.Module, GenerationMixin):
     @configurable
     def __init__(
         self,

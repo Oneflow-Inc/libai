@@ -20,6 +20,7 @@ from libai.utils import distributed as dist
 
 class ExtendedMask(flow.nn.Module):
     def forward(self, x, input_tensor=None, is_decoder=False):
+        extended_mask = None
         if x.dim() == 3:
             extended_mask = x[:, None, :, :]
         elif x.dim() == 2:
