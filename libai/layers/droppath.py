@@ -31,8 +31,6 @@ def drop_path(x, drop_prob: float = 0.5, training: bool = False, scale_by_keep: 
 
     if keep_prob > 0.0 and scale_by_keep:
         random_tensor = random_tensor / keep_prob
-    # random_tensor = random_tensor.floor()  # binarize
-    # output = x.div(keep_prob) * random_tensor
     return x * random_tensor
 
 
