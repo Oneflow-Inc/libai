@@ -14,8 +14,11 @@
 # limitations under the License.
 
 import logging
+import random
 import sys
 
+import numpy as np
+import oneflow as flow
 from utils.weight_convert import load_torch_checkpoint
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
@@ -72,6 +75,13 @@ def main(args):
             logger.info("No dataset in dataloader.test, please set dataset for dataloader.test")
         _ = Trainer.test(cfg, test_loader, model)
         return
+
+    # manual different seed for each rank
+    seed_for_rank = cfg.train.seed + flow.env.get_rank()
+    flow.manual_seed(seed_for_rank)
+    flow.cuda.manual_seed(seed_for_rank)
+    np.random.seed(seed_for_rank)
+    random.seed(seed_for_rank)
 
     trainer = Trainer(cfg)
     return trainer.train()
