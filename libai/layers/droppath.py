@@ -28,7 +28,7 @@ def drop_path(x, drop_prob: float = 0.5, training: bool = False, scale_by_keep: 
     # similar opeartion to new_tensor(shape).bernoulli_(keep_prob)
     random_tensor = flow.rand(*shape, dtype=x.dtype, sbp=x.sbp, placement=x.placement)
     random_tensor = (random_tensor < keep_prob).to(flow.float32)
-    
+
     if keep_prob > 0.0 and scale_by_keep:
         random_tensor = random_tensor / keep_prob
     # random_tensor = random_tensor.floor()  # binarize
@@ -39,7 +39,7 @@ def drop_path(x, drop_prob: float = 0.5, training: bool = False, scale_by_keep: 
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
-    def __init__(self, drop_prob: float = 0., scale_by_keep: bool = True):
+    def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
         super(DropPath, self).__init__()
         self.drop_prob = drop_prob
         self.scale_by_keep = scale_by_keep

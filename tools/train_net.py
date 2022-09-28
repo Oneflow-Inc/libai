@@ -15,10 +15,10 @@
 
 import logging
 import os
+import random
 import sys
 
 import numpy as np
-import random
 import oneflow as flow
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
