@@ -3,11 +3,13 @@
 LiBai supports **auto-parallel training** which means LiBai will automatically find **an efficient parallel training strategy** for a specific model during training. Users can try out auto-parallel training by the following steps.
 
 ## Installation
-Install OneFlow Auto-Parallel Branch
+
+Install OneFlow nightly
 
 ```shell
-python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/release-auto_parallel-v0.1/[PLATFORM]
+python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/master/[PLATFORM]
 ```
+
 - All available `[PLATFORM]`:
 
 <table class="docutils">
@@ -37,8 +39,11 @@ python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/rele
 
 
 ## Train/Evaluate model in auto-parallel mode
-You can train your own model in auto-prallel mode by simply updating the config as follows:
+
+You can train your own model in auto-parallel mode by simply updating the config as follows:
+
 ### Modify config file
+
 ```python
 # your config
 from .common.models.graph import graph
@@ -51,7 +56,9 @@ bash ./tools/train.sh tools/train_net.py configs/your_own_config.py 4
 ```
 
 ### Directly modify the training command line
+
 - auto-parallel training:
+
 ```shell
 bash ./tools/train.sh tools/train_net.py configs/your_own_config.py 4 graph.auto_parallel.enabled=True
 ```
