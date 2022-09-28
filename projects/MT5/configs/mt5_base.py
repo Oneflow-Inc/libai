@@ -21,6 +21,7 @@ cfg = dict(
     eos_token_id=1,
     padding_idx=0,
     is_encoder_decoder=True,
+    tie_word_embeddings=True,
 )
 
 cfg = DictConfig(cfg)

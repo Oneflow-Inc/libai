@@ -246,6 +246,9 @@ class MT5Model(flow.nn.Module, GenerationMixin):
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
 
+        if self.cfg.tie_word_embeddings:
+            decoder_states = decoder_states * (self.cfg.hidden_size**-0.5)
+
         if self.model_type == "mt5":
             logits = self.lm_head(decoder_states)
         else:
