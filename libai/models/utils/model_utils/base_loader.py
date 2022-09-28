@@ -20,7 +20,6 @@ import os
 
 import omegaconf
 import oneflow as flow
-from oneflow.framework.check_point_v2 import _broadcast_py_object
 from termcolor import colored
 
 import libai.utils.distributed as dist
@@ -112,10 +111,10 @@ class ModelLoader(object):
             prefix, has_prefix_module, expects_prefix_module, loaded_keys = [None] * 4
             flow_state_dict = collections.OrderedDict()
 
-        prefix = _broadcast_py_object(prefix, src=0)
-        has_prefix_module = _broadcast_py_object(has_prefix_module, src=0)
-        expects_prefix_module = _broadcast_py_object(expects_prefix_module, src=0)
-        loaded_keys = _broadcast_py_object(loaded_keys, src=0)
+        prefix = dist.broadcast_py_object(prefix, src=0)
+        has_prefix_module = dist.broadcast_py_object(has_prefix_module, src=0)
+        expects_prefix_module = dist.broadcast_py_object(expects_prefix_module, src=0)
+        loaded_keys = dist.broadcast_py_object(loaded_keys, src=0)
 
         # to global
         for key, value in self.model.state_dict().items():
@@ -567,7 +566,7 @@ class ModelLoaderHuggerFace(ModelLoader):
         else:
             flow_state_dict = None
 
-        self.libai_cfg = _broadcast_py_object(self.libai_cfg, src=0)
+        self.libai_cfg = dist.broadcast_py_object(self.libai_cfg, src=0)
 
         # Instance model
         logger.info("building LiBai model...")
