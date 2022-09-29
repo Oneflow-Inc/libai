@@ -38,24 +38,6 @@ from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
 
-def multinomial(probs, num_samples, is_global=True):
-    probs = probs.numpy()
-    res = []
-    for i in range(len(probs)):
-        target = probs[i]
-        samples_idx = []
-        for _ in range(num_samples):
-            result = np.random.multinomial(1, target, size=1)
-            prob = target[result.argmax()]
-            samples_idx.append(np.where(probs[i] == prob)[0].tolist()[0])
-            target = np.delete(target, result.argmax())
-        res.append(samples_idx)
-    return (
-        flow.tensor(res, sbp=probs.sbp, placement=probs.placement)
-        if is_global
-        else flow.tensor(res)
-    )
-
 
 def validate_stopping_criteria(stopping_criteria, max_length):
     stopping_max_length = stopping_criteria.max_length
@@ -116,9 +98,7 @@ def multinomial_sample(
 
         # sample
         probs = nn.functional.softmax(next_token_scores, dim=-1)
-        next_tokens = multinomial(
-            probs, num_samples=1
-        )  # flow.multinomial(probs, num_samples=1).squeeze(1)
+        next_tokens = flow.multinomial(probs, num_samples=1).squeeze(1)
         unfinished_sequences = unfinished_sequences.to_global(
             sbp=next_tokens.sbp, placement=next_tokens.placement
         )
