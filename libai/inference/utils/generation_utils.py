@@ -1,11 +1,13 @@
-import warnings
-import logging
 import inspect
+import logging
+import warnings
 from typing import Callable, List, Optional, Tuple
-from copy import deepcopy
 
-import numpy as np
 import oneflow as flow
+from oneflow import nn
+
+from libai.utils import distributed as dist
+
 from .generation_beam_search import BeamScorer
 from .generation_logits_processor import (
     EncoderNoRepeatNGramLogitsProcessor,
@@ -31,22 +33,8 @@ from .generation_stopping_criteria import (
     StoppingCriteriaList,
     validate_stopping_criteria,
 )
-from oneflow import nn
-
-from libai.utils import distributed as dist
-
 
 logger = logging.getLogger(__name__)
-
-
-def validate_stopping_criteria(stopping_criteria, max_length):
-    stopping_max_length = stopping_criteria.max_length
-    new_stopping_criteria = deepcopy(stopping_criteria)
-    if stopping_max_length is not None and stopping_max_length != max_length:
-        warnings.warn("You set different `max_length` for stopping criteria and `max_length` parameter", UserWarning)
-    elif stopping_max_length is None:
-        new_stopping_criteria.append(MaxLengthCriteria(max_length=max_length))
-    return new_stopping_criteria
 
 
 def multinomial_sample(
@@ -265,9 +253,9 @@ class Generator:
             input_name = "encoder_input_ids"
         else:
             input_name = "input_ids"
-        
+
         model_kwargs = {k: v for k, v in model_kwargs.items() if v is not None or k != input_name}
-        
+
         inputs_kwarg = model_kwargs.pop(input_name, None)
         if inputs_kwarg is not None and inputs is not None:
             raise ValueError(
@@ -279,7 +267,9 @@ class Generator:
             inputs = inputs_kwarg
 
         if inputs is None:
-            inputs = self._prepare_input_ids_for_generation(bos_token_id, model_kwargs.get("encoder_outputs"))
+            inputs = self._prepare_input_ids_for_generation(
+                bos_token_id, model_kwargs.get("encoder_outputs")
+            )
         return inputs, input_name, model_kwargs
 
     def prepare_inputs_for_generation(self, input_ids: flow.Tensor, **kwargs):
@@ -336,7 +326,9 @@ class Generator:
                 placement=flow.placement("cuda", list(range(dist.get_world_size()))),
             )
 
-    def _prepare_encoder_decoder_kwargs_for_generation(self, inputs_tensor, model_kwargs, model_input_name):
+    def _prepare_encoder_decoder_kwargs_for_generation(
+        self, inputs_tensor, model_kwargs, model_input_name
+    ):
         only_encoder = True
         model_kwargs[model_input_name] = inputs_tensor
         if "encoder_decoder_attn_mask" in set(inspect.signature(self.forward).parameters):
@@ -351,7 +343,11 @@ class Generator:
         if model_kwargs is not None and "decoder_input_ids" in model_kwargs:
             return model_kwargs.pop("decoder_input_ids")
         else:
-            decoder_start_token_id = decoder_start_token_id if decoder_start_token_id else self.cfg.decoder_start_token_id
+            decoder_start_token_id = (
+                decoder_start_token_id
+                if decoder_start_token_id
+                else self.cfg.decoder_start_token_id
+            )
             return (
                 flow.ones(
                     (batch_size, 1),
@@ -548,29 +544,29 @@ class Generator:
         eos_token_id: int = None,
     ):
         scores = flow.stack(scores).reshape(len(scores), -1).transpose(0, 1)
-        
+
         beam_indices_mask = beam_indices < 0
         max_beam_length = (1 - beam_indices_mask.long()).sum(-1).max()
         beam_indices = beam_indices[:, :max_beam_length]
         beam_indices_mask = beam_indices_mask[:, :max_beam_length]
-        
+
         beam_indices[beam_indices_mask] = 0
-        
+
         beam_sequence_indices = beam_indices * self.cfg.vocab_size
-        
+
         cut_idx = sequences.shape[-1] - max_beam_length
         indices = sequences[:, cut_idx:] + beam_sequence_indices
-        
+
         transition_scores = scores.gather(0, indices)
-        
+
         transition_scores[beam_indices_mask] = 0
 
         return transition_scores
-    
+
     def _validate_model_kwargs(self, model_kwargs):
         if self.cfg.is_encoder_decoder:
             for key in ["decoder_input_ids"]:
-                model_kwargs.pop(key, None)    
+                model_kwargs.pop(key, None)
         unused_model_args = []
         model_args = set(inspect.signature(self.prepare_inputs_for_generation).parameters)
         if "kwargs" in model_args:
@@ -600,17 +596,18 @@ class Generator:
         eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
         output_scores = output_scores if output_scores is not None else self.cfg.output_scores
         scores = () if output_scores else None
-        logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
-        stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+        logits_processor = (
+            logits_processor if logits_processor is not None else LogitsProcessorList()
+        )
+        stopping_criteria = (
+            stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+        )
         if max_length is not None:
             warnings.warn(
-                "`max_length` is deprecated in this function, use"
-                " `stopping_criteria=StoppingCriteriaList([MaxLengthCriteria(max_length=max_length)])`"
-                " instead.",
+                "`max_length` is deprecated in this function, use MaxLengthCriteria" " instead.",
                 UserWarning,
             )
             stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
-
 
         # keep track of which sequences are already finished
         unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
@@ -677,7 +674,7 @@ class Generator:
         typical_p=None,
         repetition_penalty=None,
         bad_words_ids=None,
-        force_words_ids=None, 
+        force_words_ids=None,
         bos_token_id=None,
         pad_token_id=None,
         eos_token_id=None,
@@ -713,33 +710,47 @@ class Generator:
         num_beams = num_beams if num_beams is not None else self.cfg.num_beams
         length_penalty = length_penalty if length_penalty is not None else self.cfg.length_penalty
         early_stopping = early_stopping if early_stopping is not None else self.cfg.early_stopping
-        num_beam_groups = num_beam_groups if num_beam_groups is not None else self.cfg.num_beam_groups
+        num_beam_groups = (
+            num_beam_groups if num_beam_groups is not None else self.cfg.num_beam_groups
+        )
         do_sample = do_sample if do_sample is not None else self.cfg.do_sample
         num_return_sequences = (
-            num_return_sequences if num_return_sequences is not None else self.cfg.num_return_sequences
+            num_return_sequences
+            if num_return_sequences is not None
+            else self.cfg.num_return_sequences
         )
-        
+
         pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
         eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
-        
+
         output_scores = output_scores if output_scores is not None else self.cfg.output_scores
-        
+
         # 2. Define model inputs
-        inputs_tensor, model_input_name, model_kwargs = self._prepare_model_inputs(inputs, bos_token_id, model_kwargs)
+        inputs_tensor, model_input_name, model_kwargs = self._prepare_model_inputs(
+            inputs, bos_token_id, model_kwargs
+        )
         batch_size = inputs_tensor.shape[0]
-        
+
         # 3. Define other model kwargs
         model_kwargs["use_cache"] = use_cache if use_cache is not None else self.cfg.use_cache
-        
+
         if self.cfg.is_encoder_decoder:
             att_mask_name = "encoder_attn_mask"
-            accepts_attention_mask = att_mask_name in set(inspect.signature(self.forward).parameters.keys())
+            accepts_attention_mask = att_mask_name in set(
+                inspect.signature(self.forward).parameters.keys()
+            )
         else:
             att_mask_name = "attention_mask"
-            accepts_attention_mask = att_mask_name in set(inspect.signature(self.forward).parameters.keys())
+            accepts_attention_mask = att_mask_name in set(
+                inspect.signature(self.forward).parameters.keys()
+            )
         requires_attention_mask = "encoder_outputs" not in model_kwargs
-        
-        if model_kwargs.get(att_mask_name, None) is None and requires_attention_mask and accepts_attention_mask:
+
+        if (
+            model_kwargs.get(att_mask_name, None) is None
+            and requires_attention_mask
+            and accepts_attention_mask
+        ):
             model_kwargs[att_mask_name] = self._prepare_attention_mask_for_generation(
                 inputs_tensor, pad_token_id, eos_token_id
             )
@@ -749,7 +760,7 @@ class Generator:
             model_kwargs = self._prepare_encoder_decoder_kwargs_for_generation(
                 inputs_tensor, model_kwargs, model_input_name
             )
-        
+
         # 4. Prepare `input_ids` which will be used for auto-regressive generation
         if self.cfg.is_encoder_decoder:
             input_ids = self._prepare_decoder_input_ids_for_generation(
@@ -761,65 +772,77 @@ class Generator:
         else:
             # if decoder-only then inputs_tensor has to be `input_ids`
             input_ids = inputs_tensor
-        
+
         # 5. Prepare `max_length` depending on other stopping criteria.
         input_ids_seq_length = input_ids.shape[-1]
         if max_length is None and max_new_tokens is None:
             warnings.warn(
-                "Neither `max_length` nor `max_new_tokens` has been set, `max_length` will default to "
-                f"{self.cfg.max_length} (`self.cfg.max_length`).  we recommend using `max_new_tokens` "
-                "to control the maximum length of the generation.",
+                "Neither `max_length` nor `max_new_tokens` has been set, `max_length` will default "
+                f"to {self.cfg.max_length} (`self.cfg.max_length`).  we recommend using "
+                "`max_new_tokens` to control the maximum length of the generation.",
                 UserWarning,
             )
         elif max_length is None and max_new_tokens is not None:
             max_length = max_new_tokens + input_ids_seq_length
         elif max_length is not None and max_new_tokens is not None:
             raise ValueError(
-                "Both `max_new_tokens` and `max_length` have been set but they serve the same purpose -- setting a"
-                " limit to the generated output length. Remove one of those arguments. Please refer to the"
-                " documentation for more information. "
-                "(https://huggingface.co/docs/transformers/main/en/main_classes/text_generation)"
+                "Both `max_new_tokens` and `max_length` have been set but they serve the same"
             )
         # default to cfg if still None
         max_length = max_length if max_length is not None else self.cfg.max_length
         min_length = min_length if min_length is not None else self.cfg.min_length
-        
+
         if min_length is not None and min_length > max_length:
             raise ValueError(
-                f"Unfeasable length constraints: the minimum length ({min_length}) is larger than the maximum "
-                f"length ({max_length})"
+                f"Unfeasable length constraints: the minimum length ({min_length}) is larger than"
+                f"the maximum length ({max_length})"
             )
         if input_ids_seq_length >= max_length:
             input_ids_string = "decoder_input_ids" if self.cfg.is_encoder_decoder else "input_ids"
             logger.warning(
-                f"Input length of {input_ids_string} is {input_ids_seq_length}, but `max_length` is set to"
-                f" {max_length}. This can lead to unexpected behavior. You should consider increasing "
-                "`max_new_tokens`."
+                f"Input length of {input_ids_string} is {input_ids_seq_length}, but `max_length` is"
+                f" set to {max_length}. This can lead to unexpected behavior. You should consider "
+                "increasing `max_new_tokens`."
             )
-            
+
         # 6. determine generation mode
         is_constraint_gen_mode = constraints is not None or force_words_ids is not None
         is_greedy_gen_mode = (
-            (num_beams == 1) and (num_beam_groups == 1) and do_sample is False and not is_constraint_gen_mode
+            (num_beams == 1)
+            and (num_beam_groups == 1)
+            and do_sample is False
+            and not is_constraint_gen_mode
         )
         is_sample_gen_mode = (
-            (num_beams == 1) and (num_beam_groups == 1) and do_sample is True and not is_constraint_gen_mode
+            (num_beams == 1)
+            and (num_beam_groups == 1)
+            and do_sample is True
+            and not is_constraint_gen_mode
         )
         is_beam_gen_mode = (
-            (num_beams > 1) and (num_beam_groups == 1) and do_sample is False and not is_constraint_gen_mode
+            (num_beams > 1)
+            and (num_beam_groups == 1)
+            and do_sample is False
+            and not is_constraint_gen_mode
         )
         is_beam_sample_gen_mode = (
-            (num_beams > 1) and (num_beam_groups == 1) and do_sample is True and not is_constraint_gen_mode
+            (num_beams > 1)
+            and (num_beam_groups == 1)
+            and do_sample is True
+            and not is_constraint_gen_mode
         )
-        is_group_beam_gen_mode = (num_beams > 1) and (num_beam_groups > 1) and not is_constraint_gen_mode
+        is_group_beam_gen_mode = (
+            (num_beams > 1) and (num_beam_groups > 1) and not is_constraint_gen_mode
+        )
 
         if num_beam_groups > num_beams:
             raise ValueError("`num_beam_groups` has to be smaller or equal to `num_beams`")
         if is_group_beam_gen_mode and do_sample is True:
             raise ValueError(
-                "Diverse beam search cannot be used in sampling mode. Make sure that `do_sample` is set to `False`."
+                "Diverse beam search cannot be used in sampling mode. Make sure that `do_sample` is"
+                " set to `False`."
             )
-        
+
         # 7. prepare distribution pre_processing samplers
         logits_processor = self._get_logits_processor(
             repetition_penalty=repetition_penalty,
@@ -841,17 +864,18 @@ class Generator:
             logits_processor=logits_processor,
             renormalize_logits=renormalize_logits,
         )
-        
+
         # 8. prepare stopping criteria
         stopping_criteria = self._get_stopping_criteria(
             max_length=max_length, max_time=max_time, stopping_criteria=stopping_criteria
         )
-        
+
         # 9. go into different generation modes
         if is_greedy_gen_mode:
             if num_return_sequences > 1:
                 raise ValueError(
-                    f"num_return_sequences has to be 1, but is {num_return_sequences} when doing greedy search."
+                    f"num_return_sequences has to be 1, but is {num_return_sequences} when doing"
+                    " greedy search."
                 )
 
             # 10. run greedy search

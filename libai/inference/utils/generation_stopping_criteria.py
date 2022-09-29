@@ -34,9 +34,7 @@ class MaxTimeCriteria(object):
         return time.time() - self.initial_timestamp > self.max_time
 
 
-def validate_stopping_criteria(
-    stopping_criteria: StoppingCriteriaList, max_length: int
-) -> StoppingCriteriaList:
+def validate_stopping_criteria(stopping_criteria: StoppingCriteriaList, max_length: int):
     stopping_max_length = stopping_criteria.max_length
     new_stopping_criteria = deepcopy(stopping_criteria)
     if stopping_max_length is not None and stopping_max_length != max_length:

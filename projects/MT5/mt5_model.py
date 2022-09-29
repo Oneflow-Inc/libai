@@ -16,10 +16,10 @@
 import oneflow as flow
 
 from libai.config import configurable
+from libai.inference.utils.generation_utils import Generator
 from libai.layers import Linear, LMLogits, RMSLayerNorm
 from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
-from libai.inference.utils.generation_utils import Generator
 from libai.utils import distributed as dist
 from projects.MT5.layers.embed_layer import MT5Embedding
 from projects.MT5.layers.mask_layer import ExtendedMask
@@ -247,7 +247,7 @@ class MT5Model(flow.nn.Module, Generator):
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
 
         if self.cfg.tie_word_embeddings:
-            decoder_states = decoder_states * (self.cfg.hidden_size**-0.5)
+            decoder_states = decoder_states * (self.cfg.hidden_size ** -0.5)
 
         if self.model_type == "mt5":
             logits = self.lm_head(decoder_states)
@@ -300,12 +300,12 @@ class MT5Model(flow.nn.Module, Generator):
         if past is not None:
             input_ids = input_ids[:, -1:]
             self.past_key_values = past
-        
+
         self.encoder_states = encoder_outputs
         decoder_attn_maks = flow.ones(
-            input_ids.size(), 
+            input_ids.size(),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size())))
+            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
         )
         return {
             "decoder_input_ids": input_ids,

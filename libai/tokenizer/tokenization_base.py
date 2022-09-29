@@ -17,8 +17,6 @@
 This class only focus on tokenization, converting token to id and their inverse operation.
 It does not construct inputs using special symbols."""
 
-import oneflow as flow
-
 import copy
 import itertools
 import json
@@ -27,6 +25,8 @@ import os
 import unicodedata
 from io import open
 from typing import Dict, List, Optional, Union
+
+import oneflow as flow
 
 from libai.utils.file_io import PathManager
 from libai.utils.file_utils import cached_path

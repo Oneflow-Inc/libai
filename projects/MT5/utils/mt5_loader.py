@@ -290,11 +290,11 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():
             self._update_cfg(k, v)
-        
-        if self.libai_cfg.get('cfg') is not None:
-            self.libai_cfg.pop('cfg')
-            self.libai_cfg['cfg'] = self.libai_cfg
-        
+
+        if self.libai_cfg.get("cfg") is not None:
+            self.libai_cfg.pop("cfg")
+            self.libai_cfg["cfg"] = self.libai_cfg
+
         self._update_cfg_log()
 
 

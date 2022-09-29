@@ -137,7 +137,7 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         self.assertTrue(
             np.allclose(
-                np.array(-9836561.),
+                np.array(-9836561.0),
                 logits.sum().data.numpy(),
             )
         )
@@ -198,7 +198,7 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         self.assertTrue(
             np.allclose(
-                np.array(-9836561.),
+                np.array(-9836561.0),
                 logits.sum().data.numpy(),
             )
         )
