@@ -11,7 +11,9 @@ import oneflow as flow
 import torch
 from oneflow import nn
 
-from libai.layers import Embedding, LayerNorm, Linear, MultiheadAttention, TransformerLayer
+from libai.layers import MLP, Embedding, LayerNorm, Linear, MultiheadAttention, TransformerLayer
+from libai.layers.activation import build_activation
+from libai.layers.attention import AttnMaskType
 from libai.models import VisionTransformer as ViT
 from libai.utils import distributed as dist
 from libai.utils.checkpoint import get_missing_parameters_message, get_unexpected_parameters_message
@@ -183,6 +185,86 @@ class ModifiedResNet(nn.Module):
         return x
 
 
+class MLPClip(MLP):
+    def __init__(
+        self,
+        hidden_size,
+        ffn_hidden_size,
+        output_dropout_prob=0,
+        init_method=nn.init.xavier_normal_,
+        output_layer_init_method=None,
+        bias_gelu_fusion=False,
+        bias_dropout_fusion=False,
+        *,
+        layer_idx=0,
+    ):
+        super().__init__(
+            hidden_size,
+            ffn_hidden_size,
+            output_dropout_prob,
+            init_method,
+            output_layer_init_method,
+            bias_gelu_fusion,
+            bias_dropout_fusion,
+            layer_idx=layer_idx,
+        )
+        if not bias_gelu_fusion:
+            self.activation_func = build_activation("quick_gelu")
+
+
+class TransformerLayerClip(TransformerLayer):
+    def __init__(
+        self,
+        hidden_size,
+        ffn_hidden_size,
+        num_attention_heads,
+        is_decoder=False,
+        attention_dropout_prob=0,
+        output_dropout_prob=0,
+        drop_path_prob=0,
+        layernorm_epsilon=0.00001,
+        init_method=nn.init.xavier_normal_,
+        output_layer_init_method=None,
+        bias_gelu_fusion=False,
+        bias_dropout_fusion=False,
+        scale_mask_softmax_fusion=False,
+        apply_query_key_layer_scaling=False,
+        apply_residual_post_layernorm=False,
+        attn_mask_type=AttnMaskType.padding,
+        *,
+        layer_idx=0,
+    ):
+        super().__init__(
+            hidden_size,
+            ffn_hidden_size,
+            num_attention_heads,
+            is_decoder,
+            attention_dropout_prob,
+            output_dropout_prob,
+            drop_path_prob,
+            layernorm_epsilon,
+            init_method,
+            output_layer_init_method,
+            bias_gelu_fusion,
+            bias_dropout_fusion,
+            scale_mask_softmax_fusion,
+            apply_query_key_layer_scaling,
+            apply_residual_post_layernorm,
+            attn_mask_type,
+            layer_idx=layer_idx,
+        )
+        self.mlp = MLPClip(
+            self.hidden_size,
+            self.ffn_hidden_size,
+            self.output_dropout_prob,
+            self.init_method,
+            output_layer_init_method=self.output_layer_init_method,
+            bias_gelu_fusion=self.bias_gelu_fusion,
+            bias_dropout_fusion=self.bias_dropout_fusion,
+            layer_idx=self.layer_idx,
+        )
+
+
 class Transformer(nn.Module):
     def __init__(self, width: int, layers: int, heads: int, attn_mask: flow.Tensor = None):
         super().__init__()
@@ -190,7 +272,7 @@ class Transformer(nn.Module):
         self.layers = layers
         self.attn_mask = attn_mask
         self.resblocks = nn.ModuleList(
-            [TransformerLayer(width, 4 * width, heads, layer_idx=i) for i in range(layers)]
+            [TransformerLayerClip(width, 4 * width, heads, layer_idx=i) for i in range(layers)]
         )
 
     def forward(self, x: flow.Tensor):
@@ -358,8 +440,8 @@ class CLIP(nn.Module):
         attn_std = self.transformer.width ** -0.5
         fc_std = (2 * self.transformer.width) ** -0.5
         for block in self.transformer.resblocks:
-            nn.init.normal_(block.attention.query_key_value.weight, std=attn_std)
-            nn.init.normal_(block.attention.dense.weight, std=proj_std)
+            nn.init.normal_(block.self_attention.query_key_value.weight, std=attn_std)
+            nn.init.normal_(block.self_attention.dense.weight, std=proj_std)
             nn.init.normal_(block.mlp.dense_h_to_4h.weight, std=fc_std)
             nn.init.normal_(block.mlp.dense_4h_to_h.weight, std=proj_std)
 
@@ -564,6 +646,10 @@ def change_vit_state_dict(state_dict, visual_num_heads, text_num_heads):
             key = "visual.head.weight"
             value = value.transpose(0, 1)
 
+        # added by huangwei
+        key = key.replace("attention.query_key_value", "self_attention.query_key_value").replace(
+            "attention.dense", "self_attention.dense"
+        )
         new_state_dict[key] = value
 
     return new_state_dict
