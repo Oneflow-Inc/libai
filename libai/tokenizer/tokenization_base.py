@@ -17,6 +17,8 @@
 This class only focus on tokenization, converting token to id and their inverse operation.
 It does not construct inputs using special symbols."""
 
+import oneflow as flow
+
 import copy
 import itertools
 import json
@@ -867,6 +869,10 @@ class PreTrainedTokenizer(object):
             skip_special_tokens: if set to True, will replace special tokens.
             clean_up_tokenization_spaces: if set to True, will clean up the tokenization spaces.
         """
+        # Convert inputs to python lists
+        if isinstance(token_ids, flow.Tensor):
+            token_ids = token_ids.tolist()
+
         filtered_tokens = self.convert_ids_to_tokens(
             token_ids, skip_special_tokens=skip_special_tokens
         )

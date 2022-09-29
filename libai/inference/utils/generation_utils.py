@@ -2,6 +2,7 @@ import warnings
 import logging
 import inspect
 from typing import Callable, List, Optional, Tuple
+from copy import deepcopy
 
 import numpy as np
 import oneflow as flow
@@ -56,82 +57,14 @@ def multinomial(probs, num_samples, is_global=True):
     )
 
 
-def greedy_search(
-    model,
-    input_ids: flow.Tensor,
-    logits_processor: Optional[LogitsProcessorList] = None,
-    stopping_criteria: Optional[StoppingCriteriaList] = None,
-    max_length: Optional[int] = None,
-    pad_token_id: Optional[int] = None,
-    eos_token_id: Optional[int] = None,
-    is_encoder_decoder=False,
-    output_scores=False,
-    **model_kwargs,
-):
-    scores = () if output_scores else None
-    logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
-    stopping_criteria = (
-        stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
-    )
-    if max_length is not None:
-        warnings.warn(
-            "`max_length` is deprecated in this function, use"
-            " `stopping_criteria=StoppingCriteriaList([MaxLengthCriteria(max_length=max_length)])`"
-            " instead.",
-            UserWarning,
-        )
-        stopping_criteria = MaxLengthCriteria(max_length=max_length)
-
-    unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
-    cur_len = input_ids.shape[-1]
-
-    while True:
-        # prepare model inputs
-        model_inputs = model._prepare_inputs_for_generation(input_ids, **model_kwargs)
-
-        outputs = model(**model_inputs)
-
-        next_token_logits = outputs[:, -1, :]
-
-        # logits_processor
-        next_token_scores = logits_processor(input_ids, next_token_logits)
-
-        # Store scores
-        if output_scores:
-            scores += (next_token_scores,)
-
-        # argmax
-        next_tokens = flow.argmax(next_token_scores, dim=-1)
-        unfinished_sequences = unfinished_sequences.to_global(
-            sbp=next_tokens.sbp, placement=next_tokens.placement
-        )
-
-        if eos_token_id is not None:
-            if pad_token_id is None:
-                raise ValueError(
-                    "If `eos_token_id` is defined, make sure that `pad_token_id` is defined."
-                )
-            next_tokens = next_tokens * unfinished_sequences + pad_token_id * (
-                1 - unfinished_sequences
-            )
-
-        next_tokens = next_tokens.to(flow.long)
-        input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
-
-        model_kwargs = _update_model_kwargs_for_generation(
-            model, model_kwargs, is_encoder_decoder=is_encoder_decoder
-        )
-        cur_len = cur_len + 1
-
-        if eos_token_id is not None:
-            unfinished_sequences = flow.mul(
-                unfinished_sequences, (next_tokens != eos_token_id).long()
-            )
-
-        if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
-            break
-
-    return input_ids
+def validate_stopping_criteria(stopping_criteria, max_length):
+    stopping_max_length = stopping_criteria.max_length
+    new_stopping_criteria = deepcopy(stopping_criteria)
+    if stopping_max_length is not None and stopping_max_length != max_length:
+        warnings.warn("You set different `max_length` for stopping criteria and `max_length` parameter", UserWarning)
+    elif stopping_max_length is None:
+        new_stopping_criteria.append(MaxLengthCriteria(max_length=max_length))
+    return new_stopping_criteria
 
 
 def multinomial_sample(
@@ -346,7 +279,7 @@ def beam_search(
     return sequence_outputs["sequences"]
 
 
-class GenerationMixin:
+class Generator:
     def _prepare_model_inputs(self, inputs=None, bos_token_id=None, model_kwargs=None):
         if self.cfg.is_encoder_decoder:
             input_name = "encoder_input_ids"
@@ -428,8 +361,8 @@ class GenerationMixin:
         model_kwargs[model_input_name] = inputs_tensor
         if "encoder_decoder_attn_mask" in set(inspect.signature(self.forward).parameters):
             model_kwargs["encoder_decoder_attn_mask"] = model_kwargs["encoder_attn_mask"]
-        # print(model_kwargs)
         model_kwargs["encoder_outputs"] = self(**model_kwargs, only_encoder=only_encoder)
+        model_kwargs.pop(model_input_name)
         return model_kwargs
 
     def _prepare_decoder_input_ids_for_generation(
@@ -671,6 +604,84 @@ class GenerationMixin:
                 "(note: typos in the generate arguments will also show up in this list)"
             )
 
+    def greedy_search(
+        self,
+        input_ids: flow.Tensor,
+        logits_processor: Optional[LogitsProcessorList] = None,
+        stopping_criteria: Optional[StoppingCriteriaList] = None,
+        max_length: Optional[int] = None,
+        pad_token_id: Optional[int] = None,
+        eos_token_id: Optional[int] = None,
+        is_encoder_decoder=False,
+        output_scores=False,
+        **model_kwargs,
+    ):
+        pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
+        eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        output_scores = output_scores if output_scores is not None else self.cfg.output_scores
+        scores = () if output_scores else None
+        logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
+        stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+        if max_length is not None:
+            warnings.warn(
+                "`max_length` is deprecated in this function, use"
+                " `stopping_criteria=StoppingCriteriaList([MaxLengthCriteria(max_length=max_length)])`"
+                " instead.",
+                UserWarning,
+            )
+            stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
+
+
+        # keep track of which sequences are already finished
+        unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
+        cur_len = input_ids.shape[-1]
+        while True:
+            # prepare model inputs
+            model_inputs = self._prepare_inputs_for_generation(input_ids, **model_kwargs)
+            # generate
+            outputs = self(**model_inputs)
+            next_token_logits = outputs[:, -1, :]
+
+            # logits_processor
+            next_token_scores = logits_processor(input_ids, next_token_logits)
+
+            # Store scores
+            if output_scores:
+                scores += (next_token_scores,)
+
+            # argmax
+            next_tokens = flow.argmax(next_token_scores, dim=-1)
+            unfinished_sequences = unfinished_sequences.to_global(
+                sbp=next_tokens.sbp, placement=next_tokens.placement
+            )
+
+            if eos_token_id is not None:
+                if pad_token_id is None:
+                    raise ValueError(
+                        "If `eos_token_id` is defined, make sure that `pad_token_id` is defined."
+                    )
+                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (
+                    1 - unfinished_sequences
+                )
+
+            next_tokens = next_tokens.to(flow.long)
+            input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
+            model_kwargs = self._update_model_kwargs_for_generation(
+                model_kwargs, is_encoder_decoder=is_encoder_decoder
+            )
+            cur_len = cur_len + 1
+
+            # if eos_token was found in one sentence, set sentence to finished
+            if eos_token_id is not None:
+                unfinished_sequences = flow.mul(
+                    unfinished_sequences, (next_tokens != eos_token_id).long()
+                )
+
+            if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
+                break
+
+        return input_ids
+
     @flow.no_grad()
     def generate(
         self,
@@ -758,6 +769,7 @@ class GenerationMixin:
             model_kwargs = self._prepare_encoder_decoder_kwargs_for_generation(
                 inputs_tensor, model_kwargs, model_input_name
             )
+        
         # 4. Prepare `input_ids` which will be used for auto-regressive generation
         if self.cfg.is_encoder_decoder:
             input_ids = self._prepare_decoder_input_ids_for_generation(
@@ -775,9 +787,8 @@ class GenerationMixin:
         if max_length is None and max_new_tokens is None:
             warnings.warn(
                 "Neither `max_length` nor `max_new_tokens` has been set, `max_length` will default to "
-                f"{self.cfg.max_length} (`self.cfg.max_length`). Controlling `max_length` via the cfg is "
-                "deprecated and `max_length` will be removed from the cfg in v5 of Transformers -- we recommend "
-                "using `max_new_tokens` to control the maximum length of the generation.",
+                f"{self.cfg.max_length} (`self.cfg.max_length`).  we recommend using `max_new_tokens` "
+                "to control the maximum length of the generation.",
                 UserWarning,
             )
         elif max_length is None and max_new_tokens is not None:

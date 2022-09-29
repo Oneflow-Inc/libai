@@ -19,14 +19,14 @@ from libai.config import configurable
 from libai.layers import Linear, LMLogits, RMSLayerNorm
 from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
-from libai.inference.utils.generation_utils import GenerationMixin
+from libai.inference.utils.generation_utils import Generator
 from libai.utils import distributed as dist
 from projects.MT5.layers.embed_layer import MT5Embedding
 from projects.MT5.layers.mask_layer import ExtendedMask
 from projects.MT5.layers.transformer_layer import TransformerLayer
 
 
-class MT5Model(flow.nn.Module, GenerationMixin):
+class MT5Model(flow.nn.Module, Generator):
     @configurable
     def __init__(
         self,
@@ -299,12 +299,17 @@ class MT5Model(flow.nn.Module, GenerationMixin):
         # cut decoder_input_ids if past is used
         if past is not None:
             input_ids = input_ids[:, -1:]
-
-        self.past_key_values = past
+            self.past_key_values = past
+        
         self.encoder_states = encoder_outputs
-
+        decoder_attn_maks = flow.ones(
+            input_ids.size(), 
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=flow.placement("cuda", list(range(dist.get_world_size())))
+        )
         return {
             "decoder_input_ids": input_ids,
+            "decoder_attn_mask": decoder_attn_maks,
             "encoder_attn_mask": encoder_attn_mask,
             "encoder_decoder_attn_mask": encoder_decoder_attn_mask,
             "use_cache": use_cache,
