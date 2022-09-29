@@ -364,11 +364,7 @@ class TypicalLogitsWarper(object):
         # calculate entropy
         normalized = flow.nn.functional.log_softmax(scores, dim=-1)
         p = flow.exp(normalized)
-        x = normalized * p
-        shape = list(x.size())
-        shape[-1] = 1
-        x[flow.where(x != x)] = 0
-        ent = -x.sum(dim=-1).reshape(shape)
+        ent = -flow.nansum(normalized * p, dim=-1, keepdim=True)
 
         # shift and sort
         shifted_scores = flow.abs((-normalized) - ent)
