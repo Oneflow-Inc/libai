@@ -9,7 +9,7 @@ dataloader = OmegaConf.create()
 
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
-        LazyCall(T5Dataset)(vocab_size=8, num_samples=1000, enc_seq_len=8, dec_seq_len=8),
+        LazyCall(T5Dataset)(vocab_size=8, num_samples=1024, enc_seq_len=8, dec_seq_len=8),
     ],
     num_workers=4,
 )
