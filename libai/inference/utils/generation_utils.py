@@ -37,88 +37,6 @@ from .generation_stopping_criteria import (
 logger = logging.getLogger(__name__)
 
 
-def multinomial_sample(
-    model,
-    input_ids: flow.Tensor,
-    logits_processor: Optional[LogitsProcessorList] = None,
-    stopping_criteria: Optional[StoppingCriteriaList] = None,
-    logits_warper: Optional[LogitsProcessorList] = None,
-    max_length: Optional[int] = None,
-    pad_token_id: Optional[int] = None,
-    eos_token_id: Optional[int] = None,
-    is_encoder_decoder=False,
-    output_scores=False,
-    **model_kwargs,
-):
-    # init values
-    scores = () if output_scores else None
-    logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
-    stopping_criteria = (
-        stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
-    )
-    if max_length is not None:
-        warnings.warn(
-            "`max_length` is deprecated in this function, use"
-            " `stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))`"
-            "instead.",
-            UserWarning,
-        )
-        stopping_criteria = MaxLengthCriteria(max_length=max_length)
-    logits_warper = logits_warper if logits_warper is not None else LogitsProcessorList()
-
-    unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
-    cur_len = input_ids.shape[-1]
-
-    while True:
-        # prepare model inputs
-        model_inputs = model._prepare_inputs_for_generation(input_ids, **model_kwargs)
-
-        outputs = model(**model_inputs)
-
-        next_token_logits = outputs[:, -1, :]
-        # pre-process distribution
-        next_token_scores = logits_processor(input_ids, next_token_logits)
-        next_token_scores = logits_warper(input_ids, next_token_scores)
-
-        # Store scores
-        if output_scores:
-            scores += (next_token_scores,)
-
-        # sample
-        probs = nn.functional.softmax(next_token_scores, dim=-1)
-        next_tokens = flow.multinomial(probs, num_samples=1).squeeze(1)
-        unfinished_sequences = unfinished_sequences.to_global(
-            sbp=next_tokens.sbp, placement=next_tokens.placement
-        )
-
-        if eos_token_id is not None:
-            if pad_token_id is None:
-                raise ValueError(
-                    "If `eos_token_id` is defined, make sure that `pad_token_id` is defined."
-                )
-            next_tokens = next_tokens * unfinished_sequences + pad_token_id * (
-                1 - unfinished_sequences
-            )
-
-        next_tokens = next_tokens.to(flow.long)
-        input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
-
-        model_kwargs = _update_model_kwargs_for_generation(
-            model, model_kwargs, is_encoder_decoder=is_encoder_decoder
-        )
-        cur_len = cur_len + 1
-
-        if eos_token_id is not None:
-            unfinished_sequences = flow.mul(
-                unfinished_sequences, (next_tokens != eos_token_id).long()
-            )
-
-        if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
-            break
-
-    return input_ids
-
-
 def beam_search(
     model,
     input_ids: flow.Tensor,
@@ -368,6 +286,42 @@ class Generator:
         else:
             return self.cfg.bos_token_idx
 
+    @staticmethod
+    def _expand_inputs_for_generation(
+        input_ids,
+        expand_size=1,
+        is_encoder_decoder=False,
+        attention_mask=None,
+        encoder_outputs=None,
+        **model_kwargs,
+    ):
+        expanded_return_idx = (
+            flow.arange(input_ids.shape[0]).view(-1, 1).repeat(1, expand_size).view(-1)
+        )
+        expanded_return_idx = expanded_return_idx.to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+        )
+
+        input_ids = input_ids.index_select(0, expanded_return_idx)
+
+        # token_type ids not supported.
+
+        if attention_mask is not None:
+            model_kwargs["attention_mask"] = attention_mask.index_select(0, expanded_return_idx)
+
+        if is_encoder_decoder:
+            if encoder_outputs is None:
+                raise ValueError(
+                    "If `is_encoder_decoder` is True, make sure that `encoder_outputs` is defined."
+                )
+            encoder_outputs = encoder_outputs.index_select(0, expanded_return_idx)
+            model_kwargs["encoder_outputs"] = encoder_outputs
+            model_kwargs["encoder_attn_mask"] = model_kwargs["encoder_attn_mask"].index_select(
+                0, expanded_return_idx
+            )
+        return input_ids, model_kwargs
+
     def _update_model_kwargs_for_generation(self, model_kwargs, is_encoder_decoder=False):
         # update past_key_value_state
         if self.past_key_values[-1] is not None:
@@ -615,6 +569,7 @@ class Generator:
         while True:
             # prepare model inputs
             model_inputs = self._prepare_inputs_for_generation(input_ids, **model_kwargs)
+
             # generate
             outputs = self(**model_inputs)
             next_token_logits = outputs[:, -1, :]
@@ -659,6 +614,98 @@ class Generator:
 
         return input_ids
 
+    def multinomial_sample(
+        self,
+        input_ids: flow.Tensor,
+        logits_processor: Optional[LogitsProcessorList] = None,
+        stopping_criteria: Optional[StoppingCriteriaList] = None,
+        logits_warper: Optional[LogitsProcessorList] = None,
+        max_length: Optional[int] = None,
+        pad_token_id: Optional[int] = None,
+        eos_token_id: Optional[int] = None,
+        is_encoder_decoder=False,
+        output_scores=False,
+        **model_kwargs,
+    ):
+        # init values
+        scores = () if output_scores else None
+        logits_processor = (
+            logits_processor if logits_processor is not None else LogitsProcessorList()
+        )
+        stopping_criteria = (
+            stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+        )
+        if max_length is not None:
+            warnings.warn(
+                "`max_length` is deprecated in this function, use"
+                " `stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))`"
+                "instead.",
+                UserWarning,
+            )
+            stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
+        logits_warper = logits_warper if logits_warper is not None else LogitsProcessorList()
+
+        unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
+        cur_len = input_ids.shape[-1]
+
+        while True:
+            # prepare model inputs
+            model_inputs = self._prepare_inputs_for_generation(input_ids, **model_kwargs)
+
+            # generate
+            outputs = self(**model_inputs)
+            next_token_logits = outputs[:, -1, :]
+
+            # pre-process distribution
+            next_token_scores = logits_processor(input_ids, next_token_logits)
+            next_token_scores = logits_warper(input_ids, next_token_scores)
+
+            # Store scores
+            if output_scores:
+                scores += (next_token_scores,)
+
+            # sample
+            probs = nn.functional.softmax(next_token_scores, dim=-1)
+            probs = probs.to_global(
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            ).to_local()
+            next_tokens = flow.multinomial(probs, num_samples=1).squeeze(1)
+            next_tokens = next_tokens.to_global(
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            )
+            unfinished_sequences = unfinished_sequences.to_global(
+                sbp=next_tokens.sbp, placement=next_tokens.placement
+            )
+
+            if eos_token_id is not None:
+                if pad_token_id is None:
+                    raise ValueError(
+                        "If `eos_token_id` is defined, make sure that `pad_token_id` is defined."
+                    )
+                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (
+                    1 - unfinished_sequences
+                )
+
+            next_tokens = next_tokens.to(flow.long)
+            input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
+
+            model_kwargs = self._update_model_kwargs_for_generation(
+                model_kwargs, is_encoder_decoder=is_encoder_decoder
+            )
+            cur_len = cur_len + 1
+
+            if eos_token_id is not None:
+                unfinished_sequences = flow.mul(
+                    unfinished_sequences, (next_tokens != eos_token_id).long()
+                )
+
+            if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
+                break
+
+        return input_ids
+
     @flow.no_grad()
     def generate(
         self,
@@ -673,7 +720,6 @@ class Generator:
         top_p=None,
         typical_p=None,
         repetition_penalty=None,
-        bad_words_ids=None,
         force_words_ids=None,
         bos_token_id=None,
         pad_token_id=None,
@@ -693,8 +739,6 @@ class Generator:
         renormalize_logits=None,
         stopping_criteria=StoppingCriteriaList(),
         constraints=None,
-        output_attentions=None,
-        output_hidden_states=None,
         output_scores=None,
         forced_bos_token_id=None,
         forced_eos_token_id=None,
@@ -882,6 +926,37 @@ class Generator:
             return self.greedy_search(
                 input_ids,
                 logits_processor=logits_processor,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                **model_kwargs,
+            )
+
+        elif is_sample_gen_mode:
+            # 10. prepare logits warper
+            logits_warper = self._get_logits_warper(
+                top_k=top_k,
+                top_p=top_p,
+                typical_p=typical_p,
+                temperature=temperature,
+                num_beams=num_beams,
+                renormalize_logits=renormalize_logits,
+            )
+
+            # 11. expand input_ids with `num_return_sequences` additional sequences per batch
+            input_ids, model_kwargs = self._expand_inputs_for_generation(
+                input_ids,
+                expand_size=num_return_sequences,
+                is_encoder_decoder=self.cfg.is_encoder_decoder,
+                **model_kwargs,
+            )
+
+            # 12. run sample
+            return self.multinomial_sample(
+                input_ids,
+                logits_processor=logits_processor,
+                logits_warper=logits_warper,
                 stopping_criteria=stopping_criteria,
                 pad_token_id=pad_token_id,
                 eos_token_id=eos_token_id,
