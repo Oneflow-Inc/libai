@@ -275,7 +275,10 @@ class BeamSearchScorer(BeamScorer):
 
         # select the best hypotheses
         sent_lengths = flow.zeros(
-            input_ids.size(), dtype=flow.long, sbp=input_ids.sbp, placement=input_ids.placement
+            batch_size * self.num_beam_hyps_to_keep,
+            dtype=flow.long,
+            sbp=input_ids.sbp,
+            placement=input_ids.placement,
         )
         best = []
         best_indices = []

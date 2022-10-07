@@ -8,7 +8,7 @@ from oneflow import nn
 
 from libai.utils import distributed as dist
 
-from .generation_beam_search import BeamScorer
+from .generation_beam_search import BeamScorer, BeamSearchScorer
 from .generation_logits_processor import (
     EncoderNoRepeatNGramLogitsProcessor,
     ExponentialDecayLengthPenalty,
@@ -35,134 +35,6 @@ from .generation_stopping_criteria import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def beam_search(
-    model,
-    input_ids: flow.Tensor,
-    beam_scorer: BeamScorer,
-    logits_processor: Optional[LogitsProcessorList] = None,
-    stopping_criteria: Optional[StoppingCriteriaList] = None,
-    max_length: Optional[int] = None,
-    pad_token_id: Optional[int] = None,
-    eos_token_id: Optional[int] = None,
-    is_encoder_decoder=False,
-    output_scores=False,
-    **model_kwargs,
-):
-    scores = () if output_scores else None
-    logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
-    stopping_criteria = (
-        stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
-    )
-    if max_length is not None:
-        warnings.warn(
-            "`max_length` is deprecated in this function, use"
-            " `stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))`"
-            "instead.",
-            UserWarning,
-        )
-        stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
-    if len(stopping_criteria) == 0:
-        warnings.warn(
-            "You don't have defined any stopping_criteria, this will likely loop forever",
-            UserWarning,
-        )
-
-    batch_size = len(beam_scorer._beam_hyps)
-    num_beams = beam_scorer.num_beams
-
-    batch_beam_size, cur_len = input_ids.shape
-
-    if num_beams * batch_size != batch_beam_size:
-        raise ValueError(
-            f"Batch dimension of `input_ids` should be {num_beams * batch_size}, "
-            f"but is {batch_beam_size}."
-        )
-
-    beam_indices = None
-
-    beam_scores = flow.zeros(
-        (batch_size, num_beams),
-        dtype=flow.float,
-        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        placement=flow.placement("cuda", list(range(dist.get_world_size()))),
-    )
-    beam_scores[:, 1:] = -1e9
-    beam_scores = beam_scores.view((batch_size * num_beams,))
-
-    while True:
-        # prepare model inputs
-        model_inputs = model._prepare_inputs_for_generation(input_ids, **model_kwargs)
-
-        outputs = model(**model_inputs)
-        next_token_logits = outputs[:, -1, :]
-
-        next_token_scores = nn.functional.log_softmax(
-            next_token_logits, dim=-1
-        )  # (batch_size * num_beams, vocab_size)
-
-        next_token_scores_processed = logits_processor(input_ids, next_token_scores)
-        next_token_scores = next_token_scores_processed + beam_scores[:, None].expand_as(
-            next_token_scores
-        )
-
-        # Store scores
-        if output_scores:
-            scores += (next_token_scores,)
-
-        # reshape for beam search
-        vocab_size = next_token_scores.shape[-1]
-        next_token_scores = next_token_scores.view(batch_size, num_beams * vocab_size)
-
-        next_token_scores, next_tokens = flow.topk(
-            next_token_scores, 2 * num_beams, dim=1, largest=True, sorted=True
-        )
-        next_indices = next_tokens // vocab_size
-        next_tokens = next_tokens % vocab_size
-
-        beam_outputs = beam_scorer.process(
-            input_ids,
-            next_token_scores,
-            next_tokens,
-            next_indices,
-            pad_token_id=pad_token_id,
-            eos_token_id=eos_token_id,
-            beam_indices=beam_indices,
-        )
-
-        beam_scores = beam_outputs["next_beam_scores"]
-        beam_next_tokens = beam_outputs["next_beam_tokens"]
-        beam_idx = beam_outputs["next_beam_indices"]
-
-        input_ids = flow.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
-
-        model_kwargs = _update_model_kwargs_for_generation(
-            model, model_kwargs, is_encoder_decoder=is_encoder_decoder
-        )
-
-        # update past_key_value
-        if model_kwargs["past"] is not None:
-            model_kwargs["past"] = model._reorder_cache(beam_idx)
-
-        # increase cur_len
-        cur_len = cur_len + 1
-
-        if beam_scorer.is_done or stopping_criteria(input_ids, scores):
-            break
-
-    sequence_outputs = beam_scorer.finalize(
-        input_ids,
-        beam_scores,
-        next_tokens,
-        next_indices,
-        pad_token_id=pad_token_id,
-        eos_token_id=eos_token_id,
-        max_length=stopping_criteria.max_length,
-        beam_indices=beam_indices,
-    )
-
-    return sequence_outputs["sequences"]
 
 
 class Generator:
@@ -628,6 +500,9 @@ class Generator:
         **model_kwargs,
     ):
         # init values
+        pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
+        eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        output_scores = output_scores if output_scores is not None else self.cfg.output_scores
         scores = () if output_scores else None
         logits_processor = (
             logits_processor if logits_processor is not None else LogitsProcessorList()
@@ -705,6 +580,138 @@ class Generator:
                 break
 
         return input_ids
+
+    def beam_search(
+        self,
+        input_ids: flow.Tensor,
+        beam_scorer: BeamScorer,
+        logits_processor: Optional[LogitsProcessorList] = None,
+        stopping_criteria: Optional[StoppingCriteriaList] = None,
+        max_length: Optional[int] = None,
+        pad_token_id: Optional[int] = None,
+        eos_token_id: Optional[int] = None,
+        is_encoder_decoder=False,
+        output_scores=False,
+        **model_kwargs,
+    ):
+        pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
+        eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        output_scores = output_scores if output_scores is not None else self.cfg.output_scores
+        scores = () if output_scores else None
+        logits_processor = (
+            logits_processor if logits_processor is not None else LogitsProcessorList()
+        )
+        stopping_criteria = (
+            stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+        )
+        if max_length is not None:
+            warnings.warn(
+                "`max_length` is deprecated in this function, use"
+                " `stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))`"
+                "instead.",
+                UserWarning,
+            )
+            stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
+        if len(stopping_criteria) == 0:
+            warnings.warn(
+                "You don't have defined any stopping_criteria, this will likely loop forever",
+                UserWarning,
+            )
+
+        batch_size = len(beam_scorer._beam_hyps)
+        num_beams = beam_scorer.num_beams
+
+        batch_beam_size, cur_len = input_ids.shape
+
+        if num_beams * batch_size != batch_beam_size:
+            raise ValueError(
+                f"Batch dimension of `input_ids` should be {num_beams * batch_size}, "
+                f"but is {batch_beam_size}."
+            )
+
+        beam_indices = None
+
+        beam_scores = flow.zeros(
+            (batch_size, num_beams),
+            dtype=flow.float,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+        )
+        beam_scores[:, 1:] = -1e9
+        beam_scores = beam_scores.view((batch_size * num_beams,))
+
+        while True:
+            # prepare model inputs
+            model_inputs = self._prepare_inputs_for_generation(input_ids, **model_kwargs)
+
+            outputs = self(**model_inputs)
+            next_token_logits = outputs[:, -1, :]
+
+            next_token_scores = nn.functional.log_softmax(
+                next_token_logits, dim=-1
+            )  # (batch_size * num_beams, vocab_size)
+
+            next_token_scores_processed = logits_processor(input_ids, next_token_scores)
+            next_token_scores = next_token_scores_processed + beam_scores[:, None].expand_as(
+                next_token_scores
+            )
+
+            # Store scores
+            if output_scores:
+                scores += (next_token_scores,)
+
+            # reshape for beam search
+            vocab_size = next_token_scores.shape[-1]
+            next_token_scores = next_token_scores.view(batch_size, num_beams * vocab_size)
+
+            next_token_scores, next_tokens = flow.topk(
+                next_token_scores, 2 * num_beams, dim=1, largest=True, sorted=True
+            )
+            next_indices = next_tokens // vocab_size
+            next_tokens = next_tokens % vocab_size
+
+            beam_outputs = beam_scorer.process(
+                input_ids,
+                next_token_scores,
+                next_tokens,
+                next_indices,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                beam_indices=beam_indices,
+            )
+
+            beam_scores = beam_outputs["next_beam_scores"]
+            beam_next_tokens = beam_outputs["next_beam_tokens"]
+            beam_idx = beam_outputs["next_beam_indices"]
+
+            input_ids = flow.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
+
+            model_kwargs = self._update_model_kwargs_for_generation(
+                model_kwargs, is_encoder_decoder=is_encoder_decoder
+            )
+
+            # update past_key_value
+            if model_kwargs["past"] is not None:
+                model_kwargs["past"] = self._reorder_cache(beam_idx)
+
+            # increase cur_len
+            cur_len = cur_len + 1
+
+            if beam_scorer.is_done or stopping_criteria(input_ids, scores):
+                break
+
+        sequence_outputs = beam_scorer.finalize(
+            input_ids,
+            beam_scores,
+            next_tokens,
+            next_indices,
+            pad_token_id=pad_token_id,
+            eos_token_id=eos_token_id,
+            max_length=stopping_criteria.max_length,
+            beam_indices=beam_indices,
+        )
+
+        return sequence_outputs["sequences"]
 
     @flow.no_grad()
     def generate(
@@ -957,6 +964,42 @@ class Generator:
                 input_ids,
                 logits_processor=logits_processor,
                 logits_warper=logits_warper,
+                stopping_criteria=stopping_criteria,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+                output_scores=output_scores,
+                **model_kwargs,
+            )
+
+        elif is_beam_gen_mode:
+            if num_return_sequences > num_beams:
+                raise ValueError(
+                    "`num_return_sequences` has to be smaller or equal to `num_beams`."
+                )
+
+            if stopping_criteria.max_length is None:
+                raise ValueError("`max_length` needs to be a stopping_criteria for now.")
+            # 10. prepare beam search scorer
+            beam_scorer = BeamSearchScorer(
+                batch_size=batch_size,
+                num_beams=num_beams,
+                length_penalty=length_penalty,
+                do_early_stopping=early_stopping,
+                num_beam_hyps_to_keep=num_return_sequences,
+            )
+            # 11. interleave input_ids with `num_beams` additional sequences per batch
+            input_ids, model_kwargs = self._expand_inputs_for_generation(
+                input_ids,
+                expand_size=num_beams,
+                is_encoder_decoder=self.cfg.is_encoder_decoder,
+                **model_kwargs,
+            )
+
+            # 12. run beam search
+            return self.beam_search(
+                input_ids,
+                beam_scorer,
+                logits_processor=logits_processor,
                 stopping_criteria=stopping_criteria,
                 pad_token_id=pad_token_id,
                 eos_token_id=eos_token_id,
