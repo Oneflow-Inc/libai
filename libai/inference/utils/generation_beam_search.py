@@ -49,7 +49,7 @@ class BeamHypotheses:
         self.beams = []
         self.worst_score = 1e9
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Number of hypotheses in the list.
         """

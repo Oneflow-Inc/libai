@@ -38,7 +38,7 @@ class MaxLengthCriteria(object):
     def __init__(self, max_length: int):
         self.max_length = max_length
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> bool:
         return input_ids.shape[-1] >= self.max_length
 
 
@@ -47,7 +47,7 @@ class MaxTimeCriteria(object):
         self.max_time = max_time
         self.initial_timestamp = time.time() if initial_timestamp is None else initial_timestamp
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor, **kwargs):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor, **kwargs) -> bool:
         return time.time() - self.initial_timestamp > self.max_time
 
 

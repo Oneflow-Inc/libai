@@ -18,7 +18,7 @@
 import inspect
 import logging
 import warnings
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import oneflow as flow
 from oneflow import nn
@@ -55,7 +55,12 @@ logger = logging.getLogger(__name__)
 
 
 class Generator:
-    def _prepare_model_inputs(self, inputs=None, bos_token_id=None, model_kwargs=None):
+    def _prepare_model_inputs(
+        self,
+        inputs: Optional[flow.Tensor] = None,
+        bos_token_id: Optional[int] = None,
+        model_kwargs: Optional[Dict[str, flow.Tensor]] = None,
+    ):
         if self.cfg.is_encoder_decoder:
             input_name = "encoder_input_ids"
         else:
@@ -86,7 +91,9 @@ class Generator:
         """
         return {"input_ids": input_ids}
 
-    def _prepare_input_ids_for_generation(self, bos_token_id: int, encoder_outputs):
+    def _prepare_input_ids_for_generation(
+        self, bos_token_id: Optional[int], encoder_outputs: Optional[flow.Tensor]
+    ):
         if self.cfg.is_encoder_decoder and encoder_outputs is not None:
             shape = encoder_outputs.size()[:-1]
             return (
@@ -117,7 +124,7 @@ class Generator:
         pad_token_id: Optional[int],
         eos_token_id: Optional[int],
     ):
-        is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [flow.int64]
+        is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [flow.int64, flow.long]
         is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs.squeeze(0))
         is_pad_token_not_equal_to_eos_token_id = (eos_token_id is None) or (
             (eos_token_id is not None) and (pad_token_id != eos_token_id)
@@ -134,7 +141,7 @@ class Generator:
             )
 
     def _prepare_encoder_decoder_kwargs_for_generation(
-        self, inputs_tensor, model_kwargs, model_input_name
+        self, inputs_tensor: flow.Tensor, model_kwargs, model_input_name: str
     ):
         only_encoder = True
         model_kwargs[model_input_name] = inputs_tensor
@@ -145,7 +152,11 @@ class Generator:
         return model_kwargs
 
     def _prepare_decoder_input_ids_for_generation(
-        self, batch_size, decoder_start_token_id, bos_token_id, model_kwargs
+        self,
+        batch_size: int,
+        decoder_start_token_id: int = None,
+        bos_token_id: int = None,
+        model_kwargs=None,
     ):
         if model_kwargs is not None and "decoder_input_ids" in model_kwargs:
             return model_kwargs.pop("decoder_input_ids")
@@ -165,7 +176,9 @@ class Generator:
                 * decoder_start_token_id
             )
 
-    def _get_decoder_start_token_id(self, decoder_start_token_id=None, bos_token_id=None):
+    def _get_decoder_start_token_id(
+        self, decoder_start_token_id: int = None, bos_token_id: int = None
+    ):
         if decoder_start_token_id is not None:
             return decoder_start_token_id
         elif self.cfg.is_encoder_decoder:
@@ -177,11 +190,11 @@ class Generator:
 
     @staticmethod
     def _expand_inputs_for_generation(
-        input_ids,
-        expand_size=1,
-        is_encoder_decoder=False,
-        attention_mask=None,
-        encoder_outputs=None,
+        input_ids: flow.Tensor,
+        expand_size: int = 1,
+        is_encoder_decoder: bool = False,
+        attention_mask: Optional[flow.Tensor] = None,
+        encoder_outputs: Optional[flow.Tensor] = None,
         **model_kwargs,
     ):
         expanded_return_idx = (
@@ -211,7 +224,7 @@ class Generator:
             )
         return input_ids, model_kwargs
 
-    def _update_model_kwargs_for_generation(self, model_kwargs, is_encoder_decoder=False):
+    def _update_model_kwargs_for_generation(self, model_kwargs, is_encoder_decoder: bool = False):
         # update past_key_value_state
         if self.past_key_values[-1] is not None:
             model_kwargs["past"] = self.past_key_values
@@ -247,12 +260,12 @@ class Generator:
 
     def _get_logits_warper(
         self,
-        top_k=None,
-        top_p=None,
-        typical_p=None,
-        temperature=None,
-        num_beams=None,
-        renormalize_logits=None,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
+        typical_p: Optional[float] = None,
+        temperature: Optional[float] = None,
+        num_beams: Optional[int] = None,
+        renormalize_logits: Optional[bool] = None,
     ):
         # instantiate warpers list
         warpers = LogitsProcessorList()
@@ -431,8 +444,8 @@ class Generator:
         max_length: Optional[int] = None,
         pad_token_id: Optional[int] = None,
         eos_token_id: Optional[int] = None,
-        is_encoder_decoder=False,
-        output_scores=False,
+        is_encoder_decoder: bool = False,
+        output_scores: bool = False,
         **model_kwargs,
     ):
         pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
@@ -512,8 +525,8 @@ class Generator:
         max_length: Optional[int] = None,
         pad_token_id: Optional[int] = None,
         eos_token_id: Optional[int] = None,
-        is_encoder_decoder=False,
-        output_scores=False,
+        is_encoder_decoder: bool = False,
+        output_scores: bool = False,
         **model_kwargs,
     ):
         # init values
@@ -607,8 +620,8 @@ class Generator:
         max_length: Optional[int] = None,
         pad_token_id: Optional[int] = None,
         eos_token_id: Optional[int] = None,
-        is_encoder_decoder=False,
-        output_scores=False,
+        is_encoder_decoder: bool = False,
+        output_scores: bool = False,
         **model_kwargs,
     ):
         pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
@@ -733,41 +746,41 @@ class Generator:
     @flow.no_grad()
     def generate(
         self,
-        inputs=None,
-        max_length=None,
-        min_length=None,
-        do_sample=None,
-        early_stopping=None,
-        num_beams=None,
-        temperature=None,
-        top_k=None,
-        top_p=None,
-        typical_p=None,
-        repetition_penalty=None,
-        force_words_ids=None,
-        bos_token_id=None,
-        pad_token_id=None,
-        eos_token_id=None,
-        length_penalty=None,
-        no_repeat_ngram_size=None,
-        encoder_no_repeat_ngram_size=None,
-        num_return_sequences=None,
-        max_time=None,
-        max_new_tokens=None,
-        decoder_start_token_id=None,
-        use_cache=None,
-        num_beam_groups=None,
-        diversity_penalty=None,
-        prefix_allowed_tokens_fn=None,
-        logits_processor=LogitsProcessorList(),
-        renormalize_logits=None,
+        inputs: Optional[flow.Tensor] = None,
+        max_length: Optional[int] = None,
+        min_length: Optional[int] = None,
+        do_sample: Optional[bool] = None,
+        early_stopping: Optional[bool] = None,
+        num_beams: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
+        typical_p: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
+        force_words_ids: Optional[Union[Iterable[int], Iterable[Iterable[int]]]] = None,
+        bos_token_id: Optional[int] = None,
+        pad_token_id: Optional[int] = None,
+        eos_token_id: Optional[int] = None,
+        length_penalty: Optional[float] = None,
+        no_repeat_ngram_size: Optional[int] = None,
+        encoder_no_repeat_ngram_size: Optional[int] = None,
+        num_return_sequences: Optional[int] = None,
+        max_time: Optional[float] = None,
+        max_new_tokens: Optional[int] = None,
+        decoder_start_token_id: Optional[int] = None,
+        use_cache: Optional[bool] = None,
+        num_beam_groups: Optional[int] = None,
+        diversity_penalty: Optional[float] = None,
+        prefix_allowed_tokens_fn: Optional[Callable[[int, flow.Tensor], List[int]]] = None,
+        logits_processor: Optional[LogitsProcessorList] = LogitsProcessorList(),
+        renormalize_logits: Optional[bool] = None,
         stopping_criteria=StoppingCriteriaList(),
         constraints=None,
-        output_scores=None,
-        forced_bos_token_id=None,
-        forced_eos_token_id=None,
-        remove_invalid_values=None,
-        exponential_decay_length_penalty=None,
+        output_scores: Optional[bool] = None,
+        forced_bos_token_id: Optional[int] = None,
+        forced_eos_token_id: Optional[int] = None,
+        remove_invalid_values: Optional[bool] = None,
+        exponential_decay_length_penalty: Optional[Tuple[Union[int, float]]] = None,
         **model_kwargs,
     ):
         # 0. Validate model kwargs

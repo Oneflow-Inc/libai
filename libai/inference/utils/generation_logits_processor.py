@@ -22,9 +22,11 @@ from typing import Callable, List, Tuple
 import numpy as np
 import oneflow as flow
 
+from libai.utils import distributed as dist
+
 
 class LogitsProcessorList(list):
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor, **kwargs):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor, **kwargs) -> flow.Tensor:
         for processor in self:
             function_args = inspect.signature(processor.__call__).parameters
             if len(function_args) > 2:
@@ -40,15 +42,15 @@ class LogitsProcessorList(list):
 
 
 class NormalizationLogitsProcessor(object):
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         scores = scores.log_softmax(dim=-1)
         return scores
 
 
 class InfNanRemoveLogitsProcessor(object):
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         scores[scores != scores] = 0.0
-        scores[scores == float("inf")] = 1e6
+        scores[scores == float("inf")] = flow.finfo(scores.dtype).max
         return scores
 
 
@@ -57,7 +59,7 @@ class ForcedEOSTokenLogitsProcessor(object):
         self.max_length = max_length
         self.eos_token_id = eos_token_id
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         cur_len = input_ids.shape[-1]
         if cur_len == self.max_length - 1:
             num_tokens = scores.shape[1]
@@ -70,30 +72,12 @@ class ForcedBOSTokenLogitsProcessor(object):
     def __init__(self, bos_token_id: int):
         self.bos_token_id = bos_token_id
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         cur_len = input_ids.shape[-1]
         if cur_len == 1:
             num_tokens = scores.shape[1]
             scores[:, [i for i in range(num_tokens) if i != self.bos_token_id]] = -float("inf")
             scores[:, self.bos_token_id] = 0
-        return scores
-
-
-class TopKLogitsProcessor(object):
-    def __init__(
-        self, top_k: int, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1
-    ):
-        if not isinstance(top_k, int) or top_k <= 0:
-            raise ValueError(f"`top_k` has to be a strictly positive integer, but is {top_k}")
-
-        self.top_k = top_k
-        self.filter_value = filter_value
-        self.min_tokens_to_keep = min_tokens_to_keep
-
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
-        top_k = min(max(self.top_k, self.min_tokens_to_keep), scores.size(-1))
-        index_to_remove = scores < flow.topk(scores, top_k)[0][..., -1, None]
-        scores = scores.masked_fill(index_to_remove, self.filter_value)
         return scores
 
 
@@ -103,7 +87,7 @@ class RepetitionPenaltyLogitsProcessor(object):
             raise ValueError(f"`penalty` has to be a strictly positive float, but is {penalty}")
         self.penalty = penalty
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         score = flow.gather(scores, 1, input_ids)
         score = flow.where(score < 0, score * self.penalty, score / self.penalty)
         scores = flow.scatter(scores, 1, input_ids, score)
@@ -124,7 +108,7 @@ class HammingDiversityLogitsProcessor(object):
             raise ValueError("`beam_groups` has to be smaller or equal to `num_beams`.")
         self._num_sub_beams = num_beams // num_beam_groups
 
-    def __call__(self, input_ids, scores, current_tokens, beam_group_idx):
+    def __call__(self, input_ids, scores, current_tokens, beam_group_idx) -> flow.Tensor:
         scores = scores.numpy()
 
         batch_size = current_tokens.shape[0] // self._num_beams
@@ -142,9 +126,22 @@ class HammingDiversityLogitsProcessor(object):
                 batch_idx * self._num_beams : batch_idx * self._num_beams + group_start_idx
             ]
             # TODO: bincount
+            previous_group_tokens = (
+                previous_group_tokens.to_global(
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                )
+                .to_local()
+                .numpy()
+            )
             token_frequency = np.bincount(previous_group_tokens, minlength=vocab_size)
-            scores[batch_idx * group_size : (batch_idx + 1) * group_size] -= (
-                self._diversity_penalty * token_frequency
+            token_frequency = token_frequency.to_global(
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            )
+            scores[batch_idx * group_size : (batch_idx + 1) * group_size] = (
+                scores[batch_idx * group_size : (batch_idx + 1) * group_size]
+                - self._diversity_penalty * token_frequency
             )
 
         return scores
@@ -194,7 +191,7 @@ class NoRepeatNGramLogitsProcessor(object):
             )
         self.ngram_size = ngram_size
 
-    def __call__(self, input_ids, scores):
+    def __call__(self, input_ids, scores) -> flow.Tensor:
         num_batch_hypotheses = scores.shape[0]
         cur_len = input_ids.shape[-1]
         banned_batch_tokens = _calc_banned_ngram_tokens(
@@ -220,7 +217,7 @@ class EncoderNoRepeatNGramLogitsProcessor(object):
         self.batch_size = encoder_input_ids.shape[0]
         self.generated_ngrams = _get_ngrams(encoder_ngram_size, encoder_input_ids, self.batch_size)
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         # B x num_beams
         num_hypos = scores.shape[0]
         num_beams = num_hypos // self.batch_size
@@ -252,7 +249,7 @@ class MinLengthLogitsProcessor(object):
         self.min_length = min_length
         self.eos_token_id = eos_token_id
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         cur_len = input_ids.shape[-1]
         if cur_len < self.min_length:
             scores[:, self.eos_token_id] = -float("inf")
@@ -266,7 +263,7 @@ class PrefixConstrainedLogitsProcessor(object):
         self._prefix_allowed_tokens_fn = prefix_allowed_tokens_fn
         self._num_beams = num_beams
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         mask = flow.full_like(scores, -math.inf)
         for batch_id, beam_sent in enumerate(
             input_ids.view(-1, self._num_beams, input_ids.shape[-1])
@@ -288,7 +285,7 @@ class ExponentialDecayLengthPenalty(object):
         self.regulation_factor = exponential_decay_length_penalty[1]
         self.eos_token_id = eos_token_id
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         cur_len = input_ids.shape[-1]
         if cur_len > self.regulation_start:
             scores[:, self.eos_token_id] = scores[:, self.eos_token_id] * pow(
@@ -305,7 +302,7 @@ class TemperatureLogitsWarper(object):
             )
         self.temperature = temperature
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         scores = scores / self.temperature
         return scores
 
@@ -322,7 +319,7 @@ class TopPLogitsWarper(object):
         self.filter_value = filter_value
         self.min_tokens_to_keep = min_tokens_to_keep
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         sorted_logits, sorted_indices = flow.sort(scores, descending=True)
         cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
 
@@ -356,7 +353,7 @@ class TopKLogitsWarper(object):
         self.filter_value = filter_value
         self.min_tokens_to_keep = min_tokens_to_keep
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
         top_k = min(max(self.top_k, self.min_tokens_to_keep), scores.size(-1))  # Safety check
         # Remove all tokens with a probability less than the last token of the top-k
         indices_to_remove = scores < flow.topk(scores, top_k)[0][..., -1, None]
@@ -376,7 +373,7 @@ class TypicalLogitsWarper(object):
         self.mass = mass
         self.min_tokens_to_keep = min_tokens_to_keep
 
-    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor):
+    def __call__(self, input_ids: flow.Tensor, scores: flow.Tensor) -> flow.Tensor:
 
         # calculate entropy
         normalized = flow.nn.functional.log_softmax(scores, dim=-1)
