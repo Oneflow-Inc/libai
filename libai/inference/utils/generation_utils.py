@@ -1,3 +1,19 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+# Copyright 2020 The Google AI Language Team Authors, Facebook AI Research authors and The HuggingFace Inc. team.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import inspect
 import logging
 import warnings
@@ -839,6 +855,7 @@ class Generator:
             raise ValueError(
                 "Both `max_new_tokens` and `max_length` have been set but they serve the same"
             )
+        
         # default to cfg if still None
         max_length = max_length if max_length is not None else self.cfg.max_length
         min_length = min_length if min_length is not None else self.cfg.min_length
@@ -979,6 +996,7 @@ class Generator:
 
             if stopping_criteria.max_length is None:
                 raise ValueError("`max_length` needs to be a stopping_criteria for now.")
+            
             # 10. prepare beam search scorer
             beam_scorer = BeamSearchScorer(
                 batch_size=batch_size,
@@ -987,6 +1005,7 @@ class Generator:
                 do_early_stopping=early_stopping,
                 num_beam_hyps_to_keep=num_return_sequences,
             )
+            
             # 11. interleave input_ids with `num_beams` additional sequences per batch
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids,
