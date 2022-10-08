@@ -893,12 +893,12 @@ class Generator:
             and do_sample is False
             and not is_constraint_gen_mode
         )
-        is_beam_sample_gen_mode = (
-            (num_beams > 1)
-            and (num_beam_groups == 1)
-            and do_sample is True
-            and not is_constraint_gen_mode
-        )
+        # is_beam_sample_gen_mode = (
+        #     (num_beams > 1)
+        #     and (num_beam_groups == 1)
+        #     and do_sample is True
+        #     and not is_constraint_gen_mode
+        # )
         is_group_beam_gen_mode = (
             (num_beams > 1) and (num_beam_groups > 1) and not is_constraint_gen_mode
         )
