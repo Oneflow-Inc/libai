@@ -528,8 +528,8 @@ class Generator:
         )
         if max_length is not None:
             warnings.warn(
-                "`max_length` is deprecated in this function, use"
-                " `stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))`"
+                "`max_length` is deprecated in this function, use "
+                "`stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))`"
                 "instead.",
                 UserWarning,
             )
@@ -622,8 +622,8 @@ class Generator:
         )
         if max_length is not None:
             warnings.warn(
-                "`max_length` is deprecated in this function, use"
-                " `stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))`"
+                "`max_length` is deprecated in this function, use "
+                "`stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))`"
                 "instead.",
                 UserWarning,
             )
@@ -855,7 +855,7 @@ class Generator:
             raise ValueError(
                 "Both `max_new_tokens` and `max_length` have been set but they serve the same"
             )
-        
+
         # default to cfg if still None
         max_length = max_length if max_length is not None else self.cfg.max_length
         min_length = min_length if min_length is not None else self.cfg.min_length
@@ -996,7 +996,7 @@ class Generator:
 
             if stopping_criteria.max_length is None:
                 raise ValueError("`max_length` needs to be a stopping_criteria for now.")
-            
+
             # 10. prepare beam search scorer
             beam_scorer = BeamSearchScorer(
                 batch_size=batch_size,
@@ -1005,7 +1005,7 @@ class Generator:
                 do_early_stopping=early_stopping,
                 num_beam_hyps_to_keep=num_return_sequences,
             )
-            
+
             # 11. interleave input_ids with `num_beams` additional sequences per batch
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids,
