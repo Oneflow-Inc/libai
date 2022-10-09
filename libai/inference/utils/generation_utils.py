@@ -806,13 +806,13 @@ class Generator:
 
         output_scores = output_scores if output_scores is not None else self.cfg.output_scores
 
-        # 2. Define model inputs
+        # 2. Prepare model inputs
         inputs_tensor, model_input_name, model_kwargs = self._prepare_model_inputs(
             inputs, bos_token_id, model_kwargs
         )
         batch_size = inputs_tensor.shape[0]
 
-        # 3. Define other model kwargs
+        # 3. Prepare other model kwargs
         model_kwargs["use_cache"] = use_cache if use_cache is not None else self.cfg.use_cache
 
         if self.cfg.is_encoder_decoder:
@@ -887,7 +887,7 @@ class Generator:
                 "increasing `max_new_tokens`."
             )
 
-        # 6. determine generation mode
+        # 6. Determine generation mode
         is_constraint_gen_mode = constraints is not None or force_words_ids is not None
         is_greedy_gen_mode = (
             (num_beams == 1)
@@ -925,7 +925,7 @@ class Generator:
                 " set to `False`."
             )
 
-        # 7. prepare distribution pre_processing samplers
+        # 7. Prepare distribution pre_processing samplers
         logits_processor = self._get_logits_processor(
             repetition_penalty=repetition_penalty,
             no_repeat_ngram_size=no_repeat_ngram_size,
@@ -947,12 +947,12 @@ class Generator:
             renormalize_logits=renormalize_logits,
         )
 
-        # 8. prepare stopping criteria
+        # 8. Prepare stopping criteria
         stopping_criteria = self._get_stopping_criteria(
             max_length=max_length, max_time=max_time, stopping_criteria=stopping_criteria
         )
 
-        # 9. go into different generation modes
+        # 9. Go into different generation modes
         if is_greedy_gen_mode:
             if num_return_sequences > 1:
                 raise ValueError(
@@ -960,7 +960,7 @@ class Generator:
                     " greedy search."
                 )
 
-            # 10. run greedy search
+            # 10. Run greedy search
             return self.greedy_search(
                 input_ids,
                 logits_processor=logits_processor,
@@ -972,7 +972,7 @@ class Generator:
             )
 
         elif is_sample_gen_mode:
-            # 10. prepare logits warper
+            # 10. Prepare logits warper
             logits_warper = self._get_logits_warper(
                 top_k=top_k,
                 top_p=top_p,
@@ -982,7 +982,7 @@ class Generator:
                 renormalize_logits=renormalize_logits,
             )
 
-            # 11. expand input_ids with `num_return_sequences` additional sequences per batch
+            # 11. Expand input_ids with `num_return_sequences` additional sequences per batch
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids,
                 expand_size=num_return_sequences,
@@ -990,7 +990,7 @@ class Generator:
                 **model_kwargs,
             )
 
-            # 12. run sample
+            # 12. Run multinomial sample
             return self.multinomial_sample(
                 input_ids,
                 logits_processor=logits_processor,
@@ -1011,7 +1011,7 @@ class Generator:
             if stopping_criteria.max_length is None:
                 raise ValueError("`max_length` needs to be a stopping_criteria for now.")
 
-            # 10. prepare beam search scorer
+            # 10. Prepare beam search scorer
             beam_scorer = BeamSearchScorer(
                 batch_size=batch_size,
                 num_beams=num_beams,
@@ -1020,7 +1020,7 @@ class Generator:
                 num_beam_hyps_to_keep=num_return_sequences,
             )
 
-            # 11. interleave input_ids with `num_beams` additional sequences per batch
+            # 11. Interleave input_ids with `num_beams` additional sequences per batch
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids,
                 expand_size=num_beams,
@@ -1028,7 +1028,7 @@ class Generator:
                 **model_kwargs,
             )
 
-            # 12. run beam search
+            # 12. Run beam search
             return self.beam_search(
                 input_ids,
                 beam_scorer,
