@@ -16,6 +16,7 @@
 import oneflow as flow
 
 from libai.config import configurable
+from libai.inference.utils.generation_utils import Generator
 from libai.layers import Linear, LMLogits, RMSLayerNorm
 from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
@@ -25,7 +26,7 @@ from projects.MT5.layers.mask_layer import ExtendedMask
 from projects.MT5.layers.transformer_layer import TransformerLayer
 
 
-class MT5Model(flow.nn.Module):
+class MT5Model(flow.nn.Module, Generator):
     @configurable
     def __init__(
         self,
@@ -44,8 +45,10 @@ class MT5Model(flow.nn.Module):
         layernorm_eps=1e-12,
         amp_enabled=False,
         model_type="mt5",
+        cfg=None,
     ) -> None:
         super().__init__()
+        self.cfg = cfg
         self.model_type = model_type
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
@@ -152,23 +155,43 @@ class MT5Model(flow.nn.Module):
             "layernorm_eps": cfg.layernorm_eps,
             "amp_enabled": cfg.amp_enabled,
             "model_type": cfg.model_type,
+            "cfg": cfg.cfg,
         }
 
     def forward(
         self,
-        encoder_input_ids,
-        decoder_input_ids,
-        encoder_attn_mask,
-        decoder_attn_mask,
-        encoder_decoder_attn_mask,
+        encoder_input_ids=None,
+        decoder_input_ids=None,
+        encoder_attn_mask=None,
+        decoder_attn_mask=None,
+        encoder_decoder_attn_mask=None,
         use_cache=False,
+        only_encoder=False,
     ):
-        encoder_input_ids = encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
-        decoder_input_ids = decoder_input_ids.to_global(placement=dist.get_layer_placement(0))
-        encoder_attn_mask = encoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
-        decoder_attn_mask = decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
-        encoder_decoder_attn_mask = encoder_decoder_attn_mask.to_global(
-            placement=dist.get_layer_placement(0)
+        encoder_input_ids = (
+            encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
+            if encoder_input_ids is not None
+            else encoder_input_ids
+        )
+        decoder_input_ids = (
+            decoder_input_ids.to_global(placement=dist.get_layer_placement(0))
+            if decoder_input_ids is not None
+            else decoder_input_ids
+        )
+        encoder_attn_mask = (
+            encoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+            if encoder_attn_mask is not None
+            else encoder_attn_mask
+        )
+        decoder_attn_mask = (
+            decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+            if decoder_attn_mask is not None
+            else decoder_attn_mask
+        )
+        encoder_decoder_attn_mask = (
+            encoder_decoder_attn_mask.to_global(placement=dist.get_layer_placement(0))
+            if encoder_decoder_attn_mask is not None
+            else encoder_decoder_attn_mask
         )
 
         if use_cache and self.encoder_states is not None:
@@ -188,6 +211,9 @@ class MT5Model(flow.nn.Module):
                     position_bias=position_bias,
                 )
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
+
+        if only_encoder:
+            return encoder_states
 
         decoder_attn_mask = self.extended_attn_mask(
             decoder_attn_mask, decoder_input_ids, is_decoder=True
@@ -220,6 +246,9 @@ class MT5Model(flow.nn.Module):
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
 
+        if self.cfg.tie_word_embeddings:
+            decoder_states = decoder_states * (self.cfg.hidden_size ** -0.5)
+
         if self.model_type == "mt5":
             logits = self.lm_head(decoder_states)
         else:
@@ -238,6 +267,53 @@ class MT5Model(flow.nn.Module):
             f"decoder num_layers' length {self.decoder.layers}"
         )
         self.past_key_values = past_key_values
+
+    def _reorder_cache(self, beam_idx):
+        past_key_values = self.past_key_values
+        reordered_decoder_past = ()
+        for layer_past_states in past_key_values:
+            # get the correct batch idx from layer past batch dim
+            # batch dim of `past` is at 2nd position
+            reordered_layer_past_states = ()
+            for layer_past_state in layer_past_states:
+                # need to set correct `past` for each of the four key / value states
+                reordered_layer_past_states = reordered_layer_past_states + (
+                    layer_past_state.index_select(0, beam_idx),
+                )
+
+            assert reordered_layer_past_states[0].shape == layer_past_states[0].shape
+            assert len(reordered_layer_past_states) == len(layer_past_states)
+
+            reordered_decoder_past = reordered_decoder_past + (reordered_layer_past_states,)
+        return reordered_decoder_past
+
+    def _prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past=None,
+        encoder_attn_mask=None,
+        encoder_decoder_attn_mask=None,
+        use_cache=None,
+        encoder_outputs=None,
+    ):
+        # cut decoder_input_ids if past is used
+        if past is not None:
+            input_ids = input_ids[:, -1:]
+            self.past_key_values = past
+
+        self.encoder_states = encoder_outputs
+        decoder_attn_maks = flow.ones(
+            input_ids.size(),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+        )
+        return {
+            "decoder_input_ids": input_ids,
+            "decoder_attn_mask": decoder_attn_maks,
+            "encoder_attn_mask": encoder_attn_mask,
+            "encoder_decoder_attn_mask": encoder_decoder_attn_mask,
+            "use_cache": use_cache,
+        }
 
 
 class MT5ForPreTraining(flow.nn.Module):

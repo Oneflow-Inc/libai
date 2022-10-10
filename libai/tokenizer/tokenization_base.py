@@ -26,6 +26,8 @@ import unicodedata
 from io import open
 from typing import Dict, List, Optional, Union
 
+import oneflow as flow
+
 from libai.utils.file_io import PathManager
 from libai.utils.file_utils import cached_path
 
@@ -867,6 +869,10 @@ class PreTrainedTokenizer(object):
             skip_special_tokens: if set to True, will replace special tokens.
             clean_up_tokenization_spaces: if set to True, will clean up the tokenization spaces.
         """
+        # Convert inputs to python lists
+        if isinstance(token_ids, flow.Tensor):
+            token_ids = token_ids.tolist()
+
         filtered_tokens = self.convert_ids_to_tokens(
             token_ids, skip_special_tokens=skip_special_tokens
         )
