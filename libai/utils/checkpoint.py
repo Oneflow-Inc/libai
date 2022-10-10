@@ -22,9 +22,9 @@ from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 import numpy as np
 import oneflow as flow
 from oneflow import nn
-from oneflow.framework.check_point_v2 import _broadcast_py_object
 from termcolor import colored
 
+import libai.utils.distributed as dist
 from libai.utils.file_io import HTTPURLHandler, PathManagerBase
 
 
@@ -177,7 +177,7 @@ class Checkpointer(object):
             else:
                 last_saved = None
             # broadcast checkpoint file to other ranks
-            last_saved = _broadcast_py_object(last_saved, src=0)
+            last_saved = dist.broadcast_py_object(last_saved, src=0)
         except IOError:
             # if file doesn't exist, maybe because it has just been
             # deleted by a separate process
@@ -225,7 +225,7 @@ class Checkpointer(object):
         data = {}
         keys = self.path_manager.ls(f)
         # broadcast checkpointer keys to other ranks
-        keys = _broadcast_py_object(keys, src=0)
+        keys = dist.broadcast_py_object(keys, src=0)
         for key in keys:
             data[key] = flow.load(os.path.join(f, key), global_src_rank=0)
         try:

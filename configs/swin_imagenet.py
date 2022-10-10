@@ -29,14 +29,16 @@ model.cfg.loss_func = SoftTargetCrossEntropy()
 optim.lr = 1e-3
 optim.eps = 1e-8
 optim.weight_decay = 0.05
+optim.params.clip_grad_max_norm = None
+optim.params.clip_grad_norm_type = None
 
 # Refine train cfg for vit model
 train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128
 train.train_epoch = 300
 train.warmup_ratio = 20 / 300
-train.eval_period = 1000
-train.log_period = 1
+train.eval_period = 1562
+train.log_period = 100
 
 # Scheduler
 train.scheduler.warmup_factor = 0.001

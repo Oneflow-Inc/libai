@@ -72,7 +72,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
             shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
-    def test_gpt_utils_with_data_tensor_parallel(self):
+    def test_gpt_loader_with_data_tensor_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -116,7 +116,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
         )
 
     @flow.unittest.skip_unless_1n4d()
-    def test_gpt_utils_with_data_tensor_pipeline_parallel(self):
+    def test_gpt_loader_with_data_tensor_pipeline_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -158,6 +158,101 @@ class TestGPT2Loader(flow.unittest.TestCase):
                 np.array(-93505072.0),
                 logits.sum().data.numpy(),
             )
+        )
+
+    @flow.unittest.skip_unless_1n4d()
+    def test_gpt_loader_with_data_tensor_parallel_backward(self):
+        # set distributed config
+        dist_cfg = DictConfig(
+            dict(
+                data_parallel_size=2,
+                tensor_parallel_size=2,
+                pipeline_parallel_size=1,
+            )
+        )
+        dist.setup_dist_util(dist_cfg)
+
+        # load model
+        load_func = GPT2LoaderHuggerFace(
+            model=libai.models.GPTModel,
+            libai_cfg=libai_cfg,
+            pretrained_model_path=self.pretrained_model_path,
+            bias_gelu_fusion=False,
+            bias_dropout_fusion=False,
+            scale_mask_softmax_fusion=True,
+            apply_query_key_layer_scaling=True,
+            apply_residual_post_layernorm=False,
+            amp_enabled=False,
+            attention_dropout_prob=0,
+            output_dropout_prob=0,
+            embedding_dropout_prob=0,
+        )
+        model = load_func.load()
+
+        input_ids = flow.tensor(
+            self.input_ids,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=model.embeddings.token_embeddings.weight.placement,
+        )
+        logits = model(input_ids)
+        loss = logits.sum()
+        loss.backward()
+
+        self.assertTrue(
+            np.allclose(-24882176.0, model.transformer.layernorm_f.weight.grad.sum().numpy())
+        )
+        self.assertTrue(
+            np.allclose(
+                3.1779e08, model.embeddings.token_embeddings.weight.grad.sum().numpy(), 1e-3
+            )
+        )
+
+    @flow.unittest.skip_unless_1n4d()
+    def test_gpt_loader_with_data_tensor_pipeline_parallel_backward(self):
+        # set distributed config
+        dist_cfg = DictConfig(
+            dict(
+                data_parallel_size=2,
+                tensor_parallel_size=1,
+                pipeline_parallel_size=2,
+                pipeline_num_layers=12,
+            )
+        )
+        dist.setup_dist_util(dist_cfg)
+
+        # load model
+        load_func = GPT2LoaderHuggerFace(
+            model=libai.models.GPTModel,
+            libai_cfg=libai_cfg,
+            pretrained_model_path=self.pretrained_model_path,
+            bias_gelu_fusion=False,
+            bias_dropout_fusion=False,
+            scale_mask_softmax_fusion=True,
+            apply_query_key_layer_scaling=True,
+            apply_residual_post_layernorm=False,
+            amp_enabled=False,
+            attention_dropout_prob=0,
+            output_dropout_prob=0,
+            embedding_dropout_prob=0,
+        )
+        model = load_func.load()
+
+        input_ids = flow.tensor(
+            self.input_ids,
+            dtype=flow.long,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=model.embeddings.token_embeddings.weight.placement,
+        )
+        logits = model(input_ids)
+        loss = logits.sum()
+        loss.backward()
+
+        self.assertTrue(
+            np.allclose(-24882176.0, model.transformer.layernorm_f.weight.grad.sum().numpy())
+        )
+        self.assertTrue(
+            np.allclose(317785760.0, model.embeddings.token_embeddings.weight.grad.sum().numpy())
         )
 
 
