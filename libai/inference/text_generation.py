@@ -13,65 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import oneflow as flow
-from omegaconf import OmegaConf
 
-from libai.config import LazyCall
-from libai.data.structures import DistTensorData, Instance
 from libai.inference.basic import BasePipeline
 from libai.tokenizer import T5Tokenizer
-
+from libai.utils import distributed as dist
 
 class TextGenerationPipeline(BasePipeline):
-    def __init__(
-        self,
-        config_file,
-        data_parallel=None,
-        tensor_parallel=None,
-        pipeline_parallel=None,
-        pipeline_stage_id=None,
-        pipeline_num_layers=None,
-        model_path=None,
-        mode="libai",
-        **kwargs,
-    ):
-        super().__init__(
-            config_file,
-            data_parallel,
-            tensor_parallel,
-            pipeline_parallel,
-            pipeline_stage_id,
-            pipeline_num_layers,
-            model_path,
-            mode,
-            **kwargs,
-        )
 
-    def update_cfg(
-        self,
-        data_parallel=1,
-        tensor_parallel=1,
-        pipeline_parallel=1,
-        pipeline_stage_id=None,
-        pipeline_num_layers=None,
-    ):
-        super().update_cfg(
-            data_parallel,
-            tensor_parallel,
-            pipeline_parallel,
-            pipeline_stage_id,
-            pipeline_num_layers,
+    def build_tokenizer(self, cfg):
+        tokenizer = T5Tokenizer(
+            "data_test/t5_inference_model/spiece.model", 
+            add_bos_token=True,
         )
-        self.cfg.model.cfg.model_type = "t5"
-        self.cfg.model.cfg.pretrained_model_path = None
-        self.cfg.dataloader = None
-        self.cfg.tokenization = OmegaConf.create()
-        self.cfg.tokenization.append_eod = False
-        self.cfg.tokenization.make_vocab_size_divisible_by = 128
-        self.cfg.tokenization.tokenizer = LazyCall(T5Tokenizer)(
-            vocab_file="data_test/t5_inference_model/spiece.model",
-        )
+        return tokenizer
 
     def load_pretrain_weight(self, libai_cfg_model, model_path, mode="huggingface"):
         """load pretrained model.
@@ -92,7 +47,7 @@ class TextGenerationPipeline(BasePipeline):
                 hidden_dropout_prob=0.0,
                 attention_probs_dropout_prob=0.0,
                 embedding_dropout_prob=0.0,
-                mlp_type="t5",
+                model_type="t5",
             )
             return model_loader.load()
         else:
@@ -142,3 +97,20 @@ class TextGenerationPipeline(BasePipeline):
         )
         records = {"generated_text": text}
         return records
+
+if __name__ == "__main__":
+    pipeline = TextGenerationPipeline(
+        "projects/MT5/configs/t5_inference.py",
+        data_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=1,
+        pipeline_stage_id=None,
+        pipeline_num_layers=12 * 2,
+        model_path="data_test/t5_inference_model",
+        mode="huggingface",
+    )
+
+    text = ["summarize: She is a student, She is tall, She loves study"]
+    dict1 = pipeline(text)
+    if dist.is_main_process():
+        print(dict1)

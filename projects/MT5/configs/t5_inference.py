@@ -40,5 +40,4 @@ cfg.update(
 cfg.pop("cfg")
 cfg["cfg"] = cfg
 
-model = LazyCall(MT5ForPreTraining)(cfg=cfg)
-# pretrain_model = LazyCall(MT5ForPreTraining)(cfg=cfg)
+model = LazyCall(MT5Model)(cfg=cfg)
