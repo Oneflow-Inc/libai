@@ -16,7 +16,7 @@
 import oneflow as flow
 
 from libai.config import configurable
-from libai.inference.utils.generation_utils import Generator
+from libai.inference.generator.generation_utils import Generator
 from libai.layers import Linear, LMLogits, RMSLayerNorm
 from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
