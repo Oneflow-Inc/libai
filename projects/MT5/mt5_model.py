@@ -155,7 +155,7 @@ class MT5Model(flow.nn.Module, Generator):
             "layernorm_eps": cfg.layernorm_eps,
             "amp_enabled": cfg.amp_enabled,
             "model_type": cfg.model_type,
-            "cfg": cfg.cfg,
+            "cfg": cfg,
         }
 
     def forward(

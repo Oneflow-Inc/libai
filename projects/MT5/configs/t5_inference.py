@@ -37,7 +37,4 @@ cfg.update(
     decoder_start_token_id=0,
 )
 
-cfg.pop("cfg")
-cfg["cfg"] = cfg
-
 model = LazyCall(MT5Model)(cfg=cfg)
