@@ -42,6 +42,7 @@ class ExtendedMask(flow.nn.Module):
         )
 
         causal_mask = causal_mask.to(x.dtype)
+        causal_mask = causal_mask.to_global(sbp=x.sbp)
         if causal_mask.shape[1] < x.shape[1]:
             prefix_seq_len = x.shape[1] - causal_mask.shape[1]
             ones = flow.ones(
