@@ -19,11 +19,11 @@ from libai.inference.basic import BasePipeline
 from libai.tokenizer import T5Tokenizer
 from libai.utils import distributed as dist
 
-class TextGenerationPipeline(BasePipeline):
 
+class TextGenerationPipeline(BasePipeline):
     def build_tokenizer(self, cfg):
         tokenizer = T5Tokenizer(
-            "data_test/t5_inference_model/spiece.model", 
+            "data_test/t5_inference_model/spiece.model",
             add_bos_token=True,
         )
         return tokenizer
@@ -71,32 +71,23 @@ class TextGenerationPipeline(BasePipeline):
         **kwargs,
     ) -> dict:
         # tokenizer encoder
-        encoder_ids = self.tokenizer.encode(
-            inputs, 
-            return_tensors="of",
-            is_global=True
-        )
+        encoder_ids = self.tokenizer.encode(inputs, return_tensors="of", is_global=True)
 
         encoder_input_dict = {
             "encoder_ids": encoder_ids,
         }
 
-        return encoder_input_dict 
+        return encoder_input_dict
 
     def forward(self, encoder_input_dict, **kwargs) -> dict:
-        outputs = self.model.generate(
-            encoder_input_dict["encoder_ids"],
-            **kwargs
-        )
+        outputs = self.model.generate(encoder_input_dict["encoder_ids"], **kwargs)
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
-        text = self.tokenizer.decode(
-            model_output_dict["return_ids"][0], 
-            skip_special_tokens=True
-        )
+        text = self.tokenizer.decode(model_output_dict["return_ids"][0], skip_special_tokens=True)
         records = {"generated_text": text}
         return records
+
 
 if __name__ == "__main__":
     pipeline = TextGenerationPipeline(
