@@ -125,7 +125,8 @@ class Generator:
         eos_token_id: Optional[int],
     ):
         is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [flow.int64, flow.long]
-        is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs.squeeze(0))
+        print(inputs)
+        is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs)
         is_pad_token_not_equal_to_eos_token_id = (eos_token_id is None) or (
             (eos_token_id is not None) and (pad_token_id != eos_token_id)
         )
