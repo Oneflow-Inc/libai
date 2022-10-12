@@ -4,7 +4,7 @@ from libai.config import LazyConfig, LazyCall
 from omegaconf import OmegaConf
 from libai.engine import DefaultTrainer
 from libai.tokenizer import T5Tokenizer
-from oneflow_onnx.oneflow2onnx.util import export_onnx_model
+from oneflow_onnx.oneflow2onnx.util import export_onnx_model, convert_to_onnx_and_check
 
 def convert_to_local_model(t):
     if t.is_global:
@@ -51,19 +51,35 @@ model.eval()
 
 t5_graph = t5Graph(model)
 # Build the static graph model
+encoder_input_ids = flow.ones(1, 5, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+encoder_attn_mask = flow.ones(1, 3, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+decoder_input_ids = flow.ones(1, 5, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+decoder_attn_mask =  flow.ones(1, 3, 3, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+encoder_decoder_attn_mask = flow.ones(1, 3, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
 
+# output = t5_graph(
+#     encoder_input_ids, 
+#     encoder_attn_mask, 
+#     decoder_input_ids, 
+#     decoder_attn_mask, 
+#     encoder_decoder_attn_mask
+# )
+# print(output)
 
 t5_graph._compile(
-    flow.ones(1, 5, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])),
-    flow.ones(1, 3, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
-    flow.ones(1, 5, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
-    flow.ones(1, 3, 3, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
-    flow.ones(1, 3, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])), 
+    encoder_input_ids, 
+    encoder_attn_mask, 
+    decoder_input_ids, 
+    decoder_attn_mask, 
+    encoder_decoder_attn_mask
 )
 
-export_onnx_model(t5_graph,
-                  external_data=False, 
-                  opset=None, 
-                  flow_weight_dir=None, 
-                  onnx_model_path="./", 
-                  dynamic_batch_size=False)
+convert_to_onnx_and_check(
+    t5_graph,
+    external_data=False, 
+    opset=11, 
+    flow_weight_dir=None, 
+    onnx_model_path="./", 
+    dynamic_batch_size=False,
+    device="gpu",
+)
