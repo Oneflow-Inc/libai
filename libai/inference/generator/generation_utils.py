@@ -683,6 +683,7 @@ class Generator:
                 next_token_logits, dim=-1
             )  # (batch_size * num_beams, vocab_size)
             next_token_scores = next_token_scores.to_global(
+                sbp=input_ids.sbp,
                 placement=input_ids.placement
             )
 
