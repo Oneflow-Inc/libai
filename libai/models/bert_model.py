@@ -31,6 +31,7 @@ from libai.layers.attention import AttnMaskType
 from libai.utils import distributed as dist
 
 from .utils import init_method_normal, scaled_init_method_normal
+from .utils.pretrained_model import PretrainedBert
 
 
 class BertExtendedAttnMask(nn.Module):
@@ -218,7 +219,7 @@ class BertLoss(nn.Module):
         return loss_dict
 
 
-class BertModel(nn.Module):
+class BertModel(PretrainedBert):
     """The bare Bert Model transformer outputting raw hidden-states without
     any specific head on top.
 
@@ -423,7 +424,7 @@ class BertPreTrainingHeads(nn.Module):
         }
 
 
-class BertForPreTraining(nn.Module):
+class BertForPreTraining(PretrainedBert):
     """Bert Model with two heads on top as done during the pretraining: a
     `masked language modeling` head and a `next sentence prediction (classification)` head.
     """
