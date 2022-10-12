@@ -38,13 +38,14 @@ class t5Graph(nn.Graph):
             decoder_attn_mask, 
             encoder_decoder_attn_mask
         ):
-        return self.model(
+        out = self.model(
             encoder_input_ids, 
             encoder_attn_mask, 
             decoder_input_ids, 
             decoder_attn_mask, 
             encoder_decoder_attn_mask
         )
+        return out["prediction_scores"]
 
 model = get_model("projects/T5/configs/mt5_pretrain.py")
 model.eval()
@@ -81,5 +82,5 @@ convert_to_onnx_and_check(
     flow_weight_dir=None, 
     onnx_model_path="./", 
     dynamic_batch_size=False,
-    device="gpu",
+    device="gpu_global",
 )
