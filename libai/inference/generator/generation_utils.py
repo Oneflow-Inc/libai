@@ -223,6 +223,7 @@ class Generator:
             model_kwargs["encoder_attn_mask"] = model_kwargs["encoder_attn_mask"].index_select(
                 0, expanded_return_idx
             )
+            model_kwargs["encoder_decoder_attn_mask"] = model_kwargs["encoder_attn_mask"]
         return input_ids, model_kwargs
 
     def _update_model_kwargs_for_generation(self, model_kwargs, is_encoder_decoder: bool = False):
