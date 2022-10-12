@@ -277,6 +277,9 @@ class MT5Model(flow.nn.Module, Generator):
             reordered_layer_past_states = ()
             for layer_past_state in layer_past_states:
                 # need to set correct `past` for each of the four key / value states
+                beam_idx = beam_idx.to_global(
+                    placement=layer_past_state.placement
+                )
                 reordered_layer_past_states = reordered_layer_past_states + (
                     layer_past_state.index_select(0, beam_idx),
                 )

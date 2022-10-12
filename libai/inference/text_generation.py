@@ -93,9 +93,9 @@ if __name__ == "__main__":
     pipeline = TextGenerationPipeline(
         "projects/MT5/configs/t5_inference.py",
         data_parallel=1,
-        tensor_parallel=1,
-        pipeline_parallel=1,
-        pipeline_stage_id=None,
+        tensor_parallel=2,
+        pipeline_parallel=2,
+        pipeline_stage_id=[0]*12+[1]*12,
         pipeline_num_layers=12 * 2,
         model_path="data_test/t5_inference_model",
         mode="huggingface",
