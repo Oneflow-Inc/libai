@@ -13,65 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import oneflow as flow
-from omegaconf import OmegaConf
-
-from libai.config import LazyCall
-from libai.data.structures import DistTensorData, Instance
 from libai.inference.basic import BasePipeline
 from libai.tokenizer import T5Tokenizer
+from libai.utils import distributed as dist
 
 
 class TextGenerationPipeline(BasePipeline):
-    def __init__(
-        self,
-        config_file,
-        data_parallel=None,
-        tensor_parallel=None,
-        pipeline_parallel=None,
-        pipeline_stage_id=None,
-        pipeline_num_layers=None,
-        model_path=None,
-        mode="libai",
-        **kwargs,
-    ):
-        super().__init__(
-            config_file,
-            data_parallel,
-            tensor_parallel,
-            pipeline_parallel,
-            pipeline_stage_id,
-            pipeline_num_layers,
-            model_path,
-            mode,
-            **kwargs,
+    def build_tokenizer(self, cfg):
+        tokenizer = T5Tokenizer(
+            "data_test/t5_inference_model/spiece.model",
+            add_bos_token=True,
         )
-
-    def update_cfg(
-        self,
-        data_parallel=1,
-        tensor_parallel=1,
-        pipeline_parallel=1,
-        pipeline_stage_id=None,
-        pipeline_num_layers=None,
-    ):
-        super().update_cfg(
-            data_parallel,
-            tensor_parallel,
-            pipeline_parallel,
-            pipeline_stage_id,
-            pipeline_num_layers,
-        )
-        self.cfg.model.cfg.mlp_type = "t5"
-        self.cfg.model.cfg.pretrained_model_path = None
-        self.cfg.dataloader = None
-        self.cfg.tokenization = OmegaConf.create()
-        self.cfg.tokenization.append_eod = False
-        self.cfg.tokenization.make_vocab_size_divisible_by = 128
-        self.cfg.tokenization.tokenizer = LazyCall(T5Tokenizer)(
-            vocab_file="data_test/t5_inference_model/spiece.model",
-        )
+        return tokenizer
 
     def load_pretrain_weight(self, libai_cfg_model, model_path, mode="huggingface"):
         """load pretrained model.
@@ -83,7 +36,7 @@ class TextGenerationPipeline(BasePipeline):
             model_path (str): The directory path of pretrained model,
         """
         if mode == "huggingface":
-            from libai.models.utils.model_utils.t5_loader import T5LoaderHuggerFace
+            from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
             model_loader = T5LoaderHuggerFace(
                 libai_cfg_model,
@@ -92,7 +45,7 @@ class TextGenerationPipeline(BasePipeline):
                 hidden_dropout_prob=0.0,
                 attention_probs_dropout_prob=0.0,
                 embedding_dropout_prob=0.0,
-                mlp_type="t5",
+                model_type="t5",
             )
             return model_loader.load()
         else:
@@ -102,17 +55,11 @@ class TextGenerationPipeline(BasePipeline):
                 mode=mode,
             )
 
-    def _parse_parameters(self, use_cache=None, max_generate_length=10, **pipeline_parameters):
+    def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
-        forward_params = {}
-        postprocess_params = {**pipeline_parameters}
+        forward_params = {**pipeline_parameters}
+        postprocess_params = {}
 
-        if use_cache is not None:
-            assert isinstance(use_cache, bool), "use_cache must be True or False"
-            forward_params["use_cache"] = use_cache
-        if max_generate_length is not None:
-            assert isinstance(max_generate_length, int), "max_generate_length must be integer"
-            forward_params["max_generate_length"] = max_generate_length
         return preprocess_params, forward_params, postprocess_params
 
     def preprocess(
@@ -122,128 +69,37 @@ class TextGenerationPipeline(BasePipeline):
         **kwargs,
     ) -> dict:
         # tokenizer encoder
-        encoder_ids = np.array(self.tokenizer.encode(inputs))
-        encoder_padding_mask = self.make_attention_mask(encoder_ids, encoder_ids)
+        encoder_ids = self.tokenizer.encode(inputs, return_tensors="of", is_global=True)
 
         encoder_input_dict = {
-            "input_text": inputs,
             "encoder_ids": encoder_ids,
-            "encoder_padding_mask": encoder_padding_mask,
         }
 
         return encoder_input_dict
 
-    def make_attention_mask(self, source_block, target_block):
-        """
-        Returns a 2-dimensional (2-D) attention mask
-        :param source_block: 1-D array
-        :param target_block: 1-D array
-        """
-        mask = (target_block[None, :] >= 1) * (source_block[:, None] >= 1)
-        mask = mask.astype(np.int64)
-        return mask
+    def forward(self, encoder_input_dict, **kwargs) -> dict:
+        outputs = self.model.generate(encoder_input_dict["encoder_ids"], **kwargs)
+        return {"return_ids": outputs}
 
-    def make_history_mask(self, block):
-        length = block.shape[0]
-        arange = np.arange(length)
-        history_mask = (
-            arange[
-                None,
-            ]
-            <= arange[:, None]
-        )
-        history_mask = history_mask.astype(np.int64)
-        return history_mask
-
-    def generate(
-        self,
-        encoder_input_dict: dict,
-        use_cache: bool = True,
-        max_generate_length: int = 10,
-        **kwargs,
-    ) -> dict:
-        encoder_nparray_ids = encoder_input_dict["encoder_ids"]
-        encoder_nparray_mask = encoder_input_dict["encoder_padding_mask"]
-
-        decoder_ids = [6536, 504, 24]
-
-        for _ in range(max_generate_length):
-            # generate decoder input
-            decoder_input_ids = decoder_ids[-1:] if use_cache else decoder_ids
-            decoder_input_ids = np.array(decoder_input_ids)
-            decoder_padding_mask = self.make_attention_mask(decoder_input_ids, decoder_input_ids)
-            if not use_cache:
-                decoder_padding_mask = decoder_padding_mask * self.make_history_mask(
-                    decoder_input_ids
-                )
-            encoder_decoder_padding_mask = self.make_attention_mask(
-                decoder_input_ids, encoder_nparray_ids
-            )
-
-            # set batch size = 1
-            encoder_input_ids = flow.tensor(encoder_nparray_ids, dtype=flow.long).unsqueeze(0)
-            encoder_padding_mask = flow.tensor(encoder_nparray_mask, dtype=flow.bool).unsqueeze(0)
-            decoder_input_ids = flow.tensor(decoder_input_ids, dtype=flow.long).unsqueeze(0)
-            decoder_padding_mask = flow.tensor(decoder_padding_mask, dtype=flow.bool).unsqueeze(0)
-            encoder_decoder_padding_mask = flow.tensor(
-                encoder_decoder_padding_mask, dtype=flow.bool
-            ).unsqueeze(0)
-
-            # to_global for model input
-            model_input = Instance(
-                encoder_input_ids=DistTensorData(encoder_input_ids),
-                encoder_attn_mask=DistTensorData(encoder_padding_mask),
-                decoder_input_ids=DistTensorData(decoder_input_ids),
-                decoder_attn_mask=DistTensorData(decoder_padding_mask),
-                encoder_decoder_attn_mask=DistTensorData(encoder_decoder_padding_mask),
-            )
-
-            model_input_dict = {
-                "use_cache": use_cache,
-            }
-            for key, value in model_input.get_fields().items():
-                value.to_global()
-                model_input_dict[key] = value.tensor
-
-            # get_next_word
-            # change it by yourself according to your needs
-            logits = self.model(**model_input_dict)["prediction_scores"]
-            next_word = self.get_next_word(logits)
-            decoder_ids = decoder_ids + [next_word]
-            if next_word == self.tokenizer.eos_token_id:
-                break
-        return decoder_ids
-
-    @classmethod
-    def get_next_word(self, logits):
-        prob = logits[:, -1]
-        _, next_word = flow.max(prob, dim=1)
-        next_word = next_word.item()
-        return next_word
-
-    def forward(self, encoder_input_dict, use_cache=True, max_generate_length=10, **kwargs) -> dict:
-        self.model.set_cache(encoder_states=None, past_key_values=None)
-        decoder_ids = self.generate(encoder_input_dict, use_cache, max_generate_length, **kwargs)
-        input_text = encoder_input_dict.pop("input_text")
-        return {"decoder_ids": flow.tensor(decoder_ids), "input_text": input_text}
-
-    def postprocess(self, model_output_dict, return_type="new_text", **kwargs) -> dict:
-        return_type = return_type.lower()
-        assert return_type in ["new_text", "full_text", "tensors"]
-        if return_type == "tensors":
-            records = {"generated_token_ids", model_output_dict["decoder_ids"]}
-        elif return_type in ["new_text", "full_text"]:
-            generated_sequence = model_output_dict["decoder_ids"].tolist()
-            text = self.tokenizer.decode(
-                generated_sequence,
-                skip_special_tokens=True,
-                clean_up_tokenization_spaces=True,
-            )
-            if return_type == "full_text":
-                input_text = model_output_dict["input_text"]
-                all_text = input_text + text
-            else:
-                all_text = text
-
-        records = {"generated_text": all_text}
+    def postprocess(self, model_output_dict, **kwargs) -> dict:
+        text = self.tokenizer.decode(model_output_dict["return_ids"][0], skip_special_tokens=True)
+        records = {"generated_text": text}
         return records
+
+
+if __name__ == "__main__":
+    pipeline = TextGenerationPipeline(
+        "projects/MT5/configs/t5_inference.py",
+        data_parallel=1,
+        tensor_parallel=2,
+        pipeline_parallel=2,
+        pipeline_stage_id=[0] * 12 + [1] * 12,
+        pipeline_num_layers=12 * 2,
+        model_path="data_test/t5_inference_model",
+        mode="huggingface",
+    )
+
+    text = ["summarize: She is a student, She is tall, She loves study"]
+    dict1 = pipeline(text)
+    if dist.is_main_process():
+        print(dict1)
