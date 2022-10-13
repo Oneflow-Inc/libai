@@ -1,10 +1,8 @@
 import oneflow as flow
 from oneflow import nn
-from libai.config import LazyConfig, LazyCall
-from omegaconf import OmegaConf
+from libai.config import LazyConfig
 from libai.engine import DefaultTrainer
-from libai.tokenizer import T5Tokenizer
-from oneflow_onnx.oneflow2onnx.util import export_onnx_model, convert_to_onnx_and_check
+from oneflow_onnx.oneflow2onnx.util import convert_to_onnx_and_check
 
 def convert_to_local_model(t):
     if t.is_global:
@@ -20,7 +18,9 @@ def get_model(config_file):
     cfg.dataloader = None
     cfg.tokenization = None
 
+    print("Building model....")
     model = DefaultTrainer.build_model(cfg)
+    print("Build model finished.")
     # model._apply(convert_to_local_model)
 
     return model
@@ -67,6 +67,7 @@ encoder_decoder_attn_mask = flow.ones(1, 3, 5, dtype=flow.bool, sbp=flow.sbp.bro
 # )
 # print(output)
 
+print("Compiling the graph which may make some time, please wait for a moment....")
 t5_graph._compile(
     encoder_input_ids, 
     encoder_attn_mask, 
@@ -83,4 +84,5 @@ convert_to_onnx_and_check(
     onnx_model_path="./", 
     dynamic_batch_size=False,
     device="gpu_global",
+    input_tensor_range=[0, 10],
 )
