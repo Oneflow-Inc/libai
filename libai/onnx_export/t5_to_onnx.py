@@ -47,7 +47,7 @@ class t5Graph(nn.Graph):
         )
         return out["prediction_scores"]
 
-model = get_model("projects/T5/configs/mt5_pretrain.py")
+model = get_model("projects/MT5/configs/mt5_pretrain.py")
 model.eval()
 
 t5_graph = t5Graph(model)
