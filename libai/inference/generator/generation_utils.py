@@ -865,9 +865,9 @@ class Generator:
         if max_length is None and max_new_tokens is None:
             if dist.is_main_process():
                 warnings.warn(
-                    "Neither `max_length` nor `max_new_tokens` has been set, `max_length` will default "
-                    f"to {self.cfg.max_length} (`self.cfg.max_length`).  we recommend using "
-                    "`max_new_tokens` to control the maximum length of the generation.",
+                    "Neither `max_length` nor `max_new_tokens` has been set, `max_length` will "
+                    f"default to {self.cfg.max_length} (`self.cfg.max_length`).  we recommend using"
+                    " `max_new_tokens` to control the maximum length of the generation.",
                     UserWarning,
                 )
         elif max_length is None and max_new_tokens is not None:
