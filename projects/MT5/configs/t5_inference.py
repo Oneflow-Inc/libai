@@ -1,5 +1,7 @@
 from .mt5_base import cfg
-
+from libai.config import LazyCall
+from projects.MT5.mt5_model import MT5Model, MT5ForPreTraining
+from configs.common.train import train
 
 cfg.update(
     model_type="t5",
@@ -35,5 +37,4 @@ cfg.update(
     decoder_start_token_id=0,
 )
 
-cfg.pop("cfg")
-cfg["cfg"] = cfg
+model = LazyCall(MT5Model)(cfg=cfg)

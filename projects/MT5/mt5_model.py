@@ -16,7 +16,7 @@
 import oneflow as flow
 
 from libai.config import configurable
-from libai.inference.utils.generation_utils import Generator
+from libai.inference.generator.generation_utils import Generator
 from libai.layers import Linear, LMLogits, RMSLayerNorm
 from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
@@ -155,7 +155,7 @@ class MT5Model(flow.nn.Module, Generator):
             "layernorm_eps": cfg.layernorm_eps,
             "amp_enabled": cfg.amp_enabled,
             "model_type": cfg.model_type,
-            "cfg": cfg.cfg,
+            "cfg": cfg,
         }
 
     def forward(
@@ -277,6 +277,7 @@ class MT5Model(flow.nn.Module, Generator):
             reordered_layer_past_states = ()
             for layer_past_state in layer_past_states:
                 # need to set correct `past` for each of the four key / value states
+                beam_idx = beam_idx.to_global(placement=layer_past_state.placement)
                 reordered_layer_past_states = reordered_layer_past_states + (
                     layer_past_state.index_select(0, beam_idx),
                 )

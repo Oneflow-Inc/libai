@@ -125,7 +125,7 @@ class Generator:
         eos_token_id: Optional[int],
     ):
         is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [flow.int64, flow.long]
-        is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs.squeeze(0))
+        is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs)
         is_pad_token_not_equal_to_eos_token_id = (eos_token_id is None) or (
             (eos_token_id is not None) and (pad_token_id != eos_token_id)
         )
@@ -217,11 +217,13 @@ class Generator:
                 raise ValueError(
                     "If `is_encoder_decoder` is True, make sure that `encoder_outputs` is defined."
                 )
+            encoder_outputs = encoder_outputs.to_global(placement=expanded_return_idx.placement)
             encoder_outputs = encoder_outputs.index_select(0, expanded_return_idx)
             model_kwargs["encoder_outputs"] = encoder_outputs
             model_kwargs["encoder_attn_mask"] = model_kwargs["encoder_attn_mask"].index_select(
                 0, expanded_return_idx
             )
+            model_kwargs["encoder_decoder_attn_mask"] = model_kwargs["encoder_attn_mask"]
         return input_ids, model_kwargs
 
     def _update_model_kwargs_for_generation(self, model_kwargs, is_encoder_decoder: bool = False):
@@ -485,6 +487,7 @@ class Generator:
 
             # argmax
             next_tokens = flow.argmax(next_token_scores, dim=-1)
+            next_tokens = next_tokens.to_global(placement=input_ids.placement)
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=next_tokens.sbp, placement=next_tokens.placement
             )
@@ -680,6 +683,9 @@ class Generator:
             next_token_scores = nn.functional.log_softmax(
                 next_token_logits, dim=-1
             )  # (batch_size * num_beams, vocab_size)
+            next_token_scores = next_token_scores.to_global(
+                sbp=input_ids.sbp, placement=input_ids.placement
+            )
 
             next_token_scores_processed = logits_processor(input_ids, next_token_scores)
             next_token_scores = next_token_scores_processed + beam_scores[:, None].expand_as(
@@ -857,12 +863,13 @@ class Generator:
         # 5. Prepare `max_length` depending on other stopping criteria.
         input_ids_seq_length = input_ids.shape[-1]
         if max_length is None and max_new_tokens is None:
-            warnings.warn(
-                "Neither `max_length` nor `max_new_tokens` has been set, `max_length` will default "
-                f"to {self.cfg.max_length} (`self.cfg.max_length`).  we recommend using "
-                "`max_new_tokens` to control the maximum length of the generation.",
-                UserWarning,
-            )
+            if dist.is_main_process():
+                warnings.warn(
+                    "Neither `max_length` nor `max_new_tokens` has been set, `max_length` will default "
+                    f"to {self.cfg.max_length} (`self.cfg.max_length`).  we recommend using "
+                    "`max_new_tokens` to control the maximum length of the generation.",
+                    UserWarning,
+                )
         elif max_length is None and max_new_tokens is not None:
             max_length = max_new_tokens + input_ids_seq_length
         elif max_length is not None and max_new_tokens is not None:

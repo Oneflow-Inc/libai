@@ -25,7 +25,6 @@ cfg = dict(
 )
 
 cfg = DictConfig(cfg)
-cfg["cfg"] = cfg
 
 mt5_model = LazyCall(MT5Model)(cfg=cfg)
 pretrain_model = LazyCall(MT5ForPreTraining)(cfg=cfg)
