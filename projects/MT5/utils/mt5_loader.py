@@ -285,7 +285,8 @@ class T5LoaderHuggerFace(ModelLoaderHuggerFace):
         self._update_cfg("initializer_range", cfg_dict["initializer_factor"])
         self._update_cfg("layernorm_eps", cfg_dict["layer_norm_epsilon"])
         self._update_cfg("head_size", cfg_dict["d_kv"])
-        self._update_cfg("tie_word_embeddings", cfg_dict.get("tie_word_embeddings", True))
+        if "tie_word_embeddings" in self.libai_cfg:
+            self._update_cfg("tie_word_embeddings", cfg_dict.get("tie_word_embeddings", True))
 
         # update libai_cfg by kwargs
         for k, v in self.kwargs.items():

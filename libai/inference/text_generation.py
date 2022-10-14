@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
-
 from libai.inference.basic import BasePipeline
 from libai.tokenizer import T5Tokenizer
 from libai.utils import distributed as dist
