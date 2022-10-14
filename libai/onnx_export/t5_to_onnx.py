@@ -47,42 +47,43 @@ class t5Graph(nn.Graph):
         )
         return out["prediction_scores"]
 
-model = get_model("projects/MT5/configs/mt5_pretrain.py")
-model.eval()
+if __name__ == "__main__":
+    model = get_model("projects/MT5/configs/mt5_pretrain.py")
+    model.eval()
 
-t5_graph = t5Graph(model)
-# Build the static graph model
-encoder_input_ids = flow.ones(1, 5, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
-encoder_attn_mask = flow.ones(1, 3, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
-decoder_input_ids = flow.ones(1, 5, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
-decoder_attn_mask =  flow.ones(1, 3, 3, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
-encoder_decoder_attn_mask = flow.ones(1, 3, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+    t5_graph = t5Graph(model)
+    # Build the static graph model
+    encoder_input_ids = flow.ones(1, 5, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+    encoder_attn_mask = flow.ones(1, 3, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+    decoder_input_ids = flow.ones(1, 5, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+    decoder_attn_mask =  flow.ones(1, 3, 3, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
+    encoder_decoder_attn_mask = flow.ones(1, 3, 5, dtype=flow.bool, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
 
-# output = t5_graph(
-#     encoder_input_ids, 
-#     encoder_attn_mask, 
-#     decoder_input_ids, 
-#     decoder_attn_mask, 
-#     encoder_decoder_attn_mask
-# )
-# print(output)
+    # output = t5_graph(
+    #     encoder_input_ids, 
+    #     encoder_attn_mask, 
+    #     decoder_input_ids, 
+    #     decoder_attn_mask, 
+    #     encoder_decoder_attn_mask
+    # )
+    # print(output)
 
-print("Compiling the graph which may make some time, please wait for a moment....")
-t5_graph._compile(
-    encoder_input_ids, 
-    encoder_attn_mask, 
-    decoder_input_ids, 
-    decoder_attn_mask, 
-    encoder_decoder_attn_mask
-)
+    print("Compiling the graph which may make some time, please wait for a moment....")
+    t5_graph._compile(
+        encoder_input_ids, 
+        encoder_attn_mask, 
+        decoder_input_ids, 
+        decoder_attn_mask, 
+        encoder_decoder_attn_mask
+    )
 
-convert_to_onnx_and_check(
-    t5_graph,
-    external_data=False, 
-    opset=11, 
-    flow_weight_dir=None, 
-    onnx_model_path="./", 
-    dynamic_batch_size=False,
-    device="gpu_global",
-    input_tensor_range=[0, 10],
-)
+    convert_to_onnx_and_check(
+        t5_graph,
+        external_data=False, 
+        opset=11, 
+        flow_weight_dir=None, 
+        onnx_model_path="./", 
+        dynamic_batch_size=False,
+        device="gpu_global",
+        input_tensor_range=[0, 10],
+    )
