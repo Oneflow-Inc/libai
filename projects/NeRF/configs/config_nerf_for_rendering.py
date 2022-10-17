@@ -1,9 +1,15 @@
-from projects.NeRF.configs.config_nerf import *
+from projects.NeRF.configs.config_nerf import (
+    train,
+    dataset,
+    dataloader,
+    graph,
+    LazyCall,
+    build_image_test_loader,
+)
 from projects.NeRF.evaluation.nerf_evaluator import NerfVisEvaluator
 from libai.data.samplers import SingleRoundSampler
 
-
-# TODO: Create a unified interface to Nerf datasets
+# TODO: Used for generating MP4 format files
 # Redefining evaluator
 
 train.evaluation = dict(
@@ -36,4 +42,4 @@ dataloader.test = [
     )
 ]
 
-train.load_weight = "pretrain/file/path"
+train.load_weight = "pretrain/file/path"  # Already trained NeRF checkpoint location

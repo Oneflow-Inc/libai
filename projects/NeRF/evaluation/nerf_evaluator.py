@@ -6,10 +6,10 @@ from datetime import datetime
 
 import cv2
 import flowvision.transforms as T
+import imageio
 import numpy as np
 import oneflow as flow
 from PIL import Image
-import imageio
 
 from libai.evaluation.cls_evaluator import ClsEvaluator
 from libai.utils import distributed as dist
@@ -128,7 +128,6 @@ class NerfVisEvaluator(NerfEvaluator):
         """
         Args:
             img_wh (tuple(int)): the width and height of the images in the validation set
-            image_save_path (str): location of image storage
         """
         super().__init__(img_wh=img_wh)
         self.image_list = []
@@ -155,6 +154,8 @@ class NerfVisEvaluator(NerfEvaluator):
         self.image_list.append(img)
         self._predictions.append({"losses": 0.0, "psnr": 0.0})
         if len(self._predictions) == self.pose_dir_len:
-            mp4_save_path = os.path.join(self.mp4_save_path, 'rgb.mp4')
-            imageio.mimwrite(mp4_save_path, self.to8b(np.stack(self.image_list,0)), fps=30, quality=8)
+            mp4_save_path = os.path.join(self.mp4_save_path, "rgb.mp4")
+            imageio.mimwrite(
+                mp4_save_path, self.to8b(np.stack(self.image_list, 0)), fps=30, quality=8
+            )
             print("successfully save mp4 file!")

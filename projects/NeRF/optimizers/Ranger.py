@@ -26,12 +26,6 @@ class Ranger(Optimizer):
         if not eps > 0:
             raise ValueError(f"Invalid eps: {eps}")
 
-        # parameter comments:
-        # beta1 (momentum) of .95 seems to work better than .90...
-        # N_sma_threshold of 5 seems better in testing than 4.
-        # In both cases, worth testing on your dataset (.90 vs .95, 4 vs 5) to make sure which works best for you.
-
-        # prep defaults and init flow.optim base
         defaults = dict(
             lr=lr,
             alpha=alpha,
@@ -60,32 +54,13 @@ class Ranger(Optimizer):
         # radam buffer for state
         self.radam_buffer = [[None, None, None] for ind in range(10)]
 
-        # self.first_run_check=0
-
-        # lookahead weights
-        # 9/2/19 - lookahead param tensors have been moved to state storage.
-        # This should resolve issues with load/save where weights were left in GPU memory from first load, slowing down future runs.
-
-        # self.slow_weights = [[p.clone().detach() for p in group['params']]
-        #                     for group in self.param_groups]
-
-        # don't use grad for lookahead weights
-        # for w in it.chain(*self.slow_weights):
-        #    w.requires_grad = False
-
     def __setstate__(self, state):
         print("set state called")
         super(Ranger, self).__setstate__(state)
 
     def step(self, closure=None):
         loss = None
-        # note - below is commented out b/c I have other work that passes back the loss as a float, and thus not a callable closure.
-        # Uncomment if you need to use the actual closure...
 
-        # if closure is not None:
-        # loss = closure()
-
-        # Evaluate averages and grad, update param tensors
         for group in self.param_groups:
 
             for p in group["params"]:
@@ -99,12 +74,7 @@ class Ranger(Optimizer):
 
                 state = self.state[p]  # get state dict for this param
 
-                if (
-                    len(state) == 0
-                ):  # if first time to run...init dictionary with our desired entries
-                    # if self.first_run_check==0:
-                    # self.first_run_check=1
-                    # print("Initializing slow buffer...should not see this at load from saved model!")
+                if len(state) == 0:
                     state["step"] = 0
                     state["exp_avg"] = flow.zeros_like(p_data_fp32)
                     state["exp_avg_sq"] = flow.zeros_like(p_data_fp32)

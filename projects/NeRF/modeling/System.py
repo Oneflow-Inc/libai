@@ -64,7 +64,7 @@ class NerfSystem(nn.Module):
         self.N_importance = N_importance
         self.chunk = chunk
         self.white_back = True if dataset_type == "Blender" else False
-        self.loss_func = nn.MSELoss() if loss_func == None else loss_func
+        self.loss_func = nn.MSELoss() if loss_func is None else loss_func
         self.embedding_xyz = Embedding(3, 10)  # 10 is the default number
         self.embedding_dir = Embedding(3, 4)  # 4 is the default number
         self.nerf_coarse = NeRF(
@@ -110,7 +110,8 @@ class NerfSystem(nn.Module):
         Sample @N_importance samples from @bins with distribution defined by @weights.
 
         Inputs:
-            bins (tensor): (N_rays, N_samples_+1) where N_samples_ is "the number of coarse samples per ray - 2"
+            bins (tensor): (N_rays, N_samples_+1) where N_samples_ is "the number of
+                            coarse samples per ray - 2"
             weights (tensor): (N_rays, N_samples_)
             N_importance (int): the number of samples to draw from the distribution
             det (bool): deterministic or not
@@ -169,7 +170,8 @@ class NerfSystem(nn.Module):
         Helper function that performs model inference.
 
         Inputs:
-            N_rays (tensor): rays (N_rays, 3+3+2), ray origins, directions and near, far depth bounds
+            N_rays (tensor): rays (N_rays, 3+3+2), ray origins, directions and near,
+                             far depth bounds
             model (nn.Module): NeRF model (coarse or fine)
             embedding_xyz (nn.Module): embedding module for xyz
             xyz_ (tensor): (N_rays, N_samples_, 3) sampled positions
@@ -194,8 +196,10 @@ class NerfSystem(nn.Module):
         # Embed directions
         xyz_ = xyz_.view(-1, 3)  # (N_rays*N_samples_, 3)
         if not weights_only:
-            dir_embedded = dir_embedded[:, None].expand(dir_embedded.shape[0],N_samples_,dir_embedded.shape[1])
-            dir_embedded = dir_embedded.reshape(-1,dir_embedded.shape[-1])
+            dir_embedded = dir_embedded[:, None].expand(
+                dir_embedded.shape[0], N_samples_, dir_embedded.shape[1]
+            )
+            dir_embedded = dir_embedded.reshape(-1, dir_embedded.shape[-1])
 
         # Perform model inference to get rgb and raw sigma
         B = xyz_.shape[0]
@@ -308,9 +312,7 @@ class NerfSystem(nn.Module):
             upper = flow.cat([z_vals_mid, z_vals[:, -1:]], -1)
             lower = flow.cat([z_vals[:, :1], z_vals_mid], -1)
 
-            v = flow.rand(z_vals.shape).to_global(
-                sbp=rays.sbp, placement=rays.placement
-            )
+            v = flow.rand(z_vals.shape).to_global(sbp=rays.sbp, placement=rays.placement)
             perturb_rand = perturb * v
             z_vals = lower + (upper - lower) * perturb_rand
 
@@ -423,9 +425,10 @@ class NerfSystem(nn.Module):
             valid_mask (tensor): (H W) valid color area
 
         Outputs:
-            re (dict): regarding the series of outputs such as rgbs and loss obtained from the model predictions.
+            re (dict): regarding the series of outputs such as rgbs and loss obtained from the
+                        model predictions.
         """
-        if c2w == None:
+        if c2w is None:
             rays = rays.squeeze()  # (H*W, 3)
             rgbs = rgbs.squeeze()  # (H*W, 3)
             results = self.forward_features(rays)
@@ -434,7 +437,7 @@ class NerfSystem(nn.Module):
                 losses += self.loss_func(results["rgb_fine"], rgbs)
             return {"losses": losses}
         else:
-            if rgbs == None:
+            if rgbs is None:
                 rays = rays.squeeze()  # (H*W, 3)
                 results = self.forward_features(rays)
                 typ = "fine" if "rgb_fine" in results else "coarse"

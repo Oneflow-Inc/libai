@@ -19,15 +19,14 @@ import os
 import re
 import sys
 from collections import OrderedDict
+from typing import Optional
 
 import numpy as np
 import oneflow as flow
-from flowvision import datasets
 from flowvision import transforms as T
 from oneflow.utils.data import Dataset
 from PIL import Image
 
-from libai.config import LazyCall, instantiate
 from libai.data.structures import DistTensorData, Instance
 
 
@@ -93,7 +92,56 @@ def save_pfm(filename, image, scale=1):
 
 
 # TODO: Preparatory conversion tools for 3D rendering
-from kornia import create_meshgrid
+
+
+def create_meshgrid(
+    height: int,
+    width: int,
+    normalized_coordinates: bool = True,
+    device: Optional[flow.device] = flow.device("cpu"),
+    dtype: flow.dtype = flow.float32,
+):
+    """Generate a coordinate grid for an image.
+
+    When the flag ``normalized_coordinates`` is set to True, the grid is
+    normalized to be in the range :math:`[-1,1]` to be consistent with the pytorch
+    function :py:func:`torch.nn.functional.grid_sample`.
+
+    Args:
+        height: the image height (rows).
+        width: the image width (cols).
+        normalized_coordinates: whether to normalize
+          coordinates in the range :math:`[-1,1]` in order to be consistent with the
+          PyTorch function :py:func:`torch.nn.functional.grid_sample`.
+        device: the device on which the grid will be generated.
+        dtype: the data type of the generated grid.
+
+    Return:
+        grid tensor with shape :math:`(1, H, W, 2)`.
+
+    Example:
+        >>> create_meshgrid(2, 2)
+        tensor([[[[-1., -1.],
+                  [ 1., -1.]],
+        <BLANKLINE>
+                 [[-1.,  1.],
+                  [ 1.,  1.]]]])
+
+        >>> create_meshgrid(2, 2, normalized_coordinates=False)
+        tensor([[[[0., 0.],
+                  [1., 0.]],
+        <BLANKLINE>
+                 [[0., 1.],
+                  [1., 1.]]]])
+    """
+    xs = flow.linspace(0, width - 1, width, device=device, dtype=dtype)
+    ys = flow.linspace(0, height - 1, height, device=device, dtype=dtype)
+    if normalized_coordinates:
+        xs = (xs / (width - 1) - 0.5) * 2
+        ys = (ys / (height - 1) - 0.5) * 2
+    # generate grid by stacking coordinates
+    base_grid = flow.stack(flow.meshgrid([xs, ys], indexing="ij"), dim=-1)  # WxHx2
+    return base_grid.permute(1, 0, 2).unsqueeze(0)  # 1xHxWx2
 
 
 def get_rays(directions, c2w):
@@ -286,6 +334,42 @@ def create_spiral_poses(radii, focus_depth, n_poses=120):
     return np.stack(poses_spiral, 0)  # (n_poses, 3, 4)
 
 
+def spheric_pose(theta, phi, radius):
+    def trans_t(t):
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, 1, 0, -0.9 * t],
+                [0, 0, 1, t],
+                [0, 0, 0, 1],
+            ]
+        )
+
+    def rot_phi(phi):
+        return np.array(
+            [
+                [1, 0, 0, 0],
+                [0, np.cos(phi), -np.sin(phi), 0],
+                [0, np.sin(phi), np.cos(phi), 0],
+                [0, 0, 0, 1],
+            ]
+        )
+
+    def rot_theta(th):
+        return np.array(
+            [
+                [np.cos(th), 0, -np.sin(th), 0],
+                [0, 1, 0, 0],
+                [np.sin(th), 0, np.cos(th), 0],
+                [0, 0, 0, 1],
+            ]
+        )
+
+    c2w = rot_theta(theta) @ rot_phi(phi) @ trans_t(radius)
+    c2w = np.array([[-1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]]) @ c2w
+    return c2w[:3]
+
+
 def create_spheric_poses(radius, n_poses=120):
     """
     Create circular poses around z axis.
@@ -296,38 +380,6 @@ def create_spheric_poses(radius, n_poses=120):
         spheric_poses: (n_poses, 3, 4) the poses in the circular path
     """
 
-    def spheric_pose(theta, phi, radius):
-        trans_t = lambda t: np.array(
-            [
-                [1, 0, 0, 0],
-                [0, 1, 0, -0.9 * t],
-                [0, 0, 1, t],
-                [0, 0, 0, 1],
-            ]
-        )
-
-        rot_phi = lambda phi: np.array(
-            [
-                [1, 0, 0, 0],
-                [0, np.cos(phi), -np.sin(phi), 0],
-                [0, np.sin(phi), np.cos(phi), 0],
-                [0, 0, 0, 1],
-            ]
-        )
-
-        rot_theta = lambda th: np.array(
-            [
-                [np.cos(th), 0, -np.sin(th), 0],
-                [0, 1, 0, 0],
-                [np.sin(th), 0, np.cos(th), 0],
-                [0, 0, 0, 1],
-            ]
-        )
-
-        c2w = rot_theta(theta) @ rot_phi(phi) @ trans_t(radius)
-        c2w = np.array([[-1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]]) @ c2w
-        return c2w[:3]
-
     spheric_poses = []
     for th in np.linspace(0, 2 * np.pi, n_poses + 1)[:-1]:
         spheric_poses += [spheric_pose(th, -np.pi / 5, radius)]  # 36 degree view downwards
@@ -335,27 +387,39 @@ def create_spheric_poses(radius, n_poses=120):
 
 
 def pose_spherical(theta, phi, radius):
-    trans_t = lambda t: flow.Tensor([
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, t],
-        [0, 0, 0, 1]]).float()
+    def trans_t(t):
+        return flow.Tensor(
+            [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, t],
+                [0, 0, 0, 1],
+            ]
+        ).float()
 
-    rot_phi = lambda phi: flow.Tensor([
-        [1, 0, 0, 0],
-        [0, np.cos(phi), -np.sin(phi), 0],
-        [0, np.sin(phi), np.cos(phi), 0],
-        [0, 0, 0, 1]]).float()
+    def rot_phi(phi):
+        return flow.Tensor(
+            [
+                [1, 0, 0, 0],
+                [0, np.cos(phi), -np.sin(phi), 0],
+                [0, np.sin(phi), np.cos(phi), 0],
+                [0, 0, 0, 1],
+            ]
+        ).float()
 
-    rot_theta = lambda th: flow.Tensor([
-        [np.cos(th), 0, -np.sin(th), 0],
-        [0, 1, 0, 0],
-        [np.sin(th), 0, np.cos(th), 0],
-        [0, 0, 0, 1]]).float()
+    def rot_theta(th):
+        return flow.Tensor(
+            [
+                [np.cos(th), 0, -np.sin(th), 0],
+                [0, 1, 0, 0],
+                [np.sin(th), 0, np.cos(th), 0],
+                [0, 0, 0, 1],
+            ]
+        ).float()
 
     c2w = trans_t(radius)
-    c2w = rot_phi(phi / 180. * np.pi) @ c2w
-    c2w = rot_theta(theta / 180. * np.pi) @ c2w
+    c2w = rot_phi(phi / 180.0 * np.pi) @ c2w
+    c2w = rot_theta(theta / 180.0 * np.pi) @ c2w
     c2w = flow.Tensor(np.array([[-1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])) @ c2w
     return c2w
 
@@ -393,11 +457,12 @@ class BlenderDataset(NerfBaseDataset):
         self.batchsize = batchsize
         self.load_meta()
         self.render_poses = flow.stack(
-            [pose_spherical(angle, -30.0, 4.0) for angle in np.linspace(-180, 180, 40 + 1)[:-1]], 0) # use for test
+            [pose_spherical(angle, -30.0, 4.0) for angle in np.linspace(-180, 180, 40 + 1)[:-1]], 0
+        )  # use for test
 
     def load_meta(self):
-        if self.split=="vis":
-            with open(os.path.join(self.root_dir, f"transforms_test.json"), "r") as f:
+        if self.split == "vis":
+            with open(os.path.join(self.root_dir, "transforms_test.json"), "r") as f:
                 self.meta = json.load(f)
         else:
             with open(os.path.join(self.root_dir, f"transforms_{self.split}.json"), "r") as f:
@@ -486,14 +551,16 @@ class BlenderDataset(NerfBaseDataset):
                     -1,
                 )  # (H, W, 2)
             coords = flow.reshape(coords, [-1, 2])  # (H * W, 2)
-            select_inds = np.random.choice(coords.shape[0], size=[self.batchsize], replace=False)  # (N_rand,)
+            select_inds = np.random.choice(
+                coords.shape[0], size=[self.batchsize], replace=False
+            )  # (N_rand,)
             select_coords = coords[select_inds].long()  # (N_rand, 2)
             rays = self.all_rays[
-                   self.indexs[idx]: self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
-                   ]
+                self.indexs[idx] : self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
+            ]
             rgbs = self.all_rgbs[
-                   self.indexs[idx]: self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
-                   ]
+                self.indexs[idx] : self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
+            ]
             rays = rays.view(self.img_wh[0], self.img_wh[1], -1)
             rgbs = rgbs.view(self.img_wh[0], self.img_wh[1], -1)
             rays = rays[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
@@ -543,13 +610,13 @@ class BlenderDataset(NerfBaseDataset):
 
 class LLFFDataset(NerfBaseDataset):
     def __init__(
-            self,
-            root_dir,
-            split="train",
-            img_wh=(504, 378),
-            spheric_poses=False,
-            val_num=1,
-            batchsize=1024,
+        self,
+        root_dir,
+        split="train",
+        img_wh=(504, 378),
+        spheric_poses=False,
+        val_num=1,
+        batchsize=1024,
     ):
         """
         Args:
@@ -581,7 +648,7 @@ class LLFFDataset(NerfBaseDataset):
         H, W, self.focal = poses[0, :, -1]  # original intrinsics, same for all images
         H, W, self.focal = H.item(), W.item(), self.focal.item()
         assert (
-                H * self.img_wh[0] == W * self.img_wh[1]
+            H * self.img_wh[0] == W * self.img_wh[1]
         ), f"You must set @img_wh to have the same aspect ratio as ({W}, {H}) !"
         self.focal *= self.img_wh[0] / W
         poses = np.concatenate([poses[..., 1:2], -poses[..., :1], poses[..., 2:4]], -1)
@@ -607,9 +674,8 @@ class LLFFDataset(NerfBaseDataset):
                 c2w = flow.Tensor(self.poses[i])
                 img = Image.open(image_path).convert("RGB")
                 assert (
-                        img.size[1] * self.img_wh[0] == img.size[0] * self.img_wh[1]
-                ), f"""{image_path} has different aspect ratio than img_wh, 
-                        please check your data!"""
+                    img.size[1] * self.img_wh[0] == img.size[0] * self.img_wh[1]
+                ), f"{image_path} has different aspect ratio than img_wh, please check your data!"
                 img = img.resize(self.img_wh, Image.LANCZOS)
                 img = self.transform(img)  # (3, h, w)
                 img = img.view(3, -1).permute(1, 0)  # (h*w, 3) RGB
@@ -696,14 +762,16 @@ class LLFFDataset(NerfBaseDataset):
                     -1,
                 )  # (H, W, 2)
             coords = flow.reshape(coords, [-1, 2])  # (H * W, 2)
-            select_inds = np.random.choice(coords.shape[0], size=[self.batchsize], replace=False)  # (N_rand,)
+            select_inds = np.random.choice(
+                coords.shape[0], size=[self.batchsize], replace=False
+            )  # (N_rand,)
             select_coords = coords[select_inds].long()  # (N_rand, 2)
             rays = self.all_rays[
-                   self.indexs[idx]: self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
-                   ]
+                self.indexs[idx] : self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
+            ]
             rgbs = self.all_rgbs[
-                   self.indexs[idx]: self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
-                   ]
+                self.indexs[idx] : self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
+            ]
             rays = rays.view(self.img_wh[0], self.img_wh[1], -1)
             rgbs = rgbs.view(self.img_wh[0], self.img_wh[1], -1)
             rays = rays[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
