@@ -19,10 +19,7 @@ import inspect
 import math
 from typing import Callable, List, Tuple
 
-import numpy as np
 import oneflow as flow
-
-from libai.utils import distributed as dist
 
 
 class LogitsProcessorList(list):
@@ -125,20 +122,7 @@ class HammingDiversityLogitsProcessor(object):
             previous_group_tokens = current_tokens[
                 batch_idx * self._num_beams : batch_idx * self._num_beams + group_start_idx
             ]
-            # TODO: bincount
-            previous_group_tokens = (
-                previous_group_tokens.to_global(
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=flow.placement("cuda", list(range(dist.get_world_size()))),
-                )
-                .to_local()
-                .numpy()
-            )
-            token_frequency = np.bincount(previous_group_tokens, minlength=vocab_size)
-            token_frequency = token_frequency.to_global(
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
-            )
+            token_frequency = flow.bincount(previous_group_tokens, minlength=vocab_size)
             scores[batch_idx * group_size : (batch_idx + 1) * group_size] = (
                 scores[batch_idx * group_size : (batch_idx + 1) * group_size]
                 - self._diversity_penalty * token_frequency
