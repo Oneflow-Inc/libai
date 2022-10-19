@@ -91,9 +91,7 @@ def save_pfm(filename, image, scale=1):
     file.close()
 
 
-# TODO: Preparatory conversion tools for 3D rendering
-
-
+# Preparatory conversion tools for 3D rendering
 def create_meshgrid(
     height: int,
     width: int,
@@ -424,9 +422,7 @@ def pose_spherical(theta, phi, radius):
     return c2w
 
 
-# TODO: Blender and LLFF Datasets
-
-
+# Blender and LLFF Datasets
 def trun_dict_to_instance(dict):
     return Instance(**{key: DistTensorData(flow.tensor(value)) for key, value in dict.items()})
 

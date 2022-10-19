@@ -10,17 +10,17 @@ Training NeRF only on 1 GPUs.
 
 
 ### 1. Prepare the training data (blender and llff)
-
 Prepare the training data by running:
-
 Download `nerf_synthetic.zip` and `nerf_llff_data.zip` from [here](https://drive.google.com/drive/folders/128yBriW1IG_3NJ5Rp7APSTZsJqdJdfc1) and unzip them.
 
-### 2. Run the following code to start training
+### 2. Modify the dataset path and related hyperparameters in `projects/NeRF/configs/config_nerf.py`
+
+### 3. Run the following code to start training
 ```bash
 # cd /path/to/libai
  bash tools/train.sh tools/train_net.py projects/NeRF/configs/config_nerf.py 1
 ```
-### 3. Visual rendering results
+### 4. Visual rendering results (Please modify the value of `train.load_weight` in `projects/NeRF/configs/config_nerf_for_rendering.py` first)
 ```bash
 # cd /path/to/libai
  bash tools/train.sh tools/train_net.py projects/NeRF/configs/config_nerf_for_rendering.py 1 --eval-only

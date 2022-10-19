@@ -9,9 +9,8 @@ from projects.NeRF.configs.config_nerf import (
 from projects.NeRF.evaluation.nerf_evaluator import NerfVisEvaluator
 from libai.data.samplers import SingleRoundSampler
 
-# TODO: Used for generating MP4 format files
+# NOTE: Used for generating MP4 format files
 # Redefining evaluator
-
 train.evaluation = dict(
     enabled=True,
     # evaluator for calculating psnr

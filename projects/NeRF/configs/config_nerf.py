@@ -3,18 +3,15 @@ from omegaconf import OmegaConf
 import oneflow as flow
 import oneflow.nn as nn
 
-from libai.data.datasets import BlenderDataset, LLFFDataset
 from libai.data.build import build_image_train_loader, build_image_test_loader
 from libai.config import LazyCall, get_config
 from libai.optim import get_default_optimizer_params
 from libai.scheduler.lr_scheduler import WarmupCosineAnnealingLR, WarmupMultiStepLR
 
+from projects.NeRF.datasets import BlenderDataset, LLFFDataset
 from projects.NeRF.optimizers import Ranger, RAdam
-from projects.NeRF.configs.models.config_model import model
 from projects.NeRF.evaluation.nerf_evaluator import NerfEvaluator
-
-
-# TODO: Create a unified interface to Nerf datasets
+from projects.NeRF.configs.config_model import model
 
 
 def get_nerf_dataset(dataset_type="Blender"):
@@ -34,7 +31,6 @@ graph.enabled = False
 train = get_config("common/train.py").train
 
 # Refine train cfg for Nerf System
-
 train.train_micro_batch_size = 1024  # Verification by ray
 train.test_micro_batch_size = 1  # Verification by picture
 train.dataset_type = "Blender"  # Blender or LLFF
@@ -48,12 +44,10 @@ train.optim_type = "adam"
 train.lr_scheduler_type = "cosine"
 
 # Redefining model config
-
 model.cfg.dataset_type = train.dataset_type
 model.cfg.loss_func = nn.MSELoss()
 
 # Redefining evaluator
-
 train.evaluation = dict(
     enabled=True,
     # evaluator for calculating psnr
@@ -68,7 +62,6 @@ train.evaluation = dict(
 )
 
 # Refine optimizer cfg for Nerf System
-
 # NOTE: In theory, both datasets used by Nerf are optimized using the Adam optimizer, but
 # since the borrowed code base also implements three other optimizer configurations, libai
 # also implements the corresponding optimizer.
