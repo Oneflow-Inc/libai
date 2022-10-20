@@ -303,7 +303,15 @@ class DefaultTrainer(TrainerBase):
         self.auto_scale_hyperparams(cfg, self.train_loader)
 
         # Assume these objects must be constructed in this order.
+        import time
+        dist.synchronize()
+        s = time.time()
+
         self.model = self.build_model(cfg)
+        
+        dist.synchronize()
+        e = time.time()
+        logger.info("build model time--------------------------------:{}".format(e-s))
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
@@ -545,9 +553,19 @@ class DefaultTrainer(TrainerBase):
         # In case some model define without cfg keyword.
         elif try_get_key(cfg.model, "amp_enabled") is not None:
             cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        
+        import time
+        dist.synchronize()
+        s = time.time()
+
         model = build_model(cfg.model)
+
+        dist.synchronize()
+        e = time.time()
+        print("real build model time--------------------------------:{}".format(e-s))
+
         logger = logging.getLogger(__name__)
-        logger.info("Model:\n{}".format(model))
+        # logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
         return model
 

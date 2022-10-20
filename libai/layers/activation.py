@@ -56,7 +56,7 @@ class GeLUTanh(nn.Module):
         """When the approximate argument is 'tanh', Gelu is estimated with:
         0.5 * x * (1.0 + flow.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * flow.pow(x, 3.0))))
         """
-        return flow.nn.functional.gelu(x, approximate="tanh")
+        return flow.nn.functional.gelu(x)
 
 
 class QuickGELU(nn.Module):
