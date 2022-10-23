@@ -13,6 +13,20 @@ Training NeRF only on 1 GPUs.
 Prepare the training data by running:
 Download `nerf_synthetic.zip` and `nerf_llff_data.zip` from [here](https://drive.google.com/drive/folders/128yBriW1IG_3NJ5Rp7APSTZsJqdJdfc1) and unzip them.
 
+NOTE: If your operating system without GUI is not convenient for pulling datasets, then please download the following script according
+to (This script only downloads the blender dataset, to download the other dataset llff please change the filename and fileid):
+```bash
+#!/bin/bash
+# Download zip dataset from Google Drive
+filename='nerf_synthetic.zip'
+fileid='18JxhpWD-4ZmuFKLzKlAw-w5PpzZxXOcG'
+wget --load-cookies /tmp/cookies.txt "https://drive.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://drive.google.com/uc?export=download&id=${fileid}' -O- | sed -rn 's/.confirm=([0-9A-Za-z_]+)./\1\n/p')&id=${fileid}" -O ${filename} && rm -rf /tmp/cookies.txt
+
+# Unzip
+unzip -q ${filename}
+rm ${filename}
+     
+```
 ### 2. Modify the dataset path and related hyperparameters in `projects/NeRF/configs/config_nerf.py`
 
 ### 3. Run the following code to start training
