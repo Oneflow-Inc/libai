@@ -58,7 +58,7 @@ train.update(
     )
 )
 
-graph.enabled = False
+graph.enabled = True
 train.amp.enabled = False
 train.zero_optimization.enabled = False
 train.zero_optimization.stage = 2
