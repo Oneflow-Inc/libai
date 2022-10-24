@@ -233,7 +233,10 @@ class MultiheadAttention(nn.Module):
         context = flow.matmul(attention_weights, value)
         context = context.transpose(1, 2)
 
-        output = self.dense(context.flatten(2))
+        print(f"before: {context.shape}, {context.sbp}, {context.placement}")
+        context = context.flatten(2)
+        print(f"after flatten: {context.shape}, {context.sbp}, {context.placement}")
+        output = self.dense(context)
 
         output = self.output_dropout(output)
 

@@ -38,9 +38,9 @@ train.update(
         # checkpointer=dict(period=10, max_to_keep=20),
         input_placement_device="cpu",
         dist=dict(
-            data_parallel_size=2,
-            tensor_parallel_size=2,
-            pipeline_parallel_size=2,
+            data_parallel_size=1,
+            tensor_parallel_size=8,
+            pipeline_parallel_size=1,
             pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
@@ -58,5 +58,7 @@ train.update(
     )
 )
 
-train.zero_optimization.enabled = True
+graph.enabled = False
+train.amp.enabled = False
+train.zero_optimization.enabled = False
 train.zero_optimization.stage = 2
