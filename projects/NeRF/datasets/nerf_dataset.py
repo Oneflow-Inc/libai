@@ -458,7 +458,7 @@ class BlenderDataset(NerfBaseDataset):
 
     def load_meta(self):
         if self.split == "vis":
-            with open(os.path.join(self.root_dir, "transforms_test.json"), "r") as f:
+            with open(os.path.join(self.root_dir, "transforms_train.json"), "r") as f:
                 self.meta = json.load(f)
         else:
             with open(os.path.join(self.root_dir, f"transforms_{self.split}.json"), "r") as f:
@@ -600,7 +600,7 @@ class BlenderDataset(NerfBaseDataset):
                 ],
                 1,
             )  # (H*W, 8)
-            sample = OrderedDict(rays=rays, c2w=c2w)
+            sample = OrderedDict(rays=rays, rgbs=None, c2w=c2w)
         return trun_dict_to_instance(sample)
 
 
@@ -630,6 +630,9 @@ class LLFFDataset(NerfBaseDataset):
         self.val_num = max(1, val_num)  # at least 1
         self.batchsize = batchsize
         self.load_meta()
+        self.render_poses = flow.stack(
+            [pose_spherical(angle, -30.0, 4.0) for angle in np.linspace(-180, 180, 40 + 1)[:-1]], 0
+        )  # use for test
         self.white_back = False
 
     def load_meta(self):
@@ -664,6 +667,9 @@ class LLFFDataset(NerfBaseDataset):
             # use first N_images-1 to train, the LAST is val
             self.all_rays = []
             self.all_rgbs = []
+            self.indexs = [
+                i * self.img_wh[0] * self.img_wh[1] for i in range(len(self.image_paths) - 1)
+            ]
             for i, image_path in enumerate(self.image_paths):
                 if i == val_idx:  # exclude the val image
                     continue
@@ -725,10 +731,12 @@ class LLFFDataset(NerfBaseDataset):
     def __len__(self):
         if self.split == "train":
             return int(len(self.all_rays) / self.batchsize)
-
-        if self.split == "val":
+        elif self.split == "vis":
+            return len(self.render_poses)
+        elif self.split == "val":
             return self.val_num
-        return len(self.poses_test)
+        elif self.split == "test":
+            return len(self.poses_test)
 
     def __getitem__(self, idx):
         if self.split == "train":  # use data in the buffers
@@ -775,7 +783,7 @@ class LLFFDataset(NerfBaseDataset):
             self.num_iter += 1
             sample = OrderedDict(rays=rays, rgbs=rgbs)  # a alignment point with nerf_pytorch
 
-        else:
+        elif self.split in ["val", "test"]:
             if self.split == "val":
                 c2w = flow.Tensor(self.c2w_val)
             else:
@@ -808,5 +816,18 @@ class LLFFDataset(NerfBaseDataset):
                 img = self.transform(img)  # (3, h, w)
                 img = img.view(3, -1).permute(1, 0)  # (h*w, 3)
                 sample["rgbs"] = img
+        else:
+            c2w = self.render_poses[idx][:3, :4]
+            rays_o, rays_d = get_rays(self.directions, c2w)
 
+            rays = flow.concat(
+                [
+                    rays_o,
+                    rays_d,
+                    self.near * flow.ones_like(rays_o[:, :1]),
+                    self.far * flow.ones_like(rays_o[:, :1]),
+                ],
+                1,
+            )  # (H*W, 8)
+            sample = OrderedDict(rays=rays, rgbs=None, c2w=c2w)
         return trun_dict_to_instance(sample)

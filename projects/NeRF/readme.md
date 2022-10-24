@@ -25,16 +25,20 @@ wget --load-cookies /tmp/cookies.txt "https://drive.google.com/uc?export=downloa
 # Unzip
 unzip -q ${filename}
 rm ${filename}
-     
 ```
 ### 2. Modify the dataset path and related hyperparameters in `projects/NeRF/configs/config_nerf.py`
 
-### 3. Run the following code to start training
+### 3. Install additional dependencies
+```bash
+pip install opencv-python
+pip install imageio
+```
+### 4. Run the following code to start training
 ```bash
 # cd /path/to/libai
  bash tools/train.sh tools/train_net.py projects/NeRF/configs/config_nerf.py 1
 ```
-### 4. Visual rendering results (Please modify the value of `train.load_weight` in `projects/NeRF/configs/config_nerf_for_rendering.py` first)
+### 5. Visual rendering results (Please modify the value of `train.load_weight` in `projects/NeRF/configs/config_nerf_for_rendering.py` first)
 ```bash
 # cd /path/to/libai
  bash tools/train.sh tools/train_net.py projects/NeRF/configs/config_nerf_for_rendering.py 1 --eval-only
