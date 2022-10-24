@@ -559,7 +559,7 @@ class DefaultTrainer(TrainerBase):
             cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
-        logger.info("Model:\n{}".format(model))
+        # logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
         return model
 
