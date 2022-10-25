@@ -21,6 +21,7 @@ from libai.layers import Linear, LMLogits, RMSLayerNorm
 from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
+from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 from projects.MT5.layers.embed_layer import MT5Embedding
 from projects.MT5.layers.mask_layer import ExtendedMask
 from projects.MT5.layers.transformer_layer import TransformerLayer
@@ -320,7 +321,11 @@ class MT5Model(flow.nn.Module, Generator):
 class MT5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
-        self.mt5_model = MT5Model(cfg)
+        if cfg.pretrained_model_path is not None:
+            loader = T5LoaderHuggerFace(MT5Model, cfg, cfg.pretrained_model_path)
+            self.mt5_model = loader.load()
+        else:
+            self.mt5_model = MT5Model(cfg)
         self.loss_func = MT5Loss()
 
     def set_cache(self, encoder_states, past_key_values):

@@ -10,6 +10,7 @@ from projects.MT5.configs.mt5_base import pretrain_model as model
 
 vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
 data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
+pretrained_model_path = "./data_test/"
 
 tokenization.tokenizer.vocab_file = vocab_file
 dataloader.train.dataset[0].data_prefix = data_prefix
@@ -25,6 +26,7 @@ model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
 model.cfg.embedding_dropout_prob = 0.0
 model.cfg.vocab_size = 30522
+model.cfg.pretrained_model_path = pretrained_model_path
 
 train.update(
     dict(
@@ -38,9 +40,9 @@ train.update(
         # checkpointer=dict(period=10, max_to_keep=20),
         input_placement_device="cpu",
         dist=dict(
-            data_parallel_size=1,
-            tensor_parallel_size=8,
-            pipeline_parallel_size=1,
+            data_parallel_size=4,
+            tensor_parallel_size=2,
+            pipeline_parallel_size=2,
             pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(

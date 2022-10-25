@@ -71,7 +71,42 @@ time: ~0.23 s/iter
 total_throughput: ~70 samples/s
 ```
 
-### 运行单机8卡数据并行训练
+环境变量的含义：
+
+- `NODE`: 集群中的机器数
+- `NODE_RANK`: 当前节点的序号
+- `ADDR`: master 节点的 ip 地址
+- `PORT`: master 节点的端口号
+
+
+### 加载 HuggingFace 预训练模型
+
+以 [mt5-base](https://huggingface.co/google/mt5-base/tree/main) 为例。
+ 
+在 `libai` 项目根目录运行以下命令下载预训练模型：
+
+```bash
+wget https://huggingface.co/google/mt5-base/resolve/main/pytorch_model.bin -P ./data_test
+wget https://huggingface.co/google/mt5-base/raw/main/config.json -P data_test/
+```
+
+修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `13` 行如下：
+
+```python3
+pretrained_model_path = "./data_test"
+```
+
+即可加载 HuggingFace 的预训练模型继续微调：
+
+```bash
+NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/train.sh tools/train_net.py projects/MT5/configs/mt5_pretrain.py 1
+```
+
+注：加载 `HuggingFace` 的模型需要安装 `PyTorch`
+
+### 运行各种并行模式配置
+
+#### 运行单机8卡数据并行训练
 在 `libai` 项目的根目录下运行以下命令：
 
 ```bash
@@ -84,7 +119,7 @@ time: ~0.3 s/iter
 total_throughput: ~426 samples/s
 ```
 
-### 运行单机8卡张量并行
+#### 运行单机8卡张量并行
 
 修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `41~43` 行如下：
 
@@ -105,16 +140,87 @@ NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/train.sh tools/train
 
 A100 测试数据：
 ```bash
-time: ~0.3 s/iter
-total_throughput: ~426 samples/s
+time: ~ s/iter
+total_throughput: ~ samples/s
 ```
 
-### 运行单机8卡流水并行
+#### 运行单机8卡流水并行
+
+修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `41~43` 行如下：
+
+```python3
+dist=dict(
+    data_parallel_size=1,
+    tensor_parallel_size=1,
+    pipeline_parallel_size=8,
+    pipeline_num_layers=2 * model.cfg.hidden_layers,
+),
+```
 
 在 `libai` 项目的根目录下运行以下命令：
 
 ```bash
 NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/train.sh tools/train_net.py projects/MT5/configs/mt5_pretrain.py 8
 ```
+
+A100 测试数据：
+```bash
+time: ~0.73 s/iter
+total_throughput: ~22 samples/s
+```
+
+#### 运行单机8卡3D混合并行(数据并行度2 + 张量并行度2 + 流水并行度2)
+
+修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `41~43` 行如下：
+
+```python3
+dist=dict(
+    data_parallel_size=2,
+    tensor_parallel_size=2,
+    pipeline_parallel_size=2,
+    pipeline_num_layers=2 * model.cfg.hidden_layers,
+),
+```
+
+在 `libai` 项目的根目录下运行以下命令：
+
+```bash
+NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/train.sh tools/train_net.py projects/MT5/configs/mt5_pretrain.py 8
+```
+
+A100 测试数据：
+```bash
+time: ~0.34 s/iter
+total_throughput: ~93 samples/s
+```
+
+#### 运行2机4卡3D混合并行(数据并行度2 + 张量并行度2 + 流水并行度2)
+
+修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `41~43` 行如下：
+
+```python3
+dist=dict(
+    data_parallel_size=2,
+    tensor_parallel_size=2,
+    pipeline_parallel_size=2,
+    pipeline_num_layers=2 * model.cfg.hidden_layers,
+),
+```
+
+在0号机器 `libai` 项目的根目录下运行以下命令：
+
+```bash
+NODE=2 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/train.sh tools/train_net.py projects/MT5/configs/mt5_pretrain.py 4
+```
+
+在1号机器 `libai` 项目的根目录下运行以下命令：
+
+```bash
+NODE=2 NODE_RANK=1 ADDR=192.168.30.21 PORT=12345 bash tools/train.sh tools/train_net.py projects/MT5/configs/mt5_pretrain.py 4
+```
+
+## MT5 推理流程
+
+
 
 
