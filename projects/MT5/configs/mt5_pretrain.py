@@ -32,17 +32,18 @@ train.update(
     dict(
         output_dir="projects/MT5/output/mt5_output",
         train_micro_batch_size=16,
+        num_accumulation_steps=None,
         train_epoch=1,
         train_iter=24000,
         log_period=10,
         amp=dict(enabled=False),
         warmup_ratio=1 / 24,
-        # checkpointer=dict(period=10, max_to_keep=20),
+        checkpointer=dict(period=10, max_to_keep=20),
         input_placement_device="cpu",
         dist=dict(
-            data_parallel_size=4,
-            tensor_parallel_size=2,
-            pipeline_parallel_size=2,
+            data_parallel_size=8,
+            tensor_parallel_size=1,
+            pipeline_parallel_size=1,
             pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
@@ -61,6 +62,5 @@ train.update(
 )
 
 graph.enabled = True
-train.amp.enabled = False
 train.zero_optimization.enabled = False
 train.zero_optimization.stage = 2

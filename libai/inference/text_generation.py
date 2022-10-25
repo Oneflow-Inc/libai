@@ -21,7 +21,7 @@ from libai.utils import distributed as dist
 class TextGenerationPipeline(BasePipeline):
     def build_tokenizer(self, cfg):
         tokenizer = T5Tokenizer(
-            "data_test/t5_inference_model/spiece.model",
+            "data_test/spiece.model",
             add_bos_token=True,
         )
         return tokenizer
@@ -45,15 +45,23 @@ class TextGenerationPipeline(BasePipeline):
                 hidden_dropout_prob=0.0,
                 attention_probs_dropout_prob=0.0,
                 embedding_dropout_prob=0.0,
-                model_type="t5",
+                model_type="mt5",
             )
             return model_loader.load()
-        else:
-            return super().load_pretrain_weight(
+        elif mode == "libai":
+            from projects.MT5.utils.mt5_loader import T5LoaderLibai
+
+            model_loader = T5LoaderLibai(
                 libai_cfg_model,
+                libai_cfg_model.cfg,
                 model_path,
-                mode=mode,
             )
+            return model_loader.load()
+        elif mode == "random":
+            from libai.engine import DefaultTrainer
+            return DefaultTrainer.build_model(self.cfg)
+        else:
+            raise NotImplementedError
 
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
@@ -95,8 +103,8 @@ if __name__ == "__main__":
         pipeline_parallel=2,
         pipeline_stage_id=[0] * 12 + [1] * 12,
         pipeline_num_layers=12 * 2,
-        model_path="data_test/t5_inference_model",
-        mode="huggingface",
+        model_path="projects/MT5/output/mt5_output/model_0000009/model/",
+        mode="libai",
     )
 
     text = ["summarize: She is a student, She is tall, She loves study"]

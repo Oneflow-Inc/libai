@@ -119,32 +119,7 @@ time: ~0.3 s/iter
 total_throughput: ~426 samples/s
 ```
 
-#### 运行单机8卡张量并行
-
-修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `41~43` 行如下：
-
-```python3
-dist=dict(
-    data_parallel_size=1,
-    tensor_parallel_size=8,
-    pipeline_parallel_size=1,
-    pipeline_num_layers=2 * model.cfg.hidden_layers,
-),
-```
-
-在 `libai` 项目的根目录下运行以下命令：
-
-```bash
-NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/train.sh tools/train_net.py projects/MT5/configs/mt5_pretrain.py 8
-```
-
-A100 测试数据：
-```bash
-time: ~ s/iter
-total_throughput: ~ samples/s
-```
-
-#### 运行单机8卡流水并行
+#### 运行单机8卡朴素流水并行
 
 修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `41~43` 行如下：
 
@@ -152,7 +127,7 @@ total_throughput: ~ samples/s
 dist=dict(
     data_parallel_size=1,
     tensor_parallel_size=1,
-    pipeline_parallel_size=8,
+    pipeline_parallel_size=4,
     pipeline_num_layers=2 * model.cfg.hidden_layers,
 ),
 ```
@@ -169,7 +144,7 @@ time: ~0.73 s/iter
 total_throughput: ~22 samples/s
 ```
 
-#### 运行单机8卡3D混合并行(数据并行度2 + 张量并行度2 + 流水并行度2)
+#### 运行单机8卡3D混合并行(数据并行度2 + 张量并行度2 + 朴素流水并行度2)
 
 修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `41~43` 行如下：
 
@@ -194,7 +169,7 @@ time: ~0.34 s/iter
 total_throughput: ~93 samples/s
 ```
 
-#### 运行2机4卡3D混合并行(数据并行度2 + 张量并行度2 + 流水并行度2)
+#### 运行2机4卡3D混合并行(数据并行度2 + 张量并行度2 + 朴素流水并行度2)
 
 修改 `PATH_TO_LIBAI_ROOT/projects/MT5/configs/mt5_pretrain.py` 文件 `41~43` 行如下：
 
@@ -221,6 +196,78 @@ NODE=2 NODE_RANK=1 ADDR=192.168.30.21 PORT=12345 bash tools/train.sh tools/train
 
 ## MT5 推理流程
 
+### 单卡推理
 
+#### 加载 HuggingFace 预训练模型推理
+
+以 [mt5-base](https://huggingface.co/google/mt5-base/tree/main) 为例。
+ 
+在 `libai` 项目根目录运行以下命令下载预训练模型：
+
+```bash
+wget https://huggingface.co/google/mt5-base/resolve/main/pytorch_model.bin -P ./data_test
+wget https://huggingface.co/google/mt5-base/raw/main/config.json -P data_test/
+```
+
+下载词表文件:
+
+```bash
+wget https://huggingface.co/google/mt5-base/resolve/main/spiece.model -P data_test/
+```
+
+修改 `libai/inference/text_generation.py` 文件，第 `24` 行为:
+
+```python3
+tokenizer = T5Tokenizer(
+    "data_test/spiece.model",
+    add_bos_token=True,
+)
+```
+
+第 `98~99` 行为：
+
+```python3
+model_path="data_test/",
+mode="huggingface", 
+```
+
+然后在 `libai` 项目的根目录下运行以下命令：
+
+```bash
+NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/infer.sh libai/inference/text_generation.py 1
+```
+
+#### 加载 Libai 预训练模型推理
+
+修改 `libai/inference/text_generation.py` 文件，第 `98~99` 行为：
+
+```python3
+model_path="projects/MT5/output/mt5_output/model_final/model",
+mode="libai", 
+```
+
+然后在 `libai` 项目的根目录下运行以下命令：
+
+```bash
+NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/infer.sh libai/inference/text_generation.py 1
+```
+
+
+### 2卡推理，模型分段并行
+
+
+修改 `libai/inference/text_generation.py` 文件，第 `93~95` 行为:
+
+```python3
+data_parallel=1,
+tensor_parallel=1,
+pipeline_parallel=2,
+```
+
+在 `libai` 项目的根目录下运行以下命令：
+
+```bash
+NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/infer.sh libai/inference/text_generation.py 2
+```
 
 
