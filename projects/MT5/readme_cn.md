@@ -9,8 +9,10 @@ python3 -m pip install --upgrade pip #--user
 ```
 
 ```bash
-python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/master/cu112
+python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/master/[PLATFORM]
 ```
+
+`[PLATFORM]` 根据平台设置，目前支持：`cu112`, `cu102` 和 `cpu`
 
 2. 从 github 获取 [Libai](https://github.com/Oneflow-Inc/libai) 库
 

@@ -26,3 +26,4 @@ black==21.4b2
 autoflake
 tensorboardX
 pytest
+datasets
