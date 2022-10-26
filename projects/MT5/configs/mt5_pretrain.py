@@ -38,7 +38,7 @@ train.update(
         log_period=10,
         amp=dict(enabled=False),
         warmup_ratio=1 / 24,
-        checkpointer=dict(period=10, max_to_keep=20),
+        checkpointer=dict(period=500, max_to_keep=20),
         input_placement_device="cpu",
         dist=dict(
             data_parallel_size=8,

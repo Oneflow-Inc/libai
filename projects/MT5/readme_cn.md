@@ -244,11 +244,13 @@ NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/infer.sh libai/infer
 修改 `libai/inference/text_generation.py` 文件，第 `98~99` 行为：
 
 ```python3
-model_path="projects/MT5/output/mt5_output/model_final/model",
+model_path="projects/MT5/output/mt5_output/model_xxx/model",
 mode="libai", 
 ```
 
-然后在 `libai` 项目的根目录下运行以下命令：
+其中 `model_path` 所填写的模型路径需要先运行训练得到保存的模型。
+
+接着在 `libai` 项目的根目录下运行以下命令：
 
 ```bash
 NODE=1 NODE_RANK=0 ADDR=192.168.30.21 PORT=12345 bash tools/infer.sh libai/inference/text_generation.py 1
