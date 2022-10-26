@@ -10,7 +10,7 @@ from projects.MT5.configs.mt5_base import pretrain_model as model
 
 vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
 data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
-pretrained_model_path = "./data_test/"
+pretrained_model_path = None
 
 tokenization.tokenizer.vocab_file = vocab_file
 dataloader.train.dataset[0].data_prefix = data_prefix
