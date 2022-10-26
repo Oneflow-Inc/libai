@@ -129,7 +129,7 @@ total_throughput: ~426 samples/s
 dist=dict(
     data_parallel_size=1,
     tensor_parallel_size=1,
-    pipeline_parallel_size=4,
+    pipeline_parallel_size=8,
     pipeline_num_layers=2 * model.cfg.hidden_layers,
 ),
 ```
