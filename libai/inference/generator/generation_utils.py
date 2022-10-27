@@ -468,7 +468,7 @@ class Generator:
             stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
 
         # keep track of which sequences are already finished
-        unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
+        unfinished_sequences = flow.ones(input_ids.shape[0])
         cur_len = input_ids.shape[-1]
         while True:
             # prepare model inputs
@@ -517,6 +517,10 @@ class Generator:
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
                 break
 
+        # Release records
+        self.past_key_values = [None] * len(self.decoder.layers)
+        self.encoder_states = None
+        
         return input_ids
 
     def multinomial_sample(
@@ -553,7 +557,7 @@ class Generator:
             stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
         logits_warper = logits_warper if logits_warper is not None else LogitsProcessorList()
 
-        unfinished_sequences = flow.zeros(input_ids.shape[0]).fill_(1)
+        unfinished_sequences = flow.ones(input_ids.shape[0])
         cur_len = input_ids.shape[-1]
 
         while True:
@@ -612,6 +616,10 @@ class Generator:
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
                 break
 
+        # Release records
+        self.past_key_values = [None] * len(self.decoder.layers)
+        self.encoder_states = None
+        
         return input_ids
 
     def beam_search(
@@ -746,6 +754,10 @@ class Generator:
             max_length=stopping_criteria.max_length,
             beam_indices=beam_indices,
         )
+        
+        # Release records
+        self.past_key_values = [None] * len(self.decoder.layers)
+        self.encoder_states = None
 
         return sequence_outputs["sequences"]
 
