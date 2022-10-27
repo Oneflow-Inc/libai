@@ -304,17 +304,15 @@ class DefaultTrainer(TrainerBase):
 
         # Assume these objects must be constructed in this order.
         dist.synchronize()
-        if dist.get_local_rank() == 0:
-            start_time = time.time()
-            logger.info("> Start building model...")
+        start_time = time.time()
+        logger.info("> Start building model...")
         self.model = self.build_model(cfg)
 
         dist.synchronize()
-        if dist.get_local_rank() == 0:
-            logger.info(
-                ">>> done with building model. "
-                "Building time: {:.3f} seconds".format(time.time() - start_time)
-            )
+        logger.info(
+            ">>> done with building model. "
+            "Building time: {:.3f} seconds".format(time.time() - start_time)
+        )
 
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)

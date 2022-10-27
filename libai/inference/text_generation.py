@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from libai.inference.basic import BasePipeline
+from libai.utils import distributed as dist
 
 
 class TextGenerationPipeline(BasePipeline):
@@ -79,3 +80,21 @@ class TextGenerationPipeline(BasePipeline):
             for i in range(return_ids.size(0))
         ]
         return records
+
+
+if __name__ == "__main__":
+    pipeline = TextGenerationPipeline(
+        "projects/MT5/configs/t5_inference.py",
+        data_parallel=1,
+        tensor_parallel=2,
+        pipeline_parallel=2,
+        pipeline_stage_id=[0] * 12 + [1] * 12,
+        pipeline_num_layers=12 * 2,
+        model_path="data_test/t5_inference_model",
+        mode="huggingface",
+    )
+
+    text = ["summarize: She is a student, She is tall, She loves study"]
+    dict1 = pipeline(text)
+    if dist.is_main_process():
+        print(dict1)
