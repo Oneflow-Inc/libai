@@ -3,7 +3,7 @@ from libai.config import LazyCall
 from libai.tokenizer import T5Tokenizer
 from projects.MT5.mt5_model import MT5Model, MT5ForPreTraining
 from configs.common.train import train
-from configs.common.data.bert_dataset import tokenization
+from configs.common.data.t5_dataset import tokenization
 
 cfg.update(
     model_type="t5",
