@@ -40,12 +40,21 @@ class TextGenerationPipeline(BasePipeline):
                 model_type="t5",
             )
             return model_loader.load()
-        else:
-            return super().load_pretrain_weight(
+        elif mode == "libai":
+            from projects.MT5.utils.mt5_loader import T5LoaderLibai
+
+            model_loader = T5LoaderLibai(
                 libai_cfg_model,
+                libai_cfg_model.cfg,
                 model_path,
-                mode=mode,
             )
+            return model_loader.load()
+        elif mode == "random":
+            from libai.engine import DefaultTrainer
+
+            return DefaultTrainer.build_model(self.cfg)
+        else:
+            raise NotImplementedError
 
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
