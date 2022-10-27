@@ -356,8 +356,6 @@ class T5Loss(flow.nn.Module):
         denominator = loss_mask.sum().to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         )
-        lm_loss = flow._C.amp_white_identity(lm_loss)
-        lm_loss = flow._C.amp_black_identity(lm_loss)
         masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
         masked_lm_loss = masked_lm_loss.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])

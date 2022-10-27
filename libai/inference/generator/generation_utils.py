@@ -520,7 +520,7 @@ class Generator:
         # Release records
         self.past_key_values = [None] * len(self.decoder.layers)
         self.encoder_states = None
-        
+
         return input_ids
 
     def multinomial_sample(
@@ -619,7 +619,7 @@ class Generator:
         # Release records
         self.past_key_values = [None] * len(self.decoder.layers)
         self.encoder_states = None
-        
+
         return input_ids
 
     def beam_search(
@@ -754,7 +754,7 @@ class Generator:
             max_length=stopping_criteria.max_length,
             beam_indices=beam_indices,
         )
-        
+
         # Release records
         self.past_key_values = [None] * len(self.decoder.layers)
         self.encoder_states = None

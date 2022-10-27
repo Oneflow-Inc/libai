@@ -308,7 +308,7 @@ class DefaultTrainer(TrainerBase):
             start_time = time.time()
             logger.info("> Start building model...")
         self.model = self.build_model(cfg)
-        
+
         dist.synchronize()
         if dist.get_local_rank() == 0:
             logger.info(
