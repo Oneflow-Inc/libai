@@ -14,18 +14,10 @@
 # limitations under the License.
 
 from libai.inference.basic import BasePipeline
-from libai.tokenizer import T5Tokenizer
 from libai.utils import distributed as dist
 
 
 class TextGenerationPipeline(BasePipeline):
-    def build_tokenizer(self, cfg):
-        tokenizer = T5Tokenizer(
-            "data_test/t5_inference_model/spiece.model",
-            add_bos_token=True,
-        )
-        return tokenizer
-
     def load_pretrain_weight(self, libai_cfg_model, model_path, mode="huggingface"):
         """load pretrained model.
 
@@ -48,12 +40,21 @@ class TextGenerationPipeline(BasePipeline):
                 model_type="t5",
             )
             return model_loader.load()
-        else:
-            return super().load_pretrain_weight(
+        elif mode == "libai":
+            from projects.MT5.utils.mt5_loader import T5LoaderLibai
+
+            model_loader = T5LoaderLibai(
                 libai_cfg_model,
+                libai_cfg_model.cfg,
                 model_path,
-                mode=mode,
             )
+            return model_loader.load()
+        elif mode == "random":
+            from libai.engine import DefaultTrainer
+
+            return DefaultTrainer.build_model(self.cfg)
+        else:
+            raise NotImplementedError
 
     def _parse_parameters(self, **pipeline_parameters):
         preprocess_params = {}
@@ -82,8 +83,11 @@ class TextGenerationPipeline(BasePipeline):
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
-        text = self.tokenizer.decode(model_output_dict["return_ids"][0], skip_special_tokens=True)
-        records = {"generated_text": text}
+        return_ids = model_output_dict["return_ids"]
+        records = [
+            {"generated_text": self.tokenizer.decode(return_ids[i], skip_special_tokens=True)}
+            for i in range(return_ids.size(0))
+        ]
         return records
 
 

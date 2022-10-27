@@ -13,7 +13,6 @@ cfg = dict(
     attention_probs_dropout_prob=0.1,
     max_position_embeddings=512,
     embedding_dropout_prob=0.1,
-    num_tokentypes=0,
     initializer_range=0.02,
     layernorm_eps=1e-5,
     bias_gelu_fusion=True,

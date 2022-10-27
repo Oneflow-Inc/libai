@@ -362,8 +362,8 @@ class MaskedAutoencoderViT(nn.Module):
             target = (target - mean) / (var + 1.0e-6) ** 0.5
 
         loss = (pred - target) ** 2
-        # We want the prev loss to be calculated with float32,
-        # and mean/sum below to be calculated with float16.
+        # We want the prev loss to be calculated with float16,
+        # and mean/sum below to be calculated with float32.
         # this amp_white_identity will affect preceding ops to be float16
         loss = flow._C.amp_white_identity(loss)
         # this amp_black_identity will affect succeeding ops to be float32
