@@ -18,7 +18,7 @@ from projects.T5.models.t5_model import T5ForPreTraining
 train_data_path = "projects/T5/data/training_data/part_0"
 pretrained_model_path = None
 
-micro_batch_size = 8
+micro_batch_size = 64
 optim["lr"] = 1e-4
 
 # dataloader
@@ -45,7 +45,7 @@ model = LazyCall(T5ForPreTraining)(cfg=cfg)
 # model config
 model.cfg.vocab_size = 12902
 model.cfg.hidden_size = 512
-model.cfg.hidden_layers = 4
+model.cfg.hidden_layers = 8
 model.cfg.num_attention_heads = 6
 model.cfg.head_size = 64
 model.cfg.intermediate_size = 1024
@@ -63,7 +63,7 @@ train.update(
         train_epoch=1,
         train_iter=24000,
         log_period=10,
-        amp=dict(enabled=True),
+        amp=dict(enabled=False),
         warmup_ratio=1 / 24,
         # checkpointer=dict(period=10, max_to_keep=20),
         dist=dict(
