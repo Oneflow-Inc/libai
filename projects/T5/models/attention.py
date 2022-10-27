@@ -225,7 +225,7 @@ class MultiheadAttention(nn.Module):
 
             position_bias = position_bias + (1 - attention_mask) * -1000
             position_bias = position_bias.to_global(placement=attention_scores.placement)
-        
+
         attention_scores = attention_scores + position_bias
 
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
