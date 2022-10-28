@@ -41,6 +41,7 @@ class T5Model(flow.nn.Module):
         hidden_dropout_prob,
         attention_probs_dropout_prob,
         relative_attention_num_buckets,
+        scale_mask_softmax_fusion=True,
         initializer_range=0.02,
         layernorm_eps=1e-12,
         amp_enabled=False,
@@ -73,6 +74,7 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
+                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     layer_idx=i,
                     model_type=model_type,
                     has_relative_attention_bias=bool(i == 0),
@@ -105,6 +107,7 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
+                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                     layer_idx=i,
                     model_type=model_type,
                     has_relative_attention_bias=bool(i - hidden_layers == 0),
@@ -150,6 +153,7 @@ class T5Model(flow.nn.Module):
             "layernorm_eps": cfg.layernorm_eps,
             "amp_enabled": cfg.amp_enabled,
             "model_type": cfg.model_type,
+            "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
         }
 
     def forward(

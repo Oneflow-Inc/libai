@@ -14,6 +14,7 @@ cfg = dict(
     embedding_dropout_prob=0.1,
     initializer_range=0.02,
     layernorm_eps=1e-5,
+    scale_mask_softmax_fusion=True,
     amp_enabled=False,
     model_type="t5",
 )

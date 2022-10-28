@@ -58,6 +58,7 @@ class TransformerLayer(nn.Module):
         layernorm_epsilon=1e-5,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
+        scale_mask_softmax_fusion=True,
         *,
         layer_idx=0,
         model_type="t5",
@@ -73,6 +74,7 @@ class TransformerLayer(nn.Module):
         self.layernorm_epsilon = layernorm_epsilon
         self.layer_idx = layer_idx
         self.is_decoder = is_decoder
+        self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
 
         self.init_method = init_method
         if output_layer_init_method is None:
@@ -89,6 +91,7 @@ class TransformerLayer(nn.Module):
             is_cross_attention=False,
             relative_attention_num_buckets=relative_attention_num_buckets,
             has_relative_attention_bias=has_relative_attention_bias,
+            scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             is_decoder=self.is_decoder,
         )
         self.post_attention_layernorm = LayerNorm(
@@ -99,6 +102,7 @@ class TransformerLayer(nn.Module):
             self.cross_attention = self.build_attention(
                 is_cross_attention=True,
                 relative_attention_num_buckets=relative_attention_num_buckets,
+                scale_mask_softmax_fusion=scale_mask_softmax_fusion,
                 is_decoder=self.is_decoder,
             )
             self.post_cross_attention_layernorm = LayerNorm(
@@ -234,6 +238,7 @@ class TransformerLayer(nn.Module):
         is_cross_attention=False,
         relative_attention_num_buckets=None,
         has_relative_attention_bias=False,
+        scale_mask_softmax_fusion=True,
         is_decoder=False,
     ):
         return MultiheadAttention(
@@ -246,6 +251,7 @@ class TransformerLayer(nn.Module):
             output_dropout_prob=self.output_dropout_prob,
             init_method=self.init_method,
             output_layer_init_method=self.output_layer_init_method,
+            scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             layer_idx=self.layer_idx,
             has_relative_attention_bias=has_relative_attention_bias,
             is_decoder=is_decoder,
