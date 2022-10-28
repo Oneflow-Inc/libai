@@ -18,7 +18,7 @@ from projects.T5.models.t5_model import T5ForPreTraining
 train_data_path = "projects/T5/data/training_data/part_0"
 pretrained_model_path = None
 
-micro_batch_size = 16
+micro_batch_size = 4
 optim["lr"] = 1e-4
 
 # dataloader
@@ -64,7 +64,7 @@ train.update(
         train_epoch=1,
         train_iter=24000,
         log_period=10,
-        amp=dict(enabled=False),
+        amp=dict(enabled=True),
         warmup_ratio=1 / 24,
         # checkpointer=dict(period=10, max_to_keep=20),
         dist=dict(
@@ -90,3 +90,5 @@ train.update(
 
 train.zero_optimization.enabled = True
 train.zero_optimization.stage = 2
+train.activation_checkpoint.enabled = True
+train.num_accumulation_steps = 8
