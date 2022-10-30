@@ -54,6 +54,7 @@ class MultiheadAttention(nn.Module):
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
+        multihead_attn_fusion=True,
         *,
         layer_idx=0,
         has_relative_attention_bias=False,
@@ -63,6 +64,7 @@ class MultiheadAttention(nn.Module):
         self.hidden_size = hidden_size
         self.relative_attention_num_buckets = relative_attention_num_buckets
         self.has_relative_attention_bias = has_relative_attention_bias
+        self.multihead_attn_fusion = multihead_attn_fusion
         self.is_decoder = is_decoder
         self.attention_dropout_prob = attention_dropout_prob
 
@@ -191,11 +193,18 @@ class MultiheadAttention(nn.Module):
             # hidden_states is the last-added state,
             # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
-            query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
-            query_key_value = query_key_value.permute(
-                0, 2, 1, 3
-            )  # [bsz, num_heads, src_len, 3 * head_size]
-            query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+            
+            if self.multihead_attn_fusion:
+                attention_scores, value = flow._C.fused_self_attention(
+                    query_key_value, head_size=self.head_size, alpha=1
+                )
+            else:
+                query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
+                query_key_value = query_key_value.permute(
+                    0, 2, 1, 3
+                )  # [bsz, num_heads, src_len, 3 * head_size]
+                query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+                
             if past_key_value is not None:
                 past_key, past_value = past_key_value
                 key = flow.cat((past_key.type_as(key), key), dim=2)
@@ -205,8 +214,9 @@ class MultiheadAttention(nn.Module):
         if use_cache:
             past_key_value = (key, value)
 
-        # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        attention_scores = flow.matmul(query, key, transpose_b=True)
+        if not self.multihead_attn_fusion:
+            # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
+            attention_scores = flow.matmul(query, key, transpose_b=True, alpha=1)
 
         if position_bias is None:
             if not self.has_relative_attention_bias:
@@ -232,9 +242,6 @@ class MultiheadAttention(nn.Module):
         if attention_mask is not None:
             attention_scores = flow.mul(attention_scores, attention_mask)
             attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-            # TODO(xingyu.liao): graph will occur `where_scalar` errors
-            # when using `masked_fill`
-            # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
             attention_weights = flow.softmax(attention_scores, dim=-1)
             # [bsz, num_heads, tgt_len, src_len]
             attention_weights = self.dropout(attention_weights)
@@ -245,13 +252,16 @@ class MultiheadAttention(nn.Module):
 
         # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
         context = flow.matmul(attention_weights, value)
-        # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
-        context = context.transpose(1, 2)
+
+        if self.multihead_attn_fusion:
+            context = flow._C.transpose(context, perm=(2, 0, 1, 3))
+        else:
+            # Change shape: [bsz, num_heads, tgt_len, head_size] ->
+            # [bsz, tgt_len, num_heads, head_size]
+            context = flow._C.transpose(context, perm=(0, 2, 1, 3))
 
         # Concat multi-head results from
         # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
-        # SBP sign: [S(0), S(2)]
-        # [S(0), S(2)] x [B, S(0)] = [S(0), P] -> [S(0), B]
         output = self.dense(context.flatten(2))
 
         output = self.output_dropout(output)

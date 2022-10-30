@@ -44,10 +44,12 @@ class T5Model(flow.nn.Module):
         initializer_range=0.02,
         layernorm_eps=1e-12,
         amp_enabled=False,
+        multihead_attn_fusion=False,
         model_type="t5",
     ) -> None:
         super().__init__()
         self.model_type = model_type
+        self.multihead_attn_fusion = multihead_attn_fusion
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         self.embedding = T5Embedding(
@@ -73,6 +75,7 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
+                    multihead_attn_fusion=multihead_attn_fusion,
                     layer_idx=i,
                     model_type=model_type,
                     has_relative_attention_bias=bool(i == 0),
@@ -105,6 +108,7 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
+                    multihead_attn_fusion=multihead_attn_fusion,
                     layer_idx=i,
                     model_type=model_type,
                     has_relative_attention_bias=bool(i - hidden_layers == 0),
