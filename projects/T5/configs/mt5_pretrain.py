@@ -14,7 +14,7 @@ from projects.T5.configs.t5_model_config import cfg
 from projects.T5.datasets.dataset import UnsuperviseT5Dataset, collate_fn
 from projects.T5.models.t5_model import T5ForPreTraining
 
-graph.enabled = True
+
 train_data_path = "projects/T5/data/training_data/part_0"
 pretrained_model_path = None
 
@@ -30,7 +30,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
         )
     ],
     collate_fn=collate_fn(
-        vocab_size=12902,
+        vocab_size=12900,
         max_seq_length=512,
         noise_density=0.15,
         mean_noise_span_length=3,
@@ -43,7 +43,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
 model = LazyCall(T5ForPreTraining)(cfg=cfg)
 
 # model config
-model.cfg.vocab_size = 12902
+model.cfg.vocab_size = 12900
 model.cfg.hidden_size = 512
 model.cfg.hidden_layers = 8
 model.cfg.num_attention_heads = 6
