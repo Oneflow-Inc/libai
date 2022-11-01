@@ -422,6 +422,28 @@ def pose_spherical(theta, phi, radius):
     return c2w
 
 
+def viewmatrix(z, up, pos):
+    vec2 = normalize(z)
+    vec1_avg = up
+    vec0 = normalize(np.cross(vec1_avg, vec2))
+    vec1 = normalize(np.cross(vec2, vec0))
+    m = np.stack([vec0, vec1, vec2, pos], 1)
+    return m
+
+
+def render_path_spiral(c2w, hwf, up, rads, focal, zdelta, zrate, rots, N):
+    render_poses = []
+    hwf = hwf[:, None]
+    rads = np.array(list(rads) + [1.0])
+    for theta in np.linspace(0.0, 2.0 * np.pi * rots, N + 1)[:-1]:
+        c = np.dot(
+            c2w, np.array([np.cos(theta), -np.sin(theta), -np.sin(theta * zrate), 1.0]) * rads
+        )
+        z = normalize(c - np.dot(c2w, np.array([0, 0, -focal, 1.0])))
+        render_poses.append(np.concatenate([viewmatrix(z, up, c), hwf], 1))
+    return render_poses
+
+
 # Blender and LLFF Datasets
 def trun_dict_to_instance(dict):
     return Instance(**{key: DistTensorData(flow.tensor(value)) for key, value in dict.items()})
@@ -557,8 +579,8 @@ class BlenderDataset(NerfBaseDataset):
             rgbs = self.all_rgbs[
                 self.indexs[idx] : self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
             ]
-            rays = rays.view(self.img_wh[0], self.img_wh[1], -1)
-            rgbs = rgbs.view(self.img_wh[0], self.img_wh[1], -1)
+            rays = rays.view(self.img_wh[1], self.img_wh[0], -1)
+            rgbs = rgbs.view(self.img_wh[1], self.img_wh[0], -1)
             rays = rays[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
             rgbs = rgbs[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
             self.num_iter += 1
@@ -600,7 +622,7 @@ class BlenderDataset(NerfBaseDataset):
                 ],
                 1,
             )  # (H*W, 8)
-            sample = OrderedDict(rays=rays, rgbs=None, c2w=c2w)
+            sample = OrderedDict(rays=rays, c2w=c2w)
         return trun_dict_to_instance(sample)
 
 
@@ -630,8 +652,25 @@ class LLFFDataset(NerfBaseDataset):
         self.val_num = max(1, val_num)  # at least 1
         self.batchsize = batchsize
         self.load_meta()
-        self.render_poses = flow.stack(
-            [pose_spherical(angle, -30.0, 4.0) for angle in np.linspace(-180, 180, 40 + 1)[:-1]], 0
+        # build render_poses for inference
+        up = normalize(self.poses[:, :3, 1].sum(0))
+        tt = self.poses[:, :3, 3]
+        rads = np.percentile(np.abs(tt), 90, 0)
+        close_depth, inf_depth = self.bounds.min() * 0.9, self.bounds.max() * 5.0
+        dt = 0.75
+        focal = 1.0 / (((1.0 - dt) / close_depth + dt / inf_depth))
+        zdelta = close_depth * 0.2
+        N_views = 120
+        N_rots = 2
+        hwf = self.hwf
+        center = self.poses[:, :3, 3].mean(0)
+        vec2 = normalize(self.poses[:, :3, 2].sum(0))
+        up = self.poses[:, :3, 1].sum(0)
+        c2w = viewmatrix(vec2, up, center)
+        self.render_poses = flow.Tensor(
+            render_path_spiral(
+                c2w, hwf, normalize(up), rads, focal, zdelta, zrate=0.5, rots=N_rots, N=N_views
+            )
         )  # use for test
         self.white_back = False
 
@@ -662,7 +701,7 @@ class LLFFDataset(NerfBaseDataset):
         self.directions = get_ray_directions(
             self.img_wh[1], self.img_wh[0], self.focal
         )  # (H, W, 3)
-
+        self.hwf = np.array([self.img_wh[1], self.img_wh[0], self.focal])
         if self.split == "train":  # create buffer of all rays and rgb data
             # use first N_images-1 to train, the LAST is val
             self.all_rays = []
@@ -776,8 +815,8 @@ class LLFFDataset(NerfBaseDataset):
             rgbs = self.all_rgbs[
                 self.indexs[idx] : self.indexs[idx] + self.img_wh[0] * self.img_wh[1]
             ]
-            rays = rays.view(self.img_wh[0], self.img_wh[1], -1)
-            rgbs = rgbs.view(self.img_wh[0], self.img_wh[1], -1)
+            rays = rays.view(self.img_wh[1], self.img_wh[0], -1)
+            rgbs = rgbs.view(self.img_wh[1], self.img_wh[0], -1)
             rays = rays[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
             rgbs = rgbs[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
             self.num_iter += 1
@@ -809,7 +848,7 @@ class LLFFDataset(NerfBaseDataset):
                 1,
             )  # (h*w, 8)
 
-            sample = OrderedDict(rays=rays, rgbs=None, c2w=c2w)
+            sample = OrderedDict(rays=rays, c2w=c2w)
             if self.split == "val":
                 img = Image.open(self.image_path_val).convert("RGB")
                 img = img.resize(self.img_wh, Image.LANCZOS)
@@ -819,15 +858,22 @@ class LLFFDataset(NerfBaseDataset):
         else:
             c2w = self.render_poses[idx][:3, :4]
             rays_o, rays_d = get_rays(self.directions, c2w)
-
+            if not self.spheric_poses:
+                near, far = 0, 1
+                rays_o, rays_d = get_ndc_rays(
+                    self.img_wh[1], self.img_wh[0], self.focal, 1.0, rays_o, rays_d
+                )
+            else:
+                near = self.bounds.min()
+                far = min(8 * near, self.bounds.max())
             rays = flow.concat(
                 [
                     rays_o,
                     rays_d,
-                    self.near * flow.ones_like(rays_o[:, :1]),
-                    self.far * flow.ones_like(rays_o[:, :1]),
+                    near * flow.ones_like(rays_o[:, :1]),
+                    far * flow.ones_like(rays_o[:, :1]),
                 ],
                 1,
             )  # (H*W, 8)
-            sample = OrderedDict(rays=rays, rgbs=None, c2w=c2w)
+            sample = OrderedDict(rays=rays, c2w=c2w)
         return trun_dict_to_instance(sample)

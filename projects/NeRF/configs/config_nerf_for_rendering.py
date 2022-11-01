@@ -3,6 +3,7 @@ from projects.NeRF.configs.config_nerf import (
     dataset,
     dataloader,
     graph,
+    model,
     LazyCall,
     build_image_test_loader,
 )
@@ -15,7 +16,11 @@ train.evaluation = dict(
     enabled=True,
     # evaluator for calculating psnr
     evaluator=LazyCall(NerfVisEvaluator)(
-        img_wh=(400, 400) if train.dataset_type == "Blender" else (504, 378)
+        img_wh=(400, 400) if train.dataset_type == "Blender" else (504, 378),
+        pose_dir_len=40 if train.dataset_type == "Blender" else 120,
+        name="blender_rendering_result"
+        if train.dataset_type == "Blender"
+        else "llff_rendering_result",
     ),
     eval_period=train.evaluation.eval_period,
     eval_iter=1e5,  # running steps for validation/test
@@ -41,4 +46,4 @@ dataloader.test = [
     )
 ]
 
-train.load_weight = "pretrain/file/path"  # Already trained NeRF checkpoint location
+train.load_weight = "/path/to/ckpt"  # Already trained NeRF checkpoint location

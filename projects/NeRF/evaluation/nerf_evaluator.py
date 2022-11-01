@@ -124,14 +124,15 @@ class NerfEvaluator(ClsEvaluator):
 
 
 class NerfVisEvaluator(NerfEvaluator):
-    def __init__(self, img_wh):
+    def __init__(self, img_wh, pose_dir_len, name):
         """
         Args:
             img_wh (tuple(int)): the width and height of the images in the validation set
         """
         super().__init__(img_wh=img_wh)
         self.image_list = []
-        self.pose_dir_len = 40
+        self.pose_dir_len = pose_dir_len
+        self.name = name
         self.mp4_save_path = self.image_save_path
 
     def to8b(self, x):
@@ -154,7 +155,7 @@ class NerfVisEvaluator(NerfEvaluator):
         self.image_list.append(img)
         self._predictions.append({"losses": 0.0, "psnr": 0.0})
         if len(self._predictions) == self.pose_dir_len:
-            mp4_save_path = os.path.join(self.mp4_save_path, "rgb.mp4")
+            mp4_save_path = os.path.join(self.mp4_save_path, f"{self.name}.mp4")
             imageio.mimwrite(
                 mp4_save_path, self.to8b(np.stack(self.image_list, 0)), fps=30, quality=8
             )

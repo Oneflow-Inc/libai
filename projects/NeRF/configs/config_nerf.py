@@ -46,7 +46,7 @@ train.lr_scheduler_type = "cosine"
 # Redefining model config
 model.cfg.dataset_type = train.dataset_type
 model.cfg.loss_func = nn.MSELoss()
-
+model.cfg.noise_std = 0.0 if train.dataset_type == "Blender" else 1.0
 # Redefining evaluator
 train.evaluation = dict(
     enabled=True,
