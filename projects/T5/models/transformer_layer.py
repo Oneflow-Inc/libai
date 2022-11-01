@@ -103,7 +103,7 @@ class TransformerLayer(nn.Module):
                 is_cross_attention=True,
                 relative_attention_num_buckets=relative_attention_num_buckets,
                 is_decoder=self.is_decoder,
-                multihead_attn_fusion=False,
+                multihead_attn_fusion=multihead_attn_fusion,
             )
             self.post_cross_attention_layernorm = LayerNorm(
                 self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
@@ -156,10 +156,9 @@ class TransformerLayer(nn.Module):
             use_cache: it will be set to `True` when the model is in the inference phase and
                 used for incremental decoding.
         """
-        # Change placement for pipeline parallelsim
+        # hidden_states: [seq_len, batch_size, hid_size]
         hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
 
-        # hidden_states shape: (batch_size, seq_length, hidden_size)
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(
                 placement=dist.get_layer_placement(self.layer_idx)
@@ -176,6 +175,7 @@ class TransformerLayer(nn.Module):
         else:
             self_attn_past_key_value, cross_attn_past_key_value = None, None
 
+        # layernorm_output: [seq_len, batch_size, hid_size]
         layernorm_output = self.input_layernorm(hidden_states)
 
         attention_output, position_bias = self.self_attention(
@@ -238,7 +238,7 @@ class TransformerLayer(nn.Module):
         is_cross_attention=False,
         relative_attention_num_buckets=None,
         has_relative_attention_bias=False,
-        multihead_attn_fusion=False,
+        multihead_attn_fusion=True,
         is_decoder=False,
     ):
         return MultiheadAttention(

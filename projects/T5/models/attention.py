@@ -149,17 +149,18 @@ class MultiheadAttention(nn.Module):
             use_cache (bool, optional): it will be set to True, when the model is in the inference
                 phase and used for incremental decoding. Defaults to False.
         """
-
-        # hidden_states, encoder_states: [S(0), B]
-        # attention_mask: [S(0), B]
-
+        # encoder_states: [seq_len, batch_size, hid_size]
         if encoder_states is not None:
             encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
+        # attention_mask: [batch_size, seq_len, hid_size]
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
+        # hidden_states: [seq_len, batch_size, hid_size]
         bsz, real_seq_length = hidden_states.size()[:2]
+        if self.multihead_attn_fusion:
+            bsz, real_seq_length = real_seq_length, bsz
 
         if past_key_value is not None:
             assert (
@@ -168,17 +169,21 @@ class MultiheadAttention(nn.Module):
             f"Got {len(past_key_value)} past states.\n"
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
-        key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
+        key_length = real_seq_length if encoder_states is None else (
+            encoder_states.shape[0] if self.multihead_attn_fusion else encoder_states.shape[1]
+        )
 
         if self.is_cross_attention:
-            # if it is cross attention, key and value should be calculated only once, and the
-            # result can be reused.
+            if self.multihead_attn_fusion:
+                hidden_states = hidden_states.transpose(0, 1)
             query = self.query(hidden_states)
             query = query.view(bsz, -1, self.num_heads, self.head_size)
             query = query.permute(0, 2, 1, 3)
             if past_key_value is not None:
                 key, value = past_key_value
             elif encoder_states is not None:
+                if self.multihead_attn_fusion:
+                    encoder_states = encoder_states.transpose(0, 1)
                 key_value = self.key_value(encoder_states)
                 key_value = key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
                 key_value = key_value.permute(0, 2, 1, 3)
@@ -188,21 +193,15 @@ class MultiheadAttention(nn.Module):
                     "past_key_value and encoder_states cannot be None at the same time."
                 )
         else:
-            # if it is self attention, query, key, and value are all obtained from hidden_states.
-            # when in the inference phase of an incremental decoder,
-            # hidden_states is the last-added state,
-            # the full key and value could be obtained by concatenating with past_key_value.
             query_key_value = self.query_key_value(hidden_states)
             
-            if self.multihead_attn_fusion:
+            if self.multihead_attn_fusion and not self.is_cross_attention:
                 attention_scores, value = flow._C.fused_self_attention(
                     query_key_value, head_size=self.head_size, alpha=1
                 )
             else:
                 query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
-                query_key_value = query_key_value.permute(
-                    0, 2, 1, 3
-                )  # [bsz, num_heads, src_len, 3 * head_size]
+                query_key_value = query_key_value.permute(0, 2, 1, 3)
                 query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
                 
             if past_key_value is not None:
@@ -210,12 +209,10 @@ class MultiheadAttention(nn.Module):
                 key = flow.cat((past_key.type_as(key), key), dim=2)
                 value = flow.cat((past_value.type_as(value), value), dim=2)
 
-        # query, key, value: [S(0), S(1)], shape: [bsz, num_heads, seq_length, head_size]
         if use_cache:
             past_key_value = (key, value)
 
-        if not self.multihead_attn_fusion:
-            # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
+        if self.is_cross_attention or not self.multihead_attn_fusion:
             attention_scores = flow.matmul(query, key, transpose_b=True, alpha=1)
 
         if position_bias is None:
@@ -238,33 +235,28 @@ class MultiheadAttention(nn.Module):
 
         attention_scores = attention_scores + position_bias
 
-        # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
             attention_scores = flow.mul(attention_scores, attention_mask)
             attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
             attention_weights = flow.softmax(attention_scores, dim=-1)
-            # [bsz, num_heads, tgt_len, src_len]
             attention_weights = self.dropout(attention_weights)
         else:
             attention_weights = flow.softmax(attention_scores, dim=-1)
-            # [bsz, num_heads, tgt_len, src_len]
             attention_weights = self.dropout(attention_weights)
 
-        # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
         context = flow.matmul(attention_weights, value)
 
-        if self.multihead_attn_fusion:
+        if self.multihead_attn_fusion and not self.is_cross_attention:
             context = flow._C.transpose(context, perm=(2, 0, 1, 3))
         else:
-            # Change shape: [bsz, num_heads, tgt_len, head_size] ->
-            # [bsz, tgt_len, num_heads, head_size]
             context = flow._C.transpose(context, perm=(0, 2, 1, 3))
 
-        # Concat multi-head results from
-        # [bsz, tgt_len, num_heads, head_size] -> [bsz, tgt_len, num_heads * head_size]
         output = self.dense(context.flatten(2))
 
         output = self.output_dropout(output)
+
+        if self.is_cross_attention and self.multihead_attn_fusion:
+            output = output.transpose(0, 1)
 
         if use_cache:
             output = (output, past_key_value)
