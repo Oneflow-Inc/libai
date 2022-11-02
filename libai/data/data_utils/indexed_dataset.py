@@ -69,7 +69,7 @@ def make_dataset(path, impl, skip_warmup=False):
             "Path should be a basename that both .idx and .bin can be "
             "appended to get full filenames."
         )
-        return None
+        raise ValueError(f"Dataset does not exist: {path}")
     if impl == "infer":
         impl = infer_dataset_impl(path)
     if impl == "lazy" and IndexedDataset.exists(path):
