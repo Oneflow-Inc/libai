@@ -196,6 +196,7 @@ class T5Model(flow.nn.Module):
                     position_bias=position_bias,
                 )
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
+            encoder_states = encoder_states.transpose(0, 1)
 
         decoder_attn_mask = self.extended_attn_mask(
             decoder_attn_mask, decoder_input_ids, is_decoder=True

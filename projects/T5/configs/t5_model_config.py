@@ -15,7 +15,7 @@ cfg = dict(
     initializer_range=0.02,
     layernorm_eps=1e-5,
     amp_enabled=False,
-    multihead_attn_fusion=False,
+    multihead_attn_fusion=True,
     model_type="t5",
 )
 
