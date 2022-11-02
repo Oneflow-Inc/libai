@@ -54,7 +54,6 @@ class MultiheadAttention(nn.Module):
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
-        multihead_attn_fusion=True,
         *,
         layer_idx=0,
         has_relative_attention_bias=False,
@@ -64,7 +63,6 @@ class MultiheadAttention(nn.Module):
         self.hidden_size = hidden_size
         self.relative_attention_num_buckets = relative_attention_num_buckets
         self.has_relative_attention_bias = has_relative_attention_bias
-        self.multihead_attn_fusion = multihead_attn_fusion
         self.is_decoder = is_decoder
         self.attention_dropout_prob = attention_dropout_prob
 
@@ -149,18 +147,13 @@ class MultiheadAttention(nn.Module):
             use_cache (bool, optional): it will be set to True, when the model is in the inference
                 phase and used for incremental decoding. Defaults to False.
         """
-        # encoder_states: [seq_len, batch_size, hid_size]
         if encoder_states is not None:
             encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
-        # attention_mask: [batch_size, seq_len, hid_size]
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
-        # hidden_states: [seq_len, batch_size, hid_size]
-        bsz, real_seq_length = hidden_states.size()[:2]
-        if self.multihead_attn_fusion:
-            bsz, real_seq_length = real_seq_length, bsz
+        real_seq_length, bsz = hidden_states.size()[:2]
 
         if past_key_value is not None:
             assert (
@@ -169,21 +162,15 @@ class MultiheadAttention(nn.Module):
             f"Got {len(past_key_value)} past states.\n"
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
-        key_length = real_seq_length if encoder_states is None else (
-            encoder_states.shape[0] if self.multihead_attn_fusion else encoder_states.shape[1]
-        )
+        key_length = real_seq_length if encoder_states is None else encoder_states.shape[0]
 
         if self.is_cross_attention:
-            if self.multihead_attn_fusion:
-                hidden_states = hidden_states.transpose(0, 1)
             query = self.query(hidden_states)
             query = query.view(bsz, -1, self.num_heads, self.head_size)
             query = query.permute(0, 2, 1, 3)
             if past_key_value is not None:
                 key, value = past_key_value
             elif encoder_states is not None:
-                if self.multihead_attn_fusion:
-                    encoder_states = encoder_states.transpose(0, 1)
                 key_value = self.key_value(encoder_states)
                 key_value = key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
                 key_value = key_value.permute(0, 2, 1, 3)
@@ -195,14 +182,9 @@ class MultiheadAttention(nn.Module):
         else:
             query_key_value = self.query_key_value(hidden_states)
             
-            if self.multihead_attn_fusion and not self.is_cross_attention:
-                attention_scores, value = flow._C.fused_self_attention(
-                    query_key_value, head_size=self.head_size, alpha=1
-                )
-            else:
-                query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
-                query_key_value = query_key_value.permute(0, 2, 1, 3)
-                query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+            attention_scores, value = flow._C.fused_self_attention(
+                query_key_value, head_size=self.head_size, alpha=1
+            )
                 
             if past_key_value is not None:
                 past_key, past_value = past_key_value
@@ -212,7 +194,7 @@ class MultiheadAttention(nn.Module):
         if use_cache:
             past_key_value = (key, value)
 
-        if self.is_cross_attention or not self.multihead_attn_fusion:
+        if self.is_cross_attention:
             attention_scores = flow.matmul(query, key, transpose_b=True, alpha=1)
 
         if position_bias is None:
@@ -246,7 +228,7 @@ class MultiheadAttention(nn.Module):
 
         context = flow.matmul(attention_weights, value)
 
-        if self.multihead_attn_fusion and not self.is_cross_attention:
+        if not self.is_cross_attention:
             context = flow._C.transpose(context, perm=(2, 0, 1, 3))
         else:
             context = flow._C.transpose(context, perm=(0, 2, 1, 3))
@@ -255,7 +237,7 @@ class MultiheadAttention(nn.Module):
 
         output = self.output_dropout(output)
 
-        if self.is_cross_attention and self.multihead_attn_fusion:
+        if self.is_cross_attention:
             output = output.transpose(0, 1)
 
         if use_cache:
