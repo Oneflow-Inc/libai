@@ -162,7 +162,7 @@ class MultiheadAttention(nn.Module):
             f"Got {len(past_key_value)} past states.\n"
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
-        key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
+        key_length = real_seq_length if encoder_states is None else encoder_states.shape[0]
             
         if self.is_cross_attention:
             query = self.query(hidden_states)
@@ -173,8 +173,8 @@ class MultiheadAttention(nn.Module):
                 key, value = past_key_value
             elif encoder_states is not None:
                 key_value = self.key_value(encoder_states)
-                key_value = key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
-                key_value = key_value.permute(0, 2, 1, 3)
+                key_value = key_value.view(-1, bsz, self.num_heads, 2 * self.head_size)
+                key_value = key_value.permute(1, 2, 0, 3)
                 key, value = flow.chunk(key_value, chunks=2, dim=-1)
             else:
                 raise ValueError(
