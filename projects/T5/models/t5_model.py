@@ -277,7 +277,6 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask,
             use_cache=use_cache,
         )
-        # if self.t5_model.multihead_attn_fusion:
         logits = logits.transpose(0, 1)
         if lm_labels is not None:
             lm_loss = self.loss_func(logits, lm_labels, loss_mask)
