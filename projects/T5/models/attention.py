@@ -214,8 +214,6 @@ class MultiheadAttention(nn.Module):
             position_bias = position_bias + (1 - attention_mask) * -1000
             position_bias = position_bias.to_global(placement=attention_scores.placement)
 
-        # attention_scores: [batch_size, head_size, src_len, target_len]
-        # print(attention_scores.size())
         attention_scores = attention_scores + position_bias
 
         if attention_mask is not None:
@@ -229,7 +227,7 @@ class MultiheadAttention(nn.Module):
 
         context = flow.matmul(attention_weights, value)
 
-        context = flow._C.transpose(context, perm=(2, 0, 1, 3))
+        context = context.transpose(1, 2)
 
         output = self.dense(context.flatten(2))
 
