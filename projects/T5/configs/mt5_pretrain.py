@@ -53,7 +53,7 @@ model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
 model.cfg.embedding_dropout_prob = 0.0
 model.cfg.layernorm_eps = 1e-6
-model.cfg.multihead_attn_fusion = True
+
 model.cfg.model_type = "mt5"
 model.cfg.pretrained_model_path = pretrained_model_path
 
@@ -90,5 +90,5 @@ train.update(
 
 train.zero_optimization.enabled = True
 train.zero_optimization.stage = 2
-train.activation_checkpoint.enabled = True
+train.activation_checkpoint.enabled = False
 train.num_accumulation_steps = 8

@@ -58,7 +58,6 @@ class TransformerLayer(nn.Module):
         layernorm_epsilon=1e-5,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
-        multihead_attn_fusion=True,
         *,
         layer_idx=0,
         model_type="t5",
@@ -79,7 +78,6 @@ class TransformerLayer(nn.Module):
         if output_layer_init_method is None:
             output_layer_init_method = init_method
         self.output_layer_init_method = output_layer_init_method
-        self.multihead_attn_fusion = multihead_attn_fusion
 
         self.drop_path = DropPath(drop_path_prob) if drop_path_prob > 0.0 else nn.Identity()
 
@@ -92,7 +90,6 @@ class TransformerLayer(nn.Module):
             relative_attention_num_buckets=relative_attention_num_buckets,
             has_relative_attention_bias=has_relative_attention_bias,
             is_decoder=self.is_decoder,
-            multihead_attn_fusion=multihead_attn_fusion,
         )
         self.post_attention_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
@@ -103,7 +100,6 @@ class TransformerLayer(nn.Module):
                 is_cross_attention=True,
                 relative_attention_num_buckets=relative_attention_num_buckets,
                 is_decoder=self.is_decoder,
-                multihead_attn_fusion=multihead_attn_fusion,
             )
             self.post_cross_attention_layernorm = LayerNorm(
                 self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
@@ -156,7 +152,6 @@ class TransformerLayer(nn.Module):
             use_cache: it will be set to `True` when the model is in the inference phase and
                 used for incremental decoding.
         """
-        # hidden_states: [seq_len, batch_size, hid_size]
         hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
 
         if attention_mask is not None:
@@ -175,7 +170,6 @@ class TransformerLayer(nn.Module):
         else:
             self_attn_past_key_value, cross_attn_past_key_value = None, None
 
-        # layernorm_output: [seq_len, batch_size, hid_size]
         layernorm_output = self.input_layernorm(hidden_states)
 
         attention_output, position_bias = self.self_attention(
@@ -238,7 +232,6 @@ class TransformerLayer(nn.Module):
         is_cross_attention=False,
         relative_attention_num_buckets=None,
         has_relative_attention_bias=False,
-        multihead_attn_fusion=True,
         is_decoder=False,
     ):
         return MultiheadAttention(
@@ -251,7 +244,6 @@ class TransformerLayer(nn.Module):
             output_dropout_prob=self.output_dropout_prob,
             init_method=self.init_method,
             output_layer_init_method=self.output_layer_init_method,
-            multihead_attn_fusion=multihead_attn_fusion,
             layer_idx=self.layer_idx,
             has_relative_attention_bias=has_relative_attention_bias,
             is_decoder=is_decoder,

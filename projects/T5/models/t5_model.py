@@ -44,12 +44,10 @@ class T5Model(flow.nn.Module):
         initializer_range=0.02,
         layernorm_eps=1e-12,
         amp_enabled=False,
-        multihead_attn_fusion=False,
         model_type="t5",
     ) -> None:
         super().__init__()
         self.model_type = model_type
-        self.multihead_attn_fusion = multihead_attn_fusion
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         self.embedding = T5Embedding(
@@ -75,7 +73,6 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    multihead_attn_fusion=multihead_attn_fusion,
                     layer_idx=i,
                     model_type=model_type,
                     has_relative_attention_bias=bool(i == 0),
@@ -108,7 +105,6 @@ class T5Model(flow.nn.Module):
                     layernorm_epsilon=layernorm_eps,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    multihead_attn_fusion=multihead_attn_fusion,
                     layer_idx=i,
                     model_type=model_type,
                     has_relative_attention_bias=bool(i - hidden_layers == 0),
@@ -153,7 +149,6 @@ class T5Model(flow.nn.Module):
             "initializer_range": cfg.initializer_range,
             "layernorm_eps": cfg.layernorm_eps,
             "amp_enabled": cfg.amp_enabled,
-            "multihead_attn_fusion": cfg.multihead_attn_fusion,
             "model_type": cfg.model_type,
         }
 
@@ -181,13 +176,10 @@ class T5Model(flow.nn.Module):
             encoder_decoder_position_bias = None
             self.set_cache(encoder_states=None, past_key_values=None)
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
-            # enc_embedding_output: [batch_size, seq_len, embedding_size]
-            enc_embedding_output = self.embedding(encoder_input_ids)
+
+            enc_hidden_states = self.embedding(encoder_input_ids)
             
-            enc_hidden_states = enc_embedding_output
-            if self.multihead_attn_fusion:
-                # enc_hidden_states: [seq_len, batch_size, embedding_size]
-                enc_hidden_states = enc_hidden_states.transpose(0, 1)
+            enc_hidden_states = enc_hidden_states.transpose(0, 1)
 
             for layer in self.encoder.layers:
                 enc_hidden_states, position_bias = layer(
@@ -203,10 +195,9 @@ class T5Model(flow.nn.Module):
         )
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
-        dec_embedding_output = self.embedding(decoder_input_ids)
-        dec_hidden_states = dec_embedding_output
-        if self.multihead_attn_fusion:
-            dec_hidden_states = dec_hidden_states.transpose(0, 1)
+        dec_hidden_states = self.embedding(decoder_input_ids)
+
+        dec_hidden_states = dec_hidden_states.transpose(0, 1)
 
         if use_cache:
             presents = []
@@ -284,8 +275,7 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask,
             use_cache=use_cache,
         )
-        if self.t5_model.multihead_attn_fusion:
-            logits = logits.transpose(0, 1)
+        logits = logits.transpose(0, 1)
         if lm_labels is not None:
             lm_loss = self.loss_func(logits, lm_labels, loss_mask)
             return lm_loss

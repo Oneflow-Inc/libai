@@ -54,7 +54,6 @@ class MultiheadAttention(nn.Module):
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
-        multihead_attn_fusion=True,
         *,
         layer_idx=0,
         has_relative_attention_bias=False,
@@ -64,7 +63,6 @@ class MultiheadAttention(nn.Module):
         self.hidden_size = hidden_size
         self.relative_attention_num_buckets = relative_attention_num_buckets
         self.has_relative_attention_bias = has_relative_attention_bias
-        self.multihead_attn_fusion = multihead_attn_fusion
         self.is_decoder = is_decoder
         self.attention_dropout_prob = attention_dropout_prob
 
@@ -149,11 +147,9 @@ class MultiheadAttention(nn.Module):
             use_cache (bool, optional): it will be set to True, when the model is in the inference
                 phase and used for incremental decoding. Defaults to False.
         """
-        # encoder_states: [seq_len, batch_size, hid_size]
         if encoder_states is not None:
             encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
-        # attention_mask: [batch_size, seq_len, hid_size]
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
@@ -172,6 +168,8 @@ class MultiheadAttention(nn.Module):
             # hidden_states: [seq_len, batch_size, hidden_size]
             hidden_states = hidden_states.transpose(0, 1)
             # hidden_states: [batch_size, seq_len, hidden_size]
+
+        if self.is_cross_attention:
             query = self.query(hidden_states)
             query = query.view(bsz, -1, self.num_heads, self.head_size)
             query = query.permute(0, 2, 1, 3)
