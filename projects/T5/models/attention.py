@@ -163,16 +163,12 @@ class MultiheadAttention(nn.Module):
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
         key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
-
-        if self.is_cross_attention:
-            # hidden_states: [seq_len, batch_size, hidden_size]
-            hidden_states = hidden_states.transpose(0, 1)
-            # hidden_states: [batch_size, seq_len, hidden_size]
-
+            
         if self.is_cross_attention:
             query = self.query(hidden_states)
-            query = query.view(bsz, -1, self.num_heads, self.head_size)
-            query = query.permute(0, 2, 1, 3)
+            query = query.view(-1, bsz, self.num_heads, self.head_size)
+            query = query.permute(1, 2, 0, 3)   # bsz, num_head, seq_len, head_size
+
             if past_key_value is not None:
                 key, value = past_key_value
             elif encoder_states is not None:
@@ -198,7 +194,6 @@ class MultiheadAttention(nn.Module):
             past_key_value = (key, value)
 
         if self.is_cross_attention:
-            # query: [3, 6, 5, 64])  key:([3, 6, 8, 64]
             attention_scores = flow.matmul(query, key, transpose_b=True, alpha=1)
 
         if position_bias is None:
