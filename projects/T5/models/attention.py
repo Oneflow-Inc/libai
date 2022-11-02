@@ -162,12 +162,13 @@ class MultiheadAttention(nn.Module):
             f"Got {len(past_key_value)} past states.\n"
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
-        key_length = real_seq_length if encoder_states is None else encoder_states.shape[0]
-
+        key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
+            
         if self.is_cross_attention:
             query = self.query(hidden_states)
-            query = query.view(bsz, -1, self.num_heads, self.head_size)
-            query = query.permute(0, 2, 1, 3)
+            query = query.view(-1, bsz, self.num_heads, self.head_size)
+            query = query.permute(1, 2, 0, 3)   # bsz, num_head, seq_len, head_size
+
             if past_key_value is not None:
                 key, value = past_key_value
             elif encoder_states is not None:
@@ -181,11 +182,9 @@ class MultiheadAttention(nn.Module):
                 )
         else:
             query_key_value = self.query_key_value(hidden_states)
-            
             attention_scores, value = flow._C.fused_self_attention(
                 query_key_value, head_size=self.head_size, alpha=1
             )
-                
             if past_key_value is not None:
                 past_key, past_value = past_key_value
                 key = flow.cat((past_key.type_as(key), key), dim=2)
@@ -215,6 +214,8 @@ class MultiheadAttention(nn.Module):
             position_bias = position_bias + (1 - attention_mask) * -1000
             position_bias = position_bias.to_global(placement=attention_scores.placement)
 
+        # attention_scores: [batch_size, head_size, src_len, target_len]
+        # print(attention_scores.size())
         attention_scores = attention_scores + position_bias
 
         if attention_mask is not None:
@@ -228,17 +229,11 @@ class MultiheadAttention(nn.Module):
 
         context = flow.matmul(attention_weights, value)
 
-        if not self.is_cross_attention:
-            context = flow._C.transpose(context, perm=(2, 0, 1, 3))
-        else:
-            context = flow._C.transpose(context, perm=(0, 2, 1, 3))
+        context = flow._C.transpose(context, perm=(2, 0, 1, 3))
 
         output = self.dense(context.flatten(2))
 
         output = self.output_dropout(output)
-
-        if self.is_cross_attention:
-            output = output.transpose(0, 1)
 
         if use_cache:
             output = (output, past_key_value)
@@ -256,7 +251,6 @@ class MultiheadAttention(nn.Module):
     def _relative_position_bucket(
         self, relative_position, bidirectional=True, num_buckets=32, max_distance=128
     ):
-        # relative_position: (seq_len, seq_len)
         relative_buckets = 0
         if bidirectional:
             num_buckets //= 2
