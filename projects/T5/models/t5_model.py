@@ -44,10 +44,10 @@ class T5Model(flow.nn.Module):
         initializer_range=0.02,
         layernorm_eps=1e-12,
         amp_enabled=False,
-        model_type="t5",
+        # model_type="t5",
     ) -> None:
         super().__init__()
-        self.model_type = model_type
+        # self.model_type = model_type
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         self.embedding = T5Embedding(
@@ -74,7 +74,7 @@ class T5Model(flow.nn.Module):
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
                     layer_idx=i,
-                    model_type=model_type,
+                    # model_type=model_type,
                     has_relative_attention_bias=bool(i == 0),
                 )
                 for i in range(hidden_layers)
@@ -106,7 +106,7 @@ class T5Model(flow.nn.Module):
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
                     layer_idx=i,
-                    model_type=model_type,
+                    # model_type=model_type,
                     has_relative_attention_bias=bool(i - hidden_layers == 0),
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
@@ -126,12 +126,12 @@ class T5Model(flow.nn.Module):
         self.encoder_states = None
         self.past_length = 0
 
-        if model_type == "mt5":
-            self.lm_head = Linear(
-                hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1
-            )
-        else:
-            self.lm_head = LMLogits(vocab_size, bias=False)
+        # if model_type == "mt5":
+        self.lm_head = Linear(
+            hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1
+        )
+        # else:
+            # self.lm_head = LMLogits(vocab_size, bias=False)
 
     @classmethod
     def from_config(cls, cfg):
@@ -149,7 +149,7 @@ class T5Model(flow.nn.Module):
             "initializer_range": cfg.initializer_range,
             "layernorm_eps": cfg.layernorm_eps,
             "amp_enabled": cfg.amp_enabled,
-            "model_type": cfg.model_type,
+            # "model_type": cfg.model_type,
         }
 
     def forward(
@@ -222,10 +222,10 @@ class T5Model(flow.nn.Module):
 
         decoder_states = self.decoder.final_layernorm(dec_hidden_states)
 
-        if self.model_type == "mt5":
-            logits = self.lm_head(decoder_states)
-        else:
-            logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
+        # if self.model_type == "mt5":
+        logits = self.lm_head(decoder_states)
+        # else:
+            # logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
 
         return logits
 

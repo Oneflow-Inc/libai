@@ -54,7 +54,7 @@ model.cfg.attention_probs_dropout_prob = 0.0
 model.cfg.embedding_dropout_prob = 0.0
 model.cfg.layernorm_eps = 1e-6
 
-model.cfg.model_type = "mt5"
+# model.cfg.model_type = "mt5"
 model.cfg.pretrained_model_path = pretrained_model_path
 
 train.update(

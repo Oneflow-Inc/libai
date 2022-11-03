@@ -60,7 +60,7 @@ class TransformerLayer(nn.Module):
         output_layer_init_method=None,
         *,
         layer_idx=0,
-        model_type="t5",
+        # model_type="t5",
         has_relative_attention_bias=False
     ):
         super().__init__()
@@ -104,24 +104,24 @@ class TransformerLayer(nn.Module):
             self.post_cross_attention_layernorm = LayerNorm(
                 self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
             )
-        if model_type == "mt5":
-            self.mlp = MT5MLP(
-                self.hidden_size,
-                self.ffn_hidden_size,
-                self.output_dropout_prob,
-                self.init_method,
-                output_layer_init_method=self.output_layer_init_method,
-                layer_idx=self.layer_idx,
-            )
-        elif model_type == "t5":
-            self.mlp = T5MLP(
-                self.hidden_size,
-                self.ffn_hidden_size,
-                self.output_dropout_prob,
-                self.init_method,
-                output_layer_init_method=self.output_layer_init_method,
-                layer_idx=self.layer_idx,
-            )
+        # if model_type == "mt5":
+        self.mlp = MT5MLP(
+            self.hidden_size,
+            self.ffn_hidden_size,
+            self.output_dropout_prob,
+            self.init_method,
+            output_layer_init_method=self.output_layer_init_method,
+            layer_idx=self.layer_idx,
+        )
+        # elif model_type == "t5":
+        #     self.mlp = T5MLP(
+        #         self.hidden_size,
+        #         self.ffn_hidden_size,
+        #         self.output_dropout_prob,
+        #         self.init_method,
+        #         output_layer_init_method=self.output_layer_init_method,
+        #         layer_idx=self.layer_idx,
+        #     )
 
     def forward(
         self,
