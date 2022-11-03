@@ -54,6 +54,7 @@ class MultiheadAttention(nn.Module):
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
+        scale_mask_softmax_fusion=True,
         *,
         layer_idx=0,
         has_relative_attention_bias=False,
@@ -65,6 +66,7 @@ class MultiheadAttention(nn.Module):
         self.has_relative_attention_bias = has_relative_attention_bias
         self.is_decoder = is_decoder
         self.attention_dropout_prob = attention_dropout_prob
+        self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
 
         if output_layer_init_method is None:
             output_layer_init_method = init_method
@@ -230,14 +232,26 @@ class MultiheadAttention(nn.Module):
 
         # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
         if attention_mask is not None:
-            attention_scores = flow.mul(attention_scores, attention_mask)
-            attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-            # TODO(xingyu.liao): graph will occur `where_scalar` errors
-            # when using `masked_fill`
-            # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
-            attention_weights = flow.softmax(attention_scores, dim=-1)
-            # [bsz, num_heads, tgt_len, src_len]
-            attention_weights = self.dropout(attention_weights)
+            if self.scale_mask_softmax_fusion:
+                attention_mask = (
+                    attention_mask.expand_as(attention_scores) if use_cache else attention_mask
+                )
+                attention_weights = flow._C.fused_scale_mask_softmax_dropout(
+                    attention_scores,
+                    attention_mask,
+                    fill_value=-10000.0,
+                    scale=1,
+                    p=self.attention_dropout_prob,
+                )[0]
+            else:
+                attention_scores = flow.mul(attention_scores, attention_mask)
+                attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
+                # TODO(xingyu.liao): graph will occur `where_scalar` errors
+                # when using `masked_fill`
+                # attention_scores = attention_scores.masked_fill(1 - attention_mask, -10000.0)
+                attention_weights = flow.softmax(attention_scores, dim=-1)
+                # [bsz, num_heads, tgt_len, src_len]
+                attention_weights = self.dropout(attention_weights)
         else:
             attention_weights = flow.softmax(attention_scores, dim=-1)
             # [bsz, num_heads, tgt_len, src_len]
