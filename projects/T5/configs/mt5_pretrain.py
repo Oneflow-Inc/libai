@@ -18,7 +18,7 @@ from projects.T5.models.t5_model import T5ForPreTraining
 train_data_path = "projects/T5/data/training_data/part_0"
 pretrained_model_path = None
 
-micro_batch_size = 64
+micro_batch_size = 4
 optim["lr"] = 1e-4
 
 # dataloader
@@ -30,7 +30,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
         )
     ],
     collate_fn=collate_fn(
-        vocab_size=12902,
+        vocab_size=12900,
         max_seq_length=512,
         noise_density=0.15,
         mean_noise_span_length=3,
@@ -43,7 +43,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
 model = LazyCall(T5ForPreTraining)(cfg=cfg)
 
 # model config
-model.cfg.vocab_size = 12902
+model.cfg.vocab_size = 12900
 model.cfg.hidden_size = 512
 model.cfg.hidden_layers = 8
 model.cfg.num_attention_heads = 6
@@ -53,6 +53,7 @@ model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
 model.cfg.embedding_dropout_prob = 0.0
 model.cfg.layernorm_eps = 1e-6
+
 model.cfg.model_type = "mt5"
 model.cfg.pretrained_model_path = pretrained_model_path
 
@@ -63,7 +64,7 @@ train.update(
         train_epoch=1,
         train_iter=24000,
         log_period=10,
-        amp=dict(enabled=False),
+        amp=dict(enabled=True),
         warmup_ratio=1 / 24,
         # checkpointer=dict(period=10, max_to_keep=20),
         dist=dict(
@@ -89,3 +90,5 @@ train.update(
 
 train.zero_optimization.enabled = True
 train.zero_optimization.stage = 2
+train.activation_checkpoint.enabled = False
+train.num_accumulation_steps = 8
