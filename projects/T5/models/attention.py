@@ -227,7 +227,7 @@ class MultiheadAttention(nn.Module):
 
         context = flow.matmul(attention_weights, value)
 
-        context = context.transpose(1, 2)
+        context = flow._C.transpose(context, perm=(2, 0, 1, 3))
 
         output = self.dense(context.flatten(2))
 
