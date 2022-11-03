@@ -42,11 +42,11 @@ class LMLogits(nn.Module):
 
     def forward(self, input, word_embeddings=None):
         # if self.model_type == "t5":
-        w = word_embeddings.to_global(placement=input.placement)
-        input = input.to_global(grad_sbp=input.sbp)
-        logits = flow._C.matmul(input, w, transpose_b=True)
-        if self.bias is not None:
-            logits = logits + self.bias
+        # w = word_embeddings.to_global(placement=input.placement)
+        # input = input.to_global(grad_sbp=input.sbp)
+        # logits = flow._C.matmul(input, w, transpose_b=True)
+        # if self.bias is not None:
+        #     logits = logits + self.bias
         # else:
-            # logits = self.linear(input)
+        logits = self.linear(input)
         return logits
