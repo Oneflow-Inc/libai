@@ -8,8 +8,8 @@ from configs.common.optim import optim
 from projects.MT5.configs.mt5_base import pretrain_model as model
 
 
-vocab_file = "./data_test/bert_data/bert-base-chinese-vocab.txt"
-data_prefix = "./data_test/bert_data/loss_compara_content_sentence"
+vocab_file = "./bert_data/bert-base-chinese-vocab.txt"
+data_prefix = "./bert_data/loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 dataloader.train.dataset[0].data_prefix = data_prefix
@@ -28,8 +28,8 @@ model.cfg.vocab_size = 30522
 
 train.update(
     dict(
-        output_dir="projects/MT5/output/mt5_output",
-        train_micro_batch_size=16,
+        output_dir="./output/mt5_output",
+        train_micro_batch_size=4,
         train_epoch=1,
         train_iter=24000,
         log_period=10,
@@ -38,9 +38,9 @@ train.update(
         # checkpointer=dict(period=10, max_to_keep=20),
         input_placement_device="cpu",
         dist=dict(
-            data_parallel_size=2,
-            tensor_parallel_size=2,
-            pipeline_parallel_size=2,
+            data_parallel_size=4,
+            tensor_parallel_size=1,
+            pipeline_parallel_size=1,
             pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
@@ -51,12 +51,12 @@ train.update(
         ),
         evaluation=dict(
             evaluator=LazyCall(PPLEvaluator)(),
-            enabled=True,
+            enabled=False,
             eval_iter=1e5,
             eval_period=5000,
         ),
     )
 )
 
-train.zero_optimization.enabled = True
+train.zero_optimization.enabled = False
 train.zero_optimization.stage = 2

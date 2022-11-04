@@ -82,10 +82,10 @@ train = dict(
     # You can set the maximum evaluation iterations to run for validation/test.
     # You can also set a customized evaluator for use.
     evaluation=dict(
-        enabled=True,
+        enabled=False,
         # evaluator for calculating top-k acc
         evaluator=LazyCall(ClsEvaluator)(topk=(1, 5)),
-        eval_period=5000,
+        eval_period=500000,
         eval_after_n_epoch=None,
         eval_iter=1e5,  # running steps for validation/test
 

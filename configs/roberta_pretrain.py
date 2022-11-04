@@ -7,9 +7,9 @@ from .common.optim import optim
 from .common.data.roberta_dataset import dataloader, tokenization
 
 
-vocab_file = "./data_test/roberta_data/roberta-vocab.json"
-merge_files = "./data_test/roberta_data/roberta-merges.txt"
-data_prefix = "./data_test/roberta_data/loss_compara_content_sentence"
+vocab_file = "./roberta_data/roberta-vocab.json"
+merge_files = "./roberta_data/roberta-merges.txt"
+data_prefix = "./roberta_data/loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
@@ -24,7 +24,7 @@ model.cfg.hidden_layers = 8
 train.input_placement_device = "cpu"
 
 # parallel strategy settings
-train.dist.data_parallel_size = 8
+train.dist.data_parallel_size = 4
 train.dist.tensor_parallel_size = 1
 train.dist.pipeline_parallel_size = 1
 
