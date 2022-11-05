@@ -386,3 +386,8 @@ class MT5ForPreTraining(flow.nn.Module):
             dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
             dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
         )
+
+    def set_activation_checkpoint(self):
+        for module_block in self.mt5_model.modules():
+            if isinstance(module_block.origin, TransformerLayer):
+                module_block.config.activation_checkpointing = True
