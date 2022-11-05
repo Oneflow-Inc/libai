@@ -316,6 +316,11 @@ class MT5Model(flow.nn.Module, Generator):
             "use_cache": use_cache,
         }
 
+    def set_activation_checkpoint(self):
+        for module_block in self.modules():
+            if isinstance(module_block.origin, TransformerLayer):
+                module_block.config.activation_checkpointing = True
+
 
 class MT5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
