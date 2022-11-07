@@ -261,7 +261,7 @@ class MultiheadAttention(nn.Module):
             )
             relative_position = flow.abs(relative_position)
         else:
-           relative_position = (
+            relative_position = (
                 -1
                 * flow.min(
                     relative_position,
