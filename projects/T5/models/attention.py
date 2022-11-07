@@ -211,21 +211,21 @@ class MultiheadAttention(nn.Module):
             if past_key_value is not None:
                 position_bias = position_bias[:, :, -hidden_states.size(1) :, :]
 
-            position_bias = position_bias + (1 - attention_mask) * -1000
-            position_bias = position_bias.to_global(placement=attention_scores.placement)
-
-        attention_scores = attention_scores + position_bias
 
         if attention_mask is not None:
-            attention_mask = attention_mask.expand_as(attention_scores) if use_cache else attention_mask
-            attention_weights = flow._C.fused_scale_mask_softmax_dropout(
+            if use_cache:
+                attention_mask = attention_mask.expand_as(attention_scores)
+
+            attention_weights = flow._C.fused_bias_add_scale_mask_softmax_dropout(
                 attention_scores,
+                position_bias,
                 attention_mask,
                 fill_value=-10000.0,
                 scale=1,
                 p=self.attention_dropout_prob,
             )[0]
         else:
+            attention_scores = attention_scores + position_bias
             attention_weights = flow.softmax(attention_scores, dim=-1)
             attention_weights = self.dropout(attention_weights)
 
@@ -261,7 +261,7 @@ class MultiheadAttention(nn.Module):
             )
             relative_position = flow.abs(relative_position)
         else:
-            relative_position = (
+           relative_position = (
                 -1
                 * flow.min(
                     relative_position,
