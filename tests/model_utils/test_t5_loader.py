@@ -26,10 +26,9 @@ from omegaconf import DictConfig
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
-
+from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 from projects.T5.configs.t5_model_config import cfg as libai_cfg
 from projects.T5.models.t5_model import T5Model
-from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
 PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/pytorch_model.bin"  # noqa
 PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/config.json"  # noqa
@@ -141,7 +140,7 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         self.assertTrue(
             np.allclose(
-                np.array(-1.1011268e+08),
+                np.array(-1.1011268e08),
                 logits.sum().data.numpy(),
             )
         )
@@ -202,7 +201,7 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         self.assertTrue(
             np.allclose(
-                np.array(-1.1011268e+08),
+                np.array(-1.1011268e08),
                 logits.sum().data.numpy(),
             )
         )

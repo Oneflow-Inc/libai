@@ -21,7 +21,7 @@ from libai.utils import distributed as dist
 
 
 class LMLogits(nn.Module):
-    def __init__(self, vocab_size, hidden_size=None, bias=False,  layer_idx=-1):
+    def __init__(self, vocab_size, hidden_size=None, bias=False, layer_idx=-1):
         super().__init__()
         self.linear = Linear(hidden_size, vocab_size, bias=bias, layer_idx=layer_idx)
 

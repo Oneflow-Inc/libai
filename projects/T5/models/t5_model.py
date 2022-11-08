@@ -46,7 +46,7 @@ class T5Model(flow.nn.Module):
         amp_enabled=False,
     ) -> None:
         super().__init__()
-        self.model_type = 'mt5'
+        self.model_type = "mt5"
         init_method = init_method_normal(initializer_range)
         scaled_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         self.embedding = T5Embedding(
@@ -123,9 +123,7 @@ class T5Model(flow.nn.Module):
         self.encoder_states = None
         self.past_length = 0
 
-        self.lm_head = Linear(
-            hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1
-        )
+        self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1)
 
     @classmethod
     def from_config(cls, cfg):
@@ -172,7 +170,7 @@ class T5Model(flow.nn.Module):
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
 
             enc_hidden_states = self.embedding(encoder_input_ids)
-            
+
             enc_hidden_states = enc_hidden_states.transpose(0, 1)
 
             for layer in self.encoder.layers:
