@@ -23,30 +23,8 @@ from libai.utils import distributed as dist
 class LMLogits(nn.Module):
     def __init__(self, vocab_size, hidden_size=None, bias=False,  layer_idx=-1):
         super().__init__()
-        # self.model_type = model_type
-        # if model_type == "t5":
-        #     self.bias = (
-        #         nn.Parameter(
-        #             flow.zeros(
-        #                 (vocab_size,),
-        #                 dtype=flow.float32,
-        #                 placement=dist.get_layer_placement(layer_idx),
-        #                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
-        #             )
-        #         )
-        #         if bias
-        #         else None
-        #     )
-        # elif model_type == "mt5":
-        self.linear = Linear(hidden_size, vocab_size, bias=False, layer_idx=layer_idx)
+        self.linear = Linear(hidden_size, vocab_size, bias=bias, layer_idx=layer_idx)
 
-    def forward(self, input, word_embeddings=None):
-        # if self.model_type == "t5":
-        # w = word_embeddings.to_global(placement=input.placement)
-        # input = input.to_global(grad_sbp=input.sbp)
-        # logits = flow._C.matmul(input, w, transpose_b=True)
-        # if self.bias is not None:
-        #     logits = logits + self.bias
-        # else:
+    def forward(self, input):
         logits = self.linear(input)
         return logits
