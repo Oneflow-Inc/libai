@@ -31,11 +31,11 @@ from projects.T5.configs.t5_model_config import cfg as libai_cfg
 from projects.T5.models.t5_model import T5Model
 from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
-PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/t5_utils/pytorch_model.bin"  # noqa
-PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/t5_utils/config.json"  # noqa
+PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/pytorch_model.bin"  # noqa
+PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/config.json"  # noqa
 
-PRETRAINED_MODEL_MD5 = "952862a8ba425a25739a69e5f33b0df8"
-PRETRAINED_MODEL_CONFIG_MD5 = "7ebc91dc4377c01190f4116c3c1ac6cd"
+PRETRAINED_MODEL_MD5 = "4c9c0be541b89de9b01c597ec4cc371a"
+PRETRAINED_MODEL_CONFIG_MD5 = "b159e41603b7eeaf9a9c489165bbcaca"
 
 TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_t5_utils")
 
@@ -125,13 +125,13 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         encode_att_mask = flow.tensor(
             self.encoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
         decoder_att_mask = flow.tensor(
             self.decoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
@@ -154,7 +154,7 @@ class TestT5Loader(flow.unittest.TestCase):
                 data_parallel_size=2,
                 tensor_parallel_size=1,
                 pipeline_parallel_size=2,
-                pipeline_num_layers=24,
+                pipeline_num_layers=16,
             )
         )
         dist.setup_dist_util(dist_cfg)
@@ -186,13 +186,13 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         encode_att_mask = flow.tensor(
             self.encoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
         decoder_att_mask = flow.tensor(
             self.decoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
