@@ -115,45 +115,45 @@ class Linear1D(nn.Module):
         )
 
     def forward(self, x):
-        if dist.same_sbp(self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])):
-            # If the last dim of weight sbp sign is S(0), then last dim of weight.t sbp
-            # sign is S(1), so the last dim of x sbp sign must be B.
-            if self.weight.sbp[-1] == flow.sbp.split(0):
-                x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
-                x = x.to_global(sbp=x_sbp)
-
-            # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
-            x = x.to_global(grad_sbp=x.sbp)
-            x = flow.matmul(x, self.weight, transpose_b=True)
-
-        elif dist.same_sbp(
-            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
-        ):
-            # If the last dim of weight sbp sign is S(1), then last dim of weight.t sbp
-            # sign is S(0), so the last dim of x sbp sign must be S(ndim-1).
-            if self.weight.sbp[-1] == flow.sbp.split(1):
-                x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
-                x = x.to_global(sbp=x_sbp)
-                out_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
-            else:
-                out_sbp = x.sbp
-
-            x = flow.matmul(x, self.weight, transpose_b=True)
-            # Change x.sbp for followup forward pass.
-            # This line can be removed when sbp can be auto inferred.
-            x = x.to_global(sbp=out_sbp)
-        elif dist.same_sbp(
-            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        ):
-            # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
-            x = x.to_global(grad_sbp=x.sbp)
-            # NOTE(chengcheng): when input x is [S(0), B], there is no need to change sbp for x.
-            # x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
-            x = flow.matmul(x, self.weight, transpose_b=True)
-        else:
-            # Not supported weight_sbp, deduce sbp and communicate with nccl automatically.
-            x = flow.matmul(x, self.weight, transpose_b=True)
-
+#        if dist.same_sbp(self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])):
+#            # If the last dim of weight sbp sign is S(0), then last dim of weight.t sbp
+#            # sign is S(1), so the last dim of x sbp sign must be B.
+#            if self.weight.sbp[-1] == flow.sbp.split(0):
+#                x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
+#                x = x.to_global(sbp=x_sbp)
+#
+#            # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
+#            x = x.to_global(grad_sbp=x.sbp)
+#            x = flow.matmul(x, self.weight, transpose_b=True)
+#
+#        elif dist.same_sbp(
+#            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
+#        ):
+#            # If the last dim of weight sbp sign is S(1), then last dim of weight.t sbp
+#            # sign is S(0), so the last dim of x sbp sign must be S(ndim-1).
+#            if self.weight.sbp[-1] == flow.sbp.split(1):
+#                x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
+#                x = x.to_global(sbp=x_sbp)
+#                out_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
+#            else:
+#                out_sbp = x.sbp
+#
+#            x = flow.matmul(x, self.weight, transpose_b=True)
+#            # Change x.sbp for followup forward pass.
+#            # This line can be removed when sbp can be auto inferred.
+#            x = x.to_global(sbp=out_sbp)
+#        elif dist.same_sbp(
+#            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+#        ):
+#            # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
+#            x = x.to_global(grad_sbp=x.sbp)
+#            # NOTE(chengcheng): when input x is [S(0), B], there is no need to change sbp for x.
+#            # x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
+#            x = flow.matmul(x, self.weight, transpose_b=True)
+#        else:
+#            # Not supported weight_sbp, deduce sbp and communicate with nccl automatically.
+#            x = flow.matmul(x, self.weight, transpose_b=True)
+        x = flow.matmul(x, self.weight, transpose_b=True)
         if self.bias is not None:
             if self.skip_bias_add:
                 return x, self.bias
