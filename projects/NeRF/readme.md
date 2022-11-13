@@ -38,6 +38,8 @@ pip install imageio
 # cd /path/to/libai
  bash tools/train.sh tools/train_net.py projects/NeRF/configs/config_nerf.py 1
 ```
+Note that we use PSNR to evaluate the performance of NeRF. PSNR (Peak Signal-to-Noise Ratio) is an engineering term that represents the ratio of the maximum possible power of a signal to the destructive noise power that affects its representation accuracy.
+
 ### 5. Visual rendering results (Please modify the value of `train.load_weight` in `projects/NeRF/configs/config_nerf_for_rendering.py` first)
 ```bash
 # cd /path/to/libai
