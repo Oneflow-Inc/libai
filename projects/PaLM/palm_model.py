@@ -283,6 +283,7 @@ class PaLM(nn.Module):
         dist_utils = dist.get_dist_util()
 
         if hasattr(model.net[-1], "config"):
+            # Old API in OneFlow 0.8
             for module_block in model.modules():
                 if isinstance(module_block.origin, VocabEmbedding):
                     module_block.config.set_stage(

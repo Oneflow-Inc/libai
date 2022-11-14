@@ -286,6 +286,7 @@ class T5ForPreTraining(flow.nn.Module):
 
         # Set pipeline parallelism stage_id
         if hasattr(model.t5_model.encoder.final_layernorm, "config"):
+            # Old API in OneFlow 0.8
             for module_block in model.modules():
                 if isinstance(module_block.origin, T5Embedding):
                     module_block.config.set_stage(

@@ -237,6 +237,7 @@ class ResMLP(nn.Module):
 
         # Set pipeline parallelism stage_id
         if hasattr(model.loss_func, "config"):
+            # Old API in OneFlow 0.8
             for module_block in model.modules():
                 # module.origin can get the original module
                 if isinstance(module_block.origin, PatchEmbedding):
@@ -279,6 +280,7 @@ class ResMLP(nn.Module):
     def set_activation_checkpoint(model):
         for module_block in model.modules():
             if hasattr(module_block, "origin"):
+                # Old API in OneFlow 0.8
                 if isinstance(module_block.origin, layers_scale_mlp_blocks):
                     module_block.config.activation_checkpointing = True
             else:

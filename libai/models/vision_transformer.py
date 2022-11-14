@@ -203,6 +203,7 @@ class VisionTransformer(nn.Module):
 
         # Set pipeline parallelism stage_id
         if hasattr(model.pos_embed, "config"):
+            # Old API in OneFlow 0.8
             for module_block in model.modules():
                 if isinstance(module_block.origin, PatchEmbedding):
                     module_block.config.set_stage(

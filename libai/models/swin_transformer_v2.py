@@ -823,6 +823,7 @@ class SwinTransformerV2(nn.Module):
 
         # Set pipeline parallelism stage_id
         if hasattr(model.patch_embed, "config"):
+            # Old API in OneFlow 0.8
             model.patch_embed.config.set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
@@ -883,6 +884,7 @@ class SwinTransformerV2(nn.Module):
     def set_activation_checkpoint(model):
         for module_block in model.modules():
             if hasattr(module_block, "origin"):
+                # Old API in OneFlow 0.8
                 if isinstance(module_block.origin, SwinTransformerBlock):
                     module_block.config.activation_checkpointing = True
             else:

@@ -359,6 +359,7 @@ class GPTForPreTraining(nn.Module):
         dist_utils = dist.get_dist_util()
 
         if hasattr(model.GPT_model.transformer.layernorm_f, "config"):
+            # Old API in OneFlow 0.8
             for module_block in model.modules():
                 if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
                     module_block.config.set_stage(

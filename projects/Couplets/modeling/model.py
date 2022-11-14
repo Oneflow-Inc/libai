@@ -104,6 +104,7 @@ class Seq2Seq(nn.Module):
 
         # Set pipeline parallelism stage_id
         if hasattr(model.language_model.lm_head, "config"):
+            # Old API in OneFlow 0.8
             for module_block in model.modules():
                 # module.origin can get the original module
                 if isinstance(module_block.origin, TransformerEmbedding):
