@@ -27,7 +27,7 @@ model.cfg.max_seq_length = 1024
 
 train.input_placement_device = "cpu"
 
-train.dist.pipeline_num_layers = model.cfg.num_layers
+train.dist.pipeline_num_layers = model.cfg.hidden_layers
 
 for ds in dataloader.train.dataset:
     ds.max_seq_length = model.cfg.max_seq_length
