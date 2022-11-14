@@ -1,3 +1,4 @@
+import oneflow as flow
 from oneflow import nn
 
 from libai.layers.cross_entropy import ParallelCrossEntropyLoss
