@@ -126,13 +126,25 @@ class GraphBase(nn.Graph):
             return self.model(**kwargs)
 
     def set_activation_checkpoint(self):
-        if hasattr(type(self.model.origin), "set_activation_checkpoint"):
-            type(self.model.origin).set_activation_checkpoint(self.model)
+        if hasattr(self.model, "origin"):
+            if hasattr(type(self.model.origin), "set_activation_checkpoint"):
+                type(self.model.origin).set_activation_checkpoint(self.model)
+            else:
+                for module_block in self.model.modules():
+                    if isinstance(module_block.origin, TransformerLayer):
+                        module_block.config.activation_checkpointing = True
         else:
-            for module_block in self.model.modules():
-                if isinstance(module_block.origin, TransformerLayer):
-                    module_block.config.activation_checkpointing = True
+            if hasattr(type(self.model.to(nn.Module)), "set_activation_checkpoint"):
+                type(self.model.to(nn.Module)).set_activation_checkpoint(self.model)
+            else:
+                for module_block in self.model.modules():
+                    if isinstance(module_block.to(nn.Module), TransformerLayer):
+                        module_block.to(nn.graph.GraphModule).activation_checkpointing = True
 
     def set_pipeline_stage_id(self):
-        if hasattr(type(self.model.origin), "set_pipeline_stage_id"):
-            type(self.model.origin).set_pipeline_stage_id(self.model)
+        if hasattr(self.model, "origin"):
+            if hasattr(type(self.model.origin), "set_pipeline_stage_id"):
+                type(self.model.origin).set_pipeline_stage_id(self.model)
+        else:
+            if hasattr(type(self.model.to(nn.Module)), "set_pipeline_stage_id"):
+                type(self.model.to(nn.Module)).set_pipeline_stage_id(self.model)
