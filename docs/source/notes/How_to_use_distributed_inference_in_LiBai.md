@@ -2,7 +2,7 @@
 
 If you want to using distributed inference in LiBai from pretrained `pytorch` model, you can refer to [DALLE2 inferecn doc](https://github.com/Oneflow-Inc/libai/blob/main/docs/source/notes/How_to_use_model_parallel_in_LiBai.md). And [Chinese doc for distributed inference](https://github.com/Oneflow-Inc/libai/discussions/386) is also available.
 
-Here we introduce how to use distributed infenrence in LiBai, 
+Here we introduce how to use distributed infenrence in LiBai:
 
 ## Check `model.py`
 
@@ -17,7 +17,7 @@ check your `model.py` first:
         ...
     )
    ```
-2. If you want to run pipeline parallel in LiBai, you should additionally insert code `x = x.to_global(placement=other_tensor.placement)` in your `model.forward()`. 
+2. If you want to run pipeline parallel in LiBai, you should additionally insert code `x = x.to_global(placement=target_tensor.placement)` in your `model.forward()`. 
 It is equal to torch code `x.to(cuda_device)`, which move tensor from gpuA to gpuB. There are many examples in LiBai: [example1](https://github.com/Oneflow-Inc/libai/blob/92dbe7c1b1496290e32e595f8473f9288ea1886e/projects/MT5/layers/attention_layer.py#L220), [example2](https://github.com/Oneflow-Inc/libai/blob/92dbe7c1b1496290e32e595f8473f9288ea1886e/projects/MT5/layers/attention_layer.py#L156) ...
    
     If you don't know where to insert code, you can run your code first, and the it will raise bug in the line which needed `to_global`. 
@@ -29,7 +29,7 @@ It is equal to torch code `x.to(cuda_device)`, which move tensor from gpuA to gp
         return flow._C.rms_layer_norm(hidden_states, self.weight, self.l2norm_epsilon)    RuntimeError: return flow._C.rms_layer_norm(hidden_states, self.weight, self.l2norm_epsilon)RuntimeErrorExpected all tensors to be on the same placement, but found at least two placements, oneflow.placement(type="cuda", ranks=[0, 1]) (positional 0) and oneflow.placement(type="cuda", ranks=[2, 3]) (positional 1)!
     ```
 
-## Build  `config.py`
+## Build `config.py`
 
 If your model is Trained from LiBai, you can use the same `config.py` from training. refer to [Couplets](https://github.com/Oneflow-Inc/libai/tree/main/projects/Couplets#inference) for more details
 
@@ -44,14 +44,14 @@ If your model is trained from `LiBai`, it will be easy to use, you can refer to 
 
 If your model is trained from other framework, you need to build your own `model_loader` to load your model weights in LiBai, refer to [model_loader](https://libai.readthedocs.io/en/latest/notes/How_to_load_huggingface%27s_pretrained_model_in_libai.html) for more details
 
-give a simple example,  the function overloaded in `LiBai`:
+Give a simple example,  the function overloaded in `LiBai`:
 ```python
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 
 class MyPipeline(BasePipeline):
     def _parse_parameters(self, **pipeline_parameters):
-        ## By overloading this function, the input parameters in MyPipeline.__call__() hand out to preprocess/forward/postprocess stages of inference.
+        # By overloading this function, the input parameters in MyPipeline.__call__() hand out to preprocess/forward/postprocess stages of inference.
         preprocess_params = {
             "preprocess_param1": pipeline_parameters["preprocess_param1"],
             "preprocess_param2": pipeline_parameters["preprocess_param2"],
