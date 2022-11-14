@@ -1,4 +1,5 @@
 from oneflow import nn
+from oneflow.nn.graph import GraphModule as GModule
 
 from libai.layers.cross_entropy import ParallelCrossEntropyLoss
 from libai.utils import distributed as dist
@@ -103,23 +104,44 @@ class Seq2Seq(nn.Module):
         from .transformer_model import ExtendedMask, TransformerEmbedding, TransformerLayer
 
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, TransformerEmbedding):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, ExtendedMask):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
+        if hasattr(model.language_model.lm_head, "config"):
+            for module_block in model.modules():
+                # module.origin can get the original module
+                if isinstance(module_block.origin, TransformerEmbedding):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, ExtendedMask):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
 
-        # Set the lm_head stage id
-        model.language_model.lm_head.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            # Set the lm_head stage id
+            model.language_model.lm_head.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), TransformerEmbedding):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), ExtendedMask):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+
+            # Set the lm_head stage id
+            model.language_model.lm_head.to(GModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )

@@ -14,6 +14,8 @@
 # limitations under the License.
 
 import oneflow as flow
+import oneflow.nn as nn
+from oneflow.nn.graph import GraphModule as GModule
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
@@ -359,30 +361,60 @@ class MT5ForPreTraining(flow.nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            if isinstance(module_block.origin, MT5Embedding):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, ExtendedMask):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, MT5Loss):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
+        if hasattr(model.mt5_model.encoder.final_layernorm, "config")
+            for module_block in model.modules():
+                if isinstance(module_block.origin, MT5Embedding):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, ExtendedMask):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, MT5Loss):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
 
-        model.mt5_model.encoder.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(model.mt5_model.encoder.final_layernorm.layer_idx),
-            dist.get_layer_placement(model.mt5_model.encoder.final_layernorm.layer_idx),
-        )
-        model.mt5_model.decoder.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
-            dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
-        )
+            model.mt5_model.encoder.final_layernorm.config.set_stage(
+                dist_utils.get_layer_stage_id(model.mt5_model.encoder.final_layernorm.layer_idx),
+                dist.get_layer_placement(model.mt5_model.encoder.final_layernorm.layer_idx),
+            )
+            model.mt5_model.decoder.final_layernorm.config.set_stage(
+                dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
+                dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
+            )
+        else:
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), MT5Embedding):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), ExtendedMask):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.to(nn.Module), MT5Loss):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+
+            model.mt5_model.encoder.final_layernorm.to(GModule).set_stage(
+                dist_utils.get_layer_stage_id(model.mt5_model.encoder.final_layernorm.layer_idx),
+                dist.get_layer_placement(model.mt5_model.encoder.final_layernorm.layer_idx),
+            )
+            model.mt5_model.decoder.final_layernorm.to(GModule).set_stage(
+                dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
+                dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
+            )
+

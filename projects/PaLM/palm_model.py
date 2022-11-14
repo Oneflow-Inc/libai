@@ -17,6 +17,7 @@ import numpy as np
 import oneflow as flow
 import oneflow.nn.functional as F
 from oneflow import einsum, nn
+from oneflow.nn.graph import GraphModule as GModule
 
 from libai.config import configurable
 from libai.layers import LayerNorm, Linear, LMLogits, ParallelCrossEntropyLoss, VocabEmbedding
@@ -271,28 +272,52 @@ class PaLM(nn.Module):
     @staticmethod
     def set_activation_checkpoint(model):
         for module_block in model.modules():
-            if isinstance(module_block.origin, PalmTransformerLayer):
-                module_block.config.activation_checkpointing = True
+            if hasattr(module_block, "origin"):
+                if isinstance(module_block.origin, PalmTransformerLayer):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), PalmTransformerLayer):
+                    module_block.to(GModule).activation_checkpointing = True
 
     @staticmethod
     def set_pipeline_stage_id(model: nn.Module):
         dist_utils = dist.get_dist_util()
 
-        for module_block in model.modules():
-            if isinstance(module_block.origin, VocabEmbedding):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, PalmTransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, PalmHead):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
-        # final layernorm
-        model.net[-1].config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+        if hasattr(model.net[-1], "config"):
+            for module_block in model.modules():
+                if isinstance(module_block.origin, VocabEmbedding):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, PalmTransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, PalmHead):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+            # final layernorm
+            model.net[-1].config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), VocabEmbedding):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), PalmTransformerLayer):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.to(nn.Module), PalmHead):
+                    module_block.to(GModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+            # final layernorm
+            model.net[-1].to(GModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
