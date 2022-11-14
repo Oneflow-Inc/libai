@@ -236,27 +236,51 @@ class ResMLP(nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, PatchEmbedding):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, layers_scale_mlp_blocks):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
+        if hasattr(model.loss_func, "config"):
+            for module_block in model.modules():
+                # module.origin can get the original module
+                if isinstance(module_block.origin, PatchEmbedding):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, layers_scale_mlp_blocks):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
 
-        # Set norm and head stage id
-        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-        model.loss_func.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            # Set norm and head stage id
+            model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.loss_func.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for proxy_module in model.modules():
+                if isinstance(proxy_module.to(nn.Module), PatchEmbedding):
+                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(proxy_module.to(nn.Module), layers_scale_mlp_blocks):
+                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+
+            # Set norm and head stage id
+            model.norm.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.head.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.loss_func.to(nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+
 
     @staticmethod
     def set_activation_checkpoint(model):
         for module_block in model.modules():
-            if isinstance(module_block.origin, layers_scale_mlp_blocks):
-                module_block.config.activation_checkpointing = True
+            if hasattr(module_block, "origin"):
+                if isinstance(module_block.origin, layers_scale_mlp_blocks):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), layers_scale_mlp_blocks):
+                    module_block.to(nn.graph.GraphModule).activation_checkpointing = True

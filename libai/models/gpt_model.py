@@ -358,21 +358,42 @@ class GPTForPreTraining(nn.Module):
     def set_pipeline_stage_id(model: nn.Module):
         dist_utils = dist.get_dist_util()
 
-        for module_block in model.modules():
-            if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, (LMLogits, GPTLoss)):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
+        if hasattr(model.GPT_model.transformer.layernorm_f, "config"):
+            for module_block in model.modules():
+                if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, (LMLogits, GPTLoss)):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
 
-        model.GPT_model.transformer.layernorm_f.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            model.GPT_model.transformer.layernorm_f.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for proxy_module in model.modules():
+                if isinstance(proxy_module.to(nn.Module), (GPTEmbedding, CasualMask)):
+                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(proxy_module.to(nn.Module), TransformerLayer):
+                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(proxy_module.layer_idx),
+                        dist.get_layer_placement(proxy_module.layer_idx),
+                    )
+                elif isinstance(proxy_module.to(nn.Module), (LMLogits, GPTLoss)):
+                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+
+            model.GPT_model.transformer.layernorm_f.to(nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+
