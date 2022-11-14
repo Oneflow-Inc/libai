@@ -15,7 +15,6 @@
 
 import oneflow as flow
 import oneflow.nn as nn
-from oneflow.nn.graph import GraphModule as GModule
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
@@ -392,28 +391,28 @@ class MT5ForPreTraining(flow.nn.Module):
         else:
             for module_block in model.modules():
                 if isinstance(module_block.to(nn.Module), MT5Embedding):
-                    module_block.to(GModule).set_stage(
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                     )
                 elif isinstance(module_block.to(nn.Module), ExtendedMask):
-                    module_block.to(GModule).set_stage(
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                     )
                 elif isinstance(module_block.to(nn.Module), TransformerLayer):
-                    module_block.to(GModule).set_stage(
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(module_block.layer_idx),
                         dist.get_layer_placement(module_block.layer_idx),
                     )
                 elif isinstance(module_block.to(nn.Module), MT5Loss):
-                    module_block.to(GModule).set_stage(
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
                     )
 
-            model.mt5_model.encoder.final_layernorm.to(GModule).set_stage(
+            model.mt5_model.encoder.final_layernorm.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(model.mt5_model.encoder.final_layernorm.layer_idx),
                 dist.get_layer_placement(model.mt5_model.encoder.final_layernorm.layer_idx),
             )
-            model.mt5_model.decoder.final_layernorm.to(GModule).set_stage(
+            model.mt5_model.decoder.final_layernorm.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
                 dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
             )

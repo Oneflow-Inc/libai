@@ -15,7 +15,6 @@
 
 import oneflow as flow
 import oneflow.nn as nn
-from oneflow.nn.graph import GraphModule as GModule
 from flowvision.layers import trunc_normal_
 from flowvision.models import to_2tuple
 
@@ -724,31 +723,31 @@ class SwinTransformer(nn.Module):
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
         else:
-            model.patch_embed.to(GModule).set_stage(
+            model.patch_embed.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
-            model.pos_drop.to(GModule).set_stage(
+            model.pos_drop.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
 
             for module_block in model.modules():
                 if isinstance(module_block.to(nn.Module), SwinTransformerBlock):
-                    module_block.to(GModule).set_stage(
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(module_block.layer_idx),
                         dist.get_layer_placement(module_block.layer_idx),
                     )
                 elif isinstance(module_block.to(nn.Module), PatchMerging):
-                    module_block.to(GModule).set_stage(
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(module_block.layer_idx),
                         dist.get_layer_placement(module_block.layer_idx),
                     )
 
-            model.norm.to(GModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-            model.head.to(GModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-            model.avgpool.to(GModule).set_stage(
+            model.norm.to(flow.nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.head.to(flow.nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.avgpool.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
-            model.loss_func.to(GModule).set_stage(
+            model.loss_func.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
 
@@ -760,5 +759,5 @@ class SwinTransformer(nn.Module):
                     module_block.config.activation_checkpointing = True
             else:
                 if isinstance(module_block.to(nn.Module), SwinTransformerBlock):
-                    module_block.to(GModule).activation_checkpointing = True
+                    module_block.to(flow.nn.graph.GraphModule).activation_checkpointing = True
 
