@@ -360,7 +360,7 @@ class MT5ForPreTraining(flow.nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        if hasattr(model.mt5_model.encoder.final_layernorm, "config")
+        if hasattr(model.mt5_model.encoder.final_layernorm, "config"):
             # Old API in OneFlow 0.8
             for module_block in model.modules():
                 if isinstance(module_block.origin, MT5Embedding):
@@ -417,4 +417,3 @@ class MT5ForPreTraining(flow.nn.Module):
                 dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
                 dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
             )
-

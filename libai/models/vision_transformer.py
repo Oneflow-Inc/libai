@@ -225,8 +225,12 @@ class VisionTransformer(nn.Module):
             model.pos_drop.config.set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
-            model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-            model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.norm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
             model.loss_func.config.set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
@@ -252,9 +256,12 @@ class VisionTransformer(nn.Module):
             model.pos_drop.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
-            model.norm.to(flow.nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-            model.head.to(flow.nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.norm.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
             model.loss_func.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
-

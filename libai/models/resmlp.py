@@ -251,8 +251,12 @@ class ResMLP(nn.Module):
                     )
 
             # Set norm and head stage id
-            model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-            model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.norm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
             model.loss_func.config.set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
@@ -269,12 +273,15 @@ class ResMLP(nn.Module):
                     )
 
             # Set norm and head stage id
-            model.norm.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-            model.head.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.norm.to(nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.to(nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
             model.loss_func.to(nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
-
 
     @staticmethod
     def set_activation_checkpoint(model):

@@ -715,8 +715,12 @@ class SwinTransformer(nn.Module):
                         dist.get_layer_placement(module_block.layer_idx),
                     )
 
-            model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-            model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.norm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
             model.avgpool.config.set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
@@ -743,8 +747,12 @@ class SwinTransformer(nn.Module):
                         dist.get_layer_placement(module_block.layer_idx),
                     )
 
-            model.norm.to(flow.nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-            model.head.to(flow.nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
+            model.norm.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
             model.avgpool.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
@@ -762,4 +770,3 @@ class SwinTransformer(nn.Module):
             else:
                 if isinstance(module_block.to(nn.Module), SwinTransformerBlock):
                     module_block.to(flow.nn.graph.GraphModule).activation_checkpointing = True
-

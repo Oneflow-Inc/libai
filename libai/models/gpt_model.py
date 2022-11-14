@@ -397,4 +397,3 @@ class GPTForPreTraining(nn.Module):
             model.GPT_model.transformer.layernorm_f.to(nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
-
