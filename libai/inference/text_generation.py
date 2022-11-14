@@ -37,7 +37,6 @@ class TextGenerationPipeline(BasePipeline):
                 hidden_dropout_prob=0.0,
                 attention_probs_dropout_prob=0.0,
                 embedding_dropout_prob=0.0,
-                model_type="t5",
             )
             return model_loader.load()
         elif mode == "libai":
