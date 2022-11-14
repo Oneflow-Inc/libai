@@ -328,20 +328,19 @@ class VisionTransformer(nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, PatchEmbedding):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+        for proxy_module in model.modules():
+            if isinstance(proxy_module.to(nn.Module), PatchEmbedding):
+                proxy_module.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+            elif isinstance(proxy_module.to(nn.Module), TransformerLayer):
+                proxy_module.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx))
 
         # Set pos_embed and cls_token stage id
-        model.pos_embed.config.stage_id = dist_utils.get_layer_stage_id(0)
-        model.cls_token.config.stage_id = dist_utils.get_layer_stage_id(0)
-        model.pos_drop.config.stage_id = dist_utils.get_layer_stage_id(0)
-        model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
-        model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+        model.pos_embed.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+        model.cls_token.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+        model.pos_drop.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+        model.norm.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1))
+        model.head.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1))
+        model.loss_func.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1))
 ```
 
 ## Details about LiBai's implementation of the Vision Transformer model
@@ -403,27 +402,26 @@ import libai.utils.distributed as dist
 
 """
 This is a staticmethod for class inherited from nn.Module, 
-which uses module.origin to get the original module.
 """
 @staticmethod
 def set_pipeline_stage_id(model):
     dist_utils = dist.get_dist_util()
 
     # Set pipeline parallelism stage_id
-    for module_block in model.modules():
-        # module.origin can get the original module
-        if isinstance(module_block.origin, PatchEmbedding):
-            module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
-        elif isinstance(module_block.origin, TransformerLayer):
-            module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
+    for proxy_module in model.modules():
+        # proxy_module.to(nn.Module) can get the original module
+        if isinstance(proxy_module.to(nn.Module), PatchEmbedding):
+            proxy_module.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+        elif isinstance(proxy_module.to(nn.Module), TransformerLayer):
+            proxy_module.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx))
 
     # Set pos_embed and cls_token stage id
-    model.pos_embed.config.stage_id = dist_utils.get_layer_stage_id(0)
-    model.cls_token.config.stage_id = dist_utils.get_layer_stage_id(0)
-    model.pos_drop.config.stage_id = dist_utils.get_layer_stage_id(0)
-    model.norm.config.stage_id = dist_utils.get_layer_stage_id(-1)
-    model.head.config.stage_id = dist_utils.get_layer_stage_id(-1)
-    model.loss_func.config.stage_id = dist_utils.get_layer_stage_id(-1)
+    model.pos_embed.to(nn.graph.GraphModule).set_stage(sdist_utils.get_layer_stage_id(0))
+    model.cls_token.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+    model.pos_drop.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+    model.norm.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1))
+    model.head.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1))
+    model.loss_func.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1))
 ```
 
 Manually set the stage id:
