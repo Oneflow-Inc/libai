@@ -328,11 +328,11 @@ class VisionTransformer(nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        for proxy_module in model.modules():
-            if isinstance(proxy_module.to(nn.Module), PatchEmbedding):
-                proxy_module.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
-            elif isinstance(proxy_module.to(nn.Module), TransformerLayer):
-                proxy_module.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx))
+        for module_block in model.modules():
+            if isinstance(module_block.to(nn.Module), PatchEmbedding):
+                module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+            elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx))
 
         # Set pos_embed and cls_token stage id
         model.pos_embed.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
@@ -408,12 +408,12 @@ def set_pipeline_stage_id(model):
     dist_utils = dist.get_dist_util()
 
     # Set pipeline parallelism stage_id
-    for proxy_module in model.modules():
-        # proxy_module.to(nn.Module) can get the original module
-        if isinstance(proxy_module.to(nn.Module), PatchEmbedding):
-            proxy_module.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
-        elif isinstance(proxy_module.to(nn.Module), TransformerLayer):
-            proxy_module.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx))
+    for module_block in model.modules():
+        # module_block.to(nn.Module) can get the original module
+        if isinstance(module_block.to(nn.Module), PatchEmbedding):
+            module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+        elif isinstance(module_block.to(nn.Module), TransformerLayer):
+            module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx))
 
     # Set pos_embed and cls_token stage id
     model.pos_embed.to(nn.graph.GraphModule).set_stage(sdist_utils.get_layer_stage_id(0))

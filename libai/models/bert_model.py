@@ -525,26 +525,26 @@ class BertForPreTraining(nn.Module):
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
         else:
-            for proxy_module in model.modules():
-                if isinstance(proxy_module.to(nn.Module), BertEmbeddings):
-                    proxy_module.to(nn.graph.GraphModule).set_stage(
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), BertEmbeddings):
+                    module_block.to(nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                     )
-                elif isinstance(proxy_module.to(nn.Module), BertExtendedAttnMask):
-                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                elif isinstance(module_block.to(nn.Module), BertExtendedAttnMask):
+                    module_block.to(nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                     )
-                elif isinstance(proxy_module.to(nn.Module), TransformerLayer):
-                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(module_block.layer_idx),
                         dist.get_layer_placement(module_block.layer_idx),
                     )
-                elif isinstance(proxy_module.to(nn.Module), BertPooler):
-                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                elif isinstance(module_block.to(nn.Module), BertPooler):
+                    module_block.to(nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
                     )
-                elif isinstance(proxy_module.to(nn.Module), BertPreTrainingHeads):
-                    proxy_module.to(nn.graph.GraphModule).set_stage(
+                elif isinstance(module_block.to(nn.Module), BertPreTrainingHeads):
+                    module_block.to(nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
                     )
 

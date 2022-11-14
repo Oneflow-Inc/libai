@@ -243,10 +243,10 @@ class VisionTransformer(nn.Module):
                     )
 
             # Set pos_embed and cls_token stage id
-            model.pos_embed.to(flow.nn.graph.GraphModule).set_stage(
+            model.pos_embed.to(flow.nn.graph.GraphTensor).set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
-            model.cls_token.to(flow.nn.graph.GraphModule).set_stage(
+            model.cls_token.to(flow.nn.graph.GraphTensor).set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
             model.pos_drop.to(flow.nn.graph.GraphModule).set_stage(

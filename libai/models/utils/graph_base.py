@@ -137,9 +137,9 @@ class GraphBase(nn.Graph):
             if hasattr(type(self.model.to(nn.Module)), "set_activation_checkpoint"):
                 type(self.model.to(nn.Module)).set_activation_checkpoint(self.model)
             else:
-                for proxy_module in self.model.modules():
-                    if isinstance(proxy_module.to(nn.Module), TransformerLayer):
-                        proxy_module.to(nn.graph.GraphModule).activation_checkpointing = True
+                for module_block in self.model.modules():
+                    if isinstance(module_block.to(nn.Module), TransformerLayer):
+                        module_block.to(nn.graph.GraphModule).activation_checkpointing = True
 
     def set_pipeline_stage_id(self):
         if hasattr(self.model, "origin"):
