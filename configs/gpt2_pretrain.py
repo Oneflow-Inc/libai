@@ -22,7 +22,7 @@ model.cfg.attention_dropout_prob = 0.1
 model.cfg.num_attention_heads = 16
 model.cfg.hidden_size = 384
 model.cfg.ffn_hidden_size = 1536
-model.cfg.num_layers = 6
+model.cfg.hidden_layers = 6
 model.cfg.max_seq_length = 1024
 
 train.input_placement_device = "cpu"
