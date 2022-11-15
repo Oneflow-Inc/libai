@@ -100,7 +100,7 @@ if __name__ == "__main__":
         mode="huggingface",
     )
 
-    text = ["She is a student, She is tall, She loves study"]
+    text = ["studies have shown that owning a dog is good for you"]
     dict1 = pipeline(text)
     if dist.is_main_process():
         print(dict1)
