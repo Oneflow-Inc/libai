@@ -1,8 +1,10 @@
 from configs.common.models.gpt import cfg
 from libai.config import LazyCall
 from libai.tokenizer.tokenization_gpt2 import GPT2Tokenizer
-# from libai.models import GPTModel
+from projects.GPT2.gpt2 import GPTModel
 from configs.common.data.gpt_dataset import tokenization
+from configs.common.train import train
+
 
 cfg.update(
     # Model
@@ -49,8 +51,9 @@ cfg.update(
 )
 
 
-# model = LazyCall(GPTModel)(cfg=cfg)
+model = LazyCall(GPTModel)(cfg=cfg)
 tokenization.tokenizer = LazyCall(GPT2Tokenizer)(
-    vocab_file="/path/to/spiece.model",
+    vocab_file="/home/xiezipeng/libai/xzp/gpt2/vocab.json",
+    merges_file="/home/xiezipeng/libai/xzp/gpt2/merges.txt",
     add_bos_token=True,
 )

@@ -5,7 +5,6 @@ from libai.tokenizer import GPT2Tokenizer
 
 path = "/path/to/gpt2"
 text = ["studies have shown that owning a dog is good for you"]
-path = "/home/xiezipeng/libai/data_test/gpt_utils_data/"
 
 
 if __name__ == "__main__":
