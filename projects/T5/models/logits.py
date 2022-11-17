@@ -13,11 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
 from oneflow import nn
 
 from libai.layers import Linear
-from libai.utils import distributed as dist
 
 
 class LMLogits(nn.Module):

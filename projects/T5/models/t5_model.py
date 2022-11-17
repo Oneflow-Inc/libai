@@ -335,13 +335,13 @@ class T5ForPreTraining(flow.nn.Module):
                 dist_utils.get_layer_stage_id(model.t5_model.decoder.final_layernorm.layer_idx),
                 dist.get_layer_placement(model.t5_model.decoder.final_layernorm.layer_idx),
             )
-  
-  def set_activation_checkpoint(self):
-    if hasattr(self.model, "origin"):
-        for module_block in self.t5_model.modules():
-            if isinstance(module_block.origin, TransformerLayer):
-                module_block.config.activation_checkpointing = True
-    else:
-        for module_block in self.t5_model.modules():
-            if isinstance(module_block.to(nn.Module), TransformerLayer):
-                module_block.to(nn.graph.GraphModule).activation_checkpointing = True
+
+    def set_activation_checkpoint(self):
+        if hasattr(self.model, "origin"):
+            for module_block in self.t5_model.modules():
+                if isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.activation_checkpointing = True
+        else:
+            for module_block in self.t5_model.modules():
+                if isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).activation_checkpointing = True
