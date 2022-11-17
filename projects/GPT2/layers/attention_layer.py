@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import enum
 import math
 from typing import Tuple
 
@@ -21,11 +20,7 @@ import oneflow as flow
 from oneflow import nn
 from libai.utils import distributed as dist
 from libai.layers.linear import Linear
-
-
-class AttnMaskType(enum.Enum):
-    padding = 1
-    causal = 2
+from libai.layers.attention import AttnMaskType
 
 
 class MultiheadAttention(nn.Module):
@@ -207,7 +202,6 @@ class MultiheadAttention(nn.Module):
         if not self.is_cross_attention:
             query_length, key_length = query.size(-2), key.size(-2)
             causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].to(flow.bool)
-            # causal_mask = causal_mask.to_global(sbp=attention_scores.sbp, placement=attention_scores.placement)
             mask_value = flow.finfo(attention_scores.dtype).min
             mask_value = flow.tensor(mask_value, dtype=attention_scores.dtype)
             mask_value = mask_value.to_global(sbp=attention_scores.sbp, placement=attention_scores.placement)

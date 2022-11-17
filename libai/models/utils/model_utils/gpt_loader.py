@@ -49,7 +49,7 @@ class GPT2LoaderHuggerFace(ModelLoaderHuggerFace):
         # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
         prefix1 = self.base_model_prefix_1 + "." if has_prefix else ""
-        prefix2 = "GPT_model." if has_prefix else "GPT_model.transformer."
+        prefix2 = "GPT_model.transformer."
         layer_idx = 2 if has_prefix else 1
 
         # Convert Embedding layers.
@@ -63,7 +63,7 @@ class GPT2LoaderHuggerFace(ModelLoaderHuggerFace):
 
         for key in old_keys:
             keys = key.split(".")
-            if layer_idx > len(keys):
+            if layer_idx >= len(keys):
                 continue
             layer = keys[layer_idx]
             # Convert transformer layers.
@@ -155,7 +155,10 @@ class GPT2LoaderHuggerFace(ModelLoaderHuggerFace):
         self._update_cfg("vocab_size", cfg_dict["vocab_size"])
         self._update_cfg("initializer_range", cfg_dict["initializer_range"])
         self._update_cfg(
-            "ffn_hidden_size", cfg_dict.get("n_inner", 4 * self.libai_cfg["hidden_size"])
+            "ffn_hidden_size",
+            cfg_dict.get("n_inner")
+            if cfg_dict.get("n_inner") is not None
+            else 4 * self.libai_cfg["hidden_size"],
         )
 
         # update libai_cfg by kwargs
