@@ -336,12 +336,13 @@ class T5ForPreTraining(flow.nn.Module):
                 dist.get_layer_placement(model.t5_model.decoder.final_layernorm.layer_idx),
             )
 
-    def set_activation_checkpoint(self):
-        if hasattr(self.model, "origin"):
-            for module_block in self.t5_model.modules():
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            # Old API in OneFlow 0.8
+            if hasattr(module_block, "origin"):
                 if isinstance(module_block.origin, TransformerLayer):
                     module_block.config.activation_checkpointing = True
-        else:
-            for module_block in self.t5_model.modules():
+            else:
                 if isinstance(module_block.to(nn.Module), TransformerLayer):
                     module_block.to(nn.graph.GraphModule).activation_checkpointing = True
