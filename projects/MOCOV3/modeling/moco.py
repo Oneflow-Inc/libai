@@ -135,9 +135,10 @@ class MoCo(nn.Module):
                 k1 = self.momentum_encoder(x1)["prediction_scores"]
                 k2 = self.momentum_encoder(x2)["prediction_scores"]
 
-            return {"losses": self.contrastive_loss(q1, k2) + self.contrastive_loss(q2, k1)}, {
-                "m": m
-            }
+            return (
+                {"losses": self.contrastive_loss(q1, k2) + self.contrastive_loss(q2, k1)},
+                {"m": m},
+            )
         else:
             return self.base_encoder(images)
 

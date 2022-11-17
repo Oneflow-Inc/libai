@@ -199,17 +199,17 @@ class BertForPreTraining(nn.Module):
                                                                                                      
         # Set pipeline parallelism stage_id
         for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, BertEmbeddings):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
-            elif isinstance(module_block.origin, BertExtendedAttnMask):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(0)
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(module_block.layer_idx)
-            elif isinstance(module_block.origin, BertPooler):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
-            elif isinstance(module_block.origin, BertPreTrainingHeads):
-                module_block.config.stage_id = dist_utils.get_layer_stage_id(-1)
+            # module_block.to(nn.Module) can get the original module
+            if isinstance(module_block.to(nn.Module), BertEmbeddings):
+                module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+            elif isinstance(module_block.to(nn.Module), BertExtendedAttnMask):
+                module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(0))
+            elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(module_block.layer_idx))
+            elif isinstance(module_block.to(nn.Module), BertPooler):
+                module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1))
+            elif isinstance(module_block.to(nn.Module), BertPreTrainingHeads):
+                module_block.to(nn.graph.GraphModule).set_stage(dist_utils.get_layer_stage_id(-1))
                                                                                                      
         # Set the last layernorm stage id
         model.bert.final_layernorm.config.stage_id = dist_utils.get_layer_stage_id(-1)
@@ -221,8 +221,8 @@ After adding the `set_pipeline_stage_id` function in a pre-defined `nn.Module`, 
 
 ```python
 def set_pipeline_stage_id(self):
-    if hasattr(type(self.model.origin), "set_pipeline_stage_id"):
-        type(self.model.origin).set_pipeline_stage_id(self.model)
+    if hasattr(type(self.model.to(nn.Module)), "set_pipeline_stage_id"):
+        type(self.model.to(nn.Module)).set_pipeline_stage_id(self.model)
 ```
 
 The last thing left is to set the training configuration as below:

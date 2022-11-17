@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import oneflow as flow
+import oneflow.nn as nn
 
 from libai.config import configurable
 from libai.layers import Linear, LMLogits
@@ -127,11 +128,9 @@ class T5Model(flow.nn.Module):
         self.past_length = 0
 
         # if model_type == "mt5":
-        self.lm_head = Linear(
-            hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1
-        )
+        self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=2 * hidden_layers - 1)
         # else:
-            # self.lm_head = LMLogits(vocab_size, bias=False)
+        # self.lm_head = LMLogits(vocab_size, bias=False)
 
     @classmethod
     def from_config(cls, cfg):
@@ -178,7 +177,7 @@ class T5Model(flow.nn.Module):
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
 
             enc_hidden_states = self.embedding(encoder_input_ids)
-            
+
             enc_hidden_states = enc_hidden_states.transpose(0, 1)
 
             for layer in self.encoder.layers:
@@ -225,7 +224,7 @@ class T5Model(flow.nn.Module):
         # if self.model_type == "mt5":
         logits = self.lm_head(decoder_states)
         # else:
-            # logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
+        # logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
 
         return logits
 
@@ -288,35 +287,70 @@ class T5ForPreTraining(flow.nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            if isinstance(module_block.origin, T5Embedding):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, ExtendedMask):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, T5Loss):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
+        if hasattr(model.t5_model.encoder.final_layernorm, "config"):
+            # Old API in OneFlow 0.8
+            for module_block in model.modules():
+                if isinstance(module_block.origin, T5Embedding):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, ExtendedMask):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, T5Loss):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
 
-        model.t5_model.encoder.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
-            dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx),
-        )
-        model.t5_model.decoder.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(model.t5_model.decoder.final_layernorm.layer_idx),
-            dist.get_layer_placement(model.t5_model.decoder.final_layernorm.layer_idx),
-        )
+            model.t5_model.encoder.final_layernorm.config.set_stage(
+                dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
+                dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx),
+            )
+            model.t5_model.decoder.final_layernorm.config.set_stage(
+                dist_utils.get_layer_stage_id(model.t5_model.decoder.final_layernorm.layer_idx),
+                dist.get_layer_placement(model.t5_model.decoder.final_layernorm.layer_idx),
+            )
+        else:
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), T5Embedding):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), ExtendedMask):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.to(nn.Module), T5Loss):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+
+            model.t5_model.encoder.final_layernorm.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(model.t5_model.encoder.final_layernorm.layer_idx),
+                dist.get_layer_placement(model.t5_model.encoder.final_layernorm.layer_idx),
+            )
+            model.t5_model.decoder.final_layernorm.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(model.t5_model.decoder.final_layernorm.layer_idx),
+                dist.get_layer_placement(model.t5_model.decoder.final_layernorm.layer_idx),
+            )
 
     def set_activation_checkpoint(self):
-        for module_block in self.t5_model.modules():
-            if isinstance(module_block.origin, TransformerLayer):
-                module_block.config.activation_checkpointing = True
+        if hasattr(self.model, "origin"):
+            for module_block in self.t5_model.modules():
+                if isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.activation_checkpointing = True
+        else:
+            for module_block in self.t5_model.modules():
+                if isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).activation_checkpointing = True
