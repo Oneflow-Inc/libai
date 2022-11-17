@@ -18,9 +18,10 @@ from typing import Tuple
 
 import oneflow as flow
 from oneflow import nn
-from libai.utils import distributed as dist
-from libai.layers.linear import Linear
+
 from libai.layers.attention import AttnMaskType
+from libai.layers.linear import Linear
+from libai.utils import distributed as dist
 
 
 class MultiheadAttention(nn.Module):
@@ -197,14 +198,18 @@ class MultiheadAttention(nn.Module):
         if use_cache:
             past_key_value = (key, value)
 
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor) 
+        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
 
         if not self.is_cross_attention:
             query_length, key_length = query.size(-2), key.size(-2)
-            causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].to(flow.bool)
+            causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].to(
+                flow.bool
+            )
             mask_value = flow.finfo(attention_scores.dtype).min
             mask_value = flow.tensor(mask_value, dtype=attention_scores.dtype)
-            mask_value = mask_value.to_global(sbp=attention_scores.sbp, placement=attention_scores.placement)
+            mask_value = mask_value.to_global(
+                sbp=attention_scores.sbp, placement=attention_scores.placement
+            )
             attention_scores = flow.where(causal_mask, attention_scores, mask_value)
 
         if attention_mask is not None:

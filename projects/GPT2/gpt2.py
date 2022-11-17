@@ -19,17 +19,11 @@ from oneflow.nn import init
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
-from libai.layers import (
-    Embedding,
-    LayerNorm,
-    LMLogits,
-    ParallelCrossEntropyLoss,
-    VocabEmbedding,
-)
-from projects.GPT2.layers.transformer_layer import TransformerLayer
+from libai.layers import Embedding, LayerNorm, LMLogits, ParallelCrossEntropyLoss, VocabEmbedding
 from libai.layers.attention import AttnMaskType
-from libai.utils import distributed as dist
 from libai.models.utils import init_method_normal, scaled_init_method_normal
+from libai.utils import distributed as dist
+from projects.GPT2.layers.transformer_layer import TransformerLayer
 
 
 class GPTModel(nn.Module, Generator):
@@ -176,7 +170,7 @@ class GPTModel(nn.Module, Generator):
         """
 
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
-        
+
         if use_cache and self.past_key_values[0] is not None:
             self.past_length = self.past_key_values[0][0].size(-2)
         else:
@@ -184,12 +178,11 @@ class GPTModel(nn.Module, Generator):
 
         input_embeds = self.embeddings(input_ids, self.past_length)
 
-
         transformer_output = self.transformer(
-            input_embeds, 
-            attention_mask=None, 
-            past_key_values=self.past_key_values, 
-            use_cache=use_cache
+            input_embeds,
+            attention_mask=None,
+            past_key_values=self.past_key_values,
+            use_cache=use_cache,
         )
 
         output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
@@ -212,19 +205,24 @@ class GPTModel(nn.Module, Generator):
     def _reorder_cache(self, beam_idx):
         past_key_values = self.past_key_values
         return tuple(
-            tuple(past_state.index_select(0, beam_idx.to(past_state.device)) for past_state in layer_past)
+            tuple(
+                past_state.index_select(0, beam_idx.to(past_state.device))
+                for past_state in layer_past
+            )
             for layer_past in past_key_values
         )
 
-    def _prepare_inputs_for_generation(self, input_ids, past=None, use_cache=None,):
+    def _prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past=None,
+        use_cache=None,
+    ):
         if past is not None:
             input_ids = input_ids[:, -1:]
             self.past_key_values = past
 
-        return {
-            "input_ids": input_ids,
-            "use_cache": use_cache
-        }
+        return {"input_ids": input_ids, "use_cache": use_cache}
 
 
 class GPTEmbedding(nn.Module):
@@ -317,8 +315,8 @@ class Transformer(nn.Module):
 
         for layer, past_key_value in zip(self.layers, past_key_values):
             hidden_states = layer(
-                hidden_states, 
-                attention_mask, 
+                hidden_states,
+                attention_mask,
                 past_key_value=past_key_value,
                 use_cache=use_cache,
             )
@@ -386,7 +384,7 @@ class GPTForPreTraining(nn.Module):
         dist_utils = dist.get_dist_util()
 
         for module_block in model.modules():
-            if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
+            if isinstance(module_block.origin, (GPTEmbedding)):
                 module_block.config.set_stage(
                     dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                 )

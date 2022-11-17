@@ -76,7 +76,7 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
-        outputs = self.model.generate(inputs["input_ids"], **kwargs)
+        outputs = self.model.generate(inputs["input_ids"], do_sample=True, max_length=50, **kwargs)
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
@@ -96,11 +96,11 @@ if __name__ == "__main__":
         pipeline_parallel=2,
         pipeline_stage_id=[0] * 6 + [1] * 6,
         pipeline_num_layers=12,
-        model_path="/home/xiezipeng/libai/xzp/gpt2/",
+        model_path="/home/xiezipeng/libai/xzp/gpt-magic",
         mode="huggingface",
     )
 
-    text = ["studies have shown that owning a dog is good for you"]
-    dict1 = pipeline(text)
+    text = ["a dog"]
+    dict = pipeline(inputs=text)
     if dist.is_main_process():
-        print(dict1)
+        print(dict)

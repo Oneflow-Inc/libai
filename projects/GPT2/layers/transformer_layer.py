@@ -15,13 +15,12 @@
 
 import oneflow.nn as nn
 
-from libai.utils import distributed as dist
-
-from projects.GPT2.layers.attention_layer import AttnMaskType, MultiheadAttention
+from libai.layers import build_activation
 from libai.layers.droppath import DropPath
 from libai.layers.layer_norm import LayerNorm
 from libai.layers.mlp import MLP
-from libai.layers import build_activation
+from libai.utils import distributed as dist
+from projects.GPT2.layers.attention_layer import AttnMaskType, MultiheadAttention
 
 
 class TransformerLayer(nn.Module):
