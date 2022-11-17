@@ -336,6 +336,7 @@ class T5ForPreTraining(flow.nn.Module):
                 dist.get_layer_placement(model.t5_model.decoder.final_layernorm.layer_idx),
             )
 
+    @staticmethod
     def set_activation_checkpoint(model):
         for module_block in model.modules():
             # Old API in OneFlow 0.8
