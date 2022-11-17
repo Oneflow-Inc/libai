@@ -494,34 +494,64 @@ class BertForPreTraining(nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, BertEmbeddings):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, BertExtendedAttnMask):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, BertPooler):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
-            elif isinstance(module_block.origin, BertPreTrainingHeads):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
+        if hasattr(model.bert.final_layernorm, "config"):
+            # Old API in OneFlow 0.8
+            for module_block in model.modules():
+                # module.origin can get the original module
+                if isinstance(module_block.origin, BertEmbeddings):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, BertExtendedAttnMask):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, BertPooler):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+                elif isinstance(module_block.origin, BertPreTrainingHeads):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
 
-        # Set the last layernorm stage id
-        model.bert.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            # Set the last layernorm stage id
+            model.bert.final_layernorm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), BertEmbeddings):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), BertExtendedAttnMask):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.to(nn.Module), BertPooler):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+                elif isinstance(module_block.to(nn.Module), BertPreTrainingHeads):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+
+            # Set the last layernorm stage id
+            model.bert.final_layernorm.to(nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
 
 
 class BertForClassification(nn.Module):

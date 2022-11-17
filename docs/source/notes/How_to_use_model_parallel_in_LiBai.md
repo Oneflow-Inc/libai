@@ -190,48 +190,6 @@ LiBai provides multiple parallelisms such as Data Parallelism, Tensor Parallelis
 from libai.layers import Linear, LayerNorm
 ```
 the nn.Linear will be replace with `libai.layers.Linear`.
-However, the Conv2d layer are missing from libai.layers. But we can implement it ourselves by referring the implementation of [libai.layers.Linear](https://github.com/Oneflow-Inc/libai/blob/main/libai/layers/linear.py) and oneflow.nn.[conv2d](https://github.com/Oneflow-Inc/oneflow/blob/master/python/oneflow/nn/modules/conv.py), the key point we should pay attention is the Parameter, whose placement and sbp attributes need to be carefully set. Here we simple set the sbp to broadcast:
-```python
-class Conv2d(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: _size_2_t,
-        stride: _size_2_t = 1,
-        padding: Union[str, _size_2_t] = 0,
-        dilation: _size_2_t = 1,
-        groups: int = 1,
-        bias: bool = True,
-        padding_mode: str = "zeros",
-        *,
-        layer_idx=0
-    ):
-        super().__init__()
-
-        if self.channel_pos == "channels_first":
-            self.weight = flow.nn.Parameter(
-                flow.Tensor(out_channels, in_channels // groups, *self.kernel_size,
-                            placement=dist.get_layer_placement(layer_idx=layer_idx),
-                            sbp=flow.sbp.broadcast)
-            )
-        else:
-            self.weight = flow.nn.Parameter(
-                flow.Tensor(out_channels, *self.kernel_size, in_channels // groups,
-                            placement=dist.get_layer_placement(layer_idx=layer_idx),
-                            sbp=flow.sbp.broadcast)
-            )
-
-        self.out_channel_groups = out_channels // groups
-        self.bias = None
-        if bias:
-            self.bias = flow.nn.Parameter(
-                flow.Tensor(out_channels,
-                placement=dist.get_layer_placement(layer_idx=layer_idx),
-                sbp=flow.sbp.broadcast)
-            )
-
-```
 
 **Compare the outputs** To make sure it is correctly modified from `torch` to `flow`,  it's necessary to compare the outputs to see if they are the same after the change. A notable point here is that in the sampling stage, the noise are randomly generated, like 
 ```python

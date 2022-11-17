@@ -9,3 +9,4 @@ Get Started
    quick_run.md
    Model_Zoo.md
    Benchmark.md
+   run_distributed_inference.md

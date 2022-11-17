@@ -693,38 +693,80 @@ class SwinTransformer(nn.Module):
     def set_pipeline_stage_id(model):
         dist_utils = dist.get_dist_util()
 
-        model.patch_embed.config.set_stage(
-            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-        )
-        model.pos_drop.config.set_stage(
-            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-        )
-
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, SwinTransformerBlock):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, PatchMerging):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
+        if hasattr(model.patch_embed, "config"):
+            # Old API in OneFlow 0.8
+            model.patch_embed.config.set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.pos_drop.config.set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
 
-        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-        model.avgpool.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
-        model.loss_func.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            for module_block in model.modules():
+                if isinstance(module_block.origin, SwinTransformerBlock):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, PatchMerging):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+
+            model.norm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.avgpool.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.loss_func.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            model.patch_embed.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.pos_drop.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), SwinTransformerBlock):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.to(nn.Module), PatchMerging):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+
+            model.norm.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.avgpool.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.loss_func.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
 
     @staticmethod
     def set_activation_checkpoint(model):
         for module_block in model.modules():
-            if isinstance(module_block.origin, SwinTransformerBlock):
-                module_block.config.activation_checkpointing = True
+            if hasattr(module_block, "origin"):
+                # Old API in OneFlow 0.8
+                if isinstance(module_block.origin, SwinTransformerBlock):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), SwinTransformerBlock):
+                    module_block.to(flow.nn.graph.GraphModule).activation_checkpointing = True
