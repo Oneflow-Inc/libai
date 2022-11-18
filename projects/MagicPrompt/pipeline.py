@@ -90,13 +90,13 @@ class TextGenerationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     pipeline = TextGenerationPipeline(
-        "/home/xiezipeng/libai/projects/MagicPrompt/configs/gpt_inference.py",
+        "/projects/MagicPrompt/configs/gpt_inference.py",
         data_parallel=1,
         tensor_parallel=2,
         pipeline_parallel=2,
         pipeline_stage_id=[0] * 6 + [1] * 6,
         pipeline_num_layers=12,
-        model_path="/home/xiezipeng/libai/xzp/gpt2-sd/",
+        model_path="/path/to/model",
         mode="huggingface",
     )
 
@@ -104,18 +104,3 @@ if __name__ == "__main__":
     output = pipeline(inputs=text)
     if dist.is_main_process():
         print(output)
-
-    import oneflow as torch
-    from diffusers import OneFlowStableDiffusionPipeline
-
-    pipe = OneFlowStableDiffusionPipeline.from_pretrained(
-        "prompthero/midjourney-v4-diffusion",
-        use_auth_token=True,
-    )
-
-    pipe = pipe.to("cuda")
-    prompt = output[0]['generated_text']
-    with torch.autocast("cuda"):
-        images = pipe(prompt).images
-        for i, image in enumerate(images):
-            image.save(f"result.png")

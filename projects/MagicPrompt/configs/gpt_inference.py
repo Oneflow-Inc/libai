@@ -53,7 +53,7 @@ cfg.update(
 
 model = LazyCall(GPTModel)(cfg=cfg)
 tokenization.tokenizer = LazyCall(GPT2Tokenizer)(
-    vocab_file="/home/xiezipeng/libai/xzp/gpt2-sd/vocab.json",
-    merges_file="/home/xiezipeng/libai/xzp/gpt2-sd/merges.txt",
+    vocab_file="path/to/vocab.json",
+    merges_file="path/to/merges.txt",
     add_bos_token=True,
 )
