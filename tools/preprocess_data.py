@@ -207,6 +207,7 @@ def main():
 
     if nltk_available and args.split_sentences:
         print("Start downloading punkt data...")
+        # Download url: http://www.nltk.org/nltk_data/
         nltk.download("punkt", quiet=True)
         print("End download")
 
