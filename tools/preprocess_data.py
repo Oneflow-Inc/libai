@@ -188,6 +188,7 @@ def parse_args_to_config(args):
     )
 
     tokenization.tokenizer.vocab_file = args.vocab_file
+    tokenization.tokenizer.merges_file = args.merges_file
     tokenization.tokenizer.do_lower_case = args.do_lower_case
     tokenization.tokenizer.extra_id = args.extra_ids
     tokenization.tokenizer.do_chinese_wwm = args.do_chinese_wwm
@@ -205,7 +206,10 @@ def main():
     fin = open(args.input, "r", encoding="utf-8")
 
     if nltk_available and args.split_sentences:
+        print("Start downloading punkt data...")
+        # Download url: http://www.nltk.org/nltk_data/
         nltk.download("punkt", quiet=True)
+        print("End download")
 
     encoder = Encoder(args, cfg)
     tokenizer = build_tokenizer(cfg)
