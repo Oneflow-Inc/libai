@@ -23,6 +23,7 @@ from libai.layers import Embedding, LayerNorm, LMLogits, ParallelCrossEntropyLos
 from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
+from libai.models.utils import GPT2LoaderHuggerFace
 from projects.MagicPrompt.layers.transformer_layer import TransformerLayer
 
 
@@ -350,7 +351,12 @@ class GPTForPreTraining(nn.Module):
 
     def __init__(self, cfg) -> None:
         super().__init__()
-        self.GPT_model = GPTModel(cfg)
+        if cfg.pretrained_model_path is not None:
+            loader = GPT2LoaderHuggerFace(GPT_model, cfg, cfg.pretrained_model_path)
+            self.GPT_model = loader.load()
+        else:
+            self.GPT_model = GPTModel(cfg)
+
         self.loss_func = GPTLoss()
 
     def forward(

@@ -1,7 +1,7 @@
 from configs.common.models.gpt import cfg
 from libai.config import LazyCall
 from libai.tokenizer.tokenization_gpt2 import GPT2Tokenizer
-from projects.MagicPrompt.gpt2 import GPTModel
+from projects.MagicPrompt.gpt2 import GPTModel, GPTForPreTraining
 from configs.common.data.gpt_dataset import tokenization
 from configs.common.train import train
 
@@ -48,12 +48,15 @@ cfg.update(
     bos_token_id=50256,
     sep_token_id=None,
     decoder_start_token_id=None,
+    # train
+    pretrained_model_path="/data/home/magicprompt"
 )
 
 
 model = LazyCall(GPTModel)(cfg=cfg)
+pretrain_model = LazyCall(GPTForPreTraining)(cfg=cfg)
 tokenization.tokenizer = LazyCall(GPT2Tokenizer)(
-    vocab_file="path/to/vocab.json",
-    merges_file="path/to/merges.txt",
+    vocab_file="/data/home/magicprompt/vocab.json",
+    merges_file="/data/home/magicprompt/merges.txt",
     add_bos_token=True,
 )
