@@ -61,7 +61,7 @@ def main(args):
         cfg.train.log_period = 1
 
     if args.eval_only:
-        cfg.eval_only = True
+        # cfg.eval_only = True
         tokenizer = None
         if try_get_key(cfg, "tokenization.setup", default=False):
             tokenizer = Trainer.build_tokenizer(cfg)
