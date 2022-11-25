@@ -342,7 +342,7 @@ class GPTForPreTraining(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         if cfg.pretrained_model_path is not None:
-            loader = GPT2LoaderHuggerFace(GPT_model, cfg, cfg.pretrained_model_path)
+            loader = GPT2LoaderHuggerFace(GPTModel, cfg, cfg.pretrained_model_path)
             self.GPT_model = loader.load()
         else:
             self.GPT_model = GPTModel(cfg)
@@ -382,7 +382,7 @@ class GPTForPreTraining(nn.Module):
         if hasattr(model.GPT_model.transformer.layernorm_f, "config"):
             # Old API in OneFlow 0.8
             for module_block in model.modules():
-                if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
+                if isinstance(module_block.origin, (GPTEmbedding)):
                     module_block.config.set_stage(
                         dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                     )
@@ -401,7 +401,7 @@ class GPTForPreTraining(nn.Module):
             )
         else:
             for module_block in model.modules():
-                if isinstance(module_block.to(nn.Module), (GPTEmbedding, CasualMask)):
+                if isinstance(module_block.to(nn.Module), (GPTEmbedding)):
                     module_block.to(nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                     )

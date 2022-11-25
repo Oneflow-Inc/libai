@@ -128,7 +128,7 @@ class MultiheadAttention(nn.Module):
             layer_idx=layer_idx,
         )
 
-        self.bias = flow.tril(flow.ones((512, 512), dtype=flow.uint8)).view(1, 1, 512, 512)
+        self.bias = flow.tril(flow.ones((1024, 1024), dtype=flow.uint8)).view(1, 1, 1024, 1024)
         self.bias = self.bias.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(layer_idx),
@@ -206,9 +206,11 @@ class MultiheadAttention(nn.Module):
                 flow.bool
             )
             mask_value = flow.finfo(attention_scores.dtype).min
-            mask_value = flow.tensor(mask_value, dtype=attention_scores.dtype)
-            mask_value = mask_value.to_global(
-                sbp=attention_scores.sbp, placement=attention_scores.placement
+            mask_value = flow.tensor(
+                mask_value, 
+                dtype=attention_scores.dtype,
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=attention_scores.placement,
             )
             attention_scores = flow.where(causal_mask, attention_scores, mask_value)
 

@@ -2,9 +2,12 @@ from libai.config import LazyCall
 from libai.data import build_nlp_train_val_test_loader
 from configs.common.data.gpt_dataset import tokenization, dataloader
 from libai.tokenizer import GPT2Tokenizer
+from libai.data.datasets import GPT2Dataset
+from libai.data.data_utils import get_indexed_dataset
 
 
-data_prefix = "/data/home/magicprompt/train"
+
+data_prefix = "/data/home/magicprompt/train/en_train_mmap_text_sentence"
 
 tokenization.tokenizer = LazyCall(GPT2Tokenizer)(
     vocab_file="/data/home/magicprompt/vocab.json",

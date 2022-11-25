@@ -1,16 +1,17 @@
 from libai.config import LazyCall
 from libai.evaluation import PPLEvaluator
 from projects.MagicPrompt.configs.gpt_inference import pretrain_model as model
-from projects.MagicPrompt.dataset import dataloader, tokenization
+from projects.MagicPrompt.configs.dataset import dataloader, tokenization
+from projects.MagicPrompt.configs.optim import optim
+from libai.scheduler import WarmupExponentialLR
 
 from configs.common.train import train
-from configs.common.optim import optim
-
 from configs.common.models.graph import graph
 
+# graph.enabled = False
 vocab_file = "/data/home/magicprompt/vocab.json"
 merge_files = "/data/home/magicprompt/merges.txt"
-train_data_prefix = "/data/home/magicprompt/train"
+train_data_prefix = "/data/home/magicprompt/train/en_train_mmap_text_sentence"
 # test_data_prefix = "/data/home/magicprompt/test"
 
 
@@ -44,30 +45,31 @@ train.update(
     dict(
         output_dir="projects/MagicPrompt/output",
         train_micro_batch_size=4,
-        train_epoch=1,
-        train_iter=24000,
+        train_epoch=0,
+        train_iter=33,
         log_period=10,
         amp=dict(enabled=True),
         warmup_ratio=1 / 24,
-        # checkpointer=dict(period=10, max_to_keep=20),
+        checkpointer=dict(period=10, max_to_keep=20),
         dist=dict(
             data_parallel_size=2,
             tensor_parallel_size=2,
             pipeline_parallel_size=1,
-            pipeline_num_layers=2 * model.cfg.hidden_layers,
+            # pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
-            warmup_factor=0.001,
+            warmup_factor=0.0,
             gamma=1.0,
             warmup_method="linear",
             warmup_iter=0.0,
         ),
         evaluation=dict(
+            enabled=False,
             evaluator=LazyCall(PPLEvaluator)(),
-            enabled=True,
             eval_iter=1e5,
             eval_period=5000,
         ),
+        rdma_enabled=False,
     )
 )
 
