@@ -44,16 +44,16 @@ optim.lr = 5.0e-05
 train.update(
     dict(
         output_dir="projects/MagicPrompt/output",
-        train_micro_batch_size=4,
+        train_micro_batch_size=1,
         train_epoch=0,
-        train_iter=33,
+        train_iter=10000,
         log_period=10,
         amp=dict(enabled=True),
-        warmup_ratio=1 / 24,
-        checkpointer=dict(period=10, max_to_keep=20),
+        warmup_ratio=0,
+        checkpointer=dict(period=100000, max_to_keep=3),
         dist=dict(
-            data_parallel_size=2,
-            tensor_parallel_size=2,
+            data_parallel_size=1,
+            tensor_parallel_size=1,
             pipeline_parallel_size=1,
             # pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
@@ -64,10 +64,10 @@ train.update(
             warmup_iter=0.0,
         ),
         evaluation=dict(
-            enabled=False,
+            enabled=True,
             evaluator=LazyCall(PPLEvaluator)(),
             eval_iter=1e5,
-            eval_period=5000,
+            eval_period=50,
         ),
         rdma_enabled=False,
     )
