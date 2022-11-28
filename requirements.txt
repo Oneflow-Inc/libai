@@ -5,7 +5,7 @@ flowvision==0.1.0
 wget
 hydra-core
 nltk
-numpy==1.23.4
+numpy>=1.23.4
 omegaconf==2.1.0
 Pygments
 PyYAML
