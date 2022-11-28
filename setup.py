@@ -114,7 +114,7 @@ if __name__ == "__main__":
             "wget",
             "hydra-core",
             "nltk",
-            "numpy",
+            "numpy==1.23.4",
             "omegaconf==2.1.0",
             "Pygments",
             "PyYAML",
