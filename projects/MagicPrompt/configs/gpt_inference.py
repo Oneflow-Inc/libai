@@ -49,7 +49,7 @@ cfg.update(
     sep_token_id=None,
     decoder_start_token_id=None,
     # train
-    pretrained_model_path="/data/home/magicprompt"
+    pretrained_model_path="/data/home/magicprompt",
 )
 
 

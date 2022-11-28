@@ -207,7 +207,7 @@ class MultiheadAttention(nn.Module):
             )
             mask_value = flow.finfo(attention_scores.dtype).min
             mask_value = flow.tensor(
-                mask_value, 
+                mask_value,
                 dtype=attention_scores.dtype,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=attention_scores.placement,

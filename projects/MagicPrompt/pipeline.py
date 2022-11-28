@@ -114,7 +114,7 @@ if __name__ == "__main__":
     )
 
     pipe = pipe.to("cuda")
-    prompt = output[0]['generated_text']
+    prompt = output[0]["generated_text"]
     with torch.autocast("cuda"):
         images = pipe(prompt).images
         for i, image in enumerate(images):

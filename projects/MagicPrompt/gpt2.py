@@ -21,10 +21,9 @@ from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
 from libai.layers import Embedding, LayerNorm, LMLogits, ParallelCrossEntropyLoss, VocabEmbedding
 from libai.layers.attention import AttnMaskType
-from libai.models.utils import init_method_normal, scaled_init_method_normal
-from libai.utils import distributed as dist
-from libai.models.utils import GPT2LoaderHuggerFace
 from libai.models.gpt_model import GPTLoss
+from libai.models.utils import GPT2LoaderHuggerFace, init_method_normal, scaled_init_method_normal
+from libai.utils import distributed as dist
 from projects.MagicPrompt.layers.transformer_layer import TransformerLayer
 
 
@@ -418,7 +417,7 @@ class GPTForPreTraining(nn.Module):
             model.GPT_model.transformer.layernorm_f.to(nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
-    
+
     @staticmethod
     def set_activation_checkpoint(model):
         for module_block in model.modules():
