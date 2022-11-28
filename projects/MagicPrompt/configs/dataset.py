@@ -31,7 +31,7 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
         ),
     ],
     train_val_test_num_samples=None,  # a hint for deferred assignment
-    splits=[[949.0, 50.0, 1.0]],
+    splits=[[7, 2, 1]],
     weights=[1.0],
     num_workers=4,
 )
