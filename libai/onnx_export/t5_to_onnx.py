@@ -25,7 +25,7 @@ from libai.engine import DefaultTrainer
 def get_model(config_file):
     cfg = LazyConfig.load(config_file)
 
-    cfg.model.cfg.mlp_type = "t5"
+    cfg.model.cfg.model_type = "t5"
     cfg.model.cfg.pretrained_model_path = None
     cfg.dataloader = None
     cfg.tokenization = None
