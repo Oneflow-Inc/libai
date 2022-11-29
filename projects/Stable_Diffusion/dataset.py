@@ -92,7 +92,7 @@ class TXTDataset(Dataset):
             ).input_ids
         return Instance(
             pixel_values=DistTensorData(instance_images.to(dtype=flow.float32)),
-            input_ids=DistTensorData(flow.tensor(input_ids)),
+            input_ids=DistTensorData(flow.tensor(input_ids[0])),
         )
 
 

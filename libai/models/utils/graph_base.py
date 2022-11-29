@@ -16,6 +16,7 @@
 import logging
 
 import oneflow as flow
+import oneflow._oneflow_internal.global_mode as global_mode
 from oneflow import nn
 
 from libai.layers import TransformerLayer
@@ -99,25 +100,28 @@ class GraphBase(nn.Graph):
 
     def build(self, **kwargs):
         if self.is_train:
-            logger.info(
-                "Start compling the train graph which may take some time. "
-                "Please wait for a moment ..."
-            )
-            loss_dict = self.model(**kwargs)
-            losses = sum(loss_dict.values())
-            losses.backward()
-            # set loss_dict on rank0
-            # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
-            loss_dict = {
-                k: v.to_global(
-                    placement=flow.placement(
-                        "cpu", ranks=[0] if v.placement.ranks.ndim == 1 else [[0]]
-                    ),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            P = flow.env.all_device_placement("cuda")
+            B = flow.sbp.broadcast
+            with global_mode.guard(True, placement=P, sbp=B):
+                logger.info(
+                    "Start compling the train graph which may take some time. "
+                    "Please wait for a moment ..."
                 )
-                for k, v in loss_dict.items()
-            }
-            return loss_dict
+                loss_dict = self.model(**kwargs)
+                losses = sum(loss_dict.values())
+                losses.backward()
+                # set loss_dict on rank0
+                # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
+                loss_dict = {
+                    k: v.to_global(
+                        placement=flow.placement(
+                            "cpu", ranks=[0] if v.placement.ranks.ndim == 1 else [[0]]
+                        ),
+                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    )
+                    for k, v in loss_dict.items()
+                }
+                return loss_dict
         else:
             logger.info(
                 "Start compling the eval graph which may take some time. "

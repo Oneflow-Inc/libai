@@ -44,6 +44,17 @@ class StableDiffusion(nn.Module):
             beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000
         )
 
+        for name in self.noise_scheduler.__dict__.keys():
+            if flow.is_tensor(getattr(self.noise_scheduler, name)):
+                setattr(
+                    self.noise_scheduler, 
+                    name, 
+                    getattr(self.noise_scheduler, name).to_global(
+                        sbp=flow.sbp.broadcast,
+                        placement=flow.env.all_device_placement("cuda")
+                    ),
+                )
+
         self.text_encoder.train()
         self.vae.eval()
         self.unet.eval()
@@ -67,13 +78,14 @@ class StableDiffusion(nn.Module):
             0, self.noise_scheduler.config.num_train_timesteps, (bsz,), 
             sbp = latents.sbp,
             placement = latents.placement,
-            dtype = flow.long()
+            dtype = flow.long
         )
         # Add noise to the latents according to the noise magnitude at each timestep
         # (this is the forward diffusion process)
 
         noisy_latents = self.noise_scheduler.add_noise(latents, noise, timesteps)
         noisy_latents = noisy_latents.to(dtype=self.unet.dtype)
+        # noisy_latents = latents
 
         # Get the text embedding for conditioning
         # with torch.no_grad():
