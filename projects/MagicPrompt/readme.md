@@ -80,4 +80,3 @@ python tools/preprocess_data.py \
 ```bash 
 bash tools/train.sh tools/train_net.py projects/MagicPrompt/configs/finetune.py 4
 ```
-

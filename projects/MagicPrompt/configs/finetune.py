@@ -14,7 +14,6 @@ merge_files = "/data/home/magicprompt/merges.txt"
 train_data_prefix = "/data/home/magicprompt/train/en_train_mmap_text_sentence"
 # test_data_prefix = "/data/home/magicprompt/test"
 
-
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
 dataloader.train.dataset[0].data_prefix = train_data_prefix
@@ -24,6 +23,7 @@ dataloader.train.dataset[0].indexed_dataset.data_prefix = train_data_prefix
 # dataloader.test.dataset[0].indexed_dataset.data_prefix = test_data_prefix
 
 # GPT-2 model config
+model.cfg.pretrained_model_path = "/data/home/magicprompt/gpt2"
 model.cfg.embedding_dropout_prob = 0.1
 model.cfg.attention_dropout_prob = 0.1
 model.cfg.num_attention_heads = 16
@@ -55,8 +55,8 @@ train.update(
         dist=dict(
             data_parallel_size=2,
             tensor_parallel_size=2,
-            pipeline_parallel_size=1,
-            # pipeline_num_layers=2 * model.cfg.hidden_layers,
+            pipeline_parallel_size=2,
+            pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
             warmup_factor=0.0,
@@ -67,7 +67,7 @@ train.update(
         evaluation=dict(
             enabled=True,
             evaluator=LazyCall(PPLEvaluator)(),
-            eval_iter=20,
+            eval_iter=30,
             eval_period=50,
         ),
         rdma_enabled=False,

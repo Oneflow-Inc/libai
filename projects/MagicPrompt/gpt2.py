@@ -19,7 +19,7 @@ from oneflow.nn import init
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
-from libai.layers import Embedding, LayerNorm, LMLogits, ParallelCrossEntropyLoss, VocabEmbedding
+from libai.layers import Embedding, LayerNorm, LMLogits, VocabEmbedding
 from libai.layers.attention import AttnMaskType
 from libai.models.gpt_model import GPTLoss
 from libai.models.utils import GPT2LoaderHuggerFace, init_method_normal, scaled_init_method_normal
