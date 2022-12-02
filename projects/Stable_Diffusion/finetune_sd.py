@@ -22,7 +22,7 @@ from diffusers import (
     OneFlowAutoencoderKL, 
     OneFlowStableDiffusionPipeline, 
     OneFlowUNet2DConditionModel,
-    DDPMScheduler
+    OneFlowDDPMScheduler
 )
 from oneflow.nn import functional as F
 # from fengshen.data.taiyi_stable_diffusion_datasets.taiyi_datasets import add_data_args, load_data
@@ -40,7 +40,7 @@ class StableDiffusion(nn.Module):
         self.unet = OneFlowUNet2DConditionModel.from_pretrained(
             model_path, subfolder="unet")
 
-        self.noise_scheduler = DDPMScheduler(
+        self.noise_scheduler = OneFlowDDPMScheduler(
             beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000
         )
 
@@ -60,43 +60,47 @@ class StableDiffusion(nn.Module):
         self.unet.eval()
 
     def forward(self, pixel_values, input_ids):
+        P = flow.env.all_device_placement("cuda")
+        B = flow.sbp.broadcast
+        import oneflow._oneflow_internal.global_mode as global_mode
+        with global_mode.guard(True, placement=P, sbp=B):
 
-        with flow.no_grad():
-            latents = self.vae.encode(pixel_values).latent_dist.sample()
-            latents = latents * 0.18215
+            with flow.no_grad():
+                latents = self.vae.encode(pixel_values).latent_dist.sample()
+                latents = latents * 0.18215
 
-        # Sample noise that we'll add to the latents
-        noise = flow.randn(
-            latents.shape,
-            sbp = latents.sbp,
-            placement = latents.placement,
-            dtype = self.unet.dtype
-        ).to(latents.device)
-        bsz = latents.shape[0]
-        # Sample a random timestep for each image
-        timesteps = flow.randint(
-            0, self.noise_scheduler.config.num_train_timesteps, (bsz,), 
-            sbp = latents.sbp,
-            placement = latents.placement,
-            dtype = flow.long
-        )
-        # Add noise to the latents according to the noise magnitude at each timestep
-        # (this is the forward diffusion process)
+            # Sample noise that we'll add to the latents
+            noise = flow.randn(
+                latents.shape,
+                sbp = latents.sbp,
+                placement = latents.placement,
+                dtype = self.unet.dtype
+            ).to(latents.device)
+            bsz = latents.shape[0]
+            # Sample a random timestep for each image
+            timesteps = flow.randint(
+                0, self.noise_scheduler.config.num_train_timesteps, (bsz,), 
+                sbp = latents.sbp,
+                placement = latents.placement,
+                dtype = flow.long
+            )
+            # Add noise to the latents according to the noise magnitude at each timestep
+            # (this is the forward diffusion process)
 
-        noisy_latents = self.noise_scheduler.add_noise(latents, noise, timesteps)
-        noisy_latents = noisy_latents.to(dtype=self.unet.dtype)
-        # noisy_latents = latents
+            noisy_latents = self.noise_scheduler.add_noise(latents, noise, timesteps)
+            noisy_latents = noisy_latents.to(dtype=self.unet.dtype)
+            # noisy_latents = latents
 
-        # Get the text embedding for conditioning
-        # with torch.no_grad():
-        encoder_hidden_states = self.text_encoder(input_ids)[0]
+            # Get the text embedding for conditioning
+            # with torch.no_grad():
+            encoder_hidden_states = self.text_encoder(input_ids)[0]
 
-        # Predict the noise residual
-        noise_pred = self.unet(noisy_latents, timesteps, encoder_hidden_states).sample
+            # Predict the noise residual
+            noise_pred = self.unet(noisy_latents, timesteps, encoder_hidden_states).sample
 
-        loss = F.mse_loss(noise_pred, noise, reduction="none").mean([1, 2, 3]).mean()
+            loss = F.mse_loss(noise_pred, noise, reduction="none").mean([1, 2, 3]).mean()
 
-        return {"loss": loss}
+            return {"loss": loss}
         # self.log("train_loss", loss.item(),  on_epoch=False, prog_bar=True, logger=True)
 
         # if self.trainer.global_rank == 0 and self.global_step == 100:

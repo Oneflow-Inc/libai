@@ -22,3 +22,17 @@ libai installation, refer to [Installation instructions](https://libai.readthedo
 ### install diffusers
 
 refer to [oneflow diffusers installation](https://github.com/Oneflow-Inc/diffusers/wiki/How-to-Run-OneFlow-Stable-Diffusion)
+
+
+### running command
+
+set your datapath in `projects/Stable_Diffusion/config.py`
+```python
+    LazyCall(TXTDataset)(
+        foloder_name="/home/chengpeng/chengpeng/mscoco/00000",
+```
+
+
+```
+bash tools/train.sh tools/train_net.py projects/Stable_Diffusion/config.py 1
+```
