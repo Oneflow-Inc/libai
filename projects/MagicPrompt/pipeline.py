@@ -90,7 +90,7 @@ class TextGenerationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     pipeline = TextGenerationPipeline(
-        "/home/xiezipeng/libai/projects/MagicPrompt/configs/gpt_inference.py",
+        "/home/xiezipeng/libai/projects/MagicPrompt/configs/gpt2_inference.py",
         data_parallel=1,
         tensor_parallel=2,
         pipeline_parallel=2,
