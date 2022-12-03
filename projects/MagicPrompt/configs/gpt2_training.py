@@ -8,6 +8,7 @@ from libai.scheduler import WarmupExponentialLR
 from configs.common.train import train
 from configs.common.models.graph import graph
 
+
 vocab_file = "/data/home/magicprompt/vocab.json"
 merge_files = "/data/home/magicprompt/merges.txt"
 train_data_prefix = "/data/home/magicprompt/train/en_train_mmap_text_sentence"
@@ -52,15 +53,15 @@ train.update(
         output_dir="projects/MagicPrompt/output",
         train_micro_batch_size=4,
         test_micro_batch_size=4,
-        train_epoch=30,
-        train_iter=5000,
+        train_epoch=33,
+        train_iter=2500,
         log_period=10,
         amp=dict(enabled=True),
         warmup_ratio=0,
         checkpointer=dict(period=8000, max_to_keep=3),
         dist=dict(
-            data_parallel_size=2,
-            tensor_parallel_size=2,
+            data_parallel_size=8,
+            tensor_parallel_size=1,
             pipeline_parallel_size=1,
             # pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
@@ -80,5 +81,6 @@ train.update(
     )
 )
 
-train.zero_optimization.enabled = True
-train.zero_optimization.stage = 2
+# train.activation_checkpoint.enabled = False
+# train.zero_optimization.enabled = False
+# train.zero_optimization.stage = 2

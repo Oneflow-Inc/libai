@@ -205,13 +205,15 @@ class MultiheadAttention(nn.Module):
             causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].to(
                 flow.bool
             )
-            mask_value = flow.finfo(attention_scores.dtype).min
-            mask_value = flow.tensor(
-                mask_value,
+            causal_mask = causal_mask.repeat(attention_scores.size(0), 1, 1, 1)
+            causal_mask= causal_mask.to_global(sbp=attention_scores.sbp, placement=attention_scores.placement)
+            fill_value = flow.finfo(attention_scores.dtype).min
+            mask_value = flow.ones(
+                causal_mask.size(),
                 dtype=attention_scores.dtype,
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                sbp=attention_scores.sbp,
                 placement=attention_scores.placement,
-            )
+            ).fill_(fill_value)
             attention_scores = flow.where(causal_mask, attention_scores, mask_value)
 
         if attention_mask is not None:
