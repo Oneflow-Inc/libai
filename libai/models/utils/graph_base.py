@@ -16,7 +16,7 @@
 import logging
 
 import oneflow as flow
-import oneflow._oneflow_internal.global_mode as global_mode
+from oneflow.utils.global_view import global_mode
 from oneflow import nn
 
 from libai.layers import TransformerLayer
@@ -102,7 +102,7 @@ class GraphBase(nn.Graph):
         if self.is_train:
             P = flow.env.all_device_placement("cuda")
             B = flow.sbp.broadcast
-            with global_mode.guard(True, placement=P, sbp=B):
+            with global_mode(True, placement=P, sbp=B):
                 logger.info(
                     "Start compling the train graph which may take some time. "
                     "Please wait for a moment ..."
