@@ -217,11 +217,11 @@ wget https://huggingface.co/google/mt5-base/raw/main/config.json -P data_test/
 wget https://huggingface.co/google/mt5-base/resolve/main/spiece.model -P data_test/
 ```
 
-修改 `libai/inference/text_generation.py` 文件，第 `24` 行为:
+修改 `libai/projects/MT5/configs/t5_inference.py` 文件，第 `44` 行为:
 
 ```python3
-tokenizer = T5Tokenizer(
-    "data_test/spiece.model",
+tokenization.tokenizer = LazyCall(T5Tokenizer)(
+    vocab_file="data_test/spiece.model",
     add_bos_token=True,
 )
 ```

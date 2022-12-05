@@ -97,8 +97,8 @@ if __name__ == "__main__":
         pipeline_parallel=2,
         pipeline_stage_id=[0] * 12 + [1] * 12,
         pipeline_num_layers=12 * 2,
-        model_path="projects/MT5/output/mt5_output/model_0000009/model/",
-        mode="libai",
+        model_path="data_test/",
+        mode="huggingface",
     )
 
     text = ["summarize: She is a student, She is tall, She loves study"]
