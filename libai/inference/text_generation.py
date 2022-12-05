@@ -14,18 +14,10 @@
 # limitations under the License.
 
 from libai.inference.basic import BasePipeline
-from libai.tokenizer import T5Tokenizer
 from libai.utils import distributed as dist
 
 
 class TextGenerationPipeline(BasePipeline):
-    def build_tokenizer(self, cfg):
-        tokenizer = T5Tokenizer(
-            "data_test/spiece.model",
-            add_bos_token=True,
-        )
-        return tokenizer
-
     def load_pretrain_weight(self, libai_cfg_model, model_path, mode="huggingface"):
         """load pretrained model.
 
@@ -45,7 +37,6 @@ class TextGenerationPipeline(BasePipeline):
                 hidden_dropout_prob=0.0,
                 attention_probs_dropout_prob=0.0,
                 embedding_dropout_prob=0.0,
-                model_type="mt5",
             )
             return model_loader.load()
         elif mode == "libai":
@@ -90,8 +81,11 @@ class TextGenerationPipeline(BasePipeline):
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
-        text = self.tokenizer.decode(model_output_dict["return_ids"][0], skip_special_tokens=True)
-        records = {"generated_text": text}
+        return_ids = model_output_dict["return_ids"]
+        records = [
+            {"generated_text": self.tokenizer.decode(return_ids[i], skip_special_tokens=True)}
+            for i in range(return_ids.size(0))
+        ]
         return records
 
 

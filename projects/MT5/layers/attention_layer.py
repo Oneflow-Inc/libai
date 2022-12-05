@@ -217,8 +217,8 @@ class MultiheadAttention(nn.Module):
                 position_bias = position_bias[:, :, -hidden_states.size(1) :, :]
 
             position_bias = position_bias + (1 - attention_mask) * -1000
+            position_bias = position_bias.to_global(placement=attention_scores.placement)
 
-        position_bias = position_bias.to_global(placement=attention_scores.placement)
         attention_scores = attention_scores + position_bias
 
         if attention_mask is not None:

@@ -202,30 +202,66 @@ class VisionTransformer(nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, PatchEmbedding):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
+        if hasattr(model.pos_embed, "config"):
+            # Old API in OneFlow 0.8
+            for module_block in model.modules():
+                if isinstance(module_block.origin, PatchEmbedding):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
 
-        # Set pos_embed and cls_token stage id
-        model.pos_embed.config.set_stage(
-            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-        )
-        model.cls_token.config.set_stage(
-            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-        )
-        model.pos_drop.config.set_stage(
-            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-        )
-        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-        model.loss_func.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            # Set pos_embed and cls_token stage id
+            model.pos_embed.config.set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.cls_token.config.set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.pos_drop.config.set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.norm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.loss_func.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), PatchEmbedding):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+
+            # Set pos_embed and cls_token stage id
+            model.pos_embed.to(flow.nn.graph.GraphTensor).set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.cls_token.to(flow.nn.graph.GraphTensor).set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.pos_drop.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.norm.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.loss_func.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )

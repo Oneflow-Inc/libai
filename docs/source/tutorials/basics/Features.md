@@ -83,8 +83,8 @@ LiBai supports [activation checkpointing](https://arxiv.org/abs/1604.06174) by `
 ```python
 def set_activation_checkpoint(self):
     for module_block in self.model.modules():
-        if isinstance(module_block.origin, TransformerLayer):
-            module_block.config.activation_checkpointing = True
+        if isinstance(module_block.to(nn.Module), TransformerLayer):
+            module_block.to(nn.graph.GraphModule).activation_checkpointing = True
 ```
 
 ### Usage

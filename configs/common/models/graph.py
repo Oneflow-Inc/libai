@@ -10,7 +10,7 @@ graph = dict(
     auto_parallel=dict(
         enabled=False,
         enable_auto_parallel_ignore_user_sbp_config=False,  # ignore all .to_global() in graph
-        mainstem_algo=True,  # consider overlapping calculate time and transfer time
+        trunk_algo=True,  # consider overlapping calculate time and transfer time
         sbp_collector=False,  # use proxy node when one node transfer to many nodes
     ),
     train_graph=LazyCall(GraphBase)(

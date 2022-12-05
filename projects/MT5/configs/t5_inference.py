@@ -1,7 +1,9 @@
 from .mt5_base import cfg
 from libai.config import LazyCall
-from projects.MT5.mt5_model import MT5Model
+from libai.tokenizer import T5Tokenizer
+from projects.MT5.mt5_model import MT5Model, MT5ForPreTraining
 from configs.common.train import train
+from configs.common.data.t5_dataset import tokenization
 
 cfg.update(
     model_type="mt5",
@@ -38,3 +40,7 @@ cfg.update(
 )
 
 model = LazyCall(MT5Model)(cfg=cfg)
+tokenization.tokenizer = LazyCall(T5Tokenizer)(
+    vocab_file="/path/to/spiece.model",
+    add_bos_token=True,
+)
