@@ -14,6 +14,7 @@ tokenization.tokenizer = LazyCall(GPT2Tokenizer)(
     do_lower_case=True,
     do_chinese_wwm=True,
 )
+tokenization.append_eod = False
 
 dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
     dataset=[
@@ -30,7 +31,7 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
         ),
     ],
     train_val_test_num_samples=None,  # a hint for deferred assignment
-    splits=[[8, 1, 1]],
+    splits=[[949.0, 50.0, 1.0]],
     weights=[1.0],
     num_workers=4,
 )

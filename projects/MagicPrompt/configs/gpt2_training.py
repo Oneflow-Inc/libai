@@ -50,17 +50,17 @@ optim.lr = 5.0e-05
 
 train.update(
     dict(
-        output_dir="projects/MagicPrompt/output",
+        output_dir="projects/MagicPrompt/oneflow_magicprompt",
         train_micro_batch_size=4,
         test_micro_batch_size=4,
-        train_epoch=33,
-        train_iter=2500,
-        log_period=10,
+        train_epoch=60,
+        train_iter=10000,
+        log_period=50,
         amp=dict(enabled=True),
         warmup_ratio=0,
-        checkpointer=dict(period=8000, max_to_keep=3),
+        checkpointer=dict(period=8000, max_to_keep=20),
         dist=dict(
-            data_parallel_size=8,
+            data_parallel_size=4,
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             # pipeline_num_layers=2 * model.cfg.hidden_layers,
@@ -75,12 +75,8 @@ train.update(
             enabled=True,
             evaluator=LazyCall(PPLEvaluator)(),
             eval_iter=250,
-            eval_period=1000,
+            eval_period=4000,
         ),
         rdma_enabled=False,
     )
 )
-
-# train.activation_checkpoint.enabled = False
-# train.zero_optimization.enabled = False
-# train.zero_optimization.stage = 2
