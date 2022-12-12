@@ -28,6 +28,25 @@ wget https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/b
 
 If you want to use your own training data, please skip the step2, and refer [Preprocessing Dataset](https://libai.readthedocs.io/en/latest/tutorials/basics/Preprocessing_Dataset.html#).
 
+```bash
+IMPL=mmap
+KEYS=text
+
+python tools/preprocess_data.py \
+        --input /path/to/libai/projects/MT5/data/test.json \
+        --json-keys ${KEYS} \
+        --vocab-file /path/to/libai/projects/MT5/data/vocab.txt \
+        --dataset-impl ${IMPL} \
+        --tokenizer-name BertTokenizer \
+        --do-lower-case \
+        --do-chinese-wwm \
+        --split-sentences \
+        --output-prefix magic_prompt_${IMPL} \
+        --workers 4 \
+        --log-interval 2
+
+```
+
 ### 4. Run the following code to start training
 ```bash
 # cd /path/to/libai
