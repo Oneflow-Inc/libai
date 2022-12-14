@@ -26,6 +26,7 @@ from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 from projects.MT5.layers.embed_layer import MT5Embedding
 from projects.MT5.layers.mask_layer import ExtendedMask
 from projects.MT5.layers.transformer_layer import TransformerLayer
+from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
 
 class MT5Model(flow.nn.Module, Generator):
