@@ -1,5 +1,6 @@
 from libai.config import LazyCall
-from .common.models.vit.vit_base_patch16_224 import model
+# from .common.models.vit.vit_base_patch16_224 import model
+from .common.models.vit.vit_small_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
@@ -11,6 +12,12 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 # Refine data path to imagenet
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
+
+import os
+host = os.environ.get('HOST')
+if (host == "oneflow-28"):
+    dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
+    dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
 
 # Refine model cfg for vit training on imagenet
 model.cfg.num_classes = 1000
