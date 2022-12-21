@@ -32,10 +32,10 @@ model.cfg.initializer_range = 0.02
 model.cfg.vocab_size = 50257
 model.cfg.layernorm_epsilon = 1e-5
 model.cfg.use_scaled_init_for_output_weights = True
-model.cfg.bias_gelu_fusion = False
-model.cfg.bias_dropout_fusion = False
-model.cfg.scale_mask_softmax_fusion = False
-model.cfg.apply_query_key_layer_scaling = False
+model.cfg.bias_gelu_fusion = True
+model.cfg.bias_dropout_fusion = True
+model.cfg.scale_mask_softmax_fusion = True
+model.cfg.apply_query_key_layer_scaling = True
 model.cfg.apply_residual_post_layernorm = False
 model.cfg.amp_enabled = True
 
@@ -53,7 +53,7 @@ train.update(
         output_dir="projects/MagicPrompt/oneflow_magicprompt",
         train_micro_batch_size=4,
         test_micro_batch_size=4,
-        train_epoch=60,
+        train_epoch=33,
         train_iter=10000,
         log_period=50,
         amp=dict(enabled=True),
