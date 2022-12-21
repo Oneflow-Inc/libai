@@ -2,7 +2,8 @@ from libai.config import LazyCall
 from libai.evaluation import PPLEvaluator
 from projects.MagicPrompt.configs.gpt2_inference import pretrain_model as model
 from projects.MagicPrompt.configs.gpt2_dataset import dataloader, tokenization
-from projects.MagicPrompt.configs.optim import optim
+from configs.common.optim import optim
+
 from libai.scheduler import WarmupExponentialLR
 
 from configs.common.train import train
@@ -60,7 +61,7 @@ train.update(
         warmup_ratio=0,
         checkpointer=dict(period=8000, max_to_keep=20),
         dist=dict(
-            data_parallel_size=4,
+            data_parallel_size=1,
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             # pipeline_num_layers=2 * model.cfg.hidden_layers,
