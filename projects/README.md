@@ -10,3 +10,4 @@ Here are projects built based on LiBai, which show you how to use LiBai as a lib
 - [SimCSE: Simple Contrastive Learning of Sentence Embeddings](./SimCSE)
 - [T5: Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer](./T5)
 - [Text Classification](./text_classification)
+- [MagicPrompt-Stable-Diffusion](./MagicPrompt/)
