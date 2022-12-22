@@ -85,9 +85,8 @@ class GraphBase(nn.Graph):
                 )
                 self.config.set_auto_parallel_computation_cost_ratio(0.05)
                 self.config.set_auto_parallel_wait_time(1.65e4)
-                self.config.enable_auto_parallel_mainstem_algo(auto_parallel_conf.mainstem_algo)
+                self.config.enable_auto_parallel_trunk_algo(auto_parallel_conf.trunk_algo)
                 self.config.enable_auto_parallel_sbp_collector(auto_parallel_conf.sbp_collector)
-                flow.boxing.nccl.enable_use_compute_stream(False)
             except RuntimeWarning:
                 import warnings
 

@@ -117,6 +117,7 @@ def load_torch_checkpoint(model, cfg, path="./mae_finetuned_vit_base.pth", stric
 
     msg = model.load_state_dict(new_parameters, strict=strict)
     logger.info(msg)
-    trunc_normal_(model.head.weight, std=2e-5)
+    if not cfg.eval_only:
+        trunc_normal_(model.head.weight, std=2e-5)
     logger.info("Successfully load torch mae checkpoint.")
     return model

@@ -185,20 +185,14 @@ class BertTokenizer(PreTrainedTokenizer):
         """Converts a token (str) in an id using the vocab.
         For Chinese substr, id = vocab_size + id(substr.remove(##)).
         """
-        if _is_chinese_substr(token):
-            index = self.vocab.get(token[2:], self.vocab.get(self.unk_token)) + len(self)
-        else:
-            index = self.vocab.get(token, self.vocab.get(self.unk_token))
+        index = self.vocab.get(token, self.vocab.get(self.unk_token))
         return index
 
     def _convert_id_to_token(self, index):
         """Converts an index (integer) in a token (str) using the vocab.
         For Chinese substr, id = vocab_size + id(substr.remove(##)).
         """
-        if index > len(self):
-            token = "##" + self.ids_to_tokens.get(index - len(self), self.unk_token)
-        else:
-            token = self.ids_to_tokens.get(index, self.unk_token)
+        token = self.ids_to_tokens.get(index, self.unk_token)
         return token
 
     def convert_tokens_to_string(self, tokens):
