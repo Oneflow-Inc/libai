@@ -68,3 +68,7 @@ bash ./tools/train.sh tools/train_net.py configs/your_own_config.py 4 graph.auto
 ```shell
 bash ./tools/train.sh tools/train_net.py configs/your_own_config.py 4 --eval graph.auto_parallel.enabled=True
 ```
+
+### More details with instructions and interface
+
+See [OneFlow Auto-Parallelism](https://oneflow.readthedocs.io/en/master/auto_parallel.html).
