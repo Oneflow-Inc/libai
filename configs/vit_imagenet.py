@@ -32,11 +32,11 @@ elif (host == "oneflow-25"):
     dataloader.train.dataset[0].root = "/data/dataset/ImageNet/extract"
     dataloader.test[0].dataset.root = "/data/dataset/ImageNet/extract"
 elif (host == "oneflow-26"):
-    dataloader.train.dataset[0].root = "/data/home/panlichen/ImageNet/extract"
-    dataloader.test[0].dataset.root = "/data/home/panlichen/ImageNet/extract"
+    dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
+    dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
 elif (host == "oneflow-27"):
-    dataloader.train.dataset[0].root = "/data/home/panlichen/ImageNet/extract"
-    dataloader.test[0].dataset.root = "/data/home/panlichen/ImageNet/extract"
+    dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
+    dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
 else:
     print("NO LEGAL HOST, exit.")
     exit(1)
