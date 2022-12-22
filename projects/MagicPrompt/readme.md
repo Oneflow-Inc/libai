@@ -4,8 +4,10 @@ This project is a NLP text generate tasks, which based on `gpt2` model to genera
 
 ## How to use pipeline
 
-- Prepare the gpt2 checkpoint, If you don't have suitable checkpoint, you can use [Gustavosta/MagicPrompt-Stable-Diffusion](https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion?text=My+name+is+Merve+and+my+favorite).
+- Prepare the gpt2 checkpoint, If you don't have suitable checkpoint, you can use [OneFlow/MaficPrompt-Stable-Diffusion](https://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/libai/magicprompt/OneFlow-MagicPrompt-Stable_Diffusion.zip) or [Gustavosta/MagicPrompt-Stable-Diffusion](https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion?text=My+name+is+Merve+and+my+favorite).
+
 - Adjust the parameters in the pipeline.py, and run it.
+
 - Here is an example showing MagicPrompt, which combines the [oneflow version of diffusion](https://github.com/Oneflow-Inc/diffusers/wiki/How-to-Run-OneFlow-Stable-Diffusion):
 
 ```python
@@ -78,5 +80,5 @@ python tools/preprocess_data.py \
 ### 2. Training
 
 ```bash 
-bash tools/train.sh tools/train_net.py projects/MagicPrompt/configs/finetune.py 4
+bash tools/train.sh tools/train_net.py projects/MagicPrompt/configs/finetune.py 1
 ```
