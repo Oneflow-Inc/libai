@@ -1,6 +1,12 @@
 from libai.config import LazyCall
-# from .common.models.vit.vit_base_patch16_224 import model
-from .common.models.vit.vit_small_patch16_224 import model
+
+import os
+host = os.environ.get('HOST')
+if (host == "oneflow-25" or host == "oneflow-27"):
+    from .common.models.vit.vit_base_patch16_224 import model
+else:
+    from .common.models.vit.vit_small_patch16_224 import model
+
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
@@ -13,11 +19,27 @@ from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 dataloader.train.dataset[0].root = "/path/to/imagenet"
 dataloader.test[0].dataset.root = "/path/to/imagenet"
 
-import os
-host = os.environ.get('HOST')
 if (host == "oneflow-28"):
     dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
     dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
+elif (host == "oneflow-15"):
+    dataloader.train.dataset[0].root = "/home/panlichen/dataset/ImageNet/extract"
+    dataloader.test[0].dataset.root = "/home/panlichen/dataset/ImageNet/extract"
+elif (host == "oneflow-16"):
+    dataloader.train.dataset[0].root = "/dataset/ImageNet/extract"
+    dataloader.test[0].dataset.root = "/dataset/ImageNet/extract"
+elif (host == "oneflow-25"):
+    dataloader.train.dataset[0].root = "/data/dataset/ImageNet/extract"
+    dataloader.test[0].dataset.root = "/data/dataset/ImageNet/extract"
+elif (host == "oneflow-26"):
+    dataloader.train.dataset[0].root = "/data/home/panlichen/ImageNet/extract"
+    dataloader.test[0].dataset.root = "/data/home/panlichen/ImageNet/extract"
+elif (host == "oneflow-27"):
+    dataloader.train.dataset[0].root = "/data/home/panlichen/ImageNet/extract"
+    dataloader.test[0].dataset.root = "/data/home/panlichen/ImageNet/extract"
+else:
+    print("NO LEGAL HOST, exit.")
+    exit(1)
 
 # Refine model cfg for vit training on imagenet
 model.cfg.num_classes = 1000
