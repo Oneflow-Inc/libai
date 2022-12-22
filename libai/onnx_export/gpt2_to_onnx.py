@@ -19,7 +19,8 @@ from oneflow import nn
 from oneflow_onnx.oneflow2onnx.util import convert_to_onnx_and_check
 
 from libai.config import LazyConfig
-from libai.engine import DefaultTrainer
+from libai.models.utils import GPT2LoaderLiBai
+from projects.MagicPrompt.gpt2 import GPTModel
 
 
 def get_model(config_file):
@@ -30,10 +31,12 @@ def get_model(config_file):
     cfg.tokenization = None
 
     print("Building model....")
-    model = DefaultTrainer.build_model(cfg)
+    loader = GPT2LoaderLiBai(GPTModel, cfg.cfg, "/path/to/model")
+    model = loader.load()
     print("Build model finished.")
 
     return model
+
 
 class gpt2Graph(nn.Graph):
     def __init__(self, eager_model):
@@ -47,17 +50,19 @@ class gpt2Graph(nn.Graph):
         out = self.model(
             input_ids,
         )
-        return out["prediction_scores"]
+        return out
 
 
 if __name__ == "__main__":
-    model = get_model("projects/MagicPrompt/configs/gpt2_training.py")
+    model = get_model("projects/MagicPrompt/configs/gpt2_inference.py")
     model.eval()
 
     gpt2_graph = gpt2Graph(model)
     # Build the static graph model
-    input_ids = flow.ones(1, 5, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0]))
-    
+    input_ids = flow.ones(
+        1, 5, dtype=flow.int64, sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])
+    )
+
     # check your model.forward is valid
     # output = gpt2_graph(
     #     input_ids

@@ -20,6 +20,6 @@ def convert_txt2json(file_path):
     os.rename(target_file, target_file[:-4] + ".json")
 
 
-if __name__ == "__main__"
+if __name__ == "__main__":
     convert_txt2json("/path/to/test.txt")
     convert_txt2json("/path/to/train.txt")
