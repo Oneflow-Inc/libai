@@ -19,7 +19,6 @@ from oneflow import nn
 from oneflow_onnx.oneflow2onnx.util import convert_to_onnx_and_check
 
 from libai.config import LazyConfig
-from libai.engine import DefaultTrainer
 from projects.MT5.mt5_model import MT5Model
 from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
