@@ -4,7 +4,7 @@ This project is a NLP text generate tasks, which based on `gpt2` model to genera
 
 ## How to use pipeline
 
-- Prepare the gpt2 checkpoint, If you don't have suitable checkpoint, you can use [OneFlow/MaficPrompt-Stable-Diffusion](https://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/libai/magicprompt/OneFlow-MagicPrompt-Stable_Diffusion.zip) or [Gustavosta/MagicPrompt-Stable-Diffusion](https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion?text=My+name+is+Merve+and+my+favorite).
+- Prepare the gpt2 checkpoint, If you don't have suitable checkpoint, you can use [OneFlow/MagicPrompt-Stable-Diffusion](https://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/libai/magicprompt/OneFlow-MagicPrompt-Stable_Diffusion.zip) or [Gustavosta/MagicPrompt-Stable-Diffusion](https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion?text=My+name+is+Merve+and+my+favorite).
 
 - Adjust the parameters in the pipeline.py, and run it.
 
