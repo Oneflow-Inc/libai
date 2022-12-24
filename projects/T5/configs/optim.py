@@ -3,7 +3,7 @@ import oneflow as flow
 from libai.optim import get_default_optimizer_params
 from libai.config import LazyCall
 
-optim = LazyCall(flow.optim.Adam)(
+optim = LazyCall(flow.optim.AdamW)(
     params=LazyCall(get_default_optimizer_params)(
         # params.model is meant to be set to the model object,
         # before instantiating the optimizer.
