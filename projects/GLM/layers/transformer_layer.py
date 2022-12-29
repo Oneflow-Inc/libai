@@ -63,7 +63,7 @@ class TransformerLayer(nn.Module):
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
         )
 
-        self.self_attention = self.build_attention()
+        self.attention = self.build_attention()
         self.post_attention_layernorm = LayerNorm(
             self.hidden_size, eps=self.layernorm_epsilon, layer_idx=self.layer_idx
         )
