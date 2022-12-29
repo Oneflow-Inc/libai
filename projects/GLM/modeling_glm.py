@@ -46,7 +46,7 @@ class Transformer(nn.Module):
                 layer_idx=layer_number,
             )
 
-        self.layers = nn.ModuleList([build_layer(i) for i in range(self.hidden_layers)])
+        self.layers = nn.ModuleList([build_layer(i) for i in range(self.num_layers)])
         self.final_layernorm = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
 
     def forward(self, hidden_states, attention_mask, memory_states=None):
@@ -62,7 +62,7 @@ class Transformer(nn.Module):
         return output, mem_layers
 
 
-class GPTModel(nn.Module):
+class GLMModel(nn.Module):
     @configurable
     def __init__(
         self,
