@@ -175,15 +175,15 @@ class GPTModel(nn.Module):
 
         input_embeds = self.embeddings(input_ids, position_ids)
 
-        logits, hidden_layers = self.transformer(
+        logits, mem_layers = self.transformer(
             input_embeds, attention_mask=None, memory_states=memory_states
         )
-        self.update_mems(mem_layers, memory_states)
+        mem_layers = self.update_mems(mem_layers, memory_states)
 
         if output_predict:
             logits = self.lm_head(logits, self.embeddings.word_embeddings.weight)
 
-        return (logits, hidden_layers)
+        return (logits, mem_layers)
 
     def build_mask_matrix(self, batch_size, seq_length, sep, memory_length=0, is_scalar=False):
         m = flow.tril(
