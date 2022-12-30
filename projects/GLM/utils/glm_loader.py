@@ -59,11 +59,15 @@ class GLMLoaderHuggerFace(ModelLoaderHuggerFace):
         if cfg.get("block_position_encoding", False) == True:
             new_key = prefix2 + "embeddings.position_embeddings.weight"
             old_keys.remove(prefix1 + "transformer.position_embeddings.weight")
-            oneflow_state_dict[new_key] = oneflow_state_dict.pop(prefix1 + "transformer.position_embeddings.weight")
-            
+            oneflow_state_dict[new_key] = oneflow_state_dict.pop(
+                prefix1 + "transformer.position_embeddings.weight"
+            )
+
             new_key = prefix2 + "embeddings.block_position_embeddings.weight"
             old_keys.remove(prefix1 + "transformer.block_position_embeddings.weight")
-            oneflow_state_dict[new_key] = oneflow_state_dict.pop(prefix1 + "transformer.block_position_embeddings.weight")
+            oneflow_state_dict[new_key] = oneflow_state_dict.pop(
+                prefix1 + "transformer.block_position_embeddings.weight"
+            )
 
         # Convert other layers.
         for key in old_keys:
@@ -73,7 +77,7 @@ class GLMLoaderHuggerFace(ModelLoaderHuggerFace):
                 oneflow_state_dict[prefix2 + key] = qkv
             else:
                 oneflow_state_dict[prefix2 + key] = oneflow_state_dict.pop(key)
-          
+
         return oneflow_state_dict
 
     def _load_config_from_json(self, config_file):

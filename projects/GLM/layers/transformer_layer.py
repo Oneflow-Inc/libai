@@ -86,14 +86,20 @@ class TransformerLayer(nn.Module):
         mem=None,
     ):
         hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
-        attention_mask = attention_mask.to_global(
-            placement=dist.get_layer_placement(self.layer_idx)
+        attention_mask = (
+            attention_mask.to_global(placement=dist.get_layer_placement(self.layer_idx))
+            if attention_mask is not None
+            else None
         )
-        mem = mem.to_global(placement=dist.get_layer_placement(self.layer_idx))
+        mem = (
+            mem.to_global(placement=dist.get_layer_placement(self.layer_idx))
+            if mem is not None
+            else None
+        )
 
         layernorm_output = self.input_layernorm(hidden_states)
         mem = self.input_layernorm(mem)
-        attention_output = self.self_attention(
+        attention_output = self.attention(
             layernorm_output,
             attention_mask=attention_mask,
             mem=mem,

@@ -89,7 +89,11 @@ class MultiheadAttention(nn.Module):
         attention_mask: flow.Tensor = None,
         mem=None,
     ):
-        attention_mask = attention_mask.to_global(placement=hidden_states.placement)
+        attention_mask = (
+            attention_mask.to_global(placement=hidden_states.placement)
+            if attention_mask is not None
+            else None
+        )
 
         bsz, tgt_len = hidden_states.size()[:2]
 

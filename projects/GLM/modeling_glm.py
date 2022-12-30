@@ -51,9 +51,9 @@ class Transformer(nn.Module):
 
     def forward(self, hidden_states, attention_mask, memory_states=None):
         mem_layers = [hidden_states.detach()]
-        mem_i = memory_states[i] if memory_states else None
 
         for i, layer in enumerate(self.layers):
+            mem_i = memory_states[i] if memory_states is not None else None
             hidden_states = layer(hidden_states, attention_mask, mem=mem_i)
             mem_layers.append(hidden_states.detach())
 
@@ -155,11 +155,19 @@ class GLMModel(nn.Module):
         output_predict=False,
     ):
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
-        position_ids = position_ids.to_global(placement=dist.get_layer_placement(0))
-        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
+        position_ids = (
+            position_ids.to_global(placement=dist.get_layer_placement(0))
+            if position_ids is not None
+            else None
+        )
+        attention_mask = (
+            attention_mask.to_global(placement=dist.get_layer_placement(0))
+            if attention_mask is not None
+            else None
+        )
 
         batch_size, query_length = input_ids.size()
-        memory_length = memory_states[0].size(1) if memory_states else 0
+        memory_length = memory_states[0].size(1) if memory_states is not None else 0
         is_scalar = flow.numel(attention_mask) == 1
         is_sep = is_scalar or flow.numel(attention_mask) == batch_size
 
@@ -176,7 +184,7 @@ class GLMModel(nn.Module):
         input_embeds = self.embeddings(input_ids, position_ids)
 
         logits, mem_layers = self.transformer(
-            input_embeds, attention_mask=None, memory_states=memory_states
+            input_embeds, attention_mask=attention_mask, memory_states=memory_states
         )
         mem_layers = self.update_mems(mem_layers, memory_states)
 
@@ -207,7 +215,7 @@ class GLMModel(nn.Module):
         return m
 
     def update_mems(self, hiddens, mems):
-        memory_length = mems[0].size(1) if mems else 0
+        memory_length = mems[0].size(1) if mems is not None else 0
         query_length = hiddens[0].size(1)
         new_memory_length = memory_length + query_length
 

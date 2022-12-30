@@ -29,6 +29,7 @@ class GLMEmbedding(nn.Module):
             init_method=init_method,
             amp_enabled=amp_enabled,
         )
+
         if block_position_encoding:
             self.position_embeddings = Embedding(
                 max_seq_length + 1, hidden_size, init_method=init_method, amp_enabled=amp_enabled
@@ -44,8 +45,9 @@ class GLMEmbedding(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         ).unsqueeze(0)
+
         self.block_position_ids = flow.zeros(
-            max_seq_length,
+            (1, max_seq_length),
             dtype=flow.long,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
@@ -74,5 +76,5 @@ class GLMEmbedding(nn.Module):
             block_position_embeddings = self.block_position_embeddings(block_position_ids)
             input_embeddings = input_embeddings + block_position_embeddings
 
-        input_embeds = self.dropout(input_embeds)
-        return input_embeds
+        input_embeddings = self.embedding_dropout(input_embeddings)
+        return input_embeddings
