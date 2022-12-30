@@ -72,6 +72,7 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
+        flow.boxing.nccl.enable_use_compute_stream(True)
 
         # Enable cuda stream for computation and communication as the same stream.
         # This will reduce memory when using model parallelism.
@@ -104,7 +105,7 @@ class GraphBase(nn.Graph):
         if self.is_train:
             placement_sbp_dict = dict(
                 placement=flow.env.all_device_placement("cuda"),
-                sbp=flow.sbp.broadcast,
+                sbp=flow.sbp.split(0),
             ) if self.global_mode.enabled else {}
             with global_mode(self.global_mode.enabled, **placement_sbp_dict):
                 logger.info(

@@ -15,6 +15,7 @@ from oneflow.nn import functional as F
 class StableDiffusion(nn.Module):
     def __init__(self, model_path):
         super().__init__()
+        self.model_path = model_path
         self.tokenizer = CLIPTokenizer.from_pretrained(
             model_path, subfolder="tokenizer")
         self.text_encoder = CLIPTextModel.from_pretrained(
