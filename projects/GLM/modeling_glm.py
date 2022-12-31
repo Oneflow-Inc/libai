@@ -1,9 +1,11 @@
 import oneflow as flow
+import oneflow.nn.functional as F
 from oneflow import nn
 
 import libai.utils.distributed as dist
 from libai.config import configurable
-from libai.layers import LayerNorm, LMLogits
+from libai.inference.generator.generation_utils import Generator
+from libai.layers import LayerNorm, LMLogits, ParallelCrossEntropyLoss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from projects.GLM.layers.embedding_layer import GLMEmbedding
 from projects.GLM.layers.transformer_layer import TransformerLayer
@@ -152,7 +154,7 @@ class GLMModel(nn.Module):
         position_ids=None,
         attention_mask=None,
         memory_states=None,
-        output_predict=False,
+        output_predict=True,
     ):
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
         position_ids = (
@@ -193,6 +195,17 @@ class GLMModel(nn.Module):
 
         return (logits, mem_layers)
 
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            # Old API in OneFlow 0.8
+            if hasattr(module_block, "origin"):
+                if isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).activation_checkpointing = True
+
     def build_mask_matrix(self, batch_size, seq_length, sep, memory_length=0, is_scalar=False):
         m = flow.tril(
             flow.ones((1, seq_length, seq_length)),
@@ -228,3 +241,232 @@ class GLMModel(nn.Module):
                     flow.cat((mems[i][:, -new_memory_length + query_length :], hiddens[i]), dim=1)
                 )
         return new_mems
+
+
+class GLMLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.loss_func = ParallelCrossEntropyLoss()
+
+    def forward(self, logits, labels):
+        lm_loss = self.loss_func(logits, labels)
+        lm_loss = lm_loss.mean()
+        return {"lm_loss": lm_loss}
+
+
+class GLMForMultipleChoice(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.glm = GLMModel(cfg)
+        self.loss_func = GLMLoss()
+
+    def forward(
+        self,
+        input_ids=None,
+        position_ids=None,
+        attention_mask=None,
+        choice_ids=None,
+        choice_indices=None,
+        labels=None,
+        mems=None,
+        **kwargs,
+    ):
+        lm_logits, mem_layers = self.glm(
+            input_ids,
+            position_ids=position_ids,
+            attention_mask=attention_mask,
+            memory_states=mems,
+            **kwargs,
+        )
+        outputs = F.log_softmax(lm_logits, dim=-1)
+        log_probs = []
+        for output, choices, choice_index in zip(outputs, choice_ids, choice_indices):
+            log_probs_single = []
+            for choice, choice_target_id in zip(choices, choice_index):
+                tmp = output[choice_target_id, choice]
+                log_probs_single.append(tmp.sum())
+            log_probs.append(flow.stack(log_probs_single))
+        log_probs = flow.stack(log_probs)
+        loss = None
+        if labels is not None:
+            loss = self.loss_func(log_probs, labels)
+        return {"loss": loss, "logits": log_probs, "lm_logits": lm_logits, "mems": mem_layers}
+
+
+class GLMForConditionalGeneration(nn.Module, Generator):
+    @configurable
+    def __init__(
+        self,
+        num_layers,
+        vocab_size,
+        hidden_size,
+        num_attention_heads,
+        max_sequence_length=1024,
+        embedding_dropout_prob=0.0,
+        attention_dropout_prob=0.0,
+        output_dropout_prob=0.0,
+        layernorm_epsilon=1e-5,
+        initializer_range=0.02,
+        use_scaled_init_for_output_weights=True,
+        bias_gelu_fusion=False,
+        bias_dropout_fusion=False,
+        scale_mask_softmax_fusion=False,
+        apply_query_key_layer_scaling=False,
+        amp_enabled=False,
+        block_position_encoding=False,
+        attention_scale=1.0,
+        padding_idx=None,
+        cfg=None,
+    ):
+        super().__init__()
+        self.cfg = cfg
+        self.glm = GLMModel(
+            num_layers=num_layers,
+            vocab_size=vocab_size,
+            hidden_size=hidden_size,
+            num_attention_heads=num_attention_heads,
+            max_sequence_length=max_sequence_length,
+            embedding_dropout_prob=embedding_dropout_prob,
+            attention_dropout_prob=attention_dropout_prob,
+            output_dropout_prob=output_dropout_prob,
+            layernorm_epsilon=layernorm_epsilon,
+            initializer_range=initializer_range,
+            use_scaled_init_for_output_weights=use_scaled_init_for_output_weights,
+            bias_gelu_fusion=bias_gelu_fusion,
+            bias_dropout_fusion=bias_dropout_fusion,
+            scale_mask_softmax_fusion=scale_mask_softmax_fusion,
+            apply_query_key_layer_scaling=apply_query_key_layer_scaling,
+            amp_enabled=amp_enabled,
+            block_position_encoding=block_position_encoding,
+            attention_scale=attention_scale,
+            padding_idx=padding_idx,
+            cfg=cfg,
+        )
+        self.loss_func = GLMLoss()
+
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "num_layers": cfg.num_layers,
+            "vocab_size": cfg.vocab_size,
+            "hidden_size": cfg.hidden_size,
+            "num_attention_heads": cfg.num_attention_heads,
+            "max_sequence_length": cfg.max_sequence_length,
+            "embedding_dropout_prob": cfg.embedding_dropout_prob,
+            "attention_dropout_prob": cfg.attention_dropout_prob,
+            "output_dropout_prob": cfg.output_dropout_prob,
+            "layernorm_epsilon": cfg.layernorm_epsilon,
+            "initializer_range": cfg.initializer_range,
+            "use_scaled_init_for_output_weights": cfg.use_scaled_init_for_output_weights,
+            "bias_gelu_fusion": cfg.bias_gelu_fusion,
+            "bias_dropout_fusion": cfg.bias_dropout_fusion,
+            "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
+            "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
+            "amp_enabled": cfg.amp_enabled,
+            "block_position_encoding": cfg.block_position_encoding,
+            "attention_scale": cfg.attention_scale,
+            "padding_idx": cfg.padding_idx,
+            "cfg": cfg,
+        }
+
+    def forward(
+        self,
+        input_ids=None,
+        position_ids=None,
+        attention_mask=None,
+        labels=None,
+        memory_states=None,
+        **kwargs,
+    ):
+        lm_logits, mems = self.glm(
+            input_ids, position_ids, attention_mask, memory_states=memory_states, **kwargs
+        )
+        loss = None
+        if labels is not None:
+            print("lable is not nOne .......................")
+            loss = self.loss_func(lm_logits, labels)
+        return {"loss": loss, "logits": lm_logits, "mems": mems}
+
+    def _reorder_cache(self, past, beam_idx):
+        if past is None:
+            return past
+        reordered_decoder_past = ()
+        for layer_past_states in past:
+            beam_idx = beam_idx.to_global(placement=layer_past_states.placement)
+            reordered_decoder_past = reordered_decoder_past + (
+                layer_past_states.index_select(0, beam_idx),
+            )
+        return reordered_decoder_past
+
+    def prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past=None,
+        position_ids=None,
+        generation_attention_mask=None,
+        **kwargs,
+    ):
+        attention_mask = generation_attention_mask
+        # only last token for inputs_ids if past is defined in kwargs
+        seq_length = input_ids.shape[1]
+        if past:
+            if position_ids is not None:
+                position_ids = position_ids[:, :, seq_length - 1].unsqueeze(-1)
+            if attention_mask is not None:
+                attention_mask = attention_mask[:, :, seq_length - 1, :seq_length].unsqueeze(-2)
+            input_ids = input_ids[:, -1].unsqueeze(-1)
+        else:
+            if position_ids is not None:
+                position_ids = position_ids[:, :, :seq_length]
+            if attention_mask is not None:
+                attention_mask = attention_mask[:, :, :seq_length, :seq_length]
+        return {
+            "input_ids": input_ids,
+            "position_ids": position_ids,
+            "attention_mask": attention_mask,
+            "memory_states": past,
+        }
+
+    @staticmethod
+    def set_pipeline_stage_id(model: nn.Module):
+        dist_utils = dist.get_dist_util()
+
+        if hasattr(model.glm.transformer.final_layernorm, "config"):
+            # Old API in OneFlow 0.8
+            for module_block in model.modules():
+                if isinstance(module_block.origin, GLMEmbedding):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, (LMLogits, GLMLoss)):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+
+            model.glm.transformer.final_layernorm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), GLMEmbedding):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.to(nn.Module), (LMLogits, GLMLoss)):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+
+            model.glm.transformer.final_layernorm.to(nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )

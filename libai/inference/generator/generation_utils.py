@@ -226,10 +226,15 @@ class Generator:
             model_kwargs["encoder_decoder_attn_mask"] = model_kwargs["encoder_attn_mask"]
         return input_ids, model_kwargs
 
-    def _update_model_kwargs_for_generation(self, model_kwargs, is_encoder_decoder: bool = False):
-        # update past_key_value_state
-        if self.past_key_values[-1] is not None:
-            model_kwargs["past"] = self.past_key_values
+    def _update_model_kwargs_for_generation(
+        self, outputs, model_kwargs, is_encoder_decoder: bool = False
+    ):
+        if "past_key_values" in outputs:
+            model_kwargs["past"] = outputs["past_key_values"]
+        elif "mems" in outputs:
+            model_kwargs["past"] = outputs["mems"]
+        elif "past_buckets_states" in outputs:
+            model_kwargs["past"] = outputs["past_buckets_states"]
         else:
             model_kwargs["past"] = None
 
@@ -472,11 +477,11 @@ class Generator:
         cur_len = input_ids.shape[-1]
         while True:
             # prepare model inputs
-            model_inputs = self._prepare_inputs_for_generation(input_ids, **model_kwargs)
+            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
             # generate
             outputs = self(**model_inputs)
-            next_token_logits = outputs[:, -1, :]
+            next_token_logits = outputs["logits"][:, -1, :]
 
             # logits_processor
             next_token_scores = logits_processor(input_ids, next_token_logits)
@@ -504,7 +509,7 @@ class Generator:
             next_tokens = next_tokens.to(flow.long)
             input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
             model_kwargs = self._update_model_kwargs_for_generation(
-                model_kwargs, is_encoder_decoder=is_encoder_decoder
+                outputs, model_kwargs, is_encoder_decoder=is_encoder_decoder
             )
             cur_len = cur_len + 1
 
@@ -518,8 +523,10 @@ class Generator:
                 break
 
         # Release records
-        self.past_key_values = [None] * self.cfg.hidden_layers
-        self.encoder_states = None
+        if "past_key_values" in self.__dir__():
+            self.past_key_values = [None] * self.cfg.hidden_layers
+        if "encoder_states" in self.__dir__():
+            self.encoder_states = None
 
         return input_ids
 
@@ -562,7 +569,7 @@ class Generator:
 
         while True:
             # prepare model inputs
-            model_inputs = self._prepare_inputs_for_generation(input_ids, **model_kwargs)
+            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
             # generate
             outputs = self(**model_inputs)
@@ -617,8 +624,10 @@ class Generator:
                 break
 
         # Release records
-        self.past_key_values = [None] * self.cfg.hidden_layers
-        self.encoder_states = None
+        if "past_key_values" in self.__dir__():
+            self.past_key_values = [None] * self.cfg.hidden_layers
+        if "encoder_states" in self.__dir__():
+            self.encoder_states = None
 
         return input_ids
 
@@ -683,7 +692,7 @@ class Generator:
 
         while True:
             # prepare model inputs
-            model_inputs = self._prepare_inputs_for_generation(input_ids, **model_kwargs)
+            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
             outputs = self(**model_inputs)
             next_token_logits = outputs[:, -1, :]
@@ -756,8 +765,10 @@ class Generator:
         )
 
         # Release records
-        self.past_key_values = [None] * self.cfg.hidden_layers
-        self.encoder_states = None
+        if "past_key_values" in self.__dir__():
+            self.past_key_values = [None] * self.cfg.hidden_layers
+        if "encoder_states" in self.__dir__():
+            self.encoder_states = None
 
         return sequence_outputs["sequences"]
 
