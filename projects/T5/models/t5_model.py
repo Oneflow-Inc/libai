@@ -177,8 +177,8 @@ class T5Model(flow.nn.Module):
             encoder_decoder_position_bias = None
             self.set_cache(encoder_states=None, past_key_values=None)
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
-            enc_embedding_output = self.embedding(encoder_input_ids)
-            enc_hidden_states = enc_embedding_output
+            enc_hidden_states = self.embedding(encoder_input_ids)
+            enc_hidden_states = enc_hidden_states.transpose(0, 1)
 
             for layer in self.encoder.layers:
                 enc_hidden_states, position_bias = layer(
@@ -193,8 +193,8 @@ class T5Model(flow.nn.Module):
         )
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
-        dec_embedding_output = self.embedding(decoder_input_ids)
-        dec_hidden_states = dec_embedding_output
+        dec_hidden_states = self.embedding(decoder_input_ids)
+        dec_hidden_states = dec_hidden_states.transpose(0, 1)
         if use_cache:
             presents = []
 
@@ -271,6 +271,7 @@ class T5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask,
             use_cache=use_cache,
         )
+        logits = logits.transpose(0, 1)
 
         if lm_labels is not None:
             lm_loss = self.loss_func(logits, lm_labels, loss_mask)
