@@ -255,3 +255,26 @@ def WarmupPolynomialLR(
         warmup_method=warmup_method,
     )
     return warmup_polynomial_lr
+
+
+def WarmupDecayLR(
+    optimizer: flow.optim.Optimizer,
+    warmup_iter: int,
+    decay_start: int,
+    decay_iter: int,
+    decay_power: float = 2.0,
+    end_learning_rate: float = 0.0,
+):
+    warmup_lr = flow.optim.lr_scheduler.LinearLR(
+        optimizer, start_factor=0, total_iters=warmup_iter,
+    )
+    poly_decay_lr = flow.optim.lr_scheduler.PolynomialLR(
+        optimizer, decay_batch=decay_iter, end_learning_rate=end_learning_rate, power=decay_power, cycle=False,
+    )
+    sequential_lr = flow.optim.lr_scheduler.SequentialLR(
+        optimizer=optimizer,
+        schedulers=[warmup_lr, poly_decay_lr],
+        milestones=[decay_start],
+        interval_rescaling=True,
+    )
+    return sequential_lr

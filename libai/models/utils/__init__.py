@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from .graph_base import GraphBase
+from .ctr_graph import CTRGraph
 from .weight_init import init_method_normal, scaled_init_method_normal
 from .model_utils.base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
 from .model_utils.bert_loader import BertLoaderHuggerFace, BertLoaderLiBai

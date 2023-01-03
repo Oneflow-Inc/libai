@@ -14,9 +14,10 @@
 # limitations under the License.
 
 
+from .dlrm_model import DLRMModel
 from .bert_model import BertForPreTraining, BertModel, BertForClassification
 from .roberta_model import RobertaForPreTraining, RobertaForCausalLM, RobertaModel
-from .build import build_graph, build_model
+from .build import build_graph, build_ctr_graph, build_model
 from .t5_model import T5ForPreTraining, T5Model
 from .gpt_model import GPTForPreTraining, GPTModel
 from .vision_transformer import VisionTransformer
@@ -27,6 +28,8 @@ from .resmlp import ResMLP
 __all__ = [
     "build_model",
     "build_graph",
+    "build_ctr_graph",
+    "DLRMModel",
     "BertModel",
     "BertForPreTraining",
     "BertForClassification",

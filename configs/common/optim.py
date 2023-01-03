@@ -18,3 +18,12 @@ optim = LazyCall(flow.optim.AdamW)(
     eps=1e-8,
     do_bias_correction=True,
 )
+
+
+sgd_optim = LazyCall(flow.optim.SGD)(
+    params=LazyCall(get_default_optimizer_params)(
+        # params.model is meant to be set to the model object,
+        # before instantiating the optimizer.
+    ),
+    lr=24,
+)

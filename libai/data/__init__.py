@@ -20,3 +20,5 @@ from .build import (
     build_nlp_train_val_test_loader,
     build_nlp_test_loader,
 )
+from .build_criteo import build_criteo_dataloader
+

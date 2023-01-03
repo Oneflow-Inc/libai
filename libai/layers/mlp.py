@@ -13,13 +13,74 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import oneflow as flow
 from oneflow import nn
 
 from libai.layers import Linear, build_activation
 
 
+class Dense(nn.Module):
+    def __init__(self, in_features: int, out_features: int, relu=True) -> None:
+        super(Dense, self).__init__()
+        self.features = (
+            nn.Sequential(nn.Linear(in_features, out_features), nn.ReLU(inplace=True))
+            if relu
+            else nn.Linear(in_features, out_features)
+        )
+
+    def forward(self, x: flow.Tensor) -> flow.Tensor:
+        return self.features(x)
+
+
 class MLP(nn.Module):
+    def __init__(
+        self, in_features: int, hidden_units, skip_final_activation=False
+    ) -> None:
+        super(MLP, self).__init__()
+        units = [in_features] + hidden_units
+        num_layers = len(hidden_units)
+        denses = [
+            Dense(units[i], units[i + 1], not skip_final_activation or (i + 1) < num_layers)
+            for i in range(num_layers)
+        ]
+        self.linear_layers = nn.Sequential(*denses)
+
+        # todo: define initializer
+        for name, param in self.linear_layers.named_parameters():
+            if "weight" in name:
+                nn.init.normal_(param, 0.0, np.sqrt(2 / sum(param.shape)))
+            elif "bias" in name:
+                nn.init.normal_(param, 0.0, np.sqrt(1 / param.shape[0]))
+
+    def forward(self, x: flow.Tensor) -> flow.Tensor:
+        return self.linear_layers(x)
+
+
+class FusedMLP(nn.Module):
+    def __init__(
+        self, in_features: int, hidden_units, skip_final_activation=False
+    ) -> None:
+        super(FusedMLP, self).__init__()
+        self.linear_layers = nn.FusedMLP(
+            in_features,
+            hidden_units[:-1],
+            hidden_units[-1],
+            skip_final_activation=skip_final_activation,
+        )
+
+        # todo: define initializer
+        for name, param in self.linear_layers.named_parameters():
+            if "weight" in name:
+                nn.init.normal_(param, 0.0, np.sqrt(2 / sum(param.shape)))
+            elif "bias" in name:
+                nn.init.normal_(param, 0.0, np.sqrt(1 / param.shape[0]))
+
+    def forward(self, x: flow.Tensor) -> flow.Tensor:
+        return self.linear_layers(x)
+
+
+class libaiMLP(nn.Module):
     """MLP
 
     MLP will take the input with h hidden state, project it to intermediate

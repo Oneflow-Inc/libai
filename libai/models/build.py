@@ -24,6 +24,27 @@ def build_model(cfg):
     return model
 
 
+def build_ctr_graph(cfg, model, loss=None, optimizer=None, lr_scheduler=None, is_train=False):
+    """Build the `nn.Graph`, defined by ``cfg.graph``."""
+    auto_parallel_conf = try_get_key(cfg, "graph.auto_parallel", default=None)
+    if is_train:
+        # Set train graph
+        assert loss is not None, "loss must be set for train graph"
+        assert optimizer is not None, "optimizer must be set for train graph"
+        assert lr_scheduler is not None, "lr_scheduler must be set for train graph"
+        graph = cfg.graph.train_graph
+        graph.model = model
+        graph.loss = loss
+        graph.optimizer = optimizer
+        graph.lr_scheduler = lr_scheduler
+        return instantiate(graph)
+    else:
+        # Set eval graph
+        graph = cfg.graph.eval_graph
+        graph.model = model
+        return instantiate(graph)
+
+
 def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
     """Build the `nn.Graph`, defined by ``cfg.graph``."""
     auto_parallel_conf = try_get_key(cfg, "graph.auto_parallel", default=None)

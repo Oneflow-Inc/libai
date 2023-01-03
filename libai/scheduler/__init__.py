@@ -21,4 +21,5 @@ from .lr_scheduler import (
     WarmupMultiStepLR,
     WarmupPolynomialLR,
     WarmupStepLR,
+    WarmupDecayLR,
 )

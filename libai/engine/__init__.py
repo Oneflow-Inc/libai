@@ -14,3 +14,4 @@
 # limitations under the License.
 
 from .default import DefaultTrainer, default_setup
+from .ctr_trainer import CTRTrainer, ctr_setup

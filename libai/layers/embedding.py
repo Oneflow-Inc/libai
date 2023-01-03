@@ -14,12 +14,67 @@
 # limitations under the License.
 
 import math
+import numpy as np
 
 import oneflow as flow
 from oneflow import nn
 from oneflow.nn import init
 
 from libai.utils import distributed as dist
+
+
+class OneEmbedding(flow.nn.Module):
+    def __init__(
+        self,
+        embedding_vec_size,
+        persistent_path,
+        table_size_array,
+        store_type,
+        cache_memory_budget_mb,
+    ):
+        assert table_size_array is not None
+        vocab_size = sum(table_size_array)
+
+        scales = np.sqrt(1 / np.array(table_size_array))
+        tables = [
+            flow.one_embedding.make_table(
+                flow.one_embedding.make_uniform_initializer(low=-scale, high=scale)
+            )
+            for scale in scales
+        ]
+        if store_type == "device_mem":
+            store_options = flow.one_embedding.make_device_mem_store_options(
+                persistent_path=persistent_path, capacity=vocab_size
+            )
+        elif store_type == "cached_host_mem":
+            assert cache_memory_budget_mb > 0
+            store_options = flow.one_embedding.make_cached_host_mem_store_options(
+                cache_budget_mb=cache_memory_budget_mb,
+                persistent_path=persistent_path,
+                capacity=vocab_size,
+            )
+        elif store_type == "cached_ssd":
+            assert cache_memory_budget_mb > 0
+            store_options = flow.one_embedding.make_cached_ssd_store_options(
+                cache_budget_mb=cache_memory_budget_mb,
+                persistent_path=persistent_path,
+                capacity=vocab_size,
+            )
+        else:
+            raise NotImplementedError("not support", store_type)
+
+        super(OneEmbedding, self).__init__()
+        self.one_embedding = flow.one_embedding.MultiTableEmbedding(
+            "sparse_embedding",
+            embedding_dim=embedding_vec_size,
+            dtype=flow.float,
+            key_type=flow.int64,
+            tables=tables,
+            store_options=store_options,
+        )
+
+    def forward(self, ids):
+        return self.one_embedding.forward(ids)
 
 
 class Embedding(nn.Module):

@@ -19,12 +19,21 @@ from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding, Patch
 from .layer_norm import LayerNorm, RMSLayerNorm
 from .linear import Linear, Linear1D
 from .lm_logits import LMLogits
-from .mlp import MLP
+#from .mlp import MLP
 from .transformer_layer import TransformerLayer
 from .attention import MultiheadAttention
 from .droppath import DropPath, drop_path
 
+from .embedding import OneEmbedding
+from .interaction import Interaction
+from .mlp import MLP, FusedMLP
+
 __all__ = [
+    "Interaction",
+    "OneEmbedding",
+    "MLP",
+    "FusedMLP",
+    # TODO
     "Embedding",
     "VocabEmbedding",
     "SinePositionalEmbedding",
@@ -32,7 +41,6 @@ __all__ = [
     "build_activation",
     "Linear",
     "Linear1D",
-    "MLP",
     "LayerNorm",
     "RMSLayerNorm",
     "TransformerLayer",
