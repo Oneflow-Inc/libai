@@ -41,6 +41,6 @@ cfg.update(
 
 model = LazyCall(MT5Model)(cfg=cfg)
 tokenization.tokenizer = LazyCall(T5Tokenizer)(
-    vocab_file="/path/to/spiece.model",
+    vocab_file="/home/xiezipeng/t5/spiece.model",
     add_bos_token=True,
 )

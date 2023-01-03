@@ -170,6 +170,7 @@ class MT5Model(flow.nn.Module, Generator):
         use_cache=False,
         only_encoder=False,
     ):
+        print(encoder_attn_mask.size(), decoder_attn_mask.size())
         encoder_input_ids = (
             encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
             if encoder_input_ids is not None

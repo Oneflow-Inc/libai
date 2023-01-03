@@ -25,6 +25,7 @@ model.cfg.hidden_dropout_prob = 0.0
 model.cfg.attention_probs_dropout_prob = 0.0
 model.cfg.embedding_dropout_prob = 0.0
 model.cfg.vocab_size = 30522
+model.cfg.pretrained_model_path = None
 
 train.update(
     dict(
@@ -33,15 +34,15 @@ train.update(
         train_epoch=1,
         train_iter=24000,
         log_period=10,
-        amp=dict(enabled=False),
+        amp=dict(enabled=True),
         warmup_ratio=1 / 24,
         # checkpointer=dict(period=10, max_to_keep=20),
         input_placement_device="cpu",
         dist=dict(
-            data_parallel_size=2,
-            tensor_parallel_size=2,
-            pipeline_parallel_size=2,
-            pipeline_num_layers=2 * model.cfg.hidden_layers,
+            data_parallel_size=1,
+            tensor_parallel_size=1,
+            pipeline_parallel_size=1,
+            # pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
             warmup_factor=0.001,
@@ -60,3 +61,5 @@ train.update(
 
 train.zero_optimization.enabled = True
 train.zero_optimization.stage = 2
+train.activation_checkpoint.enabled = False
+train.num_accumulation_steps = 8
