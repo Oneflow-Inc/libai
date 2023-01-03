@@ -219,8 +219,7 @@ class MultiheadAttention(nn.Module):
         if attention_mask is not None:
             if use_cache:
                 attention_mask = attention_mask.expand_as(attention_scores)
-            print(attention_scores.sbp, attention_mask.sbp)
-            print(attention_scores.size(), attention_mask.size())
+
             attention_weights = flow._C.fused_bias_add_scale_mask_softmax_dropout(
                 attention_scores,
                 position_bias,

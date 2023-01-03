@@ -30,7 +30,7 @@ model.cfg.pretrained_model_path = None
 train.update(
     dict(
         output_dir="projects/MT5/output/mt5_output",
-        train_micro_batch_size=16,
+        train_micro_batch_size=4,
         train_epoch=1,
         train_iter=24000,
         log_period=10,
