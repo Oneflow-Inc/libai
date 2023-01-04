@@ -28,7 +28,7 @@ from libai.engine.trainer import HookBase
 from libai.utils.checkpoint import Checkpointer
 from libai.utils import distributed as dist
 
-from diffusers import OneFlowDiffusionPipeline
+from diffusers import OneFlowStableDiffusionPipeline
 
 logger = logging.getLogger("libai." + __name__)
 
@@ -42,16 +42,20 @@ class SdCheckpointer(HookBase):
         self._save_path = save_path
 
     def after_train(self):
-        pipeline = OneFlowDiffusionPipeline.from_pretrained(
+        def model_to_local(model):
+            model.zero_grad(set_to_none=True)
+            return model.to_local()
+        pipeline = OneFlowStableDiffusionPipeline.from_pretrained(
             self._model.model_path,
             tokenizer=self._model.tokenizer,
-            text_encoder=self._model.text_encoder,
-            vae=self._model.vae,
-            unet=self._model.unet
+            text_encoder=model_to_local(self._model.text_encoder),
+            vae=model_to_local(self._model.vae),
+            unet=model_to_local(self._model.unet)
         )
         save_path = os.path.join(self._save_path, "model_sd_for_inference")
         logger.info(f"saving stable diffusion model to {save_path}")
-        pipeline.save_pretrained(save_path)
+        if dist.is_main_process():
+            pipeline.save_pretrained(save_path)
 
 
 class Trainer(DefaultTrainer):
