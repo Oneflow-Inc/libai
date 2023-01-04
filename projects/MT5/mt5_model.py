@@ -354,6 +354,7 @@ class MT5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask,
             use_cache=use_cache,
         )
+        # reshape [seq_len, batch_size, vocab_size] -> [batch_size, seq_len, vocab_size]
         logits = logits.transpose(0, 1)
         if lm_labels is not None:
             lm_loss = self.loss_func(logits, lm_labels, loss_mask)
