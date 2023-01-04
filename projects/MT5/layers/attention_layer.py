@@ -158,6 +158,7 @@ class MultiheadAttention(nn.Module):
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
+        # hidden_states shape: [seq_len, batch_size, hidden_size]
         real_seq_length, bsz = hidden_states.size()[:2]
 
         if past_key_value is not None:
@@ -226,7 +227,7 @@ class MultiheadAttention(nn.Module):
         if attention_mask is not None:
             if use_cache:
                 attention_mask = attention_mask.expand_as(attention_scores)
-            
+
             attention_mask = attention_mask.to(flow.bool)
             attention_weights = flow._C.fused_bias_add_scale_mask_softmax_dropout(
                 attention_scores,

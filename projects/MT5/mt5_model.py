@@ -205,6 +205,7 @@ class MT5Model(flow.nn.Module, Generator):
             self.set_cache(encoder_states=None, past_key_values=None)
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
             enc_embedding_output = self.embedding(encoder_input_ids)
+            # reshape: [batch_size, seq_len, embed_size] -> [seq_len, batch_size, embed_size]
             enc_hidden_states = enc_embedding_output.transpose(0, 1)
 
             for layer in self.encoder.layers:
@@ -224,6 +225,7 @@ class MT5Model(flow.nn.Module, Generator):
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
         dec_embedding_output = self.embedding(decoder_input_ids)
+        # reshape: [batch_size, seq_len, embed_size] -> [seq_len, batch_size, embed_size]
         dec_hidden_states = dec_embedding_output.transpose(0, 1)
         if use_cache:
             presents = []
