@@ -170,6 +170,7 @@ class MT5Model(flow.nn.Module, Generator):
         use_cache=False,
         only_encoder=False,
     ):
+
         encoder_input_ids = (
             encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
             if encoder_input_ids is not None
@@ -204,7 +205,8 @@ class MT5Model(flow.nn.Module, Generator):
             self.set_cache(encoder_states=None, past_key_values=None)
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
             enc_embedding_output = self.embedding(encoder_input_ids)
-            enc_hidden_states = enc_embedding_output
+            # transpose [batch_size, seq_len, embed_size] to [seq_len, batch_size, embed_size]
+            enc_hidden_states = enc_embedding_output.transpose(0, 1)
 
             for layer in self.encoder.layers:
                 enc_hidden_states, position_bias = layer(
@@ -223,7 +225,8 @@ class MT5Model(flow.nn.Module, Generator):
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
         dec_embedding_output = self.embedding(decoder_input_ids)
-        dec_hidden_states = dec_embedding_output
+        # transpose [batch_size, seq_len, embed_size] to [seq_len, batch_size, embed_size]
+        dec_hidden_states = dec_embedding_output.transpose(0, 1)
         if use_cache:
             presents = []
 
@@ -351,7 +354,8 @@ class MT5ForPreTraining(flow.nn.Module):
             encoder_decoder_attn_mask,
             use_cache=use_cache,
         )
-
+        # transpose [seq_len, batch_size, vocab_size] to [batch_size, seq_len, vocab_size]
+        logits = logits.transpose(0, 1)
         if lm_labels is not None:
             lm_loss = self.loss_func(logits, lm_labels, loss_mask)
             return lm_loss
@@ -422,3 +426,14 @@ class MT5ForPreTraining(flow.nn.Module):
                 dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
                 dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
             )
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            # Old API in OneFlow 0.8
+            if hasattr(module_block, "origin"):
+                if isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).activation_checkpointing = True

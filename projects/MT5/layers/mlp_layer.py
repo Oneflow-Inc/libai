@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import oneflow as flow
 from oneflow import nn
 
 from libai.layers import Linear, build_activation
@@ -104,8 +105,6 @@ class MT5MLP(nn.Module):
             layer_idx=layer_idx,
         )
 
-        self.activation_func = build_activation("gelu_tanh")
-
         self.wo = Linear(
             ffn_hidden_size,
             hidden_size,
@@ -120,9 +119,8 @@ class MT5MLP(nn.Module):
 
     def forward(self, hidden_states):
         wi_0_out = self.wi_0(hidden_states)
-        hidden_gelu = self.activation_func(wi_0_out)
         hidden_linear = self.wi_1(hidden_states)
-        hidden_states = hidden_gelu * hidden_linear
+        hidden_states = flow._C.fused_fast_gelu_mul(wi_0_out, hidden_linear)
         output = self.wo(hidden_states)
         output = self.dropout(output)
         return output
