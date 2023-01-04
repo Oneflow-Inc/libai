@@ -187,9 +187,16 @@ class MultiheadAttention(nn.Module):
                 )
         else:
             query_key_value = self.query_key_value(hidden_states)
-            attention_scores, value = flow._C.fused_self_attention(
-                query_key_value, head_size=self.head_size, alpha=1
-            )
+            if use_cache:
+                query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
+                query_key_value = query_key_value.permute(
+                    0, 2, 1, 3
+                )  # [bsz, num_heads, src_len, 3 * head_size]
+                query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+            else:
+                attention_scores, value = flow._C.fused_self_attention(
+                    query_key_value, head_size=self.head_size, alpha=1
+                )
             if past_key_value is not None:
                 past_key, past_value = past_key_value
                 key = flow.cat((past_key.type_as(key), key), dim=2)
@@ -198,7 +205,7 @@ class MultiheadAttention(nn.Module):
         if use_cache:
             past_key_value = (key, value)
 
-        if self.is_cross_attention:
+        if self.is_cross_attention or use_cache:
             attention_scores = flow.matmul(query, key, transpose_b=True, alpha=1)
 
         if position_bias is None:
@@ -219,7 +226,8 @@ class MultiheadAttention(nn.Module):
         if attention_mask is not None:
             if use_cache:
                 attention_mask = attention_mask.expand_as(attention_scores)
-
+            
+            attention_mask = attention_mask.to(flow.bool)
             attention_weights = flow._C.fused_bias_add_scale_mask_softmax_dropout(
                 attention_scores,
                 position_bias,
