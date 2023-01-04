@@ -423,3 +423,14 @@ class MT5ForPreTraining(flow.nn.Module):
                 dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
                 dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
             )
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            # Old API in OneFlow 0.8
+            if hasattr(module_block, "origin"):
+                if isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).activation_checkpointing = True
