@@ -2,7 +2,6 @@ import oneflow as flow
 
 from libai.layers import ParallelCrossEntropyLoss
 from libai.utils import distributed as dist
-from libai.utils.events import get_event_storage
 
 
 class MT5Loss(flow.nn.Module):
@@ -26,8 +25,6 @@ class MT5Loss(flow.nn.Module):
         )
 
         if self.training:
-            # storage = get_event_storage()
-
             # token throughput
             done_tokens = flow.tensor(logits.size(0) * logits.size(1))
             # storage.put_scalar("don_tokens", done_tokens)

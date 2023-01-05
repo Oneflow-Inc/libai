@@ -83,7 +83,8 @@ class MT5MetricPrinter(EventWriter):
 
         # NOTE: max_mem is parsed by grep in "dev/parse_results.sh"
         self.logger.info(
-            " {eta}  {iter}  {sample}  {losses}  {time}  {data_time}  {tpt}  lr: {lr}  {memory}  {tokens_speed}  {acc_mlm}".format(
+            " {eta}  {iter}  {sample}  {losses}  {time}  {data_time}  {tpt}  lr: {lr}  {memory} "
+            " {tokens_speed}  {acc_mlm}".format(
                 eta=f"eta: {eta_string}" if eta_string else "",
                 iter=f"iteration: {iteration}/{self._max_iter}",
                 sample=f"consumed_samples: {consumed_samples}",

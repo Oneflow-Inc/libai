@@ -21,12 +21,14 @@ import sys
 import numpy as np
 import oneflow as flow
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-from projects.MT5.utils.mt5_metrc_printer import MT5MetricPrinter
 from libai.utils.events import JSONWriter, TensorboardXWriter
+from projects.MT5.utils.mt5_metrc_printer import MT5MetricPrinter
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+
 
 logger = logging.getLogger("libai." + __name__)
 
@@ -34,7 +36,7 @@ logger = logging.getLogger("libai." + __name__)
 class Mt5Trainer(DefaultTrainer):
     def __init__(self, cfg):
         super().__init__(cfg)
-    
+
     def build_writers(self):
         """
         Build a list of writers to be used. By default it contains
