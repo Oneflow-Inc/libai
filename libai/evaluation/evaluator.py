@@ -203,14 +203,12 @@ def inference_on_dataset(
 
             # get valid sample
             valid_data = {
-                key: dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])[
-                    :valid_sample
-                ]
+                key: dist.tensor_to_rank0(value, to_local=True)[:valid_sample]
                 for key, value in data.items()
             }
             valid_outputs = {}
             for key, value in outputs.items():
-                value = dist.ttol(value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]])
+                value = dist.tensor_to_rank0(value, to_local=True)
                 if value.ndim > 1:
                     valid_outputs[key] = value[:valid_sample]  # Slice if it's batched output
                 else:
