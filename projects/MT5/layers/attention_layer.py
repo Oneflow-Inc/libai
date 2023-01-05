@@ -229,6 +229,7 @@ class MultiheadAttention(nn.Module):
                 attention_mask = attention_mask.expand_as(attention_scores)
 
             attention_mask = attention_mask.to(flow.bool)
+            position_bias = position_bias.to_global(attention_scores.placement)
             attention_weights = flow._C.fused_bias_add_scale_mask_softmax_dropout(
                 attention_scores,
                 position_bias,

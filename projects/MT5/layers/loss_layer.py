@@ -1,0 +1,54 @@
+import oneflow as flow
+
+from libai.layers import ParallelCrossEntropyLoss
+from libai.utils import distributed as dist
+from libai.utils.events import get_event_storage
+
+
+class MT5Loss(flow.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.lm_loss = ParallelCrossEntropyLoss()
+
+    def forward(self, logits, lm_labels, loss_mask):
+        lm_labels = lm_labels.to_global(placement=logits.placement)
+        lm_loss = self.lm_loss(logits, lm_labels)
+        loss_mask = loss_mask.to_global(placement=lm_loss.placement)
+        loss_mask = loss_mask.float()
+        denominator = loss_mask.sum().to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        )
+        lm_loss = flow._C.amp_white_identity(lm_loss)
+        lm_loss = flow._C.amp_black_identity(lm_loss)
+        masked_lm_loss = flow.sum(lm_loss.view(-1) * loss_mask.view(-1)) / denominator
+        masked_lm_loss = masked_lm_loss.to_global(
+            sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast])
+        )
+
+        if self.training:
+            # storage = get_event_storage()
+
+            # token throughput
+            done_tokens = flow.tensor(logits.size(0) * logits.size(1))
+            # storage.put_scalar("don_tokens", done_tokens)
+
+            # correct token
+            correct_tokens = flow.sum(
+                (
+                    logits.to_global(
+                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                        placement=lm_labels.placement,
+                    )
+                    .argmax(dim=-1)
+                    .eq(lm_labels)
+                ).float()
+            )
+            # storage.put_scalar("correct_tokens", correct_tokens)
+            # storage.put_scalar("denominator", denominator)
+
+        return {
+            "mlm_loss": masked_lm_loss,
+            "done_tokens": done_tokens,
+            "correct_tokens": correct_tokens,
+            "denominator": denominator,
+        }

@@ -103,7 +103,7 @@ class GraphBase(nn.Graph):
                 "Please wait for a moment ..."
             )
             loss_dict = self.model(**kwargs)
-            losses = sum(loss_dict.values())
+            losses = sum(v for k, v in loss_dict.items() if "loss" in k)
             losses.backward()
             return loss_dict
         else:
