@@ -28,7 +28,7 @@ from termcolor import colored
 from libai.config import LazyConfig, instantiate, try_get_key
 from libai.data import Instance
 from libai.engine import hooks
-from libai.engine.trainer import EagerTrainer, GraphTrainer, TrainerBase
+from libai.engine.trainer import EagerTrainer, TrainerBase
 from libai.evaluation import inference_on_dataset, print_csv_format
 from libai.models import build_ctr_graph, build_model
 from libai.optim import build_optimizer
@@ -108,6 +108,71 @@ def ctr_setup(cfg, args):
     flow.boxing.nccl.set_fusion_max_ops_num(
         try_get_key(cfg, "train.nccl_fusion_max_ops", default=24)
     )
+
+
+class GraphTrainer(TrainerBase):
+    """
+    A simple graph trainer for training and evaluating models in a static graph mode.
+    """
+
+    def __init__(self, graph, data_loader, grad_acc_steps=1):
+        super().__init__()
+
+        graph.model.train()
+        self.data_loader = data_loader
+        self._data_loader_iter = iter(data_loader)
+        self.graph = graph
+        self.grad_acc_steps = grad_acc_steps
+        self._temp_data = None
+        self._temp_count = 0
+        self.step = 0
+
+    def run_step(self, get_batch: Callable, input_placement_device: str = "cuda"):
+        """
+        Implement the standard training logic described above.
+        """
+        assert self.graph.model.training, "[SimpleTrainer] model was changed to eval mode!"
+        start = time.perf_counter()
+
+        while self._temp_count != self.grad_acc_steps:
+            # If you want to do something with the data, you can wrap the dataloader.
+            data = next(self._data_loader_iter)
+
+            self._temp_count += 1
+            if self._temp_data is None:
+                self._temp_data = data
+            else:
+                # In static graph mode, data will be sliced in nn.Graph automatically,
+                # for geting mini-batch_size, we concat local_tensor first.
+                for key, value in data.get_fields().items():
+                    temp_value = self._temp_data.get(key)
+                    self._temp_data.get(key).tensor = flow.cat(
+                        (temp_value.tensor, value.tensor), dim=0
+                    )
+
+        data = self._temp_data
+        self._temp_count = 0
+        self._temp_data = None
+
+        data = get_batch(
+            data, input_placement_device, getattr(self.data_loader, "mixup_func", None)
+        )
+
+        data_time = time.perf_counter() - start
+
+        # If you want to do something with the losses, you can wrap the model.
+        loss_dict = self.graph(**data)
+        # Add this because when set up gradient accumulations, graph will return
+        # an unpacked n-d tensor whose size is accumulation step
+        loss_dict = {key: value.mean() for key, value in loss_dict.items()}
+
+        self.step += 1
+        if self.step % 100 == 0:
+            s = [f"{k} {v.numpy()}" for k, v in loss_dict.items()]
+            if dist.is_main_process():
+                print(time.time(), s)
+
+        #self.write_metrics(loss_dict, data_time)
 
 
 class CTRTrainer(TrainerBase):

@@ -25,6 +25,7 @@ from packaging import version
 
 from petastorm.reader_impl.shuffling_buffer import RandomShufflingBuffer, NoopShufflingBuffer
 from .oneflow_shuffling_buffer import BatchedRandomShufflingBuffer, BatchedNoopShufflingBuffer
+from .cached import cached_dataloader
 
 if PY2:
     _string_classes = basestring  # noqa: F821
@@ -112,7 +113,7 @@ class LoaderBase(object):
         finally:
             self._in_iter = False
 
-
+@cached_dataloader(num_batches=30)
 class DataLoader(LoaderBase):
     """
     A data loader adaptor for ``oneflow.utils.data.DataLoader``.
@@ -147,7 +148,8 @@ class DataLoader(LoaderBase):
         :param shuffling_queue_capacity: Queue capacity is passed to the underlying :class:`tf.RandomShuffleQueue`
           instance. If set to 0, no shuffling will be done.
         """
-        super(DataLoader, self).__init__()
+        #super(DataLoader, self).__init__()
+        super().__init__()
         self.reader = reader
         self.batch_size = batch_size
         self.collate_fn = collate_fn

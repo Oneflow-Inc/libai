@@ -18,7 +18,6 @@ import logging
 import oneflow as flow
 from oneflow import nn
 
-from libai.layers import TransformerLayer
 from libai.utils import distributed as dist
 
 logger = logging.getLogger(__name__)
@@ -64,14 +63,15 @@ class CTRGraph(nn.Graph):
             loss = self.loss(logits, kwargs['label'].to("cuda"))
             reduce_loss = flow.mean(loss)
             reduce_loss.backward()
-            loss_dict = {
-                "bce_loss": loss.to_global(
-                    placement=flow.placement(
-                        "cpu", ranks=[0] if loss.placement.ranks.ndim == 1 else [[0]]
-                    ),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                )
-            }
+            loss_dict = {"bce_loss": loss}
+            #loss_dict = {
+            #    "bce_loss": loss.to_global(
+            #        placement=flow.placement(
+            #            "cpu", ranks=[0] if loss.placement.ranks.ndim == 1 else [[0]]
+            #        ),
+            #        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            #    )
+            #}
             return loss_dict
         else:
             logger.info(

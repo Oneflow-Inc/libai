@@ -22,3 +22,4 @@ from .build import (
 )
 from .build_criteo import build_criteo_dataloader
 
+from .cached import cached_dataloader
