@@ -53,7 +53,7 @@ class Mt5Trainer(DefaultTrainer):
         .. code-block:: python
 
             return [
-                CommonMetricPrinter(self.global_batch_size, self.max_iter),
+                MT5MetricPrinter(self.global_batch_size, self.max_iter),
                 JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
                 TensorboardXWriter(self.cfg.train.output_dir),
             ]
