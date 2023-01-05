@@ -47,7 +47,7 @@ jobs:
 
   run_unittest:
     name: unit tests
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     if: github.event.pull_request.draft == false && contains(github.event.pull_request.requested_reviewers.*.login, 'oneflow-ci-bot')
     steps:
       - uses: actions/checkout@v2
