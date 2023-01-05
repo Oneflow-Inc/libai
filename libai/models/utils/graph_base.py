@@ -105,17 +105,6 @@ class GraphBase(nn.Graph):
             loss_dict = self.model(**kwargs)
             losses = sum(loss_dict.values())
             losses.backward()
-            # set loss_dict on rank0
-            # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
-            loss_dict = {
-                k: v.to_global(
-                    placement=flow.placement(
-                        "cpu", ranks=[0] if v.placement.ranks.ndim == 1 else [[0]]
-                    ),
-                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                )
-                for k, v in loss_dict.items()
-            }
             return loss_dict
         else:
             logger.info(
