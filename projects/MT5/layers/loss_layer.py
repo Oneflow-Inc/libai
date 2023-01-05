@@ -43,8 +43,6 @@ class MT5Loss(flow.nn.Module):
                     .eq(lm_labels)
                 ).float()
             )
-            # storage.put_scalar("correct_tokens", correct_tokens)
-            # storage.put_scalar("denominator", denominator)
 
         return {
             "mlm_loss": masked_lm_loss,
