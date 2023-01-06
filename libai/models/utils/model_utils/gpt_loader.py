@@ -144,7 +144,7 @@ class GPT2LoaderHuggerFace(ModelLoaderHuggerFace):
             cfg_dict = json.load(f)
 
         # update libai_cfg by config.json
-        self._update_cfg("num_layers", cfg_dict["n_layer"])
+        self._update_cfg("hidden_layers", cfg_dict["n_layer"])
         self._update_cfg("hidden_size", cfg_dict["n_embd"])
         self._update_cfg("num_attention_heads", cfg_dict["n_head"])
         self._update_cfg("max_seq_length", cfg_dict["n_positions"])

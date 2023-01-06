@@ -80,7 +80,7 @@ class Generator:
 
         if inputs is None:
             inputs = self._prepare_input_ids_for_generation(
-                bos_token_id, model_kwargs.get("encoder_outputs")
+                bos_token_id, model_kwargs.get("encoder_outputs", None)
             )
         return inputs, input_name, model_kwargs
 
@@ -518,7 +518,7 @@ class Generator:
                 break
 
         # Release records
-        self.past_key_values = [None] * len(self.decoder.layers)
+        self.past_key_values = [None] * self.cfg.hidden_layers
         self.encoder_states = None
 
         return input_ids
@@ -617,7 +617,7 @@ class Generator:
                 break
 
         # Release records
-        self.past_key_values = [None] * len(self.decoder.layers)
+        self.past_key_values = [None] * self.cfg.hidden_layers
         self.encoder_states = None
 
         return input_ids
@@ -756,7 +756,7 @@ class Generator:
         )
 
         # Release records
-        self.past_key_values = [None] * len(self.decoder.layers)
+        self.past_key_values = [None] * self.cfg.hidden_layers
         self.encoder_states = None
 
         return sequence_outputs["sequences"]

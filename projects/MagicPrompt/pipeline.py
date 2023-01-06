@@ -28,28 +28,32 @@ class TextGenerationPipeline(BasePipeline):
             model_path (str): The directory path of pretrained model,
         """
         if mode == "huggingface":
-            from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
+            from libai.models.utils import GPT2LoaderHuggerFace
 
-            model_loader = T5LoaderHuggerFace(
+            model_loader = GPT2LoaderHuggerFace(
                 libai_cfg_model,
                 libai_cfg_model.cfg,
                 model_path,
-                hidden_dropout_prob=0.0,
-                attention_probs_dropout_prob=0.0,
-                embedding_dropout_prob=0.0,
             )
-            return model_loader.load()
+            model = model_loader.load()
+            model.eval()
+            return model
+
         elif mode == "libai":
-            from projects.MT5.utils.mt5_loader import T5LoaderLibai
+            from libai.models.utils import GPT2LoaderLiBai
 
-            model_loader = T5LoaderLibai(
+            model_loader = GPT2LoaderLiBai(
                 libai_cfg_model,
                 libai_cfg_model.cfg,
                 model_path,
             )
-            return model_loader.load()
+            model = model_loader.load()
+            model.eval()
+            return model
+
         elif mode == "random":
             from libai.engine import DefaultTrainer
+
             return DefaultTrainer.build_model(self.cfg)
         else:
             raise NotImplementedError
@@ -61,23 +65,18 @@ class TextGenerationPipeline(BasePipeline):
 
         return preprocess_params, forward_params, postprocess_params
 
-    def preprocess(
-        self,
-        inputs,
-        pad: bool = False,
-        **kwargs,
-    ) -> dict:
+    def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoder
-        encoder_ids = self.tokenizer.encode(inputs, return_tensors="of", is_global=True)
+        input_ids = self.tokenizer.encode(inputs, return_tensors="of", is_global=True)
 
-        encoder_input_dict = {
-            "encoder_ids": encoder_ids,
+        inputs = {
+            "input_ids": input_ids,
         }
 
-        return encoder_input_dict
+        return inputs
 
-    def forward(self, encoder_input_dict, **kwargs) -> dict:
-        outputs = self.model.generate(encoder_input_dict["encoder_ids"], **kwargs)
+    def forward(self, inputs, **kwargs) -> dict:
+        outputs = self.model.generate(inputs["input_ids"], do_sample=True, max_length=50, **kwargs)
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
@@ -91,17 +90,17 @@ class TextGenerationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     pipeline = TextGenerationPipeline(
-        "/path/to/libai/projects/MT5/configs/t5_inference.py",
+        "/home/xiezipeng/libai/projects/MagicPrompt/configs/gpt2_inference.py",
         data_parallel=1,
-        tensor_parallel=2,
-        pipeline_parallel=2,
-        pipeline_stage_id=[0] * 12 + [1] * 12,
-        pipeline_num_layers=12 * 2,
-        model_path="/path/to/t5-base",
+        tensor_parallel=1,
+        pipeline_parallel=1,
+        # pipeline_stage_id=[0] * 6 + [1] * 6,
+        # pipeline_num_layers=12,
+        model_path="/data/home/magicprompt",
         mode="huggingface",
     )
 
-    text = ["summarize: She is a student, She is tall, She loves study"]
-    dict1 = pipeline(text)
+    text = ["a dog"]
+    output = pipeline(inputs=text)
     if dist.is_main_process():
-        print(dict1)
+        print(output)

@@ -90,7 +90,7 @@ class TestGPTModel(flow.unittest.TestCase):
         cfg.model.cfg.num_attention_heads = 8
         cfg.model.cfg.hidden_size = 384
         cfg.model.cfg.hidden_layers = 4
-        cfg.model.cfg.num_layers = 4
+        cfg.model.cfg.hidden_layers = 4
         cfg.train.activation_checkpoint.enabled = True
         cfg.train.amp.enabled = True
 

@@ -438,6 +438,20 @@ def tton(tensor, local_only=False, ranks=None):
     return tensor.numpy()
 
 
+def tensor_to_rank0(tensor, device="cuda", to_local=False):
+    """Global tensor to rank0."""
+    assert device in ["cpu", "cuda"], f"not supported for device:{device}"
+    if tensor.is_global:
+        # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
+        placement = flow.placement(device, ranks=[0] if tensor.placement.ranks.ndim == 1 else [[0]])
+        tensor = tensor.to_global(
+            sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=placement
+        )
+        if to_local:
+            tensor = ttol(tensor)
+    return tensor
+
+
 def synchronize():
     """
     Helper function to synchronize (barrier) among all processes when

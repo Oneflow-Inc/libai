@@ -18,57 +18,16 @@ from oneflow import nn
 from oneflow.nn import init
 
 from libai.config import configurable
-from libai.layers import (
-    Embedding,
-    LayerNorm,
-    LMLogits,
-    ParallelCrossEntropyLoss,
-    TransformerLayer,
-    VocabEmbedding,
-)
+from libai.inference.generator.generation_utils import Generator
+from libai.layers import Embedding, LayerNorm, LMLogits, VocabEmbedding
 from libai.layers.attention import AttnMaskType
+from libai.models.gpt_model import GPTLoss
+from libai.models.utils import GPT2LoaderHuggerFace, init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
-
-from .utils import init_method_normal, scaled_init_method_normal
-
-
-class CasualMask(nn.Module):
-    """
-    Create a casual mask and combine it with the padding mask.
-    It will be used in gpt model and T5 decoder.
-    When in T5 decoder, the argument `layer_idx` should be set to first decoder layer index.
-    """
-
-    def __init__(self, max_positions=1024, *, layer_idx=0):
-        super().__init__()
-        self.mask = flow.tril(
-            flow.ones(
-                (max_positions, max_positions),
-                dtype=flow.int8,
-                placement=dist.get_layer_placement(layer_idx),
-                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            )
-        )
-
-    def forward(self, input_ids, past_length=0, attention_mask=None):
-        bsz, tgt_len = input_ids.size()
-        casual_mask = self.mask[:tgt_len, :tgt_len]
-        if past_length > 0:
-            # in case past_key_values are used, we need to add a prefix ones mask to casual mask
-            casual_mask = flow.cat(
-                [flow.ones(tgt_len, past_length, dtype=flow.int8), casual_mask], dim=-1
-            )
-        casual_mask = (
-            casual_mask.unsqueeze(0).unsqueeze(1).expand(bsz, 1, tgt_len, tgt_len + past_length)
-        )
-        casual_mask = casual_mask.to_global(sbp=input_ids.sbp)
-        if attention_mask is not None:
-            assert attention_mask.dim() == 4, "please extend the attention mask first"
-            casual_mask = casual_mask * attention_mask
-        return casual_mask
+from projects.MagicPrompt.layers.transformer_layer import TransformerLayer
 
 
-class GPTModel(nn.Module):
+class GPTModel(nn.Module, Generator):
     """GPT-2 language model. The output of the forward method is logits.
 
     Args:
@@ -135,8 +94,10 @@ class GPTModel(nn.Module):
         apply_query_key_layer_scaling=False,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
+        cfg=None,
     ):
         super().__init__()
+        self.cfg = cfg
         init_method = init_method_normal(sigma=initializer_range)
         if use_scaled_init_for_output_weights:
             output_layer_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
@@ -167,7 +128,11 @@ class GPTModel(nn.Module):
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
             apply_residual_post_layernorm=apply_residual_post_layernorm,
+            set_cache=self.set_cache,
         )
+
+        self.past_key_values = [None] * hidden_layers
+        self.past_length = 0
 
         self.lm_head = LMLogits(vocab_size, bias=False)
 
@@ -192,9 +157,10 @@ class GPTModel(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
             "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
+            "cfg": cfg,
         }
 
-    def forward(self, input_ids):
+    def forward(self, input_ids, use_cache=False):
         """
 
         Args:
@@ -205,13 +171,59 @@ class GPTModel(nn.Module):
         """
 
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
-        input_embeds = self.embeddings(input_ids, 0)
 
-        transformer_output = self.transformer(input_embeds, attention_mask=None)
+        if use_cache and self.past_key_values[0] is not None:
+            self.past_length = self.past_key_values[0][0].size(-2)
+        else:
+            self.past_length = 0
+
+        input_embeds = self.embeddings(input_ids, self.past_length)
+
+        transformer_output = self.transformer(
+            input_embeds,
+            attention_mask=None,
+            past_key_values=self.past_key_values,
+            use_cache=use_cache,
+        )
 
         output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
 
         return output
+
+    def set_cache(self, past_key_values):
+        self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]
+
+        if past_key_values is None:
+            past_key_values = [None] * self.cfg.hidden_layers
+
+        assert len(past_key_values) == self.cfg.hidden_layers, (
+            f"past_key_values's length {len(past_key_values)} doesn't match "
+            f"num_layers:' {self.cfg.hidden_layers}"
+        )
+
+        self.past_key_values = past_key_values
+
+    def _reorder_cache(self, beam_idx):
+        past_key_values = self.past_key_values
+        return tuple(
+            tuple(
+                past_state.index_select(0, beam_idx.to(past_state.device))
+                for past_state in layer_past
+            )
+            for layer_past in past_key_values
+        )
+
+    def _prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past=None,
+        use_cache=None,
+    ):
+        if past is not None:
+            input_ids = input_ids[:, -1:]
+            self.past_key_values = past
+
+        return {"input_ids": input_ids, "use_cache": use_cache}
 
 
 class GPTEmbedding(nn.Module):
@@ -270,9 +282,11 @@ class Transformer(nn.Module):
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
         apply_residual_post_layernorm=False,
+        set_cache=None,
     ):
         super().__init__()
         self.hidden_layers = hidden_layers
+        self.set_cache = set_cache
 
         def build_layer(layer_number):
             return TransformerLayer(
@@ -296,26 +310,27 @@ class Transformer(nn.Module):
         self.layers = nn.ModuleList([build_layer(i) for i in range(self.hidden_layers)])
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
 
-    def forward(self, hidden_states, attention_mask):
-        # hidden_states shape: (batch_size, seq_length, hidden_size)
-        # sbp: [S(0), B]
-        for i, layer in enumerate(self.layers):
-            hidden_states = layer(hidden_states, attention_mask)
+    def forward(self, hidden_states, attention_mask, past_key_values=None, use_cache=False):
+        if use_cache:
+            presents = []
+
+        for layer, past_key_value in zip(self.layers, past_key_values):
+            hidden_states = layer(
+                hidden_states,
+                attention_mask,
+                past_key_value=past_key_value,
+                use_cache=use_cache,
+            )
+            if use_cache:
+                hidden_states, present = hidden_states
+                presents.append(present)
 
         output = self.layernorm_f(hidden_states)
 
+        if use_cache:
+            self.set_cache(presents)
+
         return output
-
-
-class GPTLoss(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.lm_loss = ParallelCrossEntropyLoss()
-
-    def forward(self, logits, lm_labels):
-        lm_loss = self.lm_loss(logits, lm_labels)
-        lm_loss = lm_loss.mean()
-        return {"lm_loss": lm_loss}
 
 
 class GPTForPreTraining(nn.Module):
@@ -325,7 +340,12 @@ class GPTForPreTraining(nn.Module):
 
     def __init__(self, cfg) -> None:
         super().__init__()
-        self.GPT_model = GPTModel(cfg)
+        if cfg.pretrained_model_path is not None:
+            loader = GPT2LoaderHuggerFace(GPTModel, cfg, cfg.pretrained_model_path)
+            self.GPT_model = loader.load()
+        else:
+            self.GPT_model = GPTModel(cfg)
+
         self.loss_func = GPTLoss()
 
     def forward(
@@ -361,7 +381,7 @@ class GPTForPreTraining(nn.Module):
         if hasattr(model.GPT_model.transformer.layernorm_f, "config"):
             # Old API in OneFlow 0.8
             for module_block in model.modules():
-                if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
+                if isinstance(module_block.origin, (GPTEmbedding)):
                     module_block.config.set_stage(
                         dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                     )
@@ -380,7 +400,7 @@ class GPTForPreTraining(nn.Module):
             )
         else:
             for module_block in model.modules():
-                if isinstance(module_block.to(nn.Module), (GPTEmbedding, CasualMask)):
+                if isinstance(module_block.to(nn.Module), (GPTEmbedding)):
                     module_block.to(nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
                     )
@@ -397,3 +417,14 @@ class GPTForPreTraining(nn.Module):
             model.GPT_model.transformer.layernorm_f.to(nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
             )
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            # Old API in OneFlow 0.8
+            if hasattr(module_block, "origin"):
+                if isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).activation_checkpointing = True
