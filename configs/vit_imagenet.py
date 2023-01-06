@@ -23,8 +23,8 @@ if (host == "oneflow-28"):
     dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
     dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
 elif (host == "oneflow-15"):
-    dataloader.train.dataset[0].root = "/home/panlichen/dataset/ImageNet/extract"
-    dataloader.test[0].dataset.root = "/home/panlichen/dataset/ImageNet/extract"
+    dataloader.train.dataset[0].root = "/minio/sdd/dataset/imagenet/extract"
+    dataloader.test[0].dataset.root = "/minio/sdd/dataset/imagenet/extract"
 elif (host == "oneflow-16"):
     dataloader.train.dataset[0].root = "/dataset/ImageNet/extract"
     dataloader.test[0].dataset.root = "/dataset/ImageNet/extract"
