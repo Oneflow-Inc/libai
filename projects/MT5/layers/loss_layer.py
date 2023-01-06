@@ -26,9 +26,11 @@ class MT5Loss(flow.nn.Module):
 
         if self.training:
             # token throughput
-            done_tokens = flow.tensor(logits.size(0) * logits.size(1))
-            # storage.put_scalar("don_tokens", done_tokens)
-
+            done_tokens = flow.tensor(
+                logits.size(0) * logits.size(1),
+                sbp=dist.get_nd_sbp([flow.sbp.partial_sum, flow.sbp.broadcast]),
+                placement=logits.placement,
+            )
             # correct token
             correct_tokens = flow.sum(
                 (
