@@ -70,6 +70,9 @@ class _DistributeUtil(object):
         self._num_gpus_per_node = num_gpus_per_node
         self._world_size = num_gpus_per_node * num_nodes
 
+        # Add set device type
+        self._device_type = try_get_key(cfg, "device_type", default="cuda")
+
     def _init_parallel_size(self, cfg):
 
         # tensor parallel size
@@ -220,6 +223,14 @@ class _DistributeUtil(object):
     def data_parallel_size(self):
         return self._data_parallel_size
 
+    @property
+    def device_type(self):
+        return self._device_type
+
+    def set_device_type(self, device_type):
+        assert device_type in ["cpu", "cuda"], f"not supported for {device_type}"
+        self._device_type = device_type
+
     def get_layer_ranks(self, layer_idx):
         layer_ranks = self._layer_ranks[layer_idx]
         if self._parallel_hierarchy is None:
@@ -291,7 +302,7 @@ def get_dist_util():
     return _DIST_UTIL
 
 
-def get_layer_placement(layer_idx, device_type="cuda"):
+def get_layer_placement(layer_idx):
     """
     Get ``flow.placement`` object with the initialized distributed environment
     according to the ``layer_idx``.
@@ -302,6 +313,7 @@ def get_layer_placement(layer_idx, device_type="cuda"):
         device_type (str, optional): device type. Defaults to "cuda".
     """
     dist_util = get_dist_util()
+    device_type = dist_util.device_type
     if not flow.cuda.is_available() and device_type == "cuda":
         device_type = "cpu"
     return flow.placement(
