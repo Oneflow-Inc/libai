@@ -405,6 +405,11 @@ def get_num_nodes():
     return flow.env.get_node_size()
 
 
+def set_device_type(device_type):
+    dist_util = get_dist_util()
+    dist_util.set_device_type(device_type)
+
+
 def broadcast_py_object(obj, src: int = 0):
     rank = flow.env.get_rank()
     if src == rank:
