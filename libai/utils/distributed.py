@@ -302,7 +302,7 @@ def get_dist_util():
     return _DIST_UTIL
 
 
-def get_layer_placement(layer_idx):
+def get_layer_placement(layer_idx, device_type=None):
     """
     Get ``flow.placement`` object with the initialized distributed environment
     according to the ``layer_idx``.
@@ -313,7 +313,7 @@ def get_layer_placement(layer_idx):
         device_type (str, optional): device type. Defaults to "cuda".
     """
     dist_util = get_dist_util()
-    device_type = dist_util.device_type
+    device_type = dist_util.device_type if device_type is None else device_type
     if not flow.cuda.is_available() and device_type == "cuda":
         device_type = "cpu"
     return flow.placement(
