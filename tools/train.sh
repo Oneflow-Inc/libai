@@ -10,6 +10,13 @@ NODE_RANK=${NODE_RANK:-0}
 ADDR=${ADDR:-127.0.0.1}
 PORT=${PORT:-12345}
 
+if [ $GPUS = 4 ]; then
+    export CUDA_VISIBLE_DEVICES=0,1,4,5
+fi
+if [ $GPUS = 2 ]; then
+    export CUDA_VISIBLE_DEVICES=4,5
+fi
+
 export GLOG_logtostderr=1
 export ONEFLOW_ACTOR_ENABLE_LIGHT_ACTOR=0 # 禁用lightweight actor
 
@@ -74,5 +81,5 @@ export ONEFLOW_FUSE_OPTIMIZER_UPDATE_CAST=true
 python3 -m oneflow.distributed.launch \
   --nproc_per_node $GPUS --nnodes $NODE --node_rank $NODE_RANK --master_addr $ADDR --master_port $PORT \
   $FILE --config-file $CONFIG ${@:4} \
-  > /home/panlichen/work/oneflow/log/oneflow.log 2>&1
+  # > /home/panlichen/work/oneflow/log/oneflow.log 2>&1
 
