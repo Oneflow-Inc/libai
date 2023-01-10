@@ -50,5 +50,5 @@ python tools/preprocess_data.py \
 ### 4. Run the following code to start training
 ```bash
 # cd /path/to/libai
-bash tools/train.sh tools/train_net.py projects/MT5/configs/mt5_pretrain.py 8
+bash tools/train.sh projects/MT5/train_net.py projects/MT5/configs/mt5_pretrain.py 8
 ```
