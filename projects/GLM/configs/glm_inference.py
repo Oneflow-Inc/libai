@@ -15,7 +15,7 @@ cfg = dict(
     layernorm_epsilon=1e-5,
     initializer_range=0.02,
     use_scaled_init_for_output_weights=True,
-    bias_gelu_fusion=False,
+    bias_gelu_fusion=True,
     bias_dropout_fusion=False,
     scale_mask_softmax_fusion=False,
     apply_query_key_layer_scaling=False,
@@ -54,11 +54,8 @@ cfg = dict(
     bos_token_id=50000,
     sep_token_id=None,
     decoder_start_token_id=None,
-    # train
 )
 
 cfg = DictConfig(cfg)
 
 glm_model = LazyCall(GLMModel)(cfg=cfg)
-
-# pretrain_model = LazyCall(GLMForPreTraining)(cfg=cfg)
