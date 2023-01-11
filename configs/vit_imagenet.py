@@ -66,7 +66,9 @@ optim.params.overrides = {"pos_embed": {"weight_decay": 0.0}, "cls_token": {"wei
 # Refine train cfg for vit model
 train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128
-train.train_epoch = 300
+# train.train_epoch = 300
+train.train_epoch = 0
+train.train_iter = 200
 train.warmup_ratio = 5 / 300
 train.evaluation.enabled = False
 # train.evaluation.eval_period = 100
