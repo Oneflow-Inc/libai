@@ -226,7 +226,7 @@ tokenization.tokenizer = LazyCall(T5Tokenizer)(
 )
 ```
 
-第 `98~99` 行为：
+修改 `libai/libai/inference/text_generation.py` 文件，第 `100~101` 行为：
 
 ```python3
 model_path="data_test/",

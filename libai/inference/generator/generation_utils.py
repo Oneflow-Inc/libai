@@ -131,11 +131,11 @@ class Generator:
         )
         # Check if input is input_ids and padded -> only then is attention_mask defined
         if is_input_ids and is_pad_token_in_inputs and is_pad_token_not_equal_to_eos_token_id:
-            return inputs.ne(pad_token_id).long()
+            return inputs.ne(pad_token_id).bool()
         else:
             return flow.ones(
                 inputs.shape[:2],
-                dtype=flow.long,
+                dtype=flow.bool,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=flow.placement("cuda", list(range(dist.get_world_size()))),
             )

@@ -313,7 +313,7 @@ class MT5Model(flow.nn.Module, Generator):
             input_ids.size(),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=flow.placement("cuda", list(range(dist.get_world_size()))),
-        )
+        ).to(flow.bool)
         return {
             "decoder_input_ids": input_ids,
             "decoder_attn_mask": decoder_attn_maks,
