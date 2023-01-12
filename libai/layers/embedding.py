@@ -29,6 +29,7 @@ class OneEmbedding(flow.nn.Module):
         embedding_vec_size,
         persistent_path,
         table_size_array,
+        key_type,
         store_type,
         cache_memory_budget_mb,
     ):
@@ -68,7 +69,7 @@ class OneEmbedding(flow.nn.Module):
             "sparse_embedding",
             embedding_dim=embedding_vec_size,
             dtype=flow.float,
-            key_type=flow.int64,
+            key_type=getattr(flow, key_type),
             tables=tables,
             store_options=store_options,
         )

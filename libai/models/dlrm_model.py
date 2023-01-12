@@ -38,6 +38,7 @@ class DLRMModel(nn.Module):
         use_fusedmlp=True,
         persistent_path=None,
         table_size_array=None,
+        one_embedding_key_type="int64",
         one_embedding_store_type="cached_host_mem",
         cache_memory_budget_mb=8192,
         interaction_itself=True,
@@ -56,6 +57,7 @@ class DLRMModel(nn.Module):
             embedding_vec_size,
             persistent_path,
             table_size_array,
+            one_embedding_key_type,
             one_embedding_store_type,
             cache_memory_budget_mb,
         )
@@ -78,7 +80,8 @@ class DLRMModel(nn.Module):
                 skip_final_activation=True,
             )
 
-    def forward(self, dense_fields, sparse_fields) -> flow.Tensor:
+    def forward(self, x) -> flow.Tensor:
+        dense_fields, sparse_fields = x['dense'].to("cuda"), x['sparse'].to("cuda")
         dense_fields = flow.log(dense_fields + 1.0)
         dense_fields = self.bottom_mlp(dense_fields)
         embedding = self.embedding(sparse_fields)

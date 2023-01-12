@@ -30,7 +30,7 @@ class CTRGraph(nn.Graph):
         loss: nn.Module = None,
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
-        grad_scale = None,
+        grad_scaler = None,
         fp16=False,
         is_train=True,
     ):
@@ -50,17 +50,14 @@ class CTRGraph(nn.Graph):
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
 
-    def build(self, **kwargs):
-        # todo: use kwargs properly
-        dense_fields = kwargs['dense']
-        sparse_fields = kwargs['sparse']
+    def build(self, batch_dict):
         if self.is_train:
             logger.info(
                 "Start compling the train graph which may take some time. "
                 "Please wait for a moment ..."
             )
-            logits = self.model(dense_fields.to("cuda"), sparse_fields.to("cuda"))
-            loss = self.loss(logits, kwargs['label'].to("cuda"))
+            logits = self.model(batch_dict)
+            loss = self.loss(logits, batch_dict['label'].to("cuda"))
             reduce_loss = flow.mean(loss)
             reduce_loss.backward()
             loss_dict = {"bce_loss": loss}
@@ -78,6 +75,6 @@ class CTRGraph(nn.Graph):
                 "Start compling the eval graph which may take some time. "
                 "Please wait for a moment ..."
             )
-            predicts = self.models(dense_fields.to("cuda"), sparse_fields.to("cuda"))
+            predicts = self.models(batch_dict)
             return predicts.sigmoid()
 
