@@ -52,10 +52,11 @@ echo GLOG_logtostderr=$GLOG_logtostderr
 export SHOW_ALL_PREPARED_COLL=1
 
 export TRAVERSE_TIMES=10
-export TOLERANT_UNPROGRESSED_CNT=100000
+export TOLERANT_UNPROGRESSED_CNT=1000000
 export BASE_CTX_SWITCH_THRESHOLD=80
 export BOUNS_SWITCH_4_PROCESSED_COLL=0
 export DEV_TRY_ROUND=10
+export CHECK_REMAINING_SQE_INTERVAL=10000
 export DEBUG_FILE="/home/panlichen/work/oneflow/log/oneflow_cpu_rank_"
 
 echo TRAVERSE_TIMES=$TRAVERSE_TIMES
@@ -63,6 +64,7 @@ echo TOLERANT_UNPROGRESSED_CNT=$TOLERANT_UNPROGRESSED_CNT
 echo BASE_CTX_SWITCH_THRESHOLD=$BASE_CTX_SWITCH_THRESHOLD
 echo BOUNS_SWITCH_4_PROCESSED_COLL=$BOUNS_SWITCH_4_PROCESSED_COLL
 echo DEV_TRY_ROUND=$DEV_TRY_ROUND
+echo CHECK_REMAINING_SQE_INTERVAL=$CHECK_REMAINING_SQE_INTERVAL
 echo DEBUG_FILE=$DEBUG_FILE
 
 export PYTHONUNBUFFERED=1
@@ -82,5 +84,5 @@ export ONEFLOW_FUSE_OPTIMIZER_UPDATE_CAST=true
 python3 -m oneflow.distributed.launch \
   --nproc_per_node $GPUS --nnodes $NODE --node_rank $NODE_RANK --master_addr $ADDR --master_port $PORT \
   $FILE --config-file $CONFIG ${@:4} \
-  # > /home/panlichen/work/oneflow/log/oneflow.log 2>&1
+  > /home/panlichen/work/oneflow/log/oneflow.log 2>&1
 
