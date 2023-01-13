@@ -1,18 +1,14 @@
 import os
 import sys
 
-dir_path = os.path.abspath(os.path.dirname(__file__))
-dir_path = "/".join(dir_path.split("/")[:-1])
-sys.path.append(dir_path)
+from omegaconf import OmegaConf
 
-from omegaconf import OmegaConf  # noqa
-
-from libai.config import get_config  # noqa
-from libai.config import LazyCall  # noqa
-from libai.data.build import build_nlp_train_loader, build_nlp_test_loader  # noqa
-from .dataset import TXTDataset # noqa
-from .finetune_sd import StableDiffusion # noqa
-from transformers import CLIPTokenizer # noqa
+from libai.config import get_config
+from libai.config import LazyCall
+from libai.data.build import build_nlp_train_loader, build_nlp_test_loader
+from projects.Stable_Diffusion.dataset import DreamBoothDataset
+from projects.Stable_Diffusion.finetune_sd import StableDiffusion
+from transformers import CLIPTokenizer
 
 optim = get_config("common/optim.py").optim
 graph = get_config("common/models/graph.py").graph
@@ -23,8 +19,9 @@ graph.global_mode.enabled = True
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
-        LazyCall(TXTDataset)(
-            foloder_name="/home/chengpeng/chengpeng/mscoco/00000",
+        LazyCall(DreamBoothDataset)(
+            instance_data_root="/home/chengpeng/chengpeng/diffusers-pytorch/examples/dreambooth/demo_dog/",
+            instance_prompt="a photo of sks dog",
             tokenizer=CLIPTokenizer,
             tokenizer_pretrained_folder=["CompVis/stable-diffusion-v1-4", "tokenizer"]
         )

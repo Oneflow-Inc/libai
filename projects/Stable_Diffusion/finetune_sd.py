@@ -13,7 +13,12 @@ from oneflow.nn import functional as F
 
 
 class StableDiffusion(nn.Module):
-    def __init__(self, model_path):
+    def __init__(
+            self, 
+            model_path,
+            train_vae=False,
+            train_text_encoder=False,
+        ):
         super().__init__()
         self.model_path = model_path
         self.tokenizer = CLIPTokenizer.from_pretrained(
@@ -39,10 +44,12 @@ class StableDiffusion(nn.Module):
                         placement=flow.env.all_device_placement("cuda")
                     ),
                 )
+        
+        if not train_vae:
+            self.vae.requires_grad_(False)
+        if not train_text_encoder:
+            self.text_encoder.requires_grad_(False)
 
-        self.text_encoder.train()
-        self.vae.train()
-        self.unet.train()
 
     def forward(self, pixel_values, input_ids):
         latents = self.vae.encode(pixel_values).latent_dist.sample()

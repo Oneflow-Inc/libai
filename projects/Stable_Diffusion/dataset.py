@@ -1,35 +1,103 @@
-from oneflow.utils.data import Dataset, ConcatDataset
-from flowvision import transforms
 import os
-from PIL import Image
-from concurrent.futures import ProcessPoolExecutor
 import pandas as pd
-from libai.data.structures import DistTensorData, Instance
 import oneflow as flow
-# def add_data_args(parent_args):
-#     parser = parent_args.add_argument_group('taiyi stable diffusion data args')
-#     # 支持传入多个路径，分别加载
-#     parser.add_argument(
-#         "--datasets_path", type=str, default=None, required=True, nargs='+',
-#         help="A folder containing the training data of instance images.",
-#     )
-#     parser.add_argument(
-#         "--datasets_type", type=str, default=None, required=True, choices=['txt', 'csv'], nargs='+',
-#         help="dataset type, txt or csv, same len as datasets_path",
-#     )
-#     parser.add_argument(
-#         "--resolution", type=int, default=512,
-#         help=(
-#             "The resolution for input images, all the images in the train/validation dataset will be resized to this"
-#             " resolution"
-#         ),
-#     )
-#     parser.add_argument(
-#         "--center_crop", action="store_true", default=False,
-#         help="Whether to center crop images before resizing to resolution"
-#     )
-#     parser.add_argument("--thres", type=float, default=0.2,)
-#     return parent_args
+import numpy as np
+from PIL import Image
+from pathlib import Path
+from flowvision import transforms
+from concurrent.futures import ProcessPoolExecutor
+from oneflow.utils.data import Dataset, ConcatDataset
+from libai.data.structures import DistTensorData, Instance
+
+
+class DreamBoothDataset(Dataset):
+    """
+    A dataset to prepare the instance and class images with the prompts for fine-tuning the model.
+    It pre-processes the images and the tokenizes prompts.
+    """
+
+    def __init__(
+        self,
+        instance_data_root,
+        instance_prompt,
+        tokenizer,
+        tokenizer_pretrained_folder=None,
+        class_data_root=None,
+        class_prompt=None,
+        size=512,
+        center_crop=False,
+    ):
+        self.size = size
+        self.center_crop = center_crop
+        self.tokenizer = tokenizer
+        if tokenizer_pretrained_folder:
+            self.tokenizer = self.tokenizer.from_pretrained(
+                tokenizer_pretrained_folder[0],
+                subfolder=tokenizer_pretrained_folder[1]
+            )
+
+        self.instance_data_root = Path(instance_data_root)
+        if not self.instance_data_root.exists():
+            raise ValueError("Instance images root doesn't exists.")
+
+        self.instance_images_path = list(Path(instance_data_root).iterdir())
+        self.num_instance_images = len(self.instance_images_path)
+        self.instance_prompt = instance_prompt
+        self._length = self.num_instance_images
+
+        if class_data_root is not None:
+            self.class_data_root = Path(class_data_root)
+            self.class_data_root.mkdir(parents=True, exist_ok=True)
+            self.class_images_path = list(self.class_data_root.iterdir())
+            self.num_class_images = len(self.class_images_path)
+            self._length = max(self.num_class_images, self.num_instance_images)
+            self.class_prompt = class_prompt
+        else:
+            self.class_data_root = None
+
+        self.image_transforms = transforms.Compose(
+            [
+                transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
+                transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5], [0.5]),
+            ]
+        )
+
+    def __len__(self):
+        return self._length
+
+    def __getitem__(self, index):
+        example = {}
+        instance_image = Image.open(self.instance_images_path[index % self.num_instance_images])
+        if not instance_image.mode == "RGB":
+            instance_image = instance_image.convert("RGB")
+        instance_images = self.image_transforms(instance_image)
+        input_ids = self.tokenizer(
+            self.instance_prompt,
+            truncation=True,
+            padding="max_length",
+            max_length=self.tokenizer.model_max_length,
+            return_tensors="np",
+        ).input_ids
+
+        if self.class_data_root and np.random.rand():
+            class_image = Image.open(self.class_images_path[index % self.num_class_images])
+            if not class_image.mode == "RGB":
+                class_image = class_image.convert("RGB")
+            instance_images = self.image_transforms(class_image)
+            input_ids = self.tokenizer(
+                self.class_prompt,
+                truncation=True,
+                padding="max_length",
+                max_length=self.tokenizer.model_max_length,
+                return_tensors="np",
+            ).input_ids
+
+        return Instance(
+            pixel_values=DistTensorData(instance_images.to(dtype=flow.float32)),
+            input_ids=DistTensorData(flow.tensor(input_ids[0])),
+        )
 
 
 class TXTDataset(Dataset):
