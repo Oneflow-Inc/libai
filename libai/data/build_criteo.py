@@ -6,9 +6,10 @@ from petastorm.reader import make_batch_reader
 from .cached import cached_dataloader
 
 import oneflow as flow
+from libai.config import configurable
 
 
-#@cached_dataloader(num_batches=1000)
+#@cached_dataloader(num_batches=10000)
 class DLRMDataLoader(object):
     """A context manager that manages the creation and termination of a
     :class:`petastorm.Reader`.
@@ -116,6 +117,15 @@ class DLRMDataLoader(object):
                 tail = [rglist[i][pos:] for i in range(self.C_end)]
 
 
+def _from_config(cfg):
+    return {
+        "data_path": cfg.data_path, 
+        "batch_size": cfg.batch_size, 
+        "shuffle": cfg.shuffle,
+    }
+
+
+@configurable(from_config=_from_config)
 def build_criteo_dataloader(data_path, batch_size, shuffle=True):
     """Make a Criteo Parquet DataLoader.
     :return: a context manager when exit the returned context manager, the reader will be closed.

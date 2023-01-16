@@ -1,0 +1,55 @@
+dataloader:
+  test: {_target_: libai.data.build_criteo_dataloader, batch_size: 55296, data_path: /RAID0/xiexuan/criteo1t_dlrm_parquet/test, shuffle: false}
+  train: {_target_: libai.data.build_criteo_dataloader, batch_size: 55296, data_path: /RAID0/xiexuan/criteo1t_dlrm_parquet/train, shuffle: true}
+  validation: {_target_: libai.data.build_criteo_dataloader, batch_size: 55296, data_path: /RAID0/xiexuan/criteo1t_dlrm_parquet/val, shuffle: false}
+model:
+  _target_: libai.models.DLRMModel
+  cfg:
+    bottom_mlp: [512, 256, 128]
+    cache_memory_budget_mb: 8192
+    embedding_vec_size: 128
+    interaction_itself: true
+    interaction_padding: true
+    num_dense_fields: 13
+    num_sparse_fields: 26
+    persistent_path: persistent
+    store_type: device_mem
+    table_size_array: [39884406, 39043, 17289, 7420, 20263, 3, 7120, 1543, 63, 38532951, 2953546, 403346, 10, 2208, 11938, 155, 4, 976, 14, 39979771, 25641295, 39664984, 585935, 12972, 108, 36]
+    top_mlp: [1024, 1024, 512, 256]
+    use_fusedmlp: true
+optim:
+  _target_: oneflow.nn.optimizer.sgd.SGD
+  lr: 24
+loss:
+  _target_: oneflow.nn.BCEWithLogitsLoss
+  reduction: "none"
+scheduler: 
+  _target_: libai.scheduler.WarmupDecayLR 
+  decay_iter: 27772
+  decay_start: 49315
+  warmup_iter: 2750
+#loss_scale:
+#  _target_: oneflow.amp.GradScaler
+#  init_scale: 1073741824
+#  growth_factor: 2.0
+#  backoff_factor: 0.5
+#  growth_interval: 2000
+train:
+  train_iter: 75000
+  amp: true
+  log_period: 1000
+  eval_period: 0
+  activation_checkpoint: {enabled: false}
+  checkpointer: {max_to_keep: 100, period: 5000, save_model_after_n_epoch: null}
+  global_batch_size: 55296
+  input_placement_device: cuda
+  model_load_dir: null
+  model_save_dir: ''
+  nccl_fusion_max_ops: 24
+  nccl_fusion_threshold_mb: 16
+  output_dir: output
+  rdma_enabled: false
+  resume: false
+  save_initial_model: false
+  save_model_after_each_eval: false
+  seed: 1234
