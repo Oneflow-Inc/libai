@@ -16,21 +16,7 @@ dataloader.train.dataset[0].data_prefix = data_prefix
 dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
 
 # model config
-model.cfg.hidden_size = 768
-model.cfg.hidden_layers = 12
-model.cfg.num_attention_heads = 12
-model.cfg.head_size = 64
-model.cfg.intermediate_size = 2048
 model.cfg.model_type = "mt5"
-model.cfg.hidden_dropout_prob = 0.0
-model.cfg.attention_probs_dropout_prob = 0.0
-model.cfg.embedding_dropout_prob = 0.0
-model.cfg.vocab_size = 30522
-model.cfg.padding_idx = 0
-model.cfg.tie_word_embeddings = False
-model.cfg.is_encoder_decoder = False
-model.cfg.amp_enabled = True
-model.cfg.initializer_range = 0.02
 model.cfg.pretrained_model_path = None
 
 train.update(
@@ -45,8 +31,8 @@ train.update(
         # checkpointer=dict(period=10, max_to_keep=20),
         input_placement_device="cpu",
         dist=dict(
-            data_parallel_size=2,
-            tensor_parallel_size=2,
+            data_parallel_size=4,
+            tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=2 * model.cfg.hidden_layers,
         ),
