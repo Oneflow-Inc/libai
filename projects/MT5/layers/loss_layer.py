@@ -47,9 +47,14 @@ class MT5Loss(flow.nn.Module):
                 ).float()
             )
 
-        return {
-            "mlm_loss": masked_lm_loss,
-            "done_tokens": done_tokens,
-            "correct_tokens": correct_tokens,
-            "denominator": denominator,
-        }
+            return {
+                "mlm_loss": masked_lm_loss,
+                "done_tokens": done_tokens,
+                "correct_tokens": correct_tokens,
+                "denominator": denominator,
+            }
+
+        else:
+            return {
+                "mlm_loss": masked_lm_loss,
+            }
