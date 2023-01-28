@@ -1,4 +1,4 @@
-import os
+import os, re
 
 
 def convert_txt2json(file_path):
@@ -15,6 +15,7 @@ def convert_txt2json(file_path):
     target_file = "/home/xiezipeng/libai/projects/MagicPrompt/" + filename + "_magicprompy.txt"
     with open(target_file, "w", encoding="utf-8") as f:
         for line in lines:
+            line = re.sub(r"\"|\n|\t|\r|\r\n|\n\r|\x08|\\", "", line)
             line = "{" + '"' + "text" + '"' + ": " + '"' + line.strip() + '"' + "}" + "\n"
             f.write(line)
     os.rename(target_file, target_file[:-4] + ".json")
