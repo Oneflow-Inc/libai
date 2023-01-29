@@ -20,6 +20,7 @@ import sys
 
 import numpy as np
 import oneflow as flow
+from oneflow.utils.global_view import global_mode
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from libai.config import LazyConfig, default_argument_parser, try_get_key
@@ -88,6 +89,53 @@ class Trainer(DefaultTrainer):
             ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
         return ret
 
+def generate_class_image(cfg):
+
+    if try_get_key(cfg, "train.with_prior_preservation") is not None:
+        _cfg = cfg.train.with_prior_preservation
+        if try_get_key(_cfg, "enabled") is False:
+            return
+        
+        import hashlib
+        from pathlib import Path
+        from projects.Stable_Diffusion.dataset import PromptDataset
+        from tqdm import tqdm
+        
+        class_images_dir = Path(_cfg.class_data_dir)
+        if dist.get_local_rank() == 0  and not class_images_dir.exists():
+            class_images_dir.mkdir(parents=True)
+        dist.synchronize()
+        cur_class_images = len(list(class_images_dir.iterdir()))
+
+        if cur_class_images < _cfg.num_class_images:
+            pipeline = OneFlowStableDiffusionPipeline.from_pretrained(
+                cfg.model.model_path,
+                use_auth_token=True,
+                revision="fp16",
+                torch_dtype=flow.float16,
+            ).to("cuda")
+            pipeline.set_progress_bar_config(disable=True)
+
+            num_new_images = _cfg.num_class_images - cur_class_images
+            logger.info(f"Number of class images to sample: {num_new_images}.")
+
+            sample_dataset = PromptDataset(_cfg.class_prompt, num_new_images)
+            sample_dataloader = flow.utils.data.DataLoader(sample_dataset, batch_size=_cfg.sample_batch_size)
+        
+            for example in tqdm(
+                sample_dataloader, desc="Generating class images", disable=not dist.is_main_process()
+            ):
+                images = pipeline(example["prompt"]).images
+
+                for i, image in enumerate(images):
+                    hash_image = hashlib.sha1(image.tobytes()).hexdigest()
+                    image_filename = class_images_dir / f"{example['index'][i] + cur_class_images}-{hash_image}.jpg"
+                    image.save(image_filename)
+
+            del pipeline
+            if flow.cuda.is_available():
+                flow.cuda.empty_cache()
+        return
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
@@ -122,6 +170,7 @@ def main(args):
         _ = Trainer.test(cfg, test_loader, model)
         return
 
+    generate_class_image(cfg)
     trainer = Trainer(cfg)
     return trainer.train()
 

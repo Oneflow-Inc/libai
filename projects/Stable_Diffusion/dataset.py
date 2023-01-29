@@ -68,19 +68,6 @@ class DreamBoothDataset(Dataset):
         return self._length
 
     def __getitem__(self, index):
-        example = {}
-        instance_image = Image.open(self.instance_images_path[index % self.num_instance_images])
-        if not instance_image.mode == "RGB":
-            instance_image = instance_image.convert("RGB")
-        instance_images = self.image_transforms(instance_image)
-        input_ids = self.tokenizer(
-            self.instance_prompt,
-            truncation=True,
-            padding="max_length",
-            max_length=self.tokenizer.model_max_length,
-            return_tensors="np",
-        ).input_ids
-
         if self.class_data_root and np.random.rand():
             class_image = Image.open(self.class_images_path[index % self.num_class_images])
             if not class_image.mode == "RGB":
@@ -93,11 +80,39 @@ class DreamBoothDataset(Dataset):
                 max_length=self.tokenizer.model_max_length,
                 return_tensors="np",
             ).input_ids
+        else:
+            instance_image = Image.open(self.instance_images_path[index % self.num_instance_images])
+            if not instance_image.mode == "RGB":
+                instance_image = instance_image.convert("RGB")
+            instance_images = self.image_transforms(instance_image)
+            input_ids = self.tokenizer(
+                self.instance_prompt,
+                truncation=True,
+                padding="max_length",
+                max_length=self.tokenizer.model_max_length,
+                return_tensors="np",
+            ).input_ids
 
         return Instance(
             pixel_values=DistTensorData(instance_images.to(dtype=flow.float32)),
             input_ids=DistTensorData(flow.tensor(input_ids[0])),
         )
+
+class PromptDataset(Dataset):
+    "A simple dataset to prepare the prompts to generate class images on multiple GPUs."
+
+    def __init__(self, prompt, num_samples):
+        self.prompt = prompt
+        self.num_samples = num_samples
+
+    def __len__(self):
+        return self.num_samples
+
+    def __getitem__(self, index):
+        example = {}
+        example["prompt"] = self.prompt
+        example["index"] = index
+        return example
 
 
 class TXTDataset(Dataset):
