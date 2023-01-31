@@ -259,7 +259,7 @@ class MT5Model(flow.nn.Module, Generator):
         else:
             logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
 
-        return logits
+        return {"logits": logits}
 
     def set_cache(self, encoder_states, past_key_values):
         self.encoder_states = encoder_states
@@ -293,7 +293,7 @@ class MT5Model(flow.nn.Module, Generator):
             reordered_decoder_past = reordered_decoder_past + (reordered_layer_past_states,)
         return reordered_decoder_past
 
-    def _prepare_inputs_for_generation(
+    def prepare_inputs_for_generation(
         self,
         input_ids,
         past=None,
@@ -310,6 +310,7 @@ class MT5Model(flow.nn.Module, Generator):
         self.encoder_states = encoder_outputs
         decoder_attn_maks = flow.ones(
             input_ids.size(),
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=flow.placement("cuda", list(range(dist.get_world_size()))),
         )
@@ -353,7 +354,7 @@ class MT5ForPreTraining(flow.nn.Module):
             decoder_attn_mask,
             encoder_decoder_attn_mask,
             use_cache=use_cache,
-        )
+        )["logits"]
         # transpose [seq_len, batch_size, vocab_size] to [batch_size, seq_len, vocab_size]
         logits = logits.transpose(0, 1)
         if lm_labels is not None:

@@ -383,7 +383,6 @@ class GLMForConditionalGeneration(nn.Module, Generator):
         )
         loss = None
         if labels is not None:
-            print("lable is not nOne .......................")
             loss = self.loss_func(lm_logits, labels)
         return {"loss": loss, "logits": lm_logits, "mems": mems}
 
