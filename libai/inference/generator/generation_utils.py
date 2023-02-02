@@ -575,7 +575,7 @@ class Generator:
 
             # generate
             outputs = self(**model_inputs)
-            next_token_logits = outputs[:, -1, :]
+            next_token_logits = outputs["logits"][:, -1, :]
 
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
@@ -613,7 +613,7 @@ class Generator:
             input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
 
             model_kwargs = self._update_model_kwargs_for_generation(
-                model_kwargs, is_encoder_decoder=is_encoder_decoder
+                outputs, model_kwargs, is_encoder_decoder=is_encoder_decoder
             )
             cur_len = cur_len + 1
 
@@ -697,7 +697,7 @@ class Generator:
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
             outputs = self(**model_inputs)
-            next_token_logits = outputs[:, -1, :]
+            next_token_logits = outputs["logits"][:, -1, :]
 
             next_token_scores = nn.functional.log_softmax(
                 next_token_logits, dim=-1
@@ -742,7 +742,7 @@ class Generator:
             input_ids = flow.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
 
             model_kwargs = self._update_model_kwargs_for_generation(
-                model_kwargs, is_encoder_decoder=is_encoder_decoder
+                outputs, model_kwargs, is_encoder_decoder=is_encoder_decoder
             )
 
             # update past_key_value

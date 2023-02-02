@@ -186,9 +186,9 @@ class GPTModel(nn.Module, Generator):
             use_cache=use_cache,
         )
 
-        output = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
+        logits = self.lm_head(transformer_output, self.embeddings.token_embeddings.weight)
 
-        return output
+        return {"logits": logits}
 
     def set_cache(self, past_key_values):
         self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]
@@ -213,7 +213,7 @@ class GPTModel(nn.Module, Generator):
             for layer_past in past_key_values
         )
 
-    def _prepare_inputs_for_generation(
+    def prepare_inputs_for_generation(
         self,
         input_ids,
         past=None,
@@ -367,7 +367,7 @@ class GPTForPreTraining(nn.Module):
                 :code:`{"masked_lm_loss": loss_value}` when training,
                 :code:`{"prediction_scores": logits}` when evaluating.
         """
-        logits = self.GPT_model(input_ids)
+        logits = self.GPT_model(input_ids)["logits"]
         if labels is not None:
             lm_loss = self.loss_func(logits, labels)
             return lm_loss
