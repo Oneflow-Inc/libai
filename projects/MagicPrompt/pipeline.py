@@ -90,14 +90,14 @@ class TextGenerationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     pipeline = TextGenerationPipeline(
-        "/home/xiezipeng/libai/projects/MagicPrompt/configs/gpt2_inference.py",
+        "projects/MagicPrompt/configs/gpt2_inference.py",
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
         # pipeline_stage_id=[0] * 6 + [1] * 6,
         # pipeline_num_layers=12,
-        model_path="/data/home/magicprompt",
-        mode="huggingface",
+        model_path="/path/to/oneflow-model",
+        mode="libai",
     )
 
     text = ["a dog"]

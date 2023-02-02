@@ -481,6 +481,8 @@ class ModelLoaderHuggerFace(ModelLoader):
             keys_libai (str): The key of libai_cfg.
             value_target (int | float): The value of target_cfg.
         """
+        if keys_libai not in self.libai_cfg.keys():
+            return
         if self.libai_cfg[keys_libai] != value_target:
             self.libai_cfg[keys_libai] = value_target
 

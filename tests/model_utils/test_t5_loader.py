@@ -134,7 +134,7 @@ class TestT5Loader(flow.unittest.TestCase):
 
         logits = model(
             encoder_input_ids, decoder_input_ids, encode_att_mask, decoder_att_mask, encode_att_mask
-        )
+        )["logits"]
         self.assertTrue(
             np.allclose(
                 np.array(-9836561.0),
@@ -195,7 +195,7 @@ class TestT5Loader(flow.unittest.TestCase):
 
         logits = model(
             encoder_input_ids, decoder_input_ids, encode_att_mask, decoder_att_mask, encode_att_mask
-        )
+        )["logits"]
         self.assertTrue(
             np.allclose(
                 np.array(-9836561.0),
