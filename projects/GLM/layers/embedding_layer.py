@@ -4,7 +4,6 @@ from oneflow import nn
 import libai.utils.distributed as dist
 from libai.layers import Embedding, VocabEmbedding
 from libai.models.utils import init_method_normal
-from projects.GLM.layers.position_embedding import SinePositionalEmbedding as PositionalEmbedding
 
 
 class GLMEmbedding(nn.Module):

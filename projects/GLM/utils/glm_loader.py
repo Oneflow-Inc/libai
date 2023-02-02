@@ -56,7 +56,7 @@ class GLMLoaderHuggerFace(ModelLoaderHuggerFace):
         old_keys.remove(prefix1 + "word_embeddings.weight")
         oneflow_state_dict[new_key] = oneflow_state_dict.pop(prefix1 + "word_embeddings.weight")
 
-        if cfg.get("block_position_encoding", False) == True:
+        if cfg.get("block_position_encoding", False) is True:
             new_key = prefix2 + "embeddings.position_embeddings.weight"
             old_keys.remove(prefix1 + "transformer.position_embeddings.weight")
             oneflow_state_dict[new_key] = oneflow_state_dict.pop(
@@ -133,7 +133,7 @@ class GLMLoaderLiBai(ModelLoaderLiBai):
         old_keys.remove(prefix1 + "word_embeddings.weight")
         oneflow_state_dict[new_key] = oneflow_state_dict.pop(prefix1 + "word_embeddings.weight")
 
-        if cfg.get("block_position_encoding", False) == True:
+        if cfg.get("block_position_encoding", False) is True:
             new_key = prefix2 + "embeddings.position_embeddings.weight"
             old_keys.remove(prefix1 + "transformer.position_embeddings.weight")
             oneflow_state_dict[new_key] = oneflow_state_dict.pop(

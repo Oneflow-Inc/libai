@@ -19,7 +19,8 @@ class GLMTokenizerMixin(PreTrainedTokenizer):
     @property
     def sop_token_id(self) -> Optional[int]:
         """
-        `Optional[int]`: Id of the start token in the vocabulary, used when training a model with autoregressive blank filling.
+        `Optional[int]`: Id of the start token in the vocabulary, used when training a model with
+        autoregressive blank filling.
         """
         return self.convert_tokens_to_ids(self.sop_token)
 
@@ -30,7 +31,8 @@ class GLMTokenizerMixin(PreTrainedTokenizer):
     @property
     def eop_token_id(self) -> Optional[int]:
         """
-        `Optional[int]`: Id of the end token in the vocabulary, used when training a model with autoregressive blank filling.
+        `Optional[int]`: Id of the end token in the vocabulary, used when training a model with
+        autoregressive blank filling.
         """
         return self.convert_tokens_to_ids(self.eop_token)
 
@@ -325,7 +327,8 @@ class GLMChineseTokenzier(GLMTokenizerMixin):
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
     ) -> List[int]:
         """
-        Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
+        Build model inputs from a sequence or a pair of sequence for sequence classification tasks
+        by concatenating and
         adding special tokens. A BERT sequence has the following format:
         - single sequence: ``[CLS] X [SEP]``
         - pair of sequences: ``[CLS] A [SEP] B [SEP]``
@@ -335,7 +338,8 @@ class GLMChineseTokenzier(GLMTokenizerMixin):
             token_ids_1 (:obj:`List[int]`, `optional`):
                 Optional second list of IDs for sequence pairs.
         Returns:
-            :obj:`List[int]`: List of `input IDs <../glossary.html#input-ids>`__ with the appropriate special tokens.
+            :obj:`List[int]`: List of `input IDs <../glossary.html#input-ids>`__ with the
+            appropriate special tokens.
         """
         assert token_ids_1 is None
         cls = [self.cls_token_id]
@@ -375,7 +379,8 @@ class GLMGPT2Tokenizer(GPT2Tokenizer, GLMTokenizerMixin):
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
     ) -> List[int]:
         """
-        Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
+        Build model inputs from a sequence or a pair of sequence for sequence classification tasks
+        by concatenating and
         adding special tokens. A BERT sequence has the following format:
         - single sequence: ``[CLS] X [SEP]``
         - pair of sequences: ``[CLS] A [SEP] B [SEP]``
@@ -385,7 +390,8 @@ class GLMGPT2Tokenizer(GPT2Tokenizer, GLMTokenizerMixin):
             token_ids_1 (:obj:`List[int]`, `optional`):
                 Optional second list of IDs for sequence pairs.
         Returns:
-            :obj:`List[int]`: List of `input IDs <../glossary.html#input-ids>`__ with the appropriate special tokens.
+            :obj:`List[int]`: List of `input IDs <../glossary.html#input-ids>`__ with the
+            appropriate special tokens.
         """
         assert token_ids_1 is None
         cls = [self.cls_token_id]
