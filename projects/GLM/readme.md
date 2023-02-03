@@ -1,6 +1,6 @@
 # GLM
 
-2017 年，Google 提出了 Transformer 架构，随后 BERT 、GPT、T5等预训练模型不断涌现，并在各项任务中都不断刷新 SOTA 纪录。去年，清华提出了 GLM 模型(https://github.com/THUDM/GLM)，不同于上述预训练模型架构，它采用了一种自回归的空白填充方法， 在 NLP 领域三种主要的任务（自然语言理解、无条件生成、有条件生成）上都取得了不错的结果。
+2017 年, Google 提出了 Transformer 架构, 随后 BERT 、GPT、T5等预训练模型不断涌现, 并在各项任务中都不断刷新 SOTA 纪录。去年, 清华提出了 GLM 模型(https://github.com/THUDM/GLM), 不同于上述预训练模型架构，它采用了一种自回归的空白填充方法, 在 NLP 领域三种主要的任务（自然语言理解、无条件生成、有条件生成）上都取得了不错的结果。
 
 
 ## Training GLM
