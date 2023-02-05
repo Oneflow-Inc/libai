@@ -68,8 +68,7 @@ train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128
 # train.train_epoch = 300
 train.train_epoch = 0
-train.train_iter = 200
-# train.train_iter = 10
+train.train_iter = 10
 train.warmup_ratio = 5 / 300
 train.evaluation.enabled = False
 # train.evaluation.eval_period = 100
@@ -85,6 +84,6 @@ train.amp.enabled = True
 
 # Distributed Settings
 train.dist.pipeline_num_layers = model.cfg.depth
-train.dist.data_parallel_size = 2
-train.dist.tensor_parallel_size = 4
+train.dist.data_parallel_size = 1
+train.dist.tensor_parallel_size = 8
 train.dist.pipeline_parallel_size = 1
