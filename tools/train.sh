@@ -19,7 +19,13 @@ export NCCL_ALGO=Ring
 # export NCCL_MIN_NCHANNELS=1
 # export NCCL_NTHREADS=64
 
-# export ONEFLOW_ENABLE_OFCCL=1
+if [ -z $RUN_TYPE ];then
+    RUN_TYPE="PURE"
+    # RUN_TYPE="GDB"
+    # RUN_TYPE="NSYS"
+fi
+
+export ONEFLOW_ENABLE_OFCCL=1
 export DISABLE_NCCL_COMPUTE_STREAM=1
 export ONEFLOW_OFCCL_SKIP_NEGO=0
 export ONEFLOW_DEBUG_MODE=1
@@ -108,7 +114,26 @@ mkdir -p /home/panlichen/work/oneflow/log
 
 export ONEFLOW_FUSE_OPTIMIZER_UPDATE_CAST=true
 
-python3 -m oneflow.distributed.launch \
+if [ $ONEFLOW_ENABLE_OFCCL == "1" ]; then
+    NSYS_FILE="ofccl_vit"_${HOST}_${GPUS}_card
+else
+    NSYS_FILE="nccl_vit"_${HOST}_${GPUS}_card
+fi
+
+if [ "$RUN_TYPE" == "PURE" ];then
+    cmd="python3 -m oneflow.distributed.launch"
+elif [ "$RUN_TYPE" == "GDB" ];then
+    cmd="gdb -ex r --args python3 -m oneflow.distributed.launch"
+elif [ "$RUN_TYPE" == "NSYS" ];then
+    if [ ! -d "/home/panlichen/work/oneflow/log/nsys" ];then
+        mkdir -p /home/panlichen/work/oneflow/log/nsys
+    fi
+    # cmd="nsys profile -f true --trace=cuda,cudnn,cublas,osrt,nvtx -o /home/panlichen/work/oneflow/log/nsys/$NSYS_FILE python3 -m oneflow.distributed.launch"
+    cmd="nsys profile -f true -o /home/panlichen/work/oneflow/log/nsys/$NSYS_FILE python3 -m oneflow.distributed.launch"
+fi
+echo cmd=$cmd
+
+$cmd \
   --nproc_per_node $GPUS --nnodes $NODE --node_rank $NODE_RANK --master_addr $ADDR --master_port $PORT \
   $FILE --config-file $CONFIG ${@:4} \
   > /home/panlichen/work/oneflow/log/oneflow.log 2>&1
