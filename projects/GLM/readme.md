@@ -2,9 +2,10 @@
 
 2017 年, Google 提出了 Transformer 架构, 随后 BERT 、GPT、T5等预训练模型不断涌现, 并在各项任务中都不断刷新 SOTA 纪录。去年, 清华提出了 GLM 模型(https://github.com/THUDM/GLM), 不同于上述预训练模型架构，它采用了一种自回归的空白填充方法, 在 NLP 领域三种主要的任务（自然语言理解、无条件生成、有条件生成）上都取得了不错的结果。
 
+在LiBai中主要实现了GLM推理部分的工作，训练相关内容可以参考：
 
-## Training GLM
-GLM的训练相关内容可以参考：[GLM国产大模型训练加速：性能最高提升3倍，显存节省1/3，低成本上手](https://mp.weixin.qq.com/s/dkTGXuJV38KuLb4_LmM20Q)
+- [GLM国产大模型训练加速：性能最高提升3倍，显存节省1/3，低成本上手](https://mp.weixin.qq.com/s/dkTGXuJV38KuLb4_LmM20Q)
+- https://github.com/Oneflow-Inc/one-glm
 
 
 ## GLM-Inference
