@@ -85,5 +85,5 @@ train.amp.enabled = True
 # Distributed Settings
 train.dist.pipeline_num_layers = model.cfg.depth
 train.dist.data_parallel_size = 1
-train.dist.tensor_parallel_size = 8
+train.dist.tensor_parallel_size = 4
 train.dist.pipeline_parallel_size = 1

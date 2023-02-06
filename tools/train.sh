@@ -123,7 +123,7 @@ mkdir -p /home/panlichen/work/oneflow/log
 
 export ONEFLOW_FUSE_OPTIMIZER_UPDATE_CAST=true
 
-if [ $ONEFLOW_ENABLE_OFCCL == "1" ]; then
+if [ "$ONEFLOW_ENABLE_OFCCL" == "1" ]; then
     NSYS_FILE="ofccl_vit"_${HOST}_${GPUS}_card
 else
     NSYS_FILE="nccl_vit"_${HOST}_${GPUS}_card
