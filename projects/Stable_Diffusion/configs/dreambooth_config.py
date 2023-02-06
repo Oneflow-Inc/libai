@@ -48,7 +48,7 @@ train.update(
         train_micro_batch_size=1,
         test_micro_batch_size=1,
         train_epoch=0,
-        train_iter=20,
+        train_iter=2000,
         log_period=1,
         warmup_ratio=0.01,
         dist=dict(

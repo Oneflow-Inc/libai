@@ -68,7 +68,7 @@ class DreamBoothDataset(Dataset):
         return self._length
 
     def __getitem__(self, index):
-        if self.class_data_root and np.random.rand():
+        if self.class_data_root and np.random.rand() > 0.5:
             class_image = Image.open(self.class_images_path[index % self.num_class_images])
             if not class_image.mode == "RGB":
                 class_image = class_image.convert("RGB")
