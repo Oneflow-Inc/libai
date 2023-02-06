@@ -27,7 +27,6 @@ fi
 
 export ONEFLOW_ENABLE_OFCCL=1
 export DISABLE_NCCL_COMPUTE_STREAM=1
-export ONEFLOW_OFCCL_SKIP_NEGO=0
 export ONEFLOW_DEBUG_MODE=1
 export ONEFLOW_PROFILER_KERNEL_PROFILE_KERNEL_FORWARD_RANGE=1
 
@@ -56,6 +55,9 @@ export DEV_TRY_ROUND=10
 export CHECK_REMAINING_SQE_INTERVAL=10000
 export DEBUG_FILE="/home/panlichen/work/oneflow/log/oneflow_cpu_rank_"
 
+export NUM_ITER_ENV=20
+echo NUM_ITER_ENV=$NUM_ITER_ENV
+
 if [ $GPUS = 2 ]; then
     export CUDA_VISIBLE_DEVICES=4,5
 
@@ -70,6 +72,7 @@ if [ $GPUS = 2 ]; then
     export NUM_TRY_TASKQ_HEAD=100
 elif [ $GPUS = 4 ]; then
     export CUDA_VISIBLE_DEVICES=0,1,4,5
+    export ONEFLOW_OFCCL_SKIP_NEGO=0
 
     #pure dp
     # export BASE_CTX_SWITCH_THRESHOLD=80
@@ -77,18 +80,24 @@ elif [ $GPUS = 4 ]; then
     # export NUM_TRY_TASKQ_HEAD=50
     
     #pure tp
-    export BASE_CTX_SWITCH_THRESHOLD=120
-    export TOLERANT_UNPROGRESSED_CNT=14000
-    export NUM_TRY_TASKQ_HEAD=120
+    # export BASE_CTX_SWITCH_THRESHOLD=120
+    # export TOLERANT_UNPROGRESSED_CNT=14000
+    # export NUM_TRY_TASKQ_HEAD=120
+    #pure tp-no nego
+    export BASE_CTX_SWITCH_THRESHOLD=3000
+    export TOLERANT_UNPROGRESSED_CNT=16000
+    export NUM_TRY_TASKQ_HEAD=200
 elif [  $GPUS = 8 ]; then
+    export ONEFLOW_OFCCL_SKIP_NEGO=1
+
     #pure dp
     # export BASE_CTX_SWITCH_THRESHOLD=120
     # export TOLERANT_UNPROGRESSED_CNT=70000
     # export NUM_TRY_TASKQ_HEAD=240
     
-    #pure tp
-    export BASE_CTX_SWITCH_THRESHOLD=120
-    export TOLERANT_UNPROGRESSED_CNT=17000
+    #pure tp no nego
+    export BASE_CTX_SWITCH_THRESHOLD=4000
+    export TOLERANT_UNPROGRESSED_CNT=8000
     export NUM_TRY_TASKQ_HEAD=100
 fi
 
