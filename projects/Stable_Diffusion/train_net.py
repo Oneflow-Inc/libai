@@ -45,6 +45,7 @@ class SdCheckpointer(HookBase):
     def after_train(self):
         def model_to_local(model):
             model.zero_grad(set_to_none=True)
+            model = model.to_global(sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cpu"))
             return model.to_local()
         pipeline = OneFlowStableDiffusionPipeline.from_pretrained(
             self._model.model_path,
