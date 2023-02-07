@@ -4,11 +4,11 @@ from projects.GLM.modeling_glm import GLMModel
 
 
 cfg = dict(
-    num_layers=2,
+    num_layers=48,
     vocab_size=30592,
-    hidden_size=768,
-    num_attention_heads=16,
-    max_sequence_length=512,
+    hidden_size=4096,
+    num_attention_heads=64,
+    max_sequence_length=1024,
     embedding_dropout_prob=0.1,
     attention_dropout_prob=0.1,
     output_dropout_prob=0.1,
@@ -49,9 +49,9 @@ cfg = dict(
     exponential_decay_length_penalty=None,
     use_cache=False,
     # Tokenizer
-    pad_token_id=0,
-    eos_token_id=50258,
-    bos_token_id=50000,
+    pad_token_id=50000,
+    eos_token_id=50007,
+    bos_token_id=None,
     sep_token_id=None,
     decoder_start_token_id=None,
 )

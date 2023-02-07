@@ -264,19 +264,6 @@ class GLMChineseTokenzier(GLMTokenizerMixin):
         self._cls_token = "[CLS]"
         self._mask_token = "[MASK]"
 
-        self.added_tokens_encoder = {
-            "<|endoftext|>": 50000,
-            "[SEP]": 50001,
-            "[CLS]": 50002,
-            "[MASK]": 50003,
-            "[UNUSED1]": 50004,
-            "[UNUSED2]": 50005,
-            "<|startofpiece|>": 50006,
-            "<|endofpiece|>": 50007,
-            "[sMASK]": 50008,
-            "[gMASK]": 50009,
-        }
-
     @property
     def vocab_size(self):
         return len(self.sp_model)
