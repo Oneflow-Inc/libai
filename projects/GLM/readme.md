@@ -208,3 +208,7 @@ if dist.is_main_process():
 
 >>> [CLS] 凯旋门位于意大利米兰市古城堡旁。1807年为纪念 [MASK] 而建,门高25米,顶上矗立两武士青铜古兵车铸像。 <|endoftext|> <|startofpiece|> 拿破仑军队攻克米兰城 <|endofpiece|>
 ```
+
+#### 使用 One-GLM 训练的模型进行推理
+
+LiBai对于OneFlow的模型加载同样方便，如果你希望使用one-glm训练后的模型进行推理，只需简单的将上述demo中的 GLMLoaderHuggerFace 替换为 GLMLoaderLiBai。
