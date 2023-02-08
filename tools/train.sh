@@ -34,6 +34,110 @@ export GLOG_vmodule=plan_util*=1,of_collective_actor*=1,of_collective_boxing_ker
 # nn_graph*=1,
 # export GLOG_v=1
 
+export SHOW_ALL_PREPARED_COLL=0
+
+export DEV_TRY_ROUND=10
+export CHECK_REMAINING_SQE_INTERVAL=10000
+export DEBUG_FILE="/home/panlichen/work/oneflow/log/oneflow_cpu_rank_"
+
+export NUM_ITER_ENV=20
+echo NUM_ITER_ENV=$NUM_ITER_ENV
+
+if [ $GPUS = 2 ]; then
+    export CUDA_VISIBLE_DEVICES=4,5
+
+    #pure dp
+    # export RECV_SUCCESS_FACTOR=5
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=100
+    # export TOLERANT_UNPROGRESSED_CNT=2000
+    # export NUM_TRY_TASKQ_HEAD=40
+    
+    #pure tp
+    export RECV_SUCCESS_FACTOR=5
+    export RECV_SUCCESS_THRESHOLD=10000
+    export BASE_CTX_SWITCH_THRESHOLD=120
+    export TOLERANT_UNPROGRESSED_CNT=10000
+    export NUM_TRY_TASKQ_HEAD=100
+elif [ $GPUS = 4 ]; then
+    export CUDA_VISIBLE_DEVICES=0,1,4,5
+    export ONEFLOW_OFCCL_SKIP_NEGO=0
+
+    #pure dp
+    # export ONEFLOW_OFCCL_SKIP_NEGO=0
+    # export RECV_SUCCESS_FACTOR=5
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=80
+    # export TOLERANT_UNPROGRESSED_CNT=10000
+    # export NUM_TRY_TASKQ_HEAD=50
+    
+    #pure tp
+    export ONEFLOW_OFCCL_SKIP_NEGO=0
+    export RECV_SUCCESS_FACTOR=40
+    export RECV_SUCCESS_THRESHOLD=10000
+    export BASE_CTX_SWITCH_THRESHOLD=3000
+    export TOLERANT_UNPROGRESSED_CNT=16000
+    export NUM_TRY_TASKQ_HEAD=200
+
+elif [  $GPUS = 8 ]; then
+
+    #pure dp
+    # export ONEFLOW_OFCCL_SKIP_NEGO=0
+    # export RECV_SUCCESS_FACTOR=5
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=120
+    # export TOLERANT_UNPROGRESSED_CNT=70000
+    # export NUM_TRY_TASKQ_HEAD=240
+    
+    #pure tp
+    export ONEFLOW_OFCCL_SKIP_NEGO=1
+    export RECV_SUCCESS_FACTOR=5
+    export RECV_SUCCESS_THRESHOLD=10000
+    export BASE_CTX_SWITCH_THRESHOLD=4000
+    export TOLERANT_UNPROGRESSED_CNT=8000
+    export NUM_TRY_TASKQ_HEAD=10
+
+    #3d
+    # export ONEFLOW_OFCCL_SKIP_NEGO=0
+    # export RECV_SUCCESS_FACTOR=5
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=8000
+    # export TOLERANT_UNPROGRESSED_CNT=80000
+    # export NUM_TRY_TASKQ_HEAD=10
+
+    #2dp4pp
+    # export ONEFLOW_OFCCL_SKIP_NEGO=0
+    # export RECV_SUCCESS_FACTOR=5
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=8000
+    # export TOLERANT_UNPROGRESSED_CNT=80000
+    # export NUM_TRY_TASKQ_HEAD=10
+
+    #2tp4pp
+    # export ONEFLOW_OFCCL_SKIP_NEGO=1
+    # export RECV_SUCCESS_FACTOR=10
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=12000
+    # export TOLERANT_UNPROGRESSED_CNT=8000
+    # export NUM_TRY_TASKQ_HEAD=10
+
+    #4tp2pp
+    # export ONEFLOW_OFCCL_SKIP_NEGO=1
+    # export RECV_SUCCESS_FACTOR=10
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=14000
+    # export TOLERANT_UNPROGRESSED_CNT=8000
+    # export NUM_TRY_TASKQ_HEAD=10
+
+    #4tp2dp
+    # export ONEFLOW_OFCCL_SKIP_NEGO=0
+    # export RECV_SUCCESS_FACTOR=5
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=8000
+    # export TOLERANT_UNPROGRESSED_CNT=9000
+    # export NUM_TRY_TASKQ_HEAD=10
+fi
+
 echo GPUS=$GPUS
 echo ONEFLOW_ENABLE_OFCCL=$ONEFLOW_ENABLE_OFCCL
 echo ONEFLOW_OFCCL_SKIP_NEGO=$ONEFLOW_OFCCL_SKIP_NEGO
@@ -48,60 +152,7 @@ echo GLOG_vmodule=$GLOG_vmodule
 echo GLOG_v=$GLOG_v
 echo GLOG_logtostderr=$GLOG_logtostderr
 
-export SHOW_ALL_PREPARED_COLL=1
-
-export TRAVERSE_TIMES=10
-export DEV_TRY_ROUND=10
-export CHECK_REMAINING_SQE_INTERVAL=10000
-export DEBUG_FILE="/home/panlichen/work/oneflow/log/oneflow_cpu_rank_"
-
-export NUM_ITER_ENV=20
-echo NUM_ITER_ENV=$NUM_ITER_ENV
-
-if [ $GPUS = 2 ]; then
-    export CUDA_VISIBLE_DEVICES=4,5
-
-    #pure dp
-    # export BASE_CTX_SWITCH_THRESHOLD=100
-    # export TOLERANT_UNPROGRESSED_CNT=2000
-    # export NUM_TRY_TASKQ_HEAD=40
-    
-    #pure tp
-    export BASE_CTX_SWITCH_THRESHOLD=120
-    export TOLERANT_UNPROGRESSED_CNT=10000
-    export NUM_TRY_TASKQ_HEAD=100
-elif [ $GPUS = 4 ]; then
-    export CUDA_VISIBLE_DEVICES=0,1,4,5
-    export ONEFLOW_OFCCL_SKIP_NEGO=0
-
-    #pure dp
-    # export BASE_CTX_SWITCH_THRESHOLD=80
-    # export TOLERANT_UNPROGRESSED_CNT=10000
-    # export NUM_TRY_TASKQ_HEAD=50
-    
-    #pure tp
-    # export BASE_CTX_SWITCH_THRESHOLD=120
-    # export TOLERANT_UNPROGRESSED_CNT=14000
-    # export NUM_TRY_TASKQ_HEAD=120
-    #pure tp-no nego
-    export BASE_CTX_SWITCH_THRESHOLD=3000
-    export TOLERANT_UNPROGRESSED_CNT=16000
-    export NUM_TRY_TASKQ_HEAD=200
-elif [  $GPUS = 8 ]; then
-    export ONEFLOW_OFCCL_SKIP_NEGO=1
-
-    #pure dp
-    # export BASE_CTX_SWITCH_THRESHOLD=120
-    # export TOLERANT_UNPROGRESSED_CNT=70000
-    # export NUM_TRY_TASKQ_HEAD=240
-    
-    #pure tp no nego
-    export BASE_CTX_SWITCH_THRESHOLD=4000
-    export TOLERANT_UNPROGRESSED_CNT=8000
-    export NUM_TRY_TASKQ_HEAD=100
-fi
-
-echo TRAVERSE_TIMES=$TRAVERSE_TIMES
+echo RECV_SUCCESS_FACTOR=$RECV_SUCCESS_FACTOR
 echo TOLERANT_UNPROGRESSED_CNT=$TOLERANT_UNPROGRESSED_CNT
 echo BASE_CTX_SWITCH_THRESHOLD=$BASE_CTX_SWITCH_THRESHOLD
 echo NUM_TRY_TASKQ_HEAD=$NUM_TRY_TASKQ_HEAD
