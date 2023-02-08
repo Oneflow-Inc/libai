@@ -34,7 +34,7 @@ export GLOG_vmodule=plan_util*=1,of_collective_actor*=1,of_collective_boxing_ker
 # nn_graph*=1,
 # export GLOG_v=1
 
-export SHOW_ALL_PREPARED_COLL=0
+export SHOW_ALL_PREPARED_COLL=1
 
 export DEV_TRY_ROUND=10
 export CHECK_REMAINING_SQE_INTERVAL=10000
@@ -54,7 +54,7 @@ if [ $GPUS = 2 ]; then
     # export NUM_TRY_TASKQ_HEAD=40
     
     #pure tp
-    export RECV_SUCCESS_FACTOR=5
+    export RECV_SUCCESS_FACTOR=20
     export RECV_SUCCESS_THRESHOLD=10000
     export BASE_CTX_SWITCH_THRESHOLD=120
     export TOLERANT_UNPROGRESSED_CNT=10000
@@ -82,20 +82,20 @@ elif [ $GPUS = 4 ]; then
 elif [  $GPUS = 8 ]; then
 
     #pure dp
-    # export ONEFLOW_OFCCL_SKIP_NEGO=0
-    # export RECV_SUCCESS_FACTOR=5
-    # export RECV_SUCCESS_THRESHOLD=10000
-    # export BASE_CTX_SWITCH_THRESHOLD=120
-    # export TOLERANT_UNPROGRESSED_CNT=70000
-    # export NUM_TRY_TASKQ_HEAD=240
+    export ONEFLOW_OFCCL_SKIP_NEGO=0
+    export RECV_SUCCESS_FACTOR=10
+    export RECV_SUCCESS_THRESHOLD=10000
+    export BASE_CTX_SWITCH_THRESHOLD=100000
+    export TOLERANT_UNPROGRESSED_CNT=88000
+    export NUM_TRY_TASKQ_HEAD=240
     
     #pure tp
-    export ONEFLOW_OFCCL_SKIP_NEGO=1
-    export RECV_SUCCESS_FACTOR=5
-    export RECV_SUCCESS_THRESHOLD=10000
-    export BASE_CTX_SWITCH_THRESHOLD=4000
-    export TOLERANT_UNPROGRESSED_CNT=8000
-    export NUM_TRY_TASKQ_HEAD=10
+    # export ONEFLOW_OFCCL_SKIP_NEGO=1
+    # export RECV_SUCCESS_FACTOR=5
+    # export RECV_SUCCESS_THRESHOLD=10000
+    # export BASE_CTX_SWITCH_THRESHOLD=4000
+    # export TOLERANT_UNPROGRESSED_CNT=8000
+    # export NUM_TRY_TASKQ_HEAD=10
 
     #3d
     # export ONEFLOW_OFCCL_SKIP_NEGO=0
