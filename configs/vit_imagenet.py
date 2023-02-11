@@ -82,6 +82,10 @@ train.scheduler.warmup_method = "linear"
 # Set fp16 ON
 train.amp.enabled = True
 
+# zero
+train.zero_optimization.enabled = False
+train.zero_optimization.stage = 1
+
 # Distributed Settings
 train.dist.pipeline_num_layers = model.cfg.depth
 train.dist.data_parallel_size = 8
