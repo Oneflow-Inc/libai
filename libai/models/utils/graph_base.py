@@ -72,7 +72,6 @@ class GraphBase(nn.Graph):
         self.config.allow_fuse_add_to_output(True)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
-        flow.boxing.nccl.enable_use_compute_stream(True)
 
         # Enable cuda stream for computation and communication as the same stream.
         # This will reduce memory when using model parallelism.
