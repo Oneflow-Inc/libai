@@ -19,12 +19,13 @@ import oneflow.nn as nn
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
 from libai.layers import Linear, LMLogits, RMSLayerNorm
-from libai.models.t5_model import T5Loss as MT5Loss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 from projects.MT5.layers.embed_layer import MT5Embedding
+from projects.MT5.layers.loss_layer import MT5Loss
 from projects.MT5.layers.mask_layer import ExtendedMask
 from projects.MT5.layers.transformer_layer import TransformerLayer
+from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
 
 class MT5Model(flow.nn.Module, Generator):
@@ -169,6 +170,7 @@ class MT5Model(flow.nn.Module, Generator):
         use_cache=False,
         only_encoder=False,
     ):
+
         encoder_input_ids = (
             encoder_input_ids.to_global(placement=dist.get_layer_placement(0))
             if encoder_input_ids is not None
@@ -203,7 +205,8 @@ class MT5Model(flow.nn.Module, Generator):
             self.set_cache(encoder_states=None, past_key_values=None)
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
             enc_embedding_output = self.embedding(encoder_input_ids)
-            enc_hidden_states = enc_embedding_output
+            # transpose [batch_size, seq_len, embed_size] to [seq_len, batch_size, embed_size]
+            enc_hidden_states = enc_embedding_output.transpose(0, 1)
 
             for layer in self.encoder.layers:
                 enc_hidden_states, position_bias = layer(
@@ -222,7 +225,8 @@ class MT5Model(flow.nn.Module, Generator):
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
 
         dec_embedding_output = self.embedding(decoder_input_ids)
-        dec_hidden_states = dec_embedding_output
+        # transpose [batch_size, seq_len, embed_size] to [seq_len, batch_size, embed_size]
+        dec_hidden_states = dec_embedding_output.transpose(0, 1)
         if use_cache:
             presents = []
 
@@ -255,7 +259,7 @@ class MT5Model(flow.nn.Module, Generator):
         else:
             logits = self.lm_head(decoder_states, self.embedding.word_embeddings.weight)
 
-        return logits
+        return {"logits": logits}
 
     def set_cache(self, encoder_states, past_key_values):
         self.encoder_states = encoder_states
@@ -289,7 +293,7 @@ class MT5Model(flow.nn.Module, Generator):
             reordered_decoder_past = reordered_decoder_past + (reordered_layer_past_states,)
         return reordered_decoder_past
 
-    def _prepare_inputs_for_generation(
+    def prepare_inputs_for_generation(
         self,
         input_ids,
         past=None,
@@ -306,6 +310,7 @@ class MT5Model(flow.nn.Module, Generator):
         self.encoder_states = encoder_outputs
         decoder_attn_maks = flow.ones(
             input_ids.size(),
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=flow.placement("cuda", list(range(dist.get_world_size()))),
         )
@@ -321,7 +326,11 @@ class MT5Model(flow.nn.Module, Generator):
 class MT5ForPreTraining(flow.nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
-        self.mt5_model = MT5Model(cfg)
+        if cfg.pretrained_model_path is not None:
+            loader = T5LoaderHuggerFace(MT5Model, cfg, cfg.pretrained_model_path)
+            self.mt5_model = loader.load()
+        else:
+            self.mt5_model = MT5Model(cfg)
         self.loss_func = MT5Loss()
 
     def set_cache(self, encoder_states, past_key_values):
@@ -345,8 +354,9 @@ class MT5ForPreTraining(flow.nn.Module):
             decoder_attn_mask,
             encoder_decoder_attn_mask,
             use_cache=use_cache,
-        )
-
+        )["logits"]
+        # transpose [seq_len, batch_size, vocab_size] to [batch_size, seq_len, vocab_size]
+        logits = logits.transpose(0, 1)
         if lm_labels is not None:
             lm_loss = self.loss_func(logits, lm_labels, loss_mask)
             return lm_loss
@@ -417,3 +427,14 @@ class MT5ForPreTraining(flow.nn.Module):
                 dist_utils.get_layer_stage_id(model.mt5_model.decoder.final_layernorm.layer_idx),
                 dist.get_layer_placement(model.mt5_model.decoder.final_layernorm.layer_idx),
             )
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        for module_block in model.modules():
+            # Old API in OneFlow 0.8
+            if hasattr(module_block, "origin"):
+                if isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).activation_checkpointing = True

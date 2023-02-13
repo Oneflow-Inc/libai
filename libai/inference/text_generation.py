@@ -92,13 +92,13 @@ class TextGenerationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     pipeline = TextGenerationPipeline(
-        "projects/MT5/configs/t5_inference.py",
+        "/path/to/libai/projects/MT5/configs/t5_inference.py",
         data_parallel=1,
         tensor_parallel=2,
         pipeline_parallel=2,
         pipeline_stage_id=[0] * 12 + [1] * 12,
         pipeline_num_layers=12 * 2,
-        model_path="data_test/t5_inference_model",
+        model_path="/path/to/t5-base",
         mode="huggingface",
     )
 

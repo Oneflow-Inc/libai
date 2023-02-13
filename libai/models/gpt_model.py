@@ -72,7 +72,7 @@ class GPTModel(nn.Module):
     """GPT-2 language model. The output of the forward method is logits.
 
     Args:
-        num_layers (int): The number of ``TransformerLayer`` in the gpt model.
+        hidden_layers (int): The number of ``TransformerLayer`` in the gpt model.
         vocab_size (int): The size of vocabulary file.
         hidden_size (int): The size of hidden states.
         ffn_hidden_size (int):
@@ -117,7 +117,7 @@ class GPTModel(nn.Module):
     @configurable
     def __init__(
         self,
-        num_layers,
+        hidden_layers,
         vocab_size,
         hidden_size,
         ffn_hidden_size,
@@ -139,7 +139,7 @@ class GPTModel(nn.Module):
         super().__init__()
         init_method = init_method_normal(sigma=initializer_range)
         if use_scaled_init_for_output_weights:
-            output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
+            output_layer_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         else:
             output_layer_init_method = init_method
 
@@ -153,7 +153,7 @@ class GPTModel(nn.Module):
         )
 
         self.transformer = Transformer(
-            num_layers,
+            hidden_layers,
             hidden_size,
             ffn_hidden_size,
             num_attention_heads,
@@ -174,7 +174,7 @@ class GPTModel(nn.Module):
     @classmethod
     def from_config(cls, cfg):
         return {
-            "num_layers": cfg.num_layers,
+            "hidden_layers": cfg.hidden_layers,
             "vocab_size": cfg.vocab_size,
             "hidden_size": cfg.hidden_size,
             "ffn_hidden_size": cfg.ffn_hidden_size,
@@ -256,7 +256,7 @@ class GPTEmbedding(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self,
-        num_layers,
+        hidden_layers,
         hidden_size,
         ffn_hidden_size,
         num_attention_heads,
@@ -272,7 +272,7 @@ class Transformer(nn.Module):
         apply_residual_post_layernorm=False,
     ):
         super().__init__()
-        self.num_layers = num_layers
+        self.hidden_layers = hidden_layers
 
         def build_layer(layer_number):
             return TransformerLayer(
@@ -293,7 +293,7 @@ class Transformer(nn.Module):
                 layer_idx=layer_number,
             )
 
-        self.layers = nn.ModuleList([build_layer(i) for i in range(self.num_layers)])
+        self.layers = nn.ModuleList([build_layer(i) for i in range(self.hidden_layers)])
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
 
     def forward(self, hidden_states, attention_mask):

@@ -89,9 +89,8 @@ class GraphBase(nn.Graph):
                 )
                 self.config.set_auto_parallel_computation_cost_ratio(0.05)
                 self.config.set_auto_parallel_wait_time(1.65e4)
-                self.config.enable_auto_parallel_mainstem_algo(auto_parallel_conf.mainstem_algo)
+                self.config.enable_auto_parallel_trunk_algo(auto_parallel_conf.trunk_algo)
                 self.config.enable_auto_parallel_sbp_collector(auto_parallel_conf.sbp_collector)
-                flow.boxing.nccl.enable_use_compute_stream(False)
             except RuntimeWarning:
                 import warnings
 
@@ -115,17 +114,6 @@ class GraphBase(nn.Graph):
                 loss_dict = self.model(**kwargs)
                 losses = sum(v for k, v in loss_dict.items() if "loss" in k)
                 losses.backward()
-                # set loss_dict on rank0
-                # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
-                loss_dict = {
-                    k: v.to_global(
-                        placement=flow.placement(
-                            "cpu", ranks=[0] if v.placement.ranks.ndim == 1 else [[0]]
-                        ),
-                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    )
-                    for k, v in loss_dict.items()
-                }
                 return loss_dict
         else:
             logger.info(

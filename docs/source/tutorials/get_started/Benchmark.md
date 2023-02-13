@@ -65,7 +65,7 @@ Here we explain the evaluation indicators in the following tables:
                 samples/s</td>
         </tr>
         <tr class="even">
-            <td>nl24_fp16_8x1x1_mb16_gb64_1n4g</td>
+            <td>nl24_fp16_4x1x1_mb16_gb64_1n4g</td>
             <td><a
                     href="https://oneflow-test.oss-cn-beijing.aliyuncs.com/OneFlowAutoTest/huoshanyingqin/55b822e_supple/1n4g/LibAI_bert_nl24_nah16_hs1024_FP16_acfalse_mp1_pp1_mb16_gb64_1n4g_20220706_103618805733678/output.log">176.88</a>
                 samples/s</td>

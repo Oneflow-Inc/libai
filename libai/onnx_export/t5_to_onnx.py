@@ -19,19 +19,21 @@ from oneflow import nn
 from oneflow_onnx.oneflow2onnx.util import convert_to_onnx_and_check
 
 from libai.config import LazyConfig
-from libai.engine import DefaultTrainer
+from projects.MT5.mt5_model import MT5Model
+from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
 
 def get_model(config_file):
     cfg = LazyConfig.load(config_file)
 
-    cfg.model.cfg.mlp_type = "t5"
+    cfg.model.cfg.model_type = "mt5"
     cfg.model.cfg.pretrained_model_path = None
     cfg.dataloader = None
     cfg.tokenization = None
 
     print("Building model....")
-    model = DefaultTrainer.build_model(cfg)
+    loader = T5LoaderHuggerFace(MT5Model, cfg.model.cfg, "/path/to/model")
+    model = loader.load()
     print("Build model finished.")
 
     return model
@@ -57,7 +59,7 @@ class t5Graph(nn.Graph):
             decoder_attn_mask,
             encoder_decoder_attn_mask,
         )
-        return out["prediction_scores"]
+        return out
 
 
 if __name__ == "__main__":

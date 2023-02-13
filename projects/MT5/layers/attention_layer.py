@@ -158,7 +158,8 @@ class MultiheadAttention(nn.Module):
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
-        bsz, real_seq_length = hidden_states.size()[:2]
+        # hidden_states shape: [seq_len, batch_size, hidden_size]
+        real_seq_length, bsz = hidden_states.size()[:2]
 
         if past_key_value is not None:
             assert (
@@ -167,18 +168,19 @@ class MultiheadAttention(nn.Module):
             f"Got {len(past_key_value)} past states.\n"
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
-        key_length = real_seq_length if encoder_states is None else encoder_states.shape[1]
+        key_length = real_seq_length if encoder_states is None else encoder_states.shape[0]
 
         if self.is_cross_attention:
             query = self.query(hidden_states)
-            query = query.view(bsz, -1, self.num_heads, self.head_size)
-            query = query.permute(0, 2, 1, 3)
+            query = query.view(-1, bsz, self.num_heads, self.head_size)
+            query = query.permute(1, 2, 0, 3)  # bsz, num_head, seq_len, head_size
+
             if past_key_value is not None:
                 key, value = past_key_value
             elif encoder_states is not None:
                 key_value = self.key_value(encoder_states)
-                key_value = key_value.view(bsz, -1, self.num_heads, 2 * self.head_size)
-                key_value = key_value.permute(0, 2, 1, 3)
+                key_value = key_value.view(-1, bsz, self.num_heads, 2 * self.head_size)
+                key_value = key_value.permute(1, 2, 0, 3)
                 key, value = flow.chunk(key_value, chunks=2, dim=-1)
             else:
                 raise ValueError(
@@ -186,11 +188,16 @@ class MultiheadAttention(nn.Module):
                 )
         else:
             query_key_value = self.query_key_value(hidden_states)
-            query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
-            query_key_value = query_key_value.permute(
-                0, 2, 1, 3
-            )  # [bsz, num_heads, src_len, 3 * head_size]
-            query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+            if use_cache:
+                query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
+                query_key_value = query_key_value.permute(
+                    0, 2, 1, 3
+                )  # [bsz, num_heads, src_len, 3 * head_size]
+                query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+            else:
+                attention_scores, value = flow._C.fused_self_attention(
+                    query_key_value, head_size=self.head_size, alpha=1
+                )
             if past_key_value is not None:
                 past_key, past_value = past_key_value
                 key = flow.cat((past_key.type_as(key), key), dim=2)
@@ -199,7 +206,8 @@ class MultiheadAttention(nn.Module):
         if use_cache:
             past_key_value = (key, value)
 
-        attention_scores = flow.matmul(query, key, transpose_b=True)
+        if self.is_cross_attention or use_cache:
+            attention_scores = flow.matmul(query, key, transpose_b=True, alpha=1)
 
         if position_bias is None:
             if not self.has_relative_attention_bias:
@@ -216,22 +224,29 @@ class MultiheadAttention(nn.Module):
             if past_key_value is not None:
                 position_bias = position_bias[:, :, -hidden_states.size(1) :, :]
 
-            position_bias = position_bias + (1 - attention_mask) * -1000
-            position_bias = position_bias.to_global(placement=attention_scores.placement)
-
-        attention_scores = attention_scores + position_bias
-
         if attention_mask is not None:
-            attention_scores = flow.mul(attention_scores, attention_mask)
-            attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-            attention_weights = flow.softmax(attention_scores, dim=-1)
-            attention_weights = self.dropout(attention_weights)
+            if use_cache:
+                attention_mask = attention_mask.expand_as(attention_scores)
+
+            attention_weights = flow._C.fused_bias_add_scale_mask_softmax_dropout(
+                attention_scores,
+                position_bias,
+                attention_mask,
+                fill_value=-10000.0,
+                scale=1,
+                p=self.attention_dropout_prob,
+            )[0]
         else:
+            attention_scores = attention_scores + position_bias
             attention_weights = flow.softmax(attention_scores, dim=-1)
             attention_weights = self.dropout(attention_weights)
 
         context = flow.matmul(attention_weights, value)
-        context = context.transpose(1, 2)
+
+        """ transpose [batch_size, num_head, seq_len, head_size] to
+            [seq_len, batch_size, num_head, head_size]
+        """
+        context = flow._C.transpose(context, perm=(2, 0, 1, 3))
 
         output = self.dense(context.flatten(2))
 
