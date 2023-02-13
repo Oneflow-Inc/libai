@@ -113,7 +113,7 @@ class GraphBase(nn.Graph):
                     "Please wait for a moment ..."
                 )
                 loss_dict = self.model(**kwargs)
-                losses = sum(loss_dict.values())
+                losses = sum(v for k, v in loss_dict.items() if "loss" in k)
                 losses.backward()
                 # set loss_dict on rank0
                 # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
