@@ -27,10 +27,11 @@ fi
 
 export ONEFLOW_ENABLE_OFCCL=1
 export DISABLE_NCCL_COMPUTE_STREAM=1
+# export ONEFLOW_TIME_SHAPE=1
 export ONEFLOW_DEBUG_MODE=1
 export ONEFLOW_PROFILER_KERNEL_PROFILE_KERNEL_FORWARD_RANGE=1
 
-export GLOG_vmodule=plan_util*=1,of_collective_actor*=1,of_collective_boxing_kernels*=1,collective_backend_ofccl*=1,hierarchical_sub_task_graph_builder_impl*=1,of_request_store*=1,request_store*=1,runtime*=1,scheduler*=1,collective_manager*=1
+export GLOG_vmodule=plan_util*=1,of_collective_actor*=1,of_collective_boxing_kernels*=1,collective_backend_ofccl*=1,hierarchical_sub_task_graph_builder_impl*=1,of_request_store*=1,request_store*=1,runtime*=1,scheduler*=1,collective_manager*=1,of_collective_boxing_sub_task_graph_builder*=1
 # nn_graph*=1,
 # export GLOG_v=1
 
