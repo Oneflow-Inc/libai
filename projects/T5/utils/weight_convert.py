@@ -99,9 +99,9 @@ def convert_state_dict(oneflow_state_dict_path, libai_cfg, prefix="t5_model."):
 
                     new_key = "encoder.block." + layers + ".layer.0.SelfAttention.q.weight"
                     torch_state_dict[new_key] = convert_tensor(q)
-                    new_key = new_key.replace("q", "k")
+                    new_key = new_key.replace(".q", ".k")
                     torch_state_dict[new_key] = convert_tensor(k)
-                    new_key = new_key.replace("k", "v")
+                    new_key = new_key.replace(".k", ".v")
                     torch_state_dict[new_key] = convert_tensor(v)
                 if keys[op_idx + 1] == "dense":
                     new_key = "encoder.block." + layers + ".layer.0.SelfAttention.o.weight"
@@ -144,9 +144,9 @@ def convert_state_dict(oneflow_state_dict_path, libai_cfg, prefix="t5_model."):
 
                     new_key = "decoder.block." + layers + ".layer.0.SelfAttention.q.weight"
                     torch_state_dict[new_key] = convert_tensor(q)
-                    new_key = new_key.replace("q", "k")
+                    new_key = new_key.replace(".q", ".k")
                     torch_state_dict[new_key] = convert_tensor(k)
-                    new_key = new_key.replace("k", "v")
+                    new_key = new_key.replace(".k", ".v")
                     torch_state_dict[new_key] = convert_tensor(v)
                 if keys[op_idx + 1] == "dense":
                     new_key = "decoder.block." + layers + ".layer.0.SelfAttention.o.weight"
@@ -176,7 +176,7 @@ def convert_state_dict(oneflow_state_dict_path, libai_cfg, prefix="t5_model."):
                     k, v = flow.chunk(x, chunks=2, dim=0)
                     new_key = "decoder.block." + layers + ".layer.1.EncDecAttention.k.weight"
                     torch_state_dict[new_key] = convert_tensor(k)
-                    new_key = new_key.replace("k", "v")
+                    new_key = new_key.replace(".k", ".v")
                     torch_state_dict[new_key] = convert_tensor(v)
                 if keys[op_idx + 1] == "dense":
                     new_key = "decoder.block." + layers + ".layer.1.EncDecAttention.o.weight"
@@ -185,20 +185,20 @@ def convert_state_dict(oneflow_state_dict_path, libai_cfg, prefix="t5_model."):
             elif op_name == "mlp":
                 if libai_cfg.get("model_type") == "mt5":
                     if keys[op_idx + 1] == "wi_0":
-                        new_key = "decoder.block." + layers + ".layer.1.DenseReluDense.wi_0.weight"
+                        new_key = "decoder.block." + layers + ".layer.2.DenseReluDense.wi_0.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
                     if keys[op_idx + 1] == "wi_1":
-                        new_key = "decoder.block." + layers + ".layer.1.DenseReluDense.wi_1.weight"
+                        new_key = "decoder.block." + layers + ".layer.2.DenseReluDense.wi_1.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
                     if keys[op_idx + 1] == "wo":
-                        new_key = "decoder.block." + layers + ".layer.1.DenseReluDense.wo.weight"
+                        new_key = "decoder.block." + layers + ".layer.2.DenseReluDense.wo.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
                 elif libai_cfg.get("model_type") == "t5":
                     if keys[op_idx + 1] == "dense_h_to_4h":
-                        new_key = "decoder.block." + layers + ".layer.1.DenseReluDense.wi.weight"
+                        new_key = "decoder.block." + layers + ".layer.2.DenseReluDense.wi.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
                     if keys[op_idx + 1] == "dense_4h_to_h":
-                        new_key = "decoder.block." + layers + ".layer.1.DenseReluDense.wo.weight"
+                        new_key = "decoder.block." + layers + ".layer.2.DenseReluDense.wo.weight"
                         torch_state_dict[new_key] = convert_tensor(oneflow_state_dict.pop(key))
 
     return torch_state_dict
