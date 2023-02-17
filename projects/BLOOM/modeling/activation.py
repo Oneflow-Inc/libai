@@ -43,7 +43,9 @@ def bloom_gelu_back(g, x):
     """
     x = x[0]
     tanh_out = flow.tanh(0.79788456 * x * (1 + 0.044715 * x * x))
-    ff = 0.5 * x * ((1 - tanh_out * tanh_out) * (0.79788456 + 0.1070322243 * x * x)) + 0.5 * (1 + tanh_out)
+    ff = 0.5 * x * ((1 - tanh_out * tanh_out) * (0.79788456 + 0.1070322243 * x * x)) + 0.5 * (
+        1 + tanh_out
+    )
     return ff * g
 
 
@@ -77,4 +79,3 @@ class BloomGelu(nn.Module):
             return GeLUFunction.apply(x)
         else:
             return bloom_gelu_forward(x)
-        

@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from oneflow import nn
+
 from libai.layers import LayerNorm
 from projects.BLOOM.modeling.attention import BloomAttention
 from projects.BLOOM.modeling.mlp import BloomMLP
@@ -22,7 +23,7 @@ from projects.BLOOM.modeling.mlp import BloomMLP
 
 class BloomBlock(nn.Module):
     def __init__(
-        self, 
+        self,
         hidden_size,
         n_head,
         layer_norm_epsilon,
@@ -45,13 +46,15 @@ class BloomBlock(nn.Module):
             n_head=n_head,
             hidden_dropout=hidden_dropout,
             attention_dropout=attention_dropout,
-            pretraining_tp = pretraining_tp,
-            slow_but_exact = slow_but_exact,
-            init_method = init_method,
+            pretraining_tp=pretraining_tp,
+            slow_but_exact=slow_but_exact,
+            init_method=init_method,
             output_layer_init_method=output_layer_init_method,
-            layer_idx = layer_idx
+            layer_idx=layer_idx,
         )
-        self.post_attention_layernorm = LayerNorm(hidden_size, eps=layer_norm_epsilon, layer_idx=layer_idx)
+        self.post_attention_layernorm = LayerNorm(
+            hidden_size, eps=layer_norm_epsilon, layer_idx=layer_idx
+        )
 
         self.mlp = BloomMLP(
             hidden_size,
@@ -60,19 +63,19 @@ class BloomBlock(nn.Module):
             hidden_dropout,
             init_method,
             output_layer_init_method,
-            layer_idx
+            layer_idx,
         )
 
         self.apply_residual_connection_post_layernorm = apply_residual_connection_post_layernorm
         self.hidden_dropout = hidden_dropout
-        
+
     def forward(
         self,
         hidden_states,
         alibi,
         attention_mask,
         layer_past=None,
-        head_mask = None,
+        head_mask=None,
         use_cache: bool = False,
         output_attentions: bool = False,
     ):
@@ -98,7 +101,7 @@ class BloomBlock(nn.Module):
         attention_output = attn_outputs[0]
 
         outputs = attn_outputs[1:]
-        
+
         layernorm_output = self.post_attention_layernorm(attention_output)
 
         if self.apply_residual_connection_post_layernorm:

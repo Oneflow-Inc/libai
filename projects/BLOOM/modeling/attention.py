@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from oneflow import nn
-from libai.layers import Linear
 import math
+
 import oneflow as flow
+from oneflow import nn
 from oneflow.nn import functional as F
+
+from libai.layers import Linear
 
 
 def dropout_add(x, residual, prob, training):
@@ -63,24 +65,24 @@ class BloomAttention(nn.Module):
         self.hidden_dropout = hidden_dropout
         if output_layer_init_method is None:
             output_layer_init_method = init_method
-        
+
         if self.head_dim * self.num_heads != self.hidden_size:
             raise ValueError(
                 f"`hidden_size` must be divisible by num_heads (got `hidden_size`: {self.hidden_size} and `num_heads`:"
                 f" {self.num_heads})."
             )
-            
+
         # Layer-wise attention scaling
         self.inv_norm_factor = 1.0 / math.sqrt(self.head_dim)
         self.beta = 1.0
-        
+
         self.query_key_value = Linear(
-            self.hidden_size, 
-            3 * self.hidden_size, 
+            self.hidden_size,
+            3 * self.hidden_size,
             bias=True,
             parallel="col",
             init_method=init_method,
-            layer_idx=layer_idx,    
+            layer_idx=layer_idx,
         )
         self.dense = Linear(
             self.hidden_size,
@@ -106,7 +108,7 @@ class BloomAttention(nn.Module):
         batch_size, seq_length, three_times_hidden_size = fused_qkv.shape
         fused_qkv = fused_qkv.view(batch_size, seq_length, self.num_heads, 3, self.head_dim)
         return fused_qkv[..., 0, :], fused_qkv[..., 1, :], fused_qkv[..., 2, :]
-    
+
     def _merge_heads(self, x):
         """
         Merge heads together over the last dimenstion
@@ -131,17 +133,17 @@ class BloomAttention(nn.Module):
 
         # batch_size, seq_length, num_heads, head_dim -> batch_size, seq_length, num_heads * head_dim
         return x.reshape(batch_size, seq_length, self.num_heads * self.head_dim)
-    
+
     def forward(
         self,
         hidden_states,
         residual,
         alibi,
         attention_mask,
-        layer_past = None,
-        head_mask = None,
-        use_cache = False,
-        output_attentions = False,
+        layer_past=None,
+        head_mask=None,
+        use_cache=False,
+        output_attentions=False,
     ):
         fused_qkv = self.query_key_value(hidden_states)  # [batch_size, seq_length, 3 x hidden_size]
 
@@ -150,9 +152,15 @@ class BloomAttention(nn.Module):
 
         batch_size, q_length, _, _ = query_layer.shape
 
-        query_layer = query_layer.transpose(1, 2).reshape(batch_size * self.num_heads, q_length, self.head_dim)
-        key_layer = key_layer.permute(0, 2, 3, 1).reshape(batch_size * self.num_heads, self.head_dim, q_length)
-        value_layer = value_layer.transpose(1, 2).reshape(batch_size * self.num_heads, q_length, self.head_dim)
+        query_layer = query_layer.transpose(1, 2).reshape(
+            batch_size * self.num_heads, q_length, self.head_dim
+        )
+        key_layer = key_layer.permute(0, 2, 3, 1).reshape(
+            batch_size * self.num_heads, self.head_dim, q_length
+        )
+        value_layer = value_layer.transpose(1, 2).reshape(
+            batch_size * self.num_heads, q_length, self.head_dim
+        )
         if layer_past is not None:
             past_key, past_value = layer_past
             key_layer = flow.cat((past_key, key_layer), dim=2)
@@ -176,7 +184,9 @@ class BloomAttention(nn.Module):
         attention_scores = matmul_result.view(batch_size, self.num_heads, q_length, kv_length)
 
         input_dtype = attention_scores.dtype
-        attn_weights = flow.masked_fill(attention_scores, attention_mask, flow.finfo(attention_scores.dtype).min)
+        attn_weights = flow.masked_fill(
+            attention_scores, attention_mask, flow.finfo(attention_scores.dtype).min
+        )
         attention_probs = F.softmax(attn_weights, dim=-1).to(input_dtype)
 
         attention_probs = self.attention_dropout(attention_probs)
@@ -184,7 +194,9 @@ class BloomAttention(nn.Module):
         if head_mask is not None:
             attention_probs = attention_probs * head_mask
 
-        attention_probs_reshaped = attention_probs.view(batch_size * self.num_heads, q_length, kv_length)
+        attention_probs_reshaped = attention_probs.view(
+            batch_size * self.num_heads, q_length, kv_length
+        )
 
         context_layer = flow.bmm(attention_probs_reshaped, value_layer)
 

@@ -14,11 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow as flow
 import math
-from libai.utils import distributed as dist
+
+import oneflow as flow
 from oneflow.nn import functional as F
 
+from libai.utils import distributed as dist
 
 
 def _make_causal_mask(input_ids_shape, past_key_values_length):
@@ -27,7 +28,7 @@ def _make_causal_mask(input_ids_shape, past_key_values_length):
     """
     batch_size, target_length = input_ids_shape
     mask = flow.ones(
-        (target_length, target_length + past_key_values_length), 
+        (target_length, target_length + past_key_values_length),
         dtype=flow.bool,
         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         placement=dist.get_layer_placement(0),
@@ -44,7 +45,9 @@ def _make_causal_mask(input_ids_shape, past_key_values_length):
     if past_key_values_length > 0:
         mask[:, :past_key_values_length] = False
 
-    expanded_mask = mask[None, None, :, :].expand(batch_size, 1, target_length, target_length + past_key_values_length)
+    expanded_mask = mask[None, None, :, :].expand(
+        batch_size, 1, target_length, target_length + past_key_values_length
+    )
     return expanded_mask
 
 
@@ -63,13 +66,13 @@ def build_alibi_tensor(attention_mask, num_heads, dtype):
     batch_size, seq_length = attention_mask.shape
     closest_power_of_2 = 2 ** math.floor(math.log2(num_heads))
     base = flow.tensor(
-        2 ** (-(2 ** -(math.log2(closest_power_of_2) - 3))), 
+        2 ** (-(2 ** -(math.log2(closest_power_of_2) - 3))),
         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         placement=attention_mask.placement,
     )
     powers = flow.arange(
-        1, 
-        1 + closest_power_of_2, 
+        1,
+        1 + closest_power_of_2,
         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         placement=attention_mask.placement,
     )
@@ -77,15 +80,15 @@ def build_alibi_tensor(attention_mask, num_heads, dtype):
 
     if closest_power_of_2 != num_heads:
         extra_base = flow.tensor(
-            2 ** (-(2 ** -(math.log2(2 * closest_power_of_2) - 3))), 
+            2 ** (-(2 ** -(math.log2(2 * closest_power_of_2) - 3))),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=attention_mask.placement,
         )
         num_remaining_heads = min(closest_power_of_2, num_heads - closest_power_of_2)
         extra_powers = flow.arange(
-            1, 
-            1 + 2 * num_remaining_heads, 
-            2, 
+            1,
+            1 + 2 * num_remaining_heads,
+            2,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=attention_mask.placement,
         )

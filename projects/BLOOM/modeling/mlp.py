@@ -14,23 +14,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from oneflow import nn
 import oneflow as flow
+import oneflow.nn.functional as F
+from oneflow import nn
+
+from libai.layers import Linear
 from projects.BLOOM.modeling.activation import BloomGelu
 from projects.BLOOM.modeling.attention import dropout_add
-import oneflow.nn.functional as F
-from libai.layers import Linear
 
 
 class BloomMLP(nn.Module):
     def __init__(
-        self, 
-        hidden_size, 
-        pretraining_tp, 
-        slow_but_exact, 
-        hidden_dropout, 
-        init_method=None, 
-        output_layer_init_method=None, 
+        self,
+        hidden_size,
+        pretraining_tp,
+        slow_but_exact,
+        hidden_dropout,
+        init_method=None,
+        output_layer_init_method=None,
         layer_idx=0,
     ):
         super().__init__()
@@ -41,7 +42,7 @@ class BloomMLP(nn.Module):
         self.pretraining_tp = pretraining_tp
         self.slow_but_exact = slow_but_exact
         self.dense_h_to_4h = Linear(
-            hidden_size, 
+            hidden_size,
             4 * hidden_size,
             parallel="col",
             init_method=init_method,
@@ -49,7 +50,7 @@ class BloomMLP(nn.Module):
         )
         self.gelu_impl = BloomGelu()
         self.dense_4h_to_h = Linear(
-            4 * hidden_size, 
+            4 * hidden_size,
             hidden_size,
             parallel="row",
             init_method=output_layer_init_method,
