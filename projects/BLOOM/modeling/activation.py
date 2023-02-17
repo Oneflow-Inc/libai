@@ -20,8 +20,8 @@ from oneflow import nn
 
 def bloom_gelu_forward(x):
     """
-    Custom bias GELU function. Adapted from Megatron-DeepSpeed code. Here we use a simple implementation (inference) to
-    make the model jitable.
+    Custom bias GELU function. Adapted from Megatron-DeepSpeed code. Here we use a simple
+    implementation (inference) to make the model jitable.
 
     Args:
         x (`torch.tensor`, *required*):
@@ -32,8 +32,8 @@ def bloom_gelu_forward(x):
 
 def bloom_gelu_back(g, x):
     """
-    gradient of tanh approximation of gelu gradient of actual gelu is: 0.5 * (1. + torch.erf(x * 0.70710678)) +
-    0.3989423 * x * torch.exp(-0.5 * x * x)
+    gradient of tanh approximation of gelu gradient of actual gelu is:
+    0.5 * (1. + torch.erf(x * 0.70710678)) + 0.3989423 * x * torch.exp(-0.5 * x * x)
 
     Args:
         g (`torch.tensor`, *required*):
@@ -64,11 +64,12 @@ class GeLUFunction(flow.autograd.Function):
 
 class BloomGelu(nn.Module):
     """
-    BloomBiasGelu wrapper function that make use of the simple function on inference mode to make the model
-    torchscriptable and use the autograd function in training mode to get the accurate results of the gradients Partly
-    copied from Megatron-DeepSpeed code and adapted for our needs
+    BloomBiasGelu wrapper function that make use of the simple function on inference mode to make
+    the model torchscriptable and use the autograd function in training mode to get the accurate
+    results of the gradients Partly copied from Megatron-DeepSpeed code and adapted for our needs
 
-    See here why autograd functions are not torchscriptable: https://github.com/pytorch/pytorch/issues/22329
+    See here why autograd functions are not torchscriptable:
+    https://github.com/pytorch/pytorch/issues/22329
     """
 
     def __init__(self):

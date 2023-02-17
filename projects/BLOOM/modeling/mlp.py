@@ -36,7 +36,7 @@ class BloomMLP(nn.Module):
     ):
         super().__init__()
         hidden_size = hidden_size
-        if output_layer_init_method == None:
+        if output_layer_init_method is None:
             output_layer_init_method = init_method
 
         self.pretraining_tp = pretraining_tp

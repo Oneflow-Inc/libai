@@ -68,7 +68,8 @@ class BloomAttention(nn.Module):
 
         if self.head_dim * self.num_heads != self.hidden_size:
             raise ValueError(
-                f"`hidden_size` must be divisible by num_heads (got `hidden_size`: {self.hidden_size} and `num_heads`:"
+                f"`hidden_size` must be divisible by num_heads "
+                f"(got `hidden_size`: {self.hidden_size} and `num_heads`:"
                 f" {self.num_heads})."
             )
 
@@ -95,14 +96,16 @@ class BloomAttention(nn.Module):
 
     def _split_heads(self, fused_qkv):
         """
-        Split the last dimension into (num_heads, head_dim) without making any copies, results share same memory
-        storage as `fused_qkv`
+        Split the last dimension into (num_heads, head_dim) without making any copies, results share
+        same memory storage as `fused_qkv`
 
         Args:
-            fused_qkv (`torch.tensor`, *required*): [batch_size, seq_length, num_heads * 3 * head_dim]
+            fused_qkv (`torch.tensor`, *required*):
+                [batch_size, seq_length, num_heads * 3 * head_dim]
 
         Returns:
-            query: [batch_size, seq_length, num_heads, head_dim] key: [batch_size, seq_length, num_heads, head_dim]
+            query: [batch_size, seq_length, num_heads, head_dim]
+            key: [batch_size, seq_length, num_heads, head_dim]
             value: [batch_size, seq_length, num_heads, head_dim]
         """
         batch_size, seq_length, three_times_hidden_size = fused_qkv.shape
@@ -120,18 +123,18 @@ class BloomAttention(nn.Module):
             torch.tensor: [batch_size, seq_length, num_heads * head_dim]
         """
         # What we want to achieve is:
-        # batch_size * num_heads, seq_length, head_dim -> batch_size, seq_length, num_heads * head_dim
+        # batch_size * num_heads, seq_len, head_dim -> batch_size, seq_len, num_heads * head_dim
         batch_size_and_num_heads, seq_length, _ = x.shape
         batch_size = batch_size_and_num_heads // self.num_heads
 
         # First view to decompose the batch size
-        # batch_size * num_heads, seq_length, head_dim -> batch_size, num_heads, seq_length, head_dim
+        # batch_size * num_heads, seq_len, head_dim -> batch_size, num_heads, seq_len, head_dim
         x = x.view(batch_size, self.num_heads, seq_length, self.head_dim)
 
         # batch_size, num_heads, seq_length, head_dim -> batch_size, seq_length, num_heads, head_dim
         x = x.permute(0, 2, 1, 3)
 
-        # batch_size, seq_length, num_heads, head_dim -> batch_size, seq_length, num_heads * head_dim
+        # batch_size, seq_len, num_heads, head_dim -> batch_size, seq_len, num_heads * head_dim
         return x.reshape(batch_size, seq_length, self.num_heads * self.head_dim)
 
     def forward(

@@ -17,7 +17,6 @@
 import math
 
 import oneflow as flow
-from oneflow.nn import functional as F
 
 from libai.utils import distributed as dist
 
@@ -53,7 +52,8 @@ def _make_causal_mask(input_ids_shape, past_key_values_length):
 
 def _expand_mask(mask, tgt_length):
     """
-    Expands attention_mask from `[batch_size, src_length]` to `[batch_size, 1, tgt_length, src_length]`.
+    Expands attention_mask from `[batch_size, src_length]` to
+    `[batch_size, 1, tgt_length, src_length]`.
     """
     batch_size, src_length = mask.shape
     tgt_length = tgt_length if tgt_length is not None else src_length

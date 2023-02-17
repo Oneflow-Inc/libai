@@ -17,6 +17,7 @@
 from oneflow import nn
 
 from libai.layers import LayerNorm
+from libai.utils import distributed as dist
 from projects.BLOOM.modeling.attention import BloomAttention
 from projects.BLOOM.modeling.mlp import BloomMLP
 
@@ -39,7 +40,7 @@ class BloomBlock(nn.Module):
         super().__init__()
         hidden_size = hidden_size
 
-        self.input_layernorm = LayerNorm(hidden_size, eps=layer_norm_epsilon)
+        self.input_layernorm = LayerNorm(hidden_size, eps=layer_norm_epsilon, layer_idx=layer_idx)
         self.num_heads = n_head
         self.self_attention = BloomAttention(
             hidden_size=hidden_size,
@@ -68,6 +69,7 @@ class BloomBlock(nn.Module):
 
         self.apply_residual_connection_post_layernorm = apply_residual_connection_post_layernorm
         self.hidden_dropout = hidden_dropout
+        self.layer_idx = layer_idx
 
     def forward(
         self,
@@ -79,6 +81,17 @@ class BloomBlock(nn.Module):
         use_cache: bool = False,
         output_attentions: bool = False,
     ):
+        # Change placement for pipeline parallelsim
+        hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
+
+        alibi = alibi.to_global(placement=dist.get_layer_placement(self.layer_idx))
+
+        # hidden_states shape: (batch_size, seq_length, hidden_size)
+        if attention_mask is not None:
+            attention_mask = attention_mask.to_global(
+                placement=dist.get_layer_placement(self.layer_idx)
+            )
+
         layernorm_output = self.input_layernorm(hidden_states)
 
         if self.apply_residual_connection_post_layernorm:

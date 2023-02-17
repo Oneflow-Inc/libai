@@ -77,7 +77,7 @@ class BloomModel(nn.Module):
                     slow_but_exact=slow_but_exact,
                     init_method=init_method,
                     output_layer_init_method=scaled_init_method,
-                    apply_residual_connection_post_layernorm=apply_residual_connection_post_layernorm,
+                    apply_residual_connection_post_layernorm=apply_residual_connection_post_layernorm,  # noqa
                     layer_idx=i,
                 )
                 for i in range(hidden_layers)
@@ -97,7 +97,7 @@ class BloomModel(nn.Module):
             "padding_idx": cfg.padding_idx,
             "pretraining_tp": cfg.pretraining_tp,
             "slow_but_exact": cfg.slow_but_exact,
-            "apply_residual_connection_post_layernorm": cfg.apply_residual_connection_post_layernorm,
+            "apply_residual_connection_post_layernorm": cfg.apply_residual_connection_post_layernorm,  # noqa
             "hidden_dropout": cfg.hidden_dropout,
             "attention_dropout": cfg.attention_dropout,
             "amp_enabled": cfg.amp_enabled,
@@ -147,16 +147,18 @@ class BloomModel(nn.Module):
         Prepare the head mask if needed.
 
         Args:
-            head_mask (`torch.Tensor` with shape `[num_heads]` or `[num_hidden_layers x num_heads]`, *optional*):
-                The mask indicating if we should keep the heads or not (1.0 for keep, 0.0 for discard).
+            head_mask (`torch.Tensor` with shape `[num_heads]` or `[num_hidden_layers x num_heads]`,
+            *optional*):
+                The mask indicating if we should keep the heads or not (1.0 for keep, 0.0 for
+                discard).
             num_hidden_layers (`int`):
                 The number of hidden layers in the model.
             is_attention_chunked: (`bool`, *optional*, defaults to `False`):
                 Whether or not the attentions scores are computed by chunks or not.
 
         Returns:
-            `torch.Tensor` with shape `[num_hidden_layers x batch x num_heads x seq_length x seq_length]` or list with
-            `[None]` for each layer.
+            `torch.Tensor` with shape `[num_hidden_layers x batch x num_heads x seq_length x
+            seq_length]` or list with `[None]` for each layer.
         """
         if head_mask is not None:
             head_mask = self._convert_head_mask_to_5d(head_mask, num_hidden_layers)

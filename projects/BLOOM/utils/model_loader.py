@@ -73,3 +73,9 @@ class BlooMLoaderHuggerFace(ModelLoaderHuggerFace):
             self._update_cfg(k, v)
 
         self._update_cfg_log()
+
+
+class BlooMLoaderLibai(ModelLoaderLiBai):
+    def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix_2 = "transformer"
