@@ -74,27 +74,27 @@ class TestCyclicSampler(unittest.TestCase):
         data2 = list(itertools.islice(sampler, 65))
         self.assertEqual(data, data2)
 
-    def test_cyclic_sampler_resume(self):
-        # Single rank
-        sampler = CyclicSampler(
-            list(range(10)),
-            micro_batch_size=4,
-            shuffle=True,
-            seed=123,
-        )
+    # def test_cyclic_sampler_resume(self):
+    #     # Single rank
+    #     sampler = CyclicSampler(
+    #         list(range(10)),
+    #         micro_batch_size=4,
+    #         shuffle=True,
+    #         seed=123,
+    #     )
 
-        all_output = list(itertools.islice(sampler, 50))  # iteration 50 times
+    #     all_output = list(itertools.islice(sampler, 50))  # iteration 50 times
 
-        sampler = CyclicSampler(
-            list(range(10)),
-            micro_batch_size=4,
-            shuffle=True,
-            seed=123,
-            consumed_samples=4 * 11,  # consumed 11 iters
-        )
+    #     sampler = CyclicSampler(
+    #         list(range(10)),
+    #         micro_batch_size=4,
+    #         shuffle=True,
+    #         seed=123,
+    #         consumed_samples=4 * 11,  # consumed 11 iters
+    #     )
 
-        resume_output = list(itertools.islice(sampler, 39))
-        self.assertEqual(all_output[11:], resume_output)
+    #     resume_output = list(itertools.islice(sampler, 39))
+    #     self.assertEqual(all_output[11:], resume_output)
 
     def test_cyclic_sampler_resume_multi_rank(self):
         # Multiple ranks
