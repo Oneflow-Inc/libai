@@ -23,6 +23,7 @@ from transformers.utils import (
     replace_return_docstrings,
 )
 from configuration_opt import OPTConfig
+from libai.layers import Linear
 
 
 logger = logging.get_logger(__name__)
@@ -55,13 +56,13 @@ def _make_causal_mask(input_ids_shape: torch.Size, dtype: torch.dtype, past_key_
     Make causal mask used for bi-directional self-attention.
     """
     bsz, tgt_len = input_ids_shape
-    mask = torch.full((tgt_len, tgt_len), torch.tensor(torch.finfo(dtype).min))
-    mask_cond = torch.arange(mask.size(-1))
+    mask = torch.zeros((tgt_len, tgt_len), device="cuda") + torch.finfo(dtype).min
+    mask_cond = torch.arange(mask.size(-1), device="cuda")
     mask.masked_fill_(mask_cond < (mask_cond + 1).view(mask.size(-1), 1), 0)
     mask = mask.to(dtype)
 
     if past_key_values_length > 0:
-        mask = torch.cat([torch.zeros(tgt_len, past_key_values_length, dtype=dtype), mask], dim=-1)
+        mask = torch.cat([torch.zeros(tgt_len, past_key_values_length, dtype=dtype, device="cuda"), mask], dim=-1)
     return mask[None, None, :, :].expand(bsz, 1, tgt_len, tgt_len + past_key_values_length)
 
 
@@ -128,10 +129,10 @@ class OPTAttention(nn.Module):
         self.scaling = self.head_dim**-0.5
         self.is_decoder = is_decoder
 
-        self.k_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
-        self.v_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
-        self.q_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
-        self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.k_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
+        self.v_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
+        self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
+        self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row")
 
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
@@ -273,8 +274,8 @@ class OPTDecoderLayer(nn.Module):
         self.self_attn_layer_norm = nn.LayerNorm(
             self.embed_dim, elementwise_affine=config.layer_norm_elementwise_affine
         )
-        self.fc1 = nn.Linear(self.embed_dim, config.ffn_dim, bias=config.enable_bias)
-        self.fc2 = nn.Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias)
+        self.fc1 = Linear(self.embed_dim, config.ffn_dim, bias=config.enable_bias, parallel="col")
+        self.fc2 = Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias, parallel="row")
         self.final_layer_norm = nn.LayerNorm(self.embed_dim, elementwise_affine=config.layer_norm_elementwise_affine)
 
     def forward(
@@ -384,7 +385,7 @@ class OPTPreTrainedModel(PreTrainedModel):
 
     def _init_weights(self, module):
         std = self.config.init_std
-        if isinstance(module, nn.Linear):
+        if isinstance(module, Linear):
             module.weight.data.normal_(mean=0.0, std=std)
             if module.bias is not None:
                 module.bias.data.zero_()
@@ -468,12 +469,12 @@ class OPTDecoder(OPTPreTrainedModel):
         self.embed_positions = OPTLearnedPositionalEmbedding(config.max_position_embeddings, config.hidden_size)
 
         if config.word_embed_proj_dim != config.hidden_size:
-            self.project_out = nn.Linear(config.hidden_size, config.word_embed_proj_dim, bias=False)
+            self.project_out = Linear(config.hidden_size, config.word_embed_proj_dim, bias=False)
         else:
             self.project_out = None
 
         if config.word_embed_proj_dim != config.hidden_size:
-            self.project_in = nn.Linear(config.word_embed_proj_dim, config.hidden_size, bias=False)
+            self.project_in = Linear(config.word_embed_proj_dim, config.hidden_size, bias=False)
         else:
             self.project_in = None
 
@@ -774,7 +775,7 @@ class OPTForCausalLM(OPTPreTrainedModel):
         self.model = OPTModel(config)
 
         # the lm_head weight is automatically tied to the embed tokens weight
-        self.lm_head = nn.Linear(config.word_embed_proj_dim, config.vocab_size, bias=False)
+        self.lm_head = Linear(config.word_embed_proj_dim, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -958,7 +959,7 @@ class OPTForSequenceClassification(OPTPreTrainedModel):
         super().__init__(config)
         self.num_labels = config.num_labels
         self.model = OPTModel(config)
-        self.score = nn.Linear(config.word_embed_proj_dim, self.num_labels, bias=False)
+        self.score = Linear(config.word_embed_proj_dim, self.num_labels, bias=False)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -1079,7 +1080,7 @@ class OPTForQuestionAnswering(OPTPreTrainedModel):
     def __init__(self, config: OPTConfig):
         super().__init__(config)
         self.model = OPTModel(config)
-        self.qa_outputs = nn.Linear(config.word_embed_proj_dim, 2)
+        self.qa_outputs = Linear(config.word_embed_proj_dim, 2)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -1186,10 +1187,33 @@ class OPTForQuestionAnswering(OPTPreTrainedModel):
         self.model.decoder.embed_tokens = value
 
 if __name__ == "__main__":
+    from libai.utils import distributed as dist
+    from omegaconf import DictConfig
+    from oneflow.utils.global_view import global_mode
+    parallel_config = DictConfig(
+        dict(
+            data_parallel_size=1,
+            tensor_parallel_size=2,
+            pipeline_parallel_size=1,
+            pipeline_num_layers=None,
+            )
+    )
+    dist.setup_dist_util(parallel_config)
+
     model = OPTForCausalLM.from_pretrained("facebook/opt-125m")
-    input_ids = torch.tensor([[    2, 13368,     6,    32,    47,  7407,  2520,  5634,   116,  2615, 47,  1067,     7,   162,   116]])
+    model._apply(dist.convert_to_distributed_default_setting)
+    input_ids = torch.tensor(
+        [[ 2, 13368,     6,    32,    47,  7407,  2520,  5634,   116,  2615, 47,  1067,     7,   162,   116]],
+        sbp=dist.get_nd_sbp([torch.sbp.broadcast, torch.sbp.broadcast]),
+        placement=dist.get_layer_placement(0)
+    )
     print(input_ids)
-    generate_ids = model.generate(input_ids, max_length=30)
+    placement_sbp_dict = dict(
+        placement=torch.env.all_device_placement("cuda"),
+        sbp=torch.sbp.broadcast,
+    )
+    with global_mode(True, **placement_sbp_dict):
+        generate_ids = model.generate(input_ids, max_length=30)
+        import pdb
+        pdb.set_trace()
     print(generate_ids)
-    # import pdb
-    # pdb.set_trace()
