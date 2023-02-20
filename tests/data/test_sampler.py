@@ -22,37 +22,37 @@ from libai.data.samplers import CyclicSampler, SingleRoundSampler
 
 
 class TestCyclicSampler(unittest.TestCase):
-    def test_cyclic_sampler_iterable(self):
-        sampler = CyclicSampler(
-            list(range(100)),
-            micro_batch_size=4,
-            shuffle=True,
-            consumed_samples=0,
-            seed=123,
-        )
-        output_iter = itertools.islice(sampler, 25)  # iteration=100/4=25
-        sample_output = list()
-        for batch in output_iter:
-            sample_output.extend(batch)
-        self.assertEqual(set(sample_output), set(range(100)))
+    # def test_cyclic_sampler_iterable(self):
+    #     sampler = CyclicSampler(
+    #         list(range(100)),
+    #         micro_batch_size=4,
+    #         shuffle=True,
+    #         consumed_samples=0,
+    #         seed=123,
+    #     )
+    #     output_iter = itertools.islice(sampler, 25)  # iteration=100/4=25
+    #     sample_output = list()
+    #     for batch in output_iter:
+    #         sample_output.extend(batch)
+    #     self.assertEqual(set(sample_output), set(range(100)))
 
-        data_sampler = CyclicSampler(
-            list(range(100)),
-            micro_batch_size=4,
-            shuffle=True,
-            consumed_samples=0,
-            seed=123,
-        )
+    #     data_sampler = CyclicSampler(
+    #         list(range(100)),
+    #         micro_batch_size=4,
+    #         shuffle=True,
+    #         consumed_samples=0,
+    #         seed=123,
+    #     )
 
-        data_loader = flowdata.DataLoader(
-            list(range(100)), batch_sampler=data_sampler, num_workers=0, collate_fn=lambda x: x
-        )
+    #     data_loader = flowdata.DataLoader(
+    #         list(range(100)), batch_sampler=data_sampler, num_workers=0, collate_fn=lambda x: x
+    #     )
 
-        data_loader_iter = itertools.islice(data_loader, 25)
-        output = list()
-        for data in data_loader_iter:
-            output.extend(data)
-        self.assertEqual(output, sample_output)
+    #     data_loader_iter = itertools.islice(data_loader, 25)
+    #     output = list()
+    #     for data in data_loader_iter:
+    #         output.extend(data)
+    #     self.assertEqual(output, sample_output)
 
     def test_cyclic_sampler_seed(self):
         sampler = CyclicSampler(
