@@ -60,7 +60,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --pre oneflow -f https://staging.oneflow.info/branch/master/cpu
+          python -m pip install --pre oneflow -f https://staging.oneflow.info/branch/master/cu117
           python -m pip install pybind11
           python -m pip install torch torchvision torchaudio
       
