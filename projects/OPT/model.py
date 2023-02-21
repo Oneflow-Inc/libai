@@ -211,7 +211,10 @@ class OPTAttention(nn.Module):
 
         # upcast to fp32 if the weights are in fp16. Please see https://github.com/huggingface/transformers/pull/17437
         if attn_weights.dtype == torch.float16:
-            attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(torch.float16)
+            # NOTE: oneflow lack of F.softmax(..., dtype=) 
+            attn_weights = attn_weights.to(dtype=torch.float32)
+            attn_weights = nn.functional.softmax(attn_weights, dim=-1).to(torch.float16)
+            # attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(torch.float16)
         else:
             attn_weights = nn.functional.softmax(attn_weights, dim=-1)
 
@@ -1200,7 +1203,7 @@ if __name__ == "__main__":
     )
     dist.setup_dist_util(parallel_config)
 
-    model = OPTForCausalLM.from_pretrained("facebook/opt-125m")
+    model = OPTForCausalLM.from_pretrained("facebook/opt-2.7b")
     model._apply(dist.convert_to_distributed_default_setting)
     input_ids = torch.tensor(
         [[ 2, 13368,     6,    32,    47,  7407,  2520,  5634,   116,  2615, 47,  1067,     7,   162,   116]],
@@ -1214,6 +1217,4 @@ if __name__ == "__main__":
     )
     with global_mode(True, **placement_sbp_dict):
         generate_ids = model.generate(input_ids, max_length=30)
-        import pdb
-        pdb.set_trace()
     print(generate_ids)
