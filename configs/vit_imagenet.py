@@ -91,3 +91,6 @@ train.dist.pipeline_num_layers = model.cfg.depth
 train.dist.data_parallel_size = 2
 train.dist.tensor_parallel_size = 2
 train.dist.pipeline_parallel_size = 2
+
+# train.num_accumulation_steps = train.dist.pipeline_parallel_size
+# global_batch_size = micro_batch_size  * num_grad_acc * data_parallel_groups
