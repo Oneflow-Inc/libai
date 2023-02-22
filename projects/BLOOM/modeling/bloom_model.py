@@ -18,7 +18,8 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.config import configurable
-from libai.layers import Embedding, LayerNorm
+from libai.inference.generator.generation_utils import Generator
+from libai.layers import Embedding, LayerNorm, LMLogits
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 from projects.BLOOM.modeling.mask import _expand_mask, _make_causal_mask, build_alibi_tensor
@@ -252,3 +253,171 @@ class BloomModel(nn.Module):
         hidden_states = self.ln_f(hidden_states)
 
         return {"last_hidden_state": hidden_states, "past_key_values": presents}
+
+
+class BloomForCausalLM(nn.Module, Generator):
+    @configurable
+    def __init__(
+        self,
+        vocab_size,
+        hidden_size,
+        hidden_layers,
+        n_head,
+        padding_idx,
+        pretraining_tp=1,
+        slow_but_exact=False,
+        initializer_range=0.02,
+        apply_residual_connection_post_layernorm=False,
+        hidden_dropout=0,
+        attention_dropout=0,
+        amp_enabled=False,
+        layer_norm_epsilon=1e-12,
+        cfg=None,
+    ):
+        super().__init__()
+        self.cfg = cfg
+        self.transformer = BloomModel(
+            vocab_size=vocab_size,
+            hidden_size=hidden_size,
+            hidden_layers=hidden_layers,
+            n_head=n_head,
+            padding_idx=padding_idx,
+            pretraining_tp=pretraining_tp,
+            slow_but_exact=slow_but_exact,
+            initializer_range=initializer_range,
+            apply_residual_connection_post_layernorm=apply_residual_connection_post_layernorm,
+            hidden_dropout=hidden_dropout,
+            attention_dropout=attention_dropout,
+            amp_enabled=amp_enabled,
+            layer_norm_epsilon=layer_norm_epsilon,
+            cfg=cfg,
+        )
+        self.lm_head = LMLogits(vocab_size, bias=False)
+
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "vocab_size": cfg.vocab_size,
+            "hidden_size": cfg.hidden_size,
+            "hidden_layers": cfg.hidden_layers,
+            "n_head": cfg.n_head,
+            "padding_idx": cfg.padding_idx,
+            "pretraining_tp": cfg.pretraining_tp,
+            "slow_but_exact": cfg.slow_but_exact,
+            "apply_residual_connection_post_layernorm": cfg.apply_residual_connection_post_layernorm,  # noqa
+            "hidden_dropout": cfg.hidden_dropout,
+            "attention_dropout": cfg.attention_dropout,
+            "amp_enabled": cfg.amp_enabled,
+            "layer_norm_epsilon": cfg.layer_norm_epsilon,
+            "cfg": cfg,
+        }
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        past_key_values=None,
+        head_mask=None,
+        inputs_embeds=None,
+        use_cache=None,
+        output_attentions=None,
+    ):
+
+        transformer_outputs = self.transformer(
+            input_ids,
+            past_key_values=past_key_values,
+            attention_mask=attention_mask,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+        )
+        hidden_states = transformer_outputs["last_hidden_state"]
+
+        lm_logits = self.lm_head(hidden_states, self.transformer.word_embeddings.weight)
+
+        return {
+            "logits": lm_logits,
+            "past_key_values": transformer_outputs["past_key_values"],
+            "hidden_states": transformer_outputs["last_hidden_state"],
+            # "attentions": transformer_outputs.attentions,
+        }
+
+    def prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past_key_values=None,
+        attention_mask=None,
+        inputs_embeds=None,
+        **kwargs,
+    ) -> dict:
+        # only last token for input_ids if past is not None
+        if past_key_values:
+            input_ids = input_ids[:, -1].unsqueeze(-1)
+
+            if past_key_values[0][0].shape[0] == input_ids.shape[0]:
+                past_key_values = self._convert_to_bloom_cache(past_key_values)
+
+        if inputs_embeds is not None and past_key_values is None:
+            model_inputs = {"inputs_embeds": inputs_embeds}
+        else:
+            model_inputs = {"input_ids": input_ids}
+
+        model_inputs.update(
+            {
+                "past_key_values": past_key_values,
+                "use_cache": kwargs.get("use_cache"),
+                "attention_mask": attention_mask,
+            }
+        )
+        return model_inputs
+
+    def _reorder_cache(self, past, beam_idx):
+        standardized_past = self._convert_to_standard_cache(past, batch_size=len(beam_idx))
+
+        device_to_beam_idx = {
+            past_state.device: beam_idx.to(past_state.device)
+            for layer_past in past
+            for past_state in layer_past
+        }
+        reordered_past = tuple(
+            (
+                layer_past[0].index_select(0, device_to_beam_idx[layer_past[0].device]),
+                layer_past[1].index_select(0, device_to_beam_idx[layer_past[0].device]),
+            )
+            for layer_past in standardized_past
+        )
+        return self._convert_to_bloom_cache(reordered_past)
+
+    def _convert_to_standard_cache(
+        past_key_value,
+        batch_size,
+    ):
+        """
+        Standardizes the format of the cache so as to match most implementations,
+        i.e. to tuple(tuple([batch_size, num_heads, ...]))
+        """
+        batch_size_times_num_heads, head_dim, seq_length = past_key_value[0][0].shape
+        num_heads = batch_size_times_num_heads // batch_size
+        return tuple(
+            (
+                layer_past[0].view(batch_size, num_heads, head_dim, seq_length),
+                layer_past[1].view(batch_size, num_heads, seq_length, head_dim),
+            )
+            for layer_past in past_key_value
+        )
+
+    def _convert_to_bloom_cache(past_key_value):
+        """
+        Converts the cache to the format expected by Bloom,
+        i.e. to tuple(tuple([batch_size * num_heads, ...]))
+        """
+        batch_size, num_heads, head_dim, seq_length = past_key_value[0][0].shape
+        batch_size_times_num_heads = batch_size * num_heads
+        return tuple(
+            (
+                layer_past[0].view(batch_size_times_num_heads, head_dim, seq_length),
+                layer_past[1].view(batch_size_times_num_heads, seq_length, head_dim),
+            )
+            for layer_past in past_key_value
+        )
