@@ -121,13 +121,13 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         encode_att_mask = flow.tensor(
             self.encoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
         decoder_att_mask = flow.tensor(
             self.decoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
@@ -182,13 +182,13 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         encode_att_mask = flow.tensor(
             self.encoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
         decoder_att_mask = flow.tensor(
             self.decoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
