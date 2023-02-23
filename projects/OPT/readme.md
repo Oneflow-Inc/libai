@@ -70,20 +70,11 @@ pip install -e .
     </tbody>
     </table></li>
 
-### Install diffusers and transformers
+### Install transformers
 
-**Important**
-
-
-To make sure you can train stable diffusion in LiBai, please install transformers by flowing commands
-
+refer to [transformers installation](https://github.com/huggingface/transformers#installation)
 ```
-# install transformers
-cd your_root_dir
-git clone https://github.com/Oneflow-Inc/transformers.git
-cd transformers
-git checkout main
-pip install -e .
+python3 -m pip install "transformers>=4.26"
 ```
 
 Notes
@@ -108,18 +99,46 @@ bash tools/infer.sh projects/OPT/dist_infer_opt.py 2
 ```
 The infer code is very simple:
 ```python
-import oneflow as flow
-from libai.utils import distributed as dist
 from omegaconf import DictConfig
+import init_env
+
+import oneflow as flow
 from oneflow.utils.global_view import global_mode
+from libai.utils import distributed as dist
+from libai.layers import Linear
+
 from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
+from transformers.models.opt.modeling_opt import OPTAttention, OPTDecoderLayer
+
+# -------------------change Linear layer to libai.layers.Linear-------
+temp_class = OPTAttention
+class LiBaiOPTAttention(temp_class):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        embed_dim = kwargs["embed_dim"]
+        bias = kwargs["bias"]
+        self.k_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
+        self.v_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
+        self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
+        self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row")
+OPTAttention=LiBaiOPTAttention
+
+temp_class = OPTDecoderLayer
+class LiBaiOPTDecoderLayer(temp_class):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        config=args[0]
+        self.fc1 = Linear(self.embed_dim, config.ffn_dim, bias=config.enable_bias, parallel="col")
+        self.fc2 = Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias, parallel="row")
+OPTDecoderLayer=LiBaiOPTDecoderLayer
+# ----------------- change end ------------------------------
 
 if __name__ == "__main__":
     # set dist config
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
-            tensor_parallel_size=2, # change it according to your own needs if you have multi gpus
+            tensor_parallel_size=2,
             pipeline_parallel_size=1, # set to 1, unsupport pipeline parallel now
             pipeline_num_layers=None,
             )
