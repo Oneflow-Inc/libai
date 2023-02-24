@@ -1,5 +1,4 @@
 # flake8: noqa
-# black: skip-string-normalization
 import init_env
 import oneflow as flow
 from omegaconf import DictConfig
@@ -12,6 +11,8 @@ from libai.utils import distributed as dist
 
 # ------replace attention to libai------
 temp_class = OPTAttention
+
+
 class LiBaiOPTAttention(temp_class):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -21,16 +22,22 @@ class LiBaiOPTAttention(temp_class):
         self.v_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
         self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
         self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row")
+
+
 OPTAttention = LiBaiOPTAttention
 
 # ----------replace Decoder to libai -----
 temp_class = OPTDecoderLayer
+
+
 class LiBaiOPTDecoderLayer(temp_class):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         config = args[0]
         self.fc1 = Linear(self.embed_dim, config.ffn_dim, bias=config.enable_bias, parallel="col")
         self.fc2 = Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias, parallel="row")
+
+
 OPTDecoderLayer = LiBaiOPTDecoderLayer
 
 if __name__ == "__main__":

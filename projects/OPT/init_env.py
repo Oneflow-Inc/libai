@@ -1,7 +1,7 @@
 # flake8: noqa
-# black: skip-string-normalization
 # -----------mock torch, put it in the first line-----------
 import oneflow as flow
+
 flow.mock_torch.enable()
 
 from oneflow import Tensor, nn
@@ -10,6 +10,8 @@ from transformers.modeling_utils import _load_state_dict_into_model
 
 # ---------------- mock _load_state_dict_into_model ------------------
 new_load = _load_state_dict_into_model
+
+
 def new_load(model_to_load, state_dict, start_prefix):
     # Convert old format to new format if needed from a PyTorch state_dict
     old_keys = []
@@ -64,24 +66,34 @@ def new_load(model_to_load, state_dict, start_prefix):
     # Note that `state_dict` is a copy of the argument, so it's safe to delete it.
     del state_dict
     return error_msgs
+
+
 modeling_utils._load_state_dict_into_model = new_load
 
 # -----------------mock tensor.new_ones() -------------
 def flow_ones(self, *args, **kwargs):
     return flow.ones(*args, **kwargs, device=self.device, dtype=self.dtype)
+
+
 Tensor.new_ones = flow_ones
 
 # -----------------mock tensor.new() ------------------
 def flow_zeros(self, *args, **kwargs):
     return flow.zeros(*args, **kwargs, device=self.device, dtype=self.dtype)
+
+
 Tensor.new = flow_zeros
 
 # ------------------mock nn.functional.softmax---------
 temp_func = nn.functional.softmax
+
+
 def flow_softmax(*args, **kwargs):
     if "dtype" in kwargs:
         _tensor = args[0].to(dtype=kwargs.pop("dtype"))
         return temp_func(_tensor, *args[1:], **kwargs)
     else:
         return temp_func(*args, **kwargs)
+
+
 nn.functional.softmax = flow_softmax
