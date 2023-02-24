@@ -1,14 +1,16 @@
-from omegaconf import DictConfig
+# flake8: noqa
+# black: skip-string-normalization
 import init_env
-
 import oneflow as flow
+from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
-from libai.utils import distributed as dist
-from libai.layers import Linear
-
-from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.models.opt.modeling_opt import OPTAttention, OPTDecoderLayer
 
+from libai.layers import Linear
+from libai.utils import distributed as dist
+
+# ------replace attention to libai------
 temp_class = OPTAttention
 class LiBaiOPTAttention(temp_class):
     def __init__(self, *args, **kwargs):
@@ -19,16 +21,17 @@ class LiBaiOPTAttention(temp_class):
         self.v_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
         self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
         self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row")
-OPTAttention=LiBaiOPTAttention
+OPTAttention = LiBaiOPTAttention
 
+# ----------replace Decoder to libai -----
 temp_class = OPTDecoderLayer
 class LiBaiOPTDecoderLayer(temp_class):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        config=args[0]
+        config = args[0]
         self.fc1 = Linear(self.embed_dim, config.ffn_dim, bias=config.enable_bias, parallel="col")
         self.fc2 = Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias, parallel="row")
-OPTDecoderLayer=LiBaiOPTDecoderLayer
+OPTDecoderLayer = LiBaiOPTDecoderLayer
 
 if __name__ == "__main__":
     # set dist config
@@ -36,9 +39,9 @@ if __name__ == "__main__":
         dict(
             data_parallel_size=1,
             tensor_parallel_size=2,
-            pipeline_parallel_size=1, # set to 1, unsupport pipeline parallel now
+            pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
             pipeline_num_layers=None,
-            )
+        )
     )
     dist.setup_dist_util(parallel_config)
 
@@ -54,7 +57,7 @@ if __name__ == "__main__":
     input_ids = flow.from_numpy(input_ids)
     input_ids = input_ids.to_global(
         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        placement=dist.get_layer_placement(0)
+        placement=dist.get_layer_placement(0),
     )
 
     # generate id

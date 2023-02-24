@@ -1,12 +1,12 @@
+# flake8: noqa
+# black: skip-string-normalization
 # -----------mock torch, put it in the first line-----------
 import oneflow as flow
 flow.mock_torch.enable()
 
-from transformers.modeling_utils import _load_state_dict_into_model
+from oneflow import Tensor, nn
 from transformers import modeling_utils
-from oneflow import nn
-from oneflow import Tensor
-
+from transformers.modeling_utils import _load_state_dict_into_model
 
 # ---------------- mock _load_state_dict_into_model ------------------
 new_load = _load_state_dict_into_model
@@ -38,8 +38,7 @@ def new_load(model_to_load, state_dict, start_prefix):
     for k, v in model_to_load.state_dict().items():
         if k in state_dict and v.is_global:
             state_dict[k] = state_dict[k].to_global(
-                sbp=flow.sbp.broadcast, 
-                placement=flow.env.all_device_placement("cpu")
+                sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cpu")
             )
             state_dict[k] = state_dict[k].to_global(
                 sbp=v.sbp,
@@ -61,20 +60,18 @@ def new_load(model_to_load, state_dict, start_prefix):
                 load(child, state_dict, prefix + name + ".")
 
     load(model_to_load, state_dict, prefix=start_prefix)
-    # Delete `state_dict` so it could be collected by GC earlier. Note that `state_dict` is a copy of the argument, so
-    # it's safe to delete it.
+    # Delete `state_dict` so it could be collected by GC earlier.
+    # Note that `state_dict` is a copy of the argument, so it's safe to delete it.
     del state_dict
     return error_msgs
-
 modeling_utils._load_state_dict_into_model = new_load
 
 # -----------------mock tensor.new_ones() -------------
 def flow_ones(self, *args, **kwargs):
     return flow.ones(*args, **kwargs, device=self.device, dtype=self.dtype)
-
 Tensor.new_ones = flow_ones
 
-# -----------------mock tensor.new() --------------
+# -----------------mock tensor.new() ------------------
 def flow_zeros(self, *args, **kwargs):
     return flow.zeros(*args, **kwargs, device=self.device, dtype=self.dtype)
 Tensor.new = flow_zeros
