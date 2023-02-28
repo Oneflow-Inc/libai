@@ -1,26 +1,15 @@
-# OPT
+# Mock transformers
 
-This is an reimplement of [OPT](https://github.com/huggingface/diffusers/tree/main/examples/dreambooth) inference in LiBai
+This is an application of mock [transformers](https://github.com/huggingface/transformers), which can perform distributed inference in LiBai with model under the transformers.
 
-<table class="docutils">
-  <tbody>
-    <tr>
-      <th width="80"> opt inference </th>
-      <th valign="bottom" align="left" width="120">Tensor Parallel</th>
-      <th valign="bottom" align="left" width="120">Pipeline Parallel</th>
-    </tr>
-    <tr>
-      <td align="left"> <b> Support </b> </td>
-      <td align="left">&#10004;</td>
-      <td align="left">-</td>
-    </tr>
-  </tbody>
-</table>
+**Supported Model**
+
+- [OPT](#distributed-infer-opt): tensor parallel
 
 
 ## Environment 
 
-Before running the scripts, make sure to install the library's training dependencies:
+Before running the scripts, make sure to install the library's dependencies:
 
 ### Install libai
 
@@ -91,82 +80,50 @@ python3 -m pip install huggingface_hub
  ~/.local/bin/huggingface-cli login
 ```
 
-## distributed infer
+## distributed infer OPT
+
+An reimplement of [OPT](https://github.com/huggingface/diffusers/tree/main/examples/dreambooth) distributed inference in LiBai
+
+<table class="docutils">
+  <tbody>
+    <tr>
+      <th width="80"> opt inference </th>
+      <th valign="bottom" align="left" width="120">Tensor Parallel</th>
+      <th valign="bottom" align="left" width="120">Pipeline Parallel</th>
+    </tr>
+    <tr>
+      <td align="left"> <b> Support </b> </td>
+      <td align="left">&#10004;</td>
+      <td align="left">-</td>
+    </tr>
+  </tbody>
+</table>
 
 for `tensor_parallel=2`, run command in `libai_root`
 ```
-bash tools/infer.sh projects/OPT/dist_infer_opt.py 2
+bash tools/infer.sh projects/mock_transformers/dist_infer_opt.py 2
 ```
-The infer code is very simple:
+modify the infer code `dist_infer_opt.py` according to your own needs:
 ```python
-from omegaconf import DictConfig
-import init_env
-
-import oneflow as flow
-from oneflow.utils.global_view import global_mode
-from libai.utils import distributed as dist
-from libai.layers import Linear
-
-from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
-from transformers.models.opt.modeling_opt import OPTAttention, OPTDecoderLayer
-
-# -------------------change Linear layer to libai.layers.Linear-------
-temp_class = OPTAttention
-class LiBaiOPTAttention(temp_class):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        embed_dim = kwargs["embed_dim"]
-        bias = kwargs["bias"]
-        self.k_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
-        self.v_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
-        self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
-        self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row")
-OPTAttention=LiBaiOPTAttention
-
-temp_class = OPTDecoderLayer
-class LiBaiOPTDecoderLayer(temp_class):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        config=args[0]
-        self.fc1 = Linear(self.embed_dim, config.ffn_dim, bias=config.enable_bias, parallel="col")
-        self.fc2 = Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias, parallel="row")
-OPTDecoderLayer=LiBaiOPTDecoderLayer
-# ----------------- change end ------------------------------
+...
 
 if __name__ == "__main__":
     # set dist config
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
-            tensor_parallel_size=2,
+            tensor_parallel_size=2, # modify it according to your own needs
             pipeline_parallel_size=1, # set to 1, unsupport pipeline parallel now
             pipeline_num_layers=None,
             )
     )
     dist.setup_dist_util(parallel_config)
 
+    ...
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m").half()
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m").half() # change your model type 125m~66b
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m", use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m", use_fast=False) # change your model type  125m~66b
 
-    # get input_ids
-    prompt = "Hello, I'm am conscious and"
-    input_ids = tokenizer(prompt, return_tensors="np").input_ids
-    input_ids = flow.from_numpy(input_ids)
-    input_ids = input_ids.to_global(
-        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        placement=dist.get_layer_placement(0)
-    )
-
-    # generate id
-    placement_sbp_dict = dict(
-        placement=flow.env.all_device_placement("cuda"),
-        sbp=flow.sbp.broadcast,
-    )
-    with global_mode(True, **placement_sbp_dict):
-        generated_ids = model.generate(input_ids, max_length=30)
-    out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-    print(out_put_ids)
 ```
