@@ -1,12 +1,11 @@
-# flake8: noqa
 # -----------mock torch, put it in the first line-----------
 import oneflow as flow
 
 flow.mock_torch.enable()
 
-from oneflow import Tensor, nn
-from transformers import modeling_utils
-from transformers.modeling_utils import _load_state_dict_into_model
+from oneflow import Tensor, nn  # noqa
+from transformers import modeling_utils  # noqa
+from transformers.modeling_utils import _load_state_dict_into_model  # noqa
 
 # ---------------- mock _load_state_dict_into_model ------------------
 new_load = _load_state_dict_into_model
@@ -52,8 +51,8 @@ def new_load(model_to_load, state_dict, start_prefix):
     def load(module: nn.Module, state_dict, prefix=""):
         local_metadata = {} if metadata is None else metadata.get(prefix[:-1], {})
         args = (state_dict, prefix, local_metadata, True, [], [], error_msgs)
-        # Parameters of module and children will start with prefix. We can exit early if there are none in this
-        # state_dict
+        # Parameters of module and children will start with prefix.
+        # We can exit early if there are none in this state_dict
         if len([key for key in state_dict if key.startswith(prefix)]) > 0:
             module._load_from_state_dict(*args)
 
@@ -70,12 +69,14 @@ def new_load(model_to_load, state_dict, start_prefix):
 
 modeling_utils._load_state_dict_into_model = new_load
 
+
 # -----------------mock tensor.new_ones() -------------
 def flow_ones(self, *args, **kwargs):
     return flow.ones(*args, **kwargs, device=self.device, dtype=self.dtype)
 
 
 Tensor.new_ones = flow_ones
+
 
 # -----------------mock tensor.new() ------------------
 def flow_zeros(self, *args, **kwargs):

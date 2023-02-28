@@ -1,5 +1,4 @@
-# flake8: noqa
-import init_env
+import init_env  # noqa
 import oneflow as flow
 from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
