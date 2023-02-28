@@ -1,8 +1,9 @@
 import os
 import oneflow as flow
 from oneflow import nn
+from projects.mock_transformers import init_env
 from transformers import CLIPTokenizer
-from transformers import OneFlowCLIPTextModel as CLIPTextModel
+from transformers import CLIPTextModel
 from diffusers import (
     OneFlowAutoencoderKL, 
     OneFlowStableDiffusionPipeline, 

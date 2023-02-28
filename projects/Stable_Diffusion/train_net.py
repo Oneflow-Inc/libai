@@ -29,7 +29,7 @@ from libai.engine.trainer import HookBase
 from libai.utils.checkpoint import Checkpointer
 from libai.utils import distributed as dist
 
-from diffusers import OneFlowStableDiffusionPipeline
+from onediff import OneFlowStableDiffusionPipeline
 
 logger = logging.getLogger("libai." + __name__)
 
