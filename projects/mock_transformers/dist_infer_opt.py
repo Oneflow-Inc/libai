@@ -4,13 +4,12 @@ from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.models.opt import modeling_opt
-from transformers.models.opt.modeling_opt import OPTAttention, OPTDecoderLayer
 
 from libai.layers import Linear
 from libai.utils import distributed as dist
 
 # ------replace attention to libai------
-temp_class = OPTAttention
+temp_class = modeling_opt.OPTAttention
 
 
 class LiBaiOPTAttention(temp_class):
@@ -27,7 +26,7 @@ class LiBaiOPTAttention(temp_class):
 modeling_opt.OPTAttention = LiBaiOPTAttention
 
 # ----------replace Decoder to libai -----
-temp_class = OPTDecoderLayer
+temp_class = modeling_opt.OPTDecoderLayer
 
 
 class LiBaiOPTDecoderLayer(temp_class):
