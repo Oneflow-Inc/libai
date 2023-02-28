@@ -23,7 +23,6 @@ from transformers import modeling_utils  # noqa
 from transformers.modeling_utils import _load_state_dict_into_model  # noqa
 
 # ---------------- mock _load_state_dict_into_model ------------------
-new_load = _load_state_dict_into_model
 
 
 def new_load(model_to_load, state_dict, start_prefix):
