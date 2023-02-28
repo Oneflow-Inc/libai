@@ -3,6 +3,7 @@ import oneflow as flow
 from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.models.opt import modeling_opt
 from transformers.models.opt.modeling_opt import OPTAttention, OPTDecoderLayer
 
 from libai.layers import Linear
@@ -23,7 +24,7 @@ class LiBaiOPTAttention(temp_class):
         self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row")
 
 
-OPTAttention = LiBaiOPTAttention
+modeling_opt.OPTAttention = LiBaiOPTAttention
 
 # ----------replace Decoder to libai -----
 temp_class = OPTDecoderLayer
@@ -37,7 +38,7 @@ class LiBaiOPTDecoderLayer(temp_class):
         self.fc2 = Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias, parallel="row")
 
 
-OPTDecoderLayer = LiBaiOPTDecoderLayer
+modeling_opt.OPTDecoderLayer = LiBaiOPTDecoderLayer
 
 if __name__ == "__main__":
     # set dist config
@@ -52,10 +53,10 @@ if __name__ == "__main__":
     dist.setup_dist_util(parallel_config)
 
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m").half()
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b").half()
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m", use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-2.7b", use_fast=False)
 
     # get input_ids
     prompt = "Hello, I'm am conscious and"
