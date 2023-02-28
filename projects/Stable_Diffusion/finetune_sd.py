@@ -5,10 +5,10 @@ from projects.mock_transformers import init_env
 from transformers import CLIPTokenizer
 from transformers import CLIPTextModel
 from diffusers import (
-    OneFlowAutoencoderKL, 
-    OneFlowStableDiffusionPipeline, 
-    OneFlowUNet2DConditionModel,
-    OneFlowDDPMScheduler
+    AutoencoderKL, 
+    StableDiffusionPipeline, 
+    UNet2DConditionModel,
+    DDPMScheduler
 )
 from oneflow.nn import functional as F
 
@@ -26,12 +26,12 @@ class StableDiffusion(nn.Module):
             model_path, subfolder="tokenizer")
         self.text_encoder = CLIPTextModel.from_pretrained(
             model_path, subfolder="text_encoder")
-        self.vae = OneFlowAutoencoderKL.from_pretrained(
+        self.vae = AutoencoderKL.from_pretrained(
             model_path, subfolder="vae")
-        self.unet = OneFlowUNet2DConditionModel.from_pretrained(
+        self.unet = UNet2DConditionModel.from_pretrained(
             model_path, subfolder="unet")
 
-        self.noise_scheduler = OneFlowDDPMScheduler(
+        self.noise_scheduler = DDPMScheduler(
             beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000
         )
 
@@ -90,8 +90,8 @@ class StableDiffusion(nn.Module):
 
     @staticmethod
     def set_activation_checkpoint(model):
-        from transformers.models.clip.modeling_oneflow_clip import CLIPEncoder
-        from diffusers.models.unet_blocks_oneflow import (
+        from transformers.models.clip.modeling_clip import CLIPEncoder
+        from diffusers.models.unet_2d_blocks import (
             ResnetBlock2D, 
             DualTransformer2DModel, 
             Transformer2DModel,
