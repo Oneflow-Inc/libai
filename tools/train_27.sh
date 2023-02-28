@@ -25,13 +25,13 @@ if [ -z $RUN_TYPE ];then
     # RUN_TYPE="NSYS"
 fi
 
-# export ONEFLOW_ENABLE_OFCCL=1
+export ONEFLOW_ENABLE_OFCCL=1
 export DISABLE_NCCL_COMPUTE_STREAM=1
 # export ONEFLOW_TIME_SHAPE=1
 export ONEFLOW_DEBUG_MODE=1
 export ONEFLOW_PROFILER_KERNEL_PROFILE_KERNEL_FORWARD_RANGE=1
 
-export GLOG_vmodule=plan_util*=1,of_collective_actor*=1,of_collective_boxing_kernels*=1,collective_backend_ofccl*=1,hierarchical_sub_task_graph_builder_impl*=1,of_request_store*=1,request_store*=1,runtime*=1,scheduler*=1,collective_manager*=1,of_collective_boxing_sub_task_graph_builder*=1
+export GLOG_vmodule=plan_util*=1,of_collective_actor*=1,of_collective_boxing_kernels*=1,collective_backend_ofccl*=1,hierarchical_sub_task_graph_builder_impl*=1,of_request_store*=1,request_store*=1,runtime*=1,scheduler*=1,collective_manager*=1,of_collective_boxing_sub_task_graph_builder*=1,collective_boxing_sub_task_graph_builder*=1
 # nn_graph*=1,
 # export GLOG_v=1
 
@@ -41,7 +41,7 @@ export DEV_TRY_ROUND=10
 export CHECK_REMAINING_SQE_INTERVAL=10000
 export DEBUG_FILE="/home/panlichen/work/oneflow/log/oneflow_cpu_rank_"
 
-export NUM_ITER_ENV=20
+export NUM_ITER_ENV=200
 echo NUM_ITER_ENV=$NUM_ITER_ENV
 
 if [ $GPUS = 2 ]; then
@@ -66,45 +66,53 @@ elif [ $GPUS = 4 ]; then
 
     #pure dp
     # export ONEFLOW_OFCCL_SKIP_NEGO=0
-    # export RECV_SUCCESS_FACTOR=5
+    # export RECV_SUCCESS_FACTOR=40
     # export RECV_SUCCESS_THRESHOLD=10000
-    # export BASE_CTX_SWITCH_THRESHOLD=80
-    # export TOLERANT_UNPROGRESSED_CNT=10000
-    # export NUM_TRY_TASKQ_HEAD=50
+    # export BASE_CTX_SWITCH_THRESHOLD=30000
+    # export TOLERANT_UNPROGRESSED_CNT=30000
+    # export NUM_TRY_TASKQ_HEAD=200
     
     #pure tp
     export ONEFLOW_OFCCL_SKIP_NEGO=0
     export RECV_SUCCESS_FACTOR=40
-    export RECV_SUCCESS_THRESHOLD=10000
-    export BASE_CTX_SWITCH_THRESHOLD=3000
+    export RECV_SUCCESS_THRESHOLD=1000000000
+    export BASE_CTX_SWITCH_THRESHOLD=100000
     export TOLERANT_UNPROGRESSED_CNT=16000
     export NUM_TRY_TASKQ_HEAD=200
 
 elif [  $GPUS = 8 ]; then
 
     #pure dp
-    export ONEFLOW_OFCCL_SKIP_NEGO=0
-    export RECV_SUCCESS_FACTOR=10
-    export RECV_SUCCESS_THRESHOLD=10000
-    export BASE_CTX_SWITCH_THRESHOLD=100000
-    export TOLERANT_UNPROGRESSED_CNT=88000
-    export NUM_TRY_TASKQ_HEAD=240
+    # export ONEFLOW_OFCCL_SKIP_NEGO=0
+    # export RECV_SUCCESS_FACTOR=30
+    # export RECV_SUCCESS_THRESHOLD=100000000
+    # export BASE_CTX_SWITCH_THRESHOLD=120000
+    # export TOLERANT_UNPROGRESSED_CNT=180000
+    # export NUM_TRY_TASKQ_HEAD=240
     
     #pure tp
-    # export ONEFLOW_OFCCL_SKIP_NEGO=1
-    # export RECV_SUCCESS_FACTOR=5
-    # export RECV_SUCCESS_THRESHOLD=10000
-    # export BASE_CTX_SWITCH_THRESHOLD=4000
+    # export ONEFLOW_OFCCL_SKIP_NEGO=0
+    # export RECV_SUCCESS_FACTOR=10
+    # export RECV_SUCCESS_THRESHOLD=1000000
+    # export BASE_CTX_SWITCH_THRESHOLD=6000
     # export TOLERANT_UNPROGRESSED_CNT=8000
     # export NUM_TRY_TASKQ_HEAD=10
 
-    #3d
+    #4tp2dp
     # export ONEFLOW_OFCCL_SKIP_NEGO=0
-    # export RECV_SUCCESS_FACTOR=5
-    # export RECV_SUCCESS_THRESHOLD=10000
-    # export BASE_CTX_SWITCH_THRESHOLD=8000
-    # export TOLERANT_UNPROGRESSED_CNT=80000
+    # export RECV_SUCCESS_FACTOR=10
+    # export RECV_SUCCESS_THRESHOLD=10000000
+    # export BASE_CTX_SWITCH_THRESHOLD=20000
+    # export TOLERANT_UNPROGRESSED_CNT=9000
     # export NUM_TRY_TASKQ_HEAD=10
+
+    #3d
+    export ONEFLOW_OFCCL_SKIP_NEGO=0
+    export RECV_SUCCESS_FACTOR=5
+    export RECV_SUCCESS_THRESHOLD=10000000
+    export BASE_CTX_SWITCH_THRESHOLD=20000
+    export TOLERANT_UNPROGRESSED_CNT=80000
+    export NUM_TRY_TASKQ_HEAD=10
 
     #2dp4pp
     # export ONEFLOW_OFCCL_SKIP_NEGO=0
@@ -130,13 +138,6 @@ elif [  $GPUS = 8 ]; then
     # export TOLERANT_UNPROGRESSED_CNT=8000
     # export NUM_TRY_TASKQ_HEAD=10
 
-    #4tp2dp
-    # export ONEFLOW_OFCCL_SKIP_NEGO=0
-    # export RECV_SUCCESS_FACTOR=5
-    # export RECV_SUCCESS_THRESHOLD=10000
-    # export BASE_CTX_SWITCH_THRESHOLD=8000
-    # export TOLERANT_UNPROGRESSED_CNT=9000
-    # export NUM_TRY_TASKQ_HEAD=10
 fi
 
 echo GPUS=$GPUS
