@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import os
 import oneflow as flow
 from oneflow import nn
 
@@ -99,7 +100,8 @@ class Linear1D(nn.Module):
                 sbp=weight_sbp,
             )
         )
-        init_method(self.weight)
+        if os.getenv("LIBAI_LINEAR_SKIK_INIT", "0") != "1":
+            init_method(self.weight)
 
         self.bias = (
             flow.nn.Parameter(
