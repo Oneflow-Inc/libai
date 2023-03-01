@@ -430,7 +430,9 @@ def convert_to_distributed_default_setting(t):
             placement=get_layer_placement(0),
         )
     else:
-        return t
+        dist_util = get_dist_util()
+        device_type = dist_util.device_type
+        return t.to_global(placement=flow.placement(device_type, ranks=t.placement.ranks))
 
 
 def ttol(tensor, pure_local=False, ranks=None):
