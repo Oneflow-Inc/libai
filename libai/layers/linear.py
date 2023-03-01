@@ -100,7 +100,7 @@ class Linear1D(nn.Module):
                 sbp=weight_sbp,
             )
         )
-        if os.getenv("LIBAI_LINEAR_SKIK_INIT", "0") != "1":
+        if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
             init_method(self.weight)
 
         self.bias = (
