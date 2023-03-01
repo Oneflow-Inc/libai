@@ -195,17 +195,18 @@ if __name__ == "__main__":
             tensor_parallel_size=2,
             pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
             pipeline_num_layers=None,
+            device_type="cpu",
         )
     )
     dist.setup_dist_util(parallel_config)
 
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m").half()
-    #model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b", torch_dtype=flow.float16).half()
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b").half()
+    # set model to cuda
+    dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m",  use_fast=False)
-    #tokenizer = AutoTokenizer.from_pretrained("facebook/opt-2.7b", torch_dtype=flow.float16,  use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-2.7b",  use_fast=False)
 
     # get input_ids
     prompt = "Hello, I'm am conscious and"
