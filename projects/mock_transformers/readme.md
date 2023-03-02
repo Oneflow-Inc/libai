@@ -86,9 +86,9 @@ python3 -m pip install huggingface_hub
 <table class="docutils">
   <tbody>
     <tr>
-      <th width="150"> Distributed Inference </th>
-      <th valign="bottom" align="center" width="150">Tensor Parallel</th>
-      <th valign="bottom" align="center" width="150">Pipeline Parallel</th>
+      <th width="130"> Models </th>
+      <th valign="bottom" align="center" width="140">Tensor Parallel</th>
+      <th valign="bottom" align="center" width="140">Pipeline Parallel</th>
     </tr>
     <tr>
       <td align="center"><a href="https://huggingface.co/docs/transformers/v4.26.1/en/model_doc/bloom#overview"> <b> BLOOM </b> </td>
