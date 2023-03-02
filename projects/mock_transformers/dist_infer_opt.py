@@ -17,10 +17,10 @@ class LiBaiOPTAttention(temp_class):
         super().__init__(*args, **kwargs)
         embed_dim = kwargs["embed_dim"]
         bias = kwargs["bias"]
-        self.k_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
-        self.v_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
-        self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col")
-        self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row")
+        self.k_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col", dtype=flow.float16)
+        self.v_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col", dtype=flow.float16)
+        self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col", dtype=flow.float16)
+        self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row", dtype=flow.float16)
 
 
 modeling_opt.OPTAttention = LiBaiOPTAttention
@@ -33,8 +33,20 @@ class LiBaiOPTDecoderLayer(temp_class):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         config = args[0]
-        self.fc1 = Linear(self.embed_dim, config.ffn_dim, bias=config.enable_bias, parallel="col")
-        self.fc2 = Linear(config.ffn_dim, self.embed_dim, bias=config.enable_bias, parallel="row")
+        self.fc1 = Linear(
+            self.embed_dim,
+            config.ffn_dim,
+            bias=config.enable_bias,
+            parallel="col",
+            dtype=flow.float16,
+        )
+        self.fc2 = Linear(
+            config.ffn_dim,
+            self.embed_dim,
+            bias=config.enable_bias,
+            parallel="row",
+            dtype=flow.float16,
+        )
 
 
 modeling_opt.OPTDecoderLayer = LiBaiOPTDecoderLayer
@@ -53,7 +65,7 @@ if __name__ == "__main__":
     dist.setup_dist_util(parallel_config)
 
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b").half()
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b", torch_dtype=flow.float16)
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
