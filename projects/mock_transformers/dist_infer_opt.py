@@ -1,4 +1,5 @@
 import os
+
 os.environ["ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT"] = "1"
 os.environ["ONEFLOW_KERNEL_ENABLE_FUSED_LINEAR"] = "1"
 import init_env  # noqa
@@ -46,11 +47,22 @@ class LiBaiOPTAttention(temp_class):
 
         fallback = key_value_states is not None or output_attentions or not self.is_decoder
         if fallback:
-            return super().forward(hidden_states, key_value_states, past_key_value, attention_mask, layer_head_mask, output_attentions)
+            return super().forward(
+                hidden_states,
+                key_value_states,
+                past_key_value,
+                attention_mask,
+                layer_head_mask,
+                output_attentions,
+            )
         bsz, tgt_len, _ = hidden_states.size()
         causal = past_key_value is None
-         
-        query_states, key_states, value_states = flow._C.grouped_matmul_bias([hidden_states, hidden_states, hidden_states], [self.q_proj.weight, self.k_proj.weight, self.v_proj.weight], [self.q_proj.bias, self.k_proj.bias, self.v_proj.bias])
+
+        query_states, key_states, value_states = flow._C.grouped_matmul_bias(
+            [hidden_states, hidden_states, hidden_states],
+            [self.q_proj.weight, self.k_proj.weight, self.v_proj.weight],
+            [self.q_proj.bias, self.k_proj.bias, self.v_proj.bias],
+        )
         if past_key_value is not None:
             key_states = self._shape(key_states, -1, bsz)
             value_states = self._shape(value_states, -1, bsz)
@@ -65,12 +77,12 @@ class LiBaiOPTAttention(temp_class):
         attn_k = key_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
         attn_v = value_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
 
-        attn_output = flow._C.fused_multi_head_attention_inference(attn_q, attn_k, attn_v, num_heads=self.num_heads, causal=causal)
+        attn_output = flow._C.fused_multi_head_attention_inference(
+            attn_q, attn_k, attn_v, num_heads=self.num_heads, causal=causal
+        )
         attn_output = self.out_proj(attn_output)
 
         return attn_output, None, past_key_value
-
-
 
 
 modeling_opt.OPTAttention = LiBaiOPTAttention
@@ -108,7 +120,7 @@ if __name__ == "__main__":
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-13b",  use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-13b", use_fast=False)
 
     # get input_ids
     prompt = "Hello, I'm am conscious and"
@@ -121,8 +133,7 @@ if __name__ == "__main__":
 
     # generate id
     placement_sbp_dict = dict(
-        placement=flow.env.all_device_placement("cuda"),
-        sbp=flow.sbp.broadcast,
+        placement=flow.env.all_device_placement("cuda"), sbp=flow.sbp.broadcast,
     )
     p = time.time()
     while True:
