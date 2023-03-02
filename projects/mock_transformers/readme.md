@@ -4,6 +4,7 @@ This is an application of mock [transformers](https://github.com/huggingface/tra
 
 **Supported Model**
 
+- [BLOOM](#distributed-infer-bloom): tensor parallel
 - [OPT](#distributed-infer-opt): tensor parallel
 
 
@@ -80,24 +81,29 @@ python3 -m pip install huggingface_hub
  ~/.local/bin/huggingface-cli login
 ```
 
-## distributed infer OPT
-
-An reimplement of [OPT](https://github.com/huggingface/diffusers/tree/main/examples/dreambooth) distributed inference in LiBai
+## Distributed Inference Through Mock Transformers
 
 <table class="docutils">
   <tbody>
     <tr>
-      <th width="80"> opt inference </th>
+      <th width="150"> Distributed Inference </th>
       <th valign="bottom" align="left" width="120">Tensor Parallel</th>
       <th valign="bottom" align="left" width="120">Pipeline Parallel</th>
     </tr>
     <tr>
-      <td align="left"> <b> Support </b> </td>
-      <td align="left">&#10004;</td>
-      <td align="left">-</td>
+      <td align="center"><a href="https://huggingface.co/docs/transformers/v4.26.1/en/model_doc/bloom#overview"> <b> BLOOM </b> </td>
+      <td align="center">&#10004;</td>
+      <td align="center">-</td>
+    </tr>
+    <tr>
+      <td align="center"><a href="https://huggingface.co/docs/transformers/v4.26.1/en/model_doc/opt#overview"> <b> OPT </b> </td>
+      <td align="center">&#10004;</td>
+      <td align="center">-</td>
     </tr>
   </tbody>
 </table>
+
+## Examples
 
 for `tensor_parallel=2`, run command in `libai_root`
 ```
