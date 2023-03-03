@@ -127,7 +127,7 @@ if __name__ == "__main__":
 
     ...
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m").half() # change your model type 125m~66b
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m") # change your model type 125m~66b
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
     tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m", use_fast=False) # change your model type  125m~66b

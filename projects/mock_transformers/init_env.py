@@ -22,8 +22,6 @@ from oneflow import Tensor, nn  # noqa
 from transformers import modeling_utils  # noqa
 from transformers.modeling_utils import _load_state_dict_into_model  # noqa
 
-import libai
-
 
 # ---------------- mock _load_state_dict_into_model ------------------
 def new_load(model_to_load, state_dict, start_prefix):
@@ -113,6 +111,3 @@ def flow_softmax(*args, **kwargs):
 
 
 nn.functional.softmax = flow_softmax
-
-# ------------------mock nn.LayerNorm------------------
-nn.LayerNorm = libai.layers.LayerNorm

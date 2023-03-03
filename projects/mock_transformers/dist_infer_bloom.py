@@ -20,7 +20,7 @@ from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.models.bloom import modeling_bloom
 
-from libai.layers import Embedding, LayerNorm, Linear
+from libai.layers import Embedding, Linear
 from libai.utils import distributed as dist
 
 # ------replace attention to libai------
@@ -33,8 +33,10 @@ class LiBaiBloomAttention(temp_class):
 
         hidden_size = config.hidden_size
 
-        self.query_key_value = Linear(hidden_size, 3 * hidden_size, bias=True, parallel="col")
-        self.dense = Linear(hidden_size, hidden_size, bias=True, parallel="row")
+        self.query_key_value = Linear(
+            hidden_size, 3 * hidden_size, bias=True, parallel="col", dtype=flow.float16
+        )
+        self.dense = Linear(hidden_size, hidden_size, bias=True, parallel="row", dtype=flow.float16)
 
 
 modeling_bloom.BloomAttention = LiBaiBloomAttention
@@ -50,8 +52,12 @@ class LiBaiBloomMLP(temp_class):
 
         hidden_size = config.hidden_size
 
-        self.dense_h_to_4h = Linear(hidden_size, 4 * hidden_size, bias=True, parallel="col")
-        self.dense_4h_to_h = Linear(4 * hidden_size, hidden_size, bias=True, parallel="row")
+        self.dense_h_to_4h = Linear(
+            hidden_size, 4 * hidden_size, bias=True, parallel="col", dtype=flow.float16
+        )
+        self.dense_4h_to_h = Linear(
+            4 * hidden_size, hidden_size, bias=True, parallel="row", dtype=flow.float16
+        )
 
 
 modeling_bloom.BloomMLP = LiBaiBloomMLP
@@ -79,12 +85,15 @@ if __name__ == "__main__":
             tensor_parallel_size=2,
             pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
             pipeline_num_layers=None,
+            device_type="cpu",
         )
     )
     dist.setup_dist_util(parallel_config)
 
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-560m").half()
+    model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-560m", torch_dtype=flow.float16)
+    # set model to cuda
+    dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
     tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-560m", use_fast=False)
