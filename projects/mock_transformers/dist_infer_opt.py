@@ -72,9 +72,6 @@ class LiBaiOPTAttention(temp_class):
             value_states = self._shape(value_states, -1, bsz)
 
         past_key_value = (key_states, value_states)
-        #attn_q = query_states
-        #attn_k = key_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
-        #attn_v = value_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
 
         attn_output = flow._C.fused_multi_head_attention_inference_v2(
             query=query_states,
