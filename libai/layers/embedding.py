@@ -42,6 +42,7 @@ class Embedding(nn.Module):
         padding_idx=None,
         init_method=init.xavier_normal_,
         amp_enabled=False,
+        dtype=flow.float32,
         layer_idx=0,
     ):
         super().__init__()
@@ -65,7 +66,7 @@ class Embedding(nn.Module):
         self.weight = nn.Parameter(
             flow.empty(
                 (num_embeddings, embedding_dim),
-                dtype=flow.float32,
+                dtype=dtype,
                 placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )

@@ -33,4 +33,4 @@ class LayerNorm(flow.nn.Module):
         self.l2norm_epsilon = eps
 
     def forward(self, hidden_states):
-        return flow._C.rms_layer_norm(hidden_states, self.weight, self.l2norm_epsilon)
+        return flow._C.rms_norm(hidden_states, self.weight, self.weight.shape, self.l2norm_epsilon)
