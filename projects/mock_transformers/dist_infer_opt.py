@@ -72,17 +72,20 @@ class LiBaiOPTAttention(temp_class):
             value_states = self._shape(value_states, -1, bsz)
 
         past_key_value = (key_states, value_states)
-        attn_q = query_states
-        attn_k = key_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
-        attn_v = value_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
+        #attn_q = query_states
+        #attn_k = key_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
+        #attn_v = value_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
 
-        attn_output = flow._C.fused_multi_head_attention_inference(
-            attn_q,
-            attn_k,
-            attn_v,
-            num_heads=self.num_heads,
+        attn_output = flow._C.fused_multi_head_attention_inference_v2(
+            query=query_states,
+            query_layout="BM(HK)",
+            query_head_size=self.head_dim,
+            key=key_states,
+            key_layout="BHMK",
+            value=value_states,
+            value_layout="BHMK",
             causal=True,
-            causal_diagonal_offset=attn_k.shape[1] - attn_q.shape[1],
+            causal_diagonal_offset=key_states.shape[2] - query_states.shape[1],
         )
         attn_output = self.out_proj(attn_output)
 
@@ -131,7 +134,7 @@ if __name__ == "__main__":
     dist.setup_dist_util(parallel_config)
 
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b", torch_dtype=flow.float16)
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-13b", torch_dtype=flow.float16)
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
