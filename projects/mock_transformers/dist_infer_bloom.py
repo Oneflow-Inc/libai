@@ -20,9 +20,8 @@ from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.models.bloom import modeling_bloom
 
-from libai.layers import Linear, Embedding, LayerNorm
+from libai.layers import Embedding, LayerNorm, Linear
 from libai.utils import distributed as dist
-
 
 # ------replace attention to libai------
 temp_class = modeling_bloom.BloomAttention
@@ -31,11 +30,12 @@ temp_class = modeling_bloom.BloomAttention
 class LiBaiBloomAttention(temp_class):
     def __init__(self, config):
         super().__init__(config)
-        
+
         hidden_size = config.hidden_size
-        
+
         self.query_key_value = Linear(hidden_size, 3 * hidden_size, bias=True, parallel="col")
         self.dense = Linear(hidden_size, hidden_size, bias=True, parallel="row")
+
 
 modeling_bloom.BloomAttention = LiBaiBloomAttention
 
@@ -47,12 +47,13 @@ temp_class = modeling_bloom.BloomMLP
 class LiBaiBloomMLP(temp_class):
     def __init__(self, config):
         super().__init__(config)
-        
+
         hidden_size = config.hidden_size
-        
+
         self.dense_h_to_4h = Linear(hidden_size, 4 * hidden_size, bias=True, parallel="col")
         self.dense_4h_to_h = Linear(4 * hidden_size, hidden_size, bias=True, parallel="row")
-        
+
+
 modeling_bloom.BloomMLP = LiBaiBloomMLP
 
 
@@ -65,6 +66,7 @@ class LiBaiBloomModel(temp_class):
         super().__init__(config)
 
         self.word_embeddings = Embedding(config.vocab_size, self.embed_dim)
+
 
 modeling_bloom.BloomModel = LiBaiBloomModel
 

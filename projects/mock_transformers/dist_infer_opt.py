@@ -37,6 +37,7 @@ class LiBaiOPTAttention(temp_class):
         self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col", dtype=flow.float16)
         self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row", dtype=flow.float16)
 
+
 modeling_opt.OPTAttention = LiBaiOPTAttention
 
 
@@ -62,6 +63,7 @@ class LiBaiOPTDecoderLayer(temp_class):
             parallel="row",
             dtype=flow.float16,
         )
+
 
 modeling_opt.OPTDecoderLayer = LiBaiOPTDecoderLayer
 

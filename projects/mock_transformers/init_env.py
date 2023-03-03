@@ -18,10 +18,11 @@ import oneflow as flow
 
 flow.mock_torch.enable()
 
-import libai
 from oneflow import Tensor, nn  # noqa
 from transformers import modeling_utils  # noqa
 from transformers.modeling_utils import _load_state_dict_into_model  # noqa
+
+import libai
 
 
 # ---------------- mock _load_state_dict_into_model ------------------
