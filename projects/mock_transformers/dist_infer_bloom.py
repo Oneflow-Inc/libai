@@ -20,7 +20,7 @@ from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.models.bloom import modeling_bloom
 
-from libai.layers import Linear, Embedding
+from libai.layers import Linear, Embedding, LayerNorm
 from libai.utils import distributed as dist
 
 
