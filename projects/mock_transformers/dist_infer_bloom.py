@@ -71,7 +71,7 @@ class LiBaiBloomModel(temp_class):
     def __init__(self, config):
         super().__init__(config)
 
-        self.word_embeddings = Embedding(config.vocab_size, self.embed_dim)
+        self.word_embeddings = Embedding(config.vocab_size, self.embed_dim, dtype=flow.float16)
 
 
 modeling_bloom.BloomModel = LiBaiBloomModel
