@@ -56,7 +56,6 @@ class LiBaiOPTAttention(temp_class):
                 output_attentions,
             )
         bsz, tgt_len, _ = hidden_states.size()
-        causal = past_key_value is None
 
         query_states, key_states, value_states = flow._C.grouped_matmul_bias(
             [hidden_states, hidden_states, hidden_states],
@@ -78,7 +77,12 @@ class LiBaiOPTAttention(temp_class):
         attn_v = value_states.transpose(1, 2).view(bsz, -1, self.num_heads * self.head_dim)
 
         attn_output = flow._C.fused_multi_head_attention_inference(
-            attn_q, attn_k, attn_v, num_heads=self.num_heads, causal=causal
+            attn_q,
+            attn_k,
+            attn_v,
+            num_heads=self.num_heads,
+            causal=True,
+            causal_diagonal_offset=attn_k.shape[1] - attn_q.shape[1],
         )
         attn_output = self.out_proj(attn_output)
 
