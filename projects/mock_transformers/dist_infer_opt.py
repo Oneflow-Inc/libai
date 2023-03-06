@@ -25,8 +25,6 @@ from transformers.models.opt import modeling_opt
 
 from libai.layers import Linear
 from libai.utils import distributed as dist
-import numpy as np
-import time
 
 # ------replace attention to libai------
 temp_class = modeling_opt.OPTAttention
@@ -135,7 +133,7 @@ if __name__ == "__main__":
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
-            tensor_parallel_size=1,
+            tensor_parallel_size=2,
             pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
             pipeline_num_layers=None,
             device_type="cpu",
@@ -144,12 +142,12 @@ if __name__ == "__main__":
     dist.setup_dist_util(parallel_config)
 
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-13b", torch_dtype=flow.float16)
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b", torch_dtype=flow.float16)
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-13b", use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-2.7b", use_fast=False)
 
     # get input_ids
     prompt = "Hello, I'm am conscious and"
@@ -162,13 +160,10 @@ if __name__ == "__main__":
 
     # generate id
     placement_sbp_dict = dict(
-        placement=flow.env.all_device_placement("cuda"), sbp=flow.sbp.broadcast,
+        placement=flow.env.all_device_placement("cuda"),
+        sbp=flow.sbp.broadcast,
     )
-    p = time.time()
-    while True:
-        with global_mode(True, **placement_sbp_dict):
-            generated_ids = model.generate(input_ids, max_length=128, min_length=128)
+    with global_mode(True, **placement_sbp_dict):
+        generated_ids = model.generate(input_ids, max_length=30)
         out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-        t = time.time()
-        print(t - p, (t - p) / generated_ids.shape[1], out_put_ids)
-        p = t
+    print(out_put_ids)
