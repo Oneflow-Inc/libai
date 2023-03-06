@@ -1,7 +1,18 @@
-import os
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-os.environ["ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT"] = "1"
-os.environ["ONEFLOW_KERNEL_ENABLE_FUSED_LINEAR"] = "1"
 import init_env  # noqa
 from typing import List, Optional, Tuple, Union
 import oneflow as flow
@@ -91,6 +102,7 @@ class LiBaiOPTAttention(temp_class):
 
 modeling_opt.OPTAttention = LiBaiOPTAttention
 
+
 # ----------replace Decoder to libai -----
 temp_class = modeling_opt.OPTDecoderLayer
 
@@ -116,6 +128,7 @@ class LiBaiOPTDecoderLayer(temp_class):
 
 
 modeling_opt.OPTDecoderLayer = LiBaiOPTDecoderLayer
+
 
 if __name__ == "__main__":
     # set dist config
