@@ -165,5 +165,5 @@ if __name__ == "__main__":
     )
     with global_mode(True, **placement_sbp_dict):
         generated_ids = model.generate(input_ids, max_length=30)
-        out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+    out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
     print(out_put_ids)
