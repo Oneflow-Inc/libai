@@ -123,5 +123,3 @@ class Conv1D(nn.Module):
             self.bias is not None,
             self.parallel,
         )
-
-Conv = Conv1D
