@@ -74,41 +74,45 @@ if __name__ == "__main__":
         dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=4,  # set to 1, unsupport pipeline parallel now
-            pipeline_num_layers=32,
-            custom_pipeline_stage_id= [0]*8 + [1]*8 + [2]*8 + [3]*8,
+            pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
+            # pipeline_num_layers=12,
+            # custom_pipeline_stage_id= [0]*3 + [1]*3 + [2]*3 + [3]*3,
             device_type="cpu",
         )
     )
     dist.setup_dist_util(parallel_config)
-
-    # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b", torch_dtype=flow.float16)
-    # set model to cuda
-    dist.set_device_type("cuda")
-    model._apply(dist.convert_to_distributed_default_setting)
-
-    init_env.auto_set_pipeline_stage_id(model, pipeline_parallel_size=parallel_config.pipeline_parallel_size)
-    import pdb
-    pdb.set_trace()
-    # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-2.7b", use_fast=False)
-
-    # get input_ids
-    prompt = "Hello, I'm am conscious and"
-    input_ids = tokenizer(prompt, return_tensors="np").input_ids
-    input_ids = flow.from_numpy(input_ids)
-    input_ids = input_ids.to_global(
-        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        placement=dist.get_layer_placement(0),
-    )
-
-    # generate id
     placement_sbp_dict = dict(
         placement=flow.env.all_device_placement("cuda"),
         sbp=flow.sbp.broadcast,
     )
-    with global_mode(True, **placement_sbp_dict):
-        generated_ids = model.generate(input_ids, max_length=30)
-    out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-    print(out_put_ids)
+   
+    # initial and load model
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m", torch_dtype=flow.float16)
+    # set model to cuda
+    dist.set_device_type("cuda")
+    model._apply(dist.convert_to_distributed_default_setting)
+
+    model = init_env.auto_set_pipeline_stage_id(model, pipeline_parallel_size=parallel_config.pipeline_parallel_size)
+
+    # initial tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m", use_fast=False)
+
+    # get input_ids
+    prompt = "Hello, I'm am conscious and"
+    input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+    # input_ids = flow.from_numpy(input_ids)
+    input_ids = input_ids.to_global(
+        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        placement=dist.get_layer_placement(0),
+    )
+    
+    # generate id
+    for i in range(100):
+        with global_mode(True, **placement_sbp_dict):
+            model = init_env.compile_auto_placement(
+                model,
+                input_ids
+            )
+            generated_ids = model.generate(input_ids, max_length=30)
+        out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+        print(out_put_ids)
