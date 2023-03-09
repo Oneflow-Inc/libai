@@ -21,6 +21,7 @@ flow.mock_torch.enable()
 from oneflow import Tensor, nn  # noqa
 from transformers import modeling_utils  # noqa
 from transformers.modeling_utils import _load_state_dict_into_model  # noqa
+from libai.utils import distributed as dist #noqa
 
 
 # ---------------- mock _load_state_dict_into_model ------------------
@@ -111,3 +112,91 @@ def flow_softmax(*args, **kwargs):
 
 
 nn.functional.softmax = flow_softmax
+
+# =============================================
+# -----------------def function----------------
+# =============================================
+
+def set_pipeline_stage_id(self, placement):
+    for param in self.parameters():
+            param.data = param.data.to_global(placement=placement)
+
+nn.Module.set_pipeline_stage_id = set_pipeline_stage_id
+
+
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return f"{num:.2f} {unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.2f} Yi{suffix}"
+
+def print_model(model, depth=0, max_depth=2, last_child=False, prefix=''):
+    indent = "    "
+    stage_str = ""
+    if hasattr(model, "layer_idx"):
+        layer_idx = getattr(model, "layer_idx")
+        stage_idx = getattr(model, "stage_idx")
+        same_placement = True
+        for path, module in model.named_modules():
+            if getattr(module, "layer_idx") != layer_idx:
+                same_placement = False
+        if same_placement:
+            stage_str = f" stage{stage_idx}_ranks{dist.get_layer_placement(layer_idx).ranks} "
+
+    if depth > max_depth:
+        return
+    if isinstance(model, nn.Module):
+        params = sum(p.numel() for p in model.parameters())
+        print(indent * depth + ("└─" if last_child else "├─") + prefix + str(model.__class__.__name__) + ": " + stage_str  + sizeof_fmt(params) + " params")
+    elif isinstance(model, nn.Sequential):
+        print(indent * depth + ("└─" if last_child else "├─") + prefix + str(model.__class__.__name__) + ": " + str(len(list(model.named_children()))) + " modules")
+    else:
+        print(indent * depth + ("└─" if last_child else "├─") + prefix + str(type(model).__name__))
+    for i, (name, child) in enumerate(model.named_children()):
+        print_model(child, depth=depth+1, max_depth=max_depth, last_child=i==len(list(model.named_children()))-1, prefix=f'[{name}] ')
+
+
+def auto_set_pipeline_stage_id(model, pipeline_parallel_size=1):
+    # Define a local variable to record the number of repeated and integer layers encountered
+    count = 0
+    max_depth=1
+    name_stage_dict = {}
+    # Iterate over all submodules and paths of the model
+    for path, module in model.named_modules():
+        # Get the name and class of the module
+        name = path.split(".")[-1]
+        prefix_path = ".".join(path.split(".")[:-1])
+        module_cls = type(module)
+        
+        # Determine if the layer is a number, i.e. if it is possible to be a repeated and integer layer
+        if name.isdigit():
+            # Determine if the layer has been repeated, i.e. if there is the same path and class in named_modules
+            repeated = False
+            for n, m in model.named_modules():
+                prefix_n = ".".join(n.split(".")[:-1])
+                if m is not module and prefix_n == prefix_path and type(m) == module_cls:
+                    max_depth = max(len(n.split(".")), max_depth)
+                    repeated = True
+            if repeated:
+                count += 1
+                # print(f"Layer {name} with path {path} is repeated. {count}")
+
+        name_stage_dict[path] = max(count-1, 0)
+        
+
+    length = (count + pipeline_parallel_size - 1) // pipeline_parallel_size
+
+    for path, module in model.named_modules():
+        # Add count to the parameter
+        layer_idx = name_stage_dict[path]
+        stage_idx = layer_idx // length
+        setattr(module, "stage_idx", stage_idx)
+        setattr(module, "layer_idx", layer_idx)
+        if len(path.split(".")) >= max_depth or len(list(module.named_children())) == 0:
+            for param in module.parameters():
+                param.data = param.data.to_global(placement=dist.get_layer_placement(layer_idx))
+    if dist.is_main_process():
+        print_model(model, depth=0, max_depth=100 if max_depth==1 else max_depth)
+    # Return the modified model
+    return model
