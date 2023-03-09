@@ -76,6 +76,17 @@ class LiBaiOPTAttention(temp_class):
             value_states = self._shape(value_states, -1, bsz)
             key_states = torch.cat([past_key_value[0], key_states], dim=2)
             value_states = torch.cat([past_key_value[1], value_states], dim=2)
+            key_states, value_states = flow._C.fused_attention_concat_past_key_value(
+                past_key=past_key_value[0],
+                past_key_layout="BHMK",
+                past_value=past_key_value[1],
+                past_value_layout="BHMK",
+                key=key_states,
+                key_layout="BM(HK)",
+                value=value_states,
+                value_layout="BM(HK)",
+                key_head_size=self.head_dim,
+            )
         else:
             key_states = self._shape(key_states, -1, bsz)
             value_states = self._shape(value_states, -1, bsz)
@@ -160,8 +171,7 @@ if __name__ == "__main__":
 
     # generate id
     placement_sbp_dict = dict(
-        placement=flow.env.all_device_placement("cuda"),
-        sbp=flow.sbp.broadcast,
+        placement=flow.env.all_device_placement("cuda"), sbp=flow.sbp.broadcast,
     )
     with global_mode(True, **placement_sbp_dict):
         generated_ids = model.generate(input_ids, max_length=30)
