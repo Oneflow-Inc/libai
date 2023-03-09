@@ -39,7 +39,7 @@ pip install -e .
     </thead>
     <tbody>
     <tr class="odd">
-    <td>cu112</td>
+    <td>cu117</td>
     <td>&gt;= 450.80.02</td>
     <td>GTX 10xx, RTX 20xx, A100, RTX 30xx</td>
     </tr>
@@ -56,27 +56,48 @@ pip install -e .
     </tbody>
     </table></li>
 
-### Install diffusers and transformers
+### Install onediff
 
 **Important**
 
 
-To make sure you can train stable diffusion in LiBai, please install diffusers and transformers by flowing commands
+To make sure you can train stable diffusion in LiBai, please install [onediff](https://github.com/Oneflow-Inc/diffusers)
+
+#### Option 1: Fresh clone and dev install
 
 ```
-# install transformers
-cd your_root_dir
-git clone https://github.com/Oneflow-Inc/transformers.git
-cd transformers
-pip install -e .
-
-# install diffusers
-cd your_root_dir
-git clone https://github.com/Oneflow-Inc/diffusers.git
-cd diffusers
-git checkout dev_trianing_saving_sd_libai
-python3 -m pip install -e .[oneflow]
+git clone https://github.com/Oneflow-Inc/diffusers.git onediff
+cd onediff
+python3 -m pip install "transformers>=4.26" "diffusers[torch]==0.12.1"
+python3 -m pip uninstall accelerate -y
+python3 -m pip install -e .
 ```
+
+#### Option 2: Setup if you were using the the `oneflow-fork` branch before
+
+1. uninstall transformers and diffusers
+
+```
+python3 -m pip uninstall transformers -y
+python3 -m pip uninstall diffusers -y
+```
+
+2. install transformers and diffusers
+
+```
+python3 -m pip install "transformers>=4.26" "diffusers[torch]==0.12.1"
+python3 -m pip uninstall accelerate -y
+```
+
+3. delete the main first:
+
+```
+git branch -D main
+git fetch
+git checkout main
+python3 -m pip install -e .
+```
+
 
 Notes
 
@@ -107,7 +128,7 @@ python3 -m pip install huggingface_hub
 
 - running command
 
-    set your datapath and features in `projects/Stable_Diffusion/config.py`
+    set your datapath and features in `projects/Stable_Diffusion/configs/config.py`
     ```python
         dataloader.train = LazyCall(build_nlp_train_loader)(
             dataset=[
@@ -143,7 +164,7 @@ python3 -m pip install huggingface_hub
 
     running with 4 GPU
     ```
-    bash tools/train.sh projects/Stable_Diffusion/train_net.py projects/Stable_Diffusion/config.py 4
+    bash tools/train.sh projects/Stable_Diffusion/train_net.py projects/Stable_Diffusion/configs/config.py 4
     ```
 
 ### DreamBooth
@@ -156,7 +177,7 @@ python3 -m pip install huggingface_hub
 
 - DreamBooth Training
 
-    set your datapath and features in `projects/Stable_Diffusion/dreambooth_config.py`
+    set your datapath and features in `projects/Stable_Diffusion/configs/dreambooth_config.py`
     ```python
         dataloader.train = LazyCall(build_nlp_train_loader)(
             dataset=[
@@ -193,7 +214,7 @@ python3 -m pip install huggingface_hub
 
     running with 4 GPU
     ```
-    bash tools/train.sh projects/Stable_Diffusion/train_net.py projects/Stable_Diffusion/dreambooth_config.py 4
+    bash tools/train.sh projects/Stable_Diffusion/train_net.py projects/Stable_Diffusion/configs/dreambooth_config.py 4
     ```
 
 - Training DreamBooth with prior-preservation loss
@@ -275,25 +296,27 @@ output/stable_diffusion
 │       └── diffusion_pytorch_model.bin
 ```
 
-Here we can use [diffusers](https://github.com/Oneflow-Inc/diffusers) to inference our trained model in Libai
+Here we can use [onediff](https://github.com/Oneflow-Inc/diffusers) to inference our trained model in Libai
 
 ```python
-import oneflow as torch
-from diffusers import OneFlowStableDiffusionPipeline
+import oneflow as flow
+from PIL import Image
+flow.mock_torch.enable()
+from onediff import OneFlowStableDiffusionPipeline
 
 model_path = "output/stable_diffusion/model_sd_for_inference/"
 pipe = OneFlowStableDiffusionPipeline.from_pretrained(
     model_path,
     use_auth_token=True,
     revision="fp16",
-    torch_dtype=torch.float16,
+    torch_dtype=flow.float16,
 )
 
 pipe = pipe.to("cuda")
 
 for i in range(100):
     prompt = "a photo of sks dog"
-    with torch.autocast("cuda"):
+    with flow.autocast("cuda"):
         images = pipe(prompt).images
         for j, image in enumerate(images):
             image.save(f"{j}.png")

@@ -113,3 +113,54 @@ class PromptDataset(Dataset):
         example["prompt"] = self.prompt
         example["index"] = index
         return example
+
+
+class TXTDataset(Dataset):
+    def __init__(self, foloder_name, tokenizer, tokenizer_pretrained_folder=None, thres=0.2, size=512, center_crop=False):
+        print(f'Loading folder data from {foloder_name}.')
+        self.image_paths = []
+        self.tokenizer = tokenizer
+        if tokenizer_pretrained_folder:
+            self.tokenizer = self.tokenizer.from_pretrained(
+                tokenizer_pretrained_folder[0],
+                subfolder=tokenizer_pretrained_folder[1]
+            )
+        for each_file in os.listdir(foloder_name):
+            if each_file.endswith('.jpg'):
+                self.image_paths.append(os.path.join(foloder_name, each_file))
+
+        self.image_transforms = transforms.Compose(
+            [
+                transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR),
+                transforms.CenterCrop(size) if center_crop else transforms.RandomCrop(size),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5], [0.5]),
+            ]
+        )
+        print('Done loading data. Len of images:', len(self.image_paths))
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        img_path = str(self.image_paths[idx])
+        instance_image = Image.open(img_path)
+        if not instance_image.mode == "RGB":
+            instance_image = instance_image.convert("RGB")
+
+        instance_images = self.image_transforms(instance_image)
+
+        caption_path = img_path.replace('.jpg', '.txt')
+        with open(caption_path, 'r') as f:
+            caption = f.read()
+            input_ids = self.tokenizer(
+                caption,
+                padding="max_length",
+                truncation=True,
+                max_length=self.tokenizer.model_max_length,
+                return_tensors="np"
+            ).input_ids
+        return Instance(
+            pixel_values=DistTensorData(instance_images.to(dtype=flow.float32)),
+            input_ids=DistTensorData(flow.tensor(input_ids[0])),
+        )
