@@ -44,18 +44,18 @@ class Conv1D(nn.Module):
         if parallel == "col":
             weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        
+
         elif parallel == "row":
             weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
-            
+
         elif parallel == "data":
             weight_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
             bias_sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        
+
         else:
             raise KeyError(f"{parallel} is not supported! Only support ('data', 'row' and 'col')")
-        
+
         self.weight = flow.nn.Parameter(
             flow.empty(
                 (in_features, out_features),
@@ -79,27 +79,29 @@ class Conv1D(nn.Module):
             if bias
             else None
         )
-    
+
     def forward(self, x):
         if dist.same_sbp(self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])):
             if self.weight.sbp[-1] == flow.sbp.split(1):
                 x_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
                 x = x.to_global(sbp=x_sbp)
-            
+
             x = x.to_global(grad_sbp=x.sbp)
             x = flow.matmul(x, self.weight)
-                
-        elif dist.same_sbp(self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])):
+
+        elif dist.same_sbp(
+            self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])
+        ):
             if self.weight.sbp[-1] == flow.sbp.split(0):
                 x_sbp = x.sbp[:-1] + (flow.sbp.split(x.ndim - 1),)
                 x = x.to_global(sbp=x_sbp)
                 out_sbp = x.sbp[:-1] + (flow.sbp.broadcast,)
             else:
                 out_sbp = x.sbp
-                
+
             x = flow.matmul(x, self.weight)
             x = x.to_global(sbp=out_sbp)
-        
+
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         ):
@@ -107,7 +109,7 @@ class Conv1D(nn.Module):
             x = flow.matmul(x, self.weight)
         else:
             x = flow.matmul(x, self.weight)
-        
+
         if self.bias is not None:
             if self.skip_bias_add:
                 return x, self.bias
