@@ -203,8 +203,8 @@ def auto_set_pipeline_stage_id(model, pipeline_parallel_size=1):
             for param in module.parameters():
                 if id(param) not in param_id_set:
                     param.data = param.data.to_global(placement=dist.get_layer_placement(layer_idx))
-                else:
                     param_id_set.add(id(param))
+                    
     if dist.is_main_process():
         print_model(model, depth=0, max_depth=100 if max_depth==1 else max_depth)
     # Return the modified model
