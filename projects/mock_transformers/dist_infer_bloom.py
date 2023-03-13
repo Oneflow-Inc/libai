@@ -82,9 +82,10 @@ if __name__ == "__main__":
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
-            tensor_parallel_size=2,
-            pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
-            pipeline_num_layers=None,
+            tensor_parallel_size=1,
+            pipeline_parallel_size=4,  # set to 1, unsupport pipeline parallel now
+            pipeline_num_layers=24,  # set to 1, unsupport pipeline parallel now
+            custom_pipeline_stage_id=[0]*6 + [1]*6 + [2]*6 + [3]*6,
             device_type="cpu",
         )
     )
@@ -95,6 +96,10 @@ if __name__ == "__main__":
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
+
+    init_env.auto_set_pipeline_stage_id(model, pipeline_parallel_size=parallel_config.pipeline_parallel_size)
+    import pdb
+    pdb.set_trace()
     # initial tokenizer
     tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-560m", use_fast=False)
 
