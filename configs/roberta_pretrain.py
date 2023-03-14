@@ -15,6 +15,8 @@ tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
 dataloader.train.dataset[0].data_prefix = data_prefix
 dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
+dataloader.test[0].dataset.data_prefix = data_prefix
+dataloader.test[0].dataset.indexed_dataset.data_prefix = data_prefix
 
 # RoBERTa model config
 model.cfg.num_attention_heads = 12

@@ -27,7 +27,7 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
                 data_impl="mmap",
                 skip_warmup=False,
             ),
-            max_seq_length=512,
+            max_seq_length=514,
             mask_lm_prob=0.15,
             short_seq_prob=0.0,
             seed=1234,
@@ -39,3 +39,24 @@ dataloader.train = LazyCall(build_nlp_train_val_test_loader)(
     weights=[1.0],
     num_workers=4,
 )
+
+dataloader.test = [LazyCall(build_nlp_test_loader)(
+    dataset=
+        LazyCall(RobertaDataset)(
+            name="roberta",
+            data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
+            indexed_dataset=LazyCall(get_indexed_dataset)(
+                data_prefix="/workspace/data/libai_dataset/loss_compara_content_sentence",
+                data_impl="mmap",
+                skip_warmup=False,
+            ),
+            max_num_samples=10,
+            max_seq_length=514,
+            mask_lm_prob=0.15,
+            short_seq_prob=0.1,
+            seed=1234,
+            masking_style="bert",
+        ),
+        test_batch_size=4,
+    )
+]
