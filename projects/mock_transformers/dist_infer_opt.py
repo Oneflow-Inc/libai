@@ -107,12 +107,18 @@ if __name__ == "__main__":
     )
     
     # generate id
-    for i in range(100):
-        with global_mode(True, **placement_sbp_dict):
-            model = init_env.compile_auto_placement(
-                model,
-                input_ids
-            )
-            generated_ids = model.generate(input_ids, max_length=30)
-        out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-        print(out_put_ids)
+    # for i in range(100):
+    
+    # generated_ids = model.generate(input_ids, max_length=30)
+    # raise KeyError
+    with global_mode(True, **placement_sbp_dict):
+        compiled_model = init_env.compile_auto_placement(
+            model,
+            input_ids=input_ids, 
+        )
+        # print(model.code) # use this to print the compiled module code
+        generated_ids = compiled_model.run(input_ids)
+        print(generated_ids)
+        # generated_ids = model(input_ids)
+        # out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+        # print(generated_ids)
