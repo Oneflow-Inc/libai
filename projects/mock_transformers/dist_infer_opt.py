@@ -94,8 +94,7 @@ class LiBaiOPTAttention(temp_class):
             key_layout="BHMK",
             value=value_states,
             value_layout="BHMK",
-            causal=True,
-            causal_diagonal_offset=key_states.shape[2] - query_states.shape[1],
+            attn_mask_type="causal_from_bottom_right",
         )
         attn_output = self.out_proj(attn_output)
 
