@@ -24,6 +24,12 @@ import oneflow as flow
 
 from libai.data.structures import DistTensorData, Instance
 from libai.utils import distributed as dist
+from libai.config import LazyCall, instantiate
+from libai.data.samplers import CyclicSampler, SingleRoundSampler
+from oneflow.utils.data.dataset import ConcatDataset
+from omegaconf import OmegaConf
+from libai.data.data_utils import get_train_valid_test_split_
+from libai.data.build import trivial_batch_collator, build_nlp_train_loader, build_nlp_test_loader
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +44,15 @@ class GPT2Dataset(flow.utils.data.Dataset):
         max_num_samples,
         max_seq_length,
         seed=1234,
+        documents=None,
     ):
 
         self.name = name
         self.tokenizer = tokenizer
         self.indexed_dataset = indexed_dataset
 
-        documents = np.arange(start=0, stop=indexed_dataset.sizes.shape[0], step=1, dtype=np.int32)
-
+        documents = documents if documents is not None else np.arange(start=0, stop=indexed_dataset.sizes.shape[0], step=1, dtype=np.int32)
+        print(max_num_samples,'gpt....')
         # Build index mappings.
         self.doc_idx, self.sample_idx, self.shuffle_idx = _build_index_mappings(
             self.name,
@@ -104,8 +111,16 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
     shuffle-idx: maps the sample index into a random index into sample-idx.
     """
     # Number of tokens in each epoch and number of required epochs.
+    # print("documents",documents)
+    # print("sizes",sizes)
+    
     tokens_per_epoch = _num_tokens(documents, sizes)
+    print("tokens_per_epoch_start",tokens_per_epoch)
+    print("num_samples", num_samples)
+    # input()
     num_epochs = _num_epochs(tokens_per_epoch, seq_length, num_samples)
+    print("num_epochs", num_epochs)
+    
     # rng state
     np_rng = np.random.RandomState(seed=seed)
 
@@ -150,7 +165,14 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
                 assert (
                     last_epoch_num_samples >= 0
                 ), "last epoch number of samples should be non-negative."
+                print("tokens_per_epoch", tokens_per_epoch)
+                print('seq_length', seq_length)
                 num_samples_per_epoch = (tokens_per_epoch - 1) // seq_length
+                
+                print("last_epoch_num_samples", last_epoch_num_samples)
+                print("num_samples_per_epoch", num_samples_per_epoch)
+                input()
+                
                 assert last_epoch_num_samples < (
                     num_samples_per_epoch + 1
                 ), "last epoch number of samples exceeded max value."
@@ -192,6 +214,7 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
             from libai.data.data_utils import helpers
 
             assert doc_idx.dtype == np.int32
+            sizes = sizes.astype(np.int32)
             assert sizes.dtype == np.int32
             sample_idx = helpers.build_sample_idx(
                 sizes, doc_idx, seq_length, num_epochs, tokens_per_epoch
@@ -294,3 +317,92 @@ def _build_shuffle_idx(num_samples, total_size, np_rng):
     np_rng.shuffle(shuffle_idx_last)
 
     return np.concatenate((shuffle_idx_first, shuffle_idx_last))
+
+
+def build_nlp_train_val_test_loader(
+    dataset,
+    splits,
+    weights,
+    train_val_test_num_samples,
+    train_batch_size,
+    test_batch_size,
+    train_sampler=LazyCall(CyclicSampler)(shuffle=True),
+    test_sampler=LazyCall(SingleRoundSampler)(shuffle=False, drop_last=False),
+    num_workers=4,
+    consumed_samples=0,
+    seed=0,
+    collate_fn=None,
+    dataset_mixer=ConcatDataset,
+):
+    print("train_val_test_num_samples",train_val_test_num_samples)
+    def build_dataset(index, dataset, ds_splits):
+        if ds_splits[index + 1] > ds_splits[index]:
+            documents = np.arange(
+                start=ds_splits[index], 
+                stop=ds_splits[index + 1],
+                step=1, 
+                dtype=np.int32
+            )
+            dataset.documents = documents
+            dataset.max_num_samples = train_val_test_num_samples[index]
+            dataset = instantiate(dataset)
+        
+    if OmegaConf.is_list(dataset):
+        dataset = list(dataset)
+    elif not isinstance(dataset, list):
+        dataset = [dataset]
+    
+    assert len(dataset) == len(splits), "datasets length must equal splits length"
+    assert len(dataset) == len(weights), "datasets length must equal weights length"
+    
+    train_datasets, val_datasets, test_datasets = [], [], []
+    for dst, split in zip(dataset, splits):
+        indexed_dataset = instantiate(dst.indexed_dataset)
+        total_num_of_documents = indexed_dataset.doc_idx.shape[0] - 1
+        ds_splits = get_train_valid_test_split_(total_num_of_documents, split)
+
+        train_dataset = build_dataset(0, dst, ds_splits)
+        val_dataset = build_dataset(1, dst, ds_splits)
+        test_dataset = build_dataset(2, dst, ds_splits)
+
+        train_datasets.append(train_dataset)
+        val_datasets.append(val_dataset)
+        test_datasets.append(test_dataset)
+    
+    # [dataset, dataset] -> dataset -> dataloader
+    train_dataset = dataset_mixer(train_datasets)
+    val_dataset = dataset_mixer(val_datasets)
+    test_dataset = dataset_mixer(test_datasets)
+    
+    collate_fn = trivial_batch_collator if collate_fn is None else collate_fn
+    
+    train_loader, _, _ = build_nlp_train_loader(
+        dataset=train_dataset,
+        train_batch_size=train_batch_size,
+        test_batch_size=None,
+        sampler=train_sampler,
+        num_workers=num_workers,
+        consumed_samples=consumed_samples,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    valid_loader = build_nlp_test_loader(
+        dataset=val_dataset,
+        test_batch_size=test_batch_size,
+        sampler=test_sampler,
+        num_workers=num_workers,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    test_loader = build_nlp_test_loader(
+        dataset=test_dataset,
+        test_batch_size=test_batch_size,
+        sampler=test_sampler,
+        num_workers=num_workers,
+        seed=seed,
+        collate_fn=collate_fn,
+    )
+
+    return train_loader, valid_loader, test_loader
