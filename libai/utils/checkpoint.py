@@ -16,6 +16,7 @@
 import copy
 import logging
 import os
+import shutil
 from collections import defaultdict
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
@@ -363,7 +364,10 @@ class PeriodicCheckpointer:
                     if self.path_manager.exists(file_to_delete) and not file_to_delete.endswith(
                         "{}_{:07d}".format(self.file_prefix, iteration)
                     ):
-                        self.path_manager.rm(file_to_delete)
+                        if not self.path_manager.isfile(file_to_delete):
+                            shutil.rmtree(file_to_delete)
+                        else:
+                            self.path_manager.rm(file_to_delete)
 
         if self.max_iter is not None:
             if iteration >= self.max_iter - 1:
