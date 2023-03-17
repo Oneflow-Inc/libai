@@ -29,10 +29,11 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
     num_workers=4,
 )
 
-optim.lr = 5e-6
+optim.lr = 5e-4
 
 model = LazyCall(StableDiffusion)(
-    model_path="CompVis/stable-diffusion-v1-4"
+    model_path="CompVis/stable-diffusion-v1-4",
+    train_with_lora=True
 )
 
 train.update(

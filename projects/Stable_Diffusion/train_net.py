@@ -47,17 +47,24 @@ class SdCheckpointer(HookBase):
             model.zero_grad(set_to_none=True)
             model = model.to_global(sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cpu"))
             return model.to_local()
-        pipeline = OneFlowStableDiffusionPipeline.from_pretrained(
-            self._model.model_path,
-            tokenizer=self._model.tokenizer,
-            text_encoder=model_to_local(self._model.text_encoder),
-            vae=model_to_local(self._model.vae),
-            unet=model_to_local(self._model.unet)
-        )
-        save_path = os.path.join(self._save_path, "model_sd_for_inference")
-        logger.info(f"saving stable diffusion model to {save_path}")
-        if dist.is_main_process():
-            pipeline.save_pretrained(save_path)
+        if hasattr(self._model, "lora_layers"):
+            unet = model_to_local(self._model.unet)
+            save_path = os.path.join(self._save_path, "model_sd_for_inference")
+            logger.info(f"saving stable diffusion model to {save_path}")
+            if dist.is_main_process():
+                unet.save_attn_procs(save_path)
+        else:
+            pipeline = OneFlowStableDiffusionPipeline.from_pretrained(
+                self._model.model_path,
+                tokenizer=self._model.tokenizer,
+                text_encoder=model_to_local(self._model.text_encoder),
+                vae=model_to_local(self._model.vae),
+                unet=model_to_local(self._model.unet)
+            )
+            save_path = os.path.join(self._save_path, "model_sd_for_inference")
+            logger.info(f"saving stable diffusion model to {save_path}")
+            if dist.is_main_process():
+                pipeline.save_pretrained(save_path)
 
 
 class Trainer(DefaultTrainer):

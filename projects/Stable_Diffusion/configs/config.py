@@ -6,7 +6,7 @@ from libai.config import get_config
 from libai.config import LazyCall
 from libai.data.build import build_nlp_train_loader, build_nlp_test_loader
 from projects.Stable_Diffusion.dataset import TXTDataset
-from projects.Stable_Diffusion.finetune_sd import StableDiffusion
+from projects.Stable_Diffusion.modeling import StableDiffusion
 from transformers import CLIPTokenizer
 
 optim = get_config("common/optim.py").optim
