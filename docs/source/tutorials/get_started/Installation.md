@@ -23,7 +23,7 @@ conda activate libai
   - Stable
 
     ```bash
-    python3 -m pip install --find-links https://release.oneflow.info oneflow==0.8.0+[PLATFORM]
+    python3 -m pip install --find-links https://release.oneflow.info oneflow==0.9.0+[PLATFORM]
     ```
 
   - Nightly
@@ -44,7 +44,7 @@ conda activate libai
     </thead>
     <tbody>
     <tr class="odd">
-    <td>cu112</td>
+    <td>cu117</td>
     <td>&gt;= 450.80.02</td>
     <td>GTX 10xx, RTX 20xx, A100, RTX 30xx</td>
     </tr>
