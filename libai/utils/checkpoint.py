@@ -361,8 +361,12 @@ class PeriodicCheckpointer:
                 self.recent_checkpoints.append(self.checkpointer.get_checkpoint_file())
                 if len(self.recent_checkpoints) > self.max_to_keep:
                     file_to_delete = self.recent_checkpoints.pop(0)
-                    if self.path_manager.exists(file_to_delete) and not file_to_delete.endswith(
-                        "{}_{:07d}".format(self.file_prefix, iteration)
+                    if (
+                        dist.is_main_process()
+                        and self.path_manager.exists(file_to_delete)
+                        and not file_to_delete.endswith(
+                            "{}_{:07d}".format(self.file_prefix, iteration)
+                        )
                     ):
                         if not self.path_manager.isfile(file_to_delete):
                             shutil.rmtree(file_to_delete)

@@ -417,10 +417,10 @@ class DefaultTrainer(TrainerBase):
             hooks.IterationTimer(),
             hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
             hooks.PeriodicCheckpointer(
-                    self.checkpointer, 
-                    self.cfg.train.checkpointer.period,
-                    max_to_keep=self.cfg.train.checkpointer.max_to_keep,
-                ),
+                self.checkpointer,
+                self.cfg.train.checkpointer.period,
+                max_to_keep=self.cfg.train.checkpointer.max_to_keep,
+            ),
         ]
 
         if self.cfg.train.evaluation.enabled:
