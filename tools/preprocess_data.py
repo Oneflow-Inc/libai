@@ -207,7 +207,7 @@ def main():
 
     if nltk_available and args.split_sentences:
         print("Start downloading punkt data...")
-        """Download url: http://www.nltk.org/nltk_data/, 
+        """Download url: http://www.nltk.org/nltk_data/,
         and default save path is `~/nltk_data/tokenizers/punkt.zip`
         """
         nltk.download("punkt", quiet=True)
