@@ -206,14 +206,12 @@ class MultiheadAttention(nn.Module):
                 flow.bool
             )
             causal_mask = causal_mask.repeat(attention_scores.size(0), 1, 1, 1)
-            causal_mask = causal_mask.to_global(
-                sbp=attention_scores.sbp, placement=attention_scores.placement
-            )
+            causal_mask = causal_mask.to_global(placement=attention_scores.placement)
             fill_value = flow.finfo(attention_scores.dtype).min
             mask_value = flow.ones(
                 causal_mask.size(),
                 dtype=attention_scores.dtype,
-                sbp=attention_scores.sbp,
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=attention_scores.placement,
             ).fill_(fill_value)
             attention_scores = flow.where(causal_mask, attention_scores, mask_value)
