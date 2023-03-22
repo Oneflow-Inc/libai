@@ -15,6 +15,8 @@ tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
 dataloader.train.dataset[0].data_prefix = data_prefix
 dataloader.train.dataset[0].indexed_dataset.data_prefix = data_prefix
+dataloader.test[0].dataset.data_prefix = data_prefix
+dataloader.test[0].dataset.indexed_dataset.data_prefix = data_prefix
 
 # GPT-2 model config
 model.cfg.embedding_dropout_prob = 0.1

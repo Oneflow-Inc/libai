@@ -158,7 +158,6 @@ class TestViTModel(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    @unittest.skip("There are still bugs in ZeRO")
     def test_vit_with_zero(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 4

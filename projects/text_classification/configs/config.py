@@ -63,13 +63,16 @@ model = LazyCall(ModelForSequenceClassification)(cfg=model_cfg)
 
 train.update(
     dict(
-        recompute_grad=dict(enabled=True),
+        activation_checkpoint=dict(enabled=True),
         output_dir="output/benchmark/",
         train_micro_batch_size=4,
         test_micro_batch_size=4,
         train_epoch=1,
         train_iter=0,
-        eval_period=500,
+        evaluation=dict(
+            enabled=True,
+            eval_period=500,
+        ),
         log_period=50,
         dist=dict(
             data_parallel_size=1,

@@ -62,7 +62,7 @@ model = LazyCall(Seq2Seq)(cfg=transformer_cfg)
 train.update(
     dict(
         rdma_enabled=False,
-        recompute_grad=dict(enabled=False),
+        activation_checkpoint=dict(enabled=False),
         amp=dict(enabled=False),
         output_dir="output/couplet/",
         train_micro_batch_size=128,
