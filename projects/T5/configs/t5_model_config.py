@@ -15,7 +15,7 @@ cfg = dict(
     initializer_range=0.02,
     layernorm_eps=1e-5,
     amp_enabled=False,
-    model_type="t5",
+    model_type="mt5",
 )
 
 cfg = DictConfig(cfg)

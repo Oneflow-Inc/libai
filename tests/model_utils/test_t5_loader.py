@@ -26,15 +26,15 @@ from omegaconf import DictConfig
 from libai.utils import distributed as dist
 from libai.utils.file_utils import get_data_from_cache
 from libai.utils.logger import setup_logger
-from projects.MT5.configs.mt5_base import cfg as libai_cfg
-from projects.MT5.mt5_model import MT5Model
 from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
+from projects.T5.configs.t5_model_config import cfg as libai_cfg
+from projects.T5.models.t5_model import T5Model
 
-PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/t5_utils/pytorch_model.bin"  # noqa
-PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/t5_utils/config.json"  # noqa
+PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/pytorch_model.bin"  # noqa
+PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/config.json"  # noqa
 
-PRETRAINED_MODEL_MD5 = "952862a8ba425a25739a69e5f33b0df8"
-PRETRAINED_MODEL_CONFIG_MD5 = "7ebc91dc4377c01190f4116c3c1ac6cd"
+PRETRAINED_MODEL_MD5 = "4c9c0be541b89de9b01c597ec4cc371a"
+PRETRAINED_MODEL_CONFIG_MD5 = "b159e41603b7eeaf9a9c489165bbcaca"
 
 TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_t5_utils")
 
@@ -64,8 +64,10 @@ class TestT5Loader(flow.unittest.TestCase):
             [101, 2009, 1005, 1055, 2986, 2651, 1012, 102],
             [101, 2028, 12314, 3377, 102, 0, 0, 0],
             [101, 2064, 2017, 3305, 2009, 102, 0, 0],
+            [101, 2064, 2017, 3305, 2009, 102, 0, 0],
         ]
         self.encoder_att_mask = [
+            [1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1, 1, 1, 1],
@@ -74,8 +76,9 @@ class TestT5Loader(flow.unittest.TestCase):
             [101, 2009, 1005, 1055, 2986],
             [101, 2028, 12314, 3377, 102],
             [101, 2064, 2017, 3305, 2009],
+            [101, 2064, 2017, 3305, 2009],
         ]
-        self.decoder_att_mask = [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]]
+        self.decoder_att_mask = [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]]
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -96,13 +99,13 @@ class TestT5Loader(flow.unittest.TestCase):
 
         # load model
         load_func = T5LoaderHuggerFace(
-            model=MT5Model,
+            model=T5Model,
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
             hidden_dropout_prob=0.0,
             attention_probs_dropout_prob=0.0,
             embedding_dropout_prob=0.0,
-            model_type="t5",
+            model_type="mt5",
         )
         model = load_func.load()
         model.eval()
@@ -137,7 +140,7 @@ class TestT5Loader(flow.unittest.TestCase):
         )["logits"]
         self.assertTrue(
             np.allclose(
-                np.array(-9836561.0),
+                np.array(-1.1011268e08),
                 logits.sum().data.numpy(),
             )
         )
@@ -150,20 +153,20 @@ class TestT5Loader(flow.unittest.TestCase):
                 data_parallel_size=2,
                 tensor_parallel_size=1,
                 pipeline_parallel_size=2,
-                pipeline_num_layers=24,
+                pipeline_num_layers=16,
             )
         )
         dist.setup_dist_util(dist_cfg)
 
         # load model
         load_func = T5LoaderHuggerFace(
-            model=MT5Model,
+            model=T5Model,
             libai_cfg=libai_cfg,
             pretrained_model_path=self.pretrained_model_path,
             hidden_dropout_prob=0.0,
             attention_probs_dropout_prob=0.0,
             embedding_dropout_prob=0.0,
-            model_type="t5",
+            model_type="mt5",
         )
         model = load_func.load()
         model.eval()
@@ -198,7 +201,7 @@ class TestT5Loader(flow.unittest.TestCase):
         )["logits"]
         self.assertTrue(
             np.allclose(
-                np.array(-9836561.0),
+                np.array(-1.1011268e08),
                 logits.sum().data.numpy(),
             )
         )

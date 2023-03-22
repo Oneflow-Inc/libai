@@ -97,15 +97,9 @@ class Embedding(nn.Module):
             )
         )
         self.init_method(self.weight)
-        # FIXME(lxy): Fill padding_idx is not supported in nd_sbp right now.
-        # self._fill_padding_idx_with_zero()
 
     def forward(self, input_ids):
         weight = flow._C.amp_white_identity(self.weight) if self.amp_enabled else self.weight
-        # embeddings with sbp sign: [B, B]
-        #   [B, B] x [S(0), B] --> [S(0), B]
-        #     ↑         ↑              ↑
-        #   embed    pos_ids       pos_embed
         input_embeds = flow._C.gather(weight, input_ids, axis=0)
         return input_embeds
 
