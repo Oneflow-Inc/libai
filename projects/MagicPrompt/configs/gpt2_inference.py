@@ -56,14 +56,14 @@ cfg.update(
     sep_token_id=None,
     decoder_start_token_id=None,
     # train
-    pretrained_model_path="/data/home/magicprompt",
+    pretrained_model_path="/home/zhangxiaoyu/libai/oneflow-model",
 )
 
 
 model = LazyCall(GPTModel)(cfg=cfg)
 pretrain_model = LazyCall(GPTForPreTraining)(cfg=cfg)
 tokenization.tokenizer = LazyCall(GPT2Tokenizer)(
-    vocab_file="/data/home/magicprompt/vocab.json",
-    merges_file="/data/home/magicprompt/merges.txt",
+    vocab_file="/home/zhangxiaoyu/oneflow-model/vocab.json",
+    merges_file="/home/zhangxiaoyu/oneflow-model/merges.txt",
     add_bos_token=True,
 )

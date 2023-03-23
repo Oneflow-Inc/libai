@@ -71,8 +71,8 @@ class Embedding(nn.Module):
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )
-        if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
-            self.init_method(self.weight)
+        # if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
+        #     self.init_method(self.weight)
         # FIXME(lxy): Fill padding_idx is not supported in nd_sbp right now.
         # self._fill_padding_idx_with_zero()
 
@@ -148,7 +148,7 @@ class VocabEmbedding(nn.Module):
             )
         )
         # Initialize the word embedding
-        self.init_method(self.weight)
+        # self.init_method(self.weight)
         # FIXME(Lxy): Fill padding_idx is not supported in nd_sbp right now.
         # self._fill_padding_idx_with_zero()
 
@@ -163,7 +163,6 @@ class VocabEmbedding(nn.Module):
         input_embeds = flow._C.gather(weight, input_ids, axis=0)
         # Set the embeds sbp from [S(0), P] --> [S(0), B] to get complete embedding results.
         input_embeds = input_embeds.to_global(sbp=dist.get_hidden_sbp())
-
         return input_embeds
 
     def _fill_padding_idx_with_zero(self) -> None:

@@ -76,7 +76,7 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
-        outputs = self.model.generate(inputs["input_ids"], do_sample=True, max_length=50, **kwargs)
+        outputs = self.model.generate(inputs["input_ids"], do_sample=False, max_length=50, **kwargs)
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         pipeline_parallel=1,
         # pipeline_stage_id=[0] * 6 + [1] * 6,
         # pipeline_num_layers=12,
-        model_path="/path/to/oneflow-model",
+        model_path="/home/zhangxiaoyu/oneflow-model/model",
         mode="libai",
     )
 

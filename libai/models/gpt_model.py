@@ -203,7 +203,6 @@ class GPTModel(nn.Module):
         Returns:
             flow.Tensor: logits
         """
-
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
         input_embeds = self.embeddings(input_ids, 0)
 

@@ -202,7 +202,7 @@ class Generator:
         )
         expanded_return_idx = expanded_return_idx.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=flow.placement("mlu", list(range(dist.get_world_size()))),
         )
 
         input_ids = input_ids.index_select(0, expanded_return_idx)
@@ -493,7 +493,7 @@ class Generator:
                 scores += (next_token_scores,)
 
             # argmax
-            next_tokens = flow.argmax(next_token_scores, dim=-1)
+            next_tokens = flow.argmax(next_token_scores.to("cpu"), dim=-1).to("mlu")
             next_tokens = next_tokens.to_global(placement=input_ids.placement)
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=next_tokens.sbp, placement=next_tokens.placement
@@ -518,7 +518,7 @@ class Generator:
             # if eos_token was found in one sentence, set sentence to finished
             if eos_token_id is not None:
                 unfinished_sequences = flow.mul(
-                    unfinished_sequences, (next_tokens != eos_token_id).long()
+                    unfinished_sequences, (next_tokens.to(flow.int32) != eos_token_id).long()
                 )
 
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
@@ -589,12 +589,12 @@ class Generator:
             probs = nn.functional.softmax(next_token_scores, dim=-1)
             probs = probs.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=flow.placement("mlu", list(range(dist.get_world_size()))),
             ).to_local()
             next_tokens = flow.multinomial(probs, num_samples=1).squeeze(1)
             next_tokens = next_tokens.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=flow.placement("mlu", list(range(dist.get_world_size()))),
             )
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=next_tokens.sbp, placement=next_tokens.placement
