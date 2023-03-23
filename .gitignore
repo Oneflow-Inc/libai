@@ -3,6 +3,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+libai/config/configs
+libai/version.py
 
 # C extensions
 *.so
