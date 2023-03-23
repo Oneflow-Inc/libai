@@ -148,7 +148,8 @@ class VocabEmbedding(nn.Module):
             )
         )
         # Initialize the word embedding
-        self.init_method(self.weight)
+        if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
+            self.init_method(self.weight)
         # FIXME(Lxy): Fill padding_idx is not supported in nd_sbp right now.
         # self._fill_padding_idx_with_zero()
 
