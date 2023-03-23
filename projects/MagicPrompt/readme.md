@@ -55,7 +55,7 @@ with torch.autocast("cuda"):
 - Use `tools/preprocess_data.py` to process the json files, you can refer [https://libai.readthedocs.io/en/latest/tutorials/basics/Preprocessing_Dataset.html](https://libai.readthedocs.io/en/latest/tutorials/basics/Preprocessing_Dataset.html).
 
 ```python
-IMPL=lazy
+IMPL=mmap
 KEYS=text
 
 python tools/preprocess_data.py \

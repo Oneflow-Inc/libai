@@ -320,7 +320,7 @@ class ModelLoaderLiBai(ModelLoader):
 
             >>> import libai
             >>> from libai.config.configs.common.models.bert import cfg
-            >>> from model_utils import BertLoaderLiBai
+            >>> from model_loader import BertLoaderLiBai
 
             >>> loder = BertLoaderLiBai(
                     libai.models.BertModel,
