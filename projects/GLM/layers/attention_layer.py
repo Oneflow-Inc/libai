@@ -127,9 +127,9 @@ class MultiheadAttention(nn.Module):
         else:
             if self.coeff is not None:
                 attention_scores *= self.coeff
-            attention_scores = flow.mul(attention_scores, attention_mask)
-            attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-            attention_weights = flow.softmax(attention_scores, dim=-1)
+            attention_weights = flow._C.fused_scale_mask_softmax(
+                attention_scores, attention_mask.bool(), fill_value=-10000.0, scale=1,
+            )
             attention_weights = self.dropout(attention_weights)
 
         context = flow.matmul(attention_weights, value)
