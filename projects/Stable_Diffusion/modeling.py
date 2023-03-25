@@ -14,6 +14,7 @@ from diffusers.loaders import AttnProcsLayers
 from diffusers.models.cross_attention import LoRACrossAttnProcessor
 from oneflow.nn import functional as F
 
+LoRACrossAttnProcessor.forward = LoRACrossAttnProcessor.__call__
 
 class StableDiffusion(nn.Module):
     def __init__(
