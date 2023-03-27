@@ -128,7 +128,10 @@ class MultiheadAttention(nn.Module):
             if self.coeff is not None:
                 attention_scores *= self.coeff
             attention_weights = flow._C.fused_scale_mask_softmax(
-                attention_scores, attention_mask.bool(), fill_value=-10000.0, scale=1,
+                attention_scores,
+                attention_mask.bool(),
+                fill_value=-10000.0,
+                scale=1,
             )
             attention_weights = self.dropout(attention_weights)
 

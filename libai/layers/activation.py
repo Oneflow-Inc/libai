@@ -64,8 +64,7 @@ class QuickGELU(nn.Module):
         super().__init__()
 
     def forward(self, x: flow.Tensor) -> flow.Tensor:
-        """QuickGELU is estimated with: x * flow.sigmoid(1.702 * x)
-        """
+        """QuickGELU is estimated with: x * flow.sigmoid(1.702 * x)"""
         return flow._C.quick_gelu(x)
 
 
