@@ -10,9 +10,9 @@ from configs.common.train import train
 from configs.common.models.graph import graph
 
 
-vocab_file = "/data/home/magicprompt/vocab.json"
-merge_files = "/data/home/magicprompt/merges.txt"
-train_data_prefix = "/data/home/magicprompt/train/en_train_mmap_text_sentence"
+vocab_file = "/home/zhangxiaoyu/magicprompt/vocab.json"
+merge_files = "/home/zhangxiaoyu/magicprompt/merges.txt"
+train_data_prefix = "/home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
@@ -33,9 +33,9 @@ model.cfg.initializer_range = 0.02
 model.cfg.vocab_size = 50257
 model.cfg.layernorm_epsilon = 1e-5
 model.cfg.use_scaled_init_for_output_weights = True
-model.cfg.bias_gelu_fusion = True
-model.cfg.bias_dropout_fusion = True
-model.cfg.scale_mask_softmax_fusion = True
+model.cfg.bias_gelu_fusion = False
+model.cfg.bias_dropout_fusion = False
+model.cfg.scale_mask_softmax_fusion = False
 model.cfg.apply_query_key_layer_scaling = True
 model.cfg.apply_residual_post_layernorm = False
 model.cfg.amp_enabled = True

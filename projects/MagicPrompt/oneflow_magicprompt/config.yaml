@@ -1,0 +1,76 @@
+dataloader:
+  train:
+    _target_: libai.data.build_nlp_train_val_test_loader
+    dataset:
+    - _target_: libai.data.datasets.GPT2Dataset
+      data_prefix: /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence
+      indexed_dataset: {_target_: libai.data.data_utils.get_indexed_dataset, data_impl: mmap, data_prefix: /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence, skip_warmup: false}
+      max_seq_length: 1024
+      name: gpt-2
+      seed: 1234
+    num_workers: 4
+    splits:
+    - [949.0, 50.0, 1.0]
+    train_val_test_num_samples: null
+    weights: [1.0]
+ds:
+  _target_: libai.data.datasets.GPT2Dataset
+  data_prefix: /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence
+  indexed_dataset: {_target_: libai.data.data_utils.get_indexed_dataset, data_impl: mmap, data_prefix: /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence, skip_warmup: false}
+  max_seq_length: 1024
+  name: gpt-2
+  seed: 1234
+graph:
+  auto_parallel: {enable_auto_parallel_ignore_user_sbp_config: false, enabled: false, sbp_collector: false, trunk_algo: true}
+  debug: -1
+  enabled: true
+  eval_graph: {_target_: libai.models.utils.GraphBase, is_train: false}
+  train_graph: {_target_: libai.models.utils.GraphBase, is_train: true}
+model:
+  _target_: projects.MagicPrompt.gpt2.GPTForPreTraining
+  cfg: {amp_enabled: true, apply_query_key_layer_scaling: true, apply_residual_post_layernorm: false, attention_dropout_prob: 0.1, bias_dropout_fusion: false, bias_gelu_fusion: false, bos_token_id: 50256, chunk_size_feed_forward: 0, decoder_start_token_id: null, diversity_penalty: 0.0, do_sample: false, early_stopping: false, embedding_dropout_prob: 0.1, encoder_no_repeat_ngram_size: 0, eos_token_id: 50256, exponential_decay_length_penalty: null, ffn_hidden_size: 3072, forced_bos_token_id: null, forced_eos_token_id: null, hidden_layers: 12, hidden_size: 768, initializer_range: 0.02, is_encoder_decoder: false, layernorm_epsilon: 1.0e-05, length_penalty: 1.0, max_length: 20, max_seq_length: 1024, min_length: 0, no_repeat_ngram_size: 0, num_attention_heads: 12, num_beam_groups: 1, num_beams: 1, num_return_sequences: 1, output_dropout_prob: 0.1, output_scores: false, pad_token_id: 0, pretrained_model_path: null, remove_invalid_values: false, repetition_penalty: 1.0, scale_mask_softmax_fusion: false, sep_token_id: null, temperature: 1.0, top_k: 50, top_p: 1.0, typical_p: 1.0, use_cache: true, use_scaled_init_for_output_weights: true, vocab_size: 50257}
+optim:
+  _target_: oneflow.nn.optimizer.adamw.AdamW
+  betas: [0.9, 0.999]
+  do_bias_correction: true
+  eps: 1.0e-08
+  lr: 5.0e-05
+  params: {_target_: libai.optim.get_default_optimizer_params, clip_grad_max_norm: 1.0, clip_grad_norm_type: 2.0, weight_decay_bias: 0.0, weight_decay_norm: 0.0}
+  weight_decay: 0.01
+tokenization:
+  append_eod: false
+  make_vocab_size_divisible_by: 128
+  tokenizer: {_target_: libai.tokenizer.GPT2Tokenizer, do_chinese_wwm: true, do_lower_case: true, merges_file: /home/zhangxiaoyu/magicprompt/merges.txt, vocab_file: /home/zhangxiaoyu/magicprompt/vocab.json}
+train:
+  activation_checkpoint: {enabled: false}
+  amp: {enabled: true}
+  checkpointer: {max_to_keep: 20, period: 8000}
+  consumed_train_samples: 0
+  consumed_valid_samples: 0
+  dist: {data_parallel_size: 1, num_gpus_per_node: 1, num_nodes: 1, pipeline_num_layers: 10000, pipeline_parallel_size: 1, tensor_parallel_size: 1}
+  evaluation:
+    enabled: true
+    eval_iter: 250
+    eval_period: 4000
+    evaluator: {_target_: libai.evaluation.PPLEvaluator}
+  global_batch_size: 4
+  input_placement_device: cpu
+  load_weight: ''
+  log_period: 50
+  nccl_fusion_max_ops: 24
+  nccl_fusion_threshold_mb: 16
+  num_accumulation_steps: 1
+  output_dir: projects/MagicPrompt/oneflow_magicprompt
+  rdma_enabled: false
+  resume: false
+  samples: 40000
+  scheduler: {_target_: libai.scheduler.WarmupExponentialLR, gamma: 1.0, warmup_factor: 0.0, warmup_iter: 0.0, warmup_method: linear}
+  seed: 1234
+  start_iter: 0
+  test_micro_batch_size: 4
+  train_epoch: 33
+  train_iter: 10000
+  train_micro_batch_size: 4
+  train_samples: null
+  warmup_ratio: 0
+  zero_optimization: {enabled: false, stage: 1}
