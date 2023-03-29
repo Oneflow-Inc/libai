@@ -109,12 +109,12 @@ class MultiheadAttention(nn.Module):
             query = query[:, :, -tgt_len:]
 
         context = flow._C.fused_multi_head_attention_inference_v2(
-            query=query, 
-            key=key, 
-            value=value, 
-            query_head_size=int(self.hidden_size // self.num_attention_heads), 
-            causal=True, 
-            causal_diagonal_offset=key.shape[2]-query.shape[2],
+            query=query,
+            key=key,
+            value=value,
+            query_head_size=int(self.hidden_size // self.num_attention_heads),
+            causal=True,
+            causal_diagonal_offset=key.shape[2] - query.shape[2],
             query_layout="BHMK",
             key_layout="BHMK",
             value_layout="BHMK",
