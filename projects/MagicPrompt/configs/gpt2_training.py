@@ -9,6 +9,7 @@ from libai.scheduler import WarmupExponentialLR
 from configs.common.train import train
 from configs.common.models.graph import graph
 
+graph.enabled=False
 
 vocab_file = "/home/zhangxiaoyu/magicprompt/vocab.json"
 merge_files = "/home/zhangxiaoyu/magicprompt/merges.txt"
@@ -58,8 +59,8 @@ train.update(
         test_micro_batch_size=4,
         train_epoch=33,
         train_iter=10000,
-        log_period=50,
-        amp=dict(enabled=True),
+        log_period=1,
+        amp=dict(enabled=False),
         warmup_ratio=0,
         checkpointer=dict(period=8000, max_to_keep=20),
         dist=dict(
