@@ -71,8 +71,8 @@ class Embedding(nn.Module):
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )
-        # if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
-        #     self.init_method(self.weight)
+        if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
+            self.init_method(self.weight)
         # FIXME(lxy): Fill padding_idx is not supported in nd_sbp right now.
         # self._fill_padding_idx_with_zero()
 
