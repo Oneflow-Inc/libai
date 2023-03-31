@@ -125,6 +125,21 @@ class TestT5Model(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
+    def test_t5_eager_with_pipeline_parallel(self):
+        # set distributed config
+        self.cfg.train.dist.data_parallel_size = 1
+        self.cfg.train.dist.tensor_parallel_size = 1
+        self.cfg.train.dist.pipeline_parallel_size = 4
+        self.cfg.train.dist.pipeline_num_layers = 2 * self.cfg.model.cfg.hidden_layers
+
+        dist.setup_dist_util(self.cfg.train.dist)
+        _check_batch_size(self.cfg)
+
+        self.cfg.graph.enabled = False
+        trainer = DefaultTrainer(self.cfg)
+        trainer.train()
+
+    @flow.unittest.skip_unless_1n4d()
     def test_t5_graph_with_data_tensor_parallel(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 2
@@ -157,7 +172,6 @@ class TestT5Model(flow.unittest.TestCase):
         trainer.train()
 
     @flow.unittest.skip_unless_1n4d()
-    @unittest.skip("There are still bugs in ZeRO")
     def test_t5_with_zero(self):
         # set distributed config
         self.cfg.train.dist.data_parallel_size = 4

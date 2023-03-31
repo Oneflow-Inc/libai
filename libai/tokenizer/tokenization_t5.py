@@ -17,7 +17,9 @@
 
 import logging
 import os
+import warnings
 from shutil import copyfile
+from typing import List, Optional
 
 import regex as re
 import sentencepiece as spm
@@ -37,7 +39,7 @@ PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
 }
 
 
-class GoogleT5Tokenizer(PreTrainedTokenizer):
+class T5Tokenizer(PreTrainedTokenizer):
     """
     Construct a T5 tokenizer. Based on `SentencePiece <https://github.com/google/sentencepiece>`.
 
@@ -75,6 +77,7 @@ class GoogleT5Tokenizer(PreTrainedTokenizer):
         pad_token="<pad>",
         extra_ids=100,
         additional_special_tokens=None,
+        add_bos_token=False,
         **kwargs,
     ):
         # Add extra_ids to the special token list
@@ -104,6 +107,7 @@ class GoogleT5Tokenizer(PreTrainedTokenizer):
 
         self.sp_model = spm.SentencePieceProcessor()
         self.sp_model.Load(vocab_file)
+        self.add_bos_token = add_bos_token
 
     @property
     def vocab_size(self):
@@ -148,6 +152,38 @@ class GoogleT5Tokenizer(PreTrainedTokenizer):
                 current_sub_tokens.append(token)
         out_string += self.sp_model.decode_pieces(current_sub_tokens)
         return out_string.strip()
+
+    def _add_eos_if_not_present(self, token_ids):
+        if not self.add_bos_token:
+            return token_ids
+        if len(token_ids) > 0 and token_ids[-1] == self.eos_token_id:
+            warnings.warn("This sequence already has {self.eos_token}.")
+            return token_ids
+        else:
+            return token_ids + [self.eos_token_id]
+
+    def build_inputs_with_special_tokens(
+        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
+    ) -> List[int]:
+        """Add special tokens to a sequence or a pair of sequence.
+        T5 format sentence input:
+
+        - single sequence: tokens_a </s>
+        - pair of sequences: tokens_a </s> tokens_b </s>
+
+        Args:
+            token_ids_0 (List[int]): The token ids of sentence 0.
+            token_ids_1 (List[int], optional): The token ids of sentence 1. Defaults to None.
+
+        Returns:
+            :obj:`List[str]`: The sequence after adding special toekens.
+        """
+        token_ids_0 = self._add_eos_if_not_present(token_ids_0)
+        if token_ids_1 is None:
+            return token_ids_0
+        else:
+            token_ids_1 = self._add_eos_if_not_present(token_ids_1)
+            return token_ids_0 + token_ids_1
 
     def save_vocabulary(self, save_directory, filename_prefix=None):
         """Save the tokenizer vocabulary to a directory or file."""

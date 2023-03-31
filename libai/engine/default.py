@@ -1,5 +1,6 @@
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
+# Copyright (c) Facebook, Inc. and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -302,7 +303,17 @@ class DefaultTrainer(TrainerBase):
         self.auto_scale_hyperparams(cfg, self.train_loader)
 
         # Assume these objects must be constructed in this order.
+        dist.synchronize()
+        start_time = time.time()
+        logger.info("> Start building model...")
         self.model = self.build_model(cfg)
+
+        dist.synchronize()
+        logger.info(
+            ">>> done with building model. "
+            "Building time: {:.3f} seconds".format(time.time() - start_time)
+        )
+
         self.optimizer = self.build_optimizer(cfg, self.model)
         self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
@@ -405,7 +416,11 @@ class DefaultTrainer(TrainerBase):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
+            hooks.PeriodicCheckpointer(
+                self.checkpointer,
+                self.cfg.train.checkpointer.period,
+                max_to_keep=self.cfg.train.checkpointer.max_to_keep,
+            ),
         ]
 
         if self.cfg.train.evaluation.enabled:
@@ -547,7 +562,7 @@ class DefaultTrainer(TrainerBase):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
-        model.apply(dist.convert_to_distributed_default_setting)
+        model._apply(dist.convert_to_distributed_default_setting)
         return model
 
     @classmethod
@@ -610,6 +625,7 @@ class DefaultTrainer(TrainerBase):
         cfg.dataloader.train.test_batch_size = cfg.train.test_micro_batch_size
         cfg.dataloader.train.seed = cfg.train.seed
 
+        # used by nlp dataloader
         if hasattr(cfg.dataloader.train, "train_val_test_num_samples"):
             eval_iter = (
                 (cfg.train.train_iter // cfg.train.evaluation.eval_period + 1)
@@ -625,6 +641,7 @@ class DefaultTrainer(TrainerBase):
                 int(eval_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
                 int(test_iter * cfg.train.test_micro_batch_size * dist.get_data_parallel_size()),
             ]
+
         if OmegaConf.is_list(cfg.dataloader.train.dataset):
             for dataset in cfg.dataloader.train.dataset:
                 if hasattr(dataset, "seed"):
@@ -728,6 +745,32 @@ class DefaultTrainer(TrainerBase):
         # Global scheduler cfg
         cfg.train.scheduler.warmup_iter = cfg.train.warmup_iter
         cfg.train.scheduler.max_iter = cfg.train.train_iter
+
+        # train iter per epoch
+        iter_per_epoch = len(data_loader.dataset) // cfg.train.global_batch_size
+
+        # rescale eval period
+        if try_get_key(cfg, "train.evaluation.eval_after_n_epoch"):
+            cfg.train.evaluation.eval_period = (
+                iter_per_epoch * cfg.train.evaluation.eval_after_n_epoch
+            )
+            logger.info(
+                f"Auto-scaling the config "
+                f"train.evaluation.eval_after_n_epoch={cfg.train.evaluation.eval_after_n_epoch} "
+                f"to train.evaluation.eval_period={cfg.train.evaluation.eval_period}"
+            )
+
+        # rescale save model period
+        if try_get_key(cfg, "train.checkpointer.save_model_after_n_epoch"):
+            cfg.train.checkpointer.period = (
+                iter_per_epoch * cfg.train.checkpointer.save_model_after_n_epoch
+            )
+            logger.info(
+                f"Auto-scaling the config "
+                f"train.checkpointer.save_model_after_n_epoch="
+                f"{cfg.train.checkpointer.save_model_after_n_epoch} "
+                f"to train.checkpointer.period={cfg.train.checkpointer.period}"
+            )
 
     @classmethod
     def build_evaluator(cls, cfg):

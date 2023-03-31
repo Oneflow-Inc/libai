@@ -88,9 +88,11 @@ class WindowAttention(nn.Module):
         coords_flatten = flow.flatten(coords, 1)  # 2, Wh*Ww
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
-        relative_coords[:, :, 0] += self.window_size[0] - 1  # shift to start from 0
-        relative_coords[:, :, 1] += self.window_size[1] - 1
-        relative_coords[:, :, 0] *= 2 * self.window_size[1] - 1
+        relative_coords[:, :, 0] = (
+            relative_coords[:, :, 0] + self.window_size[0] - 1
+        )  # shift to start from 0
+        relative_coords[:, :, 1] = relative_coords[:, :, 1] + self.window_size[1] - 1
+        relative_coords[:, :, 0] = relative_coords[:, :, 0] * (2 * self.window_size[1] - 1)
         relative_position_index = relative_coords.sum(-1)  # Wh*Ww, Wh*Ww
         self.register_buffer(
             "relative_position_index",
@@ -251,7 +253,7 @@ class SwinTransformerBlock(nn.Module):
             for h in h_slices:
                 for w in w_slices:
                     img_mask[:, h, w, :] = cnt
-                    cnt += 1
+                    cnt = cnt + 1
 
             mask_windows = window_partition(
                 img_mask, self.window_size
@@ -421,7 +423,6 @@ class BasicLayer(nn.Module):
         drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
         norm_layer (nn.Module, optional): Normalization layer. Default: libai.layers.LayerNorm
         downsample (nn.Module | None, optional): Downsample at the end of the layer. Default: None
-        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
     """
 
     def __init__(
@@ -439,7 +440,6 @@ class BasicLayer(nn.Module):
         drop_path=0.0,
         norm_layer=LayerNorm,
         downsample=None,
-        use_checkpoint=False,
         layer_id_offset=0,
     ):
 
@@ -447,7 +447,6 @@ class BasicLayer(nn.Module):
         self.dim = dim
         self.input_resolution = input_resolution
         self.depth = depth
-        self.use_checkpoint = use_checkpoint
         self.layer_id_offset = layer_id_offset
         # build blocks
         self.blocks = nn.ModuleList(
@@ -486,10 +485,7 @@ class BasicLayer(nn.Module):
         layer_idx = self.layer_id_offset
         for i in range(len(self.blocks)):
             x = x.to_global(placement=dist.get_layer_placement(layer_idx))
-            if self.use_checkpoint:
-                raise Exception("Not Support Checkpointing yet!")
-            else:
-                x = self.blocks[i](x)
+            x = self.blocks[i](x)
             layer_idx += 1
         if self.downsample is not None:
             x = self.downsample(x)
@@ -521,7 +517,6 @@ class SwinTransformer(nn.Module):
         norm_layer (nn.Module): Normalization layer. Default: libai.layers.LayerNorm.
         ape (bool): If True, add absolute position embedding to the patch embedding. Default: False
         patch_norm (bool): If True, add normalization after patch embedding. Default: True
-        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
         loss_func (callable, optional): Loss function for computing the total loss
                                     between logits and labels
     """
@@ -546,7 +541,6 @@ class SwinTransformer(nn.Module):
         norm_layer=LayerNorm,
         ape=False,
         patch_norm=True,
-        use_checkpoint=False,
         loss_func=None,
         **kwargs,
     ):
@@ -610,7 +604,6 @@ class SwinTransformer(nn.Module):
                 drop_path=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],
                 norm_layer=norm_layer,
                 downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
-                use_checkpoint=use_checkpoint,
                 layer_id_offset=layer_id_offset,
             )
             layer_id_offset += depths[i_layer]
@@ -656,7 +649,6 @@ class SwinTransformer(nn.Module):
             "drop_path_rate": cfg.drop_path_rate,
             "ape": cfg.ape,
             "patch_norm": cfg.patch_norm,
-            "use_checkpoint": cfg.use_checkpoint,
             "loss_func": cfg.loss_func,
         }
 
@@ -701,38 +693,80 @@ class SwinTransformer(nn.Module):
     def set_pipeline_stage_id(model):
         dist_utils = dist.get_dist_util()
 
-        model.patch_embed.config.set_stage(
-            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-        )
-        model.pos_drop.config.set_stage(
-            dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-        )
-
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, SwinTransformerBlock):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, PatchMerging):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
+        if hasattr(model.patch_embed, "config"):
+            # Old API in OneFlow 0.8
+            model.patch_embed.config.set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.pos_drop.config.set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
 
-        model.norm.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-        model.head.config.set_stage(dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1))
-        model.avgpool.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
-        model.loss_func.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            for module_block in model.modules():
+                if isinstance(module_block.origin, SwinTransformerBlock):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, PatchMerging):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+
+            model.norm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.avgpool.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.loss_func.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            model.patch_embed.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+            model.pos_drop.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+            )
+
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), SwinTransformerBlock):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.to(nn.Module), PatchMerging):
+                    module_block.to(flow.nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+
+            model.norm.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.head.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.avgpool.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+            model.loss_func.to(flow.nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
 
     @staticmethod
     def set_activation_checkpoint(model):
         for module_block in model.modules():
-            if isinstance(module_block.origin, SwinTransformerBlock):
-                module_block.config.activation_checkpointing = True
+            if hasattr(module_block, "origin"):
+                # Old API in OneFlow 0.8
+                if isinstance(module_block.origin, SwinTransformerBlock):
+                    module_block.config.activation_checkpointing = True
+            else:
+                if isinstance(module_block.to(nn.Module), SwinTransformerBlock):
+                    module_block.to(flow.nn.graph.GraphModule).activation_checkpointing = True

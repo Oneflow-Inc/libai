@@ -23,9 +23,8 @@ This is a step-by-step tutorial on how to get started with LiBai:
 $ tree data
 path/to/bert_data
 ├── bert-base-chinese-vocab.txt
-└── data
-    ├── loss_compara_content_sentence.bin
-    └── loss_compara_content_sentence.idx
+├── loss_compara_content_sentence.bin
+└── loss_compara_content_sentence.idx
 ```
 ### How to Train Bert_large Model with Parallelism
 
@@ -37,7 +36,7 @@ We provide `train.sh` for execute training. Before invoking the script, perform 
 ```python
 # Refine data path and vocab path to data folder
 vocab_file = "/path/to/bert_data/bert-base-chinese-vocab.txt"
-data_prefix = "/path/to/bert_data/data/loss_compara_content_sentence"
+data_prefix = "/path/to/bert_data/loss_compara_content_sentence"
 ```
 
 **Step 2. Configure your parameters**

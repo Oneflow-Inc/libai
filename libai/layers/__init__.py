@@ -16,8 +16,9 @@
 from .activation import build_activation
 from .cross_entropy import ParallelCrossEntropyLoss
 from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding, PatchEmbedding
-from .layer_norm import LayerNorm
+from .layer_norm import LayerNorm, RMSLayerNorm
 from .linear import Linear, Linear1D
+from .conv import Conv1D
 from .lm_logits import LMLogits
 from .mlp import MLP
 from .transformer_layer import TransformerLayer
@@ -32,8 +33,10 @@ __all__ = [
     "build_activation",
     "Linear",
     "Linear1D",
+    "Conv1D",
     "MLP",
     "LayerNorm",
+    "RMSLayerNorm",
     "TransformerLayer",
     "MultiheadAttention",
     "ParallelCrossEntropyLoss",

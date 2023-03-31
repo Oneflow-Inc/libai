@@ -73,7 +73,7 @@ class GPTModel(nn.Module):
     """GPT-2 language model. The output of the forward method is logits.
 
     Args:
-        num_layers (int): The number of ``TransformerLayer`` in the gpt model.
+        hidden_layers (int): The number of ``TransformerLayer`` in the gpt model.
         vocab_size (int): The size of vocabulary file.
         hidden_size (int): The size of hidden states.
         ffn_hidden_size (int):
@@ -118,7 +118,7 @@ class GPTModel(nn.Module):
     @configurable
     def __init__(
         self,
-        num_layers,
+        hidden_layers,
         vocab_size,
         hidden_size,
         ffn_hidden_size,
@@ -141,7 +141,7 @@ class GPTModel(nn.Module):
         super().__init__()
         init_method = init_method_normal(sigma=initializer_range)
         if use_scaled_init_for_output_weights:
-            output_layer_init_method = scaled_init_method_normal(initializer_range, num_layers)
+            output_layer_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         else:
             output_layer_init_method = init_method
 
@@ -155,7 +155,7 @@ class GPTModel(nn.Module):
         )
 
         self.transformer = Transformer(
-            num_layers,
+            hidden_layers,
             hidden_size,
             ffn_hidden_size,
             num_attention_heads,
@@ -177,7 +177,7 @@ class GPTModel(nn.Module):
     @classmethod
     def from_config(cls, cfg):
         return {
-            "num_layers": cfg.num_layers,
+            "hidden_layers": cfg.hidden_layers,
             "vocab_size": cfg.vocab_size,
             "hidden_size": cfg.hidden_size,
             "ffn_hidden_size": cfg.ffn_hidden_size,
@@ -260,7 +260,7 @@ class GPTEmbedding(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self,
-        num_layers,
+        hidden_layers,
         hidden_size,
         ffn_hidden_size,
         num_attention_heads,
@@ -277,7 +277,7 @@ class Transformer(nn.Module):
         multihead_attn_fusion=False,
     ):
         super().__init__()
-        self.num_layers = num_layers
+        self.hidden_layers = hidden_layers
 
         self.multihead_attn_fusion = multihead_attn_fusion
 
@@ -301,7 +301,7 @@ class Transformer(nn.Module):
                 multihead_attn_fusion=multihead_attn_fusion,
             )
 
-        self.layers = nn.ModuleList([build_layer(i) for i in range(self.num_layers)])
+        self.layers = nn.ModuleList([build_layer(i) for i in range(self.hidden_layers)])
         self.layernorm_f = LayerNorm(hidden_size, eps=layernorm_epsilon, layer_idx=-1)
 
     def forward(self, hidden_states, attention_mask):
@@ -372,21 +372,42 @@ class GPTForPreTraining(nn.Module):
     def set_pipeline_stage_id(model: nn.Module):
         dist_utils = dist.get_dist_util()
 
-        for module_block in model.modules():
-            if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            elif isinstance(module_block.origin, (LMLogits, GPTLoss)):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
+        if hasattr(model.GPT_model.transformer.layernorm_f, "config"):
+            # Old API in OneFlow 0.8
+            for module_block in model.modules():
+                if isinstance(module_block.origin, (GPTEmbedding, CasualMask)):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.origin, (LMLogits, GPTLoss)):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
 
-        model.GPT_model.transformer.layernorm_f.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            model.GPT_model.transformer.layernorm_f.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), (GPTEmbedding, CasualMask)):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                elif isinstance(module_block.to(nn.Module), (LMLogits, GPTLoss)):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+
+            model.GPT_model.transformer.layernorm_f.to(nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )

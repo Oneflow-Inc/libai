@@ -34,7 +34,7 @@ class TestMetadata(unittest.TestCase):
 
         self.assertEqual(x_meta.tensor.sbp, x_consistent.sbp)
         self.assertEqual(x_meta.tensor.placement, x_consistent.placement)
-        self.assertTrue((flow.equal(x_meta.tensor, x_consistent)).sum().item() == 100)
+        self.assertTrue((flow.eq(x_meta.tensor, x_consistent)).sum().item() == 100)
 
         x_meta.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)]),
@@ -47,7 +47,7 @@ class TestMetadata(unittest.TestCase):
 
         self.assertEqual(x_meta.tensor.sbp, x_consistent.sbp)
         self.assertEqual(x_meta.tensor.placement, x_consistent.placement)
-        self.assertTrue((flow.equal(x_meta.tensor, x_consistent)).sum().item() == 100)
+        self.assertTrue((flow.eq(x_meta.tensor, x_consistent)).sum().item() == 100)
 
     @unittest.skipIf(not flow.cuda.is_available(), "only test gpu cases")
     def test_stack(self):

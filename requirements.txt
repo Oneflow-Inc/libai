@@ -5,7 +5,7 @@ flowvision==0.1.0
 wget
 hydra-core
 nltk
-numpy
+numpy==1.23.4
 omegaconf==2.1.0
 Pygments
 PyYAML
@@ -19,6 +19,7 @@ termcolor
 tqdm
 pybind11
 portalocker
+dill
 flake8==3.8.1 
 isort==5.10.1
 black==21.4b2

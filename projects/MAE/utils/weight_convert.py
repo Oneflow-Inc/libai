@@ -17,8 +17,9 @@ import logging
 
 import oneflow as flow
 import torch
+from flowvision.layers.weight_init import trunc_normal_
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("libai.mae." + __name__)
 
 
 def convert_qkv_weight(cfg, value):
@@ -62,7 +63,9 @@ def filter_keys(key, value, cfg):
     """
     Filtering the state_dict keys and values to match LiBai's MAE model
     """
-    if "norm1" in key:
+    if key.startswith("decoder_"):
+        value = None
+    elif "norm1" in key:
         key = key.replace("norm1", "input_layernorm")
     elif "attn.qkv" in key:
         key = key.replace("attn.qkv", "self_attention.query_key_value")
@@ -80,8 +83,14 @@ def filter_keys(key, value, cfg):
         key = key.replace("mlp.fc2", "mlp.dense_4h_to_h")
     elif "fc_norm" in key:
         key = key.replace("fc_norm", "norm")
+    elif key == "norm.weight" or key == "norm.bias":
+        value = None
 
     return key, value
+
+
+def log_param(key, value):
+    logger.info(f"{key}, shape={value.shape}")
 
 
 def load_torch_checkpoint(model, cfg, path="./mae_finetuned_vit_base.pth", strict=False):
@@ -94,14 +103,21 @@ def load_torch_checkpoint(model, cfg, path="./mae_finetuned_vit_base.pth", stric
     parameters = torch_dict
     new_parameters = dict()
     for key, value in parameters.items():
+        # log_param(key, value)
         if "num_batches_tracked" not in key:
             # to global tensor
             key, val = filter_keys(key, value, cfg)
+            if val is None:
+                continue
             val = val.detach().cpu().numpy()
             val = flow.tensor(val).to_global(
                 sbp=flow.sbp.broadcast, placement=flow.placement("cuda", ranks=[0])
             )
             new_parameters[key] = val
-    model.load_state_dict(new_parameters, strict=strict)
-    print("Successfully load torch mae checkpoint.")
+
+    msg = model.load_state_dict(new_parameters, strict=strict)
+    logger.info(msg)
+    if not cfg.eval_only:
+        trunc_normal_(model.head.weight, std=2e-5)
+    logger.info("Successfully load torch mae checkpoint.")
     return model

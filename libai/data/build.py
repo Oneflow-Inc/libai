@@ -348,7 +348,7 @@ def build_image_train_loader(
 def build_image_test_loader(
     dataset,
     test_batch_size,
-    sampler=LazyCall(SingleRoundSampler)(shuffle=False, drop_last=False),
+    sampler=LazyCall(SingleRoundSampler)(shuffle=True, drop_last=False),
     num_workers=4,
     seed=0,
     collate_fn=None,

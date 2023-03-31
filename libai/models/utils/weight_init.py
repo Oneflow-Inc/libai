@@ -18,20 +18,20 @@ import math
 import oneflow.nn as nn
 
 
-def init_method_normal(sigma):
+def init_method_normal(sigma, mean=0.0):
     """Init method based on N(0, sigma)."""
 
     def init_(tensor):
-        return nn.init.normal_(tensor, mean=0.0, std=sigma)
+        return nn.init.normal_(tensor, mean=mean, std=sigma)
 
     return init_
 
 
-def scaled_init_method_normal(sigma, num_layers):
+def scaled_init_method_normal(sigma, num_layers, mean=0.0):
     """Init method based on N(0, sigma/sqrt(2*num_layers)."""
     std = sigma / math.sqrt(2.0 * num_layers)
 
     def init_(tensor):
-        return nn.init.normal_(tensor, mean=0.0, std=std)
+        return nn.init.normal_(tensor, mean=mean, std=std)
 
     return init_

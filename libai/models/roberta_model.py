@@ -328,36 +328,69 @@ class RobertaPreTrainedModel(nn.Module):
         dist_utils = dist.get_dist_util()
 
         # Set pipeline parallelism stage_id
-        for module_block in model.modules():
-            # module.origin can get the original module
-            if isinstance(module_block.origin, RobertaEmbeddings):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, RobertaExtendedAttnMask):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
-                )
-            elif isinstance(module_block.origin, TransformerLayer):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(module_block.layer_idx),
-                    dist.get_layer_placement(module_block.layer_idx),
-                )
-            # `add_pooling_layer` in RobertaForMaskedLM and RobertaForCausalLM.
-            # default to False.
-            elif isinstance(module_block.origin, RobertaPooler):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
-            elif isinstance(module_block.origin, RobertaLMHead):
-                module_block.config.set_stage(
-                    dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-                )
+        if hasattr(model.roberta.final_layernorm, "config"):
+            # Old API in OneFlow 0.8
+            for module_block in model.modules():
+                # module.origin can get the original module
+                if isinstance(module_block.origin, RobertaEmbeddings):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, RobertaExtendedAttnMask):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.origin, TransformerLayer):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                # `add_pooling_layer` in RobertaForMaskedLM and RobertaForCausalLM.
+                # default to False.
+                elif isinstance(module_block.origin, RobertaPooler):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+                elif isinstance(module_block.origin, RobertaLMHead):
+                    module_block.config.set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
 
-        # Set the last layernorm stage id
-        model.roberta.final_layernorm.config.set_stage(
-            dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
-        )
+            # Set the last layernorm stage id
+            model.roberta.final_layernorm.config.set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
+        else:
+            for module_block in model.modules():
+                # module.origin can get the original module
+                if isinstance(module_block.to(nn.Module), RobertaEmbeddings):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), RobertaExtendedAttnMask):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
+                    )
+                elif isinstance(module_block.to(nn.Module), TransformerLayer):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(module_block.layer_idx),
+                        dist.get_layer_placement(module_block.layer_idx),
+                    )
+                # `add_pooling_layer` in RobertaForMaskedLM and RobertaForCausalLM.
+                # default to False.
+                elif isinstance(module_block.to(nn.Module), RobertaPooler):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+                elif isinstance(module_block.to(nn.Module), RobertaLMHead):
+                    module_block.to(nn.graph.GraphModule).set_stage(
+                        dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+                    )
+
+            # Set the last layernorm stage id
+            model.roberta.final_layernorm.to(nn.graph.GraphModule).set_stage(
+                dist_utils.get_layer_stage_id(-1), dist.get_layer_placement(-1)
+            )
 
 
 class RobertaForPreTraining(RobertaPreTrainedModel):

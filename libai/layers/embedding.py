@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import math
+import os
 
 import oneflow as flow
 from oneflow import nn
@@ -41,6 +42,7 @@ class Embedding(nn.Module):
         padding_idx=None,
         init_method=init.xavier_normal_,
         amp_enabled=False,
+        dtype=flow.float32,
         layer_idx=0,
     ):
         super().__init__()
@@ -64,12 +66,13 @@ class Embedding(nn.Module):
         self.weight = nn.Parameter(
             flow.empty(
                 (num_embeddings, embedding_dim),
-                dtype=flow.float32,
+                dtype=dtype,
                 placement=dist.get_layer_placement(layer_idx),
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             )
         )
-        self.init_method(self.weight)
+        if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
+            self.init_method(self.weight)
         # FIXME(lxy): Fill padding_idx is not supported in nd_sbp right now.
         # self._fill_padding_idx_with_zero()
 
@@ -145,7 +148,8 @@ class VocabEmbedding(nn.Module):
             )
         )
         # Initialize the word embedding
-        self.init_method(self.weight)
+        if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
+            self.init_method(self.weight)
         # FIXME(Lxy): Fill padding_idx is not supported in nd_sbp right now.
         # self._fill_padding_idx_with_zero()
 

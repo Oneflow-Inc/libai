@@ -27,6 +27,7 @@ class Activation(str, Enum):
     LeakyReLU = "leaky_relu"
     ReLU = "relu"
     Tanh = "tanh"
+    QuickGELU = "quick_gelu"
 
 
 # For unit testing / parity comparisons, probably not the fastest way
@@ -58,6 +59,15 @@ class GeLUTanh(nn.Module):
         return flow.nn.functional.gelu(x, approximate="tanh")
 
 
+class QuickGELU(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x: flow.Tensor) -> flow.Tensor:
+        """QuickGELU is estimated with: x * flow.sigmoid(1.702 * x)"""
+        return flow._C.quick_gelu(x)
+
+
 def build_activation(activation: Optional[Activation]):
     """
     Fetching activation layers by name, e.g.,
@@ -73,4 +83,5 @@ def build_activation(activation: Optional[Activation]):
         Activation.LeakyReLU: nn.LeakyReLU,
         Activation.SquaredReLU: SquaredReLU,
         Activation.Tanh: nn.Tanh,
+        Activation.QuickGELU: QuickGELU,
     }[activation]()

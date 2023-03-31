@@ -188,8 +188,10 @@ class TrainerBase:
             data_time (float): time taken by the dataloader iteration
             prefix (str): prefix for logging keys
         """
-        # get metric value
-        metrics_dict = {k: dist.ttol(v, pure_local=True) for k, v in loss_dict.items()}
+        # get metric value, remove it to rank0 cause logger.info only work in rank0
+        metrics_dict = {
+            k: dist.tensor_to_rank0(v, device="cpu", to_local=True) for k, v in loss_dict.items()
+        }
         metrics_dict["data_time"] = data_time
 
         # TODO: Gather metrics among all workers for logging
@@ -210,7 +212,7 @@ class TrainerBase:
             #     k: np.mean([x[k] for x in all_metrics_dict]) for k in all_metrics_dict[0].keys()
             # }
             metrics_dict = all_metrics_dict
-            total_losses_reduced = sum(metrics_dict.values())
+            total_losses_reduced = sum(v for k, v in metrics_dict.items() if "loss" in k)
 
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
             if len(metrics_dict) > 1:
@@ -273,7 +275,7 @@ class EagerTrainer(TrainerBase):
         data_time = time.perf_counter() - start
 
         loss_dict = self.model(**data)
-        losses = sum(loss_dict.values()) / self.grad_acc_steps
+        losses = sum(v for k, v in loss_dict.items() if "loss" in k) / self.grad_acc_steps
 
         losses.backward()
         self.write_metrics(loss_dict, data_time)
@@ -337,6 +339,11 @@ class GraphTrainer(TrainerBase):
         loss_dict = self.graph(**data)
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step
-        loss_dict = {key: value.mean() for key, value in loss_dict.items()}
+        for key, value in loss_dict.items():
+            if "loss" in key:
+                loss_dict[key] = value.mean()
+            else:
+                # NOTE: only support scalar tensor currently
+                loss_dict[key] = value.sum()
 
         self.write_metrics(loss_dict, data_time)

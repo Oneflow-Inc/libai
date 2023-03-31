@@ -223,6 +223,9 @@ class MultiheadAttention(nn.Module):
         if attention_mask is not None:
             if self.scale_mask_softmax_fusion:
                 if self.attn_mask_type == AttnMaskType.padding:
+                    attention_mask = (
+                        attention_mask.expand_as(attention_scores) if use_cache else attention_mask
+                    )
                     attention_weights = flow._C.fused_scale_mask_softmax_dropout(
                         attention_scores,
                         attention_mask,
