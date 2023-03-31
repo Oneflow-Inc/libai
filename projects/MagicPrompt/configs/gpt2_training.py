@@ -10,6 +10,7 @@ from configs.common.train import train
 from configs.common.models.graph import graph
 
 graph.enabled=False
+graph.debug = 2
 
 vocab_file = "/home/zhangxiaoyu/magicprompt/vocab.json"
 merge_files = "/home/zhangxiaoyu/magicprompt/merges.txt"
@@ -64,9 +65,11 @@ train.update(
         warmup_ratio=0,
         checkpointer=dict(period=8000, max_to_keep=20),
         dist=dict(
-            data_parallel_size=1,
+            data_parallel_size=4,
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
+            # pipeline_num_layers = 12,
+            # custom_pipeline_stage_id = [0] * 6 + [1] * 6,
             # pipeline_num_layers=model.cfg.hidden_layers,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(

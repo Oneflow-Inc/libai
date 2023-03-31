@@ -1,0 +1,2084 @@
+[03/30 18:18:17] libai INFO: Rank of current process: 3. World size: 4
+[03/30 18:18:17] libai INFO: Command line arguments: Namespace(config_file='projects/MagicPrompt/configs/gpt2_training.py', eval_only=False, fast_dev_run=False, opts=[], resume=False)
+[03/30 18:18:17] libai INFO: Contents of args.config_file=projects/MagicPrompt/configs/gpt2_training.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mevaluation[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mPPLEvaluator[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_inference[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mscheduler[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mWarmupExponentialLR[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mgraph[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mgraph[39m
+
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15mdebug[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m2[39m
+
+[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/vocab.json[39m[38;5;186m"[39m
+[38;5;15mmerge_files[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/merges.txt[39m[38;5;186m"[39m
+[38;5;15mtrain_data_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence[39m[38;5;186m"[39m
+
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mvocab_file[39m
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mmerges_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmerge_files[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mindexed_dataset[39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+
+[38;5;242m# gpt2 model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mpretrained_model_path[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15membedding_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mattention_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15moutput_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mffn_hidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m4[39m[38;5;15m [39m[38;5;197m*[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1024[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15minitializer_range[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.02[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mvocab_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m50257[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mlayernorm_epsilon[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1e-5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15muse_scaled_init_for_output_weights[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_gelu_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_dropout_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mscale_mask_softmax_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_query_key_layer_scaling[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_residual_post_layernorm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mamp_enabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15minput_placement_device[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186mcpu[39m[38;5;186m"[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdist[39m[38;5;197m.[39m[38;5;15mpipeline_num_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m
+
+[38;5;81mfor[39m[38;5;15m [39m[38;5;15mds[39m[38;5;15m [39m[38;5;197min[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m:[39m
+[38;5;15m    [39m[38;5;15mds[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m
+
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mlr[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5.0e-05[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_max_norm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_norm_type[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mupdate[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15moutput_dir[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mprojects/MagicPrompt/oneflow_magicprompt[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtest_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_epoch[39m[38;5;197m=[39m[38;5;141m33[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_iter[39m[38;5;197m=[39m[38;5;141m10000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mlog_period[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mamp[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mwarmup_ratio[39m[38;5;197m=[39m[38;5;141m0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mcheckpointer[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15mperiod[39m[38;5;197m=[39m[38;5;141m8000[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mmax_to_keep[39m[38;5;197m=[39m[38;5;141m20[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mdist[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mdata_parallel_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mtensor_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mpipeline_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers = 12,[39m
+[38;5;15m            [39m[38;5;242m# custom_pipeline_stage_id = [0] * 6 + [1] * 6,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers=model.cfg.hidden_layers,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mscheduler[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mWarmupExponentialLR[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mwarmup_factor[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mgamma[39m[38;5;197m=[39m[38;5;141m1.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_method[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mlinear[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_iter[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mevaluation[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mevaluator[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mPPLEvaluator[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_iter[39m[38;5;197m=[39m[38;5;141m250[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_period[39m[38;5;197m=[39m[38;5;141m4000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mrdma_enabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m
+[38;5;15m)[39m
+
+[03/30 18:18:19] libai.engine.default INFO: Prepare training, validating, testing set
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: Finished creating indexed dataset in 0.007484 seconds
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: number of documents: 73718
+[03/30 18:18:19] libai.data.data_utils.indexed_dataset INFO: number of sentences: 106365
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_doc_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_sample_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_shuffle_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.014 seconds
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     total number of samples: 162429
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 36
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_doc_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_sample_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_shuffle_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     total number of samples: 13536
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 3
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_doc_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_sample_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_shuffle_idx.npy
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     total number of samples: 4512
+[03/30 18:18:19] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 1
+[03/30 18:18:19] libai.engine.default INFO: Auto-scaling the config to train.train_iter=335008, train.warmup_iter=0
+[03/30 18:18:20] libai INFO: > Start building model...
+[03/30 18:18:25] libai.engine.default INFO: Model:
+GPTForPreTraining(
+  (GPT_model): GPTModel(
+    (embeddings): GPTEmbedding(
+      (token_embeddings): VocabEmbedding(num_embeddings=50304, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=1024, embedding_dim=768)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (transformer): Transformer(
+      (layers): ModuleList(
+        (0): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (1): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (2): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (3): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (4): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (5): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (6): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (7): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (8): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (9): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (10): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (11): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+      )
+      (layernorm_f): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (lm_head): LMLogits()
+  )
+  (loss_func): GPTLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[03/30 18:18:25] libai INFO: >>> done with building model. Building time: 5.321 seconds
+[03/30 18:18:25] libai.scheduler.lr_scheduler WARNING: warmup iters equals to zero, return ExponentialLR
+[03/30 18:18:25] libai.engine.default INFO: Graph debug mode on, automatically output debug info.
+[03/30 18:18:25] libai.engine.default INFO: Graph debug mode on, automatically output debug info.
+[03/30 18:18:25] libai.engine.trainer INFO: Starting training from iteration 0
+[03/30 18:18:26] libai.models.utils.graph_base INFO: Start compiling the train graph which may take some time. Please wait for a moment ...
+[03/30 18:18:35] libai.engine.trainer ERROR: Exception during training:
+Traceback (most recent call last):
+  File "/home/zhangxiaoyu/libai/libai/engine/trainer.py", line 146, in train
+    self.run_step()
+  File "/home/zhangxiaoyu/libai/libai/engine/default.py", line 491, in run_step
+    self._trainer.run_step(self.get_batch, self.cfg.train.input_placement_device)
+  File "/home/zhangxiaoyu/libai/libai/engine/trainer.py", line 339, in run_step
+    loss_dict = self.graph(**data)
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 243, in __call__
+    self._compile(*args, **kwargs)
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 809, in _compile
+    self.finish_compile_and_init_runtime()
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 1166, in finish_compile_and_init_runtime
+    self._c_nn_graph.init_runtime()
+oneflow._oneflow_internal.exception.RuntimeError: [1m[38;2;255;000;000mError[0m: MluDevice::Alloc error
+  File "/home/zhangxiaoyu/oneflow-cambricon/oneflow/core/memory/memory_allocator.cpp", line 50, in Allocate
+    device->Alloc(options, &ptr, size)
+Error Type: oneflow.ErrorProto.runtime_error
+  File "/home/zhangxiaoyu/oneflow-cambricon/oneflow/core/memory/memory_allocator.cpp", line 50, in operator()
+    
+Error Type: oneflow.ErrorProto.runtime_error
+
+[03/30 18:18:35] libai.engine.hooks INFO: Total training time: 0:00:10 (0:00:00 on hooks)
+[03/31 14:32:17] libai INFO: Rank of current process: 3. World size: 4
+[03/31 14:32:17] libai INFO: Command line arguments: Namespace(config_file='projects/MagicPrompt/configs/gpt2_training.py', eval_only=False, fast_dev_run=False, opts=[], resume=False)
+[03/31 14:32:17] libai INFO: Contents of args.config_file=projects/MagicPrompt/configs/gpt2_training.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mevaluation[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mPPLEvaluator[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_inference[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mscheduler[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mWarmupExponentialLR[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mgraph[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mgraph[39m
+
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15mdebug[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m2[39m
+
+[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/vocab.json[39m[38;5;186m"[39m
+[38;5;15mmerge_files[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/merges.txt[39m[38;5;186m"[39m
+[38;5;15mtrain_data_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence[39m[38;5;186m"[39m
+
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mvocab_file[39m
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mmerges_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmerge_files[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mindexed_dataset[39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+
+[38;5;242m# gpt2 model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mpretrained_model_path[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15membedding_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mattention_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15moutput_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mffn_hidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m4[39m[38;5;15m [39m[38;5;197m*[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1024[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15minitializer_range[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.02[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mvocab_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m50257[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mlayernorm_epsilon[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1e-5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15muse_scaled_init_for_output_weights[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_gelu_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_dropout_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mscale_mask_softmax_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_query_key_layer_scaling[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_residual_post_layernorm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mamp_enabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15minput_placement_device[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186mcpu[39m[38;5;186m"[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdist[39m[38;5;197m.[39m[38;5;15mpipeline_num_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m
+
+[38;5;81mfor[39m[38;5;15m [39m[38;5;15mds[39m[38;5;15m [39m[38;5;197min[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m:[39m
+[38;5;15m    [39m[38;5;15mds[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m
+
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mlr[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5.0e-05[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_max_norm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_norm_type[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mupdate[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15moutput_dir[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mprojects/MagicPrompt/oneflow_magicprompt[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtest_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_epoch[39m[38;5;197m=[39m[38;5;141m33[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_iter[39m[38;5;197m=[39m[38;5;141m10000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mlog_period[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mamp[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mwarmup_ratio[39m[38;5;197m=[39m[38;5;141m0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mcheckpointer[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15mperiod[39m[38;5;197m=[39m[38;5;141m8000[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mmax_to_keep[39m[38;5;197m=[39m[38;5;141m20[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mdist[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mdata_parallel_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mtensor_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mpipeline_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers = 12,[39m
+[38;5;15m            [39m[38;5;242m# custom_pipeline_stage_id = [0] * 6 + [1] * 6,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers=model.cfg.hidden_layers,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mscheduler[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mWarmupExponentialLR[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mwarmup_factor[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mgamma[39m[38;5;197m=[39m[38;5;141m1.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_method[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mlinear[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_iter[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mevaluation[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mevaluator[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mPPLEvaluator[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_iter[39m[38;5;197m=[39m[38;5;141m250[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_period[39m[38;5;197m=[39m[38;5;141m4000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mrdma_enabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m
+[38;5;15m)[39m
+
+[03/31 14:32:19] libai.engine.default INFO: Prepare training, validating, testing set
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: Finished creating indexed dataset in 0.006762 seconds
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: number of documents: 73718
+[03/31 14:32:19] libai.data.data_utils.indexed_dataset INFO: number of sentences: 106365
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.011 seconds
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     total number of samples: 162429
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 36
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     total number of samples: 13536
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 3
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     total number of samples: 4512
+[03/31 14:32:19] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 1
+[03/31 14:32:20] libai.engine.default INFO: Auto-scaling the config to train.train_iter=335008, train.warmup_iter=0
+[03/31 14:32:20] libai INFO: > Start building model...
+[03/31 14:40:48] libai INFO: Rank of current process: 3. World size: 4
+[03/31 14:40:48] libai INFO: Command line arguments: Namespace(config_file='projects/MagicPrompt/configs/gpt2_training.py', eval_only=False, fast_dev_run=False, opts=[], resume=False)
+[03/31 14:40:48] libai INFO: Contents of args.config_file=projects/MagicPrompt/configs/gpt2_training.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mevaluation[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mPPLEvaluator[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_inference[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mscheduler[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mWarmupExponentialLR[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mgraph[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mgraph[39m
+
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15mdebug[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m2[39m
+
+[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/vocab.json[39m[38;5;186m"[39m
+[38;5;15mmerge_files[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/merges.txt[39m[38;5;186m"[39m
+[38;5;15mtrain_data_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence[39m[38;5;186m"[39m
+
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mvocab_file[39m
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mmerges_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmerge_files[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mindexed_dataset[39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+
+[38;5;242m# gpt2 model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mpretrained_model_path[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15membedding_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mattention_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15moutput_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mffn_hidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m4[39m[38;5;15m [39m[38;5;197m*[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1024[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15minitializer_range[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.02[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mvocab_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m50257[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mlayernorm_epsilon[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1e-5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15muse_scaled_init_for_output_weights[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_gelu_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_dropout_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mscale_mask_softmax_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_query_key_layer_scaling[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_residual_post_layernorm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mamp_enabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15minput_placement_device[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186mcpu[39m[38;5;186m"[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdist[39m[38;5;197m.[39m[38;5;15mpipeline_num_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m
+
+[38;5;81mfor[39m[38;5;15m [39m[38;5;15mds[39m[38;5;15m [39m[38;5;197min[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m:[39m
+[38;5;15m    [39m[38;5;15mds[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m
+
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mlr[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5.0e-05[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_max_norm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_norm_type[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mupdate[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15moutput_dir[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mprojects/MagicPrompt/oneflow_magicprompt[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtest_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_epoch[39m[38;5;197m=[39m[38;5;141m33[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_iter[39m[38;5;197m=[39m[38;5;141m10000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mlog_period[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mamp[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mwarmup_ratio[39m[38;5;197m=[39m[38;5;141m0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mcheckpointer[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15mperiod[39m[38;5;197m=[39m[38;5;141m8000[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mmax_to_keep[39m[38;5;197m=[39m[38;5;141m20[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mdist[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mdata_parallel_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mtensor_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mpipeline_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers = 12,[39m
+[38;5;15m            [39m[38;5;242m# custom_pipeline_stage_id = [0] * 6 + [1] * 6,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers=model.cfg.hidden_layers,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mscheduler[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mWarmupExponentialLR[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mwarmup_factor[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mgamma[39m[38;5;197m=[39m[38;5;141m1.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_method[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mlinear[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_iter[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mevaluation[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mevaluator[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mPPLEvaluator[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_iter[39m[38;5;197m=[39m[38;5;141m250[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_period[39m[38;5;197m=[39m[38;5;141m4000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mrdma_enabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m
+[38;5;15m)[39m
+
+[03/31 14:40:50] libai.engine.default INFO: Prepare training, validating, testing set
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: Finished creating indexed dataset in 0.008170 seconds
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: number of documents: 73718
+[03/31 14:40:50] libai.data.data_utils.indexed_dataset INFO: number of sentences: 106365
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.011 seconds
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     total number of samples: 162429
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 36
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     total number of samples: 13536
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 3
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     total number of samples: 4512
+[03/31 14:40:50] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 1
+[03/31 14:40:50] libai.engine.default INFO: Auto-scaling the config to train.train_iter=335008, train.warmup_iter=0
+[03/31 14:40:50] libai INFO: > Start building model...
+[03/31 14:40:51] libai.engine.default INFO: Model:
+GPTForPreTraining(
+  (GPT_model): GPTModel(
+    (embeddings): GPTEmbedding(
+      (token_embeddings): VocabEmbedding(num_embeddings=50304, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=1024, embedding_dim=768)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (transformer): Transformer(
+      (layers): ModuleList(
+        (0): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (1): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (2): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (3): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (4): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (5): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (6): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (7): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (8): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (9): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (10): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (11): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+      )
+      (layernorm_f): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (lm_head): LMLogits()
+  )
+  (loss_func): GPTLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[03/31 14:40:51] libai INFO: >>> done with building model. Building time: 0.843 seconds
+[03/31 14:40:51] libai.scheduler.lr_scheduler WARNING: warmup iters equals to zero, return ExponentialLR
+[03/31 14:40:51] libai.engine.default INFO: Graph debug mode on, automatically output debug info.
+[03/31 14:40:51] libai.engine.default INFO: Graph debug mode on, automatically output debug info.
+[03/31 14:40:51] libai.engine.trainer INFO: Starting training from iteration 0
+[03/31 14:40:52] libai.models.utils.graph_base INFO: Start compiling the train graph which may take some time. Please wait for a moment ...
+[03/31 14:41:01] libai.engine.trainer ERROR: Exception during training:
+Traceback (most recent call last):
+  File "/home/zhangxiaoyu/libai/libai/engine/trainer.py", line 146, in train
+    self.run_step()
+  File "/home/zhangxiaoyu/libai/libai/engine/default.py", line 491, in run_step
+    self._trainer.run_step(self.get_batch, self.cfg.train.input_placement_device)
+  File "/home/zhangxiaoyu/libai/libai/engine/trainer.py", line 339, in run_step
+    loss_dict = self.graph(**data)
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 243, in __call__
+    self._compile(*args, **kwargs)
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 809, in _compile
+    self.finish_compile_and_init_runtime()
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 1166, in finish_compile_and_init_runtime
+    self._c_nn_graph.init_runtime()
+oneflow._oneflow_internal.exception.RuntimeError: [1m[38;2;255;000;000mError[0m: MluDevice::Alloc error
+  File "/home/zhangxiaoyu/oneflow-cambricon/oneflow/core/memory/memory_allocator.cpp", line 50, in Allocate
+    device->Alloc(options, &ptr, size)
+Error Type: oneflow.ErrorProto.runtime_error
+  File "/home/zhangxiaoyu/oneflow-cambricon/oneflow/core/memory/memory_allocator.cpp", line 50, in operator()
+    
+Error Type: oneflow.ErrorProto.runtime_error
+
+[03/31 14:41:01] libai.engine.hooks INFO: Total training time: 0:00:10 (0:00:00 on hooks)
+[03/31 14:54:05] libai INFO: Rank of current process: 3. World size: 4
+[03/31 14:54:05] libai INFO: Command line arguments: Namespace(config_file='projects/MagicPrompt/configs/gpt2_training.py', eval_only=False, fast_dev_run=False, opts=[], resume=False)
+[03/31 14:54:06] libai INFO: Contents of args.config_file=projects/MagicPrompt/configs/gpt2_training.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mevaluation[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mPPLEvaluator[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_inference[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mscheduler[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mWarmupExponentialLR[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mgraph[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mgraph[39m
+
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15mdebug[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m2[39m
+
+[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/vocab.json[39m[38;5;186m"[39m
+[38;5;15mmerge_files[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/merges.txt[39m[38;5;186m"[39m
+[38;5;15mtrain_data_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence[39m[38;5;186m"[39m
+
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mvocab_file[39m
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mmerges_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmerge_files[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mindexed_dataset[39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+
+[38;5;242m# gpt2 model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mpretrained_model_path[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15membedding_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mattention_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15moutput_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mffn_hidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m4[39m[38;5;15m [39m[38;5;197m*[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1024[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15minitializer_range[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.02[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mvocab_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m50257[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mlayernorm_epsilon[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1e-5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15muse_scaled_init_for_output_weights[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_gelu_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_dropout_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mscale_mask_softmax_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_query_key_layer_scaling[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_residual_post_layernorm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mamp_enabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15minput_placement_device[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186mcpu[39m[38;5;186m"[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdist[39m[38;5;197m.[39m[38;5;15mpipeline_num_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m
+
+[38;5;81mfor[39m[38;5;15m [39m[38;5;15mds[39m[38;5;15m [39m[38;5;197min[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m:[39m
+[38;5;15m    [39m[38;5;15mds[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m
+
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mlr[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5.0e-05[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_max_norm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_norm_type[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mupdate[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15moutput_dir[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mprojects/MagicPrompt/oneflow_magicprompt[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtest_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_epoch[39m[38;5;197m=[39m[38;5;141m33[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_iter[39m[38;5;197m=[39m[38;5;141m10000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mlog_period[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mamp[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mwarmup_ratio[39m[38;5;197m=[39m[38;5;141m0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mcheckpointer[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15mperiod[39m[38;5;197m=[39m[38;5;141m8000[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mmax_to_keep[39m[38;5;197m=[39m[38;5;141m20[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mdist[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mdata_parallel_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mtensor_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mpipeline_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers = 12,[39m
+[38;5;15m            [39m[38;5;242m# custom_pipeline_stage_id = [0] * 6 + [1] * 6,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers=model.cfg.hidden_layers,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mscheduler[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mWarmupExponentialLR[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mwarmup_factor[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mgamma[39m[38;5;197m=[39m[38;5;141m1.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_method[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mlinear[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_iter[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mevaluation[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mevaluator[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mPPLEvaluator[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_iter[39m[38;5;197m=[39m[38;5;141m250[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_period[39m[38;5;197m=[39m[38;5;141m4000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mrdma_enabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m
+[38;5;15m)[39m
+
+[03/31 14:54:08] libai.engine.default INFO: Prepare training, validating, testing set
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: Finished creating indexed dataset in 0.006892 seconds
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: number of documents: 73718
+[03/31 14:54:08] libai.data.data_utils.indexed_dataset INFO: number of sentences: 106365
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.005 seconds
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     total number of samples: 162429
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 36
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     total number of samples: 13536
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 3
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     total number of samples: 4512
+[03/31 14:54:08] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 1
+[03/31 14:54:08] libai.engine.default INFO: Auto-scaling the config to train.train_iter=335008, train.warmup_iter=0
+[03/31 14:54:08] libai INFO: > Start building model...
+[03/31 14:54:09] libai.engine.default INFO: Model:
+GPTForPreTraining(
+  (GPT_model): GPTModel(
+    (embeddings): GPTEmbedding(
+      (token_embeddings): VocabEmbedding(num_embeddings=50304, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=1024, embedding_dim=768)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (transformer): Transformer(
+      (layers): ModuleList(
+        (0): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (1): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (2): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (3): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (4): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (5): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (6): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (7): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (8): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (9): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (10): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (11): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+      )
+      (layernorm_f): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (lm_head): LMLogits()
+  )
+  (loss_func): GPTLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[03/31 14:54:09] libai INFO: >>> done with building model. Building time: 0.872 seconds
+[03/31 14:54:09] libai.scheduler.lr_scheduler WARNING: warmup iters equals to zero, return ExponentialLR
+[03/31 14:54:09] libai.engine.default INFO: Graph debug mode on, automatically output debug info.
+[03/31 14:54:09] libai.engine.default INFO: Graph debug mode on, automatically output debug info.
+[03/31 14:54:09] libai.engine.trainer INFO: Starting training from iteration 0
+[03/31 14:54:10] libai.models.utils.graph_base INFO: Start compiling the train graph which may take some time. Please wait for a moment ...
+[03/31 14:54:19] libai.engine.trainer ERROR: Exception during training:
+Traceback (most recent call last):
+  File "/home/zhangxiaoyu/libai/libai/engine/trainer.py", line 146, in train
+    self.run_step()
+  File "/home/zhangxiaoyu/libai/libai/engine/default.py", line 491, in run_step
+    self._trainer.run_step(self.get_batch, self.cfg.train.input_placement_device)
+  File "/home/zhangxiaoyu/libai/libai/engine/trainer.py", line 339, in run_step
+    loss_dict = self.graph(**data)
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 243, in __call__
+    self._compile(*args, **kwargs)
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 809, in _compile
+    self.finish_compile_and_init_runtime()
+  File "/home/zhangxiaoyu/oneflow-cambricon/python/oneflow/nn/graph/graph.py", line 1166, in finish_compile_and_init_runtime
+    self._c_nn_graph.init_runtime()
+oneflow._oneflow_internal.exception.RuntimeError: [1m[38;2;255;000;000mError[0m: MluDevice::Alloc error
+  File "/home/zhangxiaoyu/oneflow-cambricon/oneflow/core/memory/memory_allocator.cpp", line 50, in Allocate
+    device->Alloc(options, &ptr, size)
+Error Type: oneflow.ErrorProto.runtime_error
+  File "/home/zhangxiaoyu/oneflow-cambricon/oneflow/core/memory/memory_allocator.cpp", line 50, in operator()
+    
+Error Type: oneflow.ErrorProto.runtime_error
+
+[03/31 14:54:19] libai.engine.hooks INFO: Total training time: 0:00:10 (0:00:00 on hooks)
+[03/31 14:57:13] libai INFO: Rank of current process: 3. World size: 4
+[03/31 14:57:13] libai INFO: Command line arguments: Namespace(config_file='projects/MagicPrompt/configs/gpt2_training.py', eval_only=False, fast_dev_run=False, opts=[], resume=False)
+[03/31 14:57:13] libai INFO: Contents of args.config_file=projects/MagicPrompt/configs/gpt2_training.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mevaluation[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mPPLEvaluator[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_inference[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mscheduler[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mWarmupExponentialLR[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mgraph[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mgraph[39m
+
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mFalse[39m
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15mdebug[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m2[39m
+
+[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/vocab.json[39m[38;5;186m"[39m
+[38;5;15mmerge_files[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/merges.txt[39m[38;5;186m"[39m
+[38;5;15mtrain_data_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence[39m[38;5;186m"[39m
+
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mvocab_file[39m
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mmerges_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmerge_files[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mindexed_dataset[39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+
+[38;5;242m# gpt2 model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mpretrained_model_path[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15membedding_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mattention_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15moutput_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mffn_hidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m4[39m[38;5;15m [39m[38;5;197m*[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1024[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15minitializer_range[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.02[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mvocab_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m50257[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mlayernorm_epsilon[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1e-5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15muse_scaled_init_for_output_weights[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_gelu_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_dropout_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mscale_mask_softmax_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_query_key_layer_scaling[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_residual_post_layernorm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mamp_enabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15minput_placement_device[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186mcpu[39m[38;5;186m"[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdist[39m[38;5;197m.[39m[38;5;15mpipeline_num_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m
+
+[38;5;81mfor[39m[38;5;15m [39m[38;5;15mds[39m[38;5;15m [39m[38;5;197min[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m:[39m
+[38;5;15m    [39m[38;5;15mds[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m
+
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mlr[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5.0e-05[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_max_norm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_norm_type[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mupdate[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15moutput_dir[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mprojects/MagicPrompt/oneflow_magicprompt[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtest_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_epoch[39m[38;5;197m=[39m[38;5;141m33[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_iter[39m[38;5;197m=[39m[38;5;141m10000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mlog_period[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mamp[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mwarmup_ratio[39m[38;5;197m=[39m[38;5;141m0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mcheckpointer[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15mperiod[39m[38;5;197m=[39m[38;5;141m8000[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mmax_to_keep[39m[38;5;197m=[39m[38;5;141m20[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mdist[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mdata_parallel_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mtensor_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mpipeline_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers = 12,[39m
+[38;5;15m            [39m[38;5;242m# custom_pipeline_stage_id = [0] * 6 + [1] * 6,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers=model.cfg.hidden_layers,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mscheduler[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mWarmupExponentialLR[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mwarmup_factor[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mgamma[39m[38;5;197m=[39m[38;5;141m1.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_method[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mlinear[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_iter[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mevaluation[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mevaluator[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mPPLEvaluator[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_iter[39m[38;5;197m=[39m[38;5;141m250[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_period[39m[38;5;197m=[39m[38;5;141m4000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mrdma_enabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m
+[38;5;15m)[39m
+
+[03/31 14:57:16] libai.engine.default INFO: Prepare training, validating, testing set
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: Finished creating indexed dataset in 0.006980 seconds
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: number of documents: 73718
+[03/31 14:57:16] libai.data.data_utils.indexed_dataset INFO: number of sentences: 106365
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.014 seconds
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     total number of samples: 162429
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 36
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     total number of samples: 13536
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 3
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     total number of samples: 4512
+[03/31 14:57:16] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 1
+[03/31 14:57:16] libai.engine.default INFO: Auto-scaling the config to train.train_iter=335008, train.warmup_iter=0
+[03/31 14:57:16] libai INFO: > Start building model...
+[03/31 14:57:17] libai.engine.default INFO: Model:
+GPTForPreTraining(
+  (GPT_model): GPTModel(
+    (embeddings): GPTEmbedding(
+      (token_embeddings): VocabEmbedding(num_embeddings=50304, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=1024, embedding_dim=768)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (transformer): Transformer(
+      (layers): ModuleList(
+        (0): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (1): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (2): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (3): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (4): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (5): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (6): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (7): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (8): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (9): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (10): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (11): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+      )
+      (layernorm_f): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (lm_head): LMLogits()
+  )
+  (loss_func): GPTLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[03/31 14:57:17] libai INFO: >>> done with building model. Building time: 0.885 seconds
+[03/31 14:57:17] libai.scheduler.lr_scheduler WARNING: warmup iters equals to zero, return ExponentialLR
+[03/31 14:57:17] libai.engine.trainer INFO: Starting training from iteration 0
+[03/31 14:59:32] libai INFO: Rank of current process: 3. World size: 4
+[03/31 14:59:32] libai INFO: Command line arguments: Namespace(config_file='projects/MagicPrompt/configs/gpt2_training.py', eval_only=False, fast_dev_run=False, opts=[], resume=False)
+[03/31 14:59:32] libai INFO: Contents of args.config_file=projects/MagicPrompt/configs/gpt2_training.py:
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mconfig[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mLazyCall[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mevaluation[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mPPLEvaluator[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_inference[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mpretrain_model[39m[38;5;15m [39m[38;5;81mas[39m[38;5;15m [39m[38;5;15mmodel[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mprojects[39m[38;5;15m.[39m[38;5;15mMagicPrompt[39m[38;5;15m.[39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mgpt2_dataset[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mtokenization[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15moptim[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15moptim[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mlibai[39m[38;5;15m.[39m[38;5;15mscheduler[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mWarmupExponentialLR[39m
+
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mtrain[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mtrain[39m
+[38;5;197mfrom[39m[38;5;15m [39m[38;5;15mconfigs[39m[38;5;15m.[39m[38;5;15mcommon[39m[38;5;15m.[39m[38;5;15mmodels[39m[38;5;15m.[39m[38;5;15mgraph[39m[38;5;15m [39m[38;5;197mimport[39m[38;5;15m [39m[38;5;15mgraph[39m
+
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mFalse[39m
+[38;5;15mgraph[39m[38;5;197m.[39m[38;5;15mdebug[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m2[39m
+
+[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/vocab.json[39m[38;5;186m"[39m
+[38;5;15mmerge_files[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/merges.txt[39m[38;5;186m"[39m
+[38;5;15mtrain_data_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186m/home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence[39m[38;5;186m"[39m
+
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mvocab_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mvocab_file[39m
+[38;5;15mtokenization[39m[38;5;197m.[39m[38;5;15mtokenizer[39m[38;5;197m.[39m[38;5;15mmerges_file[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmerge_files[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m[[39m[38;5;141m0[39m[38;5;15m][39m[38;5;197m.[39m[38;5;15mindexed_dataset[39m[38;5;197m.[39m[38;5;15mdata_prefix[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mtrain_data_prefix[39m
+
+[38;5;242m# gpt2 model config[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mpretrained_model_path[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15membedding_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mattention_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15moutput_dropout_prob[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.1[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mnum_attention_heads[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mffn_hidden_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m4[39m[38;5;15m [39m[38;5;197m*[39m[38;5;15m [39m[38;5;141m768[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m12[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1024[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15minitializer_range[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m0.02[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mvocab_size[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m50257[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mlayernorm_epsilon[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m1e-5[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15muse_scaled_init_for_output_weights[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_gelu_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mbias_dropout_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mscale_mask_softmax_fusion[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_query_key_layer_scaling[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mTrue[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mapply_residual_post_layernorm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mamp_enabled[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mFalse[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15minput_placement_device[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;186m"[39m[38;5;186mcpu[39m[38;5;186m"[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdist[39m[38;5;197m.[39m[38;5;15mpipeline_num_layers[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mhidden_layers[39m
+
+[38;5;81mfor[39m[38;5;15m [39m[38;5;15mds[39m[38;5;15m [39m[38;5;197min[39m[38;5;15m [39m[38;5;15mdataloader[39m[38;5;197m.[39m[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mdataset[39m[38;5;15m:[39m
+[38;5;15m    [39m[38;5;15mds[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;15mmodel[39m[38;5;197m.[39m[38;5;15mcfg[39m[38;5;197m.[39m[38;5;15mmax_seq_length[39m
+
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mlr[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;141m5.0e-05[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_max_norm[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+[38;5;15moptim[39m[38;5;197m.[39m[38;5;15mparams[39m[38;5;197m.[39m[38;5;15mclip_grad_norm_type[39m[38;5;15m [39m[38;5;197m=[39m[38;5;15m [39m[38;5;81mNone[39m
+
+[38;5;15mtrain[39m[38;5;197m.[39m[38;5;15mupdate[39m[38;5;15m([39m
+[38;5;15m    [39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m        [39m[38;5;15moutput_dir[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mprojects/MagicPrompt/oneflow_magicprompt[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtest_micro_batch_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_epoch[39m[38;5;197m=[39m[38;5;141m33[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mtrain_iter[39m[38;5;197m=[39m[38;5;141m10000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mlog_period[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mamp[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mwarmup_ratio[39m[38;5;197m=[39m[38;5;141m0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mcheckpointer[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m[38;5;15mperiod[39m[38;5;197m=[39m[38;5;141m8000[39m[38;5;15m,[39m[38;5;15m [39m[38;5;15mmax_to_keep[39m[38;5;197m=[39m[38;5;141m20[39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mdist[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mdata_parallel_size[39m[38;5;197m=[39m[38;5;141m4[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mtensor_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mpipeline_parallel_size[39m[38;5;197m=[39m[38;5;141m1[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers = 12,[39m
+[38;5;15m            [39m[38;5;242m# custom_pipeline_stage_id = [0] * 6 + [1] * 6,[39m
+[38;5;15m            [39m[38;5;242m# pipeline_num_layers=model.cfg.hidden_layers,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mscheduler[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mWarmupExponentialLR[39m[38;5;15m)[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15mwarmup_factor[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mgamma[39m[38;5;197m=[39m[38;5;141m1.0[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_method[39m[38;5;197m=[39m[38;5;186m"[39m[38;5;186mlinear[39m[38;5;186m"[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mwarmup_iter[39m[38;5;197m=[39m[38;5;141m0.0[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mevaluation[39m[38;5;197m=[39m[38;5;15mdict[39m[38;5;15m([39m
+[38;5;15m            [39m[38;5;15menabled[39m[38;5;197m=[39m[38;5;81mTrue[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15mevaluator[39m[38;5;197m=[39m[38;5;15mLazyCall[39m[38;5;15m([39m[38;5;15mPPLEvaluator[39m[38;5;15m)[39m[38;5;15m([39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_iter[39m[38;5;197m=[39m[38;5;141m250[39m[38;5;15m,[39m
+[38;5;15m            [39m[38;5;15meval_period[39m[38;5;197m=[39m[38;5;141m4000[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15m)[39m[38;5;15m,[39m
+[38;5;15m        [39m[38;5;15mrdma_enabled[39m[38;5;197m=[39m[38;5;81mFalse[39m[38;5;15m,[39m
+[38;5;15m    [39m[38;5;15m)[39m
+[38;5;15m)[39m
+
+[03/31 14:59:35] libai.engine.default INFO: Prepare training, validating, testing set
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: building dataset index ...
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: warming up index mmap file...
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: reading sizes...
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: reading pointers...
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: reading document index...
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: warming up data mmap file...
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: creating numpy buffer of mmap...
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: creating memory view of numpy buffer...
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: Finished creating indexed dataset in 0.007580 seconds
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: indexed dataset stats:
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: number of documents: 73718
+[03/31 14:59:35] libai.data.data_utils.indexed_dataset INFO: number of sentences: 106365
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_160000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.009 seconds
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     total number of samples: 162429
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 36
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_12000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     total number of samples: 13536
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 3
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading doc-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_doc_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading sample-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_sample_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:  > loading shuffle-idx mapping from /home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence_gpt-2_indexmap_4000ns_1024sl_1234s_shuffle_idx.npy
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     loaded indexed file in 0.001 seconds
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     total number of samples: 4512
+[03/31 14:59:35] libai.data.datasets.gpt_dataset INFO:     total number of epochs: 1
+[03/31 14:59:35] libai.engine.default INFO: Auto-scaling the config to train.train_iter=335008, train.warmup_iter=0
+[03/31 14:59:35] libai INFO: > Start building model...
+[03/31 14:59:36] libai.engine.default INFO: Model:
+GPTForPreTraining(
+  (GPT_model): GPTModel(
+    (embeddings): GPTEmbedding(
+      (token_embeddings): VocabEmbedding(num_embeddings=50304, embedding_dim=768)
+      (position_embeddings): Embedding(num_embeddings=1024, embedding_dim=768)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (transformer): Transformer(
+      (layers): ModuleList(
+        (0): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (1): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (2): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (3): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (4): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (5): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (6): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (7): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (8): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (9): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (10): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+        (11): TransformerLayer(
+          (drop_path): Identity()
+          (input_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (self_attention): MultiheadAttention(
+            hidden_size=768, num_heads=12, is_cross_attention=False
+            (dropout): Dropout(p=0.1, inplace=False)
+            (output_dropout): Dropout(p=0.1, inplace=False)
+            (query_key_value): Linear1D(in_features=768, out_features=2304, bias=True, parallel=col)
+            (dense): Linear1D(in_features=768, out_features=768, bias=True, parallel=row)
+          )
+          (post_attention_layernorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (mlp): MLP(
+            bias_gelu_fusion=False, bias_dropout_fusion=False, dropout=0.1
+            (dense_h_to_4h): Linear1D(in_features=768, out_features=3072, bias=True, parallel=col)
+            (activation_func): GeLUTanh()
+            (dense_4h_to_h): Linear1D(in_features=3072, out_features=768, bias=True, parallel=row)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+      )
+      (layernorm_f): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+    )
+    (lm_head): LMLogits()
+  )
+  (loss_func): GPTLoss(
+    (lm_loss): ParallelCrossEntropyLoss()
+  )
+)
+[03/31 14:59:36] libai INFO: >>> done with building model. Building time: 0.831 seconds
+[03/31 14:59:36] libai.scheduler.lr_scheduler WARNING: warmup iters equals to zero, return ExponentialLR
+[03/31 14:59:36] libai.engine.trainer INFO: Starting training from iteration 0

@@ -493,7 +493,7 @@ class Generator:
                 scores += (next_token_scores,)
 
             # argmax
-            next_tokens = flow.argmax(next_token_scores.to("cpu"), dim=-1).to("mlu")
+            next_tokens = flow.argmax(next_token_scores, dim=-1)
             next_tokens = next_tokens.to_global(placement=input_ids.placement)
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=next_tokens.sbp, placement=next_tokens.placement
