@@ -128,6 +128,8 @@ train = dict(
         # NOTE: if it is None, LiBai will automatically set pipeline_stage_id
         # `auto_pipeline_stage_id` and `actual_pipeline_stage_id` will be saved in `config.yaml`
         custom_pipeline_stage_id=None,
+        # set device type
+        device_type="cuda",
     ),
 
     # the device type of input tensors for model, defaults to "cuda".

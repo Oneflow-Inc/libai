@@ -55,6 +55,9 @@ logger = logging.getLogger(__name__)
 
 
 class Generator:
+    dist_utils = dist.get_dist_util()
+    device_type = dist_utils.device_type
+
     def _prepare_model_inputs(
         self,
         inputs: Optional[flow.Tensor] = None,
@@ -101,7 +104,7 @@ class Generator:
                     shape,
                     dtype=flow.long,
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                    placement=flow.placement(self.device_type, list(range(dist.get_world_size()))),
                 )
                 * -100
             )
@@ -113,7 +116,7 @@ class Generator:
                 (1, 1),
                 dtype=flow.long,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=flow.placement(self.device_type, list(range(dist.get_world_size()))),
             )
             * bos_token_id
         )
@@ -137,7 +140,7 @@ class Generator:
                 inputs.shape[:2],
                 dtype=flow.bool,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=flow.placement(dist.device_type, list(range(dist.get_world_size()))),
             )
 
     def _prepare_encoder_decoder_kwargs_for_generation(
@@ -171,7 +174,7 @@ class Generator:
                     (batch_size, 1),
                     dtype=flow.long,
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                    placement=flow.placement(dist.device_type, list(range(dist.get_world_size()))),
                 )
                 * decoder_start_token_id
             )
@@ -195,6 +198,7 @@ class Generator:
         is_encoder_decoder: bool = False,
         attention_mask: Optional[flow.Tensor] = None,
         encoder_outputs: Optional[flow.Tensor] = None,
+        device_type="cuda",
         **model_kwargs,
     ):
         expanded_return_idx = (
@@ -202,7 +206,7 @@ class Generator:
         )
         expanded_return_idx = expanded_return_idx.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=flow.placement(device_type, list(range(dist.get_world_size()))),
         )
 
         input_ids = input_ids.index_select(0, expanded_return_idx)
@@ -589,12 +593,12 @@ class Generator:
             probs = nn.functional.softmax(next_token_scores, dim=-1)
             probs = probs.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=flow.placement(self.device_type, list(range(dist.get_world_size()))),
             ).to_local()
             next_tokens = flow.multinomial(probs, num_samples=1).squeeze(1)
             next_tokens = next_tokens.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=flow.placement(self.device_type, list(range(dist.get_world_size()))),
             )
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=next_tokens.sbp, placement=next_tokens.placement
@@ -687,7 +691,7 @@ class Generator:
             (batch_size, num_beams),
             dtype=flow.float,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=flow.placement(self.device_type, list(range(dist.get_world_size()))),
         )
         beam_scores[:, 1:] = -1e9
         beam_scores = beam_scores.view((batch_size * num_beams,))
@@ -1019,6 +1023,7 @@ class Generator:
                 input_ids,
                 expand_size=num_return_sequences,
                 is_encoder_decoder=self.cfg.is_encoder_decoder,
+                device_type=self.device_type,
                 **model_kwargs,
             )
 
@@ -1057,6 +1062,7 @@ class Generator:
                 input_ids,
                 expand_size=num_beams,
                 is_encoder_decoder=self.cfg.is_encoder_decoder,
+                device_type=self.device_type,
                 **model_kwargs,
             )
 

@@ -138,6 +138,8 @@ class PreTrainedTokenizer(object):
     pretrained_vocab_files_map = {}
     pretrained_init_configuration = {}
     max_model_input_sizes = {}
+    dist_utils = dist.get_dist_util()
+    device_type = dist_utils.device_type
 
     SPECIAL_TOKENS_ATTRIBUTES = [
         "bos_token",
@@ -783,7 +785,8 @@ class PreTrainedTokenizer(object):
             elif is_global:
                 sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
                 placement = kwargs.get(
-                    "placement", flow.placement("cuda", list(range(dist.get_world_size())))
+                    "placement",
+                    flow.placement(self.device_type, list(range(dist.get_world_size()))),
                 )
                 return_token_ids = flow.tensor(
                     token_ids, sbp=sbp, placement=placement, dtype=flow.long
