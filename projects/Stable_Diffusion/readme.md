@@ -312,101 +312,101 @@ python3 -m pip install huggingface_hub
 model will be saved in `train.output_dir` in `config.py`,
 
 - with lora:
-the model output save dir will be like this:
-```
-output/stable_diffusion
-├── config.yaml
-├── log.txt
-├── model_sd_for_inference
-│   └── pytorch_lora_weights.bin
-```
-Here we can use [onediff](https://github.com/Oneflow-Inc/diffusers) to inference our trained lora-model in Libai
-```python
-import oneflow as flow
-flow.mock_torch.enable()
-from onediff import OneFlowStableDiffusionPipeline
-from typing import get_args
-from diffusers.models.attention_processor import AttentionProcessor
+    the model output save dir will be like this:
+    ```
+    output/stable_diffusion
+    ├── config.yaml
+    ├── log.txt
+    ├── model_sd_for_inference
+    │   └── pytorch_lora_weights.bin
+    ```
+    Here we can use [onediff](https://github.com/Oneflow-Inc/diffusers) to inference our trained lora-model in Libai
+    ```python
+    import oneflow as flow
+    flow.mock_torch.enable()
+    from onediff import OneFlowStableDiffusionPipeline
+    from typing import get_args
+    from diffusers.models.attention_processor import AttentionProcessor
 
-for processor_type in get_args(AttentionProcessor):
-    processor_type.forward = processor_type.__call__
+    for processor_type in get_args(AttentionProcessor):
+        processor_type.forward = processor_type.__call__
 
-model_path = "CompVis/stable-diffusion-v1-4"
-pipe = OneFlowStableDiffusionPipeline.from_pretrained(
-    model_path,
-    use_auth_token=True,
-    revision="fp16",
-    torch_dtype=flow.float16,
-)
-pipe.unet.load_attn_procs("output/stable_diffusion/model_sd_for_inference/")
+    model_path = "CompVis/stable-diffusion-v1-4"
+    pipe = OneFlowStableDiffusionPipeline.from_pretrained(
+        model_path,
+        use_auth_token=True,
+        revision="fp16",
+        torch_dtype=flow.float16,
+    )
+    pipe.unet.load_attn_procs("output/stable_diffusion/model_sd_for_inference/")
 
-pipe = pipe.to("cuda")
+    pipe = pipe.to("cuda")
 
-for i in range(100):
-    prompt = "a photo of sks dog"
-    with flow.autocast("cuda"):
-        images = pipe(prompt).images
-        for j, image in enumerate(images):
-            image.save(f"{i}.png")
-```
+    for i in range(100):
+        prompt = "a photo of sks dog"
+        with flow.autocast("cuda"):
+            images = pipe(prompt).images
+            for j, image in enumerate(images):
+                image.save(f"{i}.png")
+    ```
 
 - without lora
-the model output save dir will be like this:
-```
-output/stable_diffusion
-├── config.yaml
-├── last_checkpoint
-├── metrics.json
-├── model_final
-│   ├── graph
-│   ├── lr_scheduler
-│   └── model
-├── model_sd_for_inference
-│   ├── feature_extractor
-│   │   └── preprocessor_config.json
-│   ├── model_index.json
-│   ├── safety_checker
-│   │   ├── config.json
-│   │   └── pytorch_model.bin
-│   ├── scheduler
-│   │   └── scheduler_config.json
-│   ├── text_encoder
-│   │   ├── config.json
-│   │   └── pytorch_model.bin
-│   ├── tokenizer
-│   │   ├── merges.txt
-│   │   ├── special_tokens_map.json
-│   │   ├── tokenizer_config.json
-│   │   └── vocab.json
-│   ├── unet
-│   │   ├── config.json
-│   │   └── diffusion_pytorch_model.bin
-│   └── vae
-│       ├── config.json
-│       └── diffusion_pytorch_model.bin
-```
+    the model output save dir will be like this:
+    ```
+    output/stable_diffusion
+    ├── config.yaml
+    ├── last_checkpoint
+    ├── metrics.json
+    ├── model_final
+    │   ├── graph
+    │   ├── lr_scheduler
+    │   └── model
+    ├── model_sd_for_inference
+    │   ├── feature_extractor
+    │   │   └── preprocessor_config.json
+    │   ├── model_index.json
+    │   ├── safety_checker
+    │   │   ├── config.json
+    │   │   └── pytorch_model.bin
+    │   ├── scheduler
+    │   │   └── scheduler_config.json
+    │   ├── text_encoder
+    │   │   ├── config.json
+    │   │   └── pytorch_model.bin
+    │   ├── tokenizer
+    │   │   ├── merges.txt
+    │   │   ├── special_tokens_map.json
+    │   │   ├── tokenizer_config.json
+    │   │   └── vocab.json
+    │   ├── unet
+    │   │   ├── config.json
+    │   │   └── diffusion_pytorch_model.bin
+    │   └── vae
+    │       ├── config.json
+    │       └── diffusion_pytorch_model.bin
+    ```
 
-Here we can use [onediff](https://github.com/Oneflow-Inc/diffusers) to inference our trained model in Libai
+    Here we can use [onediff](https://github.com/Oneflow-Inc/diffusers) to inference our trained model in Libai
 
-```python
-import oneflow as flow
-flow.mock_torch.enable()
-from onediff import OneFlowStableDiffusionPipeline
+    ```python
+    import oneflow as flow
+    flow.mock_torch.enable()
+    from onediff import OneFlowStableDiffusionPipeline
 
-model_path = "output/stable_diffusion/model_sd_for_inference/"
-pipe = OneFlowStableDiffusionPipeline.from_pretrained(
-    model_path,
-    use_auth_token=True,
-    revision="fp16",
-    torch_dtype=flow.float16,
-)
+    model_path = "output/stable_diffusion/model_sd_for_inference/"
+    pipe = OneFlowStableDiffusionPipeline.from_pretrained(
+        model_path,
+        use_auth_token=True,
+        revision="fp16",
+        torch_dtype=flow.float16,
+    )
 
-pipe = pipe.to("cuda")
+    pipe = pipe.to("cuda")
 
-for i in range(100):
-    prompt = "a photo of sks dog"
-    with flow.autocast("cuda"):
-        images = pipe(prompt).images
-        for j, image in enumerate(images):
-            image.save(f"{i}.png")
-```
+    for i in range(100):
+        prompt = "a photo of sks dog"
+        with flow.autocast("cuda"):
+            images = pipe(prompt).images
+            for j, image in enumerate(images):
+                image.save(f"{i}.png")
+    ```
