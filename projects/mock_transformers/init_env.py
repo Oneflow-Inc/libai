@@ -16,7 +16,7 @@
 # -----------mock torch, put it in the first line-----------
 import oneflow as flow
 
-flow.mock_torch.enable()
+flow.mock_torch.enable(lazy=True)
 
 from oneflow import Tensor, nn  # noqa
 from transformers import modeling_utils  # noqa

@@ -77,6 +77,7 @@ class StableDiffusion(nn.Module):
             self.unet.set_attn_processor(lora_attn_procs)
             self.lora_layers = AttnProcsLayers(self.unet.attn_processors)
 
+
     def forward(self, pixel_values, input_ids):
         from oneflow.utils.global_view import global_mode
         placement_sbp_dict = dict(

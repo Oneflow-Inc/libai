@@ -258,10 +258,100 @@ python3 -m pip install huggingface_hub
             train.log_period=10
         ```
 
+- Training Dreamboth with lora
+
+    Low-Rank Adaption of Large Language Models was first introduced by Microsoft in [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685) by *Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen*
+
+    In a nutshell, LoRA allows to adapt pretrained models by adding pairs of rank-decomposition matrices to existing weights and **only** training those newly added weights. This has a couple of advantages:
+    - Previous pretrained weights are kept frozen so that the model is not prone to [catastrophic forgetting](https://www.pnas.org/doi/10.1073/pnas.1611835114)
+    - Rank-decomposition matrices have significantly fewer parameters than the original model, which means that trained LoRA weights are easily portable.
+    - LoRA attention layers allow to control to which extent the model is adapted towards new training images via a `scale` parameter.
+
+    set your datapath and features in `projects/Stable_Diffusion/configs/lora_config.py`
+    ```python
+        dataloader.train = LazyCall(build_nlp_train_loader)(
+            dataset=[
+                # set data path
+                LazyCall(DreamBoothDataset)(
+                    instance_data_root="/path/to/demo_dog/",
+                    instance_prompt="a photo of sks dog",
+                    ...,
+                )
+            ]
+        )
+
+        train.update(
+            dict(
+                ...,
+                # set checkpointing or not
+                activation_checkpoint=dict(enabled=True), # or False
+
+                # set zero stage
+                zero_optimization=dict(
+                    enabled=True, # or False
+                    stage=2, # Highly recommand stage=2, stage=1 or 3 is also supported 
+                ),
+
+                # set amp training
+                amp=dict(enabled=True), # or False
+            )
+        )
+
+        # set learning rate 
+        optim.lr = 5e-4
+    ```
+
+    running with 4 GPU
+    ```
+    bash tools/train.sh projects/Stable_Diffusion/train_net.py projects/Stable_Diffusion/configs/lora_config.py
+
+
+
 ## Inference with trained model
 
-model will be saved in `train.output_dir` in `config.py`, the model output save dir will be like this:
+model will be saved in `train.output_dir` in `config.py`,
 
+- with lora:
+the model output save dir will be like this:
+```
+output/stable_diffusion
+├── config.yaml
+├── log.txt
+├── model_sd_for_inference
+│   └── pytorch_lora_weights.bin
+```
+Here we can use [onediff](https://github.com/Oneflow-Inc/diffusers) to inference our trained lora-model in Libai
+```python
+import oneflow as flow
+flow.mock_torch.enable()
+from onediff import OneFlowStableDiffusionPipeline
+from typing import get_args
+from diffusers.models.attention_processor import AttentionProcessor
+
+for processor_type in get_args(AttentionProcessor):
+    processor_type.forward = processor_type.__call__
+
+model_path = "CompVis/stable-diffusion-v1-4"
+pipe = OneFlowStableDiffusionPipeline.from_pretrained(
+    model_path,
+    use_auth_token=True,
+    revision="fp16",
+    torch_dtype=flow.float16,
+)
+pipe.unet.load_attn_procs("output/stable_diffusion/model_sd_for_inference/")
+
+pipe = pipe.to("cuda")
+
+for i in range(100):
+    prompt = "a photo of sks dog"
+    with flow.autocast("cuda"):
+        images = pipe(prompt).images
+        for j, image in enumerate(images):
+            image.save(f"{i}.png")
+```
+
+- without lora
+the model output save dir will be like this:
 ```
 output/stable_diffusion
 ├── config.yaml
@@ -300,7 +390,6 @@ Here we can use [onediff](https://github.com/Oneflow-Inc/diffusers) to inference
 
 ```python
 import oneflow as flow
-from PIL import Image
 flow.mock_torch.enable()
 from onediff import OneFlowStableDiffusionPipeline
 
@@ -319,5 +408,5 @@ for i in range(100):
     with flow.autocast("cuda"):
         images = pipe(prompt).images
         for j, image in enumerate(images):
-            image.save(f"{j}.png")
+            image.save(f"{i}.png")
 ```

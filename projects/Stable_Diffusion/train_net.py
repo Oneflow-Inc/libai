@@ -80,9 +80,11 @@ class Trainer(DefaultTrainer):
         ret = [
             hooks.IterationTimer(),
             hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
-            hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
             SdCheckpointer(self.model, self.cfg.train.output_dir),
         ]
+
+        if not try_get_key(self.cfg, "model.train_with_lora", default=False):
+            ret.append(hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),)
 
         if self.cfg.train.evaluation.enabled:
             assert self.cfg.train.evaluation.eval_iter > 0, "run_iter must be positive number"
