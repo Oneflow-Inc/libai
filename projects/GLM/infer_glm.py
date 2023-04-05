@@ -43,7 +43,7 @@ loader = GLMLoaderHuggerFace(
     output_dropout_prob=0,
 )
 model = loader.load()
-model = model.half().cuda()
+model = model.cuda()
 model.eval()
 
 dist.set_device_type("cuda")
