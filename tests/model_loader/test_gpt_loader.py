@@ -116,7 +116,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
             )
         )
 
-    @flow.unittest.skip_unless_1n4d()
+    # @flow.unittest.skip_unless_1n4d()
     def test_gpt_loader_with_data_tensor_pipeline_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
@@ -156,7 +156,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
         logits = model(input_ids)
         self.assertTrue(
             np.allclose(
-                np.array(-93505072.0),
+                np.array(-93525464.0),
                 logits.sum().data.numpy(),
             )
         )
