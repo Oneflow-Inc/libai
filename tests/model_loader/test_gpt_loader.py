@@ -43,6 +43,10 @@ setup_logger(distributed_rank=dist.get_rank())
 
 
 class TestGPT2Loader(flow.unittest.TestCase):
+    """The activation function of gpt2 in LiBai is GELU, so the result here is to 
+    replace the activation function of gpt2 in huggingface from gelu_new to gelu.
+    """
+
     def setUp(self) -> None:
         cache_dir = os.path.join(
             os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "gpt_utils_data"
@@ -71,7 +75,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
         if os.path.isdir(TEST_OUTPUT) and dist.get_local_rank() == 0:
             shutil.rmtree(TEST_OUTPUT)
 
-    # @flow.unittest.skip_unless_1n4d()
+    @flow.unittest.skip_unless_1n4d()
     def test_gpt_loader_with_data_tensor_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
@@ -110,13 +114,12 @@ class TestGPT2Loader(flow.unittest.TestCase):
         logits = model(input_ids)
         self.assertTrue(
             np.allclose(
-                np.array(-93525464.0),
+                np.array(-93505050.0),
                 logits.sum().data.numpy(),
-                rtol=1e-4,
             )
         )
 
-    # @flow.unittest.skip_unless_1n4d()
+    @flow.unittest.skip_unless_1n4d()
     def test_gpt_loader_with_data_tensor_pipeline_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
@@ -156,7 +159,7 @@ class TestGPT2Loader(flow.unittest.TestCase):
         logits = model(input_ids)
         self.assertTrue(
             np.allclose(
-                np.array(-93525464.0),
+                np.array(-93505050.0),
                 logits.sum().data.numpy(),
             )
         )
