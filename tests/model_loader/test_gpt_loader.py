@@ -43,7 +43,7 @@ setup_logger(distributed_rank=dist.get_rank())
 
 
 class TestGPT2Loader(flow.unittest.TestCase):
-    """The activation function of gpt2 in LiBai is GELU, so the result here is to 
+    """The activation function of gpt2 in LiBai is GELU, so the result here is to
     replace the activation function of gpt2 in huggingface from gelu_new to gelu.
     """
 
