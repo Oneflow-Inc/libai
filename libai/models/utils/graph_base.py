@@ -101,7 +101,6 @@ class GraphBase(nn.Graph):
 
     def build(self, **kwargs):
         if self.is_train:
-<<<<<<< HEAD
             placement_sbp_dict = dict(
                 placement=flow.env.all_device_placement("cuda"),
                 sbp=flow.sbp.split(0),
@@ -115,16 +114,6 @@ class GraphBase(nn.Graph):
                 losses = sum(v for k, v in loss_dict.items() if "loss" in k)
                 losses.backward()
                 return loss_dict
-=======
-            logger.info(
-                "Start compiling the train graph which may take some time. "
-                "Please wait for a moment ..."
-            )
-            loss_dict = self.model(**kwargs)
-            losses = sum(v for k, v in loss_dict.items() if "loss" in k)
-            losses.backward()
-            return loss_dict
->>>>>>> 2654092c0a45bb53204ebe78a136a669aa525a80
         else:
             logger.info(
                 "Start compiling the eval graph which may take some time. "
