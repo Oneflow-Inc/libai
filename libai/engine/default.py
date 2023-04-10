@@ -539,7 +539,8 @@ class DefaultTrainer(TrainerBase):
                     cfg.tokenization.make_vocab_size_divisible_by
                     * cfg.train.dist.tensor_parallel_size
                 )
-                cfg.model.cfg.vocab_size = tokenizer.padded_vocab_size(multiple)
+                if hasattr(tokenizer, "padded_vocab_size"):
+                    cfg.model.cfg.vocab_size = tokenizer.padded_vocab_size(multiple)
         return tokenizer
 
     @classmethod
