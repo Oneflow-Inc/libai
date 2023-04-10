@@ -478,6 +478,9 @@ class Generator:
         unfinished_sequences = flow.ones(input_ids.shape[0])
         cur_len = input_ids.shape[-1]
         while True:
+            if input_ids.size(0) > 1:    
+                input_ids = input_ids.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]))
+
             # prepare model inputs
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
@@ -496,7 +499,7 @@ class Generator:
             next_tokens = flow.argmax(next_token_scores, dim=-1)
             next_tokens = next_tokens.to_global(placement=input_ids.placement)
             unfinished_sequences = unfinished_sequences.to_global(
-                sbp=next_tokens.sbp, placement=next_tokens.placement
+                sbp=flow.sbp.broadcast, placement=next_tokens.placement
             )
 
             if eos_token_id is not None:

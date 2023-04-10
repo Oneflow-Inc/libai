@@ -61,9 +61,6 @@ class BasePipeline(metaclass=ABCMeta):
             pipeline_num_layers,
         )
         dist.setup_dist_util(self.cfg.train.dist)
-        assert (
-            self.cfg.train.dist.data_parallel_size == 1
-        ), "not support data parallel yet, only support tensor and pipeline parallel"
         logger.info(self.cfg.train.dist)
 
         # initial and load model

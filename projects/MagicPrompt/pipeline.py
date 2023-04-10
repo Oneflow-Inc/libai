@@ -67,6 +67,8 @@ class TextGenerationPipeline(BasePipeline):
 
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoder
+        if self.tokenizer.pad_token == None:
+            self.tokenizer.pad_token = "[PAD]"
         inputs = self.tokenizer(inputs, return_tensors="of", padding=True)
         inputs = {
             "input_ids": inputs.input_ids,
@@ -75,7 +77,7 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
-        outputs = self.model.generate(inputs["input_ids"], do_sample=True, max_length=50, **kwargs)
+        outputs = self.model.generate(inputs["input_ids"], max_length=50, **kwargs)
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
@@ -99,7 +101,7 @@ if __name__ == "__main__":
         mode="libai",
     )
 
-    text = ["a dog"]
+    text = ["a dog", "a cute pig", "a cute girl"]
     output = pipeline(inputs=text)
     if dist.is_main_process():
         print(output)
