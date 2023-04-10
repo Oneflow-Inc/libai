@@ -65,7 +65,7 @@ def parse_args(input_args=None):
         default="fp16",
         choices=["no", "fp32", "fp16", "bf16"],
         help=(
-            "Choose prior generation precision between fp32, fp16 and bf16 (bfloat16)." 
+            "Choose prior generation precision between fp32, fp16 and bf16 (bfloat16)."
             " Bf16 requires PyTorch >=1.10.and an Nvidia Ampere GPU. "
             " Default to  fp16 if a GPU is available else fp32."
         ),

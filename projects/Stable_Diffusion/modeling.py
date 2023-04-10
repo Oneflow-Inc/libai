@@ -6,7 +6,7 @@ from oneflow import nn
 from oneflow.nn import functional as F
 from transformers import CLIPTextModel, CLIPTokenizer
 
-from projects.mock_transformers import init_env # noqa
+from projects.mock_transformers import init_env  # noqa
 
 LoRACrossAttnProcessor.forward = LoRACrossAttnProcessor.__call__
 
@@ -139,7 +139,7 @@ class StableDiffusion(nn.Module):
                 module_block.to(nn.graph.GraphModule).activation_checkpointing = True
             # set unet checkpointing
             elif isinstance(
-                    module_block.to(nn.Module), 
-                    (ResnetBlock2D, DualTransformer2DModel, Transformer2DModel)
-                ):
+                module_block.to(nn.Module),
+                (ResnetBlock2D, DualTransformer2DModel, Transformer2DModel),
+            ):
                 module_block.to(nn.graph.GraphModule).activation_checkpointing = True

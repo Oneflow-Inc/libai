@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
-from PIL import Image
 
 import numpy as np
 import oneflow as flow
 from flowvision import transforms
 from oneflow.utils.data import Dataset
+from PIL import Image
 
 from libai.data.structures import DistTensorData, Instance
 

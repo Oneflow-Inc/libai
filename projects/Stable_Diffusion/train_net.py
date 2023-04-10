@@ -22,13 +22,13 @@ import numpy as np
 import oneflow as flow
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from onediff import OneFlowStableDiffusionPipeline # noqa
+from onediff import OneFlowStableDiffusionPipeline  # noqa
 
-from libai.config import LazyConfig, default_argument_parser, try_get_key # noqa
-from libai.engine import DefaultTrainer, default_setup, hooks # noqa
-from libai.engine.trainer import HookBase # noqa
-from libai.utils import distributed as dist # noqa
-from libai.utils.checkpoint import Checkpointer # noqa
+from libai.config import LazyConfig, default_argument_parser, try_get_key  # noqa
+from libai.engine import DefaultTrainer, default_setup, hooks  # noqa
+from libai.engine.trainer import HookBase  # noqa
+from libai.utils import distributed as dist  # noqa
+from libai.utils.checkpoint import Checkpointer  # noqa
 
 logger = logging.getLogger("libai." + __name__)
 
