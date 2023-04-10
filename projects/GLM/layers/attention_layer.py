@@ -1,5 +1,6 @@
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
+# Copyright 2022 The HuggingFace Inc. team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,6 +41,7 @@ class MultiheadAttention(nn.Module):
         super().__init__()
         self.hidden_size = hidden_size
         self.attention_scale = attention_scale
+        self.num_attention_heads = num_attention_heads
         if output_layer_init_method is None:
             output_layer_init_method = init_method
 
@@ -106,34 +108,19 @@ class MultiheadAttention(nn.Module):
         if mem is not None:
             query = query[:, :, -tgt_len:]
 
-        if self.attention_scale > 1.0:
-            attention_scores = flow.matmul(
-                query / math.sqrt(self.attention_scale),
-                key / math.sqrt(self.head_size * self.attention_scale),
-                transpose_b=True,
-            )
-        else:
-            attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
-
-        if self.scale_mask_softmax_fusion:
-            attention_weights = flow._C.fused_scale_mask_softmax_dropout(
-                attention_scores,
-                attention_mask,
-                fill_value=-10000.0,
-                scale=self.coeff,
-                p=self.attention_dropout_prob,
-            )[0]
-        else:
-            if self.coeff is not None:
-                attention_scores *= self.coeff
-            attention_scores = flow.mul(attention_scores, attention_mask)
-            attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-            attention_weights = flow.softmax(attention_scores, dim=-1)
-            attention_weights = self.dropout(attention_weights)
-
-        context = flow.matmul(attention_weights, value)
-        context = context.transpose(1, 2)
-        output = self.dense(context.flatten(2))
+        context = flow._C.fused_multi_head_attention_inference_v2(
+            query=query,
+            key=key,
+            value=value,
+            query_head_size=int(self.hidden_size // self.num_attention_heads),
+            causal=True,
+            causal_diagonal_offset=key.shape[2] - query.shape[2],
+            query_layout="BHMK",
+            key_layout="BHMK",
+            value_layout="BHMK",
+            output_layout="BM(HK)",
+        )
+        output = self.dense(context)
 
         if self.bias_dropout_fusion:
             output, bias = output

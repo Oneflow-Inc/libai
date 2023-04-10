@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+import os
+
 import oneflow as flow
 from oneflow import nn
 
@@ -52,6 +54,7 @@ class Linear1D(nn.Module):
             other elementwise operations. Defaults to ``False``.
         layer_idx: A layer_idx sign which determines the placement. It will be used in pipeline
             parallelism. Defaults to 0.
+        dtype: the dtype of weight. Defaults to ``flow.float32``
     """
 
     def __init__(
@@ -62,6 +65,7 @@ class Linear1D(nn.Module):
         parallel="data",
         init_method=nn.init.xavier_normal_,
         skip_bias_add=False,
+        dtype=flow.float32,
         *,
         layer_idx=0,  # enforce layer_idx passed with keyword
     ):
@@ -94,18 +98,19 @@ class Linear1D(nn.Module):
         self.weight = flow.nn.Parameter(
             flow.empty(
                 (out_features, in_features),
-                dtype=flow.float32,
+                dtype=dtype,
                 placement=dist.get_layer_placement(layer_idx),  # for pipeline parallelism placement
                 sbp=weight_sbp,
             )
         )
-        init_method(self.weight)
+        if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
+            init_method(self.weight)
 
         self.bias = (
             flow.nn.Parameter(
                 flow.zeros(
                     (out_features,),
-                    dtype=flow.float32,
+                    dtype=dtype,
                     placement=dist.get_layer_placement(layer_idx),
                     sbp=bias_sbp,
                 )

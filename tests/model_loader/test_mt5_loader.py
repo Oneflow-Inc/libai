@@ -30,22 +30,22 @@ from projects.MT5.configs.mt5_base import cfg as libai_cfg
 from projects.MT5.mt5_model import MT5Model
 from projects.MT5.utils.mt5_loader import T5LoaderHuggerFace
 
-PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/t5_utils/pytorch_model.bin"  # noqa
-PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/t5_utils/config.json"  # noqa
+PRETRAINED_MODEL_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/pytorch_model.bin"  # noqa
+PRETRAINED_MODEL_CONFIG_URL = "http://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/model_utils_test/mt5_utils/config.json"  # noqa
 
-PRETRAINED_MODEL_MD5 = "952862a8ba425a25739a69e5f33b0df8"
-PRETRAINED_MODEL_CONFIG_MD5 = "7ebc91dc4377c01190f4116c3c1ac6cd"
+PRETRAINED_MODEL_MD5 = "4c9c0be541b89de9b01c597ec4cc371a"
+PRETRAINED_MODEL_CONFIG_MD5 = "b159e41603b7eeaf9a9c489165bbcaca"
 
-TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_t5_utils")
+TEST_OUTPUT = os.path.join(os.getenv("TEST_OUTPUT", "output_unittest"), "test_mt5_utils")
 
 
 setup_logger(distributed_rank=dist.get_rank())
 
 
-class TestT5Loader(flow.unittest.TestCase):
+class TestMT5Loader(flow.unittest.TestCase):
     def setUp(self) -> None:
         cache_dir = os.path.join(
-            os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "t5_utils_data"
+            os.getenv("ONEFLOW_TEST_CACHE_DIR", "./data_test"), "mt5_utils_data"
         )
         self.pretrained_model_path = cache_dir
 
@@ -83,7 +83,7 @@ class TestT5Loader(flow.unittest.TestCase):
             shutil.rmtree(TEST_OUTPUT)
 
     @flow.unittest.skip_unless_1n4d()
-    def test_t5_loader_with_data_tensor_parallel(self):
+    def test_mt5_loader_with_data_tensor_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
@@ -102,7 +102,7 @@ class TestT5Loader(flow.unittest.TestCase):
             hidden_dropout_prob=0.0,
             attention_probs_dropout_prob=0.0,
             embedding_dropout_prob=0.0,
-            model_type="t5",
+            model_type="mt5",
         )
         model = load_func.load()
         model.eval()
@@ -121,13 +121,13 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         encode_att_mask = flow.tensor(
             self.encoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
         decoder_att_mask = flow.tensor(
             self.decoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
@@ -137,20 +137,20 @@ class TestT5Loader(flow.unittest.TestCase):
         )["logits"]
         self.assertTrue(
             np.allclose(
-                np.array(-9836561.0),
+                np.array(-83584720.0),
                 logits.sum().data.numpy(),
             )
         )
 
     @flow.unittest.skip_unless_1n4d()
-    def test_t5_loader_with_data_tensor_pipeline_parallel(self):
+    def test_mt5_loader_with_data_tensor_pipeline_parallel(self):
         # set distributed config
         dist_cfg = DictConfig(
             dict(
                 data_parallel_size=2,
                 tensor_parallel_size=1,
                 pipeline_parallel_size=2,
-                pipeline_num_layers=24,
+                pipeline_num_layers=16,
             )
         )
         dist.setup_dist_util(dist_cfg)
@@ -163,7 +163,7 @@ class TestT5Loader(flow.unittest.TestCase):
             hidden_dropout_prob=0.0,
             attention_probs_dropout_prob=0.0,
             embedding_dropout_prob=0.0,
-            model_type="t5",
+            model_type="mt5",
         )
         model = load_func.load()
         model.eval()
@@ -182,13 +182,13 @@ class TestT5Loader(flow.unittest.TestCase):
         )
         encode_att_mask = flow.tensor(
             self.encoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
         decoder_att_mask = flow.tensor(
             self.decoder_att_mask,
-            dtype=flow.long,
+            dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
@@ -198,7 +198,7 @@ class TestT5Loader(flow.unittest.TestCase):
         )["logits"]
         self.assertTrue(
             np.allclose(
-                np.array(-9836561.0),
+                np.array(-83584720.0),
                 logits.sum().data.numpy(),
             )
         )

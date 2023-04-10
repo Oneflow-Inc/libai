@@ -5,7 +5,7 @@ from oneflow.framework.check_point_v2 import _broadcast_py_object
 
 import libai.utils.distributed as dist
 from libai.models.build import build_model
-from libai.models.utils.model_utils.base_loader import (
+from libai.models.utils.model_loader.base_loader import (
     ModelLoaderHuggerFace,
     _load_state_dict_into_model,
 )

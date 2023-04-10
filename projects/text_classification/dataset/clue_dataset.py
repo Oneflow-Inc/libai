@@ -113,6 +113,9 @@ class ClueDataset(Dataset):
                     dtype = flow.long if isinstance(v, int) else flow.float
                     t = flow.tensor(v, dtype=dtype)
                     tensors[k] = DistTensorData(t, placement_idx=-1)
+                elif k == "attention_mask":
+                    t = flow.tensor(v, dtype=flow.bool)
+                    tensors[k] = DistTensorData(t)
                 else:
                     t = flow.tensor(v, dtype=flow.long)
                     tensors[k] = DistTensorData(t)

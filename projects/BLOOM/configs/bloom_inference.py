@@ -1,28 +1,23 @@
 from omegaconf import DictConfig
 from libai.config import LazyCall
-from projects.GLM.modeling_glm import GLMModel
+from projects.BLOOM.modeling.bloom_model import BloomModel
 
 
 cfg = dict(
-    num_layers=48,
-    vocab_size=30592,
-    hidden_size=4096,
-    num_attention_heads=64,
-    max_sequence_length=1024,
-    embedding_dropout_prob=0.0,
-    attention_dropout_prob=0.0,
-    output_dropout_prob=0.0,
-    layernorm_epsilon=1e-5,
+    # model
+    vocab_size=250880,
+    hidden_size=64,
+    hidden_layers=2,
+    n_head=8,
+    padding_idx=3,
+    layer_norm_epsilon=1e-5,
     initializer_range=0.02,
-    use_scaled_init_for_output_weights=True,
-    bias_gelu_fusion=True,
-    bias_dropout_fusion=True,
-    scale_mask_softmax_fusion=False,
-    apply_query_key_layer_scaling=False,
-    amp_enabled=True,
-    block_position_encoding=True,
-    attention_scale=1.0,
-    padding_idx=None,
+    apply_residual_connection_post_layernorm=False,
+    hidden_dropout=0.0,
+    attention_dropout=0.0,
+    pretraining_tp=1,
+    slow_but_exact=False,
+    amp_enabled=False,
     # Inference
     is_encoder_decoder=False,
     max_length=512,
@@ -47,15 +42,15 @@ cfg = dict(
     forced_eos_token_id=None,
     remove_invalid_values=False,
     exponential_decay_length_penalty=None,
-    use_cache=False,
+    use_cache=True,
     # Tokenizer
-    pad_token_id=50000,
-    eos_token_id=50007,
-    bos_token_id=None,
+    pad_token_id=3,
+    eos_token_id=2,
+    bos_token_id=1,
     sep_token_id=None,
     decoder_start_token_id=None,
 )
 
 cfg = DictConfig(cfg)
 
-glm_model = LazyCall(GLMModel)(cfg=cfg)
+glm_model = LazyCall(BloomModel)(cfg=cfg)

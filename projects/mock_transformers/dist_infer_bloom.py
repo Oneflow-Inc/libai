@@ -18,54 +18,63 @@ import oneflow as flow
 from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers.models.opt import modeling_opt
+from transformers.models.bloom import modeling_bloom
 
-from libai.layers import Linear
+from libai.layers import Embedding, Linear
 from libai.utils import distributed as dist
 
 # ------replace attention to libai------
-temp_class = modeling_opt.OPTAttention
+temp_class = modeling_bloom.BloomAttention
 
 
-class LiBaiOPTAttention(temp_class):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        embed_dim = kwargs["embed_dim"]
-        bias = kwargs["bias"]
-        self.k_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col", dtype=flow.float16)
-        self.v_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col", dtype=flow.float16)
-        self.q_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="col", dtype=flow.float16)
-        self.out_proj = Linear(embed_dim, embed_dim, bias=bias, parallel="row", dtype=flow.float16)
+class LiBaiBloomAttention(temp_class):
+    def __init__(self, config):
+        super().__init__(config)
+
+        hidden_size = config.hidden_size
+
+        self.query_key_value = Linear(
+            hidden_size, 3 * hidden_size, bias=True, parallel="col", dtype=flow.float16
+        )
+        self.dense = Linear(hidden_size, hidden_size, bias=True, parallel="row", dtype=flow.float16)
 
 
-modeling_opt.OPTAttention = LiBaiOPTAttention
+modeling_bloom.BloomAttention = LiBaiBloomAttention
 
 
 # ----------replace Decoder to libai -----
-temp_class = modeling_opt.OPTDecoderLayer
+temp_class = modeling_bloom.BloomMLP
 
 
-class LiBaiOPTDecoderLayer(temp_class):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        config = args[0]
-        self.fc1 = Linear(
-            self.embed_dim,
-            config.ffn_dim,
-            bias=config.enable_bias,
-            parallel="col",
-            dtype=flow.float16,
+class LiBaiBloomMLP(temp_class):
+    def __init__(self, config):
+        super().__init__(config)
+
+        hidden_size = config.hidden_size
+
+        self.dense_h_to_4h = Linear(
+            hidden_size, 4 * hidden_size, bias=True, parallel="col", dtype=flow.float16
         )
-        self.fc2 = Linear(
-            config.ffn_dim,
-            self.embed_dim,
-            bias=config.enable_bias,
-            parallel="row",
-            dtype=flow.float16,
+        self.dense_4h_to_h = Linear(
+            4 * hidden_size, hidden_size, bias=True, parallel="row", dtype=flow.float16
         )
 
 
-modeling_opt.OPTDecoderLayer = LiBaiOPTDecoderLayer
+modeling_bloom.BloomMLP = LiBaiBloomMLP
+
+
+# ----------replace Embedding to libai -----
+temp_class = modeling_bloom.BloomModel
+
+
+class LiBaiBloomModel(temp_class):
+    def __init__(self, config):
+        super().__init__(config)
+
+        self.word_embeddings = Embedding(config.vocab_size, self.embed_dim, dtype=flow.float16)
+
+
+modeling_bloom.BloomModel = LiBaiBloomModel
 
 
 if __name__ == "__main__":
@@ -82,12 +91,12 @@ if __name__ == "__main__":
     dist.setup_dist_util(parallel_config)
 
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-2.7b", torch_dtype=flow.float16)
+    model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-560m", torch_dtype=flow.float16)
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("facebook/opt-2.7b", use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("bigscience/bloom-560m", use_fast=False)
 
     # get input_ids
     prompt = "Hello, I'm am conscious and"

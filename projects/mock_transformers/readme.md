@@ -4,6 +4,7 @@ This is an application of mock [transformers](https://github.com/huggingface/tra
 
 **Supported Model**
 
+- [BLOOM](#distributed-infer-bloom): tensor parallel
 - [OPT](#distributed-infer-opt): tensor parallel
 
 
@@ -80,24 +81,34 @@ python3 -m pip install huggingface_hub
  ~/.local/bin/huggingface-cli login
 ```
 
-## distributed infer OPT
-
-An reimplement of [OPT](https://github.com/huggingface/diffusers/tree/main/examples/dreambooth) distributed inference in LiBai
+## Distributed Inference Through Mock Transformers
 
 <table class="docutils">
   <tbody>
     <tr>
-      <th width="80"> opt inference </th>
-      <th valign="bottom" align="left" width="120">Tensor Parallel</th>
-      <th valign="bottom" align="left" width="120">Pipeline Parallel</th>
+      <th width="130"> Models </th>
+      <th valign="bottom" align="center" width="140">Tensor Parallel</th>
+      <th valign="bottom" align="center" width="150">Pipeline Parallel</th>
     </tr>
     <tr>
-      <td align="left"> <b> Support </b> </td>
-      <td align="left">&#10004;</td>
-      <td align="left">-</td>
+      <td align="center"><a href="https://huggingface.co/docs/transformers/v4.26.1/en/model_doc/bloom#overview"> <b> BLOOM </b> </td>
+      <td align="center">&#10004;</td>
+      <td align="center">-</td>
+    </tr>
+    <tr>
+      <td align="center"><a href="https://github.com/openai/gpt-2/blob/master/model_card.md"> <b> GPT2 </b> </td>
+      <td align="center">&#10004;</td>
+      <td align="center">-</td>
+    </tr>
+    <tr>
+      <td align="center"><a href="https://huggingface.co/docs/transformers/v4.26.1/en/model_doc/opt#overview"> <b> OPT </b> </td>
+      <td align="center">&#10004;</td>
+      <td align="center">-</td>
     </tr>
   </tbody>
 </table>
+
+## Examples
 
 for `tensor_parallel=2`, run command in `libai_root`
 ```
@@ -121,7 +132,7 @@ if __name__ == "__main__":
 
     ...
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m").half() # change your model type 125m~66b
+    model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m") # change your model type 125m~66b
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
     tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m", use_fast=False) # change your model type  125m~66b
