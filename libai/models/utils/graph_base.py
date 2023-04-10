@@ -16,8 +16,8 @@
 import logging
 
 import oneflow as flow
-from oneflow.utils.global_view import global_mode
 from oneflow import nn
+from oneflow.utils.global_view import global_mode
 
 from libai.layers import TransformerLayer
 from libai.utils import distributed as dist
@@ -101,10 +101,14 @@ class GraphBase(nn.Graph):
 
     def build(self, **kwargs):
         if self.is_train:
-            placement_sbp_dict = dict(
-                placement=flow.env.all_device_placement("cuda"),
-                sbp=flow.sbp.split(0),
-            ) if self.global_mode.enabled else {}
+            placement_sbp_dict = (
+                dict(
+                    placement=flow.env.all_device_placement("cuda"),
+                    sbp=flow.sbp.split(0),
+                )
+                if self.global_mode.enabled
+                else {}
+            )
             with global_mode(self.global_mode.enabled, **placement_sbp_dict):
                 logger.info(
                     "Start compling the train graph which may take some time. "

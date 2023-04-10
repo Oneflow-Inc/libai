@@ -1,12 +1,12 @@
 import os
-import pandas as pd
-import oneflow as flow
-import numpy as np
-from PIL import Image
 from pathlib import Path
+from PIL import Image
+
+import numpy as np
+import oneflow as flow
 from flowvision import transforms
-from concurrent.futures import ProcessPoolExecutor
-from oneflow.utils.data import Dataset, ConcatDataset
+from oneflow.utils.data import Dataset
+
 from libai.data.structures import DistTensorData, Instance
 
 
@@ -32,8 +32,7 @@ class DreamBoothDataset(Dataset):
         self.tokenizer = tokenizer
         if tokenizer_pretrained_folder:
             self.tokenizer = self.tokenizer.from_pretrained(
-                tokenizer_pretrained_folder[0],
-                subfolder=tokenizer_pretrained_folder[1]
+                tokenizer_pretrained_folder[0], subfolder=tokenizer_pretrained_folder[1]
             )
 
         self.instance_data_root = Path(instance_data_root)
@@ -98,6 +97,7 @@ class DreamBoothDataset(Dataset):
             input_ids=DistTensorData(flow.tensor(input_ids[0])),
         )
 
+
 class PromptDataset(Dataset):
     "A simple dataset to prepare the prompts to generate class images on multiple GPUs."
 
@@ -116,17 +116,24 @@ class PromptDataset(Dataset):
 
 
 class TXTDataset(Dataset):
-    def __init__(self, foloder_name, tokenizer, tokenizer_pretrained_folder=None, thres=0.2, size=512, center_crop=False):
-        print(f'Loading folder data from {foloder_name}.')
+    def __init__(
+        self,
+        foloder_name,
+        tokenizer,
+        tokenizer_pretrained_folder=None,
+        thres=0.2,
+        size=512,
+        center_crop=False,
+    ):
+        print(f"Loading folder data from {foloder_name}.")
         self.image_paths = []
         self.tokenizer = tokenizer
         if tokenizer_pretrained_folder:
             self.tokenizer = self.tokenizer.from_pretrained(
-                tokenizer_pretrained_folder[0],
-                subfolder=tokenizer_pretrained_folder[1]
+                tokenizer_pretrained_folder[0], subfolder=tokenizer_pretrained_folder[1]
             )
         for each_file in os.listdir(foloder_name):
-            if each_file.endswith('.jpg'):
+            if each_file.endswith(".jpg"):
                 self.image_paths.append(os.path.join(foloder_name, each_file))
 
         self.image_transforms = transforms.Compose(
@@ -137,7 +144,7 @@ class TXTDataset(Dataset):
                 transforms.Normalize([0.5], [0.5]),
             ]
         )
-        print('Done loading data. Len of images:', len(self.image_paths))
+        print("Done loading data. Len of images:", len(self.image_paths))
 
     def __len__(self):
         return len(self.image_paths)
@@ -150,15 +157,15 @@ class TXTDataset(Dataset):
 
         instance_images = self.image_transforms(instance_image)
 
-        caption_path = img_path.replace('.jpg', '.txt')
-        with open(caption_path, 'r') as f:
+        caption_path = img_path.replace(".jpg", ".txt")
+        with open(caption_path, "r") as f:
             caption = f.read()
             input_ids = self.tokenizer(
                 caption,
                 padding="max_length",
                 truncation=True,
                 max_length=self.tokenizer.model_max_length,
-                return_tensors="np"
+                return_tensors="np",
             ).input_ids
         return Instance(
             pixel_values=DistTensorData(instance_images.to(dtype=flow.float32)),

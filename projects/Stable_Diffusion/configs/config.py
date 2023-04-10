@@ -1,5 +1,3 @@
-import os
-import sys
 from omegaconf import OmegaConf
 
 from libai.config import get_config
@@ -19,18 +17,16 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(TXTDataset)(
-            foloder_name="/home/chengpeng/chengpeng/mscoco/00000",
+            foloder_name="/path/to/mscoco/00000",
             tokenizer=CLIPTokenizer,
-            tokenizer_pretrained_folder=["CompVis/stable-diffusion-v1-4", "tokenizer"]
+            tokenizer_pretrained_folder=["CompVis/stable-diffusion-v1-4", "tokenizer"],
         )
     ],
     num_workers=4,
 )
 
 
-model = LazyCall(StableDiffusion)(
-    model_path="CompVis/stable-diffusion-v1-4"
-)
+model = LazyCall(StableDiffusion)(model_path="CompVis/stable-diffusion-v1-4")
 
 train.update(
     dict(
@@ -61,6 +57,3 @@ train.update(
         ),
     )
 )
-
-
-

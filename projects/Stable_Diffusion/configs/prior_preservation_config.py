@@ -1,10 +1,7 @@
-import os
-import sys
 from omegaconf import OmegaConf
 import oneflow as flow
 
 from libai.optim import get_default_optimizer_params
-from libai.config import LazyCall
 from libai.config import LazyCall
 from libai.data.build import build_nlp_train_loader, build_nlp_test_loader
 from projects.Stable_Diffusion.dataset import DreamBoothDataset
@@ -24,16 +21,16 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(DreamBoothDataset)(
-            instance_data_root="/home/chengpeng/chengpeng/diffusers-pytorch/examples/dreambooth/demo_dog/",
+            instance_data_root="path/to/demo_dog/",
             instance_prompt="a photo of sks dog",
-            class_data_root="/home/chengpeng/chengpeng/diffusers-pytorch/examples/dreambooth/prior_dog/",
+            class_data_root="/path/to/prior_dog/",
             class_prompt="a photo of dog",
             tokenizer=CLIPTokenizer,
-            tokenizer_pretrained_folder=["CompVis/stable-diffusion-v1-4", "tokenizer"]
+            tokenizer_pretrained_folder=["CompVis/stable-diffusion-v1-4", "tokenizer"],
         )
     ],
     num_workers=4,
 )
 
-train.train_iter=2000
-train.log_period=10
+train.train_iter = 2000
+train.log_period = 10

@@ -20,18 +20,18 @@ import sys
 
 import numpy as np
 import oneflow as flow
-from oneflow.utils.global_view import global_mode
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from libai.config import LazyConfig, default_argument_parser, try_get_key
-from libai.engine import DefaultTrainer, default_setup, hooks
-from libai.engine.trainer import HookBase
-from libai.utils.checkpoint import Checkpointer
-from libai.utils import distributed as dist
+from onediff import OneFlowStableDiffusionPipeline # noqa
 
-from onediff import OneFlowStableDiffusionPipeline
+from libai.config import LazyConfig, default_argument_parser, try_get_key # noqa
+from libai.engine import DefaultTrainer, default_setup, hooks # noqa
+from libai.engine.trainer import HookBase # noqa
+from libai.utils import distributed as dist # noqa
+from libai.utils.checkpoint import Checkpointer # noqa
 
 logger = logging.getLogger("libai." + __name__)
+
 
 class SdCheckpointer(HookBase):
     def __init__(
@@ -45,8 +45,11 @@ class SdCheckpointer(HookBase):
     def after_train(self):
         def model_to_local(model):
             model.zero_grad(set_to_none=True)
-            model = model.to_global(sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cpu"))
+            model = model.to_global(
+                sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cpu")
+            )
             return model.to_local()
+
         if hasattr(self._model, "lora_layers"):
             unet = model_to_local(self._model.unet)
             save_path = os.path.join(self._save_path, "model_sd_for_inference")
@@ -59,7 +62,7 @@ class SdCheckpointer(HookBase):
                 tokenizer=self._model.tokenizer,
                 text_encoder=model_to_local(self._model.text_encoder),
                 vae=model_to_local(self._model.vae),
-                unet=model_to_local(self._model.unet)
+                unet=model_to_local(self._model.unet),
             )
             save_path = os.path.join(self._save_path, "model_sd_for_inference")
             logger.info(f"saving stable diffusion model to {save_path}")
@@ -84,7 +87,9 @@ class Trainer(DefaultTrainer):
         ]
 
         if not try_get_key(self.cfg, "model.train_with_lora", default=False):
-            ret.append(hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),)
+            ret.append(
+                hooks.PeriodicCheckpointer(self.checkpointer, self.cfg.train.checkpointer.period),
+            )
 
         if self.cfg.train.evaluation.enabled:
             assert self.cfg.train.evaluation.eval_iter > 0, "run_iter must be positive number"
@@ -98,6 +103,7 @@ class Trainer(DefaultTrainer):
             # run writers in the end, so that evaluation metrics are written
             ret.append(hooks.PeriodicWriter(self.build_writers(), self.cfg.train.log_period))
         return ret
+
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)

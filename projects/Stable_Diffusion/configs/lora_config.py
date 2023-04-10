@@ -1,6 +1,3 @@
-import os
-import sys
-
 from omegaconf import OmegaConf
 
 from libai.config import get_config
@@ -20,10 +17,10 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(DreamBoothDataset)(
-            instance_data_root="/home/chengpeng/chengpeng/diffusers-pytorch/examples/dreambooth/demo_dog/",
+            instance_data_root="/path/to/demo_dog/",
             instance_prompt="a photo of sks dog",
             tokenizer=CLIPTokenizer,
-            tokenizer_pretrained_folder=["CompVis/stable-diffusion-v1-4", "tokenizer"]
+            tokenizer_pretrained_folder=["CompVis/stable-diffusion-v1-4", "tokenizer"],
         )
     ],
     num_workers=4,
@@ -31,10 +28,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
 
 optim.lr = 5e-4
 
-model = LazyCall(StableDiffusion)(
-    model_path="CompVis/stable-diffusion-v1-4",
-    train_with_lora=True
-)
+model = LazyCall(StableDiffusion)(model_path="CompVis/stable-diffusion-v1-4", train_with_lora=True)
 
 train.update(
     dict(
@@ -65,6 +59,3 @@ train.update(
         ),
     )
 )
-
-
-

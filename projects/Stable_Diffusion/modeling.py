@@ -1,51 +1,40 @@
-import os
 import oneflow as flow
-from oneflow import nn
-from projects.mock_transformers import init_env
-from transformers import CLIPTokenizer
-from transformers import CLIPTextModel
-from diffusers import (
-    AutoencoderKL, 
-    StableDiffusionPipeline, 
-    UNet2DConditionModel,
-    DDPMScheduler
-)
+from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel
 from diffusers.loaders import AttnProcsLayers
 from diffusers.models.cross_attention import LoRACrossAttnProcessor
+from oneflow import nn
 from oneflow.nn import functional as F
+from transformers import CLIPTextModel, CLIPTokenizer
+
+from projects.mock_transformers import init_env # noqa
 
 LoRACrossAttnProcessor.forward = LoRACrossAttnProcessor.__call__
 
+
 class StableDiffusion(nn.Module):
     def __init__(
-            self, 
-            model_path,
-            train_vae=False,
-            train_text_encoder=False,
-            train_with_lora=False,
-        ):
+        self,
+        model_path,
+        train_vae=False,
+        train_text_encoder=False,
+        train_with_lora=False,
+    ):
         super().__init__()
         self.model_path = model_path
-        self.tokenizer = CLIPTokenizer.from_pretrained(
-            model_path, subfolder="tokenizer")
-        self.text_encoder = CLIPTextModel.from_pretrained(
-            model_path, subfolder="text_encoder")
-        self.vae = AutoencoderKL.from_pretrained(
-            model_path, subfolder="vae")
-        self.unet = UNet2DConditionModel.from_pretrained(
-            model_path, subfolder="unet")
+        self.tokenizer = CLIPTokenizer.from_pretrained(model_path, subfolder="tokenizer")
+        self.text_encoder = CLIPTextModel.from_pretrained(model_path, subfolder="text_encoder")
+        self.vae = AutoencoderKL.from_pretrained(model_path, subfolder="vae")
+        self.unet = UNet2DConditionModel.from_pretrained(model_path, subfolder="unet")
 
-        self.noise_scheduler = DDPMScheduler.from_pretrained(
-            model_path, subfolder="scheduler")
+        self.noise_scheduler = DDPMScheduler.from_pretrained(model_path, subfolder="scheduler")
 
         for name in self.noise_scheduler.__dict__.keys():
             if flow.is_tensor(getattr(self.noise_scheduler, name)):
                 setattr(
-                    self.noise_scheduler, 
-                    name, 
+                    self.noise_scheduler,
+                    name,
                     getattr(self.noise_scheduler, name).to_global(
-                        sbp=flow.sbp.broadcast,
-                        placement=flow.env.all_device_placement("cuda")
+                        sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda")
                     ),
                 )
         if not train_with_lora:
@@ -61,7 +50,11 @@ class StableDiffusion(nn.Module):
             # Set correct lora layers
             lora_attn_procs = {}
             for name in self.unet.attn_processors.keys():
-                cross_attention_dim = None if name.endswith("attn1.processor") else self.unet.config.cross_attention_dim
+                cross_attention_dim = (
+                    None
+                    if name.endswith("attn1.processor")
+                    else self.unet.config.cross_attention_dim
+                )
                 if name.startswith("mid_block"):
                     hidden_size = self.unet.config.block_out_channels[-1]
                 elif name.startswith("up_blocks"):
@@ -77,9 +70,9 @@ class StableDiffusion(nn.Module):
             self.unet.set_attn_processor(lora_attn_procs)
             self.lora_layers = AttnProcsLayers(self.unet.attn_processors)
 
-
     def forward(self, pixel_values, input_ids):
         from oneflow.utils.global_view import global_mode
+
         placement_sbp_dict = dict(
             placement=flow.env.all_device_placement("cuda"),
             sbp=flow.sbp.split(0),
@@ -90,18 +83,17 @@ class StableDiffusion(nn.Module):
 
             # Sample noise that we'll add to the latents
             noise = flow.randn(
-                latents.shape,
-                sbp = latents.sbp,
-                placement = latents.placement,
-                dtype = self.unet.dtype
+                latents.shape, sbp=latents.sbp, placement=latents.placement, dtype=self.unet.dtype
             ).to(latents.device)
             bsz = latents.shape[0]
             # Sample a random timestep for each image
             timesteps = flow.randint(
-                0, self.noise_scheduler.config.num_train_timesteps, (bsz,), 
-                sbp = latents.sbp,
-                placement = latents.placement,
-                dtype = flow.long
+                0,
+                self.noise_scheduler.config.num_train_timesteps,
+                (bsz,),
+                sbp=latents.sbp,
+                placement=latents.placement,
+                dtype=flow.long,
             )
             # Add noise to the latents according to the noise magnitude at each timestep
             # (this is the forward diffusion process)
@@ -116,11 +108,13 @@ class StableDiffusion(nn.Module):
             noise_pred = self.unet(noisy_latents, timesteps, encoder_hidden_states).sample
 
             if self.noise_scheduler.config.prediction_type == "epsilon":
-                    target = noise
+                target = noise
             elif self.noise_scheduler.config.prediction_type == "v_prediction":
                 target = self.noise_scheduler.get_velocity(latents, noise, timesteps)
             else:
-                raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
+                raise ValueError(
+                    f"Unknown prediction type {self.noise_scheduler.config.prediction_type}"
+                )
 
             loss = F.mse_loss(noise_pred.float(), target.float(), reduction="mean")
 
@@ -128,13 +122,13 @@ class StableDiffusion(nn.Module):
 
     @staticmethod
     def set_activation_checkpoint(model):
-        from transformers.models.clip.modeling_clip import CLIPEncoder
         from diffusers.models.unet_2d_blocks import (
-            ResnetBlock2D, 
-            DualTransformer2DModel, 
+            DualTransformer2DModel,
+            ResnetBlock2D,
             Transformer2DModel,
-            UNetMidBlock2DCrossAttn
         )
+        from transformers.models.clip.modeling_clip import CLIPEncoder
+
         for module_block in model.modules():
             prefix_name = module_block.to(nn.graph.GraphModule).name_prefix
             # unset vae checkpointing
@@ -144,6 +138,8 @@ class StableDiffusion(nn.Module):
             elif isinstance(module_block.to(nn.Module), CLIPEncoder):
                 module_block.to(nn.graph.GraphModule).activation_checkpointing = True
             # set unet checkpointing
-            # elif isinstance(module_block.to(nn.Module), (ResnetBlock2D, DualTransformer2DModel, Transformer2DModel)):
-            elif isinstance(module_block.to(nn.Module), UNetMidBlock2DCrossAttn):
+            elif isinstance(
+                    module_block.to(nn.Module), 
+                    (ResnetBlock2D, DualTransformer2DModel, Transformer2DModel)
+                ):
                 module_block.to(nn.graph.GraphModule).activation_checkpointing = True
