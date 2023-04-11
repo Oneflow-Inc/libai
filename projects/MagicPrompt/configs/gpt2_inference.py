@@ -1,6 +1,6 @@
 from configs.common.models.gpt import cfg
 from libai.config import LazyCall
-from libai.tokenizer.tokenization_gpt2 import GPT2Tokenizer
+from projects.mock_transformers import mock_tokenization
 from projects.MagicPrompt.gpt2 import GPTModel, GPTForPreTraining
 from configs.common.data.gpt_dataset import tokenization
 from configs.common.train import train
@@ -56,14 +56,13 @@ cfg.update(
     sep_token_id=None,
     decoder_start_token_id=None,
     # train
-    pretrained_model_path="/home/zhangxiaoyu/libai/oneflow-model",
+    pretrained_model_path="/home/zhangxiaoyu/oneflow-model",
 )
 
 
 model = LazyCall(GPTModel)(cfg=cfg)
 pretrain_model = LazyCall(GPTForPreTraining)(cfg=cfg)
-tokenization.tokenizer = LazyCall(GPT2Tokenizer)(
+tokenization.tokenizer = LazyCall(mock_tokenization.GPT2Tokenizer)(
     vocab_file="/home/zhangxiaoyu/oneflow-model/vocab.json",
     merges_file="/home/zhangxiaoyu/oneflow-model/merges.txt",
-    add_bos_token=True,
 )
