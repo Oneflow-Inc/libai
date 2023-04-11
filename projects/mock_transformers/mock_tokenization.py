@@ -1,11 +1,28 @@
+# coding=utf-8
+# Copyright 2021 The OneFlow Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import oneflow as flow
+
 from libai.utils import distributed as dist
+
 flow.mock_torch.enable()
 
-from transformers import BertTokenizer, GPT2Tokenizer, T5Tokenizer, MT5Tokenizer
+from transformers import BertTokenizer, GPT2Tokenizer, MT5Tokenizer, T5Tokenizer
+from transformers.tokenization_utils_base import *
 from transformers.utils import generic
 from transformers.utils.generic import TensorType
-from transformers.tokenization_utils_base import *
 
 
 # ---------------- mock TensorType ------------------
@@ -16,13 +33,14 @@ class TensorType(ExplicitEnum):
     NUMPY = "np"
     JAX = "jax"
 
+
 generic.TensorType = TensorType
 
 
 # ---------------- mock convert_to_tensors ------------------
 def flow_convert_to_tensors(self, tensor_type=None, prepend_batch_axis=False):
     if tensor_type is None:
-            return self
+        return self
 
     # Convert to TensorType
     if not isinstance(tensor_type, TensorType):
@@ -41,7 +59,9 @@ def flow_convert_to_tensors(self, tensor_type=None, prepend_batch_axis=False):
         is_tensor = tf.is_tensor
     elif tensor_type == TensorType.PYTORCH:
         if not is_torch_available():
-            raise ImportError("Unable to convert output to PyTorch tensors format, PyTorch is not installed.")
+            raise ImportError(
+                "Unable to convert output to PyTorch tensors format, PyTorch is not installed."
+            )
         import torch
 
         as_tensor = torch.tensor
@@ -50,12 +70,16 @@ def flow_convert_to_tensors(self, tensor_type=None, prepend_batch_axis=False):
         try:
             import oneflow
         except:
-            raise ImportError("Unable to convert output to OneFlow tensors format, OneFlow is not installed.")
+            raise ImportError(
+                "Unable to convert output to OneFlow tensors format, OneFlow is not installed."
+            )
         as_tensor = flow.tensor
         is_tensor = flow.is_tensor
     elif tensor_type == TensorType.JAX:
         if not is_flax_available():
-            raise ImportError("Unable to convert output to JAX tensors format, JAX is not installed.")
+            raise ImportError(
+                "Unable to convert output to JAX tensors format, JAX is not installed."
+            )
         import jax.numpy as jnp  # noqa: F811
 
         as_tensor = jnp.array
@@ -94,16 +118,21 @@ def flow_convert_to_tensors(self, tensor_type=None, prepend_batch_axis=False):
                 " expected)."
             ) from e
     if os.getenv("IS_GLOBAL", True) == True:
-        size = self['input_ids'].size()
+        size = self["input_ids"].size()
         sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         placement = flow.placement("cuda", list(range(dist.get_world_size())))
-        
+
         for k, v in self.items():
             if is_tensor != flow.is_tensor:
-                raise ValueError("Unable to create tensor, you should probably set `return_tensors='of'` ")
+                raise ValueError(
+                    "Unable to create tensor, you should probably set `return_tensors='of'` "
+                )
             if v.size() != size:
-                raise ValueError("Unable to create tensor, you should probably padding with `padding=True` ")
+                raise ValueError(
+                    "Unable to create tensor, you should probably padding with `padding=True` "
+                )
             self[k] = v.to_global(sbp=sbp, placement=placement)
     return self
+
 
 BatchEncoding.convert_to_tensors = flow_convert_to_tensors

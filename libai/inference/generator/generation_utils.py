@@ -478,8 +478,10 @@ class Generator:
         unfinished_sequences = flow.ones(input_ids.shape[0])
         cur_len = input_ids.shape[-1]
         while True:
-            if input_ids.size(0) > 1:    
-                input_ids = input_ids.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast]))
+            if input_ids.size(0) > 1:
+                input_ids = input_ids.to_global(
+                    sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
+                )
 
             # prepare model inputs
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
