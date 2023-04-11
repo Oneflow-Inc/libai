@@ -67,7 +67,7 @@ class TextGenerationPipeline(BasePipeline):
 
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoder
-        if self.tokenizer.pad_token == None:
+        if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = "[PAD]"
         inputs = self.tokenizer(inputs, return_tensors="of", padding=True)
         inputs = {
