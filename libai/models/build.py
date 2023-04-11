@@ -42,6 +42,7 @@ def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
         graph.zero_optim = try_get_key(cfg, "train.zero_optimization.enabled", default=False)
         graph.zero_stage = try_get_key(cfg, "train.zero_optimization.stage", default=1)
         graph.grad_acc_steps = try_get_key(cfg, "train.num_accumulation_steps", default=1)
+        graph.global_mode = try_get_key(cfg, "graph.global_mode", default=None)
         graph.auto_parallel_conf = auto_parallel_conf
         return instantiate(graph)
     else:
