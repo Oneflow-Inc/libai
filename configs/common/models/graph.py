@@ -2,7 +2,6 @@ from omegaconf import DictConfig
 from libai.config import LazyCall
 from libai.models.utils import GraphBase
 
-
 graph = dict(
     # options for graph or eager mode
     enabled=True,
@@ -15,6 +14,9 @@ graph = dict(
     ),
     train_graph=LazyCall(GraphBase)(
         is_train=True,
+    ),
+    global_mode=dict(
+        enabled=False,
     ),
     eval_graph=LazyCall(GraphBase)(is_train=False),
 )
