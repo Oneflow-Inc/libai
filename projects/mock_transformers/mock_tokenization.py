@@ -120,7 +120,6 @@ def flow_convert_to_tensors(self, tensor_type=None, prepend_batch_axis=False):
     if os.getenv("IS_GLOBAL", True) == True:
         size = self["input_ids"].size()
         sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        placement = flow.placement("cuda", list(range(dist.get_world_size())))
 
         for k, v in self.items():
             if is_tensor != flow.is_tensor:
@@ -131,7 +130,7 @@ def flow_convert_to_tensors(self, tensor_type=None, prepend_batch_axis=False):
                 raise ValueError(
                     "Unable to create tensor, you should probably padding with `padding=True` "
                 )
-            self[k] = v.to_global(sbp=sbp, placement=placement)
+            self[k] = v.to_global(sbp=sbp, placement=dist.get_layer_placement(0))
     return self
 
 
