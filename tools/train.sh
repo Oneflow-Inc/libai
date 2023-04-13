@@ -109,5 +109,5 @@ echo cmd=$cmd
 $cmd \
   --nproc_per_node $GPUS --nnodes $NODE --node_rank $NODE_RANK --master_addr $ADDR --master_port $PORT \
   $FILE --config-file $CONFIG ${@:4} \
-  > /home/panlichen/work/oneflow/log/oneflow.log 2>&1
+  # > /home/panlichen/work/oneflow/log/oneflow.log 2>&1
 
