@@ -1,12 +1,5 @@
 from libai.config import LazyCall
-
-import os
-host = os.environ.get('HOST')
-if (host == "oneflow-25" or host == "oneflow-27"):
-    from .common.models.vit.vit_base_patch16_224 import model
-else:
-    from .common.models.vit.vit_small_patch16_224 import model
-
+from .common.models.vit.vit_base_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
