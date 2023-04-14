@@ -19,34 +19,68 @@ from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.models.llama import modeling_llama
+
 from libai.layers import Linear
 from libai.utils import distributed as dist
-import time
 
 # ------replace attention to libai------
 temp_class = modeling_llama.LlamaAttention
 
+
 class LiBaiLlamaAttention(temp_class):
     def __init__(self, config):
         super().__init__(config)
-        self.q_proj = Linear(self.hidden_size, self.num_heads * self.head_dim, bias=False, parallel="col", dtype=flow.float16)
-        self.k_proj = Linear(self.hidden_size, self.num_heads * self.head_dim, bias=False, parallel="col", dtype=flow.float16)
-        self.v_proj = Linear(self.hidden_size, self.num_heads * self.head_dim, bias=False, parallel="col", dtype=flow.float16)
-        self.o_proj = Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False, parallel="row", dtype=flow.float16)
+        self.q_proj = Linear(
+            self.hidden_size,
+            self.num_heads * self.head_dim,
+            bias=False,
+            parallel="col",
+            dtype=flow.float16,
+        )
+        self.k_proj = Linear(
+            self.hidden_size,
+            self.num_heads * self.head_dim,
+            bias=False,
+            parallel="col",
+            dtype=flow.float16,
+        )
+        self.v_proj = Linear(
+            self.hidden_size,
+            self.num_heads * self.head_dim,
+            bias=False,
+            parallel="col",
+            dtype=flow.float16,
+        )
+        self.o_proj = Linear(
+            self.num_heads * self.head_dim,
+            self.hidden_size,
+            bias=False,
+            parallel="row",
+            dtype=flow.float16,
+        )
+
 
 modeling_llama.LlamaAttention = LiBaiLlamaAttention
 
 # ----------replace mlp to libai -----
 temp_class = modeling_llama.LlamaMLP
 
+
 class LiBaiLlamaMLP(temp_class):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         hidden_size = kwargs["hidden_size"]
         intermediate_size = kwargs["intermediate_size"]
-        self.gate_proj = Linear(hidden_size, intermediate_size, bias=False, parallel="col", dtype=flow.float16)
-        self.down_proj = Linear(intermediate_size, hidden_size, bias=False, parallel="col", dtype=flow.float16)
-        self.up_proj = Linear(hidden_size, intermediate_size, bias=False, parallel="row", dtype=flow.float16)
+        self.gate_proj = Linear(
+            hidden_size, intermediate_size, bias=False, parallel="col", dtype=flow.float16
+        )
+        self.down_proj = Linear(
+            intermediate_size, hidden_size, bias=False, parallel="col", dtype=flow.float16
+        )
+        self.up_proj = Linear(
+            hidden_size, intermediate_size, bias=False, parallel="row", dtype=flow.float16
+        )
+
 
 modeling_llama.LlamaMLP = LiBaiLlamaMLP
 
