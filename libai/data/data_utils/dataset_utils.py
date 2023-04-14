@@ -32,6 +32,23 @@ logger = logging.getLogger(__name__)
 # with some modifications.
 
 
+def is_shared_folder(filename):
+    """
+    Check if the given filename is a shared folder.
+    """
+    path = os.path.abspath(filename)
+    st = os.stat(path)
+    # the command `export IS_SHARED_FILE=1` to indicate filename is a shared file.
+    if os.environ.get("IS_SHARED_FILE") == "1":
+        return True
+    if st.st_dev == os.stat("/").st_dev:
+        return False
+    else:
+        return os.path.ismount(os.path.dirname(path)) and os.path.realpath(
+            os.path.dirname(path)
+        ).startswith(("/nfs", "/smb", "/cifs"))
+
+
 def compile_helper():
     """Compile helper function at runtime. Make sure this
     is invoked on a single process."""
@@ -337,10 +354,13 @@ def get_samples_mapping(
     indexmap_filename += "_{:0.2f}ssp".format(short_seq_prob)
     indexmap_filename += "_{}s".format(seed)
     indexmap_filename += ".npy"
+    file_folder = os.path.dirname(indexmap_filename)
 
     # Build the indexed mapping if not exist.
     # NOTE: use `get_local_rank() == 0` to promise samples will be build in each node.
-    if flow.env.get_local_rank() == 0 and not os.path.isfile(indexmap_filename):
+    # use `get_rank() == 0` to promise samples will be build only once for a shared folder.
+    cur_rank = flow.env.get_rank() if is_shared_folder(file_folder) else flow.env.get_local_rank()
+    if cur_rank == 0 and not os.path.isfile(indexmap_filename):
         logger.info(
             " > WARNING: could not find index map file {}, building "
             "the indices on rank 0 ...".format(indexmap_filename)

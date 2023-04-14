@@ -15,6 +15,7 @@
 
 from .dataset_utils import (
     compile_helper,
+    is_shared_folder,
     create_masked_lm_predictions,
     get_samples_mapping,
     get_train_valid_test_split_,
