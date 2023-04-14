@@ -131,7 +131,6 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
             (not os.path.isfile(doc_idx_filename))
             or (not os.path.isfile(sample_idx_filename))
             or (not os.path.isfile(shuffle_idx_filename))
-            or (is_shared_folder(file_folder))
         ):
 
             logger.info(
