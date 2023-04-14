@@ -1,6 +1,5 @@
 from libai.config import LazyCall
-from .common.models.vit.vit_base_patch16_224 import model
-#from .common.models.vit.vit_large_patch16_224 import model
+from .common.models.vit.vit_base_patch16_224 import model #from .common.models.vit.vit_large_patch16_224 import model
 from .common.models.graph import graph
 from .common.train import train
 from .common.optim import optim
