@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import init_env  # noqa
 import oneflow as flow
 from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
@@ -21,7 +22,6 @@ from transformers.models.gpt2 import modeling_gpt2
 
 from libai.layers import Conv1D
 from libai.utils import distributed as dist
-from projects.mock_transformers import init_env  # noqa
 
 
 # ------replace Conv1D to libai------
