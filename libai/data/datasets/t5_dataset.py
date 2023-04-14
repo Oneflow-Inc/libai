@@ -309,7 +309,7 @@ def pad_and_convert_to_numpy(
 
     # Loss mask
     loss_mask = ([1] * num_tokens_dec) + ([0] * padding_length_dec)
-    loss_mask = np.array(loss_mask, dtype=np.bool)
+    loss_mask = np.array(loss_mask, dtype=bool)
 
     tokens_enc = flow.tensor(tokens_enc, dtype=flow.long)
     tokens_dec_in = flow.tensor(tokens_dec_in, dtype=flow.long)
