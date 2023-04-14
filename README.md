@@ -10,3 +10,4 @@ Notes:
 - Edit the [configs/vit_imagenet.py](configs/vit_imagenet.py#L84-L86) to switch among different distributed DNN training methods, following the guidelines in the [official doc](https://libai.readthedocs.io/en/latest/tutorials/basics/Distributed_Configuration.html).
 - For training across multiple machines, edit the `NODE`, `NODE_RANK`, `ADDR`, and `ADDR_RANK` variables in [tools/train.sh](tools/train.sh#L8-L11).
 - Edit [configs/vit_imagenet.py](configs/vit_imagenet.py#L2) to choose between the base ViT configuration or the large ViT configuration.
+- If the environment virable `ONEFLOW_ENABLE_OFCCL` in [train.sh](tools/train.sh#L28) is set to `1`, OCCL will be used during training; otherwise, NCCL will be employed.
