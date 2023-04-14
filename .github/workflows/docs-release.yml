@@ -1,0 +1,17 @@
+name: Document Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  API_Document_Release:
+    name: API Document Release
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Syncing the webhook
+      env:
+        LIBAI_READTHEDOCS_TOKEN: ${{ secrets.LIBAI_READTHEDOCS_TOKEN }}
+      run: |
+        curl -X POST -d "branches=main" -d "token=${LIBAI_READTHEDOCS_TOKEN}"  https://readthedocs.org/api/v2/webhook/libai/190825/
