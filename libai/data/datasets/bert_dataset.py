@@ -233,7 +233,7 @@ def pad_and_convert_to_numpy(
     tokentypes_np = np.array(tokentypes + filler, dtype=np.int64)
 
     # Padding mask.
-    padding_mask_np = np.array([1] * num_tokens + [0] * padding_length, dtype=np.bool)
+    padding_mask_np = np.array([1] * num_tokens + [0] * padding_length, dtype=bool)
 
     # Lables and loss mask.
     labels = [-1] * max_seq_length
@@ -243,7 +243,7 @@ def pad_and_convert_to_numpy(
         labels[masked_positions[i]] = masked_labels[i]
         loss_mask[masked_positions[i]] = 1
     labels_np = np.array(labels, dtype=np.int64)
-    loss_mask_np = np.array(loss_mask, dtype=np.bool)
+    loss_mask_np = np.array(loss_mask, dtype=bool)
 
     return tokens_np, tokentypes_np, labels_np, padding_mask_np, loss_mask_np
 
