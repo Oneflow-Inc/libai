@@ -101,6 +101,11 @@ python3 -m pip install huggingface_hub
       <td align="center">-</td>
     </tr>
     <tr>
+      <td align="center"><a href="https://huggingface.co/docs/transformers/v4.28.0/en/model_doc/llama#overview"> <b> LLAMA </b> </td>
+      <td align="center">&#10004;</td>
+      <td align="center">-</td>
+    </tr>
+    <tr>
       <td align="center"><a href="https://huggingface.co/docs/transformers/v4.26.1/en/model_doc/opt#overview"> <b> OPT </b> </td>
       <td align="center">&#10004;</td>
       <td align="center">-</td>
