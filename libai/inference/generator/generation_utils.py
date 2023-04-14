@@ -101,7 +101,7 @@ class Generator:
                     shape,
                     dtype=flow.long,
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                    placement=dist.get_layer_placement(0),
                 )
                 * -100
             )
@@ -113,7 +113,7 @@ class Generator:
                 (1, 1),
                 dtype=flow.long,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=dist.get_layer_placement(0),
             )
             * bos_token_id
         )
@@ -137,7 +137,7 @@ class Generator:
                 inputs.shape[:2],
                 dtype=flow.bool,
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=dist.get_layer_placement(0),
             )
 
     def _prepare_encoder_decoder_kwargs_for_generation(
@@ -171,7 +171,7 @@ class Generator:
                     (batch_size, 1),
                     dtype=flow.long,
                     sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                    placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                    placement=dist.get_layer_placement(0),
                 )
                 * decoder_start_token_id
             )
@@ -202,7 +202,7 @@ class Generator:
         )
         expanded_return_idx = expanded_return_idx.to_global(
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=dist.get_layer_placement(0),
         )
 
         input_ids = input_ids.index_select(0, expanded_return_idx)
@@ -478,6 +478,11 @@ class Generator:
         unfinished_sequences = flow.ones(input_ids.shape[0])
         cur_len = input_ids.shape[-1]
         while True:
+            if input_ids.size(0) > 1:
+                input_ids = input_ids.to_global(
+                    sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.broadcast])
+                )
+
             # prepare model inputs
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
@@ -496,7 +501,8 @@ class Generator:
             next_tokens = flow.argmax(next_token_scores, dim=-1)
             next_tokens = next_tokens.to_global(placement=input_ids.placement)
             unfinished_sequences = unfinished_sequences.to_global(
-                sbp=next_tokens.sbp, placement=next_tokens.placement
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=dist.get_layer_placement(0),
             )
 
             if eos_token_id is not None:
@@ -589,12 +595,12 @@ class Generator:
             probs = nn.functional.softmax(next_token_scores, dim=-1)
             probs = probs.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=dist.get_layer_placement(0),
             ).to_local()
             next_tokens = flow.multinomial(probs, num_samples=1).squeeze(1)
             next_tokens = next_tokens.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+                placement=dist.get_layer_placement(0),
             )
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=next_tokens.sbp, placement=next_tokens.placement
@@ -687,7 +693,7 @@ class Generator:
             (batch_size, num_beams),
             dtype=flow.float,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=dist.get_layer_placement(0),
         )
         beam_scores[:, 1:] = -1e9
         beam_scores = beam_scores.view((batch_size * num_beams,))
