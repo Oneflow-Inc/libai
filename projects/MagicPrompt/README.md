@@ -55,7 +55,7 @@ with torch.autocast("cuda"):
 - Use `tools/preprocess_data.py` to process the json files, you can refer [https://libai.readthedocs.io/en/latest/tutorials/basics/Preprocessing_Dataset.html](https://libai.readthedocs.io/en/latest/tutorials/basics/Preprocessing_Dataset.html).
 
 ```python
-IMPL=lazy
+IMPL=mmap
 KEYS=text
 
 python tools/preprocess_data.py \
@@ -80,5 +80,5 @@ python tools/preprocess_data.py \
 ### 2. Training
 
 ```bash 
-bash tools/train.sh tools/train_net.py projects/MagicPrompt/configs/finetune.py 1
+bash tools/train.sh tools/train_net.py projects/MagicPrompt/configs/gpt2_training.py 1
 ```

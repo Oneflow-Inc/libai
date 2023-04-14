@@ -57,15 +57,15 @@ def get_batch(cls, data, mixup_func=None):
         imgs, labels = data
     dist.synchronize()
 
-    imgs = imgs.to_global(spb=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda"))
+    imgs = imgs.to_global(sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda"))
     imgs = imgs.to_global(
-        spb=dist.get_nd_sbp([flow.sbp.split(0),
+        sbp=dist.get_nd_sbp([flow.sbp.split(0),
                              flow.sbp.broadcast]),
         placement=dist.get_layer_placement(0))
 
-    labels = labels.to_global(spb=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda"))
+    labels = labels.to_global(sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda"))
     labels = labels.to_global(
-        spb=dist.get_nd_sbp([flow.sbp.split(0),
+        sbp=dist.get_nd_sbp([flow.sbp.split(0),
                              flow.sbp.broadcast]),
         placement=dist.get_layer_placement(-1))
     return {

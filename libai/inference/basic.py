@@ -61,9 +61,6 @@ class BasePipeline(metaclass=ABCMeta):
             pipeline_num_layers,
         )
         dist.setup_dist_util(self.cfg.train.dist)
-        assert (
-            self.cfg.train.dist.data_parallel_size == 1
-        ), "not support data parallel yet, only support tensor and pipeline parallel"
         logger.info(self.cfg.train.dist)
 
         # initial and load model
@@ -123,7 +120,7 @@ class BasePipeline(metaclass=ABCMeta):
                 set it to `random` for quickly debugging by random initialized model
         """
         if mode == "libai":
-            from libai.models.utils.model_utils.base_loader import ModelLoaderLiBai
+            from libai.models.utils.model_loader.base_loader import ModelLoaderLiBai
 
             model_loader = ModelLoaderLiBai(libai_cfg_model, libai_cfg_model.cfg, model_path)
             model_loader.base_model_prefix_1 = None

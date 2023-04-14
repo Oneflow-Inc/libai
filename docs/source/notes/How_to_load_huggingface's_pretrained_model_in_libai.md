@@ -56,7 +56,7 @@ bert = loader.load()
 # Use Custom ModelLoader
 
 ## Model Loader for HuggerFace
-If you want to define your own HuggerFace's model loader, you can inherit the base `ModelLoaderHuggerFace` in `libai.models.utils.model_utils.base_loader`.
+If you want to define your own HuggerFace's model loader, you can inherit the base `ModelLoaderHuggerFace` in `libai.models.utils.model_loader.base_loader`.
 
 Then you need to overwrite the `_convert_state_dict` and `_load_config_from_json` method to load HuggingFace's pretrained model in LiBai. 
 
@@ -99,7 +99,7 @@ class ToyModelLoaderHuggerFace(ModelLoaderHuggerFace):
 ```
 
 ## Model Loader for LiBai
-If you want to define your own LiBai's model loader, you can inherit the base `ModelLoaderLiBai` class in `libai.models.utils.model_utils.base_loader`.
+If you want to define your own LiBai's model loader, you can inherit the base `ModelLoaderLiBai` class in `libai.models.utils.model_loader.base_loader`.
 
 You just need to set `base_model_prefix_2` argument to load LiBai's pretrained model.
 

@@ -17,6 +17,7 @@ import logging
 
 import oneflow as flow
 from oneflow import nn
+from oneflow.utils.global_view import global_mode
 
 from libai.layers import TransformerLayer
 from libai.utils import distributed as dist
@@ -37,11 +38,13 @@ class GraphBase(nn.Graph):
         zero_stage=0,
         is_train=True,
         auto_parallel_conf=None,
+        global_mode=None,
     ):
         super().__init__()
 
         self.model = model
         self.is_train = is_train
+        self.global_mode = global_mode
 
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
@@ -98,14 +101,23 @@ class GraphBase(nn.Graph):
 
     def build(self, **kwargs):
         if self.is_train:
-            logger.info(
-                "Start compiling the train graph which may take some time. "
-                "Please wait for a moment ..."
+            placement_sbp_dict = (
+                dict(
+                    placement=flow.env.all_device_placement("cuda"),
+                    sbp=flow.sbp.split(0),
+                )
+                if self.global_mode.enabled
+                else {}
             )
-            loss_dict = self.model(**kwargs)
-            losses = sum(v for k, v in loss_dict.items() if "loss" in k)
-            losses.backward()
-            return loss_dict
+            with global_mode(self.global_mode.enabled, **placement_sbp_dict):
+                logger.info(
+                    "Start compling the train graph which may take some time. "
+                    "Please wait for a moment ..."
+                )
+                loss_dict = self.model(**kwargs)
+                losses = sum(v for k, v in loss_dict.items() if "loss" in k)
+                losses.backward()
+                return loss_dict
         else:
             logger.info(
                 "Start compiling the eval graph which may take some time. "

@@ -18,7 +18,7 @@ Then, Process the JSON file into a binary format for training. To conver the jso
 ```bash
 #!/bin/bash
 
-IMPL=lazy
+IMPL=mmap
 KEYS=text
 
 python tools/preprocess_data.py \
