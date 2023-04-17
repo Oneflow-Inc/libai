@@ -783,7 +783,7 @@ class PreTrainedTokenizer(object):
             elif is_global:
                 sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
                 placement = kwargs.get(
-                    "placement", flow.placement("cuda", list(range(dist.get_world_size())))
+                    "placement", flow.placement("mlu", list(range(dist.get_world_size())))
                 )
                 return_token_ids = flow.tensor(
                     token_ids, sbp=sbp, placement=placement, dtype=flow.long

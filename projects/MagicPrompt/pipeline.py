@@ -97,7 +97,7 @@ if __name__ == "__main__":
         pipeline_parallel=1,
         # pipeline_stage_id=[0] * 6 + [1] * 6,
         # pipeline_num_layers=12,
-        model_path="/path/to/oneflow-model",
+        model_path="/home/zhangxiaoyu/oneflow-model/model",
         mode="libai",
     )
 

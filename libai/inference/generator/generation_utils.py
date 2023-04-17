@@ -524,7 +524,7 @@ class Generator:
             # if eos_token was found in one sentence, set sentence to finished
             if eos_token_id is not None:
                 unfinished_sequences = flow.mul(
-                    unfinished_sequences, (next_tokens != eos_token_id).long()
+                    unfinished_sequences, (next_tokens.to(flow.int32) != eos_token_id).long()
                 )
 
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):

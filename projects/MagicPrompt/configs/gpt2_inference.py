@@ -4,7 +4,9 @@ from projects.mock_transformers import mock_tokenization
 from projects.MagicPrompt.gpt2 import GPTModel, GPTForPreTraining
 from configs.common.data.gpt_dataset import tokenization
 from configs.common.train import train
+from configs.common.models.graph import graph
 
+graph.enabled=True
 
 cfg.update(
     # Model
@@ -56,13 +58,13 @@ cfg.update(
     sep_token_id=None,
     decoder_start_token_id=None,
     # train
-    pretrained_model_path="/data/home/magicprompt",
+    pretrained_model_path="/home/zhangxiaoyu/oneflow-model",
 )
 
 
 model = LazyCall(GPTModel)(cfg=cfg)
 pretrain_model = LazyCall(GPTForPreTraining)(cfg=cfg)
 tokenization.tokenizer = LazyCall(mock_tokenization.GPT2Tokenizer)(
-    vocab_file="/data/home/magicprompt/vocab.json",
-    merges_file="/data/home/magicprompt/merges.txt",
+    vocab_file="/home/zhangxiaoyu/oneflow-model/vocab.json",
+    merges_file="/home/zhangxiaoyu/oneflow-model/merges.txt",
 )

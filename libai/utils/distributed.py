@@ -71,7 +71,7 @@ class _DistributeUtil(object):
         self._world_size = num_gpus_per_node * num_nodes
 
         # Add set device type
-        self._device_type = try_get_key(cfg, "device_type", default="cuda")
+        self._device_type = try_get_key(cfg, "device_type", default="mlu")
 
     def _init_parallel_size(self, cfg):
 
@@ -438,7 +438,7 @@ def convert_to_distributed_default_setting(t):
 def ttol(tensor, pure_local=False, ranks=None):
     """Global tensor to local tensor."""
     if tensor.is_global:
-        placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
+        placement = tensor.placement if not ranks else flow.placement("mlu", ranks)
         if pure_local:
             tensor = tensor.to_global(placement=placement).to_local()
         else:
