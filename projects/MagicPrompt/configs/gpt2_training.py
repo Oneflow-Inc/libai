@@ -40,7 +40,7 @@ model.cfg.bias_dropout_fusion = False
 model.cfg.scale_mask_softmax_fusion = False
 model.cfg.apply_query_key_layer_scaling = True
 model.cfg.apply_residual_post_layernorm = False
-model.cfg.amp_enabled = False
+model.cfg.amp_enabled = True
 
 train.input_placement_device = "cpu"
 
@@ -50,8 +50,6 @@ for ds in dataloader.train.dataset:
     ds.max_seq_length = model.cfg.max_seq_length
 
 optim.lr = 5.0e-05
-optim.params.clip_grad_max_norm = None
-optim.params.clip_grad_norm_type = None
 
 train.update(
     dict(
@@ -61,7 +59,7 @@ train.update(
         train_epoch=33,
         train_iter=10000,
         log_period=1,
-        amp=dict(enabled=False),
+        amp=dict(enabled=True),
         warmup_ratio=0,
         checkpointer=dict(period=8000, max_to_keep=20),
         dist=dict(
