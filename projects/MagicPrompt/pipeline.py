@@ -101,7 +101,7 @@ if __name__ == "__main__":
         mode="libai",
     )
 
-    text = ["a dog", "a cute pig", "a cute girl", "a boy", "a dog", "a cute pig", "a cute girl", "a boy"]
+    text = ["a dog", "a cute pig", "a cute girl"]
     output = pipeline(inputs=text)
     if dist.is_main_process():
         print(output)

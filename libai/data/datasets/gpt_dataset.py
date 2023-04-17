@@ -25,6 +25,8 @@ import oneflow as flow
 from libai.data.structures import DistTensorData, Instance
 from libai.utils import distributed as dist
 
+from ..data_utils import is_shared_folder
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,10 +120,13 @@ def _build_index_mappings(name, data_prefix, documents, sizes, num_samples, seq_
     doc_idx_filename = _filename + "_doc_idx.npy"
     sample_idx_filename = _filename + "_sample_idx.npy"
     shuffle_idx_filename = _filename + "_shuffle_idx.npy"
+    file_folder = os.path.dirname(_filename)
 
     # Build the indexed mapping if not exist.
     # NOTE: use `get_local_rank() == 0` to promise samples will be build in each node.
-    if flow.env.get_local_rank() == 0:
+    # use `get_rank() == 0` to promise samples will be build only once for a shared folder.
+    cur_rank = flow.env.get_rank() if is_shared_folder(file_folder) else flow.env.get_local_rank()
+    if cur_rank == 0:
         if (
             (not os.path.isfile(doc_idx_filename))
             or (not os.path.isfile(sample_idx_filename))
