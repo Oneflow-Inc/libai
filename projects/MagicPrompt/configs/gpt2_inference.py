@@ -4,7 +4,9 @@ from projects.mock_transformers import mock_tokenization
 from projects.MagicPrompt.gpt2 import GPTModel, GPTForPreTraining
 from configs.common.data.gpt_dataset import tokenization
 from configs.common.train import train
+from configs.common.models.graph import graph
 
+graph.enabled=True
 
 cfg.update(
     # Model
