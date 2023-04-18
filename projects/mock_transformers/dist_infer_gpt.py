@@ -13,15 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import init_env  # noqa
+from projects.mock_transformers import init_env  # noqa
 import oneflow as flow
 from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer, pytorch_utils
 from transformers.models.gpt2 import modeling_gpt2
 
+from libai.layers import ParallelCrossEntropyLoss
 from libai.layers import Conv1D
-from libai.utils import distributed as dist
+from libai.layers import Embedding as LiBaiEmbedding
+
+
+# ------replace Embedding to libai------
+temp_class = modeling_gpt2.GPT2Model
+
+
+class LiBaiGPTModel(temp_class):
+    def __init__(self, config):
+        super().__init__(config)
+        self.wte = LiBaiEmbedding(config.vocab_size, self.embed_dim)
+        self.wpe = LiBaiEmbedding(config.max_position_embeddings, self.embed_dim)
+
+
+modeling_gpt2.GPT2Model = LiBaiGPTModel
 
 
 # ------replace Conv1D to libai------
@@ -65,26 +80,26 @@ class LiBaiGPT2Attention(temp_class):
                 in_features=self.embed_dim,
                 out_features=2 * self.embed_dim,
                 parallel="col",
-                dtype=flow.float16,
+                dtype=flow.float32,
             )
             self.q_attn = Conv1D(
                 in_features=self.embed_dim,
                 out_features=self.embed_dim,
                 parallel="col",
-                dtype=flow.float16,
+                dtype=flow.float32,
             )
         else:
             self.c_attn = Conv1D(
                 in_features=self.embed_dim,
                 out_features=3 * self.embed_dim,
                 parallel="col",
-                dtype=flow.float16,
+                dtype=flow.float32,
             )
         self.c_proj = Conv1D(
             in_features=self.embed_dim,
             out_features=self.embed_dim,
             parallel="row",
-            dtype=flow.float16,
+            dtype=flow.float32,
         )
 
 
@@ -103,54 +118,56 @@ class LiBaiGPT2MLP(temp_class):
             in_features=embed_dim,
             out_features=intermediate_size,
             parallel="col",
-            dtype=flow.float16,
+            dtype=flow.float32,
         )
         self.c_proj = Conv1D(
             in_features=intermediate_size,
             out_features=embed_dim,
             parallel="row",
-            dtype=flow.float16,
+            dtype=flow.float32,
         )
 
+modeling_gpt2.CrossEntropyLoss = ParallelCrossEntropyLoss
 
-if __name__ == "__main__":
-    # set dist config
-    parallel_config = DictConfig(
-        dict(
-            data_parallel_size=1,
-            tensor_parallel_size=2,
-            pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
-            pipeline_num_layers=None,
-            device_type="cpu",
-        )
-    )
-    dist.setup_dist_util(parallel_config)
 
-    # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("gpt2", torch_dtype=flow.float16)
-    # set model to cuda
-    dist.set_device_type("cuda")
-    model._apply(dist.convert_to_distributed_default_setting)
-    # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=False)
+# if __name__ == "__main__":
+#     # set dist config
+#     parallel_config = DictConfig(
+#         dict(
+#             data_parallel_size=1,
+#             tensor_parallel_size=2,
+#             pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
+#             pipeline_num_layers=None,
+#             device_type="cpu",
+#         )
+#     )
+#     dist.setup_dist_util(parallel_config)
 
-    # get input_ids
-    prompt = "Hello, I'm a language model,"
-    input_ids = tokenizer(prompt, return_tensors="np").input_ids
-    input_ids = flow.from_numpy(input_ids)
-    input_ids = input_ids.to_global(
-        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        placement=dist.get_layer_placement(0),
-    )
+#     # initial and load model
+#     model = AutoModelForCausalLM.from_pretrained("gpt2", torch_dtype=flow.float32)
+#     # set model to cuda
+#     dist.set_device_type("cuda")
+#     model._apply(dist.convert_to_distributed_default_setting)
+#     # initial tokenizer
+#     tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=False)
 
-    # generate id
-    placement_sbp_dict = dict(
-        placement=flow.env.all_device_placement("cuda"),
-        sbp=flow.sbp.broadcast,
-    )
-    with global_mode(True, **placement_sbp_dict):
-        generated_ids = model.generate(input_ids, max_length=30)
-    out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+#     # get input_ids
+#     prompt = "Hello, I'm a language model,"
+#     input_ids = tokenizer(prompt, return_tensors="np").input_ids
+#     input_ids = flow.from_numpy(input_ids)
+#     input_ids = input_ids.to_global(
+#         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+#         placement=dist.get_layer_placement(0),
+#     )
 
-    if dist.is_main_process():
-        print(out_put_ids)
+#     # generate id
+#     placement_sbp_dict = dict(
+#         placement=flow.env.all_device_placement("cuda"),
+#         sbp=flow.sbp.broadcast,
+#     )
+#     with global_mode(True, **placement_sbp_dict):
+#         generated_ids = model.generate(input_ids, max_length=30)
+#     out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+
+#     if dist.is_main_process():
+#         print(out_put_ids)
