@@ -1,6 +1,6 @@
 from projects.mock_transformers import init_env  # noqa
 # from oneflow.utils.global_view import global_mode
-from typing import Optional
+from typing import Optional, List
 from transformers import AutoModelForSeq2SeqLM
 from transformers import LlamaForCausalLM, LlamaTokenizer
 from peft import (
@@ -16,36 +16,46 @@ from oneflow import nn
 
 
 class AlpacaModel(nn.Module):
-    def __init__(self, ):
+    def __init__(
+        self,
+        model_name: str = "decapoda-research/llama-7b-hf",
+        torch_dtype: Optional[flow.dtype] = flow.float16,
+        lora_r: int = 8,
+        lora_alpha: int = 16,
+        lora_target_modules: List[str] = [
+            "q_proj",
+            "v_proj",
+        ],
+        lora_dropout: float = 0.05,
+        lora_bias: str = "none",
+        lora_task_type: str = "CAUSAL_LM",
+    ):
         super().__init__()
-        base_model = "decapoda-research/llama-7b-hf"
-
         peft_config = LoraConfig(
-            r=8,
-            lora_alpha=16,
-            target_modules=[
-                "q_proj",
-                "v_proj",
-            ],
-            lora_dropout=0.05,
-            bias="none",
-            task_type="CAUSAL_LM",
+            r = lora_r,
+            lora_alpha = lora_alpha,
+            target_modules = lora_target_modules,
+            lora_dropout = lora_dropout,
+            bias = lora_bias,
+            task_type = lora_task_type,
         )
 
         model = LlamaForCausalLM.from_pretrained(
-            base_model,
-            flow_dtype=flow.float16,
-            load_in_8bit=True,
-            device_map="auto",
-        )
-        self.tokenizer = LlamaTokenizer.from_pretrained(base_model)
-        self.tokenizer.pad_token_id = (
-            0  # unk. we want this to be different from the eos token
-        )
-        self.tokenizer.padding_side = "left"  # Allow batched inference
+            model_name,
+            torch_dtype=flow.float16,
+            # load_in_8bit=True,
+            # device_map="auto",
+        ).to("cuda")
         model = prepare_model_for_int8_training(model)
-        self.model = get_peft_model(model, peft_config)
-        # model.print_trainable_parameters()
+        self.model = get_peft_model(model, peft_config).to("cuda")
+        # reset the state_dict to the new one
+        old_state_dict = self.model.state_dict
+        self.model.state_dict = (
+            lambda self, *_, **__: get_peft_model_state_dict(
+                self, old_state_dict()
+            )
+        ).__get__(self.model, type(self.model))
+        self.state_dict = self.model.state_dict
     
     def forward(
         self,
@@ -59,7 +69,20 @@ class AlpacaModel(nn.Module):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
-    )
-
     ):
-        return self.model(**argv)
+        output = self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            inputs_embeds=inputs_embeds,
+            labels=labels,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        return {
+            "loss": output.loss,
+            "logits": output.logits,
+        }

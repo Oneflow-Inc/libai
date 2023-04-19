@@ -118,9 +118,21 @@ temp_tensor_func = flow.tensor
 
 def flow_tensor(input_x, **kwargs):
     if isinstance(input_x, (int, float)):
-        return input_x
-    else:
-        return temp_tensor_func(input_x, **kwargs)
+        input_x = [input_x]
+    return temp_tensor_func(input_x, **kwargs)
 
 
 flow.tensor = flow_tensor
+
+# # ----------------modify full op---------------
+# temp_full_func = flow.full
+
+# def flow_full(size, fill_value, **kwargs):
+#     if isinstance(fill_value, (int, float)):
+#         if isinstance(fill_value, int):
+#             kwargs["dtype"]=flow.int32
+#         elif isinstance(fill_value, float):
+#             kwargs["dtype"]=flow.float32
+#     return temp_full_func(size, fill_value, **kwargs)
+
+# flow.full = flow_full
