@@ -20,8 +20,6 @@ tokenization.tokenizer.merges_file = merge_files
 dataloader.train.dataset[0].data_prefix = train_data_prefix
 dataloader.train.dataset[0].indexed_dataset.data_prefix = train_data_prefix
 
-train.input_placement_device = "cpu"
-
 train.dist.pipeline_num_layers = 12
 
 for ds in dataloader.train.dataset:
