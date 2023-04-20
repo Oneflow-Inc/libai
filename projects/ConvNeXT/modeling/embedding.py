@@ -21,7 +21,7 @@ from projects.ConvNeXT.modeling.layer_norm import ConvNextLayerNorm
 
 
 class ConvNextEmbeddings(nn.Module):
-    def __init__(self, num_channels, hidden_sizes, patch_size, eps=1e-6, layer_idx=0):
+    def __init__(self, num_channels, hidden_sizes, patch_size, layer_idx=0):
         super().__init__()
         self.patch_embeddings = nn.Conv2d(
             num_channels, hidden_sizes[0], kernel_size=patch_size, stride=patch_size
@@ -30,7 +30,7 @@ class ConvNextEmbeddings(nn.Module):
             placement=dist.get_layer_placement(layer_idx),
         )
         self.layernorm = ConvNextLayerNorm(
-            hidden_sizes[0], eps=eps, data_format="channels_first", layer_idx=layer_idx
+            hidden_sizes[0], eps=1e-6, data_format="channels_first", layer_idx=layer_idx
         )
         self.num_channels = num_channels
 

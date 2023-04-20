@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from oneflow import nn
+from libai.config import configurable
 
 from libai.layers import LayerNorm
 from projects.ConvNeXT.modeling.convnext_layers import ConvNextEncoder
@@ -21,21 +22,21 @@ from projects.ConvNeXT.modeling.embedding import ConvNextEmbeddings
 
 
 class ConvNextModel(nn.Module):
+    @configurable
     def __init__(
         self,
         num_channels,
-        hidden_sizes,
         patch_size,
-        depths,
         num_stages,
-        drop_path_rate,
-        eps,
-        layer_norm_eps,
+        hidden_sizes,
+        depths,
+        layer_norm_eps=1e-12,
+        drop_path_rate=0.0,
     ):
         super().__init__()
 
         self.embeddings = ConvNextEmbeddings(
-            num_channels, hidden_sizes, patch_size, eps=eps, layer_idx=0
+            num_channels, hidden_sizes, patch_size, layer_idx=0
         )
         self.encoder = ConvNextEncoder(hidden_sizes, depths, num_stages, drop_path_rate)
         self.layernorm = LayerNorm(hidden_sizes[-1], eps=layer_norm_eps, layer_idx=-1)
@@ -46,3 +47,15 @@ class ConvNextModel(nn.Module):
         last_hidden_state = encoder_outputs
         pooled_output = self.layernorm(last_hidden_state.mean([-2, -1]))
         return {"last_hidden_state": last_hidden_state, "pooled_output": pooled_output}
+
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "num_channels": cfg.num_channels,
+            "patch_size": cfg.patch_size,
+            "num_stages": cfg.num_stages,
+            "hidden_sizes": cfg.hidden_sizes,
+            "depths": cfg.depths,
+            "layer_norm_eps": cfg.layer_norm_eps,
+            "drop_path_rate": cfg.drop_path_rate,
+        }
