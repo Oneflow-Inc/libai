@@ -14,8 +14,8 @@
 # limitations under the License.
 
 from oneflow import nn
-from libai.config import configurable
 
+from libai.config import configurable
 from libai.layers import LayerNorm
 from projects.ConvNeXT.modeling.convnext_layers import ConvNextEncoder
 from projects.ConvNeXT.modeling.embedding import ConvNextEmbeddings
@@ -35,11 +35,13 @@ class ConvNextModel(nn.Module):
     ):
         super().__init__()
 
-        self.embeddings = ConvNextEmbeddings(
-            num_channels, hidden_sizes, patch_size, layer_idx=0
-        )
+        self.embeddings = ConvNextEmbeddings(num_channels, hidden_sizes, patch_size, layer_idx=0)
         self.encoder = ConvNextEncoder(hidden_sizes, depths, num_stages, drop_path_rate)
         self.layernorm = LayerNorm(hidden_sizes[-1], eps=layer_norm_eps, layer_idx=-1)
+
+        # weight init
+        if os.getenv("ONEFLOW_LINEAR_EMBEDDING_SKIP_INIT", "0") != "1":
+            self.apply(self._init_weights)
 
     def forward(self, pixel_values=None):
         embedding_output = self.embeddings(pixel_values)
@@ -47,6 +49,12 @@ class ConvNextModel(nn.Module):
         last_hidden_state = encoder_outputs
         pooled_output = self.layernorm(last_hidden_state.mean([-2, -1]))
         return {"last_hidden_state": last_hidden_state, "pooled_output": pooled_output}
+
+    def _init_weight(self, module):
+        if isinstance(module, (nn.Linear, nn.Conv2d)):
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            if module.bias is not None:
+                module.bias.data.zero_()
 
     @classmethod
     def from_config(cls, cfg):
