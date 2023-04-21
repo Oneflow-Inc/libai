@@ -39,10 +39,9 @@ class LoraDataset(Dataset):
 
     def __getitem__(self, index):
         return Instance(
-                input_ids=DistTensorData(flow.tensor(self.train_data[index]["input_ids"])),
-                attention_mask=DistTensorData(flow.tensor(self.train_data[index]["attention_mask"])),
-                labels=DistTensorData(flow.tensor(self.train_data[index]["labels"])
-            )
+            input_ids=DistTensorData(flow.tensor(self.train_data[index]["input_ids"])),
+            attention_mask=DistTensorData(flow.tensor(self.train_data[index]["attention_mask"])),
+            labels=DistTensorData(flow.tensor(self.train_data[index]["labels"]))
         )
 
     def __len__(self):

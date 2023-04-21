@@ -8,6 +8,7 @@ from libai.data import build_nlp_train_loader
 from libai.scheduler import WarmupExponentialLR
 from configs.common.train import train
 from configs.common.models.graph import graph
+import oneflow as flow
 
 graph.global_mode.enabled = True
 
@@ -29,7 +30,9 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
 )
 
 model = LazyCall(AlpacaModel)(
-    model_name="HuggingFaceM4/tiny-random-LlamaForCausalLM",
+    # model_name="HuggingFaceM4/tiny-random-LlamaForCausalLM", # random tiny model
+    model_name="decapoda-research/llama-7b-hf",
+    torch_dtype=flow.float16,
     lora_r=8,
     lora_alpha=16,
     lora_target_modules=["q_proj", "v_proj"],
@@ -38,23 +41,25 @@ model = LazyCall(AlpacaModel)(
     lora_task_type="CAUSAL_LM",
 )
 
-train.input_placement_device = "cuda"
+train.input_placement_device = "cpu"
 
 
 # train.dist.pipeline_num_layers = 12
-optim.lr = 3e-4
+optim.lr = 3e-4 / 32
 
 train.update(
     dict(
         output_dir="output/alpaca_lora_output",
         train_micro_batch_size=4,
+        # global_batch_size=128,
+        activation_checkpoint=dict(enabled=True),
         # test_micro_batch_size=4,
-        # train_epoch=33,
-        train_iter=100,
+        train_epoch=3,
+        train_iter=0,
         log_period=10,
-        amp=dict(enabled=False),
+        amp=dict(enabled=True),
         warmup_ratio=0,
-        checkpointer=dict(period=8000, max_to_keep=20),
+        checkpointer=dict(period=1000, max_to_keep=3),
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
@@ -74,5 +79,9 @@ train.update(
             # eval_period=4000,
         ),
         rdma_enabled=False,
+        zero_optimization=dict(
+            enabled=True,
+            stage=2,
+        ),
     )
 )

@@ -3,16 +3,38 @@ from projects.mock_transformers import init_env  # noqa
 from typing import Optional, List
 from transformers import AutoModelForSeq2SeqLM
 from transformers import LlamaForCausalLM, LlamaTokenizer
+from transformers.models.llama import modeling_llama, LlamaConfig
+import peft
 from peft import (
     prepare_model_for_int8_training,
+    LoraModel,
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
 )
+import libai.utils.distributed as dist
+from libai.layers import Linear
 from peft import get_peft_config, get_peft_model, LoraConfig, TaskType
 import oneflow as flow
 from oneflow import nn
 # import torch as flow
+
+# modify loramodel 
+temp_lora_class = LoraModel
+
+class LiBaiLoraModel(temp_lora_class):
+    def __init__(self, model, config, adapter_name):
+        super(nn.Module, self).__init__()
+        self.model = model
+        # do not use self.forward = self.model.forward
+        # self.forward = self.model.forward
+        self.peft_config = config
+        self.add_adapter(adapter_name, self.peft_config[adapter_name])
+
+    def forward(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
+
+peft.LoraModel = LiBaiLoraModel   
 
 
 class AlpacaModel(nn.Module):
@@ -42,11 +64,10 @@ class AlpacaModel(nn.Module):
 
         model = LlamaForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=flow.float16,
+            torch_dtype=torch_dtype,
             # load_in_8bit=True,
             # device_map="auto",
         ).to("cuda")
-        model = prepare_model_for_int8_training(model)
         self.model = get_peft_model(model, peft_config).to("cuda")
         # reset the state_dict to the new one
         old_state_dict = self.model.state_dict
@@ -70,6 +91,15 @@ class AlpacaModel(nn.Module):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ):
+        input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
+        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0))
+        labels = labels.to_global(placement=dist.get_layer_placement(-1))
+        # from oneflow.utils.global_view import global_mode
+        # placement_sbp_dict = dict(
+        #     placement=flow.env.all_device_placement("cuda"),
+        #     sbp=flow.sbp.split(0),
+        # )
+        # with global_mode(True, **placement_sbp_dict):
         output = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -86,3 +116,17 @@ class AlpacaModel(nn.Module):
             "loss": output.loss,
             "logits": output.logits,
         }
+
+    @staticmethod
+    def set_activation_checkpoint(model):
+        from transformers.models.llama.modeling_llama import LlamaModel
+        for module_block in model.modules():
+            if isinstance(module_block.to(nn.Module), LlamaModel):
+                module_block.to(flow.nn.graph.GraphModule).activation_checkpointing = True
+
+    def __getattr__(self, name: str):
+        """Forward missing attributes to the wrapped module."""
+        try:
+            return super().__getattr__(name)  # defer to nn.Module's logic
+        except AttributeError:
+            return getattr(self.model, name)
