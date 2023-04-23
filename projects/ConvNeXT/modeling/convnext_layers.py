@@ -112,7 +112,7 @@ class ConvNextEncoder(nn.Module):
         super().__init__()
         self.stages = nn.ModuleList()
         drop_path_rates = [
-            x.tolist() for x in flow.linspace(0, drop_path_rate, sum(depths)).split(depths)
+            x.tolist() for x in flow.linspace(0, drop_path_rate, sum(depths)).split(list(depths))
         ]
         prev_chs = hidden_sizes[0]
         for i in range(num_stages):
