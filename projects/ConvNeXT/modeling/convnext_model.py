@@ -37,9 +37,10 @@ class ConvNextModel(nn.Module):
         depths,
         layer_norm_eps=1e-12,
         drop_path_rate=0.0,
+        cfg=None,
     ):
         super().__init__()
-
+        self.cfg = cfg
         self.embeddings = ConvNextEmbeddings(num_channels, hidden_sizes, patch_size, layer_idx=0)
         self.encoder = ConvNextEncoder(hidden_sizes, depths, num_stages, drop_path_rate)
         self.layernorm = LayerNorm(hidden_sizes[-1], eps=layer_norm_eps, layer_idx=-1)
@@ -57,7 +58,7 @@ class ConvNextModel(nn.Module):
 
     def _init_weight(self, module):
         if isinstance(module, (nn.Linear, nn.Conv2d)):
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.cfg.initializer_range)
             if module.bias is not None:
                 module.bias.data.zero_()
 
@@ -71,10 +72,12 @@ class ConvNextModel(nn.Module):
             "depths": cfg.depths,
             "layer_norm_eps": cfg.layer_norm_eps,
             "drop_path_rate": cfg.drop_path_rate,
+            "cfg": cfg,
         }
 
 
 class ConvNextForImageClassification(nn.Module):
+    @configurable
     def __init__(
         self,
         num_channels,
@@ -98,6 +101,7 @@ class ConvNextForImageClassification(nn.Module):
             depths=depths,
             layer_norm_eps=layer_norm_eps,
             drop_path_rate=drop_path_rate,
+            cfg=self.cfg
         )
 
         # Classifier head
@@ -127,7 +131,7 @@ class ConvNextForImageClassification(nn.Module):
 
     def _init_weight(self, module):
         if isinstance(module, (nn.Linear, nn.Conv2d)):
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.cfg.initializer_range)
             if module.bias is not None:
                 module.bias.data.zero_()
 
