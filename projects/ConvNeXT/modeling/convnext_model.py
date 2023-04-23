@@ -101,7 +101,7 @@ class ConvNextForImageClassification(nn.Module):
             depths=depths,
             layer_norm_eps=layer_norm_eps,
             drop_path_rate=drop_path_rate,
-            cfg=self.cfg
+            cfg=self.cfg,
         )
 
         # Classifier head
@@ -135,8 +135,8 @@ class ConvNextForImageClassification(nn.Module):
             if module.bias is not None:
                 module.bias.data.zero_()
 
-    def forward(self, x, labels):
-        outputs = self.convnext(x)
+    def forward(self, images, labels):
+        outputs = self.convnext(images)
         pooled_output = outputs["pooled_output"]
         logits = self.classifier(pooled_output)
 
@@ -189,7 +189,7 @@ class ConvNextForImageClassification(nn.Module):
             model.convnext.embeddings.config.set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
-            for module_block in model.convnext.encoder.modules():
+            for module_block in model.modules():
                 if isinstance(module_block.origin, ConvNextStage):
                     module_block.config.set_stage(
                         dist_utils.get_layer_stage_id(module_block.layer_idx),
@@ -205,8 +205,8 @@ class ConvNextForImageClassification(nn.Module):
             model.convnext.embeddings.to(flow.nn.graph.GraphModule).set_stage(
                 dist_utils.get_layer_stage_id(0), dist.get_layer_placement(0)
             )
-            for module_block in model.convnext.encoder.modules():
-                if isinstance(module_block.origin, ConvNextStage):
+            for module_block in model.modules():
+                if isinstance(module_block.to(nn.Module), ConvNextStage):
                     module_block.to(flow.nn.graph.GraphModule).set_stage(
                         dist_utils.get_layer_stage_id(module_block.layer_idx),
                         dist.get_layer_placement(module_block.layer_idx),

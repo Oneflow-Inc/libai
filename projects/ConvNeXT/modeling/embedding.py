@@ -33,6 +33,7 @@ class ConvNextEmbeddings(nn.Module):
             hidden_sizes[0], eps=1e-6, data_format="channels_first", layer_idx=layer_idx
         )
         self.num_channels = num_channels
+        self.layer_idx = layer_idx
 
     def forward(self, x):
         num_channels = x.shape[1]

@@ -50,6 +50,7 @@ class ConvNextLayer(nn.Module):
             else None
         )
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+        self.layer_idx = layer_idx
 
     def forward(self, hidden_states):
         input = hidden_states
@@ -100,6 +101,7 @@ class ConvNextStage(nn.Module):
                 for j in range(depth)
             ]
         )
+        self.layer_idx = layer_idx
 
     def forward(self, hidden_states):
         hidden_states = self.downsampling_layer(hidden_states)

@@ -14,6 +14,7 @@ cfg = dict(
     image_size=224,
     num_labels=1000,
     initializer_range=0.02,
+    problem_type=None,
 )
 
 cfg = DictConfig(cfg)

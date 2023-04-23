@@ -59,7 +59,6 @@ class ConvNextLayerNorm(nn.Module):
 
     def forward(self, x):
         x = x.to_global(placement=self.weight.placement)
-        assert x.shape[-len(self.normalized_shape) :] == self.normalized_shape
         if self.data_format == "channels_last":
             begin_norm_axis = x.ndim - len(self.normalized_shape)
             begin_params_axis = x.ndim - len(self.normalized_shape)
