@@ -12,9 +12,9 @@ from configs.common.models.graph import graph
 graph.enabled=False
 graph.debug = 2
 
-vocab_file = "/home/zhangxiaoyu/magicprompt/vocab.json"
-merge_files = "/home/zhangxiaoyu/magicprompt/merges.txt"
-train_data_prefix = "/home/zhangxiaoyu/magicprompt/train/en_train_mmap_text_sentence"
+vocab_file = "./magicprompt/vocab.json"
+merge_files = "./magicprompt/merges.txt"
+train_data_prefix = "./magicprompt/train/en_train_mmap_text_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files

@@ -58,13 +58,13 @@ cfg.update(
     sep_token_id=None,
     decoder_start_token_id=None,
     # train
-    pretrained_model_path="/home/zhangxiaoyu/oneflow-model",
+    pretrained_model_path="./oneflow-model",
 )
 
 
 model = LazyCall(GPTModel)(cfg=cfg)
 pretrain_model = LazyCall(GPTForPreTraining)(cfg=cfg)
 tokenization.tokenizer = LazyCall(mock_tokenization.GPT2Tokenizer)(
-    vocab_file="/home/zhangxiaoyu/oneflow-model/vocab.json",
-    merges_file="/home/zhangxiaoyu/oneflow-model/merges.txt",
+    vocab_file="./oneflow-model/vocab.json",
+    merges_file="./oneflow-model/merges.txt",
 )
