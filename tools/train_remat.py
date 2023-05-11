@@ -47,7 +47,7 @@ def main(args):
 
     if args.fast_dev_run:
         cfg.train.train_epoch = 0
-        cfg.train.train_iter = 30
+        cfg.train.train_iter = 10
         cfg.train.evaluation.enabled = False
         cfg.train.log_period = 1
         cfg.train.input_placement_device = "cuda+remat"
