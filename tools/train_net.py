@@ -20,6 +20,7 @@ import sys
 
 import numpy as np
 import oneflow as flow
+import oneflow_mlu
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from libai.config import LazyConfig, default_argument_parser, try_get_key
