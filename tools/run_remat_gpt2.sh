@@ -5,7 +5,7 @@ set -ux
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 MODEL_NAME=gpt2
-RESULT_DIR=./exp_data
+RESULT_DIR=./exp_data_${MODEL_NAME}
 
 
 # array=(4000 4500 5000 5500 6000 6500 7000 7500 8000 8500 9000 9500)
@@ -13,7 +13,7 @@ RESULT_DIR=./exp_data
 array=(3400 4250 5100 5950 6800 7650 8500)
 # array=(28672 35840 43008 50176 57344 64512 71680) for a800
 
-config_file=/share_nfs/sd_dataset/lph/codes/libai_normal/configs/dtr_gpt2_pretrain.py
+config_file=/share_nfs/sd_dataset/lph/codes/libai_normal/configs/dtr_${MODEL_NAME}_pretrain.py
 
 METHOD=ours
 for threshold in "${array[@]}"; do

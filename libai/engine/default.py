@@ -370,10 +370,11 @@ class DefaultTrainer(TrainerBase):
             ">>> done with building model. "
             "Building time: {:.3f} seconds".format(time.time() - start_time)
         )
-
-        # self.optimizer = self.build_optimizer(cfg, self.model)
-        self.optimizer = EmtypOptimizer(cfg)
-        # self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
+        if os.environ.get("USE_EMPTY_OPTIM") == "1":
+            self.optimizer = EmtypOptimizer(cfg)
+        else:
+            self.optimizer = self.build_optimizer(cfg, self.model)
+            self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
         if cfg.graph.enabled:
             self.graph_train = self.build_graph(
@@ -403,14 +404,16 @@ class DefaultTrainer(TrainerBase):
                 lr_scheduler=self.lr_scheduler,
             )
         else:
-            pass
-            # self.checkpointer = Checkpointer(
-            #     # Assume you want to save checkpoints together with logs/statistics
-            #     self.model,
-            #     cfg.train.output_dir,
-            #     optimizer=self.optimizer,
-            #     lr_scheduler=self.lr_scheduler,
-            # )
+            if os.environ.get("USE_EMPTY_OPTIM") == "1":
+                pass
+            else:
+                self.checkpointer = Checkpointer(
+                    # Assume you want to save checkpoints together with logs/statistics
+                    self.model,
+                    cfg.train.output_dir,
+                    optimizer=self.optimizer,
+                    lr_scheduler=self.lr_scheduler,
+                )
 
         # Loading checkpoint before dataloader construction, because
         # dataloader needs to know the consumed iterations from
@@ -472,15 +475,19 @@ class DefaultTrainer(TrainerBase):
             list[HookBase]:
         """
 
-        ret = [
-            hooks.IterationTimer(),
-            # hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
-            # hooks.PeriodicCheckpointer(
-            #     self.checkpointer,
-            #     self.cfg.train.checkpointer.period,
-            #     max_to_keep=self.cfg.train.checkpointer.max_to_keep,
-            # ),
-        ]
+        
+        if os.environ.get("USE_EMPTY_OPTIM") == "1":
+            ret = [hooks.IterationTimer()]
+        else:
+            ret = [
+                hooks.IterationTimer(),
+                hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
+                hooks.PeriodicCheckpointer(
+                    self.checkpointer,
+                    self.cfg.train.checkpointer.period,
+                    max_to_keep=self.cfg.train.checkpointer.max_to_keep,
+                ),
+            ]
 
         if self.cfg.train.evaluation.enabled:
             assert self.cfg.train.evaluation.eval_iter > 0, "run_iter must be positive number"
