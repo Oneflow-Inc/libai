@@ -132,4 +132,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 output
-exp_data
+exp_data*
