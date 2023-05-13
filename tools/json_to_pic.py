@@ -68,6 +68,7 @@ def get_dataset_time_from_json_file(fn):
 
 def get_threshold_from_json_file(fn):
     return int(fn[-9:][:4])
+    # return int(fn[-10:][:5]) for a800
     if fn[:9] == 'overhead-':
         fn = fn[:-5]
         return int(fn.split('-')[-1])
@@ -301,6 +302,8 @@ def unet_predicate(fn):
 
 def gpt2_predicate(fn):
     return divisible_by(850)(fn)
+    # return divisible_by(7168)(fn)
+    # return divisible_by(6500)(fn)
 
 def resnet50_predicate(fn):
     return divisible_by(1000)(fn)
