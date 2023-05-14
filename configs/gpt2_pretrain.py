@@ -7,9 +7,15 @@ from .common.data.gpt_dataset import dataloader, tokenization
 
 from .common.models.graph import graph
 
-vocab_file = "./data_test/gpt_data/gpt2-vocab.json"
-merge_files = "./data_test/gpt_data/gpt2-merges.txt"
-data_prefix = "./data_test/gpt_data/loss_compara_content_sentence"
+# vocab_file = "./data_test/gpt_data/gpt2-vocab.json"
+# merge_files = "./data_test/gpt_data/gpt2-merges.txt"
+# data_prefix = "./data_test/gpt_data/loss_compara_content_sentence"
+vocab_file = "/data/home/liupeihong/datasets/libai_dataset/gpt2-vocab.json"
+merge_files = "/data/home/liupeihong/datasets/libai_dataset/gpt2-merges.txt"
+data_prefix = (
+    "/data/home/liupeihong/datasets/libai_dataset/loss_compara_content_sentence"
+)
+
 
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
@@ -37,8 +43,9 @@ for ds in dataloader.train.dataset:
 optim.lr = 1.5e-4
 
 train.train_micro_batch_size = 4
-train.amp.enabled = True
+train.amp.enabled = False
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 
 train.output_dir = "./output/gpt2_output"
+graph.enabled = False
