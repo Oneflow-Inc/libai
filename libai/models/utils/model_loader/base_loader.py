@@ -295,8 +295,7 @@ class ModelLoaderLiBai(ModelLoader):
         model (libai.models): Model to be loaded in Libai.
         libai_cfg (dict): The config of model in LiBai, you can import it from
             `libai.config.configs.common.models`.
-        pretrained_model_path (str): The directory path of pretrained model,
-            which contains model weights file and config file.
+        pretrained_model_path (str): The file path of pretrained model.
         output_loading_info (`bool`, *optional*, defaults to `False`):
             Whether to return a dictionary containing missing keys, unexpected keys
             and error messages.
@@ -330,11 +329,6 @@ class ModelLoaderLiBai(ModelLoader):
             >>> bert = loder.load()
 
         """
-
-        if dist.is_main_process():
-            assert os.path.isdir(
-                self.pretrained_model_path
-            ), f"{self.pretrained_model_path} must be a directory"
 
         flow_state_dict = self._load_flow_state_dict(self.pretrained_model_path)
 
@@ -521,9 +515,9 @@ class ModelLoaderHuggerFace(ModelLoader):
 
             >>> import libai
             >>> from configs.common.models.bert import cfg
-            >>> from libai.models.utils import BertLoaderHugger
+            >>> from libai.models.utils import BertLoaderHuggerFace
 
-            >>> loader = BertLoaderHugger(
+            >>> loader = BertLoaderHuggerFace(
                     libai.models.BertModel,
                     cfg,
                     'path/bert-base-chinese'
