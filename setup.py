@@ -133,7 +133,7 @@ if __name__ == "__main__":
             "isort==5.10.1",
             "black==21.4b ",
             "autoflake",
-            "tensorboardX",
+            "tensorboardX<=2.5.1",
             "pytest",
         ],
         packages=find_packages(),
