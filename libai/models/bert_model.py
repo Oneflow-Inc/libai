@@ -426,9 +426,12 @@ class BertPreTrainingHeads(nn.Module):
         prediction_scores = self.lm_logits(prediction_scores, word_embeddings_weight)
 
         if lm_labels is not None:
+            prediction_scores = flow._C.amp_white_identity(prediction_scores)
+            seq_relationship_score = flow._C.amp_white_identity(seq_relationship_score)
             return self.loss_func(
                 prediction_scores, lm_labels, loss_mask, seq_relationship_score, ns_labels
             )
+
         return {
             "prediction_scores": prediction_scores,
             "seq_relationship_score": seq_relationship_score,
