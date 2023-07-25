@@ -1,8 +1,8 @@
 # Detailed instruction for using distributed inference in LiBai
 
-If you want to using distributed inference in LiBai from pretrained `pytorch` model, you can refer to [DALLE2 inferecn doc](https://github.com/Oneflow-Inc/libai/blob/main/docs/source/notes/How_to_use_model_parallel_in_LiBai.md). And [Chinese doc for distributed inference](https://github.com/Oneflow-Inc/libai/discussions/386) is also available.
+If you want to using distributed inference in LiBai from pretrained `pytorch` model, you can refer to [DALLE2 inference doc](https://github.com/Oneflow-Inc/libai/blob/main/docs/source/notes/How_to_use_model_parallel_in_LiBai.md). And [Chinese doc for distributed inference](https://github.com/Oneflow-Inc/libai/discussions/386) is also available.
 
-Here we introduce how to use distributed infenrence in LiBai:
+Here we introduce how to use distributed inference in LiBai:
 
 ## Check `model.py`
 
