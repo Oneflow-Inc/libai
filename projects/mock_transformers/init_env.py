@@ -118,9 +118,51 @@ temp_tensor_func = flow.tensor
 
 def flow_tensor(input_x, **kwargs):
     if isinstance(input_x, (int, float)):
-        return input_x
-    else:
-        return temp_tensor_func(input_x, **kwargs)
+        if "device" in kwargs:
+            device= "cuda" if "cuda" in kwargs["device"].type else "cpu"
+            kwargs.pop("device")
+            return temp_tensor_func(
+                input_x, 
+                sbp=flow.sbp.broadcast,
+                placement=flow.env.all_device_placement(device), 
+                **kwargs
+            )
+    return temp_tensor_func(input_x, **kwargs)
 
 
 flow.tensor = flow_tensor
+
+# -----------------mock flow.full---------------
+temp_full_func = flow.full
+
+
+def flow_full(*args, **kwargs):
+    shape = args[0]
+    value_tensor = args[1]
+    device = kwargs.get("device", None)
+    return flow.zeros(shape, dtype=value_tensor.dtype, device=device) + value_tensor
+
+flow.full = flow_full
+
+# # ----------------modify max op---------------
+temp_max_func = flow.max
+
+def flow_max(*args, **args_kwargs): 
+    input_tensor = args[0] 
+    other = None
+    if len(args) > 1:
+        other = args[1] 
+        
+    if isinstance(other, flow.Tensor):
+        other = other.type(input_tensor.dtype)
+        
+    input_ = input_tensor
+    other_ = other
+    args = list(args) 
+    args[0] = input_
+    if other is not None:
+        args[1] = other_
+        
+    return temp_max_func(*args, **args_kwargs)
+
+flow.max = flow_max
