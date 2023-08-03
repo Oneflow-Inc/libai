@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import init_env  # noqa
 import oneflow as flow
 from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
@@ -21,7 +20,22 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pytorch_utils
 from transformers.models.gpt2 import modeling_gpt2
 
 from libai.layers import Conv1D
+from libai.layers import Embedding as LiBaiEmbedding
 from libai.utils import distributed as dist
+from projects.mock_transformers import init_env  # noqa
+
+# ------replace Embedding to libai------
+temp_class = modeling_gpt2.GPT2Model
+
+
+class LiBaiGPTModel(temp_class):
+    def __init__(self, config):
+        super().__init__(config)
+        self.wte = LiBaiEmbedding(config.vocab_size, self.embed_dim)
+        self.wpe = LiBaiEmbedding(config.max_position_embeddings, self.embed_dim)
+
+
+modeling_gpt2.GPT2Model = LiBaiGPTModel
 
 
 # ------replace Conv1D to libai------
@@ -65,26 +79,26 @@ class LiBaiGPT2Attention(temp_class):
                 in_features=self.embed_dim,
                 out_features=2 * self.embed_dim,
                 parallel="col",
-                dtype=flow.float16,
+                dtype=flow.float32,
             )
             self.q_attn = Conv1D(
                 in_features=self.embed_dim,
                 out_features=self.embed_dim,
                 parallel="col",
-                dtype=flow.float16,
+                dtype=flow.float32,
             )
         else:
             self.c_attn = Conv1D(
                 in_features=self.embed_dim,
                 out_features=3 * self.embed_dim,
                 parallel="col",
-                dtype=flow.float16,
+                dtype=flow.float32,
             )
         self.c_proj = Conv1D(
             in_features=self.embed_dim,
             out_features=self.embed_dim,
             parallel="row",
-            dtype=flow.float16,
+            dtype=flow.float32,
         )
 
 
@@ -103,15 +117,83 @@ class LiBaiGPT2MLP(temp_class):
             in_features=embed_dim,
             out_features=intermediate_size,
             parallel="col",
-            dtype=flow.float16,
+            dtype=flow.float32,
         )
         self.c_proj = Conv1D(
             in_features=intermediate_size,
             out_features=embed_dim,
             parallel="row",
-            dtype=flow.float16,
+            dtype=flow.float32,
         )
 
+
+modeling_gpt2.GPT2MLP = LiBaiGPT2MLP
+
+
+# ------replace Loss Function to libai------
+
+
+class GPT2Loss(flow.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, logits, lable):
+        lable = lable.to_global(placement=logits.placement)
+        loss = flow._C.sparse_softmax_cross_entropy(logits, lable)
+        loss = loss.mean()
+        return loss
+
+
+modeling_gpt2.CrossEntropyLoss = GPT2Loss
+
+
+# ------replace model return type to libai------
+temp_class = modeling_gpt2.GPT2LMHeadModel
+
+
+class LiBaiGPT2LMHeadModel(temp_class):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def forward(
+        self,
+        input_ids=None,
+        past_key_values=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        encoder_hidden_states=None,
+        encoder_attention_mask=None,
+        labels=None,
+        use_cache=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ):
+        out = super().forward(
+            input_ids=input_ids,
+            past_key_values=past_key_values,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            encoder_hidden_states=encoder_hidden_states,
+            encoder_attention_mask=encoder_attention_mask,
+            labels=labels,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        return {
+            "loss": out.loss,
+        }
+
+
+modeling_gpt2.GPT2LMHeadModel = LiBaiGPT2LMHeadModel
 
 if __name__ == "__main__":
     # set dist config
@@ -127,7 +209,7 @@ if __name__ == "__main__":
     dist.setup_dist_util(parallel_config)
 
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("gpt2", torch_dtype=flow.float16)
+    model = AutoModelForCausalLM.from_pretrained("gpt2", torch_dtype=flow.float32)
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
