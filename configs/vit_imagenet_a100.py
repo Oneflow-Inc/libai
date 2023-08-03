@@ -9,33 +9,8 @@ from flowvision.data import Mixup
 from flowvision.loss.cross_entropy import SoftTargetCrossEntropy
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/path/to/imagenet"
-dataloader.test[0].dataset.root = "/path/to/imagenet"
-
-import os
-host = os.getenv("HOST")
-
-if (host == "oneflow-28"):
-    dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
-    dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
-elif (host == "oneflow-15"):
-    dataloader.train.dataset[0].root = "/minio/sdd/dataset/imagenet/extract"
-    dataloader.test[0].dataset.root = "/minio/sdd/dataset/imagenet/extract"
-elif (host == "oneflow-16"):
-    dataloader.train.dataset[0].root = "/dataset/ImageNet/extract"
-    dataloader.test[0].dataset.root = "/dataset/ImageNet/extract"
-elif (host == "oneflow-25"):
-    dataloader.train.dataset[0].root = "/data/dataset/ImageNet/extract"
-    dataloader.test[0].dataset.root = "/data/dataset/ImageNet/extract"
-elif (host == "oneflow-26"):
-    dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
-    dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
-elif (host == "oneflow-27"):
-    dataloader.train.dataset[0].root = "/ssd/dataset/ImageNet/extract"
-    dataloader.test[0].dataset.root = "/ssd/dataset/ImageNet/extract"
-else:
-    print("NO LEGAL HOST, exit.")
-    exit(1)
+dataloader.train.dataset[0].root = "/data/ImageNet/extract"
+dataloader.test[0].dataset.root = "/data/ImageNet/extract"
 
 # Refine model cfg for vit training on imagenet
 model.cfg.num_classes = 1000
@@ -64,6 +39,7 @@ train.train_micro_batch_size = 128
 train.test_micro_batch_size = 128
 # train.train_epoch = 300
 train.train_epoch = 0
+import os
 train.train_iter = int(os.getenv("NUM_ITER_ENV"))
 train.warmup_ratio = 5 / 300
 train.evaluation.enabled = False
