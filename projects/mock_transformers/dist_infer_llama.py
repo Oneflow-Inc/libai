@@ -68,10 +68,10 @@ temp_class = modeling_llama.LlamaMLP
 
 
 class LiBaiLlamaMLP(temp_class):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        hidden_size = kwargs["hidden_size"]
-        intermediate_size = kwargs["intermediate_size"]
+    def __init__(self, config):
+        super().__init__(config)
+        hidden_size = config.hidden_size
+        intermediate_size = config.intermediate_size
         self.gate_proj = Linear(
             hidden_size, intermediate_size, bias=False, parallel="col", dtype=flow.float16
         )
@@ -86,6 +86,8 @@ class LiBaiLlamaMLP(temp_class):
 modeling_llama.LlamaMLP = LiBaiLlamaMLP
 
 if __name__ == "__main__":
+    model_path = "/data/model_ckpt/LinkSoul_Chinese-Llama-2-7b"
+
     # set dist config
     parallel_config = DictConfig(
         dict(
@@ -100,13 +102,13 @@ if __name__ == "__main__":
 
     # initial and load model
     model = AutoModelForCausalLM.from_pretrained(
-        "decapoda-research/llama-13b-hf", torch_dtype=flow.float16
+        model_path, torch_dtype=flow.float16
     )
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("decapoda-research/llama-13b-hf", use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
 
     # get input_ids
     prompt = "Hello, I'm am conscious and"
