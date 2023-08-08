@@ -92,7 +92,7 @@ if __name__ == "__main__":
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
-            tensor_parallel_size=4,
+            tensor_parallel_size=2,
             pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
             pipeline_num_layers=None,
             device_type="cpu",
@@ -100,10 +100,15 @@ if __name__ == "__main__":
     )
     dist.setup_dist_util(parallel_config)
 
-    # initial and load model
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path, torch_dtype=flow.float16
+    placement_sbp_dict = dict(
+        placement=flow.env.all_device_placement("cuda"),
+        sbp=flow.sbp.broadcast,
     )
+
+    # initial and load model
+    with global_mode(True, **placement_sbp_dict):
+        model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=flow.float16)
+
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
@@ -120,10 +125,6 @@ if __name__ == "__main__":
     )
 
     # generate id
-    placement_sbp_dict = dict(
-        placement=flow.env.all_device_placement("cuda"),
-        sbp=flow.sbp.broadcast,
-    )
     with global_mode(True, **placement_sbp_dict):
         generated_ids = model.generate(input_ids, max_length=30)
     out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)

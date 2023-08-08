@@ -90,8 +90,17 @@ if __name__ == "__main__":
     )
     dist.setup_dist_util(parallel_config)
 
+    placement_sbp_dict = dict(
+        placement=flow.env.all_device_placement("cuda"),
+        sbp=flow.sbp.broadcast,
+    )
+
     # initial and load model
-    model = AutoModelForCausalLM.from_pretrained("bigscience/bloom-560m", torch_dtype=flow.float16)
+    with global_mode(True, **placement_sbp_dict):
+        model = AutoModelForCausalLM.from_pretrained(
+            "bigscience/bloom-560m", torch_dtype=flow.float16
+        )
+
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
@@ -108,10 +117,6 @@ if __name__ == "__main__":
     )
 
     # generate id
-    placement_sbp_dict = dict(
-        placement=flow.env.all_device_placement("cuda"),
-        sbp=flow.sbp.broadcast,
-    )
     with global_mode(True, **placement_sbp_dict):
         generated_ids = model.generate(input_ids, max_length=30)
     out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
