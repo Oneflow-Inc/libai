@@ -89,7 +89,7 @@ if __name__ == "__main__":
     with global_mode(True, **placement_sbp_dict):
         # initial and load model
         model = AutoModelForCausalLM.from_pretrained("facebook/opt-125m", torch_dtype=flow.float16)
-    
+
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
