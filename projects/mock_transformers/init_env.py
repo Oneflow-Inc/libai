@@ -113,14 +113,14 @@ def flow_softmax(*args, **kwargs):
 nn.functional.softmax = flow_softmax
 
 # -----------------mock flow.tensor---------------
-temp_tensor_func = flow.tensor
+# temp_tensor_func = flow.tensor
 
 
-def flow_tensor(input_x, **kwargs):
-    if isinstance(input_x, (int, float)):
-        return input_x
-    else:
-        return temp_tensor_func(input_x, **kwargs)
+# def flow_tensor(input_x, **kwargs):
+#     if isinstance(input_x, (int, float)):
+#         return input_x
+#     else:
+#         return temp_tensor_func(input_x, **kwargs)
 
 
-flow.tensor = flow_tensor
+# flow.tensor = flow_tensor
