@@ -105,7 +105,9 @@ if __name__ == "__main__":
 
     # initial and load model
     with global_mode(True, **placement_sbp_dict):
-        model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b", torch_dtype=flow.float16)
+        model = AutoModelForCausalLM.from_pretrained(
+            "meta-llama/Llama-2-7b", torch_dtype=flow.float16
+        )
 
     # set model to cuda
     dist.set_device_type("cuda")
