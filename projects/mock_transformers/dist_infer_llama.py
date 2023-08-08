@@ -86,8 +86,6 @@ class LiBaiLlamaMLP(temp_class):
 modeling_llama.LlamaMLP = LiBaiLlamaMLP
 
 if __name__ == "__main__":
-    model_path = "/data/model_ckpt/LinkSoul_Chinese-Llama-2-7b"
-
     # set dist config
     parallel_config = DictConfig(
         dict(
@@ -107,13 +105,13 @@ if __name__ == "__main__":
 
     # initial and load model
     with global_mode(True, **placement_sbp_dict):
-        model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=flow.float16)
+        model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b", torch_dtype=flow.float16)
 
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b", use_fast=False)
 
     # get input_ids
     prompt = "Hello, I'm am conscious and"
