@@ -68,10 +68,10 @@ temp_class = modeling_llama.LlamaMLP
 
 
 class LiBaiLlamaMLP(temp_class):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        hidden_size = kwargs["hidden_size"]
-        intermediate_size = kwargs["intermediate_size"]
+    def __init__(self, config):
+        super().__init__(config)
+        hidden_size = config.hidden_size
+        intermediate_size = config.intermediate_size
         self.gate_proj = Linear(
             hidden_size, intermediate_size, bias=False, parallel="col", dtype=flow.float16
         )
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
-            tensor_parallel_size=4,
+            tensor_parallel_size=2,
             pipeline_parallel_size=1,  # set to 1, unsupport pipeline parallel now
             pipeline_num_layers=None,
             device_type="cpu",
@@ -98,15 +98,22 @@ if __name__ == "__main__":
     )
     dist.setup_dist_util(parallel_config)
 
-    # initial and load model
-    model = AutoModelForCausalLM.from_pretrained(
-        "decapoda-research/llama-13b-hf", torch_dtype=flow.float16
+    placement_sbp_dict = dict(
+        placement=flow.env.all_device_placement("cuda"),
+        sbp=flow.sbp.broadcast,
     )
+
+    # initial and load model
+    with global_mode(True, **placement_sbp_dict):
+        model = AutoModelForCausalLM.from_pretrained(
+            "meta-llama/Llama-2-7b", torch_dtype=flow.float16
+        )
+
     # set model to cuda
     dist.set_device_type("cuda")
     model._apply(dist.convert_to_distributed_default_setting)
     # initial tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("decapoda-research/llama-13b-hf", use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b", use_fast=False)
 
     # get input_ids
     prompt = "Hello, I'm am conscious and"
@@ -118,10 +125,6 @@ if __name__ == "__main__":
     )
 
     # generate id
-    placement_sbp_dict = dict(
-        placement=flow.env.all_device_placement("cuda"),
-        sbp=flow.sbp.broadcast,
-    )
     with global_mode(True, **placement_sbp_dict):
         generated_ids = model.generate(input_ids, max_length=30)
     out_put_ids = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
