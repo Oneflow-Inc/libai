@@ -14,10 +14,10 @@
     <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-pink.svg">
     </a>
-    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+    <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="Python Checks" src="https://github.com/Oneflow-Inc/libai/workflows/Python checks/badge.svg">
     </a>
-    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+    <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="Docs Release Status" src="https://github.com/Oneflow-Inc/libai/workflows/Document Release/badge.svg">
     </a>
 </p>

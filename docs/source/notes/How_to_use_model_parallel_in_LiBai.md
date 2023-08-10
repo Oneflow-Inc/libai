@@ -1,10 +1,10 @@
 # Detailed instruction on using model parallel in LiBai
-This document is a tutorial for users to learn how to transer a pytorch model to oneflow, and use model parallel in Libai for inference. We will first take the DALLE2 model for example, and then we will show how to use model parallel which can be easily done in libai.
+This document is a tutorial for users to learn how to transfer a pytorch model to oneflow, and use model parallel in Libai for inference. We will first take the DALLE2 model for example, and then we will show how to use model parallel which can be easily done in libai.
 
 **Note**: the code of DALLE2 is adapted from [this repo](https://github.com/lucidrains/DALLE2-pytorch), which is an unofficial implementation. The final result may differ from the original generated images in the [paper](https://arxiv.org/abs/2204.06125). You can also try the model in [google colab](https://colab.research.google.com/github/LAION-AI/dalle2-laion/blob/main/notebooks/dalle2_laion_alpha.ipynb).
 
-## Transfer pytroch model to oneflow.
-It's easy for user to tansfer a pytorch model into oneflow, since most of oneflow's api is consistent with pytorch. First we change `import torch` to `import oneflow as flow`, and then we can replace all `torch` in the code to `flow`. If the model can work correctly in the originally
+## Transfer pytorch model to oneflow.
+It's easy for user to transfer a pytorch model into oneflow, since most of oneflow's api is consistent with pytorch. First we change `import torch` to `import oneflow as flow`, and then we can replace all `torch` in the code to `flow`. If the model can work correctly in the originally
 pytorch codes, it's likely to be able to work correctly in oneflow. Sometimes the program may raise error like 
 ```
 AttributeError: module 'oneflow' has no attribute 'xxx'
@@ -130,11 +130,11 @@ It should be noted that the original pytorch code also import other python packa
 
 Fortunately, only a few api of these packages are used, we can take out the relevant code from the github repos and merge them in a separate file.
 
-For example, we can simplely create the einops_ext.py file adapted from [here](https://github.com/lucidrains/einops-exts/blob/main/einops_exts/einops_exts.py), then we can import einops_ext from the python file which use oneflow instead of python packages using torch.
+For example, we can simply create the einops_ext.py file adapted from [here](https://github.com/lucidrains/einops-exts/blob/main/einops_exts/einops_exts.py), then we can import einops_ext from the python file which use oneflow instead of python packages using torch.
 ```python
 # einops_ext.py
 import re
-from oneflow import nn #here change `from torch improt nn` to `from oneflow import nn`
+from oneflow import nn #here change `from torch import nn` to `from oneflow import nn`
 from functools import wraps, partial
 
 from einops import rearrange, reduce, repeat
@@ -145,7 +145,7 @@ from einops import rearrange, reduce, repeat
 ## 3、Using Libai's api. 
 [LiBai](https://github.com/Oneflow-Inc/libai) is a large-scale open-source model training toolbox based on OneFlow.
 
-Libai provides many efficient api which can be easily used for distributed training and evaluation. It also supports some popular models under the projects folder such as [CLIP](https://github.com/Oneflow-Inc/libai/tree/main/projects/CLIP). To avoid duplication of work, we directly use the clip model implemented in Libai. The relavant code in the original pytorch code is the `OpenAIClipAdapter` class which can be written as follows:
+Libai provides many efficient api which can be easily used for distributed training and evaluation. It also supports some popular models under the projects folder such as [CLIP](https://github.com/Oneflow-Inc/libai/tree/main/projects/CLIP). To avoid duplication of work, we directly use the clip model implemented in Libai. The relevant code in the original pytorch code is the `OpenAIClipAdapter` class which can be written as follows:
 ```python
 # _clip.py
 import os
@@ -279,7 +279,7 @@ dalle2_model = LazyCall(DALLE2)(
 In order to achieve the model parallel inference under libai, we should set the parallel mode according to your needs. The default value of argument parallel is `data` in libai.layers.Linear, which means data parallel. To achieve model parallel, we need change the parallel to `col` or `row`. The most efficient way is to set the Linear layers in the col -> row -> col order.
 
 A transformer block contains a attention and a feedforward submodule, and each submodule exactly contains 2 Linear layers. 
-The attention module contains the qkv projection and out projection. Thus we set the qkv projejction as `col`, and the out projection as `row`:
+The attention module contains the qkv projection and out projection. Thus we set the qkv projection as `col`, and the out projection as `row`:
 ```python
 #attention 
 class Attention(nn.Module):
