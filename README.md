@@ -42,7 +42,7 @@ LiBai is a large-scale open-source model training toolbox based on OneFlow. The 
 
 - **Support for both CV and NLP tasks**
 
-    LiBai has predifined data process for both CV and NLP datasets such as CIFAR, ImageNet, and BERT Dataset.
+    LiBai has predefined data process for both CV and NLP datasets such as CIFAR, ImageNet, and BERT Dataset.
 
 - **Easy to use**
 
