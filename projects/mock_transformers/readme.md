@@ -106,6 +106,16 @@ python3 -m pip install huggingface_hub
       <td align="center">-</td>
     </tr>
     <tr>
+      <td align="center"><a href="https://huggingface.co/docs/transformers/main/en/model_doc/llama2"> <b> LLAMA2 </b> </td>
+      <td align="center">&#10004;</td>
+      <td align="center">-</td>
+    </tr>
+    <tr>
+      <td align="center"><a href="https://huggingface.co/baichuan-inc/Baichuan-7B"> <b> Baichuan </b> </td>
+      <td align="center">&#10004;</td>
+      <td align="center">-</td>
+    </tr>
+    <tr>
       <td align="center"><a href="https://huggingface.co/docs/transformers/v4.26.1/en/model_doc/opt#overview"> <b> OPT </b> </td>
       <td align="center">&#10004;</td>
       <td align="center">-</td>
