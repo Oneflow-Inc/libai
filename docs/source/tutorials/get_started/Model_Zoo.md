@@ -70,7 +70,7 @@ For more details about the supported parallelism training on different models, p
 </table>
 
 **Additions:**
-&#10004; means you can train this model under specific parallelism techniques or combine two or three of them with &#10004; for 2D or 3D paralleism training.
+&#10004; means you can train this model under specific parallelism techniques or combine two or three of them with &#10004; for 2D or 3D parallelism training.
 
 ## Baselines
 Here is the collection of baselines trained with LiBai. Due to our resource constraints, we will gradually release the training results in the future.
