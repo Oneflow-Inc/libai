@@ -41,7 +41,9 @@ with torch.autocast("cuda"):
 
 ```
 - Generated prompt: `a dog in a astronaut suit and luffy, intricate, luffy, highly detailed, digital painting, artstation, concept art, smooth, sharp focus, illustration, luffy, unreal engine 5, 8 k, art by artgerm`
-<center><img src="https://user-images.githubusercontent.com/53039617/202831136-b44a37d2-a210-4eca-9fea-1a01976e92df.png" width="30%"></center>
+<div style="text-align: center;">
+  <img src="https://user-images.githubusercontent.com/53039617/202831136-b44a37d2-a210-4eca-9fea-1a01976e92df.png" width="30%">
+</div>
 
 
 ## How to customize the gpt2 with your own data
