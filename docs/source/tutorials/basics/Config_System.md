@@ -220,7 +220,7 @@ train = dict(
     seed=1234,
 )
 ```
-**Note:** ``warmup_ratio`` is the ratio of warmup iterations of the total training iterations, and the real ``warmup iterations`` will be calculated by ``wramup_ratio * train_iter`` automatically.
+**Note:** ``warmup_ratio`` is the ratio of warmup iterations of the total training iterations, and the real ``warmup iterations`` will be calculated by ``warmup_ratio * train_iter`` automatically.
 
 **Example:** If you need to train 300 epochs with 5 warmup epochs, update the config as follows:
 ```python

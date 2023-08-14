@@ -49,4 +49,4 @@ checkpointer = Checkpointer(model, save_dir="output/")
 checkpointer.save("model_999")  # save to output/model_999
 ```
 
-You can also save other informations (e.g. `optim`, `scheduler`) other than model weights by using `checkpointer`. See [libai.utils.checkpoint](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) for more details.
+You can also save other information's (e.g. `optim`, `scheduler`) other than model weights by using `checkpointer`. See [libai.utils.checkpoint](https://libai.readthedocs.io/en/latest/modules/libai.utils.html#module-libai.utils.checkpoint) for more details.

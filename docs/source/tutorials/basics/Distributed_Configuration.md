@@ -140,7 +140,7 @@ And the `data_parallel_size` will be automatically set to `(8 / (2 * 2)) = 2`
 #### **Set `custom_pipeline_stage_id` for Load Balance**
 In most cases, the transformer layers of common models have the same computational overhead, so there is no need to set `custom_pipeline_stage_id`.
 
-But when transformer layers have unbalanced computational overhead, you can set `custom_pipeline_stage_id` for manually balance the compuation between stages in pipeline_parallelism
+But when transformer layers have unbalanced computational overhead, you can set `custom_pipeline_stage_id` for manually balance the computation between stages in pipeline_parallelism
 
 For example:
 ```python
