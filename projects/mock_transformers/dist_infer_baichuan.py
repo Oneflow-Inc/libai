@@ -20,7 +20,7 @@ from omegaconf import DictConfig
 from oneflow.utils.global_view import global_mode
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from libai.layers import Embedding, Linear, RMSLayerNorm
+from libai.layers import Linear, RMSLayerNorm
 from libai.utils import distributed as dist
 
 # ------replace RMSNorm to libai------
