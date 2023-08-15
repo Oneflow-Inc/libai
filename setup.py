@@ -120,7 +120,7 @@ if __name__ == "__main__":
             "PyYAML",
             "jieba",
             "regex",
-            "requests",
+            "requests>=2.31.0",
             "scipy",
             "sentencepiece>=0.1",
             "tabulate",
