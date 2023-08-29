@@ -1,0 +1,25 @@
+FROM oneflowinc/oneflow:0.9.1.dev20230630-cuda11.7
+
+# Comment it if you are not in China
+RUN sed -i 's/security.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+RUN sed -i 's/archive.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update && apt-get install -y \
+	python3-opencv ca-certificates python3-dev git wget sudo ninja-build
+RUN ln -sv /usr/bin/python3 /usr/bin/python
+
+# install libai
+WORKDIR /workspace
+RUN git clone https://github.com/Oneflow-Inc/libai.git libai_repo
+
+WORKDIR /workspace/libai_repo
+RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt 
+RUN git checkout proj_demo_2023_9
+
+WORKDIR /workspace
+RUN mkdir -p /workspace/data/bert_data && cd /workspace/data/bert_data && \
+    wget https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt && \
+    wget https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.bin && \
+    wget https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.idx
+
