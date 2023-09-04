@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from .activation import build_activation
+from .batch_norm import BatchNorm2d
 from .cross_entropy import ParallelCrossEntropyLoss
 from .embedding import Embedding, SinePositionalEmbedding, VocabEmbedding, PatchEmbedding
 from .layer_norm import LayerNorm, RMSLayerNorm
@@ -43,4 +44,5 @@ __all__ = [
     "LMLogits",
     "drop_path",
     "DropPath",
+    "BatchNorm2d"
 ]
