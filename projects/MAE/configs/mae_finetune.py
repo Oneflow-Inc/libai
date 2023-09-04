@@ -38,7 +38,7 @@ dataloader = get_config("common/data/imagenet.py").dataloader
 n_gpus = 8
 
 # Graph training
-graph.enabled = True
+graph.enabled = False
 
 # Refine model cfg for vit training on imagenet
 model.num_classes = 1000
@@ -50,12 +50,12 @@ finetune.enable = True  # only load weight if enable is True
 finetune.weight_style = (
     "oneflow"  # Set "oneflow" for loading oneflow weights, set "pytorch" for loading torch weights
 )
-finetune.path = "/path/to/pretrained_mae_weight"
+finetune.path = "/work/libai/output/vit_base_82.658"
 
 
 # Refine data path to imagenet
-dataloader.train.dataset[0].root = "/path/to/imagenet"
-dataloader.test[0].dataset.root = "/path/to/imagenet"
+dataloader.train.dataset[0].root = "/imagenet"
+dataloader.test[0].dataset.root = "/imagenet"
 
 # Add Mixup Func
 dataloader.train.mixup_func = LazyCall(Mixup)(
@@ -70,9 +70,9 @@ dataloader.train.mixup_func = LazyCall(Mixup)(
 
 
 # Refine training settings for MAE finetune
-train.train_micro_batch_size = 32
-train.num_accumulation_steps = 4
-train.test_micro_batch_size = 32
+train.train_micro_batch_size = 128
+train.num_accumulation_steps = 1
+train.test_micro_batch_size = 64
 effective_batch_size = train.train_micro_batch_size * train.num_accumulation_steps * n_gpus
 
 train.train_epoch = 100
@@ -82,10 +82,10 @@ train.evaluation.eval_after_n_epoch = 1
 train.checkpointer.save_model_after_n_epoch = 1
 
 # Set layer decay for MAE fine-tune
-train.layer_decay = 0.65
+train.layer_decay = 0.75
 
 # AMP
-train.amp.enabled = True
+#train.amp.enabled = True
 
 
 # Base learning in MAE is set to 1.5e-4
@@ -93,13 +93,13 @@ train.amp.enabled = True
 # lr = base_lr * batch_size / 256
 # In LiBai, you should refine the actually learning rate due to your on settings
 # Here we use 8 GPUs, 128 batch_size per GPU for training, batch_size equals to 1024
-base_lr = 5e-4
+base_lr = 1e-3
 actual_lr = base_lr * effective_batch_size / 256
 
 # Refine optim settings
 optim.params._target_ = param_groups_lrd
 optim.params.weight_decay = 0.05
-optim.params.layer_decay = 0.65
+optim.params.layer_decay = 0.75
 optim.lr = actual_lr
 
 del optim.params.clip_grad_max_norm
@@ -120,6 +120,11 @@ else:
         min_lr=1e-6,
     )
 
+# checkpointing
+#train.activation_checkpoint.enabled = True
+
+# zero
+#train.zero_optimization.enabled = True
 
 # Distributed Settings
 train.dist.pipeline_num_layers = model.depth

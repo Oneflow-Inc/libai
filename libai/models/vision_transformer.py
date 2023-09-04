@@ -156,13 +156,14 @@ class VisionTransformer(nn.Module):
         cls_token = self.cls_token.expand(
             x.shape[0], -1, -1
         )  # stole cls_tokens impl from Phil Wang, thanks
-        cls_token = cls_token.to_global(sbp=x.sbp, placement=cls_token.placement)
+#        cls_token = cls_token.to_global(sbp=x.sbp, placement=cls_token.placement)
+
         x = flow.cat((cls_token, x), dim=1)
 
         # position embedding
-        pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
-        pos_embed = pos_embed.to_global(sbp=x.sbp, placement=pos_embed.placement)
-        x = self.pos_drop(x + pos_embed)
+#        pos_embed = self.pos_embed.expand(x.shape[0], -1, -1)
+#        pos_embed = pos_embed.to_global(sbp=x.sbp, placement=pos_embed.placement)
+        x = self.pos_drop(x + self.pos_embed)
 
         # transformer block
         x = self.blocks(x)
