@@ -2,7 +2,7 @@ FROM nvcr.io/nvidia/pytorch:23.03-py3
 
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 # install oneflow
-RUN python3 -m pip install --pre oneflow -f https://oneflow-staging.oss-cn-beijing.aliyuncs.com/branch/main/cu118
+RUN python3 -m pip install --pre oneflow -f https://oneflow-staging.oss-cn-beijing.aliyuncs.com/branch/release/yolo_demo/cu118
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y libsm6 libxrender1 libxext6
