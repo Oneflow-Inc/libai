@@ -1,25 +1,37 @@
-FROM oneflowinc/oneflow:0.9.1.dev20230630-cuda11.7
+FROM nvcr.io/nvidia/pytorch:23.03-py3
 
-# Comment it if you are not in China
-RUN sed -i 's/security.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
-RUN sed -i 's/archive.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+# install oneflow
+RUN python3 -m pip install --pre oneflow -f https://oneflow-staging.oss-cn-beijing.aliyuncs.com/branch/main/cu118
 
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update && apt-get install -y \
-	python3-opencv ca-certificates python3-dev git wget sudo ninja-build
-RUN ln -sv /usr/bin/python3 /usr/bin/python
+RUN apt-get update && apt-get install -y libsm6 libxrender1 libxext6
 
 # install libai
-WORKDIR /workspace
+WORKDIR /code
 RUN git clone https://github.com/Oneflow-Inc/libai.git libai_repo
 
-WORKDIR /workspace/libai_repo
+WORKDIR /code/libai_repo
 RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt 
 RUN git checkout proj_demo_2023_9
 
-WORKDIR /workspace
-RUN mkdir -p /workspace/data/bert_data && cd /workspace/data/bert_data && \
+WORKDIR /code
+RUN mkdir -p /code/data/bert_data && cd /code/data/bert_data && \
     wget https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/bert-base-chinese-vocab.txt && \
     wget https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.bin && \
     wget https://oneflow-static.oss-cn-beijing.aliyuncs.com/ci-files/dataset/libai/bert_dataset/loss_compara_content_sentence.idx
+
+# download pretrained models and dataset
+WORKDIR /code
+RUN mkdir -p /code/data && cd /code/data && \
+    wget http://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/models/yolov5x-seg.pt && \
+    wget http://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/models/yolov5s-seg.pt && \
+    wget http://oneflow-public.oss-cn-beijing.aliyuncs.com/datasets/coco128-seg.zip && \
+    unzip coco128-seg.zip && rm coco128-seg.zip
+
+WORKDIR /code
+RUN git clone https://github.com/Oneflow-Inc/one-yolov5.git && \
+    cd /code/one-yolov5 && git checkout proj_demo && \
+    pip install -r requirements.txt && \
+    rm -rf /root/.cache/pip
 
