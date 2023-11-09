@@ -1,8 +1,7 @@
+from libai.config import instantiate
 from projects.Llama.configs.llama_config import cfg, tokenizer
 from projects.Llama.llama import LlamaForCausalLM
 from projects.Llama.llama_loader import LlamaLoaderHuggerFace
-from libai.config import instantiate
-
 
 pretrained_model_path = "/data0/hf_models/meta-llama/Llama-2-7b-hf"
 
@@ -26,4 +25,3 @@ res = model.generate(
 
 res = tokenizer.decode(res)
 print(res)
-

@@ -4,9 +4,9 @@ from libai.config import LazyCall
 from projects.Llama.llama import LlamaForCausalLM
 from projects.Llama.tokenizer import LlamaTokenizer
 
-cfg=dict(
+cfg = dict(
     # Model
-    hidden_act='silu',
+    hidden_act="silu",
     hidden_size=4096,
     initializer_range=0.02,
     intermediate_size=11008,
@@ -44,9 +44,9 @@ cfg=dict(
     chunk_size_feed_forward=0,
     output_scores=False,
     use_cache=True,
-    bos_token_id= 1,
-    eos_token_id= 2,
-    pad_token_id= 32000,
+    bos_token_id=1,
+    eos_token_id=2,
+    pad_token_id=32000,
     # train
     pretrained_model_path=None,
 )

@@ -20,16 +20,11 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.config import configurable
-from libai.layers import (
-    RMSLayerNorm,
-    VocabEmbedding,
-    Linear
-)
-from libai.layers.attention import AttnMaskType
-from libai.utils import distributed as dist
 from libai.inference.generator.generation_utils import Generator
-
+from libai.layers import Linear, RMSLayerNorm, VocabEmbedding
+from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
+from libai.utils import distributed as dist
 
 
 def rotate_half(x):
@@ -55,16 +50,16 @@ class RotaryEmbedding(nn.Module):
         self.max_position_embeddings = max_position_embeddings
         self.base = base
 
-        self._set_cos_sin_cache(
-            seq_len=max_position_embeddings, dtype=dtype, layer_idx=layer_idx
-        )
+        self._set_cos_sin_cache(seq_len=max_position_embeddings, dtype=dtype, layer_idx=layer_idx)
 
     def _set_cos_sin_cache(self, seq_len, dtype, layer_idx):
         position = flow.arange(
-            0, self.dim, 2,
-            dtype=flow.float, 
+            0,
+            self.dim,
+            2,
+            dtype=flow.float,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=dist.get_layer_placement(layer_idx)
+            placement=dist.get_layer_placement(layer_idx),
         )
         inv_freq = 1.0 / (self.base ** (position / self.dim))
 
@@ -115,7 +110,7 @@ class MLP(nn.Module):
             init_method=init_method,
             layer_idx=layer_idx,
         )
-        
+
         self.up_proj = Linear(
             hidden_size,
             intermediate_size,
@@ -153,7 +148,7 @@ class MultiheadAttention(nn.Module):
         scale_mask_softmax_fusion=False,
         attn_mask_type=AttnMaskType.padding,
         *,
-        layer_idx=0
+        layer_idx=0,
     ):
         super().__init__()
         self.hidden_size = hidden_size
@@ -185,7 +180,7 @@ class MultiheadAttention(nn.Module):
             init_method=output_layer_init_method,
             layer_idx=layer_idx,
         )
-        
+
         self.coeff = None
 
     def forward(
@@ -193,8 +188,8 @@ class MultiheadAttention(nn.Module):
         hidden_states: flow.Tensor,
         encoder_states: flow.Tensor = None,
         attention_mask: flow.Tensor = None,
-        rotary_emb = None,
-        position_ids = None,
+        rotary_emb=None,
+        position_ids=None,
         past_key_value: Tuple[flow.Tensor, flow.Tensor] = None,
         use_cache: bool = False,
     ):
@@ -205,7 +200,7 @@ class MultiheadAttention(nn.Module):
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
 
         bsz, tgt_len = hidden_states.size()[:2]
-        
+
         query_key_value = self.query_key_value(hidden_states)
         query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
         query_key_value = query_key_value.permute(
@@ -259,9 +254,9 @@ class MultiheadAttention(nn.Module):
         #         )[0]
         #     else:
         #         attention_weights = flow.softmax(attention_scores, dim=-1)
-        
+
         attention_weights = attention_scores + attention_mask
-        
+
         attention_weights = flow.softmax(attention_weights, dim=-1)
         # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
         context = flow.matmul(attention_weights, value)
@@ -269,7 +264,7 @@ class MultiheadAttention(nn.Module):
         # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
         context = context.transpose(1, 2)
         output = self.o_proj(context.flatten(2))
-        
+
         if use_cache:
             output = (output, past_key_value)
 
@@ -279,9 +274,9 @@ class MultiheadAttention(nn.Module):
 class CasualMask(nn.Module):
     def __init__(self, max_positions=1024, *, layer_idx=0):
         super().__init__()
-        
+
         self.mask = flow.full(
-            (max_positions, max_positions), 
+            (max_positions, max_positions),
             flow.finfo(flow.float32).min,
             placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
@@ -292,7 +287,7 @@ class CasualMask(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
         self.mask.masked_fill_(mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0)
-        
+
         # self.mask = flow.tril(
         #     flow.ones(
         #         (max_positions, max_positions),
@@ -333,7 +328,7 @@ class LlamaDecoderLayer(nn.Module):
         scale_mask_softmax_fusion=False,
         attn_mask_type=AttnMaskType.padding,
         *,
-        layer_idx=0
+        layer_idx=0,
     ):
         super().__init__()
         self.hidden_size = hidden_size
@@ -454,41 +449,42 @@ class LlamaModel(nn.Module):
         else:
             output_layer_init_method = init_method
         if amp_enabled:
-            dtype = flow.float16
+            flow.float16
         else:
-            dtype = flow.float32
+            flow.float32
         self.embed_tokens = VocabEmbedding(
             vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled
         )
-        self.layers = nn.ModuleList([
-           LlamaDecoderLayer(
-                hidden_size,
-                intermediate_size,
-                num_attention_heads,
-                rms_norm_eps=rms_norm_eps,
-                init_method=init_method,
-                output_layer_init_method=output_layer_init_method,
-                scale_mask_softmax_fusion=scale_mask_softmax_fusion,
-                attn_mask_type=AttnMaskType.causal,
-                layer_idx=i,
-            ) for i in range(hidden_layers)
-        ])
-        self.norm = RMSLayerNorm(
-            hidden_size, eps=rms_norm_eps, layer_idx=-1
+        self.layers = nn.ModuleList(
+            [
+                LlamaDecoderLayer(
+                    hidden_size,
+                    intermediate_size,
+                    num_attention_heads,
+                    rms_norm_eps=rms_norm_eps,
+                    init_method=init_method,
+                    output_layer_init_method=output_layer_init_method,
+                    scale_mask_softmax_fusion=scale_mask_softmax_fusion,
+                    attn_mask_type=AttnMaskType.causal,
+                    layer_idx=i,
+                )
+                for i in range(hidden_layers)
+            ]
         )
+        self.norm = RMSLayerNorm(hidden_size, eps=rms_norm_eps, layer_idx=-1)
 
         rotary_dim = self.layers[0].self_attn.head_size
         self.rotary_embed = RotaryEmbedding(
-            dim=rotary_dim, 
+            dim=rotary_dim,
             max_position_embeddings=max_position_embeddings,
             dtype=flow.float16,
             layer_idx=0,
         )
 
     def forward(
-        self, 
+        self,
         input_ids,
-        attention_mask=None, 
+        attention_mask=None,
         past_key_values=None,
         use_cache=False,
         set_cache=None,
@@ -509,7 +505,7 @@ class LlamaModel(nn.Module):
             if use_cache:
                 hidden_states, present = hidden_states
                 presents.append(present)
-            
+
         hidden_states = self.norm(hidden_states)
 
         if use_cache:
@@ -517,11 +513,11 @@ class LlamaModel(nn.Module):
 
         return hidden_states
 
-    
+
 class LlamaForCausalLM(nn.Module, Generator):
     @configurable
     def __init__(
-        self, 
+        self,
         hidden_layers,
         vocab_size,
         hidden_size,
@@ -559,7 +555,7 @@ class LlamaForCausalLM(nn.Module, Generator):
 
         self.past_key_values = [None] * hidden_layers
         self.past_length = 0
-    
+
     def forward(self, input_ids, use_cache=False):
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
 
@@ -567,12 +563,15 @@ class LlamaForCausalLM(nn.Module, Generator):
             self.past_length = self.past_key_values[0][0].size(-2)
         else:
             self.past_length = 0
-            
-        casual_mask = self.casual_mask(input_ids, past_length=self.past_length, )
+
+        casual_mask = self.casual_mask(
+            input_ids,
+            past_length=self.past_length,
+        )
 
         output = self.model(
             input_ids,
-            attention_mask=casual_mask, 
+            attention_mask=casual_mask,
             past_key_values=self.past_key_values,
             use_cache=use_cache,
             set_cache=self.set_cache,
@@ -581,7 +580,7 @@ class LlamaForCausalLM(nn.Module, Generator):
         logits = self.lm_head(output)
 
         return {"logits": logits}
-    
+
     def set_cache(self, past_key_values):
         self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]
 

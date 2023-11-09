@@ -131,7 +131,7 @@ if __name__ == "__main__":
             "dill",
             "flake8==3.8.1 ",
             "isort==5.10.1",
-            "black==21.4b ",
+            "black==21.4b2 ",
             "autoflake",
             "tensorboardX<=2.5.1",
             "pytest",

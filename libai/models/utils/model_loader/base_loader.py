@@ -537,7 +537,9 @@ class ModelLoaderHuggerFace(ModelLoader):
             if os.path.isdir(self.pretrained_model_path):
                 # state_dict file pytorch
                 model_files = [
-                    os.path.join(self.pretrained_model_path, file) for file in os.listdir(self.pretrained_model_path) if file.endswith(".bin")
+                    os.path.join(self.pretrained_model_path, file)
+                    for file in os.listdir(self.pretrained_model_path)
+                    if file.endswith(".bin")
                 ]
 
                 if len(model_files) == 0:
