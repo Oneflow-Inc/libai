@@ -57,7 +57,7 @@ class RotaryEmbedding(nn.Module):
             0,
             self.dim,
             2,
-            dtype=flow.float,
+            dtype=dtype,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(layer_idx),
         )
@@ -82,8 +82,8 @@ class RotaryEmbedding(nn.Module):
             self._set_cos_sin_cache(seq_len=seq_len, dtype=x.dtype)
 
         return (
-            self.cos_cached[:seq_len].to(dtype=x.dtype),
-            self.sin_cached[:seq_len].to(dtype=x.dtype),
+            self.cos_cached[:seq_len].to_global(placement=x.placement),
+            self.sin_cached[:seq_len].to_global(placement=x.placement),
         )
 
 
@@ -225,36 +225,6 @@ class MultiheadAttention(nn.Module):
 
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
         attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
-        # [S(0), S(1)] x [S(0), B] = [S(0), S(1)]
-        # if attention_mask is not None:
-        #     if self.scale_mask_softmax_fusion:
-        #         if self.attn_mask_type == AttnMaskType.padding:
-        #             attention_mask = (
-        #                 attention_mask.expand_as(attention_scores) if use_cache else attention_mask
-        #             )
-        #             attention_weights = flow._C.fused_scale_mask_softmax_dropout(
-        #                 attention_scores,
-        #                 attention_mask,
-        #                 fill_value=-10000.0,
-        #                 scale=self.coeff,
-        #             )[0]
-        #     else:
-        #         if self.coeff is not None:
-        #             attention_scores *= self.coeff
-        #         attention_scores = flow.mul(attention_scores, attention_mask)
-        #         attention_scores = attention_scores - 10000.0 * (1 - attention_mask)
-        #         attention_weights = flow.softmax(attention_scores, dim=-1)
-        # else:
-        #     if self.scale_mask_softmax_fusion and self.attn_mask_type == AttnMaskType.causal:
-        #         attention_weights = flow._C.fused_scale_tril_softmax_mask_scale(
-        #             attention_scores,
-        #             diagonal=0,
-        #             tril_scale_value=0.0,
-        #             tril_fill_value=-10000.0,
-        #         )[0]
-        #     else:
-        #         attention_weights = flow.softmax(attention_scores, dim=-1)
-
         attention_weights = attention_scores + attention_mask
 
         attention_weights = flow.softmax(attention_weights, dim=-1)
@@ -287,15 +257,6 @@ class CasualMask(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
         self.mask.masked_fill_(mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0)
-
-        # self.mask = flow.tril(
-        #     flow.ones(
-        #         (max_positions, max_positions),
-        #         dtype=flow.int8,
-        #         placement=dist.get_layer_placement(layer_idx),
-        #         sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-        #     )
-        # )
 
     def forward(self, input_ids, past_length=0, attention_mask=None):
         bsz, tgt_len = input_ids.size()
@@ -477,7 +438,7 @@ class LlamaModel(nn.Module):
         self.rotary_embed = RotaryEmbedding(
             dim=rotary_dim,
             max_position_embeddings=max_position_embeddings,
-            dtype=flow.float16,
+            dtype=flow.float32,
             layer_idx=0,
         )
 

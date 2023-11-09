@@ -499,7 +499,7 @@ class Generator:
 
             # argmax
             next_tokens = flow.argmax(next_token_scores, dim=-1)
-            next_tokens = next_tokens.to_global(placement=input_ids.placement)
+            next_tokens = next_tokens.to_global(placement=dist.get_layer_placement(0))
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
                 placement=dist.get_layer_placement(0),

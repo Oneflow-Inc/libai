@@ -55,5 +55,5 @@ cfg = DictConfig(cfg)
 
 model = LazyCall(LlamaForCausalLM)(cfg=cfg)
 tokenizer = LazyCall(LlamaTokenizer)(
-    pretrained_model_path="/data0/hf_models/meta-llama/Llama-2-7b-hf/tokenizer.model"
+    pretrained_model_path="/data/hf_models/meta-llama/Llama-2-7b-chat-hf/tokenizer.model"
 )
