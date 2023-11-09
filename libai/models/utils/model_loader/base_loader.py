@@ -465,8 +465,15 @@ class ModelLoaderHuggerFace(ModelLoader):
             raise ImportError("Load torch state dict need torch.")
 
         # load pytorch_model.bin
-        state_dict = torch.load(state_dict_file, map_location="cpu")
-        return state_dict
+        if isinstance(state_dict_file, str):
+            return torch.load(state_dict_file, map_location="cpu")
+
+        if isinstance(state_dict_file, list):
+            merged_state_dict = {}
+            for file in state_dict_file:
+                state_dict = torch.load(file, map_location="cpu")
+                merged_state_dict.update(state_dict)
+            return merged_state_dict
 
     def _update_cfg(self, keys_libai, value_target):
         """Update the libai_cfg according to target_cfg.
@@ -491,11 +498,12 @@ class ModelLoaderHuggerFace(ModelLoader):
                     f"changed libai model cfg {temp_key} : "
                     f"{self.origin_libai_cfg[key]} -> {self.libai_cfg[key]} "
                 )
-            logger.warning(
-                "The following model configurations has been modified according "
-                "to `config.json` or kwargs: \n"
-                f"{self.changed_keys} \n"
-            )
+            if len(self.changed_keys) > 0:
+                logger.warning(
+                    "The following model configurations has been modified according "
+                    "to `config.json` or kwargs: \n"
+                    f"{self.changed_keys} \n"
+                )
 
             if dist.get_pipeline_parallel_size() > 1:
                 logger.warning(
@@ -528,11 +536,13 @@ class ModelLoaderHuggerFace(ModelLoader):
         if dist.is_main_process():
             if os.path.isdir(self.pretrained_model_path):
                 # state_dict file pytorch
-                if os.path.isfile(os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)):
-                    model_file = os.path.join(self.pretrained_model_path, WEIGHTS_NAME_PT)
-                else:
+                model_files = [
+                    os.path.join(self.pretrained_model_path, file) for file in os.listdir(self.pretrained_model_path) if file.endswith(".bin")
+                ]
+
+                if len(model_files) == 0:
                     raise EnvironmentError(
-                        f"Error no file named {WEIGHTS_NAME_PT} found"
+                        f"Error: no file named endswith '.bin' found"
                         f"in directory {self.pretrained_model_path}."
                     )
 
@@ -554,7 +564,7 @@ class ModelLoaderHuggerFace(ModelLoader):
                 raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
             logger.info("loading torch model...")
-            torch_state_dict = self._load_torch_state_dict(model_file)
+            torch_state_dict = self._load_torch_state_dict(model_files)
             torch_state_dict = self._fix_key(torch_state_dict)
             logger.info("transfering torch model into oneflow model...")
             flow_state_dict = self._convert_tensors(torch_state_dict)
