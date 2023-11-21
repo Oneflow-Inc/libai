@@ -66,7 +66,9 @@ class Generator:
         else:
             input_name = "input_ids"
 
-        model_kwargs = {k: v for k, v in model_kwargs.items() if v is not None or k != input_name}
+        model_kwargs = {
+            k: v for k, v in model_kwargs.items() if v is not None or k != input_name
+        }
 
         inputs_kwarg = model_kwargs.pop(input_name, None)
         if inputs_kwarg is not None and inputs is not None:
@@ -107,7 +109,9 @@ class Generator:
             )
 
         if bos_token_id is None:
-            raise ValueError("`bos_token_id` has to be defined when no `input_ids` are provided.")
+            raise ValueError(
+                "`bos_token_id` has to be defined when no `input_ids` are provided."
+            )
         return (
             flow.ones(
                 (1, 1),
@@ -124,13 +128,20 @@ class Generator:
         pad_token_id: Optional[int],
         eos_token_id: Optional[int],
     ):
-        is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [flow.int64, flow.long]
+        is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [
+            flow.int64,
+            flow.long,
+        ]
         is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs)
         is_pad_token_not_equal_to_eos_token_id = (eos_token_id is None) or (
             (eos_token_id is not None) and (pad_token_id != eos_token_id)
         )
         # Check if input is input_ids and padded -> only then is attention_mask defined
-        if is_input_ids and is_pad_token_in_inputs and is_pad_token_not_equal_to_eos_token_id:
+        if (
+            is_input_ids
+            and is_pad_token_in_inputs
+            and is_pad_token_not_equal_to_eos_token_id
+        ):
             return inputs.ne(pad_token_id).bool()
         else:
             return flow.ones(
@@ -145,9 +156,15 @@ class Generator:
     ):
         only_encoder = True
         model_kwargs[model_input_name] = inputs_tensor
-        if "encoder_decoder_attn_mask" in set(inspect.signature(self.forward).parameters):
-            model_kwargs["encoder_decoder_attn_mask"] = model_kwargs["encoder_attn_mask"]
-        model_kwargs["encoder_outputs"] = self(**model_kwargs, only_encoder=only_encoder)
+        if "encoder_decoder_attn_mask" in set(
+            inspect.signature(self.forward).parameters
+        ):
+            model_kwargs["encoder_decoder_attn_mask"] = model_kwargs[
+                "encoder_attn_mask"
+            ]
+        model_kwargs["encoder_outputs"] = self(
+            **model_kwargs, only_encoder=only_encoder
+        )
         model_kwargs.pop(model_input_name)
         return model_kwargs
 
@@ -210,20 +227,26 @@ class Generator:
         # token_type ids not supported.
 
         if attention_mask is not None:
-            model_kwargs["attention_mask"] = attention_mask.index_select(0, expanded_return_idx)
+            model_kwargs["attention_mask"] = attention_mask.index_select(
+                0, expanded_return_idx
+            )
 
         if is_encoder_decoder:
             if encoder_outputs is None:
                 raise ValueError(
                     "If `is_encoder_decoder` is True, make sure that `encoder_outputs` is defined."
                 )
-            encoder_outputs = encoder_outputs.to_global(placement=expanded_return_idx.placement)
+            encoder_outputs = encoder_outputs.to_global(
+                placement=expanded_return_idx.placement
+            )
             encoder_outputs = encoder_outputs.index_select(0, expanded_return_idx)
             model_kwargs["encoder_outputs"] = encoder_outputs
-            model_kwargs["encoder_attn_mask"] = model_kwargs["encoder_attn_mask"].index_select(
-                0, expanded_return_idx
-            )
-            model_kwargs["encoder_decoder_attn_mask"] = model_kwargs["encoder_attn_mask"]
+            model_kwargs["encoder_attn_mask"] = model_kwargs[
+                "encoder_attn_mask"
+            ].index_select(0, expanded_return_idx)
+            model_kwargs["encoder_decoder_attn_mask"] = model_kwargs[
+                "encoder_attn_mask"
+            ]
         return input_ids, model_kwargs
 
     def _update_model_kwargs_for_generation(
@@ -284,15 +307,21 @@ class Generator:
             warpers.append(TemperatureLogitsWarper(temperature))
         if top_k is not None and top_k != 0:
             warpers.append(
-                TopKLogitsWarper(top_k=top_k, min_tokens_to_keep=(2 if num_beams > 1 else 1))
+                TopKLogitsWarper(
+                    top_k=top_k, min_tokens_to_keep=(2 if num_beams > 1 else 1)
+                )
             )
         if top_p is not None and top_p < 1.0:
             warpers.append(
-                TopPLogitsWarper(top_p=top_p, min_tokens_to_keep=(2 if num_beams > 1 else 1))
+                TopPLogitsWarper(
+                    top_p=top_p, min_tokens_to_keep=(2 if num_beams > 1 else 1)
+                )
             )
         if typical_p is not None and typical_p < 1.0:
             warpers.append(
-                TypicalLogitsWarper(mass=typical_p, min_tokens_to_keep=(2 if num_beams > 1 else 1))
+                TypicalLogitsWarper(
+                    mass=typical_p, min_tokens_to_keep=(2 if num_beams > 1 else 1)
+                )
             )
         # `LogitNormalization` should always be the last logit processor, when present
         if renormalize_logits is True:
@@ -336,10 +365,15 @@ class Generator:
                 )
             )
         if repetition_penalty is not None and repetition_penalty != 1.0:
-            processors.append(RepetitionPenaltyLogitsProcessor(penalty=repetition_penalty))
+            processors.append(
+                RepetitionPenaltyLogitsProcessor(penalty=repetition_penalty)
+            )
         if no_repeat_ngram_size is not None and no_repeat_ngram_size > 0:
             processors.append(NoRepeatNGramLogitsProcessor(no_repeat_ngram_size))
-        if encoder_no_repeat_ngram_size is not None and encoder_no_repeat_ngram_size > 0:
+        if (
+            encoder_no_repeat_ngram_size is not None
+            and encoder_no_repeat_ngram_size > 0
+        ):
             if self.cfg.is_encoder_decoder:
                 processors.append(
                     EncoderNoRepeatNGramLogitsProcessor(
@@ -362,7 +396,9 @@ class Generator:
         if forced_bos_token_id is not None:
             processors.append(ForcedBOSTokenLogitsProcessor(forced_bos_token_id))
         if forced_eos_token_id is not None:
-            processors.append(ForcedEOSTokenLogitsProcessor(max_length, forced_eos_token_id))
+            processors.append(
+                ForcedEOSTokenLogitsProcessor(max_length, forced_eos_token_id)
+            )
         if remove_invalid_values is True:
             processors.append(InfNanRemoveLogitsProcessor())
         if exponential_decay_length_penalty is not None:
@@ -433,7 +469,9 @@ class Generator:
             for key in ["decoder_input_ids"]:
                 model_kwargs.pop(key, None)
         unused_model_args = []
-        model_args = set(inspect.signature(self.prepare_inputs_for_generation).parameters)
+        model_args = set(
+            inspect.signature(self.prepare_inputs_for_generation).parameters
+        )
         if "kwargs" in model_args:
             model_args |= set(inspect.signature(self.forward).parameters)
         for key, value in model_kwargs.items():
@@ -457,22 +495,33 @@ class Generator:
         output_scores: bool = False,
         **model_kwargs,
     ):
-        pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
-        eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
-        output_scores = output_scores if output_scores is not None else self.cfg.output_scores
+        pad_token_id = (
+            pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
+        )
+        eos_token_id = (
+            eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        )
+        output_scores = (
+            output_scores if output_scores is not None else self.cfg.output_scores
+        )
         scores = () if output_scores else None
         logits_processor = (
             logits_processor if logits_processor is not None else LogitsProcessorList()
         )
         stopping_criteria = (
-            stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+            stopping_criteria
+            if stopping_criteria is not None
+            else StoppingCriteriaList()
         )
         if max_length is not None:
             warnings.warn(
-                "`max_length` is deprecated in this function, use MaxLengthCriteria" " instead.",
+                "`max_length` is deprecated in this function, use MaxLengthCriteria"
+                " instead.",
                 UserWarning,
             )
-            stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
+            stopping_criteria = validate_stopping_criteria(
+                stopping_criteria, max_length
+            )
 
         # keep track of which sequences are already finished
         unfinished_sequences = flow.ones(input_ids.shape[0])
@@ -499,10 +548,10 @@ class Generator:
 
             # argmax
             next_tokens = flow.argmax(next_token_scores, dim=-1)
-            next_tokens = next_tokens.to_global(placement=dist.get_layer_placement(0))
+            next_tokens = next_tokens.to_global(placement=input_ids.placement)
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=dist.get_layer_placement(0),
+                placement=input_ids.placement,
             )
 
             if eos_token_id is not None:
@@ -552,15 +601,23 @@ class Generator:
         **model_kwargs,
     ):
         # init values
-        pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
-        eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
-        output_scores = output_scores if output_scores is not None else self.cfg.output_scores
+        pad_token_id = (
+            pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
+        )
+        eos_token_id = (
+            eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        )
+        output_scores = (
+            output_scores if output_scores is not None else self.cfg.output_scores
+        )
         scores = () if output_scores else None
         logits_processor = (
             logits_processor if logits_processor is not None else LogitsProcessorList()
         )
         stopping_criteria = (
-            stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+            stopping_criteria
+            if stopping_criteria is not None
+            else StoppingCriteriaList()
         )
         if max_length is not None:
             warnings.warn(
@@ -569,8 +626,12 @@ class Generator:
                 "instead.",
                 UserWarning,
             )
-            stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
-        logits_warper = logits_warper if logits_warper is not None else LogitsProcessorList()
+            stopping_criteria = validate_stopping_criteria(
+                stopping_criteria, max_length
+            )
+        logits_warper = (
+            logits_warper if logits_warper is not None else LogitsProcessorList()
+        )
 
         unfinished_sequences = flow.ones(input_ids.shape[0])
         cur_len = input_ids.shape[-1]
@@ -652,15 +713,23 @@ class Generator:
         output_scores: bool = False,
         **model_kwargs,
     ):
-        pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
-        eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
-        output_scores = output_scores if output_scores is not None else self.cfg.output_scores
+        pad_token_id = (
+            pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
+        )
+        eos_token_id = (
+            eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        )
+        output_scores = (
+            output_scores if output_scores is not None else self.cfg.output_scores
+        )
         scores = () if output_scores else None
         logits_processor = (
             logits_processor if logits_processor is not None else LogitsProcessorList()
         )
         stopping_criteria = (
-            stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+            stopping_criteria
+            if stopping_criteria is not None
+            else StoppingCriteriaList()
         )
         if max_length is not None:
             warnings.warn(
@@ -669,7 +738,9 @@ class Generator:
                 "instead.",
                 UserWarning,
             )
-            stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
+            stopping_criteria = validate_stopping_criteria(
+                stopping_criteria, max_length
+            )
         if len(stopping_criteria) == 0:
             warnings.warn(
                 "You don't have defined any stopping_criteria, this will likely loop forever",
@@ -713,9 +784,9 @@ class Generator:
             )
 
             next_token_scores_processed = logits_processor(input_ids, next_token_scores)
-            next_token_scores = next_token_scores_processed + beam_scores[:, None].expand_as(
-                next_token_scores
-            )
+            next_token_scores = next_token_scores_processed + beam_scores[
+                :, None
+            ].expand_as(next_token_scores)
 
             # Store scores
             if output_scores:
@@ -723,7 +794,9 @@ class Generator:
 
             # reshape for beam search
             vocab_size = next_token_scores.shape[-1]
-            next_token_scores = next_token_scores.view(batch_size, num_beams * vocab_size)
+            next_token_scores = next_token_scores.view(
+                batch_size, num_beams * vocab_size
+            )
 
             next_token_scores, next_tokens = flow.topk(
                 next_token_scores, 2 * num_beams, dim=1, largest=True, sorted=True
@@ -745,7 +818,9 @@ class Generator:
             beam_next_tokens = beam_outputs["next_beam_tokens"]
             beam_idx = beam_outputs["next_beam_indices"]
 
-            input_ids = flow.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
+            input_ids = flow.cat(
+                [input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1
+            )
 
             model_kwargs = self._update_model_kwargs_for_generation(
                 outputs, model_kwargs, is_encoder_decoder=is_encoder_decoder
@@ -808,7 +883,9 @@ class Generator:
         use_cache: Optional[bool] = None,
         num_beam_groups: Optional[int] = None,
         diversity_penalty: Optional[float] = None,
-        prefix_allowed_tokens_fn: Optional[Callable[[int, flow.Tensor], List[int]]] = None,
+        prefix_allowed_tokens_fn: Optional[
+            Callable[[int, flow.Tensor], List[int]]
+        ] = None,
         logits_processor: Optional[LogitsProcessorList] = LogitsProcessorList(),
         renormalize_logits: Optional[bool] = None,
         stopping_criteria=StoppingCriteriaList(),
@@ -824,10 +901,16 @@ class Generator:
         self._validate_model_kwargs(model_kwargs.copy())
 
         # 1. Set generation parameters if not already defined
-        bos_token_id = bos_token_id if bos_token_id is not None else self.cfg.bos_token_id
+        bos_token_id = (
+            bos_token_id if bos_token_id is not None else self.cfg.bos_token_id
+        )
         num_beams = num_beams if num_beams is not None else self.cfg.num_beams
-        length_penalty = length_penalty if length_penalty is not None else self.cfg.length_penalty
-        early_stopping = early_stopping if early_stopping is not None else self.cfg.early_stopping
+        length_penalty = (
+            length_penalty if length_penalty is not None else self.cfg.length_penalty
+        )
+        early_stopping = (
+            early_stopping if early_stopping is not None else self.cfg.early_stopping
+        )
         num_beam_groups = (
             num_beam_groups if num_beam_groups is not None else self.cfg.num_beam_groups
         )
@@ -838,10 +921,16 @@ class Generator:
             else self.cfg.num_return_sequences
         )
 
-        pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
-        eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        pad_token_id = (
+            pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
+        )
+        eos_token_id = (
+            eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        )
 
-        output_scores = output_scores if output_scores is not None else self.cfg.output_scores
+        output_scores = (
+            output_scores if output_scores is not None else self.cfg.output_scores
+        )
 
         # 2. Prepare model inputs
         inputs_tensor, model_input_name, model_kwargs = self._prepare_model_inputs(
@@ -850,7 +939,9 @@ class Generator:
         batch_size = inputs_tensor.shape[0]
 
         # 3. Prepare other model kwargs
-        model_kwargs["use_cache"] = use_cache if use_cache is not None else self.cfg.use_cache
+        model_kwargs["use_cache"] = (
+            use_cache if use_cache is not None else self.cfg.use_cache
+        )
 
         if self.cfg.is_encoder_decoder:
             att_mask_name = "encoder_attn_mask"
@@ -918,7 +1009,9 @@ class Generator:
                 f"the maximum length ({max_length})"
             )
         if input_ids_seq_length >= max_length:
-            input_ids_string = "decoder_input_ids" if self.cfg.is_encoder_decoder else "input_ids"
+            input_ids_string = (
+                "decoder_input_ids" if self.cfg.is_encoder_decoder else "input_ids"
+            )
             logger.warning(
                 f"Input length of {input_ids_string} is {input_ids_seq_length}, but `max_length` is"
                 f" set to {max_length}. This can lead to unexpected behavior. You should consider "
@@ -956,7 +1049,9 @@ class Generator:
         )
 
         if num_beam_groups > num_beams:
-            raise ValueError("`num_beam_groups` has to be smaller or equal to `num_beams`")
+            raise ValueError(
+                "`num_beam_groups` has to be smaller or equal to `num_beams`"
+            )
         if is_group_beam_gen_mode and do_sample is True:
             raise ValueError(
                 "Diverse beam search cannot be used in sampling mode. Make sure that `do_sample` is"
@@ -987,7 +1082,9 @@ class Generator:
 
         # 8. Prepare stopping criteria
         stopping_criteria = self._get_stopping_criteria(
-            max_length=max_length, max_time=max_time, stopping_criteria=stopping_criteria
+            max_length=max_length,
+            max_time=max_time,
+            stopping_criteria=stopping_criteria,
         )
 
         # 9. Go into different generation modes
@@ -1047,7 +1144,9 @@ class Generator:
                 )
 
             if stopping_criteria.max_length is None:
-                raise ValueError("`max_length` needs to be a stopping_criteria for now.")
+                raise ValueError(
+                    "`max_length` needs to be a stopping_criteria for now."
+                )
 
             # 10. Prepare beam search scorer
             beam_scorer = BeamSearchScorer(

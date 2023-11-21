@@ -17,7 +17,10 @@ import json
 
 import oneflow as flow
 
-from libai.models.utils.model_loader.base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
+from libai.models.utils.model_loader.base_loader import (
+    ModelLoaderHuggerFace,
+    ModelLoaderLiBai,
+)
 
 
 class LlamaLoaderHuggerFace(ModelLoaderHuggerFace):
@@ -58,7 +61,9 @@ class LlamaLoaderHuggerFace(ModelLoaderHuggerFace):
             k = oneflow_state_dict[key]
             v = oneflow_state_dict[value]
             qkv = flow.cat([q, k, v], dim=0)
-            qkv = self._fix_qkv_ordering(qkv, head_size, num_attention_heads, hidden_size)
+            qkv = self._fix_qkv_ordering(
+                qkv, head_size, num_attention_heads, hidden_size
+            )
             oneflow_state_dict[new_key_qkv.format(layer_idx)] = qkv
             oneflow_state_dict.pop(query)
             oneflow_state_dict.pop(key)

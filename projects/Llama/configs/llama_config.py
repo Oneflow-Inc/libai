@@ -1,8 +1,10 @@
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from libai.config import LazyCall
 from projects.Llama.llama import LlamaForCausalLM
 from projects.Llama.tokenizer import LlamaTokenizer
+from configs.common.train import train
+
 
 cfg = dict(
     # Model
@@ -46,7 +48,7 @@ cfg = dict(
     use_cache=True,
     bos_token_id=1,
     eos_token_id=2,
-    pad_token_id=32000,
+    pad_token_id=0,
     # train
     pretrained_model_path=None,
 )
