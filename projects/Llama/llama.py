@@ -35,9 +35,7 @@ def rotate_half(x):
 
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
-    cos = cos[position_ids].unsqueeze(
-        1
-    )  # [seq_len, dim] -> [batch_size, 1, seq_len, head_dim]
+    cos = cos[position_ids].unsqueeze(1)  # [seq_len, dim] -> [batch_size, 1, seq_len, head_dim]
     sin = sin[position_ids].unsqueeze(1)
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
@@ -45,18 +43,14 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
 
 
 class RotaryEmbedding(nn.Module):
-    def __init__(
-        self, dim, max_position_embeddings=2048, base=10000, dtype=None, layer_idx=0
-    ):
+    def __init__(self, dim, max_position_embeddings=2048, base=10000, dtype=None, layer_idx=0):
         super().__init__()
 
         self.dim = dim
         self.max_position_embeddings = max_position_embeddings
         self.base = base
 
-        self._set_cos_sin_cache(
-            seq_len=max_position_embeddings, dtype=dtype, layer_idx=layer_idx
-        )
+        self._set_cos_sin_cache(seq_len=max_position_embeddings, dtype=dtype, layer_idx=layer_idx)
 
     def _set_cos_sin_cache(self, seq_len, dtype, layer_idx):
         position = flow.arange(
@@ -208,9 +202,7 @@ class MultiheadAttention(nn.Module):
         bsz, tgt_len = hidden_states.size()[:2]
 
         query_key_value = self.query_key_value(hidden_states)
-        query_key_value = query_key_value.view(
-            bsz, -1, self.num_heads, 3 * self.head_size
-        )
+        query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
         query_key_value = query_key_value.permute(
             0, 2, 1, 3
         )  # [bsz, num_heads, src_len, 3 * head_size]
@@ -232,9 +224,7 @@ class MultiheadAttention(nn.Module):
             past_key_value = (key, value)
 
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        attention_scores = flow.matmul(
-            query, key, transpose_b=True, alpha=self.norm_factor
-        )
+        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
         attention_weights = attention_scores + attention_mask
 
         attention_weights = flow.softmax(attention_weights, dim=-1)
@@ -266,9 +256,7 @@ class CasualMask(nn.Module):
             placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
-        self.mask.masked_fill_(
-            mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0
-        )
+        self.mask.masked_fill_(mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0)
 
     def forward(self, input_ids, past_length=0, attention_mask=None):
         bsz, tgt_len = input_ids.size()
@@ -279,9 +267,7 @@ class CasualMask(nn.Module):
                 [flow.ones(tgt_len, past_length, dtype=flow.int8), casual_mask], dim=-1
             )
         casual_mask = (
-            casual_mask.unsqueeze(0)
-            .unsqueeze(1)
-            .expand(bsz, 1, tgt_len, tgt_len + past_length)
+            casual_mask.unsqueeze(0).unsqueeze(1).expand(bsz, 1, tgt_len, tgt_len + past_length)
         )
         casual_mask = casual_mask.to_global(sbp=input_ids.sbp)
         if attention_mask is not None:
@@ -353,9 +339,7 @@ class LlamaDecoderLayer(nn.Module):
         rotary_emb=None,
         use_cache=False,
     ):
-        hidden_states = hidden_states.to_global(
-            placement=dist.get_layer_placement(self.layer_idx)
-        )
+        hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
 
         # hidden_states shape: (batch_size, seq_length, hidden_size)
         if attention_mask is not None:
@@ -428,9 +412,7 @@ class LlamaModel(nn.Module):
         super().__init__()
         init_method = init_method_normal(sigma=initializer_range)
         if use_scaled_init_for_output_weights:
-            output_layer_init_method = scaled_init_method_normal(
-                initializer_range, hidden_layers
-            )
+            output_layer_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         else:
             output_layer_init_method = init_method
         if amp_enabled:
@@ -568,9 +550,7 @@ class LlamaForCausalLM(nn.Module, Generator):
         return {"logits": logits}
 
     def set_cache(self, past_key_values):
-        self.past_length = (
-            0 if past_key_values is None else past_key_values[0][0].shape[2]
-        )
+        self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]
 
         if past_key_values is None:
             past_key_values = [None] * self.cfg.hidden_layers
@@ -584,9 +564,7 @@ class LlamaForCausalLM(nn.Module, Generator):
         if "attention_mask" in kwargs:
             attention_mask = kwargs.pop("attention_mask").float()
             attention_mask = attention_mask - 1
-            attention_mask.masked_fill_(
-                attention_mask == -1, flow.finfo(flow.float32).min
-            )
+            attention_mask.masked_fill_(attention_mask == -1, flow.finfo(flow.float32).min)
         return {"input_ids": input_ids, "attention_mask": attention_mask}
 
     @classmethod

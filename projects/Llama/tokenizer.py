@@ -35,12 +35,8 @@ class LlamaTokenizer:
         self.bos_token = bos_token
         self.eos_token = eos_token
         self.pad_token = pad_token
-        self.bos_token_id = (
-            self.sp_model.bos_id() if self.sp_model.bos_id() else bos_token_id
-        )
-        self.eos_token_id = (
-            self.sp_model.eos_id() if self.sp_model.eos_id() else eos_token_id
-        )
+        self.bos_token_id = self.sp_model.bos_id() if self.sp_model.bos_id() else bos_token_id
+        self.eos_token_id = self.sp_model.eos_id() if self.sp_model.eos_id() else eos_token_id
         self.pad_token_id = 0
 
     @property
@@ -63,22 +59,16 @@ class LlamaTokenizer:
             tokens = [self.sp_model.encode(s) for s in text]
             if padding:
                 max_length = max([len(i) for i in tokens])
-                tokens = [
-                    t + (max_length - len(t)) * [self.pad_token_id] for t in tokens
-                ]
+                tokens = [t + (max_length - len(t)) * [self.pad_token_id] for t in tokens]
 
         if add_bos:
             tokens = [[self.bos_token_id] + token for token in tokens]
         if add_eos:
             tokens = [[self.eos_token_id] + token for token in tokens]
 
-        sbp = kwargs.get(
-            "sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
-        )
+        sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
         placement = kwargs.get("placement", flow.placement("cuda", [0]))
-        return_token_ids = flow.tensor(
-            tokens, sbp=sbp, placement=placement, dtype=flow.long
-        )
+        return_token_ids = flow.tensor(tokens, sbp=sbp, placement=placement, dtype=flow.long)
         return return_token_ids
 
     def decode(self, tokens):

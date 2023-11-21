@@ -1,11 +1,10 @@
 from omegaconf import DictConfig
 
+import libai.utils.distributed as dist
 from libai.config import instantiate
 from projects.Llama.configs.llama_config import cfg, tokenizer
 from projects.Llama.llama import LlamaForCausalLM
 from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace
-import libai.utils.distributed as dist
-
 
 pretrained_model_path = "/data/hf_models/NousResearch/Llama-2-7b-chat-hf"
 text = [
