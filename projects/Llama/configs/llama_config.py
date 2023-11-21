@@ -56,6 +56,8 @@ cfg = dict(
 cfg = DictConfig(cfg)
 
 model = LazyCall(LlamaForCausalLM)(cfg=cfg)
-tokenizer = LazyCall(LlamaTokenizer)(
+tokenization = OmegaConf.create()
+tokenization.make_vocab_size_divisible_by = 128
+tokenization.tokenizer = LazyCall(LlamaTokenizer)(
     pretrained_model_path="/data/hf_models/meta-llama/Llama-2-7b-chat-hf/tokenizer.model"
 )
