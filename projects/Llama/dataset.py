@@ -27,8 +27,7 @@ def pad_right(data, pad_id=0, max_len=1350):
 
 
 class AlpacaDataset(Dataset):
-    def __init__(self, name, path, tokenizer, max_len=1350):
-        self.name = name
+    def __init__(self, path, tokenizer, max_len=1350):
         self.data = flow.load(path)
         random.shuffle(self.data)
         self.tokenizer = tokenizer
@@ -42,6 +41,6 @@ class AlpacaDataset(Dataset):
         labels = pad_right(self.data[index]["labels"], pad_id=-1, max_len=self.max_len)
 
         return Instance(
-            input_ids=DistTensorData(flow.tensor(input_ids, dtype=flow.long)),
-            labels=DistTensorData(flow.tensor(labels, dtype=flow.long)),
+            input_ids=DistTensorData(input_ids),
+            labels=DistTensorData(labels),
         )

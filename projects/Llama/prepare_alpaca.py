@@ -126,6 +126,8 @@ def prepare_sample(
 
     # The labels are the full prompt with response, but with the prompt masked out
     labels = encoded_full_prompt_and_response.clone()
+    encoded_full_prompt_and_response = encoded_full_prompt_and_response[:-1]
+    labels = labels[1:]
     if mask_inputs:
         labels[: len(encoded_full_prompt)] = ignore_index
 

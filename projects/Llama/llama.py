@@ -21,8 +21,8 @@ from oneflow import nn
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
-from libai.layers import Linear, RMSLayerNorm, VocabEmbedding
 from libai.layers.attention import AttnMaskType
+from libai.layers import Linear, RMSLayerNorm, VocabEmbedding, ParallelCrossEntropyLoss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 
@@ -35,7 +35,7 @@ def rotate_half(x):
 
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
-    cos = cos[position_ids].unsqueeze(1)  # [seq_len, dim] -> [batch_size, 1, seq_len, head_dim]
+    cos = cos[position_ids].unsqueeze(1)
     sin = sin[position_ids].unsqueeze(1)
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
@@ -481,6 +481,17 @@ class LlamaModel(nn.Module):
         return hidden_states
 
 
+class SFTLoss(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.lm_loss = ParallelCrossEntropyLoss()
+
+    def forward(self, logits, lm_labels):
+        lm_loss = self.lm_loss(logits, lm_labels)
+        lm_loss = lm_loss.mean()
+        return {"lm_loss": lm_loss}
+
+
 class LlamaForCausalLM(nn.Module, Generator):
     @configurable
     def __init__(
@@ -519,11 +530,12 @@ class LlamaForCausalLM(nn.Module, Generator):
         )
         self.casual_mask = CasualMask(max_position_embeddings, layer_idx=0)
         self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=-1)
+        self.loss_func = SFTLoss()
 
         self.past_key_values = [None] * hidden_layers
         self.past_length = 0
 
-    def forward(self, input_ids, attention_mask=None, use_cache=False):
+    def forward(self, input_ids, attention_mask=None, labels=False, use_cache=False):
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
 
         if use_cache and self.past_key_values[0] is not None:
@@ -547,7 +559,11 @@ class LlamaForCausalLM(nn.Module, Generator):
 
         logits = self.lm_head(output)
 
-        return {"logits": logits}
+        if labels is not None:
+            lm_loss = self.loss_func(logits, labels)
+            return lm_loss
+        else:
+            return {"logits": logits}
 
     def set_cache(self, past_key_values):
         self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]
