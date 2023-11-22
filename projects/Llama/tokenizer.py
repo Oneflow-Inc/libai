@@ -51,12 +51,21 @@ class LlamaTokenizer:
         tokens = self.sp_model.encode(text)
         return tokens
 
-    def tokenize(self, text, add_bos=False, add_eos=False, padding=False, **kwargs):
+    def tokenize(
+        self,
+        text,
+        add_bos=False,
+        add_eos=False,
+        padding=False,
+        device="cuda",
+        max_length=4096,
+        **kwargs
+    ):
         if isinstance(text, str):
-            tokens = [self.sp_model.encode(text)]
+            tokens = [self.sp_model.encode(text)[:max_length]]
 
         if isinstance(text, list):
-            tokens = [self.sp_model.encode(s) for s in text]
+            tokens = [self.sp_model.encode(s)[:max_length] for s in text]
             if padding:
                 max_length = max([len(i) for i in tokens])
                 tokens = [t + (max_length - len(t)) * [self.pad_token_id] for t in tokens]
@@ -64,11 +73,14 @@ class LlamaTokenizer:
         if add_bos:
             tokens = [[self.bos_token_id] + token for token in tokens]
         if add_eos:
-            tokens = [[self.eos_token_id] + token for token in tokens]
+            tokens = [token + [self.eos_token_id] for token in tokens]
 
-        sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-        placement = kwargs.get("placement", flow.placement("cuda", [0]))
-        return_token_ids = flow.tensor(tokens, sbp=sbp, placement=placement, dtype=flow.long)
+        if device == "cuda":
+            sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+            placement = kwargs.get("placement", flow.placement("cuda", [0]))
+            return_token_ids = flow.tensor(tokens, sbp=sbp, placement=placement, dtype=flow.long)
+        else:
+            return_token_ids = flow.tensor(tokens, dtype=flow.long)
         return return_token_ids
 
     def decode(self, tokens):

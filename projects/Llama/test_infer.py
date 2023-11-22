@@ -6,7 +6,7 @@ from projects.Llama.configs.llama_config import cfg, tokenizer
 from projects.Llama.llama import LlamaForCausalLM
 from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace
 
-pretrained_model_path = "/data/hf_models/NousResearch/Llama-2-7b-chat-hf"
+pretrained_model_path = "/data/hf_models/Llama-2-7b-hf"
 text = [
     "a dog is flying on the sky",
     "Wikipedia is a free online",

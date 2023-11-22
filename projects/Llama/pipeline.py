@@ -94,7 +94,7 @@ if __name__ == "__main__":
         tensor_parallel=2,
         pipeline_parallel=2,
         pipeline_num_layers=32,
-        model_path="/data/hf_models/NousResearch/Llama-2-7b-chat-hf",
+        model_path="/data/hf_models/Llama-2-7b-hf",
         mode="huggingface",
     )
 
