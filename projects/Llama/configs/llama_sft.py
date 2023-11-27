@@ -76,8 +76,8 @@ train.update(
         rdma_enabled=False,
         dist=dict(
             data_parallel_size=1,
-            tensor_parallel_size=1,
-            pipeline_parallel_size=8,
+            tensor_parallel_size=2,
+            pipeline_parallel_size=4,
             pipeline_num_layers=cfg.hidden_layers,
         ),
         evaluation=dict(

@@ -505,7 +505,6 @@ class LlamaForCausalLM(nn.Module, Generator):
         use_scaled_init_for_output_weights=True,
         scale_mask_softmax_fusion=False,
         amp_enabled=False,
-        dtype=None,
         cfg=None,
     ):
         super().__init__()
@@ -523,7 +522,6 @@ class LlamaForCausalLM(nn.Module, Generator):
             use_scaled_init_for_output_weights=use_scaled_init_for_output_weights,
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             amp_enabled=amp_enabled,
-            dtype=dtype,
         )
         self.casual_mask = CasualMask(max_position_embeddings, layer_idx=0)
         self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=-1)
@@ -532,7 +530,7 @@ class LlamaForCausalLM(nn.Module, Generator):
         self.past_key_values = [None] * hidden_layers
         self.past_length = 0
 
-    def forward(self, input_ids, attention_mask=None, labels=False, use_cache=False):
+    def forward(self, input_ids, attention_mask=None, labels=None, use_cache=False):
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
 
         if use_cache and self.past_key_values[0] is not None:
@@ -595,6 +593,5 @@ class LlamaForCausalLM(nn.Module, Generator):
             "use_scaled_init_for_output_weights": cfg.use_scaled_init_for_output_weights,
             "scale_mask_softmax_fusion": cfg.scale_mask_softmax_fusion,
             "amp_enabled": cfg.amp_enabled,
-            "dtype": cfg.dtype,
             "cfg": cfg,
         }
