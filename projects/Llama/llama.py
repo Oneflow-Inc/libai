@@ -21,8 +21,8 @@ from oneflow import nn
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
+from libai.layers import Linear, ParallelCrossEntropyLoss, RMSLayerNorm, VocabEmbedding
 from libai.layers.attention import AttnMaskType
-from libai.layers import Linear, RMSLayerNorm, VocabEmbedding, ParallelCrossEntropyLoss
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
 
@@ -143,6 +143,7 @@ class MultiheadAttention(nn.Module):
         self,
         hidden_size,
         num_attention_heads,
+        max_position_embeddings,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
         scale_mask_softmax_fusion=False,
@@ -183,12 +184,19 @@ class MultiheadAttention(nn.Module):
 
         self.coeff = None
 
+        rotary_dim = self.head_size
+        self.rotary_embed = RotaryEmbedding(
+            dim=rotary_dim,
+            max_position_embeddings=max_position_embeddings,
+            dtype=flow.float32,
+            layer_idx=layer_idx,
+        )
+
     def forward(
         self,
         hidden_states: flow.Tensor,
         encoder_states: flow.Tensor = None,
         attention_mask: flow.Tensor = None,
-        rotary_emb=None,
         position_ids=None,
         past_key_value: Tuple[flow.Tensor, flow.Tensor] = None,
         use_cache: bool = False,
@@ -211,7 +219,7 @@ class MultiheadAttention(nn.Module):
         kv_seq_len = key.shape[-2]
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
-        cos, sin = rotary_emb(value, seq_len=kv_seq_len)
+        cos, sin = self.rotary_embed(value, seq_len=kv_seq_len)
         query, key = apply_rotary_pos_emb(query, key, cos, sin, position_ids)
 
         if past_key_value is not None:
@@ -290,6 +298,7 @@ class LlamaDecoderLayer(nn.Module):
         num_attention_heads,
         is_decoder=False,
         rms_norm_eps=1e-5,
+        max_position_embeddings=None,
         init_method=nn.init.xavier_normal_,
         output_layer_init_method=None,
         scale_mask_softmax_fusion=False,
@@ -302,6 +311,7 @@ class LlamaDecoderLayer(nn.Module):
         self.intermediate_size = intermediate_size
         self.num_attention_heads = num_attention_heads
         self.rms_norm_eps = rms_norm_eps
+        self.max_position_embeddings = max_position_embeddings
         self.attn_mask_type = attn_mask_type
 
         self.layer_idx = layer_idx
@@ -336,7 +346,6 @@ class LlamaDecoderLayer(nn.Module):
         hidden_states,
         attention_mask=None,
         past_key_value=None,
-        rotary_emb=None,
         use_cache=False,
     ):
         hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
@@ -361,7 +370,6 @@ class LlamaDecoderLayer(nn.Module):
             layernorm_output,
             attention_mask=attention_mask,
             past_key_value=self_attn_past_key_value,
-            rotary_emb=rotary_emb,
             use_cache=use_cache,
         )
 
@@ -384,6 +392,7 @@ class LlamaDecoderLayer(nn.Module):
         return MultiheadAttention(
             self.hidden_size,
             self.num_attention_heads,
+            self.max_position_embeddings,
             init_method=self.init_method,
             output_layer_init_method=self.output_layer_init_method,
             scale_mask_softmax_fusion=self.scale_mask_softmax_fusion,
@@ -407,7 +416,6 @@ class LlamaModel(nn.Module):
         use_scaled_init_for_output_weights=True,
         scale_mask_softmax_fusion=False,
         amp_enabled=False,
-        dtype=None,
     ):
         super().__init__()
         init_method = init_method_normal(sigma=initializer_range)
@@ -415,10 +423,7 @@ class LlamaModel(nn.Module):
             output_layer_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
         else:
             output_layer_init_method = init_method
-        if amp_enabled:
-            flow.float16
-        else:
-            flow.float32
+
         self.embed_tokens = VocabEmbedding(
             vocab_size, hidden_size, init_method=init_method, amp_enabled=amp_enabled
         )
@@ -429,6 +434,7 @@ class LlamaModel(nn.Module):
                     intermediate_size,
                     num_attention_heads,
                     rms_norm_eps=rms_norm_eps,
+                    max_position_embeddings=max_position_embeddings,
                     init_method=init_method,
                     output_layer_init_method=output_layer_init_method,
                     scale_mask_softmax_fusion=scale_mask_softmax_fusion,
@@ -439,14 +445,6 @@ class LlamaModel(nn.Module):
             ]
         )
         self.norm = RMSLayerNorm(hidden_size, eps=rms_norm_eps, layer_idx=-1)
-
-        rotary_dim = self.layers[0].self_attn.head_size
-        self.rotary_embed = RotaryEmbedding(
-            dim=rotary_dim,
-            max_position_embeddings=max_position_embeddings,
-            dtype=flow.float32,
-            layer_idx=0,
-        )
 
     def forward(
         self,
@@ -466,7 +464,6 @@ class LlamaModel(nn.Module):
                 hidden_states=hidden_states,
                 attention_mask=attention_mask,
                 past_key_value=past_key_value,
-                rotary_emb=self.rotary_embed,
                 use_cache=False,
             )
             if use_cache:

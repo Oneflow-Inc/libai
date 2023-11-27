@@ -24,7 +24,7 @@ cfg = dict(
     vocab_size=32000,
     use_scaled_init_for_output_weights=False,
     scale_mask_softmax_fusion=False,
-    amp_enabled=False,
+    amp_enabled=True,
     # Inference
     is_encoder_decoder=False,
     max_length=20,

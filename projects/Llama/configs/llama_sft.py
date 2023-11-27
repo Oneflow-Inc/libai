@@ -23,7 +23,7 @@ dataset_path = "/data/home/xiezipeng/alpaca_data/"
 pretrained_model_path = "/data/hf_models/Llama-2-7b-hf"
 
 # graph & optim
-graph["enabled"] = False
+graph["enabled"] = True
 optim.update(
     dict(
         lr=learning_rate,
@@ -35,7 +35,7 @@ optim.update(
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(LlamaTokenizer)(
-    pretrained_model_path= pretrained_model_path + "/tokenizer.model"
+    pretrained_model_path=pretrained_model_path + "/tokenizer.model"
 )
 
 # model
@@ -66,24 +66,25 @@ dataloader.test = [
 train.update(
     dict(
         output_dir="./sft_result",
-        train_micro_batch_size=8,
-        test_micro_batch_size=8,
+        train_micro_batch_size=1,
+        test_micro_batch_size=1,
         train_epoch=5,
         train_iter=1,
         log_period=10,
-        warmup_ratio=2/5,
+        warmup_ratio=2 / 5,
         num_accumulation_steps=8,
         rdma_enabled=False,
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=1,
+            pipeline_parallel_size=8,
+            pipeline_num_layers=cfg.hidden_layers,
         ),
         evaluation=dict(
             enabled=True,
             evaluator=LazyCall(PPLEvaluator)(),
-            eval_period=10,
-            eval_iter=100,
+            eval_period=5000,
+            eval_iter=1e5,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(
             warmup_factor=0.0,
@@ -92,4 +93,3 @@ train.update(
         ),
     )
 )
-

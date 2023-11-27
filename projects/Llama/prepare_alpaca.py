@@ -20,7 +20,7 @@ def prepare(
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
     data_file_name: str = "alpaca_data_cleaned_archive.json",
-    data_file_url: str = "https://raw.githubusercontent.com/tloen/alpaca-lora/main/alpaca_data_cleaned_archive.json",
+    data_file_url: str = "https://raw.githubusercontent.com/tloen/alpaca-lora/main/alpaca_data_cleaned_archive.json",  # noqa
     ignore_index: int = -1,
     max_seq_length: Optional[int] = None,
 ) -> None:
@@ -145,9 +145,9 @@ def generate_prompt(example: dict) -> str:
 
     if example["input"]:
         return (
-            "Below is an instruction that describes a task, paired with an input that provides further context. "
+            "Below is an instruction that describes a task, paired with an input that provides further context. "  # noqa
             "Write a response that appropriately completes the request.\n\n"
-            f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Response:"
+            f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Response:"  # noqa
         )
     return (
         "Below is an instruction that describes a task. "
