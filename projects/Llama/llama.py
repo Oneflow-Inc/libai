@@ -43,47 +43,22 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
 
 
 class RotaryEmbedding(nn.Module):
-    def __init__(self, dim, max_position_embeddings=2048, base=10000, dtype=None, layer_idx=0):
+    def __init__(self, dim, max_position_embeddings=2048):
         super().__init__()
 
         self.dim = dim
         self.max_position_embeddings = max_position_embeddings
-        self.base = base
 
-        self._set_cos_sin_cache(seq_len=max_position_embeddings, dtype=dtype, layer_idx=layer_idx)
-
-    def _set_cos_sin_cache(self, seq_len, dtype, layer_idx):
-        position = flow.arange(
-            0,
-            self.dim,
-            2,
-            dtype=dtype,
-            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=dist.get_layer_placement(layer_idx),
-        )
-        inv_freq = 1.0 / (self.base ** (position / self.dim))
-
-        self.max_seq_len_cached = seq_len
-        t = flow.arange(
-            self.max_seq_len_cached,
-            dtype=inv_freq.dtype,
-            sbp=inv_freq.sbp,
-            placement=inv_freq.placement,
-        )
-
-        freqs = flow.einsum("i,j->ij", t, inv_freq)
-        emb = flow.cat((freqs, freqs), dim=-1)
-        self.register_buffer("cos_cached", emb.cos().to(dtype))
-        self.register_buffer("sin_cached", emb.sin().to(dtype))
-
-    def forward(self, x, seq_len=None):
-        # x: [bs, num_attention_heads, seq_len, head_size]
-        if seq_len > self.max_seq_len_cached:
-            self._set_cos_sin_cache(seq_len=seq_len, dtype=x.dtype)
+    def forward(self, x, seq_len=None, cos_cached=None, sin_cached=None):
+        if seq_len > self.max_position_embeddings:
+            raise ValueError(
+                f"The maximum supported length is {self.max_position_embeddings}, "
+                f"and the current length is{seq_len}."
+            )
 
         return (
-            self.cos_cached[:seq_len].to_global(placement=x.placement),
-            self.sin_cached[:seq_len].to_global(placement=x.placement),
+            cos_cached[:seq_len].to_global(placement=x.placement),
+            sin_cached[:seq_len].to_global(placement=x.placement),
         )
 
 
@@ -199,6 +174,8 @@ class MultiheadAttention(nn.Module):
         attention_mask: flow.Tensor = None,
         position_ids=None,
         past_key_value: Tuple[flow.Tensor, flow.Tensor] = None,
+        cos_cached: flow.Tensor = None,
+        sin_cached: flow.Tensor = None,
         use_cache: bool = False,
     ):
         if encoder_states is not None:
@@ -219,7 +196,9 @@ class MultiheadAttention(nn.Module):
         kv_seq_len = key.shape[-2]
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
-        cos, sin = self.rotary_embed(value, seq_len=kv_seq_len)
+        cos, sin = self.rotary_embed(
+            value, seq_len=kv_seq_len, cos_cached=cos_cached, sin_cached=sin_cached
+        )
         query, key = apply_rotary_pos_emb(query, key, cos, sin, position_ids)
 
         if past_key_value is not None:
@@ -346,6 +325,8 @@ class LlamaDecoderLayer(nn.Module):
         hidden_states,
         attention_mask=None,
         past_key_value=None,
+        cos_cached=None,
+        sin_cached=None,
         use_cache=False,
     ):
         hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
@@ -370,6 +351,8 @@ class LlamaDecoderLayer(nn.Module):
             layernorm_output,
             attention_mask=attention_mask,
             past_key_value=self_attn_past_key_value,
+            cos_cached=cos_cached,
+            sin_cached=sin_cached,
             use_cache=use_cache,
         )
 
@@ -446,6 +429,36 @@ class LlamaModel(nn.Module):
         )
         self.norm = RMSLayerNorm(hidden_size, eps=rms_norm_eps, layer_idx=-1)
 
+        self._set_cos_sin_cache(
+            rotary_dim=hidden_size // num_attention_heads,
+            seq_len=max_position_embeddings,
+            dtype=flow.float32,
+            layer_idx=0,
+        )
+
+    def _set_cos_sin_cache(self, rotary_dim, seq_len, base=10000, dtype=None, layer_idx=0):
+        position = flow.arange(
+            0,
+            rotary_dim,
+            2,
+            dtype=dtype,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            placement=dist.get_layer_placement(layer_idx),
+        )
+        inv_freq = 1.0 / (base ** (position / rotary_dim))
+
+        t = flow.arange(
+            seq_len,
+            dtype=inv_freq.dtype,
+            sbp=inv_freq.sbp,
+            placement=inv_freq.placement,
+        )
+
+        freqs = flow.einsum("i,j->ij", t, inv_freq)
+        emb = flow.cat((freqs, freqs), dim=-1)
+        self.register_buffer("cos_cached", emb.cos().to(dtype))
+        self.register_buffer("sin_cached", emb.sin().to(dtype))
+
     def forward(
         self,
         input_ids,
@@ -464,6 +477,8 @@ class LlamaModel(nn.Module):
                 hidden_states=hidden_states,
                 attention_mask=attention_mask,
                 past_key_value=past_key_value,
+                cos_cached=self.cos_cached,
+                sin_cached=self.sin_cached,
                 use_cache=False,
             )
             if use_cache:

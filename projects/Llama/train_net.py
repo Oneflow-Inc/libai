@@ -21,14 +21,13 @@ import sys
 import numpy as np
 import oneflow as flow
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+import libai.utils.distributed as dist
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-from libai.config import instantiate
-import libai.utils.distributed as dist
-
 from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
 logger = logging.getLogger("libai." + __name__)
 
