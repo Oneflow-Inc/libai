@@ -163,8 +163,6 @@ class MultiheadAttention(nn.Module):
         self.rotary_embed = RotaryEmbedding(
             dim=rotary_dim,
             max_position_embeddings=max_position_embeddings,
-            dtype=flow.float32,
-            layer_idx=layer_idx,
         )
 
     def forward(

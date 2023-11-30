@@ -20,7 +20,6 @@ cfg = dict(
     rms_norm_eps=1e-05,
     rope_scaling=None,
     tie_word_embeddings=False,
-    dtype="float16",
     vocab_size=32000,
     use_scaled_init_for_output_weights=False,
     scale_mask_softmax_fusion=False,
@@ -50,7 +49,7 @@ cfg = dict(
     eos_token_id=2,
     pad_token_id=0,
     # train
-    pretrained_model_path=None,
+    pretrained_model_path="/data/home/xiezipeng/meta-llama/Llama-2-7b-hf/",
 )
 
 cfg = DictConfig(cfg)
@@ -59,5 +58,5 @@ model = LazyCall(LlamaForCausalLM)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(LlamaTokenizer)(
-    pretrained_model_path="/data/hf_models/Llama-2-7b-hf/tokenizer.model"
+    pretrained_model_path="/data/home/xiezipeng/meta-llama/Llama-2-7b-hf/tokenizer.model"
 )

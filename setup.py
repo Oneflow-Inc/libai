@@ -110,6 +110,7 @@ if __name__ == "__main__":
             "boto3",
             "botocore",
             "cloudpickle",
+            "click==8.0.2",
             "flowvision==0.1.0",
             "wget",
             "hydra-core",

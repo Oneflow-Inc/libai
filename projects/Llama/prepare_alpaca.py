@@ -15,7 +15,7 @@ from projects.Llama.configs.llama_config import tokenization
 
 def prepare(
     destination_path: Path = Path("/data/home/xiezipeng/alpaca_data"),
-    checkpoint_dir: Path = Path("/data/hf_models/Llama-2-7b-hf"),
+    checkpoint_dir: Path = Path("/data/home/xiezipeng/meta-llama/Llama-2-7b-hf"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora

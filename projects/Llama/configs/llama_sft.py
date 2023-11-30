@@ -16,11 +16,11 @@ from projects.Llama.llama import LlamaForCausalLM
 
 
 # Hyperparameters
-weight_decay = 0.02
-learning_rate = 3e-3
+weight_decay = 0.1
+learning_rate = 2e-5
 max_input_length = 1350
 dataset_path = "/data/home/xiezipeng/alpaca_data/"
-pretrained_model_path = "/data/hf_models/meta-llama/Llama-2-7b-chat-hf"
+pretrained_model_path = "/data/home/xiezipeng/meta-llama/Llama-2-7b-hf"
 
 # graph & optim
 graph["enabled"] = True
@@ -75,6 +75,10 @@ train.update(
         num_accumulation_steps=8,
         rdma_enabled=True,
         amp=dict(enabled=True),
+        checkpointer=dict(
+            period=100,
+            max_to_keep=20,
+        ),
         dist=dict(
             data_parallel_size=2,
             tensor_parallel_size=1,
@@ -84,7 +88,7 @@ train.update(
         evaluation=dict(
             enabled=True,
             evaluator=LazyCall(PPLEvaluator)(),
-            eval_period=5000,
+            eval_period=100,
             eval_iter=1e5,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(

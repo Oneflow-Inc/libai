@@ -2,17 +2,15 @@ from omegaconf import DictConfig
 
 import libai.utils.distributed as dist
 from libai.config import instantiate
-from projects.Llama.configs.llama_config import cfg, tokenizer
+from projects.Llama.configs.llama_config import cfg, tokenization
 from projects.Llama.llama import LlamaForCausalLM
-from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace
+from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace, LlamaLoaderLiBai
 
-pretrained_model_path = "/data/hf_models/Llama-2-7b-hf"
 text = [
     "a dog is flying on the sky",
     "Wikipedia is a free online",
     "what is beam search?",
 ]
-
 
 if __name__ == "__main__":
     parallel_config = DictConfig(
@@ -26,22 +24,24 @@ if __name__ == "__main__":
     )
     dist.setup_dist_util(parallel_config)
 
-    tokenizer = instantiate(tokenizer)
+    tokenizer = instantiate(tokenization.tokenizer)
     input_ids = tokenizer.tokenize(text, add_bos=True, padding=True)
     load_func = LlamaLoaderHuggerFace(
         model=LlamaForCausalLM,
         libai_cfg=cfg,
-        pretrained_model_path=pretrained_model_path,
+        pretrained_model_path="/data/home/xiezipeng/meta-llama/Llama-2-7b-hf/",
     )
-    model = load_func.load()
-    model.eval()
+    model_hf = load_func.load()
+    model_hf.eval()
+    res_hf = model_hf(input_ids)
+    print(res_hf)
 
-    tokens = model.generate(
-        input_ids,
-        max_new_tokens=20,
-        do_sample=False,
+    load_func = LlamaLoaderLiBai(
+        model=LlamaForCausalLM,
+        libai_cfg=cfg,
+        pretrained_model_path="/data/home/xiezipeng/libai/sft_result/model_0000399/model",
     )
-
-    # if dist.is_main_process():
-    res = tokenizer.decode(tokens)
-    print(res)
+    model_libai = load_func.load()
+    model_libai.eval()
+    res_libai = model_libai(input_ids)
+    print(res_libai)

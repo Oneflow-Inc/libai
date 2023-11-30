@@ -91,11 +91,26 @@ if __name__ == "__main__":
     pipeline = TextGenerationPipeline(
         "projects/Llama/configs/llama_config.py",
         data_parallel=1,
-        tensor_parallel=2,
-        pipeline_parallel=2,
+        tensor_parallel=1,
+        pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path="/data/hf_models/Llama-2-7b-hf",
+        model_path="/data/home/xiezipeng/meta-llama/Llama-2-7b-hf/",
         mode="huggingface",
+    )
+
+    text = ["a dog is flying on the sky", "Wikipedia is a free online", "what is beam search?"]
+    output = pipeline(inputs=text)
+    if dist.is_main_process():
+        print(output)
+
+    pipeline = TextGenerationPipeline(
+        "projects/Llama/configs/llama_config.py",
+        data_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=1,
+        pipeline_num_layers=32,
+        model_path="/data/home/xiezipeng/libai/sft_result/model_0000399/model",
+        mode="libai",
     )
 
     text = ["a dog is flying on the sky", "Wikipedia is a free online", "what is beam search?"]
