@@ -3,18 +3,18 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import oneflow as flow
+
 flow.mock_torch.enable(lazy=True)
 
-from lm_eval import base, evaluator, tasks
-from lm_eval.base import BaseLM
+from lm_eval import evaluator, tasks  # noqa
+from lm_eval.base import BaseLM  # noqa
+from omegaconf import DictConfig  # noqa
 
-from omegaconf import DictConfig
-
-import libai.utils.distributed as dist
-from libai.config import instantiate
-from projects.Llama.configs.llama_config import cfg, tokenization
-from projects.Llama.llama import LlamaForCausalLM
-from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace, LlamaLoaderLiBai
+import libai.utils.distributed as dist  # noqa
+from libai.config import instantiate  # noqa
+from projects.Llama.configs.llama_config import cfg, tokenization  # noqa
+from projects.Llama.llama import LlamaForCausalLM  # noqa
+from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace, LlamaLoaderLiBai  # noqa
 
 
 class EvalHarnessBase(BaseLM):
@@ -48,10 +48,10 @@ class EvalHarnessBase(BaseLM):
     @property
     def batch_size(self):
         return self.batch_size_per_gpu * dist.get_world_size()
-    
+
     @property
     def device(self):
-        return flow.device('cuda:0')
+        return flow.device("cuda:0")
 
     def tok_encode(self, string: str) -> List[int]:
         return self.tokenizer.tokenize(string, add_bos=False, add_eos=False).squeeze(0).tolist()
@@ -75,7 +75,11 @@ class EvalHarnessBase(BaseLM):
 
     @flow.inference_mode()
     def run_eval(
-        self, eval_tasks: List[str], num_fewshot: int, limit: Optional[int], bootstrap_iters: int,
+        self,
+        eval_tasks: List[str],
+        num_fewshot: int,
+        limit: Optional[int],
+        bootstrap_iters: int,
     ) -> Dict:
         import fnmatch
 
@@ -118,12 +122,14 @@ class EvalHarnessBase(BaseLM):
 def run_eval_harness(
     model,
     tokenizer,
-    eval_tasks: List[str] = ["arc_challenge", "piqa", "hellaswag", "hendrycksTest-*"],
+    eval_tasks: List[str] = [
+        "hellaswag",
+    ],
     save_filepath: Optional[Path] = None,
     num_fewshot: int = 0,
     limit: Optional[int] = None,
     bootstrap_iters: int = 100000,
-    cfg = None,
+    cfg=None,
 ):
     model.eval()
     eval_harness = EvalHarnessBase(model, tokenizer, 1, cfg)
@@ -142,8 +148,8 @@ if __name__ == "__main__":
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
-            tensor_parallel_size=2,
-            pipeline_parallel_size=2,
+            tensor_parallel_size=1,
+            pipeline_parallel_size=1,
             pipeline_num_layers=32,
             device_type="cuda",
         )
@@ -151,10 +157,16 @@ if __name__ == "__main__":
     dist.setup_dist_util(parallel_config)
 
     tokenizer = instantiate(tokenization.tokenizer)
-    load_func = LlamaLoaderHuggerFace(
+    # load_func = LlamaLoaderHuggerFace(
+    #     model=LlamaForCausalLM,
+    #     libai_cfg=cfg,
+    #     pretrained_model_path="/data/home/xiezipeng/hf_models/meta-llama/Llama-2-7b-chat-hf",
+    # )
+
+    load_func = LlamaLoaderLiBai(
         model=LlamaForCausalLM,
         libai_cfg=cfg,
-        pretrained_model_path="/data/home/xiezipeng/hf_models/meta-llama/Llama-2-7b-hf/",
+        pretrained_model_path="/data/home/xiezipeng/libai/sft_result/model_0000499/model",
     )
     model = load_func.load()
     run_eval_harness(model, tokenizer, cfg=cfg)
