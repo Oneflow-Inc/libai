@@ -160,13 +160,13 @@ if __name__ == "__main__":
     # load_func = LlamaLoaderHuggerFace(
     #     model=LlamaForCausalLM,
     #     libai_cfg=cfg,
-    #     pretrained_model_path="/data/home/xiezipeng/hf_models/meta-llama/Llama-2-7b-chat-hf",
+    #     pretrained_model_path="",
     # )
 
     load_func = LlamaLoaderLiBai(
         model=LlamaForCausalLM,
         libai_cfg=cfg,
-        pretrained_model_path="/data/home/xiezipeng/libai/sft_result/model_0000499/model",
+        pretrained_model_path="",
     )
     model = load_func.load()
     run_eval_harness(model, tokenizer, cfg=cfg)

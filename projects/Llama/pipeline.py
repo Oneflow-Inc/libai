@@ -94,7 +94,7 @@ if __name__ == "__main__":
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path="/data/home/xiezipeng/meta-llama/Llama-2-7b-hf/",
+        model_path="meta-llama/Llama-2-7b-hf",
         mode="huggingface",
     )
 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path="/data/home/xiezipeng/libai/sft_result/model_0000399/model",
+        model_path="",
         mode="libai",
     )
 

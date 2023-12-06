@@ -545,6 +545,8 @@ class LlamaForCausalLM(nn.Module, Generator):
 
     def forward(self, input_ids, attention_mask=None, labels=None, use_cache=False):
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
+        attention_mask = attention_mask.to_global(placement=dist.get_layer_placement(0)) if attention_mask is not None else attention_mask
+        labels = labels.to_global(placement=dist.get_layer_placement(0)) if labels is not None else labels
 
         if use_cache and self.past_key_values[0] is not None:
             self.past_length = self.past_key_values[0][0].size(-2)

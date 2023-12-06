@@ -19,8 +19,8 @@ from projects.Llama.llama import LlamaForCausalLM
 weight_decay = 0.1
 learning_rate = 2e-5
 max_input_length = 1350
-dataset_path = "/data/home/xiezipeng/alpaca_data/"
-pretrained_model_path = "/data/home/xiezipeng/meta-llama/Llama-2-7b-hf"
+dataset_path = "alpaca_data"
+pretrained_model_path = "meta-llama/Llama-2-7b-hf"
 
 # graph & optim
 graph["enabled"] = True
@@ -66,7 +66,7 @@ dataloader.test = [
 train.update(
     dict(
         output_dir="./sft_result",
-        train_micro_batch_size=2,
+        train_micro_batch_size=1,
         test_micro_batch_size=1,
         train_epoch=5,
         train_iter=1,
