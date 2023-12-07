@@ -383,8 +383,7 @@ class ModelLoaderHuggerFace(ModelLoader):
         Returns:
             flow.Tensor: The target tensor.
         """
-        tensor = tensor.float()
-        return flow.Tensor(tensor.detach().cpu().numpy())
+        return flow.tensor(tensor.detach().cpu().numpy())
 
     def _convert_tensors(self, torch_state_dict):
 

@@ -227,12 +227,12 @@ class MultiheadAttention(nn.Module):
 
 
 class CasualMask(nn.Module):
-    def __init__(self, max_positions=1024, *, layer_idx=0):
+    def __init__(self, max_positions=1024, dtype=flow.float16, *, layer_idx=0):
         super().__init__()
-
+        self.dtype = dtype
         self.mask = flow.full(
             (max_positions, max_positions),
-            flow.finfo(flow.float32).min,
+            flow.finfo(dtype).min,
             placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
@@ -242,6 +242,7 @@ class CasualMask(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
         self.mask.masked_fill_(mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0)
+        self.mask = self.mask.to(dtype)
 
     def forward(self, input_ids, past_length=0, attention_mask=None):
         bsz, tgt_len = input_ids.size()
@@ -249,7 +250,7 @@ class CasualMask(nn.Module):
         if past_length > 0:
             # in case past_key_values are used, we need to add a prefix ones mask to casual mask
             casual_mask = flow.cat(
-                [flow.ones(tgt_len, past_length, dtype=flow.int8), casual_mask], dim=-1
+                [flow.ones(tgt_len, past_length, dtype=self.dtype), casual_mask], dim=-1
             )
         casual_mask = (
             casual_mask.unsqueeze(0).unsqueeze(1).expand(bsz, 1, tgt_len, tgt_len + past_length)

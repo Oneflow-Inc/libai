@@ -65,7 +65,7 @@ class EvalHarnessBase(BaseLM):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             placement=dist.get_layer_placement(0),
         )
-        return self.model(inps)["logits"].to_local()
+        return self.model(inps)["logits"].to_local().to(flow.float32)
 
     def _model_generate(self, context, max_length, eos_token_id) -> flow.Tensor:
         # this only supports batch size 1
@@ -129,9 +129,11 @@ def run_eval_harness(
     num_fewshot: int = 0,
     limit: Optional[int] = None,
     bootstrap_iters: int = 100000,
+    dtype=flow.float16,
     cfg=None,
 ):
     model.eval()
+    model = model.to(dtype)
     eval_harness = EvalHarnessBase(model, tokenizer, 1, cfg)
 
     results = eval_harness.run_eval(eval_tasks, num_fewshot, limit, bootstrap_iters)
