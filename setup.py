@@ -15,7 +15,6 @@
 
 import glob
 import os
-import pip
 import shutil
 import subprocess
 import sys
@@ -47,12 +46,12 @@ if sys.version_info < (3,):
 
 
 def get_pybind11():
-    try:
-        import pybind11 as pb
-    except ImportError:
-        print("pybind11 not found, installing...")
-        pip.main(["install","pybind11"])
-        import pybind11 as pb
+    # try:
+    #     import pybind11 as pb
+    # except ImportError:
+    #     print("pybind11 not found, installing...")
+    #     pip.main(["install","pybind11"])
+    import pybind11 as pb
     return pb
 
 
