@@ -58,6 +58,9 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
         run: |
           python -m pip install --upgrade pip
           python -m pip install --pre oneflow -f https://oneflow-staging.oss-cn-beijing.aliyuncs.com/branch/master/cpu
@@ -65,6 +68,9 @@ jobs:
           python -m pip install torch torchvision torchaudio
 
       - name: Build and install
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
         run: |
           python -m pip install -e .
 
