@@ -50,7 +50,7 @@ def get_pybind11():
         import pybind11 as pb
     except ImportError:
         print("pybind11 not found, installing...")
-        os.system("python -m pip install pybind11")
+        os.system(f"{sys.executable} -m pip install pybind11")
         import pybind11 as pb
     return pb
 

@@ -58,26 +58,17 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        uses: actions/checkout@v2
-        with:
-          python-version: '3.9'
         run: |
           python -m pip install --upgrade pip
           python -m pip install --pre oneflow -f https://oneflow-staging.oss-cn-beijing.aliyuncs.com/branch/master/cpu
           python -m pip install pybind11
           python -m pip install torch torchvision torchaudio
-      
+
       - name: Build and install
-        uses: actions/checkout@v2
-        with:
-          python-version: '3.9'
         run: |
           python -m pip install -e .
 
       - name: Run unittest
-        uses: actions/checkout@v2
-        with:
-          python-version: '3.9'
         run: |
           cd dev && bash run_unittest.sh
 
