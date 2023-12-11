@@ -58,6 +58,7 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
+        uses: actions/checkout@v2
         with:
           python-version: '3.9'
         run: |
@@ -67,12 +68,14 @@ jobs:
           python -m pip install torch torchvision torchaudio
       
       - name: Build and install
+        uses: actions/checkout@v2
         with:
           python-version: '3.9'
         run: |
           python -m pip install -e .
 
       - name: Run unittest
+        uses: actions/checkout@v2
         with:
           python-version: '3.9'
         run: |
