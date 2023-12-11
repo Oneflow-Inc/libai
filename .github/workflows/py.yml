@@ -63,7 +63,7 @@ jobs:
           python -m pip install --pre oneflow -f https://oneflow-staging.oss-cn-beijing.aliyuncs.com/branch/master/cpu
           python -m pip install pybind11
           python -m pip install torch torchvision torchaudio
-          python3 -m pip install -e .
+          python -m pip install -e .
 
       - name: Run unittest
         run: |
