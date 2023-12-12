@@ -1,6 +1,7 @@
 """Implementation derived from https://github.com/tloen/alpaca-lora"""
 import json
 import math
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -10,12 +11,15 @@ from oneflow.utils.data import random_split
 from tqdm import tqdm
 
 from libai.config import instantiate
+from libai.utils.logger import setup_logger
 from projects.Llama.configs.llama_config import tokenization
+
+logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("/data/alpaca_data"),
-    checkpoint_dir: Path = Path("/data/meta-llama/Llama-2-7b-hf"),
+    destination_path: Path = Path("/alpaca_data"),
+    checkpoint_dir: Path = Path("/Llama-2-7b-hf"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
@@ -30,18 +34,18 @@ def prepare(
     which stores the preprocessed and tokenized prompts and labels.
     """
     if max_seq_length is None:
-        with open(checkpoint_dir / "config.json", "r", encoding="utf-8") as file:
+        with open(os.path.join(checkpoint_dir, "config.json"), "r", encoding="utf-8") as file:
             config = json.load(file)
             max_seq_length = config["max_position_embeddings"]
 
     destination_path.mkdir(parents=True, exist_ok=True)
     data_file_path = destination_path / data_file_name
-    print("Loading data file...")
+    logger.info("Loading data file...")
     download_if_missing(data_file_path, data_file_url)
     with open(data_file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
 
-    print("Loading tokenizer...")
+    logger.info("Loading tokenizer...")
     tokenizer = instantiate(tokenization.tokenizer)
 
     # Partition the dataset into train and test
@@ -54,10 +58,10 @@ def prepare(
     )
     train_set, test_set = list(train_set), list(test_set)
 
-    print(f"train has {len(train_set):,} samples")
-    print(f"test has {len(test_set):,} samples")
+    logger.info(f"train has {len(train_set):,} samples")
+    logger.info(f"test has {len(test_set):,} samples")
 
-    print("Processing train split ...")
+    logger.info("Processing train split ...")
     train_set = [
         prepare_sample(
             example=sample,
@@ -70,7 +74,7 @@ def prepare(
     ]
     flow.save(train_set, destination_path / "train")
 
-    print("Processing test split ...")
+    logger.info("Processing test split ...")
     test_set = [
         prepare_sample(
             example=sample,
@@ -84,7 +88,7 @@ def prepare(
     flow.save(test_set, destination_path / "test")
 
     max_length = max([i["input_ids"].shape[0] for i in train_set])
-    print("Max length of training dataset: {}".format(max_length))
+    logger.info("Max length of training dataset: {}".format(max_length))
 
 
 def download_if_missing(file_path: Path, file_url: str) -> None:

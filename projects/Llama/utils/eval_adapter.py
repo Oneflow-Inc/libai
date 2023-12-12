@@ -43,7 +43,7 @@ class EvalHarnessBase(BaseLM):
 
     @property
     def max_gen_toks(self):
-        return 256
+        return self.cfg.get("max_length", 256)
 
     @property
     def batch_size(self):
@@ -159,12 +159,15 @@ if __name__ == "__main__":
     dist.setup_dist_util(parallel_config)
 
     tokenizer = instantiate(tokenization.tokenizer)
+
+    # ----- load huggingface checkpoint -----
     # load_func = LlamaLoaderHuggerFace(
     #     model=LlamaForCausalLM,
     #     libai_cfg=cfg,
     #     pretrained_model_path="",
     # )
 
+    # ----- load oneflow checkpoint -----
     load_func = LlamaLoaderLiBai(
         model=LlamaForCausalLM,
         libai_cfg=cfg,

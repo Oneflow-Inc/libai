@@ -26,7 +26,7 @@ cfg = dict(
     amp_enabled=True,
     # Inference
     is_encoder_decoder=False,
-    max_length=20,
+    max_length=256,
     min_length=0,
     do_sample=False,
     early_stopping=False,
