@@ -46,8 +46,12 @@ if sys.version_info < (3,):
 
 
 def get_pybind11():
-    import pybind11 as pb
-
+    try:
+        import pybind11 as pb
+    except ImportError:
+        print("pybind11 not found, installing...")
+        os.system(f"{sys.executable} -m pip install pybind11")
+        import pybind11 as pb
     return pb
 
 
