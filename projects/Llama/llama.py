@@ -244,7 +244,7 @@ class CasualMask(nn.Module):
         self.mask.masked_fill_(mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0)
         self.mask = self.mask.to(dtype)
 
-    def forward(self, input_ids, past_length=0, attention_mask=None):
+    def forward(self, input_ids, past_length=0, attention_mask=None, input_dtype=None):
         bsz, tgt_len = input_ids.size()
         casual_mask = self.mask[:tgt_len, :tgt_len]
         if past_length > 0:
@@ -265,6 +265,8 @@ class CasualMask(nn.Module):
             )
             attention_mask = attention_mask.to_global(placement=casual_mask.placement)
             casual_mask = casual_mask + attention_mask
+        if input_dtype is not None:
+            casual_mask = casual_mask.to(input_dtype)
         return casual_mask
 
 
@@ -558,6 +560,7 @@ class LlamaForCausalLM(nn.Module, Generator):
             input_ids,
             past_length=self.past_length,
             attention_mask=attention_mask,
+            input_dtype=self.lm_head.weight.dtype,
         )
 
         output = self.model(
