@@ -1,3 +1,4 @@
+import os
 from omegaconf import OmegaConf
 
 from libai.config import LazyCall
@@ -35,7 +36,7 @@ optim.update(
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(LlamaTokenizer)(
-    pretrained_model_path=pretrained_model_path + "/tokenizer.model"
+    pretrained_model_path=os.path.join(pretrained_model_path, "tokenizer.model")
 )
 
 # model
@@ -46,7 +47,7 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(AlpacaDataset)(
-            path=dataset_path + "train",
+            path=os.path.join(dataset_path, "train"),
             tokenizer=tokenization.tokenizer,
             max_len=max_input_length,
         )
@@ -55,7 +56,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
 dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(AlpacaDataset)(
-            path=dataset_path + "test",
+            path=os.path.join(dataset_path, "test"),
             tokenizer=tokenization.tokenizer,
             max_len=max_input_length,
         ),
@@ -66,7 +67,7 @@ dataloader.test = [
 train.update(
     dict(
         output_dir="./sft_result",
-        train_micro_batch_size=1,
+        train_micro_batch_size=2,
         test_micro_batch_size=1,
         train_epoch=5,
         train_iter=1,
@@ -75,6 +76,7 @@ train.update(
         num_accumulation_steps=8,
         rdma_enabled=True,
         amp=dict(enabled=True),
+        activation_checkpoint=dict(enabled=True),
         checkpointer=dict(
             period=100,
             max_to_keep=20,
