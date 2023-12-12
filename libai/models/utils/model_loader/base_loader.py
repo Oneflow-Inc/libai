@@ -23,7 +23,7 @@ import oneflow as flow
 from termcolor import colored
 
 import libai.utils.distributed as dist
-from libai.config import LazyCall
+from libai.config import LazyCall, try_get_key
 from libai.models.build import build_model
 
 logger = logging.getLogger(__name__)
@@ -383,8 +383,7 @@ class ModelLoaderHuggerFace(ModelLoader):
         Returns:
             flow.Tensor: The target tensor.
         """
-        tensor = tensor.float()
-        return flow.Tensor(tensor.detach().cpu().numpy())
+        return flow.tensor(tensor.detach().cpu().numpy())
 
     def _convert_tensors(self, torch_state_dict):
 
@@ -571,6 +570,10 @@ class ModelLoaderHuggerFace(ModelLoader):
             self.model = build_model(self.model)
         else:
             self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
+
+        # Convert to fp16
+        if try_get_key(self.libai_cfg, "amp_enabled"):
+            self.model.half()
 
         # State_dict to global
         logger.info("transfering state_dict local to global...")
