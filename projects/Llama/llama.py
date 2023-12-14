@@ -632,5 +632,4 @@ class LlamaForCausalLM(nn.Module, Generator):
                     module_block.config.activation_checkpointing = True
             else:
                 if isinstance(module_block.to(nn.Module), LlamaDecoderLayer):
-                    print("???")
                     module_block.to(nn.graph.GraphModule).activation_checkpointing = True

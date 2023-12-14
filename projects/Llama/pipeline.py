@@ -88,21 +88,22 @@ class TextGenerationPipeline(BasePipeline):
 
 
 if __name__ == "__main__":
-    pipeline = TextGenerationPipeline(
-        "projects/Llama/configs/llama_config.py",
-        data_parallel=1,
-        tensor_parallel=1,
-        pipeline_parallel=1,
-        pipeline_num_layers=32,
-        model_path="meta-llama/Llama-2-7b-hf",
-        mode="huggingface",
-    )
+    # ----- load huggingface checkpoint -----
+    # pipeline = TextGenerationPipeline(
+    #     "projects/Llama/configs/llama_config.py",
+    #     data_parallel=1,
+    #     tensor_parallel=1,
+    #     pipeline_parallel=1,
+    #     pipeline_num_layers=32,
+    #     model_path="",
+    #     mode="huggingface",
+    # )
 
-    text = ["a dog is flying on the sky", "Wikipedia is a free online", "what is beam search?"]
-    output = pipeline(inputs=text)
-    if dist.is_main_process():
-        print(output)
+    # output = pipeline(inputs=text)
+    # if dist.is_main_process():
+    #     print(output)
 
+    # ----- load libai checkpoint -----
     pipeline = TextGenerationPipeline(
         "projects/Llama/configs/llama_config.py",
         data_parallel=1,
