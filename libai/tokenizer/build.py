@@ -24,7 +24,7 @@ def build_tokenizer(cfg):
     """Initialize tokenizer."""
     tokenizer = instantiate(cfg.tokenizer)
 
-    if cfg.append_eod and tokenizer.eod_token is None:
+    if cfg.get("append_eod", None) and tokenizer.eod_token is None:
         if tokenizer.eos_token is not None:
             tokenizer.eod_token = tokenizer.eos_token
         else:
