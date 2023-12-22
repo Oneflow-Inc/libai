@@ -15,11 +15,10 @@
 
 from .graph_base import GraphBase
 from .weight_init import init_method_normal, scaled_init_method_normal
-from .model_utils.base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
-from .model_utils.bert_loader import BertLoaderHuggerFace, BertLoaderLiBai
-from .model_utils.roberta_loader import RobertaLoaderHuggerFace, RobertaLoaderLiBai
-from .model_utils.gpt_loader import GPT2LoaderHuggerFace, GPT2LoaderLiBai
-from .model_utils.t5_loader import T5LoaderHuggerFace, T5LoaderLibai
-from .model_utils.swin_loader import SwinLoaderHuggerFace, SwinLoaderLiBai
-from .model_utils.swinv2_loader import SwinV2LoaderHuggerFace, SwinV2LoaderLiBai
-from .model_utils.vit_loader import ViTLoaderHuggerFace, ViTLoaderLiBai
+from .model_loader.base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
+from .model_loader.bert_loader import BertLoaderHuggerFace, BertLoaderLiBai
+from .model_loader.roberta_loader import RobertaLoaderHuggerFace, RobertaLoaderLiBai
+from .model_loader.gpt_loader import GPT2LoaderHuggerFace, GPT2LoaderLiBai
+from .model_loader.swin_loader import SwinLoaderHuggerFace, SwinLoaderLiBai
+from .model_loader.swinv2_loader import SwinV2LoaderHuggerFace, SwinV2LoaderLiBai
+from .model_loader.vit_loader import ViTLoaderHuggerFace, ViTLoaderLiBai

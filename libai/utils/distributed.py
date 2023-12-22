@@ -15,6 +15,7 @@
 
 import logging
 
+import dill
 import numpy as np
 import oneflow as flow
 from omegaconf import OmegaConf
@@ -68,6 +69,9 @@ class _DistributeUtil(object):
         self._num_nodes = num_nodes
         self._num_gpus_per_node = num_gpus_per_node
         self._world_size = num_gpus_per_node * num_nodes
+
+        # Add set device type
+        self._device_type = try_get_key(cfg, "device_type", default="cuda")
 
     def _init_parallel_size(self, cfg):
 
@@ -219,6 +223,14 @@ class _DistributeUtil(object):
     def data_parallel_size(self):
         return self._data_parallel_size
 
+    @property
+    def device_type(self):
+        return self._device_type
+
+    def set_device_type(self, device_type):
+        assert device_type in ["cpu", "cuda"], f"not supported for {device_type}"
+        self._device_type = device_type
+
     def get_layer_ranks(self, layer_idx):
         layer_ranks = self._layer_ranks[layer_idx]
         if self._parallel_hierarchy is None:
@@ -290,7 +302,7 @@ def get_dist_util():
     return _DIST_UTIL
 
 
-def get_layer_placement(layer_idx, device_type="cuda"):
+def get_layer_placement(layer_idx, device_type=None):
     """
     Get ``flow.placement`` object with the initialized distributed environment
     according to the ``layer_idx``.
@@ -301,6 +313,7 @@ def get_layer_placement(layer_idx, device_type="cuda"):
         device_type (str, optional): device type. Defaults to "cuda".
     """
     dist_util = get_dist_util()
+    device_type = dist_util.device_type if device_type is None else device_type
     if not flow.cuda.is_available() and device_type == "cuda":
         device_type = "cpu"
     return flow.placement(
@@ -392,6 +405,20 @@ def get_num_nodes():
     return flow.env.get_node_size()
 
 
+def set_device_type(device_type):
+    dist_util = get_dist_util()
+    dist_util.set_device_type(device_type)
+
+
+def broadcast_py_object(obj, src: int = 0):
+    rank = flow.env.get_rank()
+    if src == rank:
+        obj_bytes = dill.dumps(obj)
+        return dill.loads(flow._oneflow_internal.cpu_broadcast(obj_bytes, src))
+    else:
+        return dill.loads(flow._oneflow_internal.cpu_broadcast(None, src))
+
+
 def convert_to_distributed_default_setting(t):
     """
     Helper function to convert all eager local tensor in :attr:`nn.Module` in the model to
@@ -403,7 +430,9 @@ def convert_to_distributed_default_setting(t):
             placement=get_layer_placement(0),
         )
     else:
-        return t
+        dist_util = get_dist_util()
+        device_type = dist_util.device_type
+        return t.to_global(placement=flow.placement(device_type, ranks=t.placement.ranks))
 
 
 def ttol(tensor, pure_local=False, ranks=None):
@@ -426,6 +455,20 @@ def tton(tensor, local_only=False, ranks=None):
         tensor = ttol(tensor, local_only, ranks)
 
     return tensor.numpy()
+
+
+def tensor_to_rank0(tensor, device="cuda", to_local=False):
+    """Global tensor to rank0."""
+    assert device in ["cpu", "cuda"], f"not supported for device:{device}"
+    if tensor.is_global:
+        # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
+        placement = flow.placement(device, ranks=[0] if tensor.placement.ranks.ndim == 1 else [[0]])
+        tensor = tensor.to_global(
+            sbp=get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]), placement=placement
+        )
+        if to_local:
+            tensor = ttol(tensor)
+    return tensor
 
 
 def synchronize():

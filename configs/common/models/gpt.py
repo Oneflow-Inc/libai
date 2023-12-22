@@ -4,7 +4,7 @@ from libai.models import GPTModel, GPTForPreTraining
 
 
 cfg = dict(
-    num_layers=6,
+    hidden_layers=6,
     vocab_size=30522,
     hidden_size=384,
     ffn_hidden_size=1536,

@@ -22,7 +22,6 @@ import oneflow as flow
 from libai.config import LazyConfig, try_get_key
 from libai.engine import DefaultTrainer
 from libai.utils import distributed as dist
-from libai.utils.checkpoint import Checkpointer
 from libai.utils.logger import setup_logger
 
 logger = setup_logger(distributed_rank=dist.get_rank())
@@ -40,7 +39,10 @@ class BasePipeline(metaclass=ABCMeta):
         data_parallel=None,
         tensor_parallel=None,
         pipeline_parallel=None,
+        pipeline_stage_id=None,
+        pipeline_num_layers=None,
         model_path=None,
+        mode="libai",
         **kwargs,
     ):
         # init cfg
@@ -51,19 +53,28 @@ class BasePipeline(metaclass=ABCMeta):
         flow.boxing.nccl.set_fusion_max_ops_num(
             try_get_key(self.cfg, "train.nccl_fusion_max_ops", default=24)
         )
-        self.update_cfg(data_parallel, tensor_parallel, pipeline_parallel)
+        self.update_cfg(
+            data_parallel,
+            tensor_parallel,
+            pipeline_parallel,
+            pipeline_stage_id,
+            pipeline_num_layers,
+        )
         dist.setup_dist_util(self.cfg.train.dist)
-        assert (
-            self.cfg.train.dist.data_parallel_size == 1
-        ), "not support data parallel yet, only support tensor and pipeline parallel"
         logger.info(self.cfg.train.dist)
 
         # initial and load model
-        self.model = DefaultTrainer.build_model(self.cfg).eval()
-        self.load_pretrain_weight(self.model, self.cfg, model_path)
+
+        self.model = self.load_pretrain_weight(self.cfg.model, model_path, mode=mode)
+        self.model._apply(dist.convert_to_distributed_default_setting)
+        self.model = self.model.eval()
 
         # initial tokenizer
-        self.tokenizer = self.build_tokenizer(self.cfg)
+        if dist.is_main_process():
+            self.tokenizer = self.build_tokenizer(self.cfg)
+        else:
+            self.tokenizer = None
+        self.tokenizer = dist.broadcast_py_object(self.tokenizer, src=0)
 
         # set parameters
         (
@@ -77,17 +88,48 @@ class BasePipeline(metaclass=ABCMeta):
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
+        pipeline_stage_id=None,
+        pipeline_num_layers=None,
     ):
         self.cfg.train.dist.data_parallel_size = data_parallel
         self.cfg.train.dist.tensor_parallel_size = tensor_parallel
         self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
+        self.cfg.train.dist.custom_pipeline_stage_id = pipeline_stage_id
+        if pipeline_num_layers is not None:
+            self.cfg.train.dist.pipeline_num_layers = pipeline_num_layers
+
         if self.cfg.train.dist.pipeline_parallel_size > 1:
             assert (
                 try_get_key(self.cfg.train.dist, "pipeline_num_layers") is not None
             ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
 
-    def load_pretrain_weight(self, model, cfg, model_path):
-        Checkpointer(model, save_dir=cfg.train.output_dir).resume_or_load(model_path, resume=False)
+    def load_pretrain_weight(
+        self,
+        libai_cfg_model,
+        model_path,
+        mode="libai",
+    ):
+        """load pretrained model.
+
+        Args:
+            libai_cfg_model (libai.models): Lazy config Model in Libai, you can import it
+                by `from libai.config.configs.common.models.bert
+                    import pretrain_model as libai_cfg_model`
+            model_path (str): The directory path of pretrained model
+            mode (str): set it to `libai` for loading trained model from libai,
+                set it to `random` for quickly debugging by random initialized model
+        """
+        if mode == "libai":
+            from libai.models.utils.model_loader.base_loader import ModelLoaderLiBai
+
+            model_loader = ModelLoaderLiBai(libai_cfg_model, libai_cfg_model.cfg, model_path)
+            model_loader.base_model_prefix_1 = None
+            model_loader.base_model_prefix_2 = ""
+            return model_loader.load()
+        elif mode == "random":
+            return DefaultTrainer.build_model(self.cfg)
+        else:
+            raise NotImplementedError
 
     def build_tokenizer(self, cfg):
         tokenizer = None

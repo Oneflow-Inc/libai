@@ -14,10 +14,10 @@
     <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-pink.svg">
     </a>
-    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+    <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="Python Checks" src="https://github.com/Oneflow-Inc/libai/workflows/Python checks/badge.svg">
     </a>
-    <a herf="https://github.com/Oneflow-Inc/libai/issues">
+    <a href="https://github.com/Oneflow-Inc/libai/issues">
         <img alt="Docs Release Status" src="https://github.com/Oneflow-Inc/libai/workflows/Document Release/badge.svg">
     </a>
 </p>
@@ -42,7 +42,7 @@ LiBai is a large-scale open-source model training toolbox based on OneFlow. The 
 
 - **Support for both CV and NLP tasks**
 
-    LiBai has predifined data process for both CV and NLP datasets such as CIFAR, ImageNet, and BERT Dataset.
+    LiBai has predefined data process for both CV and NLP datasets such as CIFAR, ImageNet, and BERT Dataset.
 
 - **Easy to use**
 

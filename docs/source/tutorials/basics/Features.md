@@ -83,8 +83,8 @@ LiBai supports [activation checkpointing](https://arxiv.org/abs/1604.06174) by `
 ```python
 def set_activation_checkpoint(self):
     for module_block in self.model.modules():
-        if isinstance(module_block.origin, TransformerLayer):
-            module_block.config.activation_checkpointing = True
+        if isinstance(module_block.to(nn.Module), TransformerLayer):
+            module_block.to(nn.graph.GraphModule).activation_checkpointing = True
 ```
 
 ### Usage
@@ -111,8 +111,6 @@ Unlike normal data parallelism, where model states and gradients are replicated 
 - Level 1: The optimizer states (e.g., for Adam optimizer, 32-bit weights, and the first and second moment estimates) are partitioned across the processes so that each process will only update its own partition.
 
 - Level 2: The reduced 32-bit gradients for updating the model weights are also partitioned so that each process retains only the gradients corresponding to its portion of the optimizer states.
-
-> **Note:** ZeRO only supports data parallel and pipeline parallel, or the combination of them. If you use tensor parallel in your training, make sure ZeRO is disabled.
 
 ### Usage 
 

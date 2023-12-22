@@ -46,8 +46,12 @@ if sys.version_info < (3,):
 
 
 def get_pybind11():
-    import pybind11 as pb
-
+    try:
+        import pybind11 as pb
+    except ImportError:
+        print("pybind11 not found, installing...")
+        os.system(f"{sys.executable} -m pip install pybind11")
+        import pybind11 as pb
     return pb
 
 
@@ -110,6 +114,7 @@ if __name__ == "__main__":
             "boto3",
             "botocore",
             "cloudpickle",
+            "click==8.0.2",
             "flowvision==0.1.0",
             "wget",
             "hydra-core",
@@ -128,11 +133,12 @@ if __name__ == "__main__":
             "tqdm",
             "pybind11",
             "portalocker",
+            "dill",
             "flake8==3.8.1 ",
             "isort==5.10.1",
-            "black==21.4b ",
+            "black==21.4b2 ",
             "autoflake",
-            "tensorboardX",
+            "tensorboardX<=2.5.1",
             "pytest",
         ],
         packages=find_packages(),

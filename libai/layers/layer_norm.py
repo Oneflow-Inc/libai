@@ -70,6 +70,7 @@ class LayerNorm(nn.Module):
             self.bias = None
 
     def forward(self, x):
+        x = x.to_global(placement=self.weight.placement)
         assert x.shape[-len(self.normalized_shape) :] == self.normalized_shape
         begin_norm_axis = x.ndim - len(self.normalized_shape)
         begin_params_axis = x.ndim - len(self.normalized_shape)
@@ -126,4 +127,5 @@ class RMSLayerNorm(nn.Module):
         self.l2norm_epsilon = eps
 
     def forward(self, hidden_states):
-        return flow._C.rms_layer_norm(hidden_states, self.weight, self.l2norm_epsilon)
+        hidden_states = hidden_states.to_global(placement=self.weight.placement)
+        return flow._C.rms_norm(hidden_states, self.weight, self.weight.shape, self.l2norm_epsilon)

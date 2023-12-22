@@ -1,6 +1,7 @@
 boto3
 botocore
 cloudpickle
+click==8.0.2
 flowvision==0.1.0
 wget
 hydra-core
@@ -19,9 +20,10 @@ termcolor
 tqdm
 pybind11
 portalocker
+dill
 flake8==3.8.1 
 isort==5.10.1
 black==21.4b2
 autoflake
-tensorboardX
+tensorboardX<=2.5.1
 pytest

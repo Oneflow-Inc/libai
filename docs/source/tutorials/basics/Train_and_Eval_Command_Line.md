@@ -49,7 +49,7 @@ train.evaluation.enabled=False   # set no evaluation
 
 To resume training, set `--resume` in the command line, and set `train.output_dir` in your `config.py` or in the command line
 
-For example, if your training is interrupted unexpectly, and your lastest model path is `output/demo/model_0000019/`, then set `train.output_dir=output/demo` to resume trainig:
+For example, if your training is interrupted unexpectedly, and your latest model path is `output/demo/model_0000019/`, then set `train.output_dir=output/demo` to resume training:
 
 ```shell
 bash tools/train.sh \

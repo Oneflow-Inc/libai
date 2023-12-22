@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import logging
+import random
 import sys
 
+import numpy as np
+import oneflow as flow
 from utils.weight_convert import load_torch_checkpoint
 
 from libai.config import LazyConfig, default_argument_parser, try_get_key
@@ -24,17 +26,12 @@ from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 
 sys.path.append(".")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("libai.mae." + __name__)
 
 
 class Trainer(DefaultTrainer):
     @classmethod
     def build_model(cls, cfg):
-        if try_get_key(cfg, "graph.enabled") is True:
-            raise NotImplementedError(
-                "LiBai MAE only support eager global mode now, please set cfg.graph.enabled=False"  # noqa
-            )
-
         model = super().build_model(cfg)
         if try_get_key(cfg, "finetune") is not None:
             if cfg.finetune.enable is True:
@@ -64,6 +61,7 @@ def main(args):
         cfg.train.log_period = 1
 
     if args.eval_only:
+        cfg.eval_only = True
         tokenizer = None
         if try_get_key(cfg, "tokenization.setup", default=False):
             tokenizer = Trainer.build_tokenizer(cfg)
@@ -78,6 +76,13 @@ def main(args):
             logger.info("No dataset in dataloader.test, please set dataset for dataloader.test")
         _ = Trainer.test(cfg, test_loader, model)
         return
+
+    # manual different seed for each rank
+    seed_for_rank = cfg.train.seed + flow.env.get_rank()
+    flow.manual_seed(seed_for_rank)
+    flow.cuda.manual_seed(seed_for_rank)
+    np.random.seed(seed_for_rank)
+    random.seed(seed_for_rank)
 
     trainer = Trainer(cfg)
     return trainer.train()
