@@ -12,7 +12,7 @@ FineTuning ChatGLM3 on 8 GPUs using parallelism.
 ```bash
 export DATA_DIR=~/DATA # [At the beginning, it was an empty folder]
 cd $DATA_DIR
-git clone https://www.modelscope.cn/datasets/DAMO_ConvAI/ZhDoc2BotDialogue.git
+git clone https://www.modelscope.cn/datasets/YorickHe/CoT_zh.git
 ```
 
 #### preprocess

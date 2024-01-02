@@ -26,8 +26,7 @@ pretrained_model_path = "YOUR_CHATGLM_HUGGINGFACE_PATH"
 
 # graph & optim
 graph["enabled"] = True
-# graph['global_mode']['enabled'] = True
-# graph["debug"] = 0
+
 optim.update(
     dict(
         lr=learning_rate,
