@@ -1,35 +1,21 @@
-# coding=utf-8
-# Copyright 2021 The OneFlow Authors. All rights reserved.
-# Copyright ChatGLM3-6B Authors. All rights reserved.
-# 
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# --------------------------------------------------------
+# Refer to code from:
+# https://huggingface.co/THUDM/chatglm3-6b/blob/main/modeling_chatglm.py
+# --------------------------------------------------------
 
 import math
-from typing import Tuple,List, Union, Optional,Dict,Any
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Tuple
 
 import oneflow as flow
 from oneflow import nn
 
-from libai.inference.generator.generation_utils import Generator
-from libai.layers import Linear, ParallelCrossEntropyLoss, RMSLayerNorm, LayerNorm, Embedding
+from libai.inference.generator.generation_utils import Generator, LogitsProcessorList
+from libai.layers import LayerNorm, Linear, ParallelCrossEntropyLoss, RMSLayerNorm, VocabEmbedding
 from libai.utils import distributed as dist
-from libai.utils.logger import setup_logger
-from copy import deepcopy
 
-logger = setup_logger()
 
-def apply_rotary_pos_emb(x:flow.Tensor, rope_cache: flow.Tensor) -> flow.Tensor:
+def apply_rotary_pos_emb(x: flow.Tensor, rope_cache: flow.Tensor) -> flow.Tensor:
     # x: [sq, b, np, hn]
     sq, b, np, hn = x.size(0), x.size(1), x.size(2), x.size(3)
     rot_dim = rope_cache.shape[-2] * 2
@@ -40,13 +26,18 @@ def apply_rotary_pos_emb(x:flow.Tensor, rope_cache: flow.Tensor) -> flow.Tensor:
     rope_cache = rope_cache.view(sq, -1, 1, xshaped.size(3), 2)
     x_out2 = flow.cat(
         [
-            (xshaped[..., 0] * rope_cache[..., 0] - xshaped[..., 1] * rope_cache[..., 1]).unsqueeze(-1),
-            (xshaped[..., 1] * rope_cache[..., 0] + xshaped[..., 0] * rope_cache[..., 1]).unsqueeze(-1),
+            (xshaped[..., 0] * rope_cache[..., 0] - xshaped[..., 1] * rope_cache[..., 1]).unsqueeze(
+                -1
+            ),
+            (xshaped[..., 1] * rope_cache[..., 0] + xshaped[..., 0] * rope_cache[..., 1]).unsqueeze(
+                -1
+            ),
         ],
         -1,
     )
     x_out2 = x_out2.flatten(3)
     return flow.cat((x_out2, x_pass), dim=-1)
+
 
 class PrefixEncoder(flow.nn.Module):
     """
@@ -61,15 +52,15 @@ class PrefixEncoder(flow.nn.Module):
         kv_size = cfg.num_layers * cfg.kv_channels * cfg.multi_query_group_num * 2
         if self.prefix_projection:
             # Use a two-layer MLP to encode the prefix
-            
-            self.embedding = Embedding(cfg.pre_seq_len, kv_size)
+
+            self.embedding = VocabEmbedding(cfg.pre_seq_len, kv_size, amp_enabled=cfg.amp_enabled)
             self.trans = nn.Sequential(
-                Linear(kv_size, cfg.hidden_size,parallel='col'),
+                Linear(kv_size, cfg.hidden_size, parallel="col"),
                 nn.Tanh(),
-                Linear(cfg.hidden_size, kv_size,parallel='row')
+                Linear(cfg.hidden_size, kv_size, parallel="row"),
             )
         else:
-            self.embedding = Embedding(cfg.pre_seq_len,kv_size)
+            self.embedding = VocabEmbedding(cfg.pre_seq_len, kv_size, amp_enabled=cfg.amp_enabled)
 
     def forward(self, prefix):
         if self.prefix_projection:
@@ -81,49 +72,50 @@ class PrefixEncoder(flow.nn.Module):
 
 
 class RotaryEmbedding(nn.Module):
-    def __init__(self, dim, original_impl=False, layer_idx=0, ):
-        super().__init__()
-        inv_freq = 1.0 / (10000 ** (flow.arange(0, dim, 2,dtype = flow.float32, placement=dist.get_layer_placement(layer_idx), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])) / dim))
-        self.register_buffer("inv_freq", inv_freq)
-        self.dim = dim
-        self.original_impl = original_impl
-
-    def forward_impl(
-            self, seq_len: int, n_elem: int, dtype: flow.dtype, base: int = 10000
+    def __init__(
+        self,
+        dim,
+        max_length,
+        original_impl=False,
+        layer_idx=0,
     ):
+        super().__init__()
+        sbp = dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
+        placement = dist.get_layer_placement(layer_idx)
+        theta = 1.0 / (
+            10000
+            ** (flow.arange(0, dim, 2, dtype=flow.float32, placement=placement, sbp=sbp) / dim)
+        )
+        seq_idx = flow.arange(max_length, dtype=flow.float32, placement=placement, sbp=sbp)
+        idx_theta = flow.matmul(seq_idx.unsqueeze(1), theta.unsqueeze(0)).float()
+        self.sin_cache = flow.sin(idx_theta)
+        self.cos_cache = flow.cos(idx_theta)
+        self.max_length = max_length
+
+    def forward_impl(self, seq_len: int, dtype: flow.dtype):
         """Enhanced Transformer with Rotary Position Embedding.
         Derived from: https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/labml_nn/
         transformers/rope/__init__.py. MIT License:
         https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/license.
         """
-        # $\Theta = {\theta_i = 10000^{\frac{2(i-1)}{d}}, i \in [1, 2, ..., \frac{d}{2}]}$
-        theta = 1.0 / (base ** (flow.arange(0, n_elem, 2, dtype=flow.float32, placement=dist.get_layer_placement(0), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])) / n_elem))
-
-        # Create position indexes `[0, 1, ..., seq_len - 1]`
-        seq_idx = flow.arange(seq_len, dtype=flow.float32, placement=dist.get_layer_placement(0), sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-
-        # Calculate the product of position index and $\theta_i$
-        # idx_theta = torch.outer(seq_idx, theta).float()
-        idx_theta = flow.matmul(seq_idx.unsqueeze(1),theta.unsqueeze(0)).float()
-
-        cache = flow.stack([flow.cos(idx_theta), flow.sin(idx_theta)], dim=-1)
-
+        assert seq_len <= self.max_length
+        cache = flow.stack([self.cos_cache[:seq_len], self.sin_cache[:seq_len]], dim=-1)
         # this is to mimic the behaviour of complex32, else we will get different results
         if dtype in (flow.float16, flow.bfloat16, flow.int8):
             cache = cache.bfloat16() if dtype == flow.bfloat16 else cache.half()
         return cache
 
-    def forward(self, max_seq_len, offset=0):
-        return self.forward_impl(
-            max_seq_len, self.dim, dtype=self.inv_freq.dtype
-        )
-
+    def forward(
+        self,
+        max_seq_len,
+        dtype,
+        offset=0,
+    ):
+        return self.forward_impl(max_seq_len, dtype=dtype)
 
 
 class CoreAttention(flow.nn.Module):
-    def __init__(self,
-                 cfg,
-                 layer_number):
+    def __init__(self, cfg, layer_number):
         super(CoreAttention, self).__init__()
 
         self.apply_query_key_layer_scaling = cfg.apply_query_key_layer_scaling
@@ -131,7 +123,7 @@ class CoreAttention(flow.nn.Module):
         if self.apply_query_key_layer_scaling:
             self.attention_softmax_in_fp32 = True
         self.layer_number = max(1, layer_number)
-        
+
         projection_size = cfg.kv_channels * cfg.num_attention_heads
 
         # Per attention head and per partition values.
@@ -148,13 +140,17 @@ class CoreAttention(flow.nn.Module):
 
         self.attention_dropout = nn.Dropout(cfg.attention_dropout)
 
-    def scaled_dot_product_attention(self, query, key, value, attn_mask=None,is_causal=False,dropout_p=0.0):
+    def scaled_dot_product_attention(
+        self, query, key, value, attn_mask=None, is_causal=False, dropout_p=0.0
+    ):
         L, S = query.size(-2), key.size(-2)
         scale_factor = 1 / math.sqrt(query.size(-1))
         attn_bias = flow.zeros(L, S, dtype=query.dtype, placement=query.placement, sbp=query.sbp)
         if is_causal:
             assert attn_mask is None
-            temp_mask = flow.ones(L, S, dtype=flow.bool,placement=query.placement, sbp=query.sbp).tril(diagonal=0)
+            temp_mask = flow.ones(
+                L, S, dtype=flow.bool, placement=query.placement, sbp=query.sbp
+            ).tril(diagonal=0)
             attn_bias.masked_fill_(temp_mask.logical_not(), float("-inf"))
             attn_bias.to(query.dtype)
 
@@ -163,35 +159,39 @@ class CoreAttention(flow.nn.Module):
                 attn_mask.masked_fill_(attn_mask.logical_not(), float("-inf"))
             else:
                 attn_bias += attn_mask
-        attn_weight = query @ key.transpose(-2, -1) * scale_factor
+
+        attn_weight = flow.matmul(query, key, transpose_b=True, alpha=scale_factor)
         attn_weight += attn_bias
-        attn_weight = nn.functional.softmax(attn_weight, dim=-1)
-        attn_weight = nn.functional.dropout(attn_weight, dropout_p, training=True)
-        ans = attn_weight @ value
+        attn_weight = flow.softmax(attn_weight, dim=-1)
+        ans = flow.matmul(attn_weight, value)
         return ans
 
     def forward(self, query_layer, key_layer, value_layer, attention_mask=None):
-        """
-        query_layer: [sq, b, np, hn] -[premute]-> [batch_size, head_num, seq_len, hidden_size]
-        """
-        query_layer, key_layer, value_layer = [k.permute(1, 2, 0, 3) for k in [query_layer, key_layer, value_layer]]
+        # query_layer: [sq, b, np, hn] -[premute]-> [batch_size, head_num, seq_len, hidden_size]
+        query_layer, key_layer, value_layer = [
+            k.permute(1, 2, 0, 3) for k in [query_layer, key_layer, value_layer]
+        ]
         if attention_mask is None and query_layer.shape[2] == key_layer.shape[2]:
-            context_layer = self.scaled_dot_product_attention(query_layer, key_layer, value_layer,is_causal=True)
-            
+            context_layer = self.scaled_dot_product_attention(
+                query_layer, key_layer, value_layer, is_causal=True
+            )
+
         else:
             if attention_mask is not None:
                 attention_mask = ~attention_mask
-            context_layer = self.scaled_dot_product_attention(query_layer, key_layer, value_layer,attention_mask)
+            context_layer = self.scaled_dot_product_attention(
+                query_layer, key_layer, value_layer, attention_mask
+            )
 
         context_layer = context_layer.permute(2, 0, 1, 3)
-        new_context_layer_shape = context_layer.size()[:-2] + (self.hidden_size_per_partition,)
-        context_layer = context_layer.reshape(*new_context_layer_shape)
+        context_layer = context_layer.flatten(2)
         return context_layer
 
+
 def split_tensor_along_last_dim(
-        tensor: flow.Tensor,
-        num_partitions: int,
-        contiguous_split_chunks: bool = False,
+    tensor: flow.Tensor,
+    num_partitions: int,
+    contiguous_split_chunks: bool = False,
 ) -> List[flow.Tensor]:
     """Split a tensor along its last dimension.
     Arguments:
@@ -212,6 +212,7 @@ def split_tensor_along_last_dim(
         return tuple(chunk.contiguous() for chunk in tensor_list)
 
     return tensor_list
+
 
 class SelfAttention(flow.nn.Module):
     """Parallel self-attention layer abstract class.
@@ -234,22 +235,30 @@ class SelfAttention(flow.nn.Module):
         if self.multi_query_attention:
             self.num_multi_query_groups_per_partition = cfg.multi_query_group_num
             self.qkv_hidden_size = (
-                self.projection_size + 2 * self.hidden_size_per_attention_head * cfg.multi_query_group_num
+                self.projection_size
+                + 2 * self.hidden_size_per_attention_head * cfg.multi_query_group_num
             )
-        self.query_key_value = Linear(cfg.hidden_size, self.qkv_hidden_size,
-                                      bias=cfg.add_bias_linear or cfg.add_qkv_bias,
-                                      parallel="col",
-                                      layer_idx=self.layer_number-1)
+
+        self.query_key_value = Linear(
+            cfg.hidden_size,
+            self.qkv_hidden_size,
+            bias=cfg.add_bias_linear or cfg.add_qkv_bias,
+            parallel="col",
+            layer_idx=self.layer_number - 1,
+        )
 
         self.core_attention = CoreAttention(cfg, self.layer_number)
 
         # Output.
-        self.dense = Linear(self.projection_size, cfg.hidden_size, bias=cfg.add_bias_linear,
-                            parallel="col",layer_idx=self.layer_number-1)
+        self.dense = Linear(
+            self.projection_size,
+            cfg.hidden_size,
+            bias=cfg.add_bias_linear,
+            parallel="col",
+            layer_idx=self.layer_number - 1,
+        )
 
-    def forward(
-            self, hidden_states, attention_mask, rotary_pos_emb, kv_cache=None, use_cache=True
-    ):
+    def forward(self, hidden_states, attention_mask, rotary_pos_emb, kv_cache=None, use_cache=True):
         # hidden_states: [sq, b, h]
 
         # =================================================
@@ -272,29 +281,33 @@ class SelfAttention(flow.nn.Module):
                 dim=-1,
             )
             query_layer = query_layer.view(
-                query_layer.size()[:-1] + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
+                query_layer.size()[:-1]
+                + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
             )  # [sq, b, num_attention_heads_per_partition,hidden_size_per_attention_head]
             key_layer = key_layer.view(
-                key_layer.size()[:-1] + (self.num_multi_query_groups_per_partition, self.hidden_size_per_attention_head)
-            ) # [sq, b, num_multi_query_groups_per_partition,hidden_size_per_attention_head]
+                key_layer.size()[:-1]
+                + (self.num_multi_query_groups_per_partition, self.hidden_size_per_attention_head)
+            )  # [sq, b, num_multi_query_groups_per_partition,hidden_size_per_attention_head]
             value_layer = value_layer.view(
                 value_layer.size()[:-1]
                 + (self.num_multi_query_groups_per_partition, self.hidden_size_per_attention_head)
-            ) # [sq, b, num_multi_query_groups_per_partition,hidden_size_per_attention_head]
+            )  # [sq, b, num_multi_query_groups_per_partition,hidden_size_per_attention_head]
 
         else:
-            new_tensor_shape = mixed_x_layer.size()[:-1] + \
-                               (self.num_attention_heads_per_partition,
-                                3 * self.hidden_size_per_attention_head)
+            new_tensor_shape = mixed_x_layer.size()[:-1] + (
+                self.num_attention_heads_per_partition,
+                3 * self.hidden_size_per_attention_head,
+            )
             mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
 
             # [sq, b, np, 3 * hn] --> 3 [sq, b, np, hn]
-            (query_layer, key_layer, value_layer) = split_tensor_along_last_dim(mixed_x_layer, 3)
+            (query_layer, key_layer, value_layer) = flow.chunk(mixed_x_layer, 3, dim=-1)
 
         # apply relative positional encoding (rotary embedding)
         if rotary_pos_emb is not None:
             query_layer = apply_rotary_pos_emb(query_layer, rotary_pos_emb)
             key_layer = apply_rotary_pos_emb(key_layer, rotary_pos_emb)
+
         # adjust key and value for inference
         if kv_cache is not None:
             cache_k, cache_v = kv_cache
@@ -308,17 +321,27 @@ class SelfAttention(flow.nn.Module):
         if self.multi_query_attention:
             key_layer = key_layer.unsqueeze(-2)
             key_layer = key_layer.expand(
-                -1, -1, -1, self.num_attention_heads_per_partition // self.num_multi_query_groups_per_partition, -1
+                -1,
+                -1,
+                -1,
+                self.num_attention_heads_per_partition // self.num_multi_query_groups_per_partition,
+                -1,
             )
             key_layer = key_layer.contiguous().view(
-                key_layer.size()[:2] + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
+                key_layer.size()[:2]
+                + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
             )
             value_layer = value_layer.unsqueeze(-2)
             value_layer = value_layer.expand(
-                -1, -1, -1, self.num_attention_heads_per_partition // self.num_multi_query_groups_per_partition, -1
+                -1,
+                -1,
+                -1,
+                self.num_attention_heads_per_partition // self.num_multi_query_groups_per_partition,
+                -1,
             )
             value_layer = value_layer.contiguous().view(
-                value_layer.size()[:2] + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
+                value_layer.size()[:2]
+                + (self.num_attention_heads_per_partition, self.hidden_size_per_attention_head)
             )
 
         # ==================================
@@ -353,8 +376,8 @@ class MLP(flow.nn.Module):
             cfg.hidden_size,
             cfg.ffn_hidden_size * 2,
             bias=self.add_bias,
-            parallel='col',
-            layer_idx=layer_idx
+            parallel="col",
+            layer_idx=layer_idx,
         )
 
         def swiglu(x):
@@ -368,8 +391,8 @@ class MLP(flow.nn.Module):
             cfg.ffn_hidden_size,
             cfg.hidden_size,
             bias=self.add_bias,
-            parallel='row',
-            layer_idx=layer_idx
+            parallel="row",
+            layer_idx=layer_idx,
         )
 
     def forward(self, hidden_states):
@@ -387,9 +410,7 @@ class GLMBlock(flow.nn.Module):
     output of the same size.
     """
 
-    def __init__(self, 
-                 cfg,
-                 layer_number):
+    def __init__(self, cfg, layer_number):
         super(GLMBlock, self).__init__()
         self.layer_number = layer_number
 
@@ -399,41 +420,50 @@ class GLMBlock(flow.nn.Module):
 
         LayerNormFunc = RMSLayerNorm if cfg.rmsnorm else LayerNorm
         # Layernorm on the input data.
-        self.input_layernorm = LayerNormFunc((cfg.hidden_size,), eps=cfg.layernorm_epsilon,layer_idx=layer_number-1)
+        self.input_layernorm = LayerNormFunc(
+            (cfg.hidden_size,), eps=cfg.layernorm_epsilon, layer_idx=layer_number - 1
+        )
 
         # Self attention.
         self.self_attention = SelfAttention(cfg, layer_number)
         self.hidden_dropout = cfg.hidden_dropout
 
         # Layernorm on the attention output
-        self.post_attention_layernorm = LayerNormFunc((cfg.hidden_size,), eps=cfg.layernorm_epsilon,layer_idx=layer_number-1)
+        self.post_attention_layernorm = LayerNormFunc(
+            (cfg.hidden_size,), eps=cfg.layernorm_epsilon, layer_idx=layer_number - 1
+        )
 
         # MLP
-        self.mlp = MLP(cfg, layer_number-1)
+        self.mlp = MLP(cfg, layer_number - 1)
 
     def forward(
-            self, hidden_states, attention_mask, rotary_pos_emb, kv_cache=None, use_cache=True,
+        self,
+        hidden_states,
+        attention_mask,
+        rotary_pos_emb,
+        kv_cache=None,
+        use_cache=True,
     ):
         # hidden_states: [s, b, h]
-        hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_number-1))
+        hidden_states = hidden_states.to_global(
+            placement=dist.get_layer_placement(self.layer_number - 1)
+        )
 
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(
-                placement=dist.get_layer_placement(self.layer_number-1)
+                placement=dist.get_layer_placement(self.layer_number - 1)
             )
         if rotary_pos_emb is not None:
-            rotary_pos_emb = rotary_pos_emb.to_global(placement=dist.get_layer_placement(self.layer_number-1), 
-                                                      sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+            rotary_pos_emb = rotary_pos_emb.to_global(
+                placement=dist.get_layer_placement(self.layer_number - 1),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            )
 
         # Layer norm at the beginning of the transformer layer.
         layernorm_output = self.input_layernorm(hidden_states)
         # Self attention.
         attention_output, kv_cache = self.self_attention(
-            layernorm_output,
-            attention_mask,
-            rotary_pos_emb,
-            kv_cache=kv_cache,
-            use_cache=use_cache
+            layernorm_output, attention_mask, rotary_pos_emb, kv_cache=kv_cache, use_cache=use_cache
         )
 
         # Residual connection.
@@ -442,7 +472,9 @@ class GLMBlock(flow.nn.Module):
         else:
             residual = hidden_states
 
-        layernorm_input = nn.functional.dropout(attention_output, p=self.hidden_dropout, training=self.training)
+        layernorm_input = nn.functional.dropout(
+            attention_output, p=self.hidden_dropout, training=self.training
+        )
         layernorm_input = residual + layernorm_input
 
         # Layer norm post the self attention.
@@ -484,15 +516,21 @@ class GLMTransformer(flow.nn.Module):
         if self.post_layer_norm:
             LayerNormFunc = RMSLayerNorm if cfg.rmsnorm else LayerNorm
             # Final layer norm before output.
-            self.final_layernorm = LayerNormFunc((cfg.hidden_size,), eps=cfg.layernorm_epsilon,layer_idx=-1)
+            self.final_layernorm = LayerNormFunc(
+                (cfg.hidden_size,), eps=cfg.layernorm_epsilon, layer_idx=-1
+            )
 
     def _get_layer(self, layer_number):
         return self.layers[layer_number]
 
     def forward(
-            self, hidden_states, attention_mask, rotary_pos_emb, kv_caches=None,
-            use_cache: Optional[bool] = True,
-            output_hidden_states: Optional[bool] = False,
+        self,
+        hidden_states,
+        attention_mask,
+        rotary_pos_emb,
+        kv_caches=None,
+        use_cache: Optional[bool] = True,
+        output_hidden_states: Optional[bool] = False,
     ):
         if not kv_caches:
             kv_caches = [None for _ in range(self.num_layers)]
@@ -511,7 +549,7 @@ class GLMTransformer(flow.nn.Module):
                 attention_mask,
                 rotary_pos_emb,
                 kv_cache=kv_caches[index],
-                use_cache=use_cache
+                use_cache=use_cache,
             )
             hidden_states, kv_cache = layer_ret
             if use_cache:
@@ -542,18 +580,31 @@ class ChatGLMPreTrainedModel(nn.Module):
 
     def get_masks(self, input_ids, past_key_values, padding_mask=None):
         batch_size, seq_length = input_ids.shape
-        full_attention_mask = flow.ones(batch_size, seq_length, seq_length, 
-                                        placement=dist.get_layer_placement(0),
-                                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
+        full_attention_mask = flow.ones(
+            batch_size,
+            seq_length,
+            seq_length,
+            placement=dist.get_layer_placement(0),
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
         full_attention_mask = full_attention_mask.tril()
         past_length = 0
         if past_key_values:
             past_length = past_key_values[0][0].shape[0]
         if past_length:
-            full_attention_mask = flow.cat((flow.ones(batch_size, seq_length, past_length,
-                                                      placement=dist.get_layer_placement(0),
-                                                      sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])),
-                                                      full_attention_mask), dim=-1)
+            full_attention_mask = flow.cat(
+                (
+                    flow.ones(
+                        batch_size,
+                        seq_length,
+                        past_length,
+                        placement=dist.get_layer_placement(0),
+                        sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    ),
+                    full_attention_mask,
+                ),
+                dim=-1,
+            )
         if padding_mask is not None:
             full_attention_mask = full_attention_mask * padding_mask.unsqueeze(1)
         if not past_length and padding_mask is not None:
@@ -564,11 +615,18 @@ class ChatGLMPreTrainedModel(nn.Module):
 
     def get_position_ids(self, input_ids):
         batch_size, seq_length = input_ids.shape
-        position_ids = flow.arange(seq_length, dtype=flow.long, 
-                                   placement=dist.get_layer_placement(0),
-                                   sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                                   ).unsqueeze(0).repeat(batch_size, 1)
+        position_ids = (
+            flow.arange(
+                seq_length,
+                dtype=flow.long,
+                placement=dist.get_layer_placement(0),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            )
+            .unsqueeze(0)
+            .repeat(batch_size, 1)
+        )
         return position_ids
+
 
 class EmbeddingLayer(flow.nn.Module):
     """Language model embeddings."""
@@ -578,10 +636,8 @@ class EmbeddingLayer(flow.nn.Module):
 
         self.hidden_size = cfg.hidden_size
         # Word embeddings (parallel).
-        self.word_embeddings = Embedding(
-            cfg.padded_vocab_size,
-            self.hidden_size,
-            layer_idx=0
+        self.word_embeddings = VocabEmbedding(
+            cfg.padded_vocab_size, self.hidden_size, amp_enabled=cfg.amp_enabled
         )
         self.fp32_residual_connection = cfg.fp32_residual_connection
 
@@ -609,12 +665,14 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         # Rotary positional embeddings
         self.seq_length = cfg.seq_length
         rotary_dim = (
-            cfg.hidden_size // cfg.num_attention_heads if cfg.kv_channels is None else cfg.kv_channels
+            cfg.hidden_size // cfg.num_attention_heads
+            if cfg.kv_channels is None
+            else cfg.kv_channels
         )
-        self.rotary_pos_emb = RotaryEmbedding(rotary_dim // 2)
+        self.rotary_pos_emb = RotaryEmbedding(rotary_dim // 2, cfg.seq_length)
 
         self.encoder = GLMTransformer(cfg)
-        self.output_layer = Linear(cfg.hidden_size, cfg.padded_vocab_size, bias=False,layer_idx=-1)
+        self.output_layer = Linear(cfg.hidden_size, cfg.padded_vocab_size, bias=False, layer_idx=-1)
         self.pre_seq_len = cfg.pre_seq_len
         self.prefix_projection = cfg.prefix_projection
         if self.pre_seq_len is not None:
@@ -635,7 +693,7 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             self.pre_seq_len,
             self.num_layers * 2,
             self.multi_query_group_num,
-            self.kv_channels
+            self.kv_channels,
         )
         # seq_len, b, nh, hidden_size
         past_key_values = self.dropout(past_key_values)
@@ -643,19 +701,21 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         return past_key_values
 
     def forward(
-            self,
-            input_ids,
-            position_ids: Optional[flow.Tensor] = None,
-            attention_mask: Optional[flow.BoolTensor] = None,
-            full_attention_mask: Optional[flow.BoolTensor] = None,
-            past_key_values: Optional[Tuple[Tuple[flow.Tensor, flow.Tensor], ...]] = None,
-            inputs_embeds: Optional[flow.Tensor] = None,
-            use_cache: Optional[bool] = None,
-            output_hidden_states: Optional[bool] = None,
-            return_dict: Optional[bool] = None,
+        self,
+        input_ids,
+        position_ids: Optional[flow.Tensor] = None,
+        attention_mask: Optional[flow.BoolTensor] = None,
+        full_attention_mask: Optional[flow.BoolTensor] = None,
+        past_key_values: Optional[Tuple[Tuple[flow.Tensor, flow.Tensor], ...]] = None,
+        inputs_embeds: Optional[flow.Tensor] = None,
+        use_cache: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
     ):
         output_hidden_states = (
-            output_hidden_states if output_hidden_states is not None else self.cfg.output_hidden_states
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.cfg.output_hidden_states
         )
         use_cache = use_cache if use_cache is not None else self.cfg.use_cache
         return_dict = return_dict if return_dict is not None else self.cfg.use_return_dict
@@ -669,28 +729,41 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             if past_key_values is None:
                 past_key_values = self.get_prompt(batch_size=batch_size)
             if attention_mask is not None:
-                attention_mask = flow.cat([flow.ones((batch_size, self.pre_seq_len)),attention_mask], dim=-1)
+                attention_mask = flow.cat(
+                    [flow.ones((batch_size, self.pre_seq_len)), attention_mask], dim=-1
+                )
 
         if full_attention_mask is None:
-            if (past_key_values and seq_length != 1):
-                full_attention_mask = self.get_masks(input_ids, past_key_values, padding_mask=attention_mask)
+            if past_key_values and seq_length != 1:
+                full_attention_mask = self.get_masks(
+                    input_ids, past_key_values, padding_mask=attention_mask
+                )
 
         # Rotary positional embeddings
-        rotary_pos_emb = self.rotary_pos_emb(self.seq_length)
+        rotary_pos_emb = self.rotary_pos_emb(self.seq_length, inputs_embeds.dtype)
         if position_ids is not None:
             rotary_pos_emb = rotary_pos_emb[position_ids]
         else:
             rotary_pos_emb = rotary_pos_emb[None, :seq_length]
         rotary_pos_emb = rotary_pos_emb.transpose(0, 1).contiguous()
+        # rotary_pos_emb = None
 
         # Run encoder.
         hidden_states, presents, all_hidden_states, all_self_attentions = self.encoder(
-            inputs_embeds, full_attention_mask, rotary_pos_emb=rotary_pos_emb,
-            kv_caches=past_key_values, use_cache=use_cache, output_hidden_states=output_hidden_states
+            inputs_embeds,
+            full_attention_mask,
+            rotary_pos_emb=rotary_pos_emb,
+            kv_caches=past_key_values,
+            use_cache=use_cache,
+            output_hidden_states=output_hidden_states,
         )
 
         if not return_dict:
-            return tuple(v for v in [hidden_states, presents, all_hidden_states, all_self_attentions] if v is not None)
+            return tuple(
+                v
+                for v in [hidden_states, presents, all_hidden_states, all_self_attentions]
+                if v is not None
+            )
 
         return dict(
             last_hidden_state=hidden_states,
@@ -699,7 +772,8 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
             attentions=all_self_attentions,
         )
 
-class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel,Generator):
+
+class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
     def __init__(self, cfg):
         super().__init__()
 
@@ -708,15 +782,50 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel,Generator):
         self.cfg = cfg
         self.loss_fct = ParallelCrossEntropyLoss()
 
+    def _update_model_kwargs_for_generation(
+        self,
+        outputs: Dict,
+        model_kwargs: Dict[str, Any],
+        is_encoder_decoder: bool = False,
+        standardize_cache_format: bool = False,
+    ) -> Dict[str, Any]:
+        # update past_key_values
+        model_kwargs["past_key_values"] = outputs["past_key_values"]
+
+        # update attention mask
+        if "attention_mask" in model_kwargs:
+            attention_mask = model_kwargs["attention_mask"]
+            model_kwargs["attention_mask"] = flow.cat(
+                [
+                    attention_mask,
+                    attention_mask.new_ones(
+                        (attention_mask.shape[0], 1),
+                        sbp=attention_mask.sbp,
+                        placement=attention_mask.placement,
+                    ),
+                ],
+                dim=-1,
+            )
+
+        # update position ids
+        if "position_ids" in model_kwargs:
+            position_ids = model_kwargs["position_ids"]
+            new_position_id = position_ids[..., -1:].clone()
+            new_position_id += 1
+            model_kwargs["position_ids"] = flow.cat([position_ids, new_position_id], dim=-1)
+
+        model_kwargs["is_first_forward"] = False
+        return model_kwargs
+
     def prepare_inputs_for_generation(
-            self,
-            input_ids: flow.LongTensor,
-            past_key_values: Optional[flow.Tensor] = None,
-            attention_mask: Optional[flow.Tensor] = None,
-            position_ids: Optional[flow.Tensor] = None,
-            use_cache: Optional[bool] = None,
-            is_first_forward: bool = True,
-            **kwargs
+        self,
+        input_ids: flow.LongTensor,
+        past_key_values: Optional[flow.Tensor] = None,
+        attention_mask: Optional[flow.Tensor] = None,
+        position_ids: Optional[flow.Tensor] = None,
+        use_cache: Optional[bool] = None,
+        is_first_forward: bool = True,
+        **kwargs,
     ) -> dict:
         # only last token for input_ids if past is not None
         if position_ids is None:
@@ -731,26 +840,26 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel,Generator):
             "position_ids": position_ids,
             "attention_mask": attention_mask,
             "return_last_logit": True,
-            "use_cache": use_cache
+            "use_cache": use_cache,
         }
 
     def forward(
-            self,
-            input_ids: Optional[flow.Tensor] = None,
-            position_ids: Optional[flow.Tensor] = None,
-            attention_mask: Optional[flow.Tensor] = None,
-            past_key_values: Optional[Tuple[flow.FloatTensor]] = None,
-            inputs_embeds: Optional[flow.Tensor] = None,
-            labels: Optional[flow.Tensor] = None,
-            use_cache: Optional[bool] = None,
-            output_attentions: Optional[bool] = None,
-            output_hidden_states: Optional[bool] = None,
-            return_dict: Optional[bool] = None,
-            return_last_logit: Optional[bool] = False,
+        self,
+        input_ids: Optional[flow.Tensor] = None,
+        position_ids: Optional[flow.Tensor] = None,
+        attention_mask: Optional[flow.Tensor] = None,
+        past_key_values: Optional[Tuple[flow.FloatTensor]] = None,
+        inputs_embeds: Optional[flow.Tensor] = None,
+        labels: Optional[flow.Tensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        return_last_logit: Optional[bool] = False,
     ):
         use_cache = use_cache if use_cache is not None else self.cfg.use_cache
         return_dict = return_dict if return_dict is not None else self.cfg.use_return_dict
-        # print(input_ids.size())
+
         transformer_outputs = self.transformer(
             input_ids=input_ids,
             position_ids=position_ids,
@@ -762,7 +871,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel,Generator):
             return_dict=True,
         )
 
-        hidden_states = transformer_outputs['last_hidden_state']
+        hidden_states = transformer_outputs["last_hidden_state"]
         if return_last_logit:
             hidden_states = hidden_states[-1:]
         lm_logits = self.transformer.output_layer(hidden_states)
@@ -777,14 +886,17 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel,Generator):
             # Flatten the tokens
             loss = self.loss_fct(shift_logits, shift_labels)
             loss = loss.mean()
-        
-        return dict(
-            loss=loss
-        )
+
+        if labels is not None:
+            return dict(
+                loss=loss,
+            )
+        else:
+            return dict(logits=lm_logits, past_key_values=transformer_outputs["past_key_values"])
 
     @staticmethod
     def _reorder_cache(
-            past: Tuple[Tuple[flow.Tensor, flow.Tensor], ...], beam_idx: flow.LongTensor
+        past: Tuple[Tuple[flow.Tensor, flow.Tensor], ...], beam_idx: flow.LongTensor
     ) -> Tuple[Tuple[flow.Tensor, flow.Tensor], ...]:
         """
         This function is used to re-order the `past_key_values` cache if [`~PreTrainedModel.beam_search`] or
@@ -794,8 +906,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel,Generator):
         """
         return tuple(
             (
-                layer_past[0].index_select(1, beam_idx.to(layer_past[0].device)),
-                layer_past[1].index_select(1, beam_idx.to(layer_past[1].device)),
+                layer_past[0].index_select(1, beam_idx),
+                layer_past[1].index_select(1, beam_idx),
             )
             for layer_past in past
         )
@@ -816,14 +928,52 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel,Generator):
                 history.append({"role": "assistant", "metadata": metadata, "content": content})
                 if history[0]["role"] == "system" and "tools" in history[0]:
                     content = "\n".join(content.split("\n")[1:-1])
+
                     def tool_call(**kwargs):
                         return kwargs
+
                     parameters = eval(content)
                     content = {"name": metadata.strip(), "parameters": parameters}
                 else:
                     content = {"name": metadata.strip(), "content": content}
         return content, history
-    
+
+    @flow.inference_mode()
+    def chat(
+        self,
+        tokenizer,
+        query: str,
+        history: List[Dict] = None,
+        role: str = "user",
+        max_length: int = 8192,
+        num_beams=1,
+        do_sample=True,
+        top_p=0.8,
+        temperature=0.8,
+        logits_processor=LogitsProcessorList(),
+        **kwargs,
+    ):
+        if history is None:
+            history = []
+
+        gen_kwargs = {
+            "max_length": max_length,
+            "num_beams": num_beams,
+            "do_sample": do_sample,
+            "top_p": top_p,
+            "temperature": temperature,
+            "logits_processor": logits_processor,
+            **kwargs,
+        }
+        inputs = tokenizer.build_chat_input(query, history=history, role=role)
+        inputs = tokenizer.convert_to_tensors(inputs, return_tensors="of", is_global=True)
+        outputs = self.generate(inputs, **gen_kwargs, eos_token_id=tokenizer.eos_token_id)
+        outputs = outputs.tolist()[0][inputs.size(1) : -1]
+        response = tokenizer.decode(outputs)
+        history.append({"role": role, "content": query})
+        response, history = self.process_response(response, history)
+        return response, history
+
     @staticmethod
     def set_activation_checkpoint(model):
         for module_block in model.modules():
@@ -834,4 +984,3 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel,Generator):
             else:
                 if isinstance(module_block.to(nn.Module), GLMBlock):
                     module_block.to(nn.graph.GraphModule).activation_checkpointing = True
-

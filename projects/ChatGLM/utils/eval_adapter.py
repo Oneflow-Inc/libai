@@ -12,9 +12,12 @@ from omegaconf import DictConfig  # noqa
 
 import libai.utils.distributed as dist  # noqa
 from libai.config import instantiate  # noqa
-from projects.ChatGLM.configs.chatglm_config import cfg, tokenization  # noqa
 from projects.ChatGLM.chatglm import ChatGLMForConditionalGeneration  # noqa
-from projects.ChatGLM.utils.chatglm_loader import ChatGLMLoaderHuggerFace, ChatGLMLoaderLiBai  # noqa
+from projects.ChatGLM.configs.chatglm_config import cfg, tokenization  # noqa
+from projects.ChatGLM.utils.chatglm_loader import (  # noqa
+    ChatGLMLoaderHuggerFace,
+    ChatGLMLoaderLiBai,
+)
 
 
 class EvalHarnessBase(BaseLM):

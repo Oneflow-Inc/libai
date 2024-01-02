@@ -19,9 +19,10 @@ from projects.ChatGLM.chatglm import ChatGLMForConditionalGeneration
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 2e-5
-max_input_length = 1350
-dataset_path = "/home/lixin/DATA/CoT_zh"
-pretrained_model_path = "/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b"
+max_source_len = 128
+max_target_len = 128
+dataset_path = "YOUR_DATA_PATH"
+pretrained_model_path = "YOUR_CHATGLM_HUGGINGFACE_PATH"
 
 # graph & optim
 graph["enabled"] = True
@@ -51,19 +52,19 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
         LazyCall(ChatGLMTrainDataset)(
             path=os.path.join(dataset_path, "train.json"),
             tokenizer=tokenization.tokenizer,
-            max_len=max_input_length,
+            max_source_len=max_source_len,
+            max_target_len=max_target_len,
         )
-    ],
-    collate_fn = ChatGLMTrainDataset.collate_fn
+    ]
 )
 dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(ChatGLMTrainDataset)(
             path=os.path.join(dataset_path, "test.json"),
             tokenizer=tokenization.tokenizer,
-            max_len=max_input_length,
-        ),
-        collate_fn = ChatGLMTrainDataset.collate_fn
+            max_source_len=max_source_len,
+            max_target_len=max_target_len,
+        )
     ),
 ]
 

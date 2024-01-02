@@ -26,8 +26,10 @@ from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 from projects.ChatGLM.utils.chatglm_loader import ChatGLMLoaderHuggerFace
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 logger = logging.getLogger("libai." + __name__)
+
 
 def build_model(cfg):
     model_loader = ChatGLMLoaderHuggerFace(
@@ -37,6 +39,7 @@ def build_model(cfg):
     )
     model = model_loader.load()
     return model
+
 
 class ChatGLMTrainer(DefaultTrainer):
     @classmethod

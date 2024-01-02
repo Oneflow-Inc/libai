@@ -32,7 +32,6 @@ bash tools/train.sh projects/ChatGLM/train_net.py projects/ChatGLM/configs/chatg
 ```
 
 ## ChatGLM Inference
-
 - Prepare the ChatGLM checkpoint.
 - Adjust the parameters in the `projects/ChatGLM/pipeline.py`, and running:
 ```bash

@@ -8,37 +8,38 @@ from configs.common.train import train
 
 cfg = dict(
     # Model
-    add_bias_linear= False,
-    add_qkv_bias = True,
-    apply_query_key_layer_scaling = True,
-    apply_residual_connection_post_layernorm = False,
-    attention_dropout = 0.0,
-    attention_softmax_in_fp32 = True,
-    bias_dropout_fusion = True,
-    ffn_hidden_size = 13696,
-    fp32_residual_connection = False,
-    hidden_dropout = 0.0,
-    hidden_size = 4096,
-    kv_channels = 128,
-    layernorm_epsilon = 1e-05,
-    multi_query_attention = True,
-    multi_query_group_num = 2,
-    num_attention_heads = 32,
-    num_layers = 28,
-    original_rope = True,
-    padded_vocab_size = 65024,
-    post_layer_norm = True,
-    rmsnorm = True,
-    seq_length = 256,
-    use_cache = True,
-    dtype = "float16",
-    tie_word_embeddings = False,
-    eos_token_id = 2,
-    bos_token_id = 1,
-    pad_token_id = 0,
+    add_bias_linear=False,
+    add_qkv_bias=True,
+    apply_query_key_layer_scaling=True,
+    apply_residual_connection_post_layernorm=False,
+    attention_dropout=0.0,
+    attention_softmax_in_fp32=True,
+    bias_dropout_fusion=True,
+    ffn_hidden_size=13696,
+    fp32_residual_connection=False,
+    hidden_dropout=0.0,
+    hidden_size=4096,
+    kv_channels=128,
+    layernorm_epsilon=1e-05,
+    multi_query_attention=True,
+    multi_query_group_num=2,
+    num_attention_heads=32,
+    num_layers=28,
+    original_rope=True,
+    padded_vocab_size=65024,
+    post_layer_norm=True,
+    rmsnorm=True,
+    seq_length=8192,
+    use_cache=True,
+    dtype="float16",
+    tie_word_embeddings=False,
+    eos_token_id=2,
+    bos_token_id=1,
+    pad_token_id=0,
     pre_seq_len=None,
     prefix_projection=None,
     use_return_dict=True,
+    amp_enabled=True,
     # Inference
     is_encoder_decoder=False,
     max_length=256,
@@ -61,7 +62,7 @@ cfg = dict(
     output_scores=False,
     output_hidden_states=False,
     # train
-    pretrained_model_path="/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b",
+    pretrained_model_path="YOUR_CHATGLM_HUGGINGFACE_PATH",
 )
 
 cfg = DictConfig(cfg)
@@ -70,5 +71,5 @@ model = LazyCall(ChatGLMForConditionalGeneration)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(ChatGLMTokenizer)(
-    vocab_file="/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b/tokenizer.model"
+    vocab_file="YOUR_CHATGLM_HUGGINGFACE_PATH/tokenizer.model"
 )

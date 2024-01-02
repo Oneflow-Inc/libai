@@ -1,27 +1,20 @@
-# coding=utf-8
-# Copyright 2021 The OneFlow Authors. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# --------------------------------------------------------
+# Refer to code from:
+# https://huggingface.co/THUDM/chatglm3-6b/blob/main/tokenization_chatglm.py
+# --------------------------------------------------------
 
 import json
 import os
 import re
 from enum import Enum
-from typing import List, Optional, Union, Dict
+from typing import Dict, List, Optional
+
 from sentencepiece import SentencePieceProcessor
+
 from libai.tokenizer.tokenization_base import PreTrainedTokenizer
 
 EncodedInput = List[int]
+
 
 class PaddingStrategy(str, Enum):
     """
@@ -61,7 +54,9 @@ class SPTokenizer:
             self.special_tokens[token] = self.n_words
             self.index_special_tokens[self.n_words] = token
             self.n_words += 1
-        self.role_special_token_expression = "|".join([re.escape(token) for token in role_special_tokens])
+        self.role_special_token_expression = "|".join(
+            [re.escape(token) for token in role_special_tokens]
+        )
 
     def tokenize(self, s: str, encode_special_tokens=False):
         if encode_special_tokens:
@@ -69,8 +64,8 @@ class SPTokenizer:
             t = []
             for match in re.finditer(self.role_special_token_expression, s):
                 if last_index < match.start():
-                    t.extend(self.sp_model.EncodeAsPieces(s[last_index:match.start()]))
-                t.append(s[match.start():match.end()])
+                    t.extend(self.sp_model.EncodeAsPieces(s[last_index : match.start()]))
+                t.append(s[match.start() : match.end()])
                 last_index = match.end()
             if last_index < len(s):
                 t.extend(self.sp_model.EncodeAsPieces(s[last_index:]))
@@ -106,7 +101,7 @@ class SPTokenizer:
         return text
 
     def convert_token_to_id(self, token):
-        """ Converts a token (str) in an id using the vocab. """
+        """Converts a token (str) in an id using the vocab."""
         if token in self.special_tokens:
             return self.special_tokens[token]
         return self.sp_model.PieceToId(token)
@@ -115,7 +110,11 @@ class SPTokenizer:
         """Converts an index (integer) in a token (str) using the vocab."""
         if index in self.index_special_tokens:
             return self.index_special_tokens[index]
-        if index in [self.eos_id, self.bos_id, self.pad_id] or index < 0 or index > self.sp_model.vocab_size():
+        if (
+            index in [self.eos_id, self.bos_id, self.pad_id]
+            or index < 0
+            or index > self.sp_model.vocab_size()
+        ):
             return ""
         return self.sp_model.IdToPiece(index)
 
@@ -125,8 +124,14 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
 
     model_input_names = ["input_ids", "attention_mask", "position_ids"]
 
-    def __init__(self, vocab_file, padding_side="left", clean_up_tokenization_spaces=False, encode_special_tokens=False,
-                 **kwargs):
+    def __init__(
+        self,
+        vocab_file,
+        padding_side="left",
+        clean_up_tokenization_spaces=False,
+        encode_special_tokens=False,
+        **kwargs,
+    ):
         self.name = "GLMTokenizer"
 
         self.vocab_file = vocab_file
@@ -134,17 +139,22 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         self.special_tokens = {
             "<bos>": self.tokenizer.bos_id,
             "<eos>": self.tokenizer.eos_id,
-            "<pad>": self.tokenizer.pad_id
+            "<pad>": self.tokenizer.pad_id,
         }
         self.encode_special_tokens = encode_special_tokens
-        super().__init__(padding_side=padding_side, clean_up_tokenization_spaces=clean_up_tokenization_spaces,
-                         encode_special_tokens=encode_special_tokens,
-                         **kwargs)
+        super().__init__(
+            padding_side=padding_side,
+            clean_up_tokenization_spaces=clean_up_tokenization_spaces,
+            encode_special_tokens=encode_special_tokens,
+            **kwargs,
+        )
 
     def get_command(self, token):
         if token in self.special_tokens:
             return self.special_tokens[token]
-        assert token in self.tokenizer.special_tokens, f"{token} is not a special token for {self.name}"
+        assert (
+            token in self.tokenizer.special_tokens
+        ), f"{token} is not a special token for {self.name}"
         return self.tokenizer.special_tokens[token]
 
     @property
@@ -172,7 +182,7 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         return self.tokenizer.n_words
 
     def get_vocab(self):
-        """ Returns vocab as a dict """
+        """Returns vocab as a dict"""
         vocab = {self._convert_id_to_token(i): i for i in range(self.vocab_size)}
         vocab.update(self.added_tokens_encoder)
         return vocab
@@ -181,7 +191,7 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         return self.tokenizer.tokenize(text, encode_special_tokens=self.encode_special_tokens)
 
     def _convert_token_to_id(self, token):
-        """ Converts a token (str) in an id using the vocab. """
+        """Converts a token (str) in an id using the vocab."""
         return self.tokenizer.convert_token_to_id(token)
 
     def _convert_id_to_token(self, index):
@@ -203,13 +213,11 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
             `Tuple(str)`: Paths to the files saved.
         """
         if os.path.isdir(save_directory):
-            vocab_file = os.path.join(
-                save_directory, self.vocab_files_names["vocab_file"]
-            )
+            vocab_file = os.path.join(save_directory, self.vocab_files_names["vocab_file"])
         else:
             vocab_file = save_directory
 
-        with open(self.vocab_file, 'rb') as fin:
+        with open(self.vocab_file, "rb") as fin:
             proto_str = fin.read()
 
         with open(vocab_file, "wb") as writer:
@@ -236,13 +244,15 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
             content = item["content"]
             if item["role"] == "system" and "tools" in item:
                 content = content + "\n" + json.dumps(item["tools"], indent=4, ensure_ascii=False)
-            input_ids.extend(self.build_single_message(item["role"], item.get("metadata", ""), content))
+            input_ids.extend(
+                self.build_single_message(item["role"], item.get("metadata", ""), content)
+            )
         input_ids.extend(self.build_single_message(role, "", query))
         input_ids.extend([self.get_command("<|assistant|>")])
-        return self.batch_encode_plus([input_ids], return_tensors="pt", is_split_into_words=True)
+        return [self.get_prefix_tokens() + input_ids]
 
     def build_inputs_with_special_tokens(
-            self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
+        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
     ) -> List[int]:
         """
         Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
@@ -264,12 +274,12 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         return token_ids_0
 
     def _pad(
-            self,
-            encoded_inputs: Dict[str, EncodedInput],
-            max_length: Optional[int] = None,
-            padding_strategy: PaddingStrategy = PaddingStrategy.DO_NOT_PAD,
-            pad_to_multiple_of: Optional[int] = None,
-            return_attention_mask: Optional[bool] = None,
+        self,
+        encoded_inputs: Dict[str, EncodedInput],
+        max_length: Optional[int] = None,
+        padding_strategy: PaddingStrategy = PaddingStrategy.DO_NOT_PAD,
+        pad_to_multiple_of: Optional[int] = None,
+        return_attention_mask: Optional[bool] = None,
     ) -> dict:
         """
         Pad encoded inputs (on left/right and up to predefined length or max length in the batch)
@@ -300,10 +310,16 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         if padding_strategy == PaddingStrategy.LONGEST:
             max_length = len(required_input)
 
-        if max_length is not None and pad_to_multiple_of is not None and (max_length % pad_to_multiple_of != 0):
+        if (
+            max_length is not None
+            and pad_to_multiple_of is not None
+            and (max_length % pad_to_multiple_of != 0)
+        ):
             max_length = ((max_length // pad_to_multiple_of) + 1) * pad_to_multiple_of
 
-        needs_to_be_padded = padding_strategy != PaddingStrategy.DO_NOT_PAD and len(required_input) != max_length
+        needs_to_be_padded = (
+            padding_strategy != PaddingStrategy.DO_NOT_PAD and len(required_input) != max_length
+        )
 
         # Initialize attention mask if not present.
         if "attention_mask" not in encoded_inputs:
@@ -316,24 +332,13 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
             difference = max_length - len(required_input)
 
             if "attention_mask" in encoded_inputs:
-                encoded_inputs["attention_mask"] = [0] * difference + encoded_inputs["attention_mask"]
+                encoded_inputs["attention_mask"] = [0] * difference + encoded_inputs[
+                    "attention_mask"
+                ]
             if "position_ids" in encoded_inputs:
                 encoded_inputs["position_ids"] = [0] * difference + encoded_inputs["position_ids"]
-            encoded_inputs[self.model_input_names[0]] = [self.pad_token_id] * difference + required_input
+            encoded_inputs[self.model_input_names[0]] = [
+                self.pad_token_id
+            ] * difference + required_input
 
         return encoded_inputs
-
-
-
-if __name__ == '__main__':
-    from transformers import AutoTokenizer
-    tokenizer_oneflow = ChatGLMTokenizer.from_pretrained('/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b')
-
-    token_ids = tokenizer_oneflow.tokenize('今天是星期五，明天是做什么事情')
-    print(token_ids)
-
-    tokenizer_huggingface = AutoTokenizer.from_pretrained('/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b', trust_remote_code=True)
-    token_ids = tokenizer_huggingface.tokenize('今天是星期五，明天是做什么事情')
-    print(token_ids)
-
-
