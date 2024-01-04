@@ -123,7 +123,7 @@ if __name__ == "__main__":
         "what is beam search?",
         "what is beam search?",
     ]
-    glm_model_path = "/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b"
+    glm_model_path = "YOUR_CHATGLM_HUGGINGFACE_PATH"
     pipeline = TextGenerationPipeline(
         "projects/ChatGLM/configs/chatglm_config.py",
         data_parallel=1,
