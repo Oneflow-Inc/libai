@@ -20,6 +20,7 @@ import oneflow as flow
 from oneflow.utils.data import Dataset
 
 from libai.data.structures import DistTensorData, Instance
+from libai.utils import distributed as dist
 from libai.utils.logger import setup_logger
 
 IGNORE_INDEX = -100
@@ -44,10 +45,10 @@ class ChatGLMTrainDataset(Dataset):
         item = {key: self.data[key][idx] for key in self.data}
         # prompt, query, response
 
-        source_ids = self.tokenizer.encode(item["prompt"] + item["query"], add_special_tokens=True)
+        source_ids = self.tokenizer.encode(item["prompt"] + item["query"], add_special_tokens=True)[0]
         source_ids = source_ids[: self.max_source_len]
 
-        target_ids = self.tokenizer.encode(item["response"], add_special_tokens=True)
+        target_ids = self.tokenizer.encode(item["response"], add_special_tokens=True)[0]
         target_ids = target_ids[: self.max_target_len]
 
         input_ids = source_ids + target_ids + [self.tokenizer.eos_token_id]
@@ -67,21 +68,22 @@ class ChatGLMTrainDataset(Dataset):
         return {"input_ids": input_ids, "labels": labels}
 
     def log_dataset_example(self, example: Dict[str, List[int]]) -> None:
-        logger.info("input_ids:\n{}".format(example["input_ids"]))
-        logger.info(
-            "inputs:\n{}".format(
-                self.tokenizer.decode(example["input_ids"], skip_special_tokens=False)
-            )
-        )
-        logger.info("label_ids:\n{}".format(example["labels"]))
-        logger.info(
-            "labels:\n{}".format(
-                self.tokenizer.decode(
-                    list(filter(lambda x: x != IGNORE_INDEX, example["labels"])),
-                    skip_special_tokens=False,
+        if dist.is_main_process():
+            logger.info("input_ids:\n{}".format(example["input_ids"]))
+            logger.info(
+                "inputs:\n{}".format(
+                    self.tokenizer.decode(example["input_ids"], skip_special_tokens=False)
                 )
             )
-        )
+            logger.info("label_ids:\n{}".format(example["labels"]))
+            logger.info(
+                "labels:\n{}".format(
+                    self.tokenizer.decode(
+                        list(filter(lambda x: x != IGNORE_INDEX, example["labels"])),
+                        skip_special_tokens=False,
+                    )
+                )
+            )
 
     def __len__(self):
         return len(self.data["prompt"])

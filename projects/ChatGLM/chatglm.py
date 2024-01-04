@@ -145,11 +145,22 @@ class CoreAttention(flow.nn.Module):
     ):
         L, S = query.size(-2), key.size(-2)
         scale_factor = 1 / math.sqrt(query.size(-1))
-        attn_bias = flow.zeros(L, S, dtype=query.dtype, placement=query.placement, sbp=query.sbp)
+        attn_bias = flow.zeros(
+            L,
+            S,
+            dtype=query.dtype,
+            placement=query.placement,
+            sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+        )
+
         if is_causal:
             assert attn_mask is None
             temp_mask = flow.ones(
-                L, S, dtype=flow.bool, placement=query.placement, sbp=query.sbp
+                L,
+                S,
+                dtype=flow.bool,
+                placement=query.placement,
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
             ).tril(diagonal=0)
             attn_bias.masked_fill_(temp_mask.logical_not(), float("-inf"))
             attn_bias.to(query.dtype)

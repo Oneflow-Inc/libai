@@ -65,29 +65,50 @@ class TextGenerationPipeline(BasePipeline):
 
         return preprocess_params, forward_params, postprocess_params
 
-    def preprocess(self, sentence: str, **kwargs) -> dict:
+    def preprocess(self, sentence: str | list, **kwargs) -> dict:
         #
-        inputs = {
-            "inputs": sentence,
-        }
+        if type(sentence) is str:
+            inputs = {
+                "inputs": sentence,
+            }
+        else:
+            inputs = self.tokenizer.encode(sentence, return_tensors="of", is_global=True)
+            inputs = {
+                "input_ids": inputs,
+            }
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
-        if "history" in kwargs:
-            history = kwargs.pop("history")
-        else:
-            if not hasattr(self, "history"):
-                self.history = []
-            history = self.history
+        if "input_ids" not in inputs:
+            if "history" in kwargs:
+                history = kwargs.pop("history")
+            else:
+                if not hasattr(self, "history"):
+                    self.history = []
+                history = self.history
 
-        response, history = self.model.chat(
-            self.tokenizer, inputs["inputs"], history=history, **kwargs
-        )
-        self.history = history
-        return {"response": response, "history": history}
+            response, history = self.model.chat(
+                self.tokenizer, inputs["inputs"], history=history, **kwargs
+            )
+            self.history = history
+            return {"response": response, "history": history}
+        else:
+            outputs = self.model.generate(inputs["input_ids"], **kwargs)[
+                :, inputs["input_ids"].size(1) : -1
+            ]
+            return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
-        return model_output_dict
+        if "response" in model_output_dict:
+            records = [{"generated_text": model_output_dict["response"]}]
+            return records
+        else:
+            return_ids = model_output_dict["return_ids"]
+            records = [
+                {"generated_text": self.tokenizer.decode(return_ids[i])}
+                for i in range(return_ids.size(0))
+            ]
+            return records
 
     def reset_conversation(self):
         self.history = []
@@ -96,7 +117,13 @@ class TextGenerationPipeline(BasePipeline):
 if __name__ == "__main__":
     # ----- load huggingface checkpoint -----
     text = "浏览器输入www.baidu.com 并且显示网页，从计算机网络的角度说明实现的全过程"
-    glm_model_path = "YOUR_CHATGLM_HUGGINGFACE_PATH"
+    texts = [
+        "a dog is flying on the sky",
+        "Wikipedia is a free online",
+        "what is beam search?",
+        "what is beam search?",
+    ]
+    glm_model_path = "/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b"
     pipeline = TextGenerationPipeline(
         "projects/ChatGLM/configs/chatglm_config.py",
         data_parallel=1,
@@ -107,22 +134,31 @@ if __name__ == "__main__":
         mode="huggingface",
     )
     pipeline.model = pipeline.model.half()
-    for _ in range(1):
-        output = pipeline(inputs=text, do_sample=False, max_length=140)
+
+    if isinstance(texts, list):
+        output = pipeline(inputs=texts, do_sample=False, max_length=50)
         if dist.is_main_process():
-            print(output["response"])
+            for text, record in zip(texts, output):
+                print(f"Q:{text}||A:{record}")
 
-    from transformers import AutoModel, AutoTokenizer
+    # if isinstance(text, str):
+    #     output = pipeline(inputs=str, do_sample=False, max_length=50)
+    #     if dist.is_main_process():
+    #         for text,record in zip(texts,output):
+    #             print(f'Q:{text}||A:{record}')
 
-    tokenizer = AutoTokenizer.from_pretrained(glm_model_path, trust_remote_code=True)
-    model = AutoModel.from_pretrained(glm_model_path, trust_remote_code=True).half().cuda()
-    model = model.eval()
-    history = []
-    for _ in range(1):
-        response, history = model.chat(
-            tokenizer, text, history=history, do_sample=False, max_length=140
-        )
-        print(response)
+    # origin huggingface same with libai in chat mode
+    # from transformers import AutoModel, AutoTokenizer
+
+    # tokenizer = AutoTokenizer.from_pretrained(glm_model_path, trust_remote_code=True)
+    # model = AutoModel.from_pretrained(glm_model_path, trust_remote_code=True).half().cuda()
+    # model = model.eval()
+    # history = []
+    # for _ in range(1):
+    #     response, history = model.chat(
+    #         tokenizer, text, history=history, do_sample=False, max_length=50
+    #     )
+    #     print(response)
 
     # ----- load libai checkpoint -----
     # pipeline = TextGenerationPipeline(

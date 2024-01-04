@@ -7,7 +7,7 @@ import json
 import os
 import re
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from sentencepiece import SentencePieceProcessor
 
@@ -24,7 +24,6 @@ class PaddingStrategy(str, Enum):
 
     LONGEST = "longest"
     MAX_LENGTH = "max_length"
-    DO_NOT_PAD = "do_not_pad"
 
     @classmethod
     def _missing_(cls, value):
@@ -275,23 +274,20 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
 
     def _pad(
         self,
-        encoded_inputs: Dict[str, EncodedInput],
+        encoded_inputs: List[List],
         max_length: Optional[int] = None,
-        padding_strategy: PaddingStrategy = PaddingStrategy.DO_NOT_PAD,
-        pad_to_multiple_of: Optional[int] = None,
-        return_attention_mask: Optional[bool] = None,
+        padding_strategy: PaddingStrategy = PaddingStrategy.LONGEST,
     ) -> dict:
         """
         Pad encoded inputs (on left/right and up to predefined length or max length in the batch)
         Args:
             encoded_inputs:
-                Dictionary of tokenized inputs (`List[int]`).
+                Batch of tokenized inputs (`List[List]`).
             max_length: maximum length of the returned list and optionally padding length (see below).
                 Will truncate by taking into account the special tokens.
             padding_strategy: PaddingStrategy to use for padding.
                 - PaddingStrategy.LONGEST Pad to the longest sequence in the batch
                 - PaddingStrategy.MAX_LENGTH: Pad to the max length (default)
-                - PaddingStrategy.DO_NOT_PAD: Do not pad
                 The tokenizer padding sides are defined in self.padding_side:
                     - 'left': pads on the left of the sequences
                     - 'right': pads on the right of the sequences
@@ -302,43 +298,28 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
                 (optional) Set to False to avoid returning attention mask (default: set to model specifics)
         """
         # Load from model defaults
-        assert self.padding_side == "left"
-
-        required_input = encoded_inputs[self.model_input_names[0]]
-        seq_length = len(required_input)
+        # assert self.padding_side == "left"
 
         if padding_strategy == PaddingStrategy.LONGEST:
-            max_length = len(required_input)
+            max_length = max([len(l) for l in encoded_inputs])
 
-        if (
-            max_length is not None
-            and pad_to_multiple_of is not None
-            and (max_length % pad_to_multiple_of != 0)
-        ):
-            max_length = ((max_length // pad_to_multiple_of) + 1) * pad_to_multiple_of
+        for i in range(len(encoded_inputs)):
+            difference = max_length - len(encoded_inputs[i])
 
-        needs_to_be_padded = (
-            padding_strategy != PaddingStrategy.DO_NOT_PAD and len(required_input) != max_length
-        )
-
-        # Initialize attention mask if not present.
-        if "attention_mask" not in encoded_inputs:
-            encoded_inputs["attention_mask"] = [1] * seq_length
-
-        if "position_ids" not in encoded_inputs:
-            encoded_inputs["position_ids"] = list(range(seq_length))
-
-        if needs_to_be_padded:
-            difference = max_length - len(required_input)
-
-            if "attention_mask" in encoded_inputs:
-                encoded_inputs["attention_mask"] = [0] * difference + encoded_inputs[
-                    "attention_mask"
-                ]
-            if "position_ids" in encoded_inputs:
-                encoded_inputs["position_ids"] = [0] * difference + encoded_inputs["position_ids"]
-            encoded_inputs[self.model_input_names[0]] = [
-                self.pad_token_id
-            ] * difference + required_input
+            encoded_inputs[i] = [self.pad_token_id] * difference + encoded_inputs[i]
 
         return encoded_inputs
+
+    def encode(self, text, return_tensors=None, is_global=False, **kwargs):
+        if isinstance(text, str):
+            text = [text]
+        tokens = [self.tokenize(t) for t in text]
+        token_ids_list = self.convert_tokens_to_ids(tokens)
+        token_ids_list = self._pad(token_ids_list, padding_strategy=PaddingStrategy.LONGEST)
+        token_ids_list = [
+            self.build_inputs_with_special_tokens(token_ids) for token_ids in token_ids_list
+        ]
+        token_ids_list = self.convert_to_tensors(
+            token_ids_list, return_tensors=return_tensors, is_global=is_global, **kwargs
+        )
+        return token_ids_list
