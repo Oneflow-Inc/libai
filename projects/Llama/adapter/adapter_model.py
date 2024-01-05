@@ -521,7 +521,7 @@ class LlamaModel(nn.Module):
             input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
             hidden_states = self.embed_tokens(input_ids)
 
-            for layer, past_key_value in zip(self.layers[:-self.cfg.adapter_len], past_key_values[:-self.cfg.adapter_len]):
+            for layer, past_key_value in zip(self.layers[:-self.cfg.adapter_layer], past_key_values[:-self.cfg.adapter_layer]):
                 hidden_states = layer(
                     hidden_states=hidden_states,
                     attention_mask=attention_mask,
@@ -538,7 +538,7 @@ class LlamaModel(nn.Module):
         adapter_index = 0
         # [num_adapter_layer, 1, adapter_len, 4096]
         adapter = self.adapter_query.weight.reshape(-1, self.cfg.adapter_len, 4096).unsqueeze(1)
-        for layer, past_key_value in zip(self.layers[-self.cfg.adapter_len:], past_key_values[-self.cfg.adapter_len:]):
+        for layer, past_key_value in zip(self.layers[-self.cfg.adapter_layer:], past_key_values[-self.cfg.adapter_layer:]):
             hidden_states = layer(
                 hidden_states=hidden_states,
                 attention_mask=attention_mask,

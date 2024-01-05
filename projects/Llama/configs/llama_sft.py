@@ -20,8 +20,8 @@ from projects.Llama.llama import LlamaForCausalLM
 weight_decay = 0.1
 learning_rate = 2e-5
 max_input_length = 1350
-dataset_path = "alpaca_data"
-pretrained_model_path = "meta-llama/Llama-2-7b-hf"
+dataset_path = "/data/home/xiezipeng/libai/projects/Llama/alpaca_data"
+pretrained_model_path = "/data/home/xiezipeng/hf_models/meta-llama/Llama-2-7b-hf/"
 
 # graph & optim
 graph["enabled"] = True
@@ -72,7 +72,7 @@ train.update(
         train_epoch=5,
         train_iter=1,
         log_period=10,
-        warmup_ratio=2 / 5,
+        warmup_ratio=0,
         num_accumulation_steps=8,
         rdma_enabled=True,
         amp=dict(enabled=True),

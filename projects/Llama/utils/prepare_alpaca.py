@@ -18,8 +18,8 @@ logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("/alpaca_data"),
-    checkpoint_dir: Path = Path("/Llama-2-7b-hf"),
+    destination_path: Path = Path("/data/home/xiezipeng/libai/projects/Llama/alpaca_data"),
+    checkpoint_dir: Path = Path("/data/home/xiezipeng/hf_models/meta-llama/Llama-2-7b-hf/"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
