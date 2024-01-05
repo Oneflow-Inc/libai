@@ -1,10 +1,9 @@
 from omegaconf import DictConfig, OmegaConf
 
+from configs.common.train import train
 from libai.config import LazyCall
 from projects.Llama.adapter.adapter_model import LlamaForCausalLM
 from projects.Llama.tokenizer import LlamaTokenizer
-from configs.common.train import train
-
 
 cfg = dict(
     # Model

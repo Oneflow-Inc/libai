@@ -39,7 +39,7 @@ def build_model(cfg):
         cfg.cfg.pretrained_model_path,
     )
     model = model_loader.load()
-    
+
     for name, param in model.named_parameters():
         if "adapter" not in name:
             param.requires_grad = False
@@ -47,7 +47,7 @@ def build_model(cfg):
             param.requires_grad = True
             param.data = param.data.float()
 
-    for name, param in model.model.layers[-cfg.cfg.adapter_layer : ].named_parameters():
+    for name, param in model.model.layers[-cfg.cfg.adapter_layer :].named_parameters():
         if "gate" in name or "adapter" in name:
             param.data = param.data.float()
             param.requires_grad = True

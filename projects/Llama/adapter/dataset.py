@@ -1,5 +1,3 @@
-
-
 import copy
 import json
 
@@ -7,7 +5,6 @@ import oneflow as flow
 from oneflow.utils.data import Dataset
 
 from libai.data.structures import DistTensorData, Instance
-
 
 PROMPT_DICT = {
     "prompt_input": (
@@ -21,6 +18,7 @@ PROMPT_DICT = {
         "### Instruction:\n{instruction}\n\n### Response:"
     ),
 }
+
 
 class AlpacaDataset(Dataset):
     def __init__(self, path, tokenizer, max_len=513, partition="train"):
@@ -57,7 +55,9 @@ class AlpacaDataset(Dataset):
         labels[~label_mask] = -1
         example = example[:-1]
         labels = labels[1:]
-        example_mask = flow.where(example_mask, flow.tensor(0, dtype=flow.float), flow.tensor(-float('inf')))
+        example_mask = flow.where(
+            example_mask, flow.tensor(0, dtype=flow.float), flow.tensor(-float("inf"))
+        )
         example_mask = example_mask[:-1]
         return Instance(
             input_ids=DistTensorData(example),

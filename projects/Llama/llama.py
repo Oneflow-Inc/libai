@@ -503,9 +503,7 @@ class CrossEntropyLoss(nn.Module):
         target = target * (target >= 0)
 
         lm_loss = flow._C.cross_entropy(
-            logits.view(-1, logits.shape[-1]),
-            target.view(-1),
-            ignore_index=0
+            logits.view(-1, logits.shape[-1]), target.view(-1), ignore_index=0
         )
         return lm_loss
 

@@ -1,20 +1,18 @@
 import os
+
 from omegaconf import OmegaConf
 
-from libai.config import LazyCall
-from libai.evaluation import PPLEvaluator
-from libai.scheduler import WarmupExponentialLR
-from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
-
-from configs.common.train import train
 from configs.common.models.graph import graph
 from configs.common.optim import optim
-
+from configs.common.train import train
+from libai.config import LazyCall
+from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
+from libai.evaluation import PPLEvaluator
+from libai.scheduler import WarmupExponentialLR
 from projects.Llama.adapter.adapter_config import cfg
+from projects.Llama.adapter.adapter_model import LlamaForCausalLM
 from projects.Llama.adapter.dataset import AlpacaDataset
 from projects.Llama.tokenizer import LlamaTokenizer
-from projects.Llama.adapter.adapter_model import LlamaForCausalLM
-
 
 # Hyperparameters
 weight_decay = 0.1
@@ -51,7 +49,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
             path=dataset_path,
             tokenizer=tokenization.tokenizer,
             max_len=max_input_length,
-            partition="train"
+            partition="train",
         )
     ],
 )
@@ -61,7 +59,7 @@ dataloader.test = [
             path=dataset_path,
             tokenizer=tokenization.tokenizer,
             max_len=max_input_length,
-            partition="test"
+            partition="test",
         ),
     ),
 ]
