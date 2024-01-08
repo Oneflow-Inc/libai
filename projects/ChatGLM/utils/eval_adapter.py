@@ -173,7 +173,7 @@ if __name__ == "__main__":
     load_func = ChatGLMLoaderLiBai(
         model=ChatGLMForConditionalGeneration,
         libai_cfg=cfg,
-        pretrained_model_path="/home/lixin/codes/libai/sft_result/model_0004999/model",
+        pretrained_model_path="LiBaiChatGLMModelPath",
     )
     model = load_func.load()
     run_eval_harness(model, tokenizer, cfg=cfg)
