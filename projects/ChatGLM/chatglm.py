@@ -11,9 +11,8 @@ import oneflow as flow
 from oneflow import nn
 
 from libai.inference.generator.generation_utils import Generator, LogitsProcessorList
-from libai.layers import LayerNorm, Linear, ParallelCrossEntropyLoss, RMSLayerNorm, VocabEmbedding
+from libai.layers import LayerNorm, Linear, RMSLayerNorm, VocabEmbedding
 from libai.utils import distributed as dist
-
 
 def apply_rotary_pos_emb(x: flow.Tensor, rope_cache: flow.Tensor) -> flow.Tensor:
     # x: [sq, b, np, hn]
@@ -791,7 +790,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
         self.max_sequence_length = cfg.max_length
         self.transformer = ChatGLMModel(cfg)
         self.cfg = cfg
-        self.loss_fct = ParallelCrossEntropyLoss()
+        self.loss_fct = nn.CrossEntropyLoss()
 
     def _update_model_kwargs_for_generation(
         self,
@@ -895,8 +894,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
             # Flatten the tokens
-            loss = self.loss_fct(shift_logits, shift_labels)
-            loss = loss.mean()
+            loss = self.loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            # loss = loss.mean()
 
         if labels is not None:
             return dict(
