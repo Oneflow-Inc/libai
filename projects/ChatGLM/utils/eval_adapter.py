@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import oneflow as flow
 
-flow.mock_torch.enable(lazy=True)
+flow.mock_torch.enable()
 
 from lm_eval import evaluator, tasks  # noqa
 from lm_eval.base import BaseLM  # noqa
@@ -38,7 +38,7 @@ class EvalHarnessBase(BaseLM):
 
     @property
     def max_length(self):
-        return self.cfg.max_position_embeddings
+        return self.cfg.seq_length
 
     @property
     def vocab_size(self):
@@ -57,7 +57,7 @@ class EvalHarnessBase(BaseLM):
         return flow.device("cuda:0")
 
     def tok_encode(self, string: str) -> List[int]:
-        return self.tokenizer.tokenize(string, add_bos=False, add_eos=False).squeeze(0).tolist()
+        return self.tokenizer.get_prefix_tokens() + self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(string))
 
     def tok_decode(self, tokens: List[int]) -> str:
         return self.tokenizer.decode(tokens)
@@ -111,7 +111,7 @@ class EvalHarnessBase(BaseLM):
             bootstrap_iters=bootstrap_iters,
         )
         results["config"] = dict(
-            model="llama",
+            model="chatglm",
             batch_size=self.batch_size,
             device=str(self.device),
             num_fewshot=num_fewshot,
@@ -138,7 +138,7 @@ def run_eval_harness(
     model.eval()
     model = model.to(dtype)
     eval_harness = EvalHarnessBase(model, tokenizer, 1, cfg)
-
+    
     results = eval_harness.run_eval(eval_tasks, num_fewshot, limit, bootstrap_iters)
     if save_filepath is None:
         print(results)
@@ -148,14 +148,13 @@ def run_eval_harness(
         with open(save_filepath, "w") as fw:
             fw.write(data)
 
-
 if __name__ == "__main__":
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
-            pipeline_num_layers=32,
+            pipeline_num_layers=28,
             device_type="cuda",
         )
     )
@@ -174,7 +173,7 @@ if __name__ == "__main__":
     load_func = ChatGLMLoaderLiBai(
         model=ChatGLMForConditionalGeneration,
         libai_cfg=cfg,
-        pretrained_model_path="",
+        pretrained_model_path="/home/lixin/codes/libai/sft_result/model_0004999/model",
     )
     model = load_func.load()
     run_eval_harness(model, tokenizer, cfg=cfg)

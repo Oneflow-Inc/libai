@@ -31,7 +31,7 @@ with open(csv_file, "r", encoding="utf-8") as f:
     reader = csv.reader(f)
     next(reader)
     for line in reader:
-        if random.random() < 0.9:  # for train
+        if random.random() < 0.99:  # for train
             train["prompt"].append(line[0])
             train["query"].append(line[1])
             train["response"].append(line[2])

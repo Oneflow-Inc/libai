@@ -123,31 +123,54 @@ if __name__ == "__main__":
         "what is beam search?",
         "what is beam search?",
     ]
-    glm_model_path = "YOUR_CHATGLM_HUGGINGFACE_PATH"
-    pipeline = TextGenerationPipeline(
-        "projects/ChatGLM/configs/chatglm_config.py",
-        data_parallel=1,
-        tensor_parallel=1,
-        pipeline_parallel=1,
-        pipeline_num_layers=28,
-        model_path=glm_model_path,
-        mode="huggingface",
-    )
-    pipeline.model = pipeline.model.half()
+    # glm_model_path = "/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b"
+    # pipeline = TextGenerationPipeline(
+    #     "projects/ChatGLM/configs/chatglm_config.py",
+    #     data_parallel=1,
+    #     tensor_parallel=1,
+    #     pipeline_parallel=1,
+    #     pipeline_num_layers=28,
+    #     model_path=glm_model_path,
+    #     mode="huggingface",
+    # )
+    # pipeline.model = pipeline.model.half()
 
-    if isinstance(texts, list):
-        output = pipeline(inputs=texts, do_sample=False, max_length=50)
-        if dist.is_main_process():
-            for text, record in zip(texts, output):
-                print(f"Q:{text}||A:{record}")
+    # if isinstance(texts, list):
+    #     output = pipeline(inputs=texts, do_sample=False, max_length=50)
+    #     if dist.is_main_process():
+    #         for text, record in zip(texts, output):
+    #             print(f"Q:{text}||A:{record}")
 
     # if isinstance(text, str):
-    #     output = pipeline(inputs=str, do_sample=False, max_length=50)
+    #     output = pipeline(inputs=text, do_sample=False, max_length=400)
     #     if dist.is_main_process():
-    #         for text,record in zip(texts,output):
-    #             print(f'Q:{text}||A:{record}')
+    #         for record in output:
+    #             print(record['generated_text'])
 
-    # origin huggingface same with libai in chat mode
+    # # ----- load libai checkpoint -----
+    # pipeline = TextGenerationPipeline(
+    #     "/home/lixin/codes/libai/projects/ChatGLM/configs/chatglm_config.py",
+    #     data_parallel=1,
+    #     tensor_parallel=1,
+    #     pipeline_parallel=1,
+    #     pipeline_num_layers=28,
+    #     model_path="/home/lixin/codes/libai/sft_result/model_final/model",
+    #     mode="libai",
+    # )
+
+    # if isinstance(texts, list):
+    #     output = pipeline(inputs=texts, do_sample=False, max_length=50)
+    #     if dist.is_main_process():
+    #         for text, record in zip(texts, output):
+    #             print(f"Q:{text}||A:{record}")
+    # if isinstance(text, str):
+    #     output = pipeline(inputs=text, do_sample=False, max_length=400)
+    #     if dist.is_main_process():
+    #         for record in output:
+    #             print(record['generated_text'])
+
+    # ----- pure huggingface predict -----
+    
     # from transformers import AutoModel, AutoTokenizer
 
     # tokenizer = AutoTokenizer.from_pretrained(glm_model_path, trust_remote_code=True)
@@ -156,22 +179,6 @@ if __name__ == "__main__":
     # history = []
     # for _ in range(1):
     #     response, history = model.chat(
-    #         tokenizer, text, history=history, do_sample=False, max_length=50
+    #         tokenizer, text, history=history, do_sample=False, max_length=400
     #     )
     #     print(response)
-
-    # ----- load libai checkpoint -----
-    # pipeline = TextGenerationPipeline(
-    #     "projects/ChatGLM/configs/chatglm_config.py",
-    #     data_parallel=1,
-    #     tensor_parallel=1,
-    #     pipeline_parallel=1,
-    #     pipeline_num_layers=28,
-    #     model_path="",
-    #     mode="libai",
-    # )
-
-    # text = ["a dog is flying on the sky", "Wikipedia is a free online", "what is beam search?"]
-    # output = pipeline(inputs=text)
-    # if dist.is_main_process():
-    #     print(output)

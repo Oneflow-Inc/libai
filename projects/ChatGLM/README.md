@@ -42,3 +42,13 @@ bash tools/infer.sh projects/ChatGLM/pipeline.py 4
 ```bash
 python projects/ChatGLM/pipeline.py
 ```
+
+## Lora Part
+ ![lora_finetune](./images/lora_finetune.svg) 
+
+### ChatGLM Lora Finetune
+
+- set `projects/ChatGLM/configs/chatglm_config.py`, lora_enable=True, same step with no lora.
+
+### ChatGLM Lora Inference
+- set `projects/ChatGLM/configs/chatglm_config.py`, lora_enable=True, lora_pretrained_model_path, same step with no lora.

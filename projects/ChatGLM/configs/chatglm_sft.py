@@ -21,8 +21,9 @@ weight_decay = 0.1
 learning_rate = 2e-5
 max_source_len = 128
 max_target_len = 128
-dataset_path = "YOUR_DATA_PATH"
+dataset_path = "YOUR_DATA_PATH/CoT_zh"
 pretrained_model_path = "YOUR_CHATGLM_HUGGINGFACE_PATH"
+fast_dev_run=True
 
 # graph & optim
 graph["enabled"] = True
@@ -72,7 +73,7 @@ train.update(
         output_dir="./sft_result",
         train_micro_batch_size=2,
         test_micro_batch_size=1,
-        train_epoch=5,
+        train_epoch=3,
         train_iter=1,
         log_period=10,
         warmup_ratio=2 / 5,
@@ -81,8 +82,8 @@ train.update(
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
         checkpointer=dict(
-            period=100,
-            max_to_keep=20,
+            period=5000,
+            max_to_keep=1,
         ),
         dist=dict(
             data_parallel_size=2,
@@ -91,9 +92,9 @@ train.update(
             pipeline_num_layers=cfg.num_layers,
         ),
         evaluation=dict(
-            enabled=True,
+            enabled=False,
             evaluator=LazyCall(PPLEvaluator)(),
-            eval_period=100,
+            eval_period=3000,
             eval_iter=1e5,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(

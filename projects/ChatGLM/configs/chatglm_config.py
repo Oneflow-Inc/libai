@@ -63,6 +63,25 @@ cfg = dict(
     output_hidden_states=False,
     # train
     pretrained_model_path="YOUR_CHATGLM_HUGGINGFACE_PATH",
+
+    # lora_cfg
+    lora_enable = False,
+    lora_cfg = dict(
+        # Model
+        r=8,
+        target_modules=['query_key_value'],
+        lora_alpha=8,
+        lora_dropout=0.0,
+        fan_in_fan_out=False,
+        bias='lora_only',
+        hidden_layers=32,
+        modules_to_save=None,
+        init_lora_weights=True, # or lora
+        inference_mode=False,
+        rank_pattern=dict(),
+        alpha_pattern=dict(),
+    ),
+    lora_pretrained_model_path = None # None for train
 )
 
 cfg = DictConfig(cfg)
