@@ -74,7 +74,7 @@ train.update(
         train_epoch=1,
         train_iter=1,
         log_period=10,
-        warmup_ratio=2/5,
+        warmup_ratio=2 / 5,
         num_accumulation_steps=8,
         rdma_enabled=False,
         amp=dict(enabled=True),
