@@ -16,25 +16,23 @@
 
 import logging
 import re
-import math
 import warnings
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Union
-from itertools import chain
-from tqdm import tqdm
-from dataclasses import asdict, replace
-from enum import Enum
-from functools import reduce
-import operator
 from collections import OrderedDict
+from dataclasses import asdict
+from enum import Enum
+from itertools import chain
+from typing import Any, List, Optional
 
 import oneflow as flow
 from oneflow import nn
+from tqdm import tqdm
 
-from projects.ChatGLM.lora.utils import _get_submodules,check_target_module_exists
-from projects.ChatGLM.lora.layers import BaseTunerLayer,Linear,LoraLayer
+from projects.ChatGLM.lora.layers import BaseTunerLayer, Linear, LoraLayer
+from projects.ChatGLM.lora.utils import _get_submodules, check_target_module_exists
 
 logger = logging.getLogger(__name__)
+
 
 class BaseTuner(nn.Module, ABC):
     r"""
@@ -125,7 +123,6 @@ class BaseTuner(nn.Module, ABC):
         Raise a ValueError if there is something wrong with the config or if it conflicts with existing adapters.
 
         """
-        pass
 
     def inject_adapter(self, model: nn.Module, adapter_name: str):
         r"""
@@ -150,27 +147,33 @@ class BaseTuner(nn.Module, ABC):
 
             if not self._check_target_module_exists(peft_config, key):
                 continue
-            
+
             is_target_modules_in_base_model = True
             parent, target, target_name = _get_submodules(model, key)
 
             # convert to lora layer
-            name_path = key.split('.')
+            name_path = key.split(".")
             layer_idx = 0
             for name in name_path:
-                if name.isdigit(): 
+                if name.isdigit():
                     layer_idx = int(name)
                     break
 
-            if isinstance(target,Linear):
+            if isinstance(target, Linear):
                 optional_kwargs = {
                     "current_key": key,
                 }
-                self._create_and_replace(peft_config, adapter_name, target, target_name, parent, **optional_kwargs)
+                self._create_and_replace(
+                    peft_config, adapter_name, target, target_name, parent, **optional_kwargs
+                )
             else:
-                target = Linear(target,adapter_name=adapter_name, **self.peft_config[adapter_name], layer_idx = layer_idx)
+                target = Linear(
+                    target,
+                    adapter_name=adapter_name,
+                    **self.peft_config[adapter_name],
+                    layer_idx=layer_idx,
+                )
                 setattr(parent, target_name, target)
-
 
         if not is_target_modules_in_base_model:
             raise ValueError(
@@ -204,7 +207,7 @@ class BaseTuner(nn.Module, ABC):
         """
         for module in self.model.modules():
             if isinstance(module, BaseTunerLayer):
-                module.merge(safe_merge=safe_merge,adapter_names=adapter_names)
+                module.merge(safe_merge=safe_merge, adapter_names=adapter_names)
 
     def unmerge_adapter(self):
         """
@@ -276,8 +279,12 @@ class LoraModel(BaseTuner):
         if current_key is None:
             raise ValueError("Current Key shouldn't be `None`")
         # Regexp matching - Find key which matches current target_name in patterns provided
-        pattern_keys = list(chain(lora_config.rank_pattern.keys(), lora_config.alpha_pattern.keys()))
-        target_name_key = next(filter(lambda key: re.match(f".*\.{key}$", current_key), pattern_keys), current_key)
+        pattern_keys = list(
+            chain(lora_config.rank_pattern.keys(), lora_config.alpha_pattern.keys())
+        )
+        target_name_key = next(
+            filter(lambda key: re.match(f".*\.{key}$", current_key), pattern_keys), current_key
+        )
 
         r = lora_config.rank_pattern.get(target_name_key, lora_config.r)
         alpha = lora_config.alpha_pattern.get(target_name_key, lora_config.lora_alpha)
@@ -396,7 +403,9 @@ class LoraModel(BaseTuner):
         for module in self.model.modules():
             if isinstance(module, LoraLayer):
                 if module.merged:
-                    warnings.warn("Adapter cannot be set when the model is merged. Unmerging the model first.")
+                    warnings.warn(
+                        "Adapter cannot be set when the model is merged. Unmerging the model first."
+                    )
                     module.unmerge()
                 module.set_adapter(adapter_name)
         self.active_adapter = adapter_name
@@ -448,7 +457,10 @@ class LoraModel(BaseTuner):
         self.active_adapter = new_adapter or []
 
     def merge_and_unload(
-        self, progressbar: bool = False, safe_merge: bool = False, adapter_names: Optional[List[str]] = None
+        self,
+        progressbar: bool = False,
+        safe_merge: bool = False,
+        adapter_names: Optional[List[str]] = None,
     ) -> nn.Module:
         r"""
         This method merges the LoRa layers into the base model. This is needed if someone wants to use the base model
@@ -475,8 +487,8 @@ class LoraModel(BaseTuner):
         """
         return self._unload_and_optionally_merge(merge=False)
 
-    def state_dict(self,destination=None, prefix="", keep_vars=False):
-        raw_state_dict = super().state_dict(destination,prefix,keep_vars)
+    def state_dict(self, destination=None, prefix="", keep_vars=False):
+        raw_state_dict = super().state_dict(destination, prefix, keep_vars)
         lora_state_dict = OrderedDict()
         lora_state_dict._metadata = OrderedDict()
         for key in raw_state_dict:

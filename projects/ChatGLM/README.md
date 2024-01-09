@@ -7,23 +7,18 @@ The ChatGLM Supervised FineTuning project can support 3D parallel.
 ## FineTuning ChatGLM3
 FineTuning ChatGLM3 on 8 GPUs using parallelism.
 
-### 1. Prepare the sft dataset
-#### download dataset
+### 1. Prepare environment variables
 ```bash
-export DATA_DIR=~/DATA # [At the beginning, it was an empty folder]
-cd $DATA_DIR
-git clone https://www.modelscope.cn/datasets/YorickHe/CoT_zh.git
+export DATA_DIR=~/DATA/alpaca # [At the beginning, it was an empty folder]
+export CHATGLM_HF_DIR=modelscope/hub/ZhipuAI/chatglm3-6b # [Your ChatGLM huggingface path]
 ```
 
+### 2. Prepare the sft dataset
 #### preprocess
 ```bash
 cd projects/ChatGLM
-python utils/prepare_CoT_zh.py
+python utils/prepare_data_alpaca.py
 ```
-### 2. Prepare your finetuning config file
-
-> set the finetuning parameters in `projects/ChatGLM/configs/chatglm_sft.py`, such as `dataset_path` and `pretrained_model_path`.
-
 
 ### 3. Run the following code to start SFT
 ```bash
@@ -51,4 +46,4 @@ python projects/ChatGLM/pipeline.py
 - set `projects/ChatGLM/configs/chatglm_config.py`, lora_enable=True, same step with no lora.
 
 ### ChatGLM Lora Inference
-- set `projects/ChatGLM/configs/chatglm_config.py`, lora_enable=True, lora_pretrained_model_path, same step with no lora.
+- set `projects/ChatGLM/configs/chatglm_config.py`, lora_enable=True, same step with no lora.

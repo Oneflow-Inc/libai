@@ -16,8 +16,8 @@
 
 import math
 import warnings
+from abc import ABC
 from typing import Any, List, Optional, Union
-from abc import ABC, abstractmethod
 
 import oneflow as flow
 import oneflow.nn as nn
@@ -25,10 +25,12 @@ import oneflow.nn.functional as F
 
 from libai.layers import Linear as Linear_
 
+
 def transpose(weight, fan_in_fan_out):
     if not fan_in_fan_out:
         return weight
     return weight.T
+
 
 class BaseTunerLayer(ABC):
     r"""
@@ -185,6 +187,7 @@ class BaseTunerLayer(ABC):
                     )
                     self.set_adapter(remaining_adapters[0])
 
+
 class LoraLayer(BaseTunerLayer):
     # All names of layers that may contain (trainable) adapter weights
     adapter_layer_names = ("lora_A", "lora_B", "lora_embedding_A", "lora_embedding_B")
@@ -229,8 +232,20 @@ class LoraLayer(BaseTunerLayer):
         self.lora_dropout.update(nn.ModuleDict({adapter_name: lora_dropout_layer}))
         # Actual trainable parameters
         if r > 0:
-            self.lora_A[adapter_name] = Linear_(self.in_features, r, bias=False,parallel='col',layer_idx=self.kwargs.get('layer_idx',0))
-            self.lora_B[adapter_name] = Linear_(r, self.out_features, bias=False,parallel='row',layer_idx=self.kwargs.get('layer_idx',0))
+            self.lora_A[adapter_name] = Linear_(
+                self.in_features,
+                r,
+                bias=False,
+                parallel="col",
+                layer_idx=self.kwargs.get("layer_idx", 0),
+            )
+            self.lora_B[adapter_name] = Linear_(
+                r,
+                self.out_features,
+                bias=False,
+                parallel="row",
+                layer_idx=self.kwargs.get("layer_idx", 0),
+            )
             self.scaling[adapter_name] = lora_alpha / r
 
         if init_lora_weights:
@@ -279,7 +294,9 @@ class LoraLayer(BaseTunerLayer):
                 continue
 
             if scale is None:
-                self.scaling[active_adapter] = self.lora_alpha[active_adapter] / self.r[active_adapter]
+                self.scaling[active_adapter] = (
+                    self.lora_alpha[active_adapter] / self.r[active_adapter]
+                )
             else:
                 self.scaling[active_adapter] /= scale
 
@@ -379,7 +396,9 @@ class Linear(nn.Module, LoraLayer):
         weight_A = self.lora_A[adapter].weight
         weight_B = self.lora_B[adapter].weight
 
-        output_tensor = transpose(flow.matmul(weight_B , weight_A), self.fan_in_fan_out) * self.scaling[adapter]
+        output_tensor = (
+            transpose(flow.matmul(weight_B, weight_A), self.fan_in_fan_out) * self.scaling[adapter]
+        )
 
         return output_tensor
 

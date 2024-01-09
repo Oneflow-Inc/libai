@@ -14,6 +14,7 @@ from libai.inference.generator.generation_utils import Generator, LogitsProcesso
 from libai.layers import LayerNorm, Linear, RMSLayerNorm, VocabEmbedding
 from libai.utils import distributed as dist
 
+
 def apply_rotary_pos_emb(x: flow.Tensor, rope_cache: flow.Tensor) -> flow.Tensor:
     # x: [sq, b, np, hn]
     sq, b, np, hn = x.size(0), x.size(1), x.size(2), x.size(3)
@@ -122,7 +123,6 @@ class CoreAttention(flow.nn.Module):
         if self.apply_query_key_layer_scaling:
             self.attention_softmax_in_fp32 = True
         self.layer_number = max(1, layer_number)
-
         projection_size = cfg.kv_channels * cfg.num_attention_heads
 
         # Per attention head and per partition values.
@@ -894,7 +894,9 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
             # Flatten the tokens
-            loss = self.loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            loss = self.loss_fct(
+                shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+            )
             # loss = loss.mean()
 
         if labels is not None:

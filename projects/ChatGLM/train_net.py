@@ -14,9 +14,7 @@
 # limitations under the License.
 
 import logging
-import os
 import random
-import sys
 
 import numpy as np
 import oneflow as flow
@@ -25,7 +23,11 @@ import libai.utils.distributed as dist
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-from projects.ChatGLM.utils.chatglm_loader import ChatGLMLoaderHuggerFace,ChatGLMLoraLoaderHuggerFace
+from projects.ChatGLM.utils.chatglm_loader import (
+    ChatGLMLoaderHuggerFace,
+    ChatGLMLoraLoaderHuggerFace,
+)
+
 
 def build_model(cfg):
     if cfg.cfg.lora_enable:
@@ -33,8 +35,8 @@ def build_model(cfg):
             cfg,
             cfg.cfg,
             cfg.cfg.pretrained_model_path,
-            lora_config = cfg.cfg.lora_cfg,
-            lora_pretrained_model_path = cfg.cfg.lora_pretrained_model_path
+            lora_cfg=cfg.cfg.lora_cfg,
+            lora_pretrained_model_path=cfg.cfg.lora_pretrained_model_path,
         )
         model = model_loader.load()
     else:
@@ -45,6 +47,7 @@ def build_model(cfg):
         )
         model = model_loader.load()
     return model
+
 
 class ChatGLMTrainer(DefaultTrainer):
     @classmethod
@@ -62,6 +65,7 @@ class ChatGLMTrainer(DefaultTrainer):
         logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
         return model
+
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)

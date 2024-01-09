@@ -21,6 +21,7 @@ import oneflow as flow
 
 COMMON_LAYERS_PATTERN = ["layers", "h", "block", "blocks", "layer"]
 
+
 def check_target_module_exists(config, key: str) -> bool | re.Match[str] | None:
     """A helper method to check if the passed module's key name matches any of the target modules in the adapter_config.
 
@@ -42,7 +43,9 @@ def check_target_module_exists(config, key: str) -> bool | re.Match[str] | None:
         layer_indexing_pattern = getattr(config, "layers_pattern", None)
 
         if is_using_layer_indexes and target_module_found:
-            layers_pattern = COMMON_LAYERS_PATTERN if layer_indexing_pattern is None else layer_indexing_pattern
+            layers_pattern = (
+                COMMON_LAYERS_PATTERN if layer_indexing_pattern is None else layer_indexing_pattern
+            )
             layers_pattern = [layers_pattern] if isinstance(layers_pattern, str) else layers_pattern
 
             for pattern in layers_pattern:
@@ -61,11 +64,12 @@ def check_target_module_exists(config, key: str) -> bool | re.Match[str] | None:
 
 
 def _get_submodules(model, key):
-    
+
     parent = _get_submodule(model, ".".join(key.split(".")[:-1]))
     target_name = key.split(".")[-1]
-    target = _get_submodule(model,key)
+    target = _get_submodule(model, key)
     return parent, target, target_name
+
 
 def _get_submodule(model, target):
     if target == "":
@@ -77,13 +81,11 @@ def _get_submodule(model, target):
     for item in atoms:
 
         if not hasattr(mod, item):
-            raise AttributeError(mod._get_name() + " has no "
-                                    "attribute `" + item + "`")
+            raise AttributeError(mod._get_name() + " has no " "attribute `" + item + "`")
 
         mod = getattr(mod, item)
 
         if not isinstance(mod, flow.nn.Module):
-            raise AttributeError("`" + item + "` is not "
-                                    "an nn.Module")
+            raise AttributeError("`" + item + "` is not " "an nn.Module")
 
     return mod

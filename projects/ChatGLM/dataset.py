@@ -18,6 +18,7 @@ from typing import Dict, List
 
 import oneflow as flow
 from oneflow.utils.data import Dataset
+from tqdm import tqdm
 
 from libai.data.structures import DistTensorData, Instance
 from libai.utils import distributed as dist
@@ -28,13 +29,17 @@ logger = setup_logger()
 
 
 class ChatGLMTrainDataset(Dataset):
-    def __init__(self, path, tokenizer, max_source_len=128, max_target_len=128):
+    def __init__(self, path, tokenizer, max_source_len=128, max_target_len=128, max_length=None):
         with open(path, "r", encoding="utf-8") as f:
             self.data = json.load(f)
         self.tokenizer = tokenizer
         self.max_source_len = max_source_len
         self.max_target_len = max_target_len
-        self.max_len = max_source_len + max_target_len + 1
+        if max_length is None:
+            self.max_len = max_source_len + max_target_len + 1
+        else:
+            self.max_len = max_length
+
         example = self._preprocess(0)
         self.log_dataset_example(example)
 
@@ -45,25 +50,25 @@ class ChatGLMTrainDataset(Dataset):
         item = {key: self.data[key][idx] for key in self.data}
         # prompt, query, response
 
-        source_ids = self.tokenizer.encode(item["prompt"] + item["query"], add_special_tokens=True)[0]
+        source_ids = self.tokenizer.encode(item["prompt"] + item["query"], add_special_tokens=True)[
+            0
+        ]
         source_ids = source_ids[: self.max_source_len]
 
-        target_ids = self.tokenizer.encode(item["response"], add_special_tokens=True)[0]
+        target_ids = self.tokenizer.encode(item["response"], add_special_tokens=False)[0]
         target_ids = target_ids[: self.max_target_len]
 
-        input_ids = source_ids + target_ids + [self.tokenizer.eos_token_id]
-        labels = (
-            [self.tokenizer.pad_token_id] * len(source_ids)
-            + target_ids
-            + [self.tokenizer.eos_token_id]
-        )
+        input_ids = source_ids + target_ids
+        labels = [self.tokenizer.pad_token_id] * len(source_ids) + target_ids
 
-        # pad
+        input_ids = input_ids[: self.max_len - 1] + [self.tokenizer.eos_token_id]
+        labels = labels[: self.max_len - 1] + [self.tokenizer.eos_token_id]
+
+        # left pad
         pad_len = self.max_len - len(input_ids)
-        input_ids = input_ids + [self.tokenizer.pad_token_id] * pad_len
-        labels = labels + [self.tokenizer.pad_token_id] * pad_len
+        input_ids = [self.tokenizer.pad_token_id] * pad_len + input_ids
+        labels = [self.tokenizer.pad_token_id] * pad_len + labels
         labels = [(l if l != self.tokenizer.pad_token_id else IGNORE_INDEX) for l in labels]
-        assert len(input_ids) == len(labels), f"length mismatch: {len(input_ids)} vs {len(labels)}"
 
         return {"input_ids": input_ids, "labels": labels}
 
@@ -92,5 +97,5 @@ class ChatGLMTrainDataset(Dataset):
         item = self._preprocess(index)
         return Instance(
             input_ids=DistTensorData(flow.LongTensor(item["input_ids"])),
-            labels=DistTensorData(flow.LongTensor(item["labels"])),
+            labels=DistTensorData(flow.LongTensor(item["labels"]), placement_idx=-1),
         )

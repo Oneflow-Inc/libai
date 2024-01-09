@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
@@ -28,25 +29,53 @@ class TextGenerationPipeline(BasePipeline):
             model_path (str): The directory path of pretrained model,
         """
         if mode == "huggingface":
-            from projects.ChatGLM.utils.chatglm_loader import ChatGLMLoaderHuggerFace
-
-            model_loader = ChatGLMLoaderHuggerFace(
-                libai_cfg_model,
-                libai_cfg_model.cfg,
-                model_path,
+            from projects.ChatGLM.utils.chatglm_loader import (
+                ChatGLMLoaderHuggerFace,
+                ChatGLMLoraLoaderHuggerFace,
             )
+
+            if libai_cfg_model.cfg.lora_enable:
+                libai_cfg_model.cfg.lora_cfg.inference_mode = True
+                model_loader = ChatGLMLoraLoaderHuggerFace(
+                    libai_cfg_model,
+                    libai_cfg_model.cfg,
+                    libai_cfg_model.cfg.pretrained_model_path,
+                    lora_cfg=libai_cfg_model.cfg.lora_cfg,
+                    # lora_pretrained_model_path = libai_cfg_model.cfg.lora_pretrained_model_path
+                    lora_pretrained_model_path=model_path,
+                )
+            else:
+                model_loader = ChatGLMLoaderHuggerFace(
+                    libai_cfg_model,
+                    libai_cfg_model.cfg,
+                    model_path,
+                )
             model = model_loader.load()
             model.eval()
             return model
 
         elif mode == "libai":
-            from projects.ChatGLM.utils.chatglm_loader import ChatGLMLoaderLiBai
-
-            model_loader = ChatGLMLoaderLiBai(
-                libai_cfg_model,
-                libai_cfg_model.cfg,
-                model_path,
+            from projects.ChatGLM.utils.chatglm_loader import (
+                ChatGLMLoaderLiBai,
+                ChatGLMLoraLoaderLiBai,
             )
+
+            if libai_cfg_model.cfg.lora_enable:
+                libai_cfg_model.cfg.lora_cfg.inference_mode = True
+                model_loader = ChatGLMLoraLoaderLiBai(
+                    libai_cfg_model,
+                    libai_cfg_model.cfg,
+                    libai_cfg_model.cfg.pretrained_model_path,
+                    lora_cfg=libai_cfg_model.cfg.lora_cfg,
+                    # lora_pretrained_model_path = libai_cfg_model.cfg.lora_pretrained_model_path
+                    lora_pretrained_model_path=model_path,
+                )
+            else:
+                model_loader = ChatGLMLoaderLiBai(
+                    libai_cfg_model,
+                    libai_cfg_model.cfg,
+                    model_path,
+                )
             model = model_loader.load()
             model.eval()
             return model
@@ -117,21 +146,50 @@ class TextGenerationPipeline(BasePipeline):
 if __name__ == "__main__":
     # ----- load huggingface checkpoint -----
     text = "浏览器输入www.baidu.com 并且显示网页，从计算机网络的角度说明实现的全过程"
+    text2 = "5600分为A、B、C三部分，如果A比C的比例是1/7:1/7:1/14，那么A比C多多少？\n选项：\n(A) 300\n(B) 992 \n(C) 1120\n(D) 552\n(E) 312 让我们先想想。一些随机推理："
     texts = [
         "a dog is flying on the sky",
         "Wikipedia is a free online",
         "what is beam search?",
         "what is beam search?",
     ]
-    # glm_model_path = "/home/lixin/.cache/modelscope/hub/ZhipuAI/chatglm3-6b"
+    pipeline = TextGenerationPipeline(
+        "projects/ChatGLM/configs/chatglm_config.py",
+        data_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=1,
+        pipeline_num_layers=28,
+        model_path=os.environ['CHATGLM_HF_DIR'],
+        mode="huggingface",
+    )
+    pipeline.model = pipeline.model.half()
+
+    if isinstance(texts, list):
+        output = pipeline(inputs=texts, do_sample=False, max_length=50)
+        if dist.is_main_process():
+            for text, record in zip(texts, output):
+                print(f"Q:{text}||A:{record}")
+
+    # if isinstance(text, str):
+    #     output = pipeline(inputs=text, do_sample=False, max_length=400)
+    #     if dist.is_main_process():
+    #         for record in output:
+    #             print(record["generated_text"])
+    #     pipeline.reset_conversation()
+    #     output = pipeline(inputs=text2, do_sample=False, max_length=400)
+    #     if dist.is_main_process():
+    #         for record in output:
+    #             print(record["generated_text"])
+
+    # # ----- load libai checkpoint -----
     # pipeline = TextGenerationPipeline(
     #     "projects/ChatGLM/configs/chatglm_config.py",
     #     data_parallel=1,
     #     tensor_parallel=1,
     #     pipeline_parallel=1,
     #     pipeline_num_layers=28,
-    #     model_path=glm_model_path,
-    #     mode="huggingface",
+    #     model_path="/home/lixin/codes/libai/lora_sft_result/model_final/model",
+    #     mode="libai",
     # )
     # pipeline.model = pipeline.model.half()
 
@@ -146,31 +204,13 @@ if __name__ == "__main__":
     #     if dist.is_main_process():
     #         for record in output:
     #             print(record['generated_text'])
-
-    # # ----- load libai checkpoint -----
-    # pipeline = TextGenerationPipeline(
-    #     "/home/lixin/codes/libai/projects/ChatGLM/configs/chatglm_config.py",
-    #     data_parallel=1,
-    #     tensor_parallel=1,
-    #     pipeline_parallel=1,
-    #     pipeline_num_layers=28,
-    #     model_path="/home/lixin/codes/libai/sft_result/model_final/model",
-    #     mode="libai",
-    # )
-
-    # if isinstance(texts, list):
-    #     output = pipeline(inputs=texts, do_sample=False, max_length=50)
-    #     if dist.is_main_process():
-    #         for text, record in zip(texts, output):
-    #             print(f"Q:{text}||A:{record}")
-    # if isinstance(text, str):
-    #     output = pipeline(inputs=text, do_sample=False, max_length=400)
+    #     pipeline.reset_conversation()
+    #     output = pipeline(inputs=text2, do_sample=False, max_length=400)
     #     if dist.is_main_process():
     #         for record in output:
     #             print(record['generated_text'])
 
     # ----- pure huggingface predict -----
-    
     # from transformers import AutoModel, AutoTokenizer
 
     # tokenizer = AutoTokenizer.from_pretrained(glm_model_path, trust_remote_code=True)

@@ -6,7 +6,7 @@ import oneflow as flow
 
 flow.mock_torch.enable()
 
-from lm_eval import evaluator, tasks  # noqa
+from lm_eval import evaluator, tasks  # noqa v 0.3.0
 from lm_eval.base import BaseLM  # noqa
 from omegaconf import DictConfig  # noqa
 
@@ -57,7 +57,9 @@ class EvalHarnessBase(BaseLM):
         return flow.device("cuda:0")
 
     def tok_encode(self, string: str) -> List[int]:
-        return self.tokenizer.get_prefix_tokens() + self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(string))
+        return self.tokenizer.get_prefix_tokens() + self.tokenizer.convert_tokens_to_ids(
+            self.tokenizer.tokenize(string)
+        )
 
     def tok_decode(self, tokens: List[int]) -> str:
         return self.tokenizer.decode(tokens)
@@ -138,7 +140,7 @@ def run_eval_harness(
     model.eval()
     model = model.to(dtype)
     eval_harness = EvalHarnessBase(model, tokenizer, 1, cfg)
-    
+
     results = eval_harness.run_eval(eval_tasks, num_fewshot, limit, bootstrap_iters)
     if save_filepath is None:
         print(results)
@@ -147,6 +149,7 @@ def run_eval_harness(
         data = json.dumps(results)
         with open(save_filepath, "w") as fw:
             fw.write(data)
+
 
 if __name__ == "__main__":
     parallel_config = DictConfig(

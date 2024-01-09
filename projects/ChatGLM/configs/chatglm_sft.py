@@ -15,15 +15,14 @@ from projects.ChatGLM.dataset import ChatGLMTrainDataset
 from projects.ChatGLM.tokenizer import ChatGLMTokenizer
 from projects.ChatGLM.chatglm import ChatGLMForConditionalGeneration
 
-
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 2e-5
 max_source_len = 128
 max_target_len = 128
-dataset_path = "YOUR_DATA_PATH/CoT_zh"
-pretrained_model_path = "YOUR_CHATGLM_HUGGINGFACE_PATH"
-fast_dev_run=True
+max_length = 256
+dataset_path = os.environ["DATA_DIR"]
+pretrained_model_path = os.environ["CHATGLM_HF_DIR"]
 
 # graph & optim
 graph["enabled"] = True
@@ -54,6 +53,7 @@ dataloader.train = LazyCall(build_nlp_train_loader)(
             tokenizer=tokenization.tokenizer,
             max_source_len=max_source_len,
             max_target_len=max_target_len,
+            max_length=max_length,
         )
     ]
 )
@@ -64,6 +64,7 @@ dataloader.test = [
             tokenizer=tokenization.tokenizer,
             max_source_len=max_source_len,
             max_target_len=max_target_len,
+            max_length=max_length,
         )
     ),
 ]
@@ -71,7 +72,7 @@ dataloader.test = [
 train.update(
     dict(
         output_dir="./sft_result",
-        train_micro_batch_size=2,
+        train_micro_batch_size=1,
         test_micro_batch_size=1,
         train_epoch=3,
         train_iter=1,
@@ -86,7 +87,7 @@ train.update(
             max_to_keep=1,
         ),
         dist=dict(
-            data_parallel_size=2,
+            data_parallel_size=1,
             tensor_parallel_size=1,
             pipeline_parallel_size=4,
             pipeline_num_layers=cfg.num_layers,

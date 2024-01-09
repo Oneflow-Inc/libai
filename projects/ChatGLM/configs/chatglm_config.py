@@ -1,3 +1,4 @@
+import os
 from omegaconf import DictConfig, OmegaConf
 
 from libai.config import LazyCall
@@ -14,7 +15,6 @@ cfg = dict(
     apply_residual_connection_post_layernorm=False,
     attention_dropout=0.0,
     attention_softmax_in_fp32=True,
-    bias_dropout_fusion=True,
     ffn_hidden_size=13696,
     fp32_residual_connection=False,
     hidden_dropout=0.0,
@@ -25,13 +25,11 @@ cfg = dict(
     multi_query_group_num=2,
     num_attention_heads=32,
     num_layers=28,
-    original_rope=True,
     padded_vocab_size=65024,
     post_layer_norm=True,
     rmsnorm=True,
     seq_length=8192,
     use_cache=True,
-    dtype="float16",
     tie_word_embeddings=False,
     eos_token_id=2,
     bos_token_id=1,
@@ -42,7 +40,7 @@ cfg = dict(
     amp_enabled=True,
     # Inference
     is_encoder_decoder=False,
-    max_length=256,
+    max_length=1350,
     min_length=0,
     do_sample=False,
     early_stopping=False,
@@ -62,26 +60,24 @@ cfg = dict(
     output_scores=False,
     output_hidden_states=False,
     # train
-    pretrained_model_path="YOUR_CHATGLM_HUGGINGFACE_PATH",
-
+    pretrained_model_path=os.environ["CHATGLM_HF_DIR"],
     # lora_cfg
-    lora_enable = False,
-    lora_cfg = dict(
+    lora_enable=False,
+    lora_cfg=dict(
         # Model
         r=8,
-        target_modules=['query_key_value'],
+        target_modules=["query_key_value"],
         lora_alpha=8,
         lora_dropout=0.0,
         fan_in_fan_out=False,
-        bias='lora_only',
-        hidden_layers=32,
+        bias="lora_only",
         modules_to_save=None,
-        init_lora_weights=True, # or lora
+        init_lora_weights=True,  # or lora
         inference_mode=False,
         rank_pattern=dict(),
         alpha_pattern=dict(),
     ),
-    lora_pretrained_model_path = None # None for train
+    lora_pretrained_model_path=None,  # None for train
 )
 
 cfg = DictConfig(cfg)
@@ -90,5 +86,5 @@ model = LazyCall(ChatGLMForConditionalGeneration)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(ChatGLMTokenizer)(
-    vocab_file="YOUR_CHATGLM_HUGGINGFACE_PATH/tokenizer.model"
+    vocab_file=f"{os.environ['CHATGLM_HF_DIR']}/tokenizer.model"
 )
