@@ -11,7 +11,7 @@ from libai.evaluation import PPLEvaluator
 from libai.scheduler import WarmupExponentialLR
 from projects.Llama.adapter.adapter_config import cfg
 from projects.Llama.adapter.adapter_model import LlamaForCausalLM
-from projects.Llama.adapter.dataset import AlpacaDataset
+from projects.Llama.dataset import AlpacaDataset
 from projects.Llama.tokenizer import LlamaTokenizer
 
 # Hyperparameters
