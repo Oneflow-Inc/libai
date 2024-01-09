@@ -18,8 +18,8 @@ from projects.Llama.tokenizer import LlamaTokenizer
 weight_decay = 0.1
 learning_rate = 2e-5
 max_input_length = 512
-dataset_path = "/data/home/xiezipeng/datasets/alpaca_data.json"
-pretrained_model_path = "/data/home/xiezipeng/hf_models/meta-llama/Llama-2-7b-hf/"
+dataset_path = "alpaca_data.json"
+pretrained_model_path = "Llama-2-7b-hf/"
 
 # graph & optim
 graph["enabled"] = False
