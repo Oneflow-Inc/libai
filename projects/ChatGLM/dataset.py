@@ -18,7 +18,6 @@ from typing import Dict, List
 
 import oneflow as flow
 from oneflow.utils.data import Dataset
-from tqdm import tqdm
 
 from libai.data.structures import DistTensorData, Instance
 from libai.utils import distributed as dist
@@ -44,7 +43,7 @@ class ChatGLMTrainDataset(Dataset):
         self.log_dataset_example(example)
 
     def _preprocess(self, idx):
-        # build inputs with format `<bos> X Y <eos>` and labels with format `<ignore> ... <ignore> Y <eos>`
+        # inputs with format `<bos> X Y <eos>` labels with format `<ignore> ... <ignore> Y <eos>`
         # for multiturn examples, we only mask the prompt part in each prompt-response pair.
 
         item = {key: self.data[key][idx] for key in self.data}

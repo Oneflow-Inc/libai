@@ -24,7 +24,6 @@ from enum import Enum
 from itertools import chain
 from typing import Any, List, Optional
 
-import oneflow as flow
 from oneflow import nn
 from tqdm import tqdm
 
@@ -36,8 +35,8 @@ logger = logging.getLogger(__name__)
 
 class BaseTuner(nn.Module, ABC):
     r"""
-    A base tuner model that provides the common methods and attributes for all tuners that are injectable into a
-    flow.nn.Module
+    A base tuner model that provides the common methods and attributes for all
+    tuners that are injectable into flow.nn.Module
 
     """
 
@@ -63,8 +62,9 @@ class BaseTuner(nn.Module, ABC):
     @abstractmethod
     def _check_target_module_exists(peft_config, key: str) -> bool:
         r"""
-        A helper private method to check if the passed module's key name matches any of the target modules in the
-        `peft_config.target_modules` list. If it does, return `True`, else return `False`.
+        A helper private method to check if the passed module's key name matches any of the
+        target modules in the `peft_config.target_modules` list. If it does, return `True`,
+        else return `False`.
 
         Args:
             peft_config (`PeftConfig`):
@@ -85,8 +85,8 @@ class BaseTuner(nn.Module, ABC):
         **optional_kwargs: Any,
     ) -> None:
         r"""
-        Inplace replacement of the target module with the adapter layer. This method needs to be overriden by all the
-        tuner classes.
+        Inplace replacement of the target module with the adapter layer.
+        This method needs to be overriden by all the tuner classes.
 
         Check `peft.tuners.lora.LoraModel._create_and_replace` for an example.
 
@@ -102,17 +102,20 @@ class BaseTuner(nn.Module, ABC):
             parent (`nn.Module`):
                 The parent module.
             **optional_kwargs (`dict`):
-                The optional keyword arguments to pass to deal with particular cases (e.g. 8bit, 4bit quantization)
+                The optional keyword arguments to pass to deal with particular cases
+                (e.g. 8bit, 4bit quantization)
         """
         ...
 
     @abstractmethod
     def _mark_only_adapters_as_trainable(self, model: nn.Module):
         r"""
-        A helper method to mark only the adapter layers as trainable (i.e. module.requires_grad = False) This needs to
-        be overriden for all tuner classes to match the correct key names.
+        A helper method to mark only the adapter layers as trainable
+        (i.e. module.requires_grad = False) This needs to be overriden
+        for all tuner classes to match the correct key names.
 
-        Check `peft.tuners.lora.LoraModel._mark_only_adapters_as_trainable` for an example.
+        Check `peft.tuners.lora.LoraModel._mark_only_adapters_as_trainable`
+        for an example.
         """
         ...
 
@@ -120,7 +123,8 @@ class BaseTuner(nn.Module, ABC):
         """
         A helper method to check the config when a new adapter is being added.
 
-        Raise a ValueError if there is something wrong with the config or if it conflicts with existing adapters.
+        Raise a ValueError if there is something wrong with the config or if it
+        conflicts with existing adapters.
 
         """
 
@@ -192,18 +196,20 @@ class BaseTuner(nn.Module, ABC):
         """
         This method merges the adapter layers into the base model.
 
-        Merging adapters can lead to a speed up of the forward pass. A copy of the adapter weights is still kept in
-        memory, which is required to unmerge the adapters. In order to merge the adapter weights without keeping them
-        in memory, please call `merge_and_unload`.
+        Merging adapters can lead to a speed up of the forward pass. A copy of the adapter
+        weights is still kept in memory, which is required to unmerge the adapters. In
+        order to merge the adapter weights without keeping them in memory, please call
+        `merge_and_unload`.
 
         Args:
             safe_merge (`bool`, *optional*):
-                If `True`, the merge operation will be performed in a copy of the original weights and check for NaNs
-                before merging the weights. This is useful if you want to check if the merge operation will produce
-                NaNs. Defaults to `False`.
+                If `True`, the merge operation will be performed in a copy of the original
+                weights and check for NaNs before merging the weights. This is useful if
+                you want to check if the merge operation will produce NaNs.
+                Defaults to `False`.
             adapter_names (`list[str]`, *optional*):
-                The list of adapter names that should be merged. If `None`, all active adapters will be merged.
-                Defaults to `None`.
+                The list of adapter names that should be merged. If `None`, all active
+                adapters will be merged. Defaults to `None`.
         """
         for module in self.model.modules():
             if isinstance(module, BaseTunerLayer):
@@ -251,15 +257,17 @@ class LoraModel(BaseTuner):
         """
         A helper method to check the config when a new adapter is being added.
 
-        Raise a ValueError if there is something wrong with the config or if it conflicts with existing adapters.
+        Raise a ValueError if there is something wrong with the config or if it
+        conflicts with existing adapters.
 
         """
-        # TODO: there should be a check if any of the existing adapters actually has bias != "none", or else the check
-        # does not fully correspond to the error message.
+        # TODO: there should be a check if any of the existing adapters actually
+        # has bias != "none",or else the check does not fully correspond to the
+        # error message.
         if (len(self.peft_config) > 1) and (config.bias != "none"):
             raise ValueError(
-                f"{self.__class__.__name__} supports only 1 adapter with bias. When using multiple adapters, "
-                "set bias to 'none' for all adapters."
+                f"{self.__class__.__name__} supports only 1 adapter with bias. "
+                "When using multiple adapters, set bias to 'none' for all adapters."
             )
 
     @staticmethod
@@ -283,7 +291,8 @@ class LoraModel(BaseTuner):
             chain(lora_config.rank_pattern.keys(), lora_config.alpha_pattern.keys())
         )
         target_name_key = next(
-            filter(lambda key: re.match(f".*\.{key}$", current_key), pattern_keys), current_key
+            filter(lambda key: re.match(r".*\.{" + key + r"}$", current_key), pattern_keys),
+            current_key,
         )
 
         r = lora_config.rank_pattern.get(target_name_key, lora_config.r)
@@ -388,8 +397,9 @@ class LoraModel(BaseTuner):
             val = self.peft_config[active_adapter].bias
             if val != "none":
                 msg = (
-                    f"Careful, disabling adapter layers with bias configured to be '{val}' does not produce the same "
-                    "output as the the base model would without adaption."
+                    f"Careful, disabling adapter layers with bias configured to be '{val}'"
+                    " does not produce the same output as the the base model would without"
+                    " adaption."
                 )
                 warnings.warn(msg)
         self._set_adapter_layers(enabled=False)
@@ -463,18 +473,18 @@ class LoraModel(BaseTuner):
         adapter_names: Optional[List[str]] = None,
     ) -> nn.Module:
         r"""
-        This method merges the LoRa layers into the base model. This is needed if someone wants to use the base model
-        as a standalone model.
+        This method merges the LoRa layers into the base model. This is needed if
+        someone wants to use the base model as a standalone model.
 
         Args:
             progressbar (`bool`):
                 whether to show a progressbar indicating the unload and merge process
             safe_merge (`bool`):
-                whether to activate the safe merging check to check if there is any potential Nan in the adapter
-                weights
+                whether to activate the safe merging check to check if there is any
+                potential Nan in the adapter weights
             adapter_names (`List[str]`, *optional*):
-                The list of adapter names that should be merged. If None, all active adapters will be merged. Defaults
-                to `None`.
+                The list of adapter names that should be merged. If None, all active
+                adapters will be merged. Defaulte to `None`.
         """
         return self._unload_and_optionally_merge(
             progressbar=progressbar, safe_merge=safe_merge, adapter_names=adapter_names
@@ -482,8 +492,8 @@ class LoraModel(BaseTuner):
 
     def unload(self) -> nn.Module:
         """
-        Gets back the base model by removing all the lora modules without merging. This gives back the original base
-        model.
+        Gets back the base model by removing all the lora modules without merging.
+        This gives back the original base model.
         """
         return self._unload_and_optionally_merge(merge=False)
 

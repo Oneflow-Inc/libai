@@ -23,15 +23,17 @@ COMMON_LAYERS_PATTERN = ["layers", "h", "block", "blocks", "layer"]
 
 
 def check_target_module_exists(config, key: str) -> bool | re.Match[str] | None:
-    """A helper method to check if the passed module's key name matches any of the target modules in the adapter_config.
+    """A helper method to check if the passed module's key name matches
+       any of the target modules in the adapter_config.
 
     Args:
-        config (`LoraConfig` | `LycorisConfig`): A config to match target modules from
+        config (`LoraConfig` | `LycorisConfig`): A config to match
+        target modules from
         key (`str`): A key to search any matches in config
 
     Returns:
-        `bool` | `re.Match[str]` | `None`: True of match object if key matches any target modules from config, False or
-        None if no match found
+        `bool` | `re.Match[str]` | `None`: True of match object if key matches any
+        target modules from config, False or None if no match found
     """
     if isinstance(config.target_modules, str):
         target_module_found = re.fullmatch(config.target_modules, key)
@@ -49,7 +51,7 @@ def check_target_module_exists(config, key: str) -> bool | re.Match[str] | None:
             layers_pattern = [layers_pattern] if isinstance(layers_pattern, str) else layers_pattern
 
             for pattern in layers_pattern:
-                layer_index = re.match(f".*.{pattern}\.(\d+)\.*", key)
+                layer_index = re.match(r".*.{" + pattern + r"}\.(\d+)\.*", key)
                 if layer_index is not None:
                     layer_index = int(layer_index.group(1))
                     if isinstance(config.layers_to_transform, int):

@@ -21,7 +21,6 @@ from typing import Any, List, Optional, Union
 
 import oneflow as flow
 import oneflow.nn as nn
-import oneflow.nn.functional as F
 
 from libai.layers import Linear as Linear_
 
@@ -84,12 +83,14 @@ class BaseTunerLayer(ABC):
 
     @property
     def disable_adapters(self) -> bool:
-        # use a property to ensure that disable_adapters is not set directly, instead use the enable_adapters method
+        # use a property to ensure that disable_adapters is not set directly,
+        # instead use the enable_adapters method
         return self._disable_adapters
 
     @property
     def active_adapter(self) -> str:
-        # use a property to ensure that active_adapter is not set directly, instead use the set_adapter method
+        # use a property to ensure that active_adapter is not set directly,
+        # instead use the set_adapter method
         return self._active_adapter
 
     @property
@@ -131,8 +132,9 @@ class BaseTunerLayer(ABC):
             module_dict = getattr(self, layer_name)
             for key, layer in module_dict.items():
                 if key in adapter_names:
-                    # Note: It is possible that not a single layer is called with requires_grad_(True) here. This may
-                    # happen if a completely different adapter layer is being activated.
+                    # Note: It is possible that not a single layer is called with
+                    # requires_grad_(True) here. This may happen if a completely
+                    # different adapter layer is being activated.
                     layer.requires_grad_(True)
                 else:
                     layer.requires_grad_(False)
@@ -143,8 +145,8 @@ class BaseTunerLayer(ABC):
         """Return a sorted list of all available adapter names"""
         adapter_names = set()
         for name in self.adapter_layer_names + self.other_param_names:
-            # we check each possible attribute and if it's a dict or ModuleDict, we assume that the keys are the adapter
-            # names
+            # we check each possible attribute and if it's a dict or ModuleDict,
+            # we assume that the keys are the adapter names
             attr = getattr(self, name)
             if hasattr(attr, "keys"):
                 adapter_names.update(attr.keys())
@@ -154,10 +156,13 @@ class BaseTunerLayer(ABC):
         """
         Delete an adapter from the layer
 
-        This should be called on all adapter layers, or else we will get an inconsistent state.
+        This should be called on all adapter layers, or else we will get an
+        inconsistent state.
 
-        This method will also set a new active adapter if the deleted adapter was an active adapter. It is important
-        that the new adapter is chosen in a deterministic way, so that the same adapter is chosen on all layers.
+        This method will also set a new active adapter if the deleted adapter
+        was an active adapter. It is important that the new adapter is chosen
+        in a deterministic way, so that the same adapter is chosen on all
+        layers.
 
         Args:
             adapter_name (`str`): The name of the adapter to delete
@@ -175,15 +180,16 @@ class BaseTunerLayer(ABC):
                 self.set_adapter(active_adapters)
             else:
                 # no active adapters left, set a new default adapter
-                # here we get the list of all adapters existing adapter names and choose the first one
+                # here we get the list of all adapters existing adapter
+                # names and choose the first one
                 remaining_adapters = self._all_available_adapter_names()
                 if not remaining_adapters:
                     self.set_adapter([])
                 else:
                     new_active_adapter = remaining_adapters[0]
                     warnings.warn(
-                        f"Adapter {adapter_name} was active which is now deleted. Setting active adapter to "
-                        f"{new_active_adapter}."
+                        f"Adapter {adapter_name} was active which is now deleted."
+                        f"Setting active adapter to {new_active_adapter}."
                     )
                     self.set_adapter(remaining_adapters[0])
 
@@ -320,7 +326,7 @@ class Linear(nn.Module, LoraLayer):
         r: int = 0,
         lora_alpha: int = 1,
         lora_dropout: float = 0.0,
-        fan_in_fan_out: bool = False,  # Set this to True if the layer to replace stores weight like (fan_in, fan_out) for example Embedding Layer
+        fan_in_fan_out: bool = False,
         init_lora_weights: Union[bool, str] = True,
         **kwargs,
     ) -> None:
@@ -337,12 +343,13 @@ class Linear(nn.Module, LoraLayer):
 
         Args:
             safe_merge (`bool`, *optional*):
-                If True, the merge operation will be performed in a copy of the original weights and check for NaNs
-                before merging the weights. This is useful if you want to check if the merge operation will produce
-                NaNs. Defaults to `False`.
+                If True, the merge operation will be performed in a copy of the
+                original weights and check for NaNs before merging the weights.
+                This is useful if you want to check if the merge operation will
+                produce NaNs. Defaults to `False`.
             adapter_names (`List[str]`, *optional*):
-                The list of adapter names that should be merged. If None, all active adapters will be merged. Defaults
-                to `None`.
+                The list of adapter names that should be merged. If None, all
+                active adapters will be merged. Defaults to `None`.
         """
         if self.merged:
             warnings.warn(
@@ -364,7 +371,10 @@ class Linear(nn.Module, LoraLayer):
 
                     if not flow.isfinite(orig_weights).all():
                         raise ValueError(
-                            f"NaNs detected in the merged weights. The adapter {active_adapter} seems to be broken"
+                            (
+                                "NaNs detected in the merged weights. "
+                                f"The adapter {active_adapter} seems to be broken"
+                            )
                         )
 
                     base_layer.weight.data = orig_weights

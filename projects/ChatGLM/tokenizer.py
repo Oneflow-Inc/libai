@@ -18,18 +18,12 @@ EncodedInput = List[int]
 
 class PaddingStrategy(str, Enum):
     """
-    Possible values for the `padding` argument in [`PreTrainedTokenizerBase.__call__`]. Useful for tab-completion in an
-    IDE.
+    Possible values for the `padding` argument in [`PreTrainedTokenizerBase.__call__`].
+    Useful for tab-completion in an IDE.
     """
 
     LONGEST = "longest"
     MAX_LENGTH = "max_length"
-
-    @classmethod
-    def _missing_(cls, value):
-        raise ValueError(
-            f"{value} is not a valid {cls.__name__}, please select one of {list(cls._value2member_map_.keys())}"
-        )
 
 
 class SPTokenizer:
@@ -254,8 +248,9 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
     ) -> List[int]:
         """
-        Build model inputs from a sequence or a pair of sequence for sequence classification tasks by concatenating and
-        adding special tokens. A BERT sequence has the following format:
+        Build model inputs from a sequence or a pair of sequence for sequence
+        classification tasks by concatenating and adding special tokens.
+        A BERT sequence has the following format:
         - single sequence: `[CLS] X [SEP]`
         - pair of sequences: `[CLS] A [SEP] B [SEP]`
         Args:
@@ -264,7 +259,8 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
             token_ids_1 (`List[int]`, *optional*):
                 Optional second list of IDs for sequence pairs.
         Returns:
-            `List[int]`: List of [input IDs](../glossary#input-ids) with the appropriate special tokens.
+            `List[int]`: List of [input IDs](../glossary#input-ids) with
+            the appropriate special tokens.
         """
         prefix_tokens = self.get_prefix_tokens()
         token_ids_0 = prefix_tokens + token_ids_0
@@ -278,25 +274,7 @@ class ChatGLMTokenizer(PreTrainedTokenizer):
         max_length: Optional[int] = None,
         padding_strategy: PaddingStrategy = PaddingStrategy.LONGEST,
     ) -> dict:
-        """
-        Pad encoded inputs (on left/right and up to predefined length or max length in the batch)
-        Args:
-            encoded_inputs:
-                Batch of tokenized inputs (`List[List]`).
-            max_length: maximum length of the returned list and optionally padding length (see below).
-                Will truncate by taking into account the special tokens.
-            padding_strategy: PaddingStrategy to use for padding.
-                - PaddingStrategy.LONGEST Pad to the longest sequence in the batch
-                - PaddingStrategy.MAX_LENGTH: Pad to the max length (default)
-                The tokenizer padding sides are defined in self.padding_side:
-                    - 'left': pads on the left of the sequences
-                    - 'right': pads on the right of the sequences
-            pad_to_multiple_of: (optional) Integer if set will pad the sequence to a multiple of the provided value.
-                This is especially useful to enable the use of Tensor Core on NVIDIA hardware with compute capability
-                `>= 7.5` (Volta).
-            return_attention_mask:
-                (optional) Set to False to avoid returning attention mask (default: set to model specifics)
-        """
+
         # Load from model defaults
         # assert self.padding_side == "left"
 

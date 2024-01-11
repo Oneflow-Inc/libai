@@ -17,7 +17,7 @@ from libai.utils import distributed as dist
 
 def apply_rotary_pos_emb(x: flow.Tensor, rope_cache: flow.Tensor) -> flow.Tensor:
     # x: [sq, b, np, hn]
-    sq, b, np, hn = x.size(0), x.size(1), x.size(2), x.size(3)
+    sq, _, np, _ = x.size(0), x.size(1), x.size(2), x.size(3)
     rot_dim = rope_cache.shape[-2] * 2
     x, x_pass = x[..., :rot_dim], x[..., rot_dim:]
     # truncate to support variable sizes
@@ -94,7 +94,8 @@ class RotaryEmbedding(nn.Module):
 
     def forward_impl(self, seq_len: int, dtype: flow.dtype):
         """Enhanced Transformer with Rotary Position Embedding.
-        Derived from: https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/labml_nn/
+        Derived from: https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/
+        master/labml_nn/
         transformers/rope/__init__.py. MIT License:
         https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/license.
         """
@@ -381,7 +382,8 @@ class MLP(flow.nn.Module):
 
         self.add_bias = cfg.add_bias_linear
 
-        # Project to 4h. If using swiglu double the output width, see https://arxiv.org/pdf/2002.05202.pdf
+        # Project to 4h. If using swiglu double the output width, see
+        # https://arxiv.org/pdf/2002.05202.pdf
         self.dense_h_to_4h = Linear(
             cfg.hidden_size,
             cfg.ffn_hidden_size * 2,
@@ -911,8 +913,9 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
         past: Tuple[Tuple[flow.Tensor, flow.Tensor], ...], beam_idx: flow.LongTensor
     ) -> Tuple[Tuple[flow.Tensor, flow.Tensor], ...]:
         """
-        This function is used to re-order the `past_key_values` cache if [`~PreTrainedModel.beam_search`] or
-        [`~PreTrainedModel.beam_sample`] is called. This is required to match `past_key_values` with the correct
+        This function is used to re-order the `past_key_values` cache if
+        [`~PreTrainedModel.beam_search`] or [`~PreTrainedModel.beam_sample`]
+        is called. This is required to match `past_key_values` with the correct
         beam_idx at every generation step.
         Output shares the same memory storage as `past`.
         """
