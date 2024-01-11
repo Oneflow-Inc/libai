@@ -1,4 +1,4 @@
-# pylint: skip-file
+# noqa:
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
 # Copyright 2023-present the HuggingFace Inc. team.
