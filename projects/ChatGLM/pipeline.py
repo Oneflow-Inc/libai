@@ -146,7 +146,10 @@ class TextGenerationPipeline(BasePipeline):
 if __name__ == "__main__":
     # ----- load huggingface checkpoint -----
     text = "浏览器输入www.baidu.com 并且显示网页，从计算机网络的角度说明实现的全过程"
-    text2 = "5600分为A、B、C三部分，如果A比C的比例是1/7:1/7:1/14，那么A比C多多少？\n选项：\n(A) 300\n(B) 992 \n(C) 1120\n(D) 552\n(E) 312 让我们先想想。一些随机推理："
+    text2 = (
+        "5600分为A、B、C三部分，如果A比C的比例是1/7:1/7:1/14，那么A比C多多少？\n"
+        "选项：\n(A) 300\n(B) 992 \n(C) 1120\n(D) 552\n(E) 312 让我们先想想。一些随机推理："
+    )
     texts = [
         "a dog is flying on the sky",
         "Wikipedia is a free online",
@@ -159,7 +162,7 @@ if __name__ == "__main__":
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=28,
-        model_path=os.environ['CHATGLM_HF_DIR'],
+        model_path=os.environ["CHATGLM_HF_DIR"],
         mode="huggingface",
     )
     pipeline.model = pipeline.model.half()
