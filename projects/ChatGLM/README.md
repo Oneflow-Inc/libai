@@ -11,10 +11,10 @@ FineTuning ChatGLM3 on 8 GPUs using parallelism.
 ```bash
 export DATA_DIR=~/DATA/alpaca # [At the beginning, it was an empty folder]
 export CHATGLM_HF_DIR=modelscope/hub/ZhipuAI/chatglm3-6b # [Your ChatGLM huggingface path]
+# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 # [if need]
 ```
 
 ### 2. Prepare the sft dataset
-#### preprocess
 ```bash
 cd projects/ChatGLM
 python utils/prepare_data_alpaca.py
