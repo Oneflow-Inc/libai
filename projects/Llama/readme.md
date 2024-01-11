@@ -10,7 +10,13 @@ FineTuning llama2 on 8 GPUs using parallelism.
 
 ### 1. Prepare the alpaca dataset
 
-> Alpaca Dataset address: https://huggingface.co/datasets/vicgalle/alpaca-gpt4
+> set the parameters in `projects/Llama/utils/prepare_alpaca.py` for prepare the datasets, such as `destination_path` and `checkpoint_dir`.
+
+> Get the alpaca dataset files by running:
+```python3
+# path/to/libai
+python projects/Llama/utils/prepare_alpaca.py
+```
 
 ### 2. Prepare your finetuning config file
 
@@ -18,8 +24,11 @@ FineTuning llama2 on 8 GPUs using parallelism.
 
 ### 3. Run the following code to start SFT
 ```bash
-# cd /path/to/libai
+# full finetune
 bash tools/train.sh projects/Llama/train_net.py projects/Llama/configs/llama_sft.py 8
+
+# adapter finetune
+bash tools/train.sh projects/Llama/adapter/train_net.py projects/Llama/adapter/adapter_sft.py 8
 ```
 
 ## Evaluate

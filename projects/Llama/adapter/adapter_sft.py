@@ -18,8 +18,8 @@ from projects.Llama.tokenizer import LlamaTokenizer
 weight_decay = 0.1
 learning_rate = 2e-5
 max_input_length = 512
-dataset_path = "alpaca_data.json"
-pretrained_model_path = "Llama-2-7b-hf/"
+dataset_path = "alpaca_data"
+pretrained_model_path = "meta-llama/Llama-2-7b-hf"
 
 # graph & optim
 graph["enabled"] = False
@@ -46,20 +46,14 @@ dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
         LazyCall(AlpacaDataset)(
-            path=dataset_path,
-            tokenizer=tokenization.tokenizer,
-            max_len=max_input_length,
-            partition="train",
+            path=os.path.join(dataset_path, "train"), tokenizer=tokenization.tokenizer
         )
     ],
 )
 dataloader.test = [
     LazyCall(build_nlp_test_loader)(
         dataset=LazyCall(AlpacaDataset)(
-            path=dataset_path,
-            tokenizer=tokenization.tokenizer,
-            max_len=max_input_length,
-            partition="test",
+            path=os.path.join(dataset_path, "test"), tokenizer=tokenization.tokenizer
         ),
     ),
 ]
@@ -70,7 +64,7 @@ train.update(
         output_dir="./sft_result",
         train_micro_batch_size=8,
         test_micro_batch_size=1,
-        train_epoch=5,
+        train_epoch=3,
         train_iter=1,
         log_period=10,
         warmup_ratio=2 / 5,
@@ -91,7 +85,7 @@ train.update(
         evaluation=dict(
             enabled=True,
             evaluator=LazyCall(PPLEvaluator)(),
-            eval_period=100,
+            eval_period=1000,
             eval_iter=100,
         ),
         scheduler=LazyCall(WarmupExponentialLR)(

@@ -50,7 +50,7 @@ cfg = dict(
     adapter_len=10,
     adapter_layer=30,
     # train
-    pretrained_model_path="Llama-2-7b-hf/",
+    pretrained_model_path="meta-llama/Llama-2-7b-hf/",
 )
 
 cfg = DictConfig(cfg)

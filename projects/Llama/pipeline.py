@@ -114,7 +114,9 @@ if __name__ == "__main__":
         mode="libai",
     )
 
-    text = ["a dog is flying on the sky", "Wikipedia is a free online", "what is beam search?"]
+    text = [
+        "Give three tips for staying healthy.",
+    ]
     output = pipeline(inputs=text)
     if dist.is_main_process():
         print(output)
