@@ -21,7 +21,7 @@ from oneflow import nn
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
-from libai.layers import Linear, ParallelCrossEntropyLoss, RMSLayerNorm, VocabEmbedding
+from libai.layers import Linear, RMSLayerNorm, VocabEmbedding
 from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
