@@ -24,8 +24,11 @@ python projects/Llama/utils/prepare_alpaca.py
 
 ### 3. Run the following code to start SFT
 ```bash
-# cd /path/to/libai
+# full finetune
 bash tools/train.sh projects/Llama/train_net.py projects/Llama/configs/llama_sft.py 8
+
+# adapter finetune
+bash tools/train.sh projects/Llama/adapter/train_net.py projects/Llama/adapter/adapter_sft.py 8
 ```
 
 ## Evaluate

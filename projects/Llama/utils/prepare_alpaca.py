@@ -1,4 +1,5 @@
 """Implementation derived from https://github.com/tloen/alpaca-lora"""
+import copy
 import json
 import math
 import os
@@ -18,18 +19,17 @@ logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("/alpaca_data"),
-    checkpoint_dir: Path = Path("/Llama-2-7b-hf"),
+    destination_path: Path = Path("alpaca_data"),
+    checkpoint_dir: Path = Path("meta-llama/Llama-2-7b-hf"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
     data_file_name: str = "alpaca_data_cleaned_archive.json",
     data_file_url: str = "https://raw.githubusercontent.com/tloen/alpaca-lora/main/alpaca_data_cleaned_archive.json",  # noqa
     ignore_index: int = -1,
-    max_seq_length: Optional[int] = None,
+    max_seq_length: Optional[int] = 512,
 ) -> None:
     """Prepare the Alpaca dataset for instruction tuning.
-
     The output is a training and test dataset saved as `train.pt` and `test.pt`,
     which stores the preprocessed and tokenized prompts and labels.
     """
@@ -67,8 +67,6 @@ def prepare(
             example=sample,
             tokenizer=tokenizer,
             max_length=max_seq_length,
-            mask_inputs=mask_inputs,
-            ignore_index=ignore_index,
         )
         for sample in tqdm(train_set)
     ]
@@ -80,8 +78,6 @@ def prepare(
             example=sample,
             tokenizer=tokenizer,
             max_length=max_seq_length,
-            mask_inputs=mask_inputs,
-            ignore_index=ignore_index,
         )
         for sample in tqdm(test_set)
     ]
@@ -99,46 +95,47 @@ def download_if_missing(file_path: Path, file_url: str) -> None:
         f.write(requests.get(file_url).text)
 
 
-def prepare_sample(
-    example: dict, tokenizer, max_length: int, mask_inputs: bool, ignore_index: int
-) -> dict:
+def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
     """Processes a single sample.
-
     Each sample in the dataset consists of:
     - instruction: A string describing the task
     - input: A string holding a special input value for the instruction.
         This only applies to some samples, and in others this is empty.
     - output: The response string
-
     This function processes this data to produce a prompt text and a label for
     supervised training. The prompt text is formed as a single message including both
     the instruction and the input. The label/target is the same message but with the
     response attached.
-
     Finally, both the prompt and the label get tokenized. If desired, all tokens
     in the label that correspond to the original input prompt get masked out (default).
     """
     full_prompt = generate_prompt(example)
     full_prompt_and_response = full_prompt + example["output"]
 
-    encoded_full_prompt = tokenizer.tokenize(
-        full_prompt, max_length=max_length, device="cpu"
-    ).squeeze(0)
-    encoded_full_prompt_and_response = tokenizer.tokenize(
-        full_prompt_and_response, add_eos=True, max_length=max_length, device="cpu"
-    ).squeeze(0)
+    prompt = tokenizer.tokenize(full_prompt, add_bos=True, add_eos=False, device="cpu")[0]
+    example = tokenizer.tokenize(
+        full_prompt_and_response, add_bos=True, add_eos=True, device="cpu"
+    )[0]
 
-    # The labels are the full prompt with response, but with the prompt masked out
-    labels = encoded_full_prompt_and_response.clone()
-    encoded_full_prompt_and_response = encoded_full_prompt_and_response[:-1]
+    padding = max_length - example.shape[0]
+    if padding > 0:
+        example = flow.cat((example, flow.zeros(padding, dtype=flow.long) - 1))
+    elif padding < 0:
+        example = example[:max_length]
+    labels = copy.deepcopy(example)
+    labels[: len(prompt)] = -1
+    example_mask = example.ge(0)
+    label_mask = labels.ge(0)
+    example[~example_mask] = 0
+    labels[~label_mask] = -1
+    example = example[:-1]
     labels = labels[1:]
-    if mask_inputs:
-        labels[: len(encoded_full_prompt)] = ignore_index
-
+    example_mask = flow.where(
+        example_mask, flow.tensor(0, dtype=flow.float), flow.tensor(-float("inf"))
+    )
+    example_mask = example_mask[:-1]
     return {
-        **example,
-        "input_ids": encoded_full_prompt_and_response,
-        "input_ids_no_response": encoded_full_prompt,
+        "input_ids": example,
         "labels": labels,
     }
 

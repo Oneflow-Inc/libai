@@ -150,7 +150,7 @@ if __name__ == "__main__":
     parallel_config = DictConfig(
         dict(
             data_parallel_size=1,
-            tensor_parallel_size=1,
+            tensor_parallel_size=8,
             pipeline_parallel_size=1,
             pipeline_num_layers=32,
             device_type="cuda",

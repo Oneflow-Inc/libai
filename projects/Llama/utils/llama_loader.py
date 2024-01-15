@@ -43,8 +43,6 @@ class LlamaLoaderHuggerFace(ModelLoaderHuggerFace):
 
         # Get configs
         num_attention_heads = cfg.get("num_attention_heads")
-        num_key_value_heads = cfg.get("num_key_value_heads")
-        assert num_attention_heads == num_key_value_heads
         hidden_size = cfg.get("hidden_size")
         head_size = int(hidden_size // num_attention_heads)
 
@@ -83,7 +81,6 @@ class LlamaLoaderHuggerFace(ModelLoaderHuggerFace):
         self._update_cfg("hidden_layers", cfg_dict["num_hidden_layers"])
         self._update_cfg("hidden_size", cfg_dict["hidden_size"])
         self._update_cfg("num_attention_heads", cfg_dict["num_attention_heads"])
-        self._update_cfg("num_key_value_heads", cfg_dict["num_key_value_heads"])
         self._update_cfg("max_position_embeddings", cfg_dict["max_position_embeddings"])
         self._update_cfg("intermediate_size", cfg_dict["intermediate_size"])
         self._update_cfg("rms_norm_eps", cfg_dict["rms_norm_eps"])

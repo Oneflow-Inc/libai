@@ -1,6 +1,5 @@
 # coding=utf-8
 # Copyright 2021 The OneFlow Authors. All rights reserved.
-# Copyright 2022 EleutherAI and the HuggingFace Inc. team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,11 +17,12 @@ import math
 from typing import Tuple
 
 import oneflow as flow
+import oneflow.nn.functional as F
 from oneflow import nn
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
-from libai.layers import Linear, RMSLayerNorm, VocabEmbedding
+from libai.layers import Embedding, Linear, RMSLayerNorm, VocabEmbedding
 from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
@@ -166,6 +166,17 @@ class MultiheadAttention(nn.Module):
             max_position_embeddings=max_position_embeddings,
         )
 
+        self.gate = flow.nn.Parameter(
+            flow.zeros(
+                1,
+                self.num_heads,
+                1,
+                1,
+                placement=dist.get_layer_placement(layer_idx),
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+            )
+        )
+
     def forward(
         self,
         hidden_states: flow.Tensor,
@@ -176,12 +187,16 @@ class MultiheadAttention(nn.Module):
         cos_cached: flow.Tensor = None,
         sin_cached: flow.Tensor = None,
         use_cache: bool = False,
+        adapter=None,
     ):
         if encoder_states is not None:
             encoder_states = encoder_states.to_global(placement=hidden_states.placement)
 
         if attention_mask is not None:
             attention_mask = attention_mask.to_global(placement=hidden_states.placement)
+
+        if adapter is not None:
+            adapter = adapter.to_global(placement=hidden_states.placement)
 
         bsz, tgt_len = hidden_states.size()[:2]
 
@@ -200,6 +215,27 @@ class MultiheadAttention(nn.Module):
         )
         query, key = apply_rotary_pos_emb(query, key, cos, sin, position_ids)
 
+        # [1, adapter_len, 4096]
+        if adapter is not None:
+            adapter_len = adapter.shape[1]
+            adapter_qkv = self.query_key_value(adapter)
+            adapter_qkv = adapter_qkv.view(1, -1, self.num_heads, 3 * self.head_size)
+            adapter_qkv = adapter_qkv.permute(0, 2, 1, 3)  # [1, num_heads, src_len, 3 * head_size]
+            _, adapter_key, adapter_value = flow.chunk(adapter_qkv, chunks=3, dim=-1)
+            adapter_key = adapter_key.repeat(bsz, 1, 1, 1)
+            adapter_value = adapter_value.repeat(bsz, 1, 1, 1)
+            key = flow.cat([adapter_key, key], dim=2)
+            value = flow.cat([adapter_value, value], dim=2)
+            extra_mask = flow.zeros(
+                bsz,
+                1,
+                tgt_len,
+                adapter_len,
+                sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                placement=attention_mask.placement,
+            )
+            attention_mask = flow.cat([extra_mask, attention_mask], dim=-1)
+
         if past_key_value is not None:
             past_key, past_value = past_key_value
             key = flow.cat((past_key.type_as(key), key), dim=2)
@@ -213,7 +249,21 @@ class MultiheadAttention(nn.Module):
         attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
         attention_weights = attention_scores + attention_mask
 
-        attention_weights = flow.softmax(attention_weights, dim=-1)
+        if adapter is not None:
+            attention_weights = flow.cat(
+                [
+                    self.gate.tanh().half()
+                    * F.softmax(attention_weights[:, :, :, :adapter_len].float(), dim=-1).to(
+                        query.dtype
+                    ),
+                    F.softmax(attention_weights[:, :, :, adapter_len:].float(), dim=-1).to(
+                        query.dtype
+                    ),
+                ],
+                dim=-1,
+            )
+        else:
+            attention_weights = flow.softmax(attention_weights, dim=-1)
         # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
         context = flow.matmul(attention_weights, value)
 
@@ -330,6 +380,7 @@ class LlamaDecoderLayer(nn.Module):
         cos_cached=None,
         sin_cached=None,
         use_cache=False,
+        adapter=None,
     ):
         hidden_states = hidden_states.to_global(placement=dist.get_layer_placement(self.layer_idx))
 
@@ -356,6 +407,7 @@ class LlamaDecoderLayer(nn.Module):
             cos_cached=cos_cached,
             sin_cached=sin_cached,
             use_cache=use_cache,
+            adapter=adapter,
         )
 
         if use_cache:
@@ -400,8 +452,10 @@ class LlamaModel(nn.Module):
         use_scaled_init_for_output_weights=True,
         scale_mask_softmax_fusion=False,
         amp_enabled=False,
+        cfg=None,
     ):
         super().__init__()
+        self.cfg = cfg
         init_method = init_method_normal(sigma=initializer_range)
         if use_scaled_init_for_output_weights:
             output_layer_init_method = scaled_init_method_normal(initializer_range, hidden_layers)
@@ -429,6 +483,10 @@ class LlamaModel(nn.Module):
             ]
         )
         self.norm = RMSLayerNorm(hidden_size, eps=rms_norm_eps, layer_idx=-1)
+
+        self.adapter_query = Embedding(
+            cfg.adapter_len * cfg.adapter_layer, hidden_size, amp_enabled=amp_enabled
+        )
 
         self._set_cos_sin_cache(
             rotary_dim=hidden_size // num_attention_heads,
@@ -468,12 +526,34 @@ class LlamaModel(nn.Module):
         use_cache=False,
         set_cache=None,
     ):
-        if use_cache:
-            presents = []
-        input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
-        hidden_states = self.embed_tokens(input_ids)
+        with flow.no_grad():
+            if use_cache:
+                presents = []
+            input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
+            hidden_states = self.embed_tokens(input_ids)
 
-        for layer, past_key_value in zip(self.layers, past_key_values):
+            for layer, past_key_value in zip(
+                self.layers[: -self.cfg.adapter_layer], past_key_values[: -self.cfg.adapter_layer]
+            ):
+                hidden_states = layer(
+                    hidden_states=hidden_states,
+                    attention_mask=attention_mask,
+                    past_key_value=past_key_value,
+                    cos_cached=self.cos_cached,
+                    sin_cached=self.sin_cached,
+                    use_cache=False,
+                    adapter=None,
+                )
+                if use_cache:
+                    hidden_states, present = hidden_states
+                    presents.append(present)
+
+        adapter_index = 0
+        # [num_adapter_layer, 1, adapter_len, 4096]
+        adapter = self.adapter_query.weight.reshape(-1, self.cfg.adapter_len, 4096).unsqueeze(1)
+        for layer, past_key_value in zip(
+            self.layers[-self.cfg.adapter_layer :], past_key_values[-self.cfg.adapter_layer :]
+        ):
             hidden_states = layer(
                 hidden_states=hidden_states,
                 attention_mask=attention_mask,
@@ -481,7 +561,9 @@ class LlamaModel(nn.Module):
                 cos_cached=self.cos_cached,
                 sin_cached=self.sin_cached,
                 use_cache=False,
+                adapter=adapter[adapter_index],  # [1, adapter_len, 4096]
             )
+            adapter_index += 1
             if use_cache:
                 hidden_states, present = hidden_states
                 presents.append(present)
@@ -551,6 +633,7 @@ class LlamaForCausalLM(nn.Module, Generator):
             use_scaled_init_for_output_weights=use_scaled_init_for_output_weights,
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             amp_enabled=amp_enabled,
+            cfg=cfg,
         )
         self.casual_mask = CasualMask(max_position_embeddings, layer_idx=0)
         self.lm_head = Linear(hidden_size, vocab_size, bias=False, layer_idx=-1)
