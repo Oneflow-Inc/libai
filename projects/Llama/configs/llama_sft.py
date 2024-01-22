@@ -13,14 +13,14 @@ from configs.common.optim import optim
 from projects.Llama.configs.llama_config import cfg
 from projects.Llama.dataset import AlpacaDataset
 from projects.Llama.tokenizer import LlamaTokenizer
-from projects.Llama.llama import LlamaForCausalLM
+from projects.Llama.llama_gpt import LlamaForCausalLM
 
 
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-dataset_path = "alpaca_data"
-pretrained_model_path = "meta-llama/Llama-2-7b-hf"
+dataset_path = "/home/lixin/Data/alpaca"
+pretrained_model_path = "/data/hf_models/Llama-2-7b-hf"
 
 # graph & optim
 graph["enabled"] = False

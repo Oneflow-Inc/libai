@@ -2,6 +2,8 @@
 
 Reproduce Llama2 with OneFlow, which effect are equivalent to HuggingFace's [Llama2](https://huggingface.co/docs/transformers/v4.35.2/en/model_doc/llama2#overview).
 
+![llama_layer](images/LLamaLayer.svg)
+
 ## Introduce
 The Llama2 Supervised FineTuning project can support 3D parallel.
 
@@ -45,3 +47,4 @@ python projects/Llama/utils/eval_adapter.py
 ```bash
 bash tools/infer.sh projects/Llama/pipeline.py 8
 ```
+

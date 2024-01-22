@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# os.environ['CUDA_VISIBLE_DEVICES']='7'
 
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
@@ -28,6 +29,7 @@ class TextGenerationPipeline(BasePipeline):
             model_path (str): The directory path of pretrained model,
         """
         if mode == "huggingface":
+            # from projects.Llama.utils.llama_gpt_loader import LlamaLoaderHuggerFace
             from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace
 
             model_loader = LlamaLoaderHuggerFace(
@@ -89,6 +91,24 @@ class TextGenerationPipeline(BasePipeline):
 
 if __name__ == "__main__":
     # ----- load huggingface checkpoint -----
+    text = [
+        "Give three tips for staying healthy.",
+    ]
+    pipeline = TextGenerationPipeline(
+        "/home/lixin/libai/projects/Llama/configs/llama_config.py",
+        data_parallel=1,
+        tensor_parallel=1,
+        pipeline_parallel=1,
+        pipeline_num_layers=32,
+        model_path="Llama-2-7b-hf",
+        mode="huggingface",
+    )
+
+    output = pipeline(inputs=text, do_sample=False)
+    if dist.is_main_process():
+        print(output)
+
+    # # ----- load libai checkpoint -----
     # pipeline = TextGenerationPipeline(
     #     "projects/Llama/configs/llama_config.py",
     #     data_parallel=1,
@@ -96,27 +116,12 @@ if __name__ == "__main__":
     #     pipeline_parallel=1,
     #     pipeline_num_layers=32,
     #     model_path="",
-    #     mode="huggingface",
+    #     mode="libai",
     # )
 
+    # text = [
+    #     "Give three tips for staying healthy.",
+    # ]
     # output = pipeline(inputs=text)
     # if dist.is_main_process():
     #     print(output)
-
-    # ----- load libai checkpoint -----
-    pipeline = TextGenerationPipeline(
-        "projects/Llama/configs/llama_config.py",
-        data_parallel=1,
-        tensor_parallel=1,
-        pipeline_parallel=1,
-        pipeline_num_layers=32,
-        model_path="",
-        mode="libai",
-    )
-
-    text = [
-        "Give three tips for staying healthy.",
-    ]
-    output = pipeline(inputs=text)
-    if dist.is_main_process():
-        print(output)
