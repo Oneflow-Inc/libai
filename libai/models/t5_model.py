@@ -144,6 +144,7 @@ class T5Model(flow.nn.Module):
         apply_query_key_layer_scaling=True,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
+        multihead_attn_fusion=False,
     ) -> None:
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -177,6 +178,7 @@ class T5Model(flow.nn.Module):
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
                     attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
+                    multihead_attn_fusion=multihead_attn_fusion,
                 )
                 for i in range(hidden_layers)
             ]
@@ -187,6 +189,8 @@ class T5Model(flow.nn.Module):
             eps=layernorm_eps,
             layer_idx=hidden_layers - 1,
         )
+
+        self.multihead_attn_fusion = multihead_attn_fusion
 
         self.encoder = flow.nn.Sequential()
         self.encoder.add_module("layers", encoder_layers)
@@ -210,6 +214,7 @@ class T5Model(flow.nn.Module):
                     apply_query_key_layer_scaling=apply_query_key_layer_scaling,
                     attn_mask_type=AttnMaskType.padding,
                     layer_idx=i,
+                    multihead_attn_fusion=False,  # set to False in decoder
                 )
                 for i in range(hidden_layers, 2 * hidden_layers)
             ]
@@ -250,6 +255,7 @@ class T5Model(flow.nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
             "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
+            "multihead_attn_fusion": cfg.multihead_attn_fusion,
         }
 
     def forward(
@@ -303,9 +309,13 @@ class T5Model(flow.nn.Module):
             encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
             enc_embedding_output = self.embedding(encoder_input_ids)
             enc_hidden_states = enc_embedding_output
+            if self.multihead_attn_fusion:
+                enc_hidden_states = enc_hidden_states.transpose(0, 1)
             for layer in self.encoder.layers:
                 enc_hidden_states = layer(enc_hidden_states, encoder_attn_mask)
             encoder_states = self.encoder.final_layernorm(enc_hidden_states)
+            if self.multihead_attn_fusion:
+                encoder_states = encoder_states.transpose(0, 1)
 
         decoder_attn_mask = self.extended_attn_mask(decoder_attn_mask)
         encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
