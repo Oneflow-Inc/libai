@@ -24,6 +24,9 @@ from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
 from libai.layers import DropPath, LayerNorm, Linear, RMSLayerNorm, VocabEmbedding
 
+from libai.layers import build_activation
+from libai.layers.activation import Activation
+
 # from libai.layers import MLP
 from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
@@ -109,7 +112,9 @@ class MLP(nn.Module):
             layer_idx=layer_idx,
         )
 
-        self.activation_func = nn.SiLU()
+        self.activation_func = build_activation(Activation.GeLU)
+
+        # self.activation_func = nn.SiLU()
 
     def forward(self, hidden_states):
         gate_out = self.activation_func(self.gate_proj(hidden_states))
