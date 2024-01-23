@@ -68,7 +68,7 @@ train.update(
         train_iter=1,
         log_period=10,
         warmup_ratio=1 / 3,
-        num_accumulation_steps=8,
+        num_accumulation_steps=1,
         rdma_enabled=False,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
@@ -79,7 +79,7 @@ train.update(
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=8,
+            pipeline_parallel_size=4,
             pipeline_num_layers=cfg.hidden_layers,
         ),
         evaluation=dict(
