@@ -39,6 +39,7 @@ tokenization.tokenizer = LazyCall(LlamaTokenizer)(
 
 # model
 cfg.use_cache = False
+cfg.pretrained_model_path=pretrained_model_path
 model = LazyCall(LlamaForCausalLM)(cfg=cfg)
 
 # datasets
