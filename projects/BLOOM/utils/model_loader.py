@@ -61,8 +61,8 @@ class BlooMLoaderHuggerFace(ModelLoaderHuggerFace):
             cfg_dict = json.load(f)
 
         self._update_cfg("hidden_layers", cfg_dict["n_layer"])
-        self._update_cfg("hidden_size", cfg_dict["n_embed"])
-        self._update_cfg("n_head", cfg_dict["num_attention_heads"])
+        self._update_cfg("hidden_size", cfg_dict["hidden_size"])
+        self._update_cfg("n_head", cfg_dict["n_head"])
 
         # update libai_cfg by config.json
         for k, v in cfg_dict.items():
