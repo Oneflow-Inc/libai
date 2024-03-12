@@ -13,14 +13,14 @@ from configs.common.optim import optim
 from projects.Llama.configs.llama_config import cfg
 from projects.Llama.dataset import AlpacaDataset
 from projects.Llama.tokenizer import LlamaTokenizer
-from projects.Llama.llama import LlamaForCausalLM
+from projects.Llama.llama_gpt import LlamaForCausalLM
 
 
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-dataset_path = "alpaca_data"
-pretrained_model_path = "meta-llama/Llama-2-7b-hf"
+dataset_path = "/home/lixin/Data/alpaca"
+pretrained_model_path = "/data/hf_models/Llama-2-7b-hf"
 
 # graph & optim
 graph["enabled"] = False
@@ -68,7 +68,7 @@ train.update(
         train_iter=1,
         log_period=10,
         warmup_ratio=1 / 3,
-        num_accumulation_steps=8,
+        num_accumulation_steps=1,
         rdma_enabled=False,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
@@ -79,7 +79,7 @@ train.update(
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=8,
+            pipeline_parallel_size=4,
             pipeline_num_layers=cfg.hidden_layers,
         ),
         evaluation=dict(

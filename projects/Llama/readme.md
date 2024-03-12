@@ -23,12 +23,27 @@ python projects/Llama/utils/prepare_alpaca.py
 > set the finetuning parameters in `projects/Llama/configs/llama_sft.py`, such as `dataset_path` and `pretrained_model_path`.
 
 ### 3. Run the following code to start SFT
+
+#### 3.1 modify code 
+use gpt-based llama
+
+```python
+from projects.Llama.llama_gpt import LlamaForCausalLM # in configs/llama_config.py
+from projects.Llama.llama_gpt import LlamaForCausalLM # in configs/llama_sft.py
+from projects.Llama.utils.llama_gpt_loader import LlamaLoaderHuggerFace # in train_net.py
+```
+
+use origin llama
+```python
+from projects.Llama.llama import LlamaForCausalLM # in configs/llama_config.py
+from projects.Llama.llama import LlamaForCausalLM # in configs/llama_sft.py
+from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace # in train_net.py
+```
+
+#### 3.2 train net
 ```bash
 # full finetune
-bash tools/train.sh projects/Llama/train_net.py projects/Llama/configs/llama_sft.py 8
-
-# adapter finetune
-bash tools/train.sh projects/Llama/adapter/train_net.py projects/Llama/adapter/adapter_sft.py 8
+bash tools/train.sh projects/Llama/train_net.py projects/Llama/configs/llama_sft.py 4
 ```
 
 ## Evaluate
@@ -45,3 +60,4 @@ python projects/Llama/utils/eval_adapter.py
 ```bash
 bash tools/infer.sh projects/Llama/pipeline.py 8
 ```
+
