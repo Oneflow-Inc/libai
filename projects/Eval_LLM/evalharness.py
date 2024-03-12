@@ -15,10 +15,11 @@ import libai.utils.distributed as dist  # noqa
 
 
 class EvalHarnessBase(BaseLM):
-    def __init__(self, model, tokenizer, batch_size: int, cfg: dict):
+    def __init__(self, model, tokenizer, model_name, batch_size: int, cfg: dict):
         super().__init__()
         self.model = model
         self.tokenizer = tokenizer
+        self.model_name = model_name
         self.batch_size_per_gpu = batch_size
         self.cfg = cfg
 
@@ -108,7 +109,7 @@ class EvalHarnessBase(BaseLM):
             bootstrap_iters=bootstrap_iters,
         )
         results["config"] = dict(
-            model="llama",
+            model=self.model_name,
             batch_size=self.batch_size,
             device=str(self.device),
             num_fewshot=num_fewshot,
@@ -122,6 +123,7 @@ class EvalHarnessBase(BaseLM):
 def run_eval_harness(
     model,
     tokenizer,
+    model_name,
     eval_tasks: List[str] = [
         "hellaswag",
     ],
@@ -135,7 +137,7 @@ def run_eval_harness(
     model.eval()
     model = model.to(dtype)
     with flow.no_grad():
-        eval_harness = EvalHarnessBase(model, tokenizer, 1, cfg)
+        eval_harness = EvalHarnessBase(model, tokenizer, model_name, 1, cfg)
         results = eval_harness.run_eval(eval_tasks, num_fewshot, limit, bootstrap_iters)
     if save_filepath is None:
         print(results)

@@ -7,21 +7,22 @@ from transformers import AutoTokenizer as HF_AutoTokenizer
 from projects.Eval_LLM.evalharness import run_eval_harness  # noqa
 import importlib
 
+class LLMLoaderLibai(ModelLoaderLiBai):
+    def __init__(self, model, libai_cfg, pretrained_model_path,base_model_prefix,**kwargs):
+        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
+        self.base_model_prefix_2 = base_model_prefix
+
 def get_special_arguments(cfg):
     with open('./projects/Eval_LLM/special_arguments.json','r') as f:
         arguments = json.load(f)
     special_arguments=arguments[cfg.eval_config.model_type]
     return special_arguments
 
-class LLMLoaderLibai(ModelLoaderLiBai):
-    def __init__(self, model, libai_cfg, pretrained_model_path,base_model_prefix,**kwargs):
-        super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
-        self.base_model_prefix_2 = base_model_prefix
-
 def main():
     cfg = LazyConfig.load('./projects/Eval_LLM/config.py')
     dist.setup_dist_util(cfg.parallel_config)
     special_arguments = get_special_arguments(cfg)
+    print('Loading Model...')
     model_cfg = LazyConfig.load(special_arguments['config_path'])
     if model_cfg.cfg.max_position_embeddings is None:
         model_cfg.cfg.max_position_embeddings = 1024
@@ -30,9 +31,7 @@ def main():
 
     assert cfg.eval_config.model_weight_type in ['huggingface','libai'], 'model_weight_type must be huggingface or libai'
     if cfg.eval_config.model_weight_type=='huggingface':
-
         huggingface_loader = getattr(importlib.import_module(special_arguments['huggingface_loader_prefix']),special_arguments['huggingface_loader'])
-
         load_func = huggingface_loader(
             model=model_class,
             libai_cfg=model_cfg.cfg,
@@ -48,8 +47,8 @@ def main():
     
     tokenizer=HF_AutoTokenizer.from_pretrained(cfg.eval_config.hf_tokenizer_path,trust_remote_code=True)
     model = load_func.load()
-
-    run_eval_harness(model, tokenizer, eval_tasks=cfg.eval_config.eval_tasks, cfg=model_cfg.cfg)
+    print('Model Loaded!')
+    run_eval_harness(model, tokenizer, cfg.eval_config.model_type, eval_tasks=cfg.eval_config.eval_tasks, cfg=model_cfg.cfg)
 
 if __name__ == "__main__":
     main()

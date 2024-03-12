@@ -19,7 +19,7 @@
         "huggingface_loader_prefix":"projects.BLOOM.utils.model_loader",
         "huggingface_loader":"BlooMLoaderHuggerFace"
     },
-    "chatglm":{
+    "glm":{
         "n_layers_hf":"num_layers",
         "n_layer_libai":"num_layers",
         "base_model_prefix_2":"model",
