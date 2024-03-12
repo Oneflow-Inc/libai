@@ -6,6 +6,7 @@ from projects.BLOOM.modeling.bloom_model import BloomModel
 cfg = dict(
     # model
     vocab_size=250880,
+    max_position_embeddings=512,
     hidden_size=64,
     hidden_layers=2,
     n_head=8,

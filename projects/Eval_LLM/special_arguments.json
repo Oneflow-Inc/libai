@@ -1,0 +1,32 @@
+{
+    "llama":{
+        "n_layers_hf":"num_hidden_layers",
+        "n_layer_libai":"hidden_layers",
+        "base_model_prefix_2":"model",
+        "config_path":"./projects/Llama/configs/llama_config.py",
+        "model_class_prefix":"projects.Llama.llama",
+        "model_class":"LlamaForCausalLM",
+        "huggingface_loader_prefix":"projects.Llama.utils.llama_loader",
+        "huggingface_loader":"LlamaLoaderHuggerFace"
+    },
+    "bloom":{
+        "n_layers_hf":"n_layer",
+        "n_layer_libai":"hidden_layers",
+        "base_model_prefix_2":"transformer",
+        "config_path":"./projects/BLOOM/configs/bloom_inference.py",
+        "model_class_prefix":"projects.BLOOM.modeling.bloom_model",
+        "model_class":"BloomForCausalLM",
+        "huggingface_loader_prefix":"projects.BLOOM.utils.model_loader",
+        "huggingface_loader":"BlooMLoaderHuggerFace"
+    },
+    "glm":{
+        "n_layers_hf":"num_layers",
+        "n_layer_libai":"num_layers",
+        "base_model_prefix_2":"model",
+        "config_path":"./projects/ChatGLM/configs/chatglm_config.py",
+        "model_class_prefix":"projects.ChatGLM.chatglm",
+        "model_class":"ChatGLMForConditionalGeneration",
+        "huggingface_loader_prefix":"projects.ChatGLM.utils.chatglm_loader",
+        "huggingface_loader":"ChatGLMLoaderHuggerFace"
+    }
+}
