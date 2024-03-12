@@ -13,7 +13,9 @@ from tqdm import tqdm
 
 from libai.config import instantiate
 from libai.utils.logger import setup_logger
+from libai.config import LazyCall
 from projects.Llama.configs.llama_config import tokenization
+from projects.Llama.tokenizer import LlamaTokenizer
 
 logger = setup_logger()
 
@@ -46,6 +48,9 @@ def prepare(
         data = json.load(file)
 
     logger.info("Loading tokenizer...")
+    tokenization.tokenizer = LazyCall(LlamaTokenizer)(
+        pretrained_model_path=os.path.join(checkpoint_dir, "tokenizer.model")
+    )
     tokenizer = instantiate(tokenization.tokenizer)
 
     # Partition the dataset into train and test

@@ -33,7 +33,7 @@ bash tools/train.sh projects/Llama/adapter/train_net.py projects/Llama/adapter/a
 
 ## Evaluate
 
-> set the eval parameters in `/data/home/xiezipeng/libai/projects/Llama/utils/eval_adapter.py`, and running:
+> set the eval parameters in `libai/projects/Llama/utils/eval_adapter.py`, and running:
 ```python3
 python projects/Llama/utils/eval_adapter.py
 ```
