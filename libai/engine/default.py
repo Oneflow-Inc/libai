@@ -496,6 +496,8 @@ class DefaultTrainer(TrainerBase):
         data: Instance,
         input_placement_device: str = "cuda",
         mixup_func: Optional[Callable] = None,
+        check_meta: bool=True,
+        sync_data:  bool=True,
     ):
         """
         Convert batched local tensor to distributed tensor for model step running.
@@ -516,7 +518,7 @@ class DefaultTrainer(TrainerBase):
 
         ret_dict = {}
         for key, value in data.get_fields().items():
-            value.to_global(device_type=input_placement_device)
+            value.to_global(device_type=input_placement_device, check_meta=check_meta, sync_data=sync_data)
             ret_dict[key] = value.tensor
         return ret_dict
 
