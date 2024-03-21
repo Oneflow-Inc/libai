@@ -1,3 +1,4 @@
+import os
 import json
 from tqdm import tqdm
 import random
@@ -24,7 +25,7 @@ def qwen2_data_process(
     system_message: str = "You are a helpful assistant.",
 ):
     max_len = tokenizer.model_max_length
-    roles = {"human": "<|im_start|>user", "gpt": "<|im_start|>assistant"}
+    roles = {"user": "<|im_start|>user", "assistant": "<|im_start|>assistant"}
 
     im_start = tokenizer.encode("<|im_start|>")[0]
     im_end = tokenizer.encode("<|im_end|>")[0]
@@ -36,7 +37,7 @@ def qwen2_data_process(
     # Apply prompt templates
     input_ids, targets = [], []
     for i, source in enumerate(sources):
-        if roles[source[0]["from"]] != roles["human"]:
+        if roles[source[0]["from"]] != roles["user"]:
             source = source[1:]
 
         input_id, target = [], []
@@ -103,16 +104,16 @@ def preprocess(input_file, targe_file, shuffle=False, tokenizer=None):
     if shuffle:
         random.shuffle(data)
     train_set = [qwen2_data_process([sample["conversations"]], tokenizer) for sample in tqdm(data)]
-    flow.save(train_set, targe_file / "train_set")
-    print("training dataset saved in {}.".format(targe_file / "train_set"))
+    flow.save(train_set, os.path.join(targe_file, "train_set"))
+    print("training dataset saved in {}\n".format(os.path.join(targe_file, "train_set")))
 
 
 if __name__ == "__main__":
     from projects.mock_transformers.mock_tokenization import Qwen2Tokenizer
 
-    input_file = "ShareGPT_V4.3_unfiltered_cleaned_split.json"
-    target_file = "..."
-    model_file = "Qwen/Qwen1.5-7B"
+    input_file = "/workspace/share/data/test-data.json"
+    target_file = "/workspace/libai/projects/Qwen"
+    model_file = "/workspace/share/Qwen1.5-14B-Chat"
     
     tokenizer = Qwen2Tokenizer.from_pretrained(model_file)
     tokenizer.model_max_length = 2048
