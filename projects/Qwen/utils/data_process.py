@@ -1,7 +1,11 @@
+import json
+from tqdm import tqdm
+import random
+
 import oneflow as flow
 
 
-IGNORE_TOKEN_ID = -1
+IGNORE_TOKEN_ID = -100
 
 data = {
     'id': 'i6IyJda_0', 
@@ -14,7 +18,7 @@ data = {
 }
 
 
-def preprocess_qwen2(
+def qwen2_data_process(
     sources,
     tokenizer,
     system_message: str = "You are a helpful assistant.",
@@ -81,33 +85,55 @@ def preprocess_qwen2(
         target += [IGNORE_TOKEN_ID] * (max_len - len(target))
         input_ids.append(input_id[:max_len])
         targets.append(target[:max_len])
-    input_ids = flow.tensor(input_ids, dtype=flow.int)
-    targets = flow.tensor(targets, dtype=flow.long)
+    input_ids = flow.tensor(input_ids, dtype=flow.int, device="cpu")
+    targets = flow.tensor(targets, dtype=flow.long, device="cpu")
+    attention_mask = input_ids.ne(tokenizer.pad_token_id)
+    attention_mask = flow.where(attention_mask, flow.tensor(0.0), flow.tensor(-float("Inf")))
 
     return dict(
         input_ids=input_ids,
         labels=targets,
-        attention_mask=input_ids.ne(tokenizer.pad_token_id),
+        attention_mask=attention_mask,
     )
+
+
+def preprocess(input_file, targe_file, shuffle=False, tokenizer=None):
+    file = open(input_file, "r")
+    data = json.load(file)
+    if shuffle:
+        random.shuffle(data)
+    train_set = [qwen2_data_process([sample["conversations"]], tokenizer) for sample in tqdm(data)]
+    flow.save(train_set, targe_file / "train_set")
+    print("training dataset saved in {}.".format(targe_file / "train_set"))
 
 
 if __name__ == "__main__":
     from projects.mock_transformers.mock_tokenization import Qwen2Tokenizer
+
+    input_file = "ShareGPT_V4.3_unfiltered_cleaned_split.json"
+    target_file = "..."
+    model_file = "Qwen/Qwen1.5-7B"
     
-    
-    tokenizer = Qwen2Tokenizer.from_pretrained(
-        "/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B/",
+    tokenizer = Qwen2Tokenizer.from_pretrained(model_file)
+    tokenizer.model_max_length = 2048
+
+    preprocess(
+        input_file=input_file,
+        targe_file=target_file, 
+        tokenizer=tokenizer
     )
-    tokenizer.model_max_length=110
 
-    res = preprocess_qwen2([data["conversations"]], tokenizer)
-    input_ids = res["input_ids"]
-    labels = res["labels"]
-    attention_mask = res["attention_mask"]
+    # res = qwen2_data_process([data["conversations"]], tokenizer)
+    # input_ids = res["input_ids"]
+    # labels = res["labels"]
+    # attention_mask = res["attention_mask"]
 
-    # labels = labels[0]
-    # labels[labels==-1] = 151643
     # print(input_ids[0])
     # print(labels)
+    # print(attention_mask)
+
+    # labels = labels[0]
+    # labels[labels==IGNORE_TOKEN_ID] = 151643
+    
     # print("input text:\n",tokenizer.decode(input_ids[0].tolist()))
     # print("labels text: \n",tokenizer.decode(labels.tolist()))
