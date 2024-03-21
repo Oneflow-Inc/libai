@@ -92,9 +92,9 @@ def qwen2_data_process(
     attention_mask = flow.where(attention_mask, flow.tensor(0.0), flow.tensor(-float("Inf")))
 
     return dict(
-        input_ids=input_ids,
-        labels=targets,
-        attention_mask=attention_mask,
+        input_ids=input_ids[0],
+        labels=targets[0],
+        attention_mask=attention_mask[0],
     )
 
 
@@ -109,11 +109,12 @@ def preprocess(input_file, targe_file, shuffle=False, tokenizer=None):
 
 
 if __name__ == "__main__":
+  
     from projects.mock_transformers.mock_tokenization import Qwen2Tokenizer
 
-    input_file = "/workspace/share/data/test-data.json"
-    target_file = "/workspace/libai/projects/Qwen"
-    model_file = "/workspace/share/Qwen1.5-14B-Chat"
+    input_file = "/data/home/xiezipeng/libai/projects/Qwen/subset.json"
+    target_file = "/data/home/xiezipeng/libai/projects/Qwen"
+    model_file = "/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B"
     
     tokenizer = Qwen2Tokenizer.from_pretrained(model_file)
     tokenizer.model_max_length = 2048
