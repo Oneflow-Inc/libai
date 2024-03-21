@@ -11,7 +11,7 @@ from configs.common.models.graph import graph
 from configs.common.optim import optim
 
 from projects.Qwen.config.qwen_config import cfg
-from projects.Llama.dataset import AlpacaDataset
+from projects.Qwen.utils.qwen_dataset import QwenDataset
 from projects.Qwen.tokenizer import Qwen2Tokenizer
 from projects.Qwen.qwen2 import Qwen2ForCausalLM
 
@@ -19,8 +19,8 @@ from projects.Qwen.qwen2 import Qwen2ForCausalLM
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-dataset_path = "alpaca_data"
-pretrained_model_path = "meta-llama/Llama-2-7b-hf"
+dataset_path = "/data/home/xiezipeng/libai/projects/Qwen/train_set"
+pretrained_model_path = "/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B"
 
 # graph & optim
 graph["enabled"] = False
@@ -35,8 +35,10 @@ optim.update(
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(Qwen2Tokenizer)(
-    pretrained_model_path=os.path.join(pretrained_model_path, "tokenizer.model")
+    vocab_file="/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B/vocab.json",
+    merges_file="/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B/merges.txt",
 )
+
 
 # model
 model = LazyCall(Qwen2ForCausalLM)(cfg=cfg)
@@ -45,24 +47,16 @@ model = LazyCall(Qwen2ForCausalLM)(cfg=cfg)
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
     dataset=[
-        LazyCall(AlpacaDataset)(
-            path=os.path.join(dataset_path, "train"), tokenizer=tokenization.tokenizer
+        LazyCall(QwenDataset)(
+            path=dataset_path, tokenizer=tokenization.tokenizer
         )
     ],
 )
-dataloader.test = [
-    LazyCall(build_nlp_test_loader)(
-        dataset=LazyCall(AlpacaDataset)(
-            path=os.path.join(dataset_path, "test"), tokenizer=tokenization.tokenizer
-        ),
-    ),
-]
-
 
 train.update(
     dict(
         output_dir="./sft_result",
-        train_micro_batch_size=4,
+        train_micro_batch_size=1,
         test_micro_batch_size=1,
         train_epoch=3,
         train_iter=1,
@@ -83,7 +77,7 @@ train.update(
             pipeline_num_layers=cfg.hidden_layers,
         ),
         evaluation=dict(
-            enabled=True,
+            enabled=False,
             evaluator=LazyCall(PPLEvaluator)(),
             eval_period=1000,
             eval_iter=1e5,
