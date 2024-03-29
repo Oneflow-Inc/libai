@@ -20,6 +20,7 @@ import os
 
 import omegaconf
 import oneflow as flow
+from safetensors import safe_open
 from termcolor import colored
 
 import libai.utils.distributed as dist
@@ -457,17 +458,35 @@ class ModelLoaderHuggerFace(ModelLoader):
 
         raise NotImplementedError("_load_config_from_json not implemented")
 
-    def _load_torch_state_dict(self, state_dict_file):
+    def _load_torch_state_dict(self, state_dict_file, use_safetensors=False):
         try:
             import torch
         except ImportError:
             raise ImportError("Load torch state dict need torch.")
 
+        if use_safetensors:
+            if isinstance(state_dict_file, str):
+                state_dict = {}
+                with safe_open(state_dict_file, framework="pt", device=0) as f:
+                    for k in f.keys():
+                        state_dict[k] = f.get_tensor(k)
+                return state_dict
+
+            elif isinstance(state_dict_file, list):
+                merged_state_dict = {}
+                for file in state_dict_file:
+                    state_dict = {}
+                    with safe_open(file, framework="pt") as f:
+                        for k in f.keys():
+                            state_dict[k] = f.get_tensor(k).to(torch.float)
+                    merged_state_dict.update(state_dict)
+                return merged_state_dict
+
         # load pytorch_model.bin
         if isinstance(state_dict_file, str):
             return torch.load(state_dict_file, map_location="cpu")
 
-        if isinstance(state_dict_file, list):
+        elif isinstance(state_dict_file, list):
             merged_state_dict = {}
             for file in state_dict_file:
                 state_dict = torch.load(file, map_location="cpu")
@@ -532,6 +551,7 @@ class ModelLoaderHuggerFace(ModelLoader):
             >>> bert = loader.load()
 
         """
+        use_safetensors = False
         if dist.is_main_process():
             if os.path.isdir(self.pretrained_model_path):
                 # state_dict file pytorch
@@ -542,9 +562,17 @@ class ModelLoaderHuggerFace(ModelLoader):
                 ]
 
                 if len(model_files) == 0:
+                    use_safetensors = True
+                    model_files = [
+                        os.path.join(self.pretrained_model_path, file)
+                        for file in os.listdir(self.pretrained_model_path)
+                        if file.endswith(".safetensors")
+                    ]
+
+                if len(model_files) == 0:
                     raise EnvironmentError(
-                        f"Error: no file named endswith '.bin' found"
-                        f"in directory {self.pretrained_model_path}."
+                        f"Error: no file named endswith '.bin' or '.safetensors' "
+                        f"found in directory {self.pretrained_model_path}."
                     )
 
                 # config file
@@ -565,7 +593,7 @@ class ModelLoaderHuggerFace(ModelLoader):
                 raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
 
             logger.info("loading torch model...")
-            torch_state_dict = self._load_torch_state_dict(model_files)
+            torch_state_dict = self._load_torch_state_dict(model_files, use_safetensors)
             torch_state_dict = self._fix_key(torch_state_dict)
             logger.info("transfering torch model into oneflow model...")
             flow_state_dict = self._convert_tensors(torch_state_dict)

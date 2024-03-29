@@ -140,6 +140,7 @@ if __name__ == "__main__":
             "autoflake",
             "tensorboardX<=2.5.1",
             "pytest",
+            "safetensors",
         ],
         packages=find_packages(),
         package_data={"libai.config": get_libai_configs()},
