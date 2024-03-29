@@ -105,7 +105,7 @@ with mock.enable(lazy=True):
                 if not is_tensor(value):
                     tensor = as_tensor(value)
 
-                    # Removing this for now in favor of controlling the shape 
+                    # Removing this for now in favor of controlling the shape
                     # with `prepend_batch_axis`
                     # # at-least2d
                     # if tensor.ndim > 2:
