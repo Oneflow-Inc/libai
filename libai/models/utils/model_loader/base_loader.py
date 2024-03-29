@@ -20,8 +20,8 @@ import os
 
 import omegaconf
 import oneflow as flow
-from termcolor import colored
 from safetensors import safe_open
+from termcolor import colored
 
 import libai.utils.distributed as dist
 from libai.config import LazyCall
