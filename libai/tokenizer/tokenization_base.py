@@ -807,7 +807,8 @@ class PreTrainedTokenizer(object):
         if isinstance(text, str):
             tokens = self.tokenize(text)
             token_ids = self.convert_tokens_to_ids(tokens)
-            token_ids = self.build_inputs_with_special_tokens(token_ids)
+            if hasattr(self, "build_inputs_with_special_tokens"):
+                token_ids = self.build_inputs_with_special_tokens(token_ids)
             token_ids = self.convert_to_tensors(
                 token_ids, return_tensors=return_tensors, is_global=is_global, **kwargs
             )
@@ -815,9 +816,10 @@ class PreTrainedTokenizer(object):
         elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], str):
             tokens = [self.tokenize(t) for t in text]
             token_ids_list = self.convert_tokens_to_ids(tokens)
-            token_ids_list = [
-                self.build_inputs_with_special_tokens(token_ids) for token_ids in token_ids_list
-            ]
+            if hasattr(self, "build_inputs_with_special_tokens"):
+                token_ids_list = [
+                    self.build_inputs_with_special_tokens(token_ids) for token_ids in token_ids_list
+                ]
             token_ids_list = self.convert_to_tensors(
                 token_ids_list, return_tensors=return_tensors, is_global=is_global, **kwargs
             )
