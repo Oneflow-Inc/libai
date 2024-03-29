@@ -105,7 +105,8 @@ with mock.enable(lazy=True):
                 if not is_tensor(value):
                     tensor = as_tensor(value)
 
-                    # Removing this for now in favor of controlling the shape with `prepend_batch_axis`
+                    # Removing this for now in favor of controlling the shape 
+                    # with `prepend_batch_axis`
                     # # at-least2d
                     # if tensor.ndim > 2:
                     #     tensor = tensor.squeeze(0)
@@ -116,9 +117,9 @@ with mock.enable(lazy=True):
             except Exception as e:
                 if key == "overflowing_tokens":
                     raise ValueError(
-                        "Unable to create tensor returning overflowing tokens of different lengths. "
-                        "Please see if a fast version of this tokenizer is available to have this "
-                        "feature available."
+                        "Unable to create tensor returning overflowing tokens of different "
+                        "lengths. Please see if a fast version of this tokenizer is "
+                        "available to have this feature available."
                     ) from e
                 raise ValueError(
                     "Unable to create tensor, you should probably activate truncation and/or "
