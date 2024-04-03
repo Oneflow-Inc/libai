@@ -27,3 +27,4 @@ black==21.4b2
 autoflake
 tensorboardX<=2.5.1
 pytest
+safetensors
