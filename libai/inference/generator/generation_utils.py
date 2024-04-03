@@ -189,7 +189,7 @@ class Generator:
         elif bos_token_id is not None:
             return bos_token_id
         else:
-            return self.cfg.bos_token_idx
+            return self.cfg.bos_token_id
 
     @staticmethod
     def _expand_inputs_for_generation(
