@@ -4,7 +4,6 @@ from projects.Llama.llama import LlamaForCausalLM  # noqa
 import libai.utils.distributed as dist  # noqa
 import json
 from transformers import AutoTokenizer as HF_AutoTokenizer
-from projects.Eval_LLM.evalharness import run_eval_harness  # noqa
 import importlib
 
 class LLMLoaderLibai(ModelLoaderLiBai):
@@ -46,9 +45,18 @@ def main():
         )
     
     tokenizer=HF_AutoTokenizer.from_pretrained(cfg.eval_config.hf_tokenizer_path,trust_remote_code=True)
+    with open(cfg.eval_config.hf_tokenizer_path+'/config.json','r') as f:
+        generation_config = json.load(f)
+
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = generation_config['pad_token_id']
+    if tokenizer.eos_token_id is None:
+        tokenizer.eos_token_id = generation_config['eos_token_id']
     model = load_func.load()
     print('Model Loaded!')
-    run_eval_harness(model, tokenizer, cfg.eval_config.model_type, eval_tasks=cfg.eval_config.eval_tasks, cfg=model_cfg.cfg)
+
+    from projects.Eval_LLM.evalharness import run_eval_harness  # noqa
+    run_eval_harness(model, tokenizer, cfg.eval_config.model_type, eval_tasks=cfg.eval_config.eval_tasks, batch_size_per_gpu=cfg.eval_config.batch_size_per_gpu, cfg=model_cfg.cfg)
 
 if __name__ == "__main__":
     main()

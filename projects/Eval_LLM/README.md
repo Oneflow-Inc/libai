@@ -12,7 +12,7 @@ Llama
 
 ### Environment
 
-Follow this [Installation Instruction](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html) to install oneflow and libai first. Conda is recommended.  
+Follow this [Installation Instruction](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html) to install oneflow(1.0.0) and libai first. Conda is recommended.  
 **Make sure you have python>=3.10 to run evaluation for GLM.**
 Then run ```pip install -r ./projects/Eval_LLM/requirements.txt``` to install dependencies.
 
@@ -43,17 +43,11 @@ To know more about distributed inference: https://docs.oneflow.org/en/master/par
 ### Example of Eval Result
 Using Llama2-7b
 ```
-{'results': 
-    {'hellaswag': 
-        {'acc': 0.5672176857199761, 'acc_stderr': 0.004944485990639519, 'acc_norm': 0.7294363672575184, 'acc_norm_stderr': 0.004433430790349411}, 
-    'lambada_openai': 
-        {'ppl': 1414021.2239531504, 'ppl_stderr': 68163.8970088081, 'acc': 0.0, 'acc_stderr': 0.0}, 
-    'sciq': 
-        {'acc': 0.904, 'acc_stderr': 0.009320454434783205, 'acc_norm': 0.687, 'acc_norm_stderr': 0.014671272822977885}
-    },
-    'versions': 
-        {'hellaswag': 0, 'lambada_openai': 0, 'sciq': 0}, 
-    'config': 
-        {'model': 'llama', 'batch_size': 4, 'device': 'cuda:0', 'num_fewshot': 0, 'limit': None, 'bootstrap_iters': 100000}
+{'sciq': 
+    {'acc,none': 0.794, 'acc_stderr,none': 0.012795613612786583, 'acc_norm,none': 0.707, 'acc_norm_stderr,none': 0.014399942998441271, 'alias': 'sciq'}, 
+'lambada_openai': 
+    {'perplexity,none': 28.778403569948463, 'perplexity_stderr,none': 1.0792474430271395, 'acc,none': 0.33980205705414324, 'acc_stderr,none': 0.006598757339311441, 'alias': 'lambada_openai'}, 
+'gsm8k': 
+    {'exact_match,strict-match': 0.001516300227445034, 'exact_match_stderr,strict-match': 0.0010717793485492675, 'exact_match,flexible-extract': 0.01061410159211524, 'exact_match_stderr,flexible-extract': 0.002822713322387704, 'alias': 'gsm8k'}
 }
 ```

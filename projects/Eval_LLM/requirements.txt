@@ -3,4 +3,4 @@ tokenizers==0.13.3
 transformers==4.28.0
 datasets==2.18.0
 huggingface-hub==0.21.4
-lm-eval==0.3.0
+lm-eval==0.4.2

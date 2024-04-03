@@ -462,6 +462,8 @@ class Generator:
     ):
         pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
         eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
+        if isinstance(eos_token_id,list):
+            eos_token_id  = eos_token_id[0]
         output_scores = output_scores if output_scores is not None else self.cfg.output_scores
         scores = () if output_scores else None
         logits_processor = (
@@ -513,9 +515,7 @@ class Generator:
                     raise ValueError(
                         "If `eos_token_id` is defined, make sure that `pad_token_id` is defined."
                     )
-                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (
-                    1 - unfinished_sequences
-                )
+                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
 
             next_tokens = next_tokens.to(flow.long)
             input_ids = flow.cat([input_ids, next_tokens[:, None]], dim=-1)
@@ -526,8 +526,8 @@ class Generator:
 
             # if eos_token was found in one sentence, set sentence to finished
             if eos_token_id is not None:
-                unfinished_sequences = flow.mul(
-                    unfinished_sequences, (next_tokens != eos_token_id).long()
+                unfinished_sequences = unfinished_sequences.mul(
+                    next_tokens.ne(eos_token_id).prod(dim=0)
                 )
 
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):

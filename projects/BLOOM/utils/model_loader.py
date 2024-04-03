@@ -43,7 +43,7 @@ class BlooMLoaderHuggerFace(ModelLoaderHuggerFace):
 
         # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
-        prefix2 = "transformer." if has_prefix else ""
+        prefix2 = "transformer." if not has_prefix else ""
 
         # Convert layers.
         for key in old_keys:

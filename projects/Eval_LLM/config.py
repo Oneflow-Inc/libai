@@ -16,6 +16,7 @@ eval_config= DictConfig(
         hf_tokenizer_path = '',
         model_type = 'llama',
         model_weight_type = 'libai',  #libai or huggingface
-        eval_tasks = ['lambada_openai']
+        eval_tasks = ['lambada_openai'],
+        batch_size_per_gpu = 1
     )
 )
