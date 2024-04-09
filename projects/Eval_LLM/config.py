@@ -3,7 +3,7 @@ from omegaconf import DictConfig
 parallel_config = DictConfig(
     dict(
         data_parallel_size=1,
-        tensor_parallel_size=4,
+        tensor_parallel_size=1,
         pipeline_parallel_size=1,
         pipeline_num_layers=32,
         device_type="cuda",

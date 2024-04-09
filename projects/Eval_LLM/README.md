@@ -1,46 +1,42 @@
 # LLM Evaluation
 
-Evaluation with [lm_eval](https://github.com/EleutherAI/lm-evaluation-harness/) powered by [transformers](https://github.com/huggingface/transformers) and oneflow.
+A tool for evaluating OneFlow models based on [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness/)
 
-## Supported Models
-
-Bloom  
-GLM(ChatGLM)  
-Llama  
-
-## Eval
-
-### Environment
+## Environment
 
 Follow this [Installation Instruction](https://libai.readthedocs.io/en/latest/tutorials/get_started/Installation.html) to install oneflow(1.0.0) and libai first. Conda is recommended.  
 **Make sure you have python>=3.10 to run evaluation for GLM.**
 Then run ```pip install -r ./projects/Eval_LLM/requirements.txt``` to install dependencies.
 
-### Run Eval
+## Run Eval
 
-#### Set the parameters in ./projects/Eval_LLM/config.py
+### Set the parameters in ./projects/Eval_LLM/config.py
 
-Tasks for Evaluation are listed [here](https://github.com/EleutherAI/lm-evaluation-harness/tree/v0.3.0/lm_eval/tasks)
+> pretrained_model_path: The path of your model weights, either huggingface weights or libai weights is ok.
+> hf_tokenizer_path: The path of huggingface tokenizer.
+> model_type: Type of your model, this argument is need for loading model. All choices are listed in ./projects/Eval_LLM/special_arguments.json
+> model_weight_type: Whether your weights are huggingface weights or libai weights.
+> eval_tasks: Tasks you want to evaluate you model on.
+> batch_size_per_gpu: Batch size on a single gpu, if you want to accelerate you evaluation, set it larger. But this may lead to OOM error.
 
-#### Run the following command to start eval
+Tasks for Evaluation are listed [here](https://github.com/EleutherAI/lm-evaluation-harness/tree/main/lm_eval/tasks).
+
+### Run the following command to start eval
 ```
-python ./projects/Eval_LLM/main.py
+bash tools/infer.sh projects/Eval_LLM/main.py 1
 ```
-Or on multiple devices
-```
-python -m oneflow.distributed.launch --nproc_per_node 4 ./projects/Eval_LLM/main.py
-```
+Notice: The number stands for how many gpus you want to use.
 
 If you want to eval GLM(ChatGLM), run this:
 ```
-CHATGLM_HF_DIR=YOUR_MODEL_PATH  python -m oneflow.distributed.launch --nproc_per_node 4 ./projects/Eval_LLM/main.py
+CHATGLM_HF_DIR=YOUR_MODEL_PATH bash tools/infer.sh projects/Eval_LLM/main.py 1
 ```
 
-Attention: To run a model with 6B parameters, you are about to have VRAM more than 24GB. You can use tensor or pipeline parallel on multiple devices.
+Notice: To run a model with 6B parameters, you are about to have VRAM more than 24GB. You can use tensor or pipeline parallel on multiple devices.
 
 To know more about distributed inference: https://docs.oneflow.org/en/master/parallelism/04_launch.html
 
-### Example of Eval Result
+## Example of Eval Result
 Using Llama2-7b
 ```
 {'sciq': 

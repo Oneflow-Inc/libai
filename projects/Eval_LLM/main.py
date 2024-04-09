@@ -55,7 +55,7 @@ def main():
     model = load_func.load()
     print('Model Loaded!')
 
-    from projects.Eval_LLM.evalharness import run_eval_harness  # noqa
+    from projects.Eval_LLM.eval_harness import run_eval_harness  # noqa
     run_eval_harness(model, tokenizer, cfg.eval_config.model_type, eval_tasks=cfg.eval_config.eval_tasks, batch_size_per_gpu=cfg.eval_config.batch_size_per_gpu, cfg=model_cfg.cfg)
 
 if __name__ == "__main__":

@@ -462,8 +462,6 @@ class Generator:
     ):
         pad_token_id = pad_token_id if pad_token_id is not None else self.cfg.pad_token_id
         eos_token_id = eos_token_id if eos_token_id is not None else self.cfg.eos_token_id
-        if isinstance(eos_token_id,list):
-            eos_token_id  = eos_token_id[0]
         output_scores = output_scores if output_scores is not None else self.cfg.output_scores
         scores = () if output_scores else None
         logits_processor = (

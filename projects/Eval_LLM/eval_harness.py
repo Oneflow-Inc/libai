@@ -79,7 +79,6 @@ class EvalHarnessBase(LM):
         return self.model(inps)["logits"].to_local().to(flow.float32)
 
     def _model_generate(self, context, max_length, eos_token_id) -> flow.Tensor:
-        # this only supports batch size 1
         context = dist.convert_to_distributed_default_setting(context)
         out = self.model.generate(context, max_length, eos_token_id=eos_token_id,)
         return out.unsqueeze(0)
@@ -90,11 +89,11 @@ class EvalHarnessBase(LM):
             context, continuation = request.arguments
             if context == "":
                 # end of text as context
-                context_enc = [self.eot_token_id]
+                context_enc = [self.eos_token_id]
             else:
                 context_enc = self.tok_encode(context)
 
-            continuation_enc = self.tok_encode(continuation)
+            continuation_enc = self.tok_encode(continuation)[:self.max_length]
 
             new_reqs.append(((context, continuation), context_enc, continuation_enc))
         return self._loglikelihood_tokens(new_reqs)
@@ -256,13 +255,12 @@ class EvalHarnessBase(LM):
             if isinstance(until, str):
                 until = [until]
             primary_until = self.tok_encode(until[0])
-
             reqs =[]
             for request in chunk:
                 reqs.append(request.arguments[0])
             context_enc = torch.tensor(self.batch_encode(reqs)['input_ids']).to(self.device)[:,self.max_gen_toks - self.max_length:]
             cont = self._model_generate(
-                context_enc, context_enc.shape[1] + self.max_gen_toks, primary_until
+                context_enc, context_enc.shape[1] + self.max_gen_toks, primary_until[0]
             )
 
             for i in range(cont[0].shape[0]):
@@ -284,7 +282,7 @@ class EvalHarnessBase(LM):
 
         task_manager = tasks.TaskManager()
         all_tasks = task_manager.all_tasks
-
+        
         def pattern_match(patterns, source_list):
             task_names = set()
             for pattern in patterns:
