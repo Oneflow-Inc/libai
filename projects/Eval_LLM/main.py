@@ -5,7 +5,7 @@ from transformers import AutoTokenizer as HF_AutoTokenizer
 
 import libai.utils.distributed as dist  # noqa
 from libai.config import LazyConfig
-from libai.models.utils.model_loader.base_loader import ModelLoaderLiBai # noqa
+from libai.models.utils.model_loader.base_loader import ModelLoaderLiBai  # noqa
 
 
 class LLMLoaderLibai(ModelLoaderLiBai):

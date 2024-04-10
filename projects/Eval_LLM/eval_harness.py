@@ -1,7 +1,6 @@
 import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 import oneflow as flow
 
 flow.mock_torch.enable(lazy=True)
