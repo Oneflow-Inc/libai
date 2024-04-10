@@ -23,6 +23,7 @@ cfg = dict(
     layernorm_epsilon=1e-05,
     multi_query_attention=True,
     multi_query_group_num=2,
+    max_position_embeddings=2048,
     num_attention_heads=32,
     num_layers=28,
     padded_vocab_size=65024,
