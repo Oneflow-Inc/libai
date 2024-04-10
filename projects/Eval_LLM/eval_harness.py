@@ -1,25 +1,23 @@
-import os
-import oneflow as flow
-
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, TypeVar
 
+import oneflow as flow
 import oneflow.nn.functional as F
+
+flow.mock_torch.enable(lazy=True)
+
+import oneflow as torch
 from lm_eval import evaluator, tasks, utils  # noqa
 from lm_eval.api.model import LM  # noqa
 from lm_eval.models.utils import chunks  # noqa
 from tqdm import tqdm
+
 import libai.utils.distributed as dist  # noqa
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-flow.mock_torch.enable(lazy=True)
-import oneflow as torch
-
-
 T = TypeVar("T")
-
-
 
 
 class EvalHarnessBase(LM):
