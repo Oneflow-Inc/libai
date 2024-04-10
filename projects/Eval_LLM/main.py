@@ -4,12 +4,8 @@ import json
 from transformers import AutoTokenizer as HF_AutoTokenizer
 
 import libai.utils.distributed as dist  # noqa
-from libai.config import LazyCall, LazyConfig
-from libai.models.utils.model_loader.base_loader import (  # noqa
-    ModelLoaderHuggerFace,
-    ModelLoaderLiBai,
-)
-from projects.Llama.llama import LlamaForCausalLM  # noqa
+from libai.config import LazyConfig
+from libai.models.utils.model_loader.base_loader import ModelLoaderLiBai # noqa
 
 
 class LLMLoaderLibai(ModelLoaderLiBai):
