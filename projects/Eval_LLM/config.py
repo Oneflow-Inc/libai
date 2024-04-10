@@ -10,13 +10,13 @@ parallel_config = DictConfig(
     )
 )
 
-eval_config= DictConfig(
+eval_config = DictConfig(
     dict(
-        pretrained_model_path = '',
-        hf_tokenizer_path = '',
-        model_type = 'llama',
-        model_weight_type = 'libai',  #libai or huggingface
-        eval_tasks = ['lambada_openai','gsm8k'],
-        batch_size_per_gpu = 1
+        pretrained_model_path="",
+        hf_tokenizer_path="",
+        model_type="llama",
+        model_weight_type="libai",  # libai or huggingface
+        eval_tasks=["lambada_openai", "gsm8k"],
+        batch_size_per_gpu=1,
     )
 )

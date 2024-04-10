@@ -1,23 +1,25 @@
 import os
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import oneflow as flow
-flow.mock_torch.enable(lazy=True)
-import oneflow as torch
 
-import oneflow.nn.functional as F
+flow.mock_torch.enable(lazy=True)
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Iterable, Tuple, TypeVar
-from tqdm import tqdm
-from lm_eval import utils
+from typing import Dict, List, Optional, TypeVar
 
-from lm_eval import evaluator, tasks  # noqa
+import oneflow as torch
+import oneflow.nn.functional as F
+from lm_eval import evaluator, tasks, utils  # noqa
 from lm_eval.api.model import LM  # noqa
-import libai.utils.distributed as dist  # noqa
-from lm_eval.models.utils import chunks # noqa
+from lm_eval.models.utils import chunks  # noqa
+from tqdm import tqdm
 
-T = TypeVar('T')
+import libai.utils.distributed as dist  # noqa
+
+T = TypeVar("T")
+
 
 class EvalHarnessBase(LM):
     def __init__(self, model, tokenizer, model_name, batch_size: int, cfg: dict):
@@ -35,7 +37,7 @@ class EvalHarnessBase(LM):
     @property
     def eos_token_id(self):
         return self.tokenizer.eos_token_id
-    
+
     @property
     def pad_token_id(self):
         return self.tokenizer.pad_token_id
@@ -61,14 +63,13 @@ class EvalHarnessBase(LM):
         return flow.device("cuda:0")
 
     def tok_encode(self, string: str) -> List[int]:
-        return self.tokenizer.encode(string,add_special_tokens=False)
+        return self.tokenizer.encode(string, add_special_tokens=False)
 
     def tok_decode(self, tokens: List[int]) -> str:
         return self.tokenizer.decode(tokens)
-    
-    def batch_encode(self, strings: List[str]) -> Dict:
-        return self.tokenizer.batch_encode_plus(strings,padding=True)
 
+    def batch_encode(self, strings: List[str]) -> Dict:
+        return self.tokenizer.batch_encode_plus(strings, padding=True)
 
     @flow.inference_mode()
     def _model_call(self, inps):
@@ -80,7 +81,11 @@ class EvalHarnessBase(LM):
 
     def _model_generate(self, context, max_length, eos_token_id) -> flow.Tensor:
         context = dist.convert_to_distributed_default_setting(context)
-        out = self.model.generate(context, max_length, eos_token_id=eos_token_id,)
+        out = self.model.generate(
+            context,
+            max_length,
+            eos_token_id=eos_token_id,
+        )
         return out.unsqueeze(0)
 
     def loglikelihood(self, requests, disable_tqdm=False):
@@ -93,7 +98,7 @@ class EvalHarnessBase(LM):
             else:
                 context_enc = self.tok_encode(context)
 
-            continuation_enc = self.tok_encode(continuation)[:self.max_length]
+            continuation_enc = self.tok_encode(continuation)[: self.max_length]
 
             new_reqs.append(((context, continuation), context_enc, continuation_enc))
         return self._loglikelihood_tokens(new_reqs)
@@ -120,9 +125,7 @@ class EvalHarnessBase(LM):
 
             # TODO: extract out this call so it only gets called once and also somehow figure out partial caching for
             # that
-            string_nll = self._loglikelihood_tokens(
-                rolling_token_windows, disable_tqdm=True
-            )
+            string_nll = self._loglikelihood_tokens(rolling_token_windows, disable_tqdm=True)
 
             # discard is_greedy
             string_nll = [x[0] for x in string_nll]
@@ -149,9 +152,7 @@ class EvalHarnessBase(LM):
 
         # TODO: automatic (variable) batch size detection for vectorization
         re_ord = utils.Reorderer(requests, _collate)
-        for chunk in chunks(
-            tqdm(re_ord.get_reordered(), disable=disable_tqdm), self.batch_size
-        ):
+        for chunk in chunks(tqdm(re_ord.get_reordered(), disable=disable_tqdm), self.batch_size):
             inps = []
             cont_toks_list = []
             inplens = []
@@ -185,9 +186,7 @@ class EvalHarnessBase(LM):
                 cont = continuation_enc
 
                 # since in _collate we make sure length is descending, the longest is always the first one.
-                padding_length = (
-                    padding_length if padding_length is not None else inplen
-                )
+                padding_length = padding_length if padding_length is not None else inplen
 
                 # pad length from seq to padding_length
                 inp = torch.cat(
@@ -215,22 +214,16 @@ class EvalHarnessBase(LM):
 
                 # Slice to original seq length
                 contlen = len(cont_toks)
-                logits = logits[inplen - contlen : inplen].unsqueeze(
-                    0
-                )  # [1, seq, vocab]
+                logits = logits[inplen - contlen : inplen].unsqueeze(0)  # [1, seq, vocab]
 
                 # Check if per-token argmax is exactly equal to continuation
                 greedy_tokens = logits.argmax(dim=-1)
-                cont_toks = torch.tensor(cont_toks, dtype=torch.long).unsqueeze(
-                    0
-                )  # [1, seq]
+                cont_toks = torch.tensor(cont_toks, dtype=torch.long).unsqueeze(0)  # [1, seq]
                 max_equal = (greedy_tokens == cont_toks).all()
 
                 # Obtain log-probs at the corresponding continuation token indices
                 # last_token_slice = logits[:, -1, :].squeeze(0).tolist()
-                logits = torch.gather(logits, 2, cont_toks.unsqueeze(-1)).squeeze(
-                    -1
-                )  # [1, seq]
+                logits = torch.gather(logits, 2, cont_toks.unsqueeze(-1)).squeeze(-1)  # [1, seq]
 
                 # Answer: (log prob, is-exact-match)
                 answer = (float(logits.sum()), bool(max_equal))
@@ -247,18 +240,21 @@ class EvalHarnessBase(LM):
         res = []
 
         for chunk in chunks(
-            tqdm(requests, disable=disable_tqdm, desc="Running generate_until requests"), self.batch_size
-        ):  
-            _,until = chunk[0].arguments
+            tqdm(requests, disable=disable_tqdm, desc="Running generate_until requests"),
+            self.batch_size,
+        ):
+            _, until = chunk[0].arguments
             if isinstance(until, dict):
-                until = until['until']
+                until = until["until"]
             if isinstance(until, str):
                 until = [until]
             primary_until = self.tok_encode(until[0])
-            reqs =[]
+            reqs = []
             for request in chunk:
                 reqs.append(request.arguments[0])
-            context_enc = torch.tensor(self.batch_encode(reqs)['input_ids']).to(self.device)[:,self.max_gen_toks - self.max_length:]
+            context_enc = torch.tensor(self.batch_encode(reqs)["input_ids"]).to(self.device)[
+                :, self.max_gen_toks - self.max_length :
+            ]
             cont = self._model_generate(
                 context_enc, context_enc.shape[1] + self.max_gen_toks, primary_until[0]
             )
@@ -282,16 +278,16 @@ class EvalHarnessBase(LM):
 
         task_manager = tasks.TaskManager()
         all_tasks = task_manager.all_tasks
-        
+
         def pattern_match(patterns, source_list):
             task_names = set()
             for pattern in patterns:
                 for matching in fnmatch.filter(source_list, pattern):
                     task_names.add(matching)
-            task_names=list(task_names)
+            task_names = list(task_names)
             task_names.sort()
             return task_names
-        
+
         eval_tasks = pattern_match(eval_tasks, all_tasks)
         print(f"Found tasks: {eval_tasks}")
 
@@ -302,7 +298,7 @@ class EvalHarnessBase(LM):
         lm = self
         results = evaluator.evaluate(
             lm=lm,
-            task_dict=tasks.get_task_dict(task_name_list = eval_tasks),
+            task_dict=tasks.get_task_dict(task_name_list=eval_tasks),
             limit=limit,
             bootstrap_iters=bootstrap_iters,
         )
@@ -314,6 +310,7 @@ class EvalHarnessBase(LM):
             bootstrap_iters=bootstrap_iters,
         )
         return results
+
 
 @flow.inference_mode()
 def run_eval_harness(
@@ -336,7 +333,7 @@ def run_eval_harness(
         eval_harness = EvalHarnessBase(model, tokenizer, model_name, batch_size_per_gpu, cfg)
         results = eval_harness.run_eval(eval_tasks, limit, bootstrap_iters)
     if save_filepath is None:
-        print(results['results'])
+        print(results["results"])
     else:
         print(f"Saving results to {str(save_filepath)!r}")
         data = json.dumps(results)

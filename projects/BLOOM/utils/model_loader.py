@@ -62,7 +62,7 @@ class BlooMLoaderHuggerFace(ModelLoaderHuggerFace):
 
         self._update_cfg("hidden_layers", cfg_dict["n_layer"])
 
-        if 'n_embed' in cfg_dict.keys():
+        if "n_embed" in cfg_dict.keys():
             self._update_cfg("hidden_size", cfg_dict["n_embed"])
             self._update_cfg("n_head", cfg_dict["num_attention_heads"])
         else:
