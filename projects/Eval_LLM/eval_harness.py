@@ -8,11 +8,11 @@ import oneflow.nn.functional as F
 
 flow.mock_torch.enable(lazy=True)
 
-import oneflow as torch
+import oneflow as torch  # noqa
 from lm_eval import evaluator, tasks, utils  # noqa
 from lm_eval.api.model import LM  # noqa
 from lm_eval.models.utils import chunks  # noqa
-from tqdm import tqdm
+from tqdm import tqdm  # noqa
 
 import libai.utils.distributed as dist  # noqa
 
@@ -122,8 +122,6 @@ class EvalHarnessBase(LM):
 
             rolling_token_windows = [(None,) + x for x in rolling_token_windows]
 
-            # TODO: extract out this call so it only gets called once and also somehow figure out partial caching for
-            # that
             string_nll = self._loglikelihood_tokens(rolling_token_windows, disable_tqdm=True)
 
             # discard is_greedy
@@ -135,14 +133,16 @@ class EvalHarnessBase(LM):
         return loglikelihoods
 
     def _loglikelihood_tokens(self, requests, disable_tqdm=False):
-        # TODO: implement some kind of efficient-request-middleware that lumps together requests with the same context
         res = []
 
         def _collate(x):
             # the negative sign on len(toks) sorts descending - this has a few advantages:
-            # - time estimates will always be over not underestimates, which is more useful for planning
-            # - to know the size of a batch when going through the list, you know the first one is always the batch
-            #   padded context length. this is useful to simplify the batching logic and more importantly to make
+            # - time estimates will always be over not underestimates,
+            #   which is more useful for planning
+            # - to know the size of a batch when going through the list,
+            #   you know the first one is always the batch
+            #   padded context length. this is useful to simplify
+            #   the batching logic and more importantly to make
             #   automatic adaptive batches much much easier to implement
             # - any OOMs will happen right away rather than near the end
 
@@ -158,9 +158,10 @@ class EvalHarnessBase(LM):
 
             padding_length = None
 
-            # because vectorizing is annoying, we first convert each (context, continuation) pair to padded
-            # tensors, then we pack them together into a batch, call the model, and then pick it all apart
-            # again because vectorizing is annoying
+            # because vectorizing is annoying,
+            # we first convert each (context, continuation) pair to padded tensors,
+            # then we pack them together into a batch, call the model,
+            # and then pick it all apart again because vectorizing is annoying
 
             for _, context_enc, continuation_enc in chunk:
                 # sanity check
@@ -173,7 +174,7 @@ class EvalHarnessBase(LM):
                 # inp    0 1 2 3|4 5 6 7 8 9   <- last token is deleted by inp[:, :-1]
                 # gpt2    \               \
                 # logits   1 2 3|4 5 6 7 8 9   <- the ctx half gets tossed out by the
-                # cont_toks      4 5 6 7 8 9      [:, -len(continuation_enc):, :self.vocab_size] slice
+                # cont_toks      4 5 6 7 8 9   [:, -len(continuation_enc):, :self.vocab_size] slice
 
                 # when too long to fit in context, truncate from the left
                 inp = torch.tensor(
@@ -184,7 +185,8 @@ class EvalHarnessBase(LM):
 
                 cont = continuation_enc
 
-                # since in _collate we make sure length is descending, the longest is always the first one.
+                # since in _collate we make sure length is descending,
+                # the longest is always the first one.
                 padding_length = padding_length if padding_length is not None else inplen
 
                 # pad length from seq to padding_length
