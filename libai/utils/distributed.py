@@ -431,6 +431,20 @@ def convert_to_distributed_default_setting(t):
         )
     else:
         dist_util = get_dist_util()
+        if dist_util.device_type != "npu":
+            from omegaconf import DictConfig
+
+            setup_dist_util(
+                DictConfig(
+                    dict(
+                        data_parallel_size=1,
+                        tensor_parallel_size=1,
+                        pipeline_parallel_size=1,
+                        device_type="npu",
+                    )
+                )
+            )
+            dist_util = get_dist_util()
         device_type = dist_util.device_type
         return t.to_global(placement=flow.placement(device_type, ranks=t.placement.ranks))
 
