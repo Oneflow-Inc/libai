@@ -12,7 +12,7 @@ from configs.common.models.graph import graph
 
 vocab_file = "projects/libai-parallel-case/gpt2/vocab.json"
 merge_files = "projects/libai-parallel-case/gpt2/merges.txt"
-data_prefix = ".../loss_compara_content_sentence"
+data_prefix = "/home/xiezipeng/workspace/libai/projects/libai-parallel-case/dataset/loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
@@ -24,10 +24,10 @@ dataloader.test[0].dataset.indexed_dataset.data_prefix = data_prefix
 # GPT-2 model config
 model.cfg.embedding_dropout_prob = 0.1
 model.cfg.attention_dropout_prob = 0.1
-model.cfg.num_attention_heads = 16
-model.cfg.hidden_size = 1024
-model.cfg.ffn_hidden_size = 4096
-model.cfg.hidden_layers = 24
+model.cfg.num_attention_heads = 25
+model.cfg.hidden_size = 1600
+model.cfg.ffn_hidden_size = 1024
+model.cfg.hidden_layers = 48
 model.cfg.max_seq_length = 1024
 
 train.input_placement_device = "cpu"
@@ -39,7 +39,7 @@ for ds in dataloader.train.dataset:
 
 optim.lr = 1.5e-4
 
-train.train_micro_batch_size = 6
+train.train_micro_batch_size = 1
 train.amp.enabled = True
 
 train.update(
