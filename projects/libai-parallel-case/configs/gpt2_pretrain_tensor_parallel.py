@@ -12,7 +12,7 @@ from configs.common.models.graph import graph
 
 vocab_file = "projects/libai-parallel-case/gpt2/vocab.json"
 merge_files = "projects/libai-parallel-case/gpt2/merges.txt"
-data_prefix = "/home/xiezipeng/workspace/libai/projects/libai-parallel-case/dataset/loss_compara_content_sentence"
+data_prefix = ".../loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
@@ -45,8 +45,8 @@ train.amp.enabled = True
 train.update(
     dict(
         dist=dict(
-            data_parallel_size=4,
-            tensor_parallel_size=1,
+            data_parallel_size=1,
+            tensor_parallel_size=8,
             pipeline_parallel_size=1,
             pipeline_num_layers=model.cfg.hidden_layers,
         ),
