@@ -1,6 +1,3 @@
-# 110 26744M auto paralle
-# 32.80 23696M 1n1g
-
 from libai.config import LazyCall
 from libai.evaluation import PPLEvaluator
 from configs.common.models.gpt import pretrain_model as model
@@ -24,11 +21,6 @@ dataloader.test[0].dataset.indexed_dataset.data_prefix = data_prefix
 # GPT-2 model config
 model.cfg.embedding_dropout_prob = 0.1
 model.cfg.attention_dropout_prob = 0.1
-model.cfg.num_attention_heads = 25
-model.cfg.hidden_size = 1600
-model.cfg.ffn_hidden_size = 1024
-model.cfg.hidden_layers = 48
-model.cfg.max_seq_length = 1024
 
 train.input_placement_device = "cpu"
 

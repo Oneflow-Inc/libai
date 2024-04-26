@@ -1,12 +1,3 @@
-# 110 26744M auto paralle
-# 32.80 23696M 1n1g
-
-"""
-[04/25 16:54:14 lb.utils.events]:  eta: 0:18:34  iteration: 139/10000  consumed_samples: 140  total_loss: 7.492  time: 0.1156 s/iter  data_time: 0.0009 s/iter total_throughput: 8.65 samples/s lr: 1.50e-04  
-
-
-"""
-
 from libai.config import LazyCall
 from libai.evaluation import PPLEvaluator
 from configs.common.models.gpt import pretrain_model as model
@@ -30,11 +21,6 @@ dataloader.test[0].dataset.indexed_dataset.data_prefix = data_prefix
 # GPT-2 model config
 model.cfg.embedding_dropout_prob = 0.1
 model.cfg.attention_dropout_prob = 0.1
-model.cfg.num_attention_heads = 25
-model.cfg.hidden_size = 1600
-model.cfg.ffn_hidden_size = 1024
-model.cfg.hidden_layers = 48
-model.cfg.max_seq_length = 1024
 
 train.input_placement_device = "cpu"
 
@@ -45,8 +31,7 @@ for ds in dataloader.train.dataset:
 
 optim.lr = 1.5e-4
 
-train.train_micro_batch_size = 1
-train.amp.enabled = True
+train.train_micro_batch_size = 2
 
 train.update(
     dict(
@@ -56,6 +41,10 @@ train.update(
             pipeline_parallel_size=1,
             pipeline_num_layers=model.cfg.hidden_layers,
         ),
+        
+        amp=dict(enabled=False),
+        
+        activation_checkpoint=dict(enabled=True),       
     )
 )
 

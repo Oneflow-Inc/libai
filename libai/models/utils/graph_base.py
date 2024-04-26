@@ -84,12 +84,13 @@ class GraphBase(nn.Graph):
             try:
                 self.config.enable_auto_parallel(True)
                 self.config.enable_auto_parallel_ignore_user_sbp_config(
-                    auto_parallel_conf.enable_auto_parallel_ignore_user_sbp_config
+                    True
                 )
                 self.config.set_auto_parallel_computation_cost_ratio(0.05)
                 self.config.set_auto_parallel_wait_time(1.65e4)
-                self.config.enable_auto_parallel_trunk_algo(auto_parallel_conf.trunk_algo)
-                self.config.enable_auto_parallel_sbp_collector(auto_parallel_conf.sbp_collector)
+                self.config.enable_auto_parallel_trunk_algo(True)
+                self.config.enable_auto_parallel_sbp_collector(False)
+                self.config.enable_auto_memory("ModerateMemoryDown")
             except RuntimeWarning:
                 import warnings
 

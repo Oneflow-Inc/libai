@@ -1,6 +1,3 @@
-# 110 26744M auto paralle
-# 32.80 23696M 1n1g
-
 from libai.config import LazyCall
 from libai.evaluation import PPLEvaluator
 from configs.common.models.gpt import pretrain_model as model

@@ -4,11 +4,11 @@ from libai.models import GPTModel, GPTForPreTraining
 
 
 cfg = dict(
-    hidden_layers=6,
+    hidden_layers=40,
     vocab_size=30522,
-    hidden_size=384,
-    ffn_hidden_size=1536,
-    num_attention_heads=12,
+    hidden_size=1280,
+    ffn_hidden_size=1280 * 4,
+    num_attention_heads=20,
     max_seq_length=1024,
     embedding_dropout_prob=0,
     attention_dropout_prob=0,
