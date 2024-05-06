@@ -31,7 +31,7 @@ for ds in dataloader.train.dataset:
 
 optim.lr = 1.5e-4
 
-train.train_micro_batch_size = 1
+train.train_micro_batch_size = 2
 
 train.update(
     dict(

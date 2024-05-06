@@ -62,7 +62,7 @@ train = dict(
     # This optimization will reduce optimizer stages memory consumption
     # as described in ZeRO https://arxiv.org/abs/1910.02054.
     zero_optimization=dict(
-        enabled=False,
+        enabled=True,
         stage=1,
     ),
 
