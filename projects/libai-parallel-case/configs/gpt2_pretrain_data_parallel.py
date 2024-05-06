@@ -32,7 +32,6 @@ for ds in dataloader.train.dataset:
 optim.lr = 1.5e-4
 
 train.train_micro_batch_size = 2
-train.amp.enabled = True
 
 train.update(
     dict(
@@ -42,7 +41,6 @@ train.update(
             pipeline_parallel_size=1,
             pipeline_num_layers=model.cfg.hidden_layers,
         ),
-        amp=dict(enabled=True),
     )
 )
 

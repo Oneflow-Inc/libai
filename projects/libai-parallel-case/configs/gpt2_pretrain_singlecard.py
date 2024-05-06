@@ -40,11 +40,7 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=model.cfg.hidden_layers,
-        ),
-        
-        amp=dict(enabled=False),
-        
-        activation_checkpoint=dict(enabled=True),       
+        ),  
     )
 )
 

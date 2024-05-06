@@ -276,6 +276,10 @@ class DefaultTrainer(TrainerBase):
                 # We just set start_iter to 0.
                 self.start_iter = 0
         if cfg.graph.enabled:
+            if cfg.graph.auto_parallel.enabled == True:
+                cfg.train.amp = dict(enabled=True)
+                cfg.train.activation_checkpoint = dict(enabled=False)
+
             cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size
         else:
             cfg.dataloader.consumed_samples = (

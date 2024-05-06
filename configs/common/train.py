@@ -43,12 +43,12 @@ train = dict(
 
     # Enable automatic mixed precision for training which does not
     # change model's inference behavior.
-    amp=dict(enabled=False),
+    amp=dict(enabled=True),
 
     # Enable activation checkpointing to allow for training
     # with larger models, sequences, and batch sizes.
     # If enabled, checkpoint the input activations of each transformer layers by default.
-    activation_checkpoint=dict(enabled=True),
+    activation_checkpoint=dict(enabled=False),
 
     # NCCL fusion threshold megabytes, set to 0 to
     # compatible with previous version of OneFlow.
