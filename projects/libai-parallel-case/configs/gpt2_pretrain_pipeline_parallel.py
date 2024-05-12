@@ -36,9 +36,9 @@ train.train_micro_batch_size = 2
 train.update(
     dict(
         dist=dict(
-            data_parallel_size=8,
+            data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=1,
+            pipeline_parallel_size=8,
             pipeline_num_layers=model.cfg.hidden_layers,
         ),
     )

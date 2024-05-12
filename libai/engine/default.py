@@ -276,11 +276,19 @@ class DefaultTrainer(TrainerBase):
                 # We just set start_iter to 0.
                 self.start_iter = 0
 
-        if cfg.graph["auto_parallel"]["enabled"] == False and (
-            (cfg.train.dist["data_parallel_size"] * cfg.train.dist["tensor_parallel_size"] * cfg.train.dist["pipeline_parallel_size"]) == 1
-        ):
+        if dist.get_world_size() == 1:
             cfg.train.amp = dict(enabled=False)
             cfg.train.activation_checkpoint = dict(enabled=True)
+
+        if cfg.graph["auto_parallel"]["enabled"] == True and dist.get_world_size() == 8 and (cfg.train.dist["data_parallel_size"] != 8):
+            cfg.train.dist["data_parallel_size"] = 8
+            cfg.train.dist["tensor_parallel_size"] = 1 
+            cfg.train.dist["pipeline_parallel_size"] = 1
+            cfg.graph["auto_parallel"]["enabled"] = True
+            cfg.train.zero_optimization = dict(
+                enabled=False,
+                stage=1,
+            )
 
         if cfg.graph.enabled:
             cfg.dataloader.consumed_samples = self.start_iter * cfg.train.global_batch_size

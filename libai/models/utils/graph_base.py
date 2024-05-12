@@ -90,7 +90,7 @@ class GraphBase(nn.Graph):
                 self.config.set_auto_parallel_wait_time(1.65e4)
                 self.config.enable_auto_parallel_trunk_algo(True)
                 self.config.enable_auto_parallel_sbp_collector(False)
-                self.config.enable_auto_memory("ModerateMemoryDown")
+                self.config.enable_auto_memory("Disable")
             except RuntimeWarning:
                 import warnings
 
