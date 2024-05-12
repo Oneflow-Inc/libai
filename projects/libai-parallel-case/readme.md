@@ -13,8 +13,6 @@ bash tools/train.sh tools/train_net.py projects/libai-parallel-case/configs/gpt2
 
 bash tools/train.sh tools/train_net.py projects/libai-parallel-case/configs/gpt2_pretrain_auto_parallel.py 8
 
-bash tools/train.sh tools/train_net.py projects/libai-parallel-case/configs/gpt2_pretrain_singlecard_oom.py 1
-
 ```
 
 - total params
