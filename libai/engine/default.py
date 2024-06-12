@@ -44,6 +44,51 @@ from libai.utils.logger import setup_logger
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/defaults.py
 # --------------------------------------------------------
 
+def count_all_parameters(model, verbose=False):
+    """
+    Count total, trainable, and non-trainable parameters in a PyTorch model.
+    Args:
+        model (nn.Module): The model to count parameters for.
+        verbose (bool, optional): Print detailed information if True.
+    Returns:
+        Tuple containing total, trainable, and non-trainable parameters, and percent trainable parameters.
+    """
+    train_params, all_params = 0, 0
+    for _, param in model.named_parameters():
+        num_params = param.numel()
+        all_params += num_params
+        if param.requires_grad:
+            train_params += num_params
+    nontrain_params = all_params - train_params
+    pct_train_params = train_params / all_params * 100
+    if verbose:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Total params: {format_size(all_params)}")
+        logger.info(f"Trainable params: {format_size(train_params)}")
+        logger.info(f"Non-trainable params: {format_size(nontrain_params)}")
+        logger.info(f"Trainable params %: {pct_train_params:.4f}")
+    return all_params, train_params, nontrain_params, pct_train_params
+
+
+def format_size(size):
+    """
+    Convert bytes to a human-readable string with appropriate units.
+    Args:
+        size (int): The number of bytes.
+    Returns:
+        String representing the number of bytes with appropriate units.
+    """
+    k, m, b, t = 1024, 1024**2, 10**9, 10**12
+    if size > t:
+        return f"{round(size / t, 4)}T"
+    elif size > b:
+        return f"{round(size / b, 4)}B"
+    elif size > m:
+        return f"{round(size / m, 4)}M"
+    elif size > k:
+        return f"{round(size / k, 4)}K"
+    else:
+        return f"{size}"
 
 def _highlight(code, filename):
     try:
@@ -200,6 +245,18 @@ def default_setup(cfg, args):
 
     _compile_dependencies()
 
+class EmtypOptimizer():
+    def __init__(self,cfg):
+        pass
+
+    def clip_grad(self):
+        pass
+
+    def step(self):
+        pass
+
+    def zero_grad(self):
+        pass
 
 class DefaultTrainer(TrainerBase):
     """
@@ -314,8 +371,9 @@ class DefaultTrainer(TrainerBase):
             "Building time: {:.3f} seconds".format(time.time() - start_time)
         )
 
-        self.optimizer = self.build_optimizer(cfg, self.model)
-        self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
+        # self.optimizer = self.build_optimizer(cfg, self.model)
+        self.optimizer = EmtypOptimizer(cfg)
+        # self.lr_scheduler = self.build_lr_scheduler(cfg, self.optimizer)
 
         if cfg.graph.enabled:
             self.graph_train = self.build_graph(
@@ -345,13 +403,14 @@ class DefaultTrainer(TrainerBase):
                 lr_scheduler=self.lr_scheduler,
             )
         else:
-            self.checkpointer = Checkpointer(
-                # Assume you want to save checkpoints together with logs/statistics
-                self.model,
-                cfg.train.output_dir,
-                optimizer=self.optimizer,
-                lr_scheduler=self.lr_scheduler,
-            )
+            pass
+            # self.checkpointer = Checkpointer(
+            #     # Assume you want to save checkpoints together with logs/statistics
+            #     self.model,
+            #     cfg.train.output_dir,
+            #     optimizer=self.optimizer,
+            #     lr_scheduler=self.lr_scheduler,
+            # )
 
         # Loading checkpoint before dataloader construction, because
         # dataloader needs to know the consumed iterations from
@@ -415,12 +474,12 @@ class DefaultTrainer(TrainerBase):
 
         ret = [
             hooks.IterationTimer(),
-            hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
-            hooks.PeriodicCheckpointer(
-                self.checkpointer,
-                self.cfg.train.checkpointer.period,
-                max_to_keep=self.cfg.train.checkpointer.max_to_keep,
-            ),
+            # hooks.LRScheduler(),  # for beauty lr scheduler printer in `nn.Graph` mode
+            # hooks.PeriodicCheckpointer(
+            #     self.checkpointer,
+            #     self.cfg.train.checkpointer.period,
+            #     max_to_keep=self.cfg.train.checkpointer.max_to_keep,
+            # ),
         ]
 
         if self.cfg.train.evaluation.enabled:
@@ -563,6 +622,7 @@ class DefaultTrainer(TrainerBase):
         model = build_model(cfg.model)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
+        count_all_parameters(model, verbose=True)
         model._apply(dist.convert_to_distributed_default_setting)
         return model
 
