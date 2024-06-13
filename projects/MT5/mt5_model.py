@@ -203,7 +203,7 @@ class MT5Model(flow.nn.Module, Generator):
             position_bias = None
             encoder_decoder_position_bias = None
             self.set_cache(encoder_states=None, past_key_values=None)
-            encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask)
+            encoder_attn_mask = self.extended_attn_mask(encoder_attn_mask) if encoder_attn_mask is not None else encoder_attn_mask
             enc_embedding_output = self.embedding(encoder_input_ids)
             # transpose [batch_size, seq_len, embed_size] to [seq_len, batch_size, embed_size]
             enc_hidden_states = enc_embedding_output.transpose(0, 1)
@@ -219,10 +219,11 @@ class MT5Model(flow.nn.Module, Generator):
         if only_encoder:
             return encoder_states
 
-        decoder_attn_mask = self.extended_attn_mask(
-            decoder_attn_mask, decoder_input_ids, is_decoder=True
-        )
-        encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask)
+        if decoder_attn_mask is not None:
+            decoder_attn_mask = self.extended_attn_mask(
+                decoder_attn_mask, decoder_input_ids, is_decoder=True
+            )
+        encoder_decoder_attn_mask = self.extended_attn_mask(encoder_decoder_attn_mask) if encoder_decoder_attn_mask is not None else encoder_decoder_attn_mask
 
         dec_embedding_output = self.embedding(decoder_input_ids)
         # transpose [batch_size, seq_len, embed_size] to [seq_len, batch_size, embed_size]
