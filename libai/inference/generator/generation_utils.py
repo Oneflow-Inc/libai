@@ -124,7 +124,10 @@ class Generator:
         pad_token_id: Optional[int],
         eos_token_id: Optional[int],
     ):
-        is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [flow.int64, flow.long]
+        is_input_ids = len(inputs.shape) == 2 and inputs.dtype in [
+            flow.int64,
+            flow.long,
+        ]
         is_pad_token_in_inputs = (pad_token_id is not None) and (pad_token_id in inputs)
         is_pad_token_not_equal_to_eos_token_id = (eos_token_id is None) or (
             (eos_token_id is not None) and (pad_token_id != eos_token_id)
@@ -186,7 +189,7 @@ class Generator:
         elif bos_token_id is not None:
             return bos_token_id
         else:
-            return self.cfg.bos_token_idx
+            return self.cfg.bos_token_id
 
     @staticmethod
     def _expand_inputs_for_generation(
@@ -502,7 +505,7 @@ class Generator:
             next_tokens = next_tokens.to_global(placement=input_ids.placement)
             unfinished_sequences = unfinished_sequences.to_global(
                 sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-                placement=dist.get_layer_placement(0),
+                placement=input_ids.placement,
             )
 
             if eos_token_id is not None:
@@ -523,8 +526,8 @@ class Generator:
 
             # if eos_token was found in one sentence, set sentence to finished
             if eos_token_id is not None:
-                unfinished_sequences = flow.mul(
-                    unfinished_sequences, (next_tokens != eos_token_id).long()
+                unfinished_sequences = unfinished_sequences.mul(
+                    next_tokens.ne(eos_token_id).prod(dim=0)
                 )
 
             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
@@ -987,7 +990,9 @@ class Generator:
 
         # 8. Prepare stopping criteria
         stopping_criteria = self._get_stopping_criteria(
-            max_length=max_length, max_time=max_time, stopping_criteria=stopping_criteria
+            max_length=max_length,
+            max_time=max_time,
+            stopping_criteria=stopping_criteria,
         )
 
         # 9. Go into different generation modes

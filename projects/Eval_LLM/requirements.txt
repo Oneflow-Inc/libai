@@ -1,0 +1,6 @@
+torch>=2.0.0
+tokenizers
+transformers
+datasets
+huggingface-hub
+lm-eval==0.4.2
