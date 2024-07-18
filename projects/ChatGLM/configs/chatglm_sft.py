@@ -21,7 +21,7 @@ learning_rate = 2e-5
 max_source_len = 128
 max_target_len = 128
 max_length = 256
-dataset_path = '/root/data/libai_xpu_alpaca'
+dataset_path = './data/libai_xpu_alpaca'
 pretrained_model_path = '/root/models/chatglm/chatglm2-6b'
 
 # graph & optim
@@ -80,7 +80,8 @@ train.update(
         warmup_ratio=2 / 5,
         num_accumulation_steps=8,
         rdma_enabled=True,
-        amp=dict(enabled=True),
+        amp=dict(enabled=False),
+        train_with_fp16=True,
         activation_checkpoint=dict(enabled=True),
         input_placement_device='xpu',
         checkpointer=dict(

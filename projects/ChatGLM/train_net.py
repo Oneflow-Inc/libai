@@ -66,12 +66,11 @@ class ChatGLMTrainer(DefaultTrainer):
         logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
 
-        model = model.to(flow.float16)
+        if cfg.train.train_with_fp16:
+           model = model.to(flow.float16)
+           flow.cuda.empty_cache()
         '''for param in model.named_parameters():
             print(param[1].dtype)'''
-        flow.cuda.empty_cache()
-        flow.cuda.empty_cache()
-        flow.cuda.empty_cache()
         
         return model
 

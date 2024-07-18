@@ -14,6 +14,8 @@
 # limitations under the License.
 import os
 
+import oneflow_xpu
+
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 

@@ -873,7 +873,8 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
         return_dict = return_dict if return_dict is not None else self.cfg.use_return_dict
 
         input_ids = dist.convert_to_distributed_default_setting(input_ids)
-        labels = dist.convert_to_distributed_default_setting(labels)
+        if labels is not None:
+            labels = dist.convert_to_distributed_default_setting(labels)
         
         transformer_outputs = self.transformer(
             input_ids=input_ids,
