@@ -18,6 +18,7 @@ import random
 
 import numpy as np
 import oneflow as flow
+import oneflow_xpu
 
 import libai.utils.distributed as dist
 from libai.config import LazyConfig, default_argument_parser, try_get_key
@@ -64,6 +65,14 @@ class ChatGLMTrainer(DefaultTrainer):
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
+
+        model = model.to(flow.float16)
+        '''for param in model.named_parameters():
+            print(param[1].dtype)'''
+        flow.cuda.empty_cache()
+        flow.cuda.empty_cache()
+        flow.cuda.empty_cache()
+        
         return model
 
 
@@ -71,12 +80,6 @@ def main(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
-
-    seed_for_rank = cfg.train.seed + flow.env.get_rank()
-    flow.manual_seed(seed_for_rank)
-    flow.cuda.manual_seed(seed_for_rank)
-    np.random.seed(seed_for_rank)
-    random.seed(seed_for_rank)
 
     if args.fast_dev_run:
         cfg.train.train_epoch = 0

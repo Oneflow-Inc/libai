@@ -283,7 +283,7 @@ class EagerTrainer(TrainerBase):
         if (self.iter + 1) % self.grad_acc_steps == 0:
             self.optimizer.clip_grad()
             self.optimizer.step()
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
 
 
 class GraphTrainer(TrainerBase):

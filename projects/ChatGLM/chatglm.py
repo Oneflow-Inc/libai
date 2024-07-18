@@ -22,8 +22,8 @@ def apply_rotary_pos_emb(x: flow.Tensor, rope_cache: flow.Tensor) -> flow.Tensor
     x, x_pass = x[..., :rot_dim], x[..., rot_dim:]
     # truncate to support variable sizes
     rope_cache = rope_cache[:sq]
-    xshaped = x.reshape(sq, -1, np, rot_dim // 2, 2)
-    rope_cache = rope_cache.view(sq, -1, 1, xshaped.size(3), 2)
+    xshaped = dist.convert_to_distributed_default_setting(x.reshape(sq, -1, np, rot_dim // 2, 2))
+    rope_cache = dist.convert_to_distributed_default_setting(rope_cache.view(sq, -1, 1, xshaped.size(3), 2))
     x_out2 = flow.cat(
         [
             (xshaped[..., 0] * rope_cache[..., 0] - xshaped[..., 1] * rope_cache[..., 1]).unsqueeze(
@@ -872,6 +872,9 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
         use_cache = use_cache if use_cache is not None else self.cfg.use_cache
         return_dict = return_dict if return_dict is not None else self.cfg.use_return_dict
 
+        input_ids = dist.convert_to_distributed_default_setting(input_ids)
+        labels = dist.convert_to_distributed_default_setting(labels)
+        
         transformer_outputs = self.transformer(
             input_ids=input_ids,
             position_ids=position_ids,

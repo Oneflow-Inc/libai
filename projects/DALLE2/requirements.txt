@@ -1,4 +1,0 @@
-ftfy
-resize_right
-einops
-kornia

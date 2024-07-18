@@ -94,7 +94,7 @@ class TextGenerationPipeline(BasePipeline):
 
         return preprocess_params, forward_params, postprocess_params
 
-    def preprocess(self, sentence: str | list, **kwargs) -> dict:
+    def preprocess(self, sentence, **kwargs) -> dict:
         #
         if type(sentence) is str:
             inputs = {
@@ -162,7 +162,8 @@ if __name__ == "__main__":
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=28,
-        model_path=os.environ["CHATGLM_HF_DIR"],
+        device_type='xpu',
+        model_path='/root/models/chatglm/chatglm2-6b',
         mode="huggingface",
     )
     pipeline.model = pipeline.model.half()

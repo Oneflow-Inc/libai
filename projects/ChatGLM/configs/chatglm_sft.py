@@ -6,9 +6,9 @@ from libai.evaluation import PPLEvaluator
 from libai.scheduler import WarmupExponentialLR
 from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
 
-from configs.common.train import train
-from configs.common.models.graph import graph
-from configs.common.optim import optim
+from configs.train import train
+from configs.graph import graph
+from configs.optim import optim
 
 from projects.ChatGLM.configs.chatglm_config import cfg
 from projects.ChatGLM.dataset import ChatGLMTrainDataset
@@ -21,11 +21,11 @@ learning_rate = 2e-5
 max_source_len = 128
 max_target_len = 128
 max_length = 256
-dataset_path = os.environ["DATA_DIR"]
-pretrained_model_path = os.environ["CHATGLM_HF_DIR"]
+dataset_path = '/root/data/libai_xpu_alpaca'
+pretrained_model_path = '/root/models/chatglm/chatglm2-6b'
 
 # graph & optim
-graph["enabled"] = True
+graph["enabled"] = False
 
 optim.update(
     dict(
@@ -76,12 +76,13 @@ train.update(
         test_micro_batch_size=1,
         train_epoch=3,
         train_iter=1,
-        log_period=10,
+        log_period=1,
         warmup_ratio=2 / 5,
         num_accumulation_steps=8,
         rdma_enabled=True,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
+        input_placement_device='xpu',
         checkpointer=dict(
             period=5000,
             max_to_keep=1,
@@ -89,8 +90,9 @@ train.update(
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=4,
+            pipeline_parallel_size=1,
             pipeline_num_layers=cfg.num_layers,
+            device_type='xpu',
         ),
         evaluation=dict(
             enabled=False,

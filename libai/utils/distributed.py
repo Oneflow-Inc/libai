@@ -228,7 +228,7 @@ class _DistributeUtil(object):
         return self._device_type
 
     def set_device_type(self, device_type):
-        assert device_type in ["cpu", "cuda"], f"not supported for {device_type}"
+        assert device_type in ["cpu", "cuda", "xpu"], f"not supported for {device_type}"
         self._device_type = device_type
 
     def get_layer_ranks(self, layer_idx):
@@ -438,7 +438,7 @@ def convert_to_distributed_default_setting(t):
 def ttol(tensor, pure_local=False, ranks=None):
     """Global tensor to local tensor."""
     if tensor.is_global:
-        placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
+        placement = tensor.placement if not ranks else flow.placement(tensor.placement.type, ranks)
         if pure_local:
             tensor = tensor.to_global(placement=placement).to_local()
         else:

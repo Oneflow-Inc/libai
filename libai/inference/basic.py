@@ -41,6 +41,7 @@ class BasePipeline(metaclass=ABCMeta):
         pipeline_parallel=None,
         pipeline_stage_id=None,
         pipeline_num_layers=None,
+        device_type='xpu',
         model_path=None,
         mode="libai",
         **kwargs,
@@ -59,6 +60,7 @@ class BasePipeline(metaclass=ABCMeta):
             pipeline_parallel,
             pipeline_stage_id,
             pipeline_num_layers,
+            device_type,
         )
         dist.setup_dist_util(self.cfg.train.dist)
         logger.info(self.cfg.train.dist)
@@ -90,11 +92,13 @@ class BasePipeline(metaclass=ABCMeta):
         pipeline_parallel=1,
         pipeline_stage_id=None,
         pipeline_num_layers=None,
+        device_type='cuda',
     ):
         self.cfg.train.dist.data_parallel_size = data_parallel
         self.cfg.train.dist.tensor_parallel_size = tensor_parallel
         self.cfg.train.dist.pipeline_parallel_size = pipeline_parallel
         self.cfg.train.dist.custom_pipeline_stage_id = pipeline_stage_id
+        self.cfg.train.dist.device_type = device_type
         if pipeline_num_layers is not None:
             self.cfg.train.dist.pipeline_num_layers = pipeline_num_layers
 

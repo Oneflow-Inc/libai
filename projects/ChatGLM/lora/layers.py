@@ -41,18 +41,18 @@ class BaseTunerLayer(ABC):
     active_adapter = None
 
     # All names of layers that may contain adapter (trainable) weights
-    adapter_layer_names: tuple[str] = ()
+    adapter_layer_names: tuple = ()
     # All names of other parameters that may contain adapter-related parameters
-    other_param_names: tuple[str] = ()
+    other_param_names: tuple = ()
 
     # indicates whether all adapters should be disabled
     _disable_adapters: bool = False
 
     # the currently active adapter(s)
-    _active_adapter: str | list[str] = "default"
+    _active_adapter: str = "default"
 
     # List all merged adapters
-    merged_adapters: list[str] = []
+    merged_adapters: list = []
 
     def get_base_layer(self) -> nn.Module:
         """
@@ -72,7 +72,7 @@ class BaseTunerLayer(ABC):
         weight = base_layer.weight
         return weight
 
-    def merge(self, safe_merge: bool = False, adapter_names: Optional[list[str]] = None) -> None:
+    def merge(self, safe_merge: bool = False, adapter_names = None) -> None:
         raise NotImplementedError
 
     def unmerge(self) -> None:
@@ -119,7 +119,7 @@ class BaseTunerLayer(ABC):
                 layer.requires_grad_(False)
             self._disable_adapters = True
 
-    def set_adapter(self, adapter_names: str | list[str]) -> None:
+    def set_adapter(self, adapter_names) -> None:
         """Set the active adapter(s).
 
         Args:
@@ -142,7 +142,7 @@ class BaseTunerLayer(ABC):
 
         self._active_adapter = adapter_names
 
-    def _all_available_adapter_names(self) -> list[str]:
+    def _all_available_adapter_names(self) -> list:
         """Return a sorted list of all available adapter names"""
         adapter_names = set()
         for name in self.adapter_layer_names + self.other_param_names:

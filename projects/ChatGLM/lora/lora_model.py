@@ -50,7 +50,7 @@ class BaseTuner(nn.Module, ABC):
         self.inject_adapter(self.model, adapter_name)
 
     @property
-    def active_adapters(self) -> list[str]:
+    def active_adapters(self) -> list:
         if isinstance(self.active_adapter, str):
             return [self.active_adapter]
         # is already a list of str
@@ -192,7 +192,7 @@ class BaseTuner(nn.Module, ABC):
                 if adapter_name in n:
                     p.requires_grad = False
 
-    def merge_adapter(self, safe_merge=False, adapter_names: Optional[list[str]] = None) -> None:
+    def merge_adapter(self, safe_merge=False, adapter_names = None) -> None:
         """
         This method merges the adapter layers into the base model.
 
@@ -404,7 +404,7 @@ class LoraModel(BaseTuner):
                 warnings.warn(msg)
         self._set_adapter_layers(enabled=False)
 
-    def set_adapter(self, adapter_name: str | list[str]) -> None:
+    def set_adapter(self, adapter_name) -> None:
         """Set the active adapter(s).
 
         Args:
