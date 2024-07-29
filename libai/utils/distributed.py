@@ -457,9 +457,9 @@ def tton(tensor, local_only=False, ranks=None):
     return tensor.numpy()
 
 
-def tensor_to_rank0(tensor, device="cuda", to_local=False):
+def tensor_to_rank0(tensor, device="xpu", to_local=False):
     """Global tensor to rank0."""
-    assert device in ["cpu", "cuda"], f"not supported for device:{device}"
+    assert device in ["cpu", "xpu"], f"not supported for device:{device}"
     if tensor.is_global:
         # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
         placement = flow.placement(device, ranks=[0] if tensor.placement.ranks.ndim == 1 else [[0]])

@@ -165,7 +165,7 @@ if __name__ == "__main__":
         pipeline_parallel=1,
         pipeline_num_layers=28,
         device_type='xpu',
-        model_path='/root/models/chatglm/chatglm2-6b',
+        model_path='/root/models/chatglm2-6b',
         mode="huggingface",
     )
     pipeline.model = pipeline.model.half()

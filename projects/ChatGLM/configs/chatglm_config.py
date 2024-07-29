@@ -9,6 +9,7 @@ from configs.train import train
 
 cfg = dict(
     # Model
+    model_type='chatglm',
     add_bias_linear=False,
     add_qkv_bias=True,
     apply_query_key_layer_scaling=True,
@@ -61,7 +62,7 @@ cfg = dict(
     output_scores=False,
     output_hidden_states=False,
     # train
-    pretrained_model_path='/root/models/chatglm/chatglm2-6b',
+    pretrained_model_path='/root/models/chatglm2-6b',
     # lora_cfg
     lora_enable=False,
     lora_cfg=dict(
@@ -87,5 +88,5 @@ model = LazyCall(ChatGLMForConditionalGeneration)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(ChatGLMTokenizer)(
-    vocab_file="/root/models/chatglm/chatglm2-6b/tokenizer.model"
+    vocab_file=cfg.pretrained_model_path+"/tokenizer.model"
 )

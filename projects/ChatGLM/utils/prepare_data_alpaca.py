@@ -15,7 +15,7 @@ logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path(os.environ["DATA_DIR"]),
+    destination_path: Path = Path("./data/libai_xpu_alpaca"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,
     data_file_name: str = "alpaca_data_cleaned_archive.json",

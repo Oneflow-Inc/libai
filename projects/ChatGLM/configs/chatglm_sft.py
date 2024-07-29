@@ -22,7 +22,7 @@ max_source_len = 128
 max_target_len = 128
 max_length = 256
 dataset_path = './data/libai_xpu_alpaca'
-pretrained_model_path = '/root/models/chatglm/chatglm2-6b'
+pretrained_model_path = '/root/models/chatglm2-6b'
 
 # graph & optim
 graph["enabled"] = False

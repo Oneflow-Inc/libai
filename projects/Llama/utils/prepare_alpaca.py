@@ -19,14 +19,14 @@ logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("alpaca_data"),
-    checkpoint_dir: Path = Path("meta-llama/Llama-2-7b-hf"),
+    destination_path: Path = Path("./data/libai_xpu_alpaca"),
+    checkpoint_dir: Path = Path("/root/models/Llama-2-7b-chat-hf"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
     data_file_name: str = "alpaca_data_cleaned_archive.json",
     data_file_url: str = "https://raw.githubusercontent.com/tloen/alpaca-lora/main/alpaca_data_cleaned_archive.json",  # noqa
-    ignore_index: int = -1,
+    ignore_index: int = -100,
     max_seq_length: Optional[int] = 512,
 ) -> None:
     """Prepare the Alpaca dataset for instruction tuning.
