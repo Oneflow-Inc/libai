@@ -438,7 +438,7 @@ def convert_to_distributed_default_setting(t):
 def ttol(tensor, pure_local=False, ranks=None):
     """Global tensor to local tensor."""
     if tensor.is_global:
-        placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
+        placement = tensor.placement if not ranks else flow.placement(tensor.placement.type, ranks)
         if pure_local:
             tensor = tensor.to_global(placement=placement).to_local()
         else:
