@@ -13,6 +13,11 @@ loader_mapping_models = dict(
     qwen2=dict(
         loader_prefix="projects.Qwen2.utils.qwen_loader",
         huggingface_loader="Qwen2LoaderHuggerFace",
+    ),
+
+    aquila=dict(
+        loader_prefix="projects.Aquila.utils.aquila_loader",
+        huggingface_loader="AquilaLoaderHuggerFace",
     )
     
 )
