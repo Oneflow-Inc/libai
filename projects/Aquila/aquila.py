@@ -269,7 +269,6 @@ class AquilaCasualMask(nn.Module):
                 inverted_attention_mask.to(flow.bool), 
                 flow.finfo(casual_mask.dtype).min
             )
-            print(inverted_attention_mask)
             inverted_attention_mask = inverted_attention_mask.to_global(placement=casual_mask.placement)
             casual_mask = casual_mask + inverted_attention_mask
         if input_dtype is not None:
