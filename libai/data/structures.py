@@ -99,7 +99,7 @@ class DistTensorData:
             assert (
                 data.placement_idx == placement_idx
             ), f"placement_idx is not equal, {data.placement_idx} != {placement_idx}"
-            tensors.append(data.tensor)
+            tensors.append(data.tensor.to(flow.int64))
         tensors = flow.stack(tensors, dim=0)
         ret = DistTensorData(tensors, sbp_list=sbp_list, placement_idx=placement_idx)
         return ret
