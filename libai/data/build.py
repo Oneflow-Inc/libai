@@ -153,7 +153,7 @@ def build_nlp_train_loader(
     train_batch_size,
     test_batch_size=None,
     sampler=LazyCall(CyclicSampler)(shuffle=True),
-    num_workers=4,
+    num_workers=0,
     consumed_samples=0,
     seed=0,
     collate_fn=None,
@@ -223,7 +223,7 @@ def build_nlp_test_loader(
     dataset,
     test_batch_size,
     sampler=LazyCall(SingleRoundSampler)(shuffle=False, drop_last=False),
-    num_workers=4,
+    num_workers=0,
     seed=0,
     collate_fn=None,
 ):

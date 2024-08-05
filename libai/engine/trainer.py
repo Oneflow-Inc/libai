@@ -132,6 +132,7 @@ class TrainerBase:
         Args:
             start_iter, max_iter (int): See docs above
         """
+        # start_iter = 9980 # for profiling
         logger = logging.getLogger(__name__)
         logger.info("Starting training from iteration {}".format(start_iter))
 
