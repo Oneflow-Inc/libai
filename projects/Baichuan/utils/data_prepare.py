@@ -12,14 +12,14 @@ from tqdm import tqdm
 
 from libai.config import instantiate
 from libai.utils.logger import setup_logger
-from projects.Aquila.configs.aquila_config import tokenization
+from projects.Baichuan.configs.baichuan_config import tokenization
 
 logger = setup_logger()
 
 
 def prepare(
     destination_path: Path = Path("./data/libai_xpu_alpaca"),
-    checkpoint_dir: Path = Path("/root/models/Aquila-7B"),
+    checkpoint_dir: Path = Path("/root/models/Baichuan2-7B-Chat"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
@@ -110,13 +110,11 @@ def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
     """
     full_prompt = generate_prompt(example)
     full_prompt_and_response = full_prompt + example["output"]
-    
-    prompt = tokenizer.encode(full_prompt, device="cpu")
-    prompt = flow.tensor(prompt, dtype=flow.int64, device="cpu")
-    example = tokenizer.encode(
-        full_prompt_and_response, device="cpu"
-    )
-    example = flow.tensor(example, dtype=flow.int64, device="cpu")
+
+    prompt = tokenizer.tokenize(full_prompt, add_bos=True, add_eos=False, device="cpu")[0]
+    example = tokenizer.tokenize(
+        full_prompt_and_response, add_bos=True, add_eos=True, device="cpu"
+    )[0]
 
     padding = max_length - example.shape[0]
     if padding > 0:

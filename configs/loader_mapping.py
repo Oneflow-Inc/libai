@@ -18,6 +18,11 @@ loader_mapping_models = dict(
     aquila=dict(
         loader_prefix="projects.Aquila.utils.aquila_loader",
         huggingface_loader="AquilaLoaderHuggerFace",
+    ),
+    
+    baichuan=dict(
+        loader_prefix="projects.Baichuan.utils.baichuan_loader",
+        huggingface_loader="BaichuanLoaderHuggerFace"
     )
     
 )
