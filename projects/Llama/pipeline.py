@@ -118,6 +118,10 @@ if __name__ == "__main__":
     text = [
         "Give three tips for staying healthy.",
     ]
+    import time
+    start_time = time.time()
     output = pipeline(inputs=text)
+    end_time = time.time()
     if dist.is_main_process():
         print(output)
+        print(f"Execution time: {end_time - start_time:.2f} seconds")

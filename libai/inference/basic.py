@@ -61,7 +61,6 @@ class BasePipeline(metaclass=ABCMeta):
             pipeline_stage_id,
             pipeline_num_layers,
             device_type,
-            device_type='npu',
         )
         dist.setup_dist_util(self.cfg.train.dist)
         logger.info(self.cfg.train.dist)
@@ -93,6 +92,7 @@ class BasePipeline(metaclass=ABCMeta):
         pipeline_parallel=1,
         pipeline_stage_id=None,
         pipeline_num_layers=None,
+        device_type="npu",
     ):
         self.cfg.train.dist.data_parallel_size = data_parallel
         self.cfg.train.dist.tensor_parallel_size = tensor_parallel
