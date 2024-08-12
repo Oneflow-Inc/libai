@@ -228,7 +228,7 @@ class _DistributeUtil(object):
         return self._device_type
 
     def set_device_type(self, device_type):
-        assert device_type in ["cpu", "cuda"], f"not supported for {device_type}"
+        assert device_type in ["cpu", "cuda", "npu"], f"not supported for {device_type}"
         self._device_type = device_type
 
     def get_layer_ranks(self, layer_idx):
@@ -471,7 +471,7 @@ def tton(tensor, local_only=False, ranks=None):
     return tensor.numpy()
 
 
-def tensor_to_rank0(tensor, device="cuda", to_local=False):
+def tensor_to_rank0(tensor, device="npu", to_local=False):
     """Global tensor to rank0."""
     assert device in ["cpu", "cuda", "npu"], f"not supported for device:{device}"
     if tensor.is_global:

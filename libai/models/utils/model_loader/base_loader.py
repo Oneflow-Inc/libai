@@ -494,6 +494,9 @@ class ModelLoaderHuggerFace(ModelLoader):
             merged_state_dict = {}
             for file in state_dict_file:
                 state_dict = torch.load(file, map_location="cpu")
+                # NOTE: align to libai oneflow_xpu
+                for k in state_dict.keys():
+                    state_dict[k] = state_dict[k].to(torch.float)
                 merged_state_dict.update(state_dict)
             return merged_state_dict
 
