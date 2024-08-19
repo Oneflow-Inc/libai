@@ -16,17 +16,58 @@
 import logging
 import os
 import random
+import importlib
 import sys
 
 import numpy as np
 import oneflow as flow
+import oneflow_npu
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+import libai.utils.distributed as dist
+
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+from configs.loader_mapping import loader_mapping_models as mapping
 
-logger = logging.getLogger("libai." + __name__)
+
+def build_model(cfg):
+    model_arguments=mapping[cfg.cfg.model_type]
+    Loader = getattr(
+        importlib.import_module(model_arguments['loader_prefix']),
+        model_arguments['huggingface_loader'],
+    )
+    model_loader = Loader(
+        cfg,
+        cfg.cfg,
+        cfg.cfg.pretrained_model_path,
+    )
+    model = model_loader.load()
+    return model
+
+class Trainer(DefaultTrainer):
+    @classmethod
+    def build_model(cls, cfg):
+        assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
+        # Set model fp16 option because of embedding layer `white_identity` manual
+        # insert for amp training if provided.
+        if try_get_key(cfg.model, "cfg.amp_enabled") is not None:
+            cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        # In case some model define without cfg keyword.
+        elif try_get_key(cfg.model, "amp_enabled") is not None:
+            cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        model = build_model(cfg.model)
+        logger = logging.getLogger(__name__)
+        logger.info("Model:\n{}".format(model))
+        model._apply(dist.convert_to_distributed_default_setting)
+
+        if cfg.train.train_with_fp16:
+           model = model.to(flow.float16)
+        #    flow.cuda.empty_cache()
+        '''for param in model.named_parameters():
+            print(param[1].dtype)'''
+
+        return model
 
 
 def main(args):
@@ -34,11 +75,6 @@ def main(args):
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
 
-    seed_for_rank = cfg.train.seed + flow.env.get_rank()
-    flow.manual_seed(seed_for_rank)
-    flow.cuda.manual_seed(seed_for_rank)
-    np.random.seed(seed_for_rank)
-    random.seed(seed_for_rank)
 
     if args.fast_dev_run:
         cfg.train.train_epoch = 0
@@ -58,11 +94,12 @@ def main(args):
             model = DefaultTrainer.build_graph(cfg, model, is_train=False)
         test_loader = DefaultTrainer.build_test_loader(cfg, tokenizer)
         if len(test_loader) == 0:
+            logger = logging.getLogger(__name__)
             logger.info("No dataset in dataloader.test, please set dataset for dataloader.test")
         _ = DefaultTrainer.test(cfg, test_loader, model)
         return
 
-    trainer = DefaultTrainer(cfg)
+    trainer = Trainer(cfg)
     return trainer.train()
 
 

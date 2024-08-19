@@ -102,8 +102,12 @@ class GraphBase(nn.Graph):
     def build(self, **kwargs):
         if self.is_train:
             placement_sbp_dict = (
+                # dict(
+                #     placement=flow.env.all_device_placement("cuda"),
+                #     sbp=flow.sbp.split(0),
+                # )
                 dict(
-                    placement=flow.env.all_device_placement("cuda"),
+                    placement=flow.env.all_device_placement("npu"),
                     sbp=flow.sbp.split(0),
                 )
                 if self.global_mode.enabled

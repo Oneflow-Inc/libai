@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import oneflow_npu
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 
@@ -110,13 +110,18 @@ if __name__ == "__main__":
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path="",
-        mode="libai",
+        device_type='npu',
+        model_path='/data0/hf_models/Llama-2-7b-chat-hf',
+        mode="huggingface",
     )
 
     text = [
         "Give three tips for staying healthy.",
     ]
+    import time
+    start_time = time.time()
     output = pipeline(inputs=text)
+    end_time = time.time()
     if dist.is_main_process():
         print(output)
+        print(f"Execution time: {end_time - start_time:.2f} seconds")
