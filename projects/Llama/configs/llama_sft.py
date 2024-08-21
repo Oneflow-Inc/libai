@@ -19,10 +19,8 @@ from projects.Llama.llama import LlamaForCausalLM
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-# dataset_path = "alpaca_data"
-# pretrained_model_path = "meta-llama/Llama-2-7b-hf"
-dataset_path = "./data/libai_npu_alpaca"
-pretrained_model_path = "/data0/hf_models/Llama-2-7b-chat-hf"
+dataset_path = "alpaca_data"
+pretrained_model_path = "meta-llama/Llama-2-7b-hf"
 
 # graph & optim
 graph["enabled"] = False
@@ -64,18 +62,16 @@ dataloader.test = [
 train.update(
     dict(
         output_dir="./sft_result",
-        train_micro_batch_size=1,
+        train_micro_batch_size=4,
         test_micro_batch_size=1,
         train_epoch=3,
         train_iter=1,
         log_period=10,
         warmup_ratio=1 / 3,
         num_accumulation_steps=8,
-        rdma_enabled=True,
-        amp=dict(enabled=False),
-        train_with_fp16=True,
+        rdma_enabled=False,
+        amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
-        input_placement_device='npu',
         checkpointer=dict(
             period=5000,
             max_to_keep=20,
@@ -83,9 +79,8 @@ train.update(
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=1,
+            pipeline_parallel_size=8,
             pipeline_num_layers=cfg.hidden_layers,
-            device_type='npu',
         ),
         evaluation=dict(
             enabled=True,
