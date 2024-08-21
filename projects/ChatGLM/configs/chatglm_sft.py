@@ -21,11 +21,14 @@ learning_rate = 2e-5
 max_source_len = 128
 max_target_len = 128
 max_length = 256
-dataset_path = os.environ["DATA_DIR"]
-pretrained_model_path = os.environ["CHATGLM_HF_DIR"]
+# dataset_path = os.environ["DATA_DIR"]
+# pretrained_model_path = os.environ["CHATGLM_HF_DIR"]
+dataset_path = './data/libai_xpu_alpaca'
+pretrained_model_path = '/data0/hf_models/chatglm/chatglm2-6b'
 
 # graph & optim
-graph["enabled"] = True
+# graph["enabled"] = True
+graph["enabled"] = False
 
 optim.update(
     dict(
@@ -76,12 +79,16 @@ train.update(
         test_micro_batch_size=1,
         train_epoch=3,
         train_iter=1,
-        log_period=10,
+        # log_period=10,
+        log_period=1,
         warmup_ratio=2 / 5,
         num_accumulation_steps=8,
         rdma_enabled=True,
-        amp=dict(enabled=True),
+        # amp=dict(enabled=True),
+        amp=dict(enabled=False),
+        train_with_fp16=True,
         activation_checkpoint=dict(enabled=True),
+        input_placement_device='npu',
         checkpointer=dict(
             period=5000,
             max_to_keep=1,
@@ -89,8 +96,10 @@ train.update(
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=4,
+            # pipeline_parallel_size=4,
+            pipeline_parallel_size=1,
             pipeline_num_layers=cfg.num_layers,
+            device_type='npu',
         ),
         evaluation=dict(
             enabled=False,

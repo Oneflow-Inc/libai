@@ -341,9 +341,10 @@ class EvalHook(HookBase):
     def after_step(self):
         next_iter = self.trainer.iter + 1
         if self._period > 0 and next_iter % self._period == 0:
-            # do the last eval in after_train
-            if next_iter != self.trainer.max_iter:
-                self._do_eval()
+            # # do the last eval in after_train
+            # if next_iter != self.trainer.max_iter:
+            #     self._do_eval()
+            pass
 
     def after_train(self):
         # This condition is to prevent the eval from running after a failed training

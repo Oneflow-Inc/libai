@@ -228,7 +228,7 @@ class _DistributeUtil(object):
         return self._device_type
 
     def set_device_type(self, device_type):
-        assert device_type in ["cpu", "cuda"], f"not supported for {device_type}"
+        assert device_type in ["cpu", "cuda", "npu"], f"not supported for {device_type}"
         self._device_type = device_type
 
     def get_layer_ranks(self, layer_idx):
@@ -431,6 +431,20 @@ def convert_to_distributed_default_setting(t):
         )
     else:
         dist_util = get_dist_util()
+        if dist_util.device_type != "npu":
+            from omegaconf import DictConfig
+
+            setup_dist_util(
+                DictConfig(
+                    dict(
+                        data_parallel_size=1,
+                        tensor_parallel_size=1,
+                        pipeline_parallel_size=1,
+                        device_type="npu",
+                    )
+                )
+            )
+            dist_util = get_dist_util()
         device_type = dist_util.device_type
         return t.to_global(placement=flow.placement(device_type, ranks=t.placement.ranks))
 
@@ -438,7 +452,7 @@ def convert_to_distributed_default_setting(t):
 def ttol(tensor, pure_local=False, ranks=None):
     """Global tensor to local tensor."""
     if tensor.is_global:
-        placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
+        placement = tensor.placement if not ranks else flow.placement(tensor.placement.type, ranks)
         if pure_local:
             tensor = tensor.to_global(placement=placement).to_local()
         else:
@@ -457,9 +471,9 @@ def tton(tensor, local_only=False, ranks=None):
     return tensor.numpy()
 
 
-def tensor_to_rank0(tensor, device="cuda", to_local=False):
+def tensor_to_rank0(tensor, device="npu", to_local=False):
     """Global tensor to rank0."""
-    assert device in ["cpu", "cuda"], f"not supported for device:{device}"
+    assert device in ["cpu", "cuda", "npu"], f"not supported for device:{device}"
     if tensor.is_global:
         # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
         placement = flow.placement(device, ranks=[0] if tensor.placement.ranks.ndim == 1 else [[0]])

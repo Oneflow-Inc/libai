@@ -384,6 +384,10 @@ class ModelLoaderHuggerFace(ModelLoader):
         Returns:
             flow.Tensor: The target tensor.
         """
+        import torch
+        if tensor.dtype == torch.bfloat16:
+            data = tensor.detach().half().cpu().numpy()
+            return flow.Tensor(data)
         return flow.Tensor(tensor.detach().cpu().numpy())
 
     def _convert_tensors(self, torch_state_dict):
@@ -490,6 +494,9 @@ class ModelLoaderHuggerFace(ModelLoader):
             merged_state_dict = {}
             for file in state_dict_file:
                 state_dict = torch.load(file, map_location="cpu")
+                # NOTE: align to libai oneflow_xpu
+                for k in state_dict.keys():
+                    state_dict[k] = state_dict[k].to(torch.float)
                 merged_state_dict.update(state_dict)
             return merged_state_dict
 
