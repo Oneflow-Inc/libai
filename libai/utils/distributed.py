@@ -292,11 +292,7 @@ def get_dist_util():
 
         setup_dist_util(
             DictConfig(
-                dict(
-                    data_parallel_size=1,
-                    tensor_parallel_size=1,
-                    pipeline_parallel_size=1,
-                )
+                dict(data_parallel_size=1, tensor_parallel_size=1, pipeline_parallel_size=1,)
             )
         )
     return _DIST_UTIL
@@ -316,10 +312,7 @@ def get_layer_placement(layer_idx, device_type=None):
     device_type = dist_util.device_type if device_type is None else device_type
     if not flow.cuda.is_available() and device_type == "cuda":
         device_type = "cpu"
-    return flow.placement(
-        device_type,
-        dist_util.get_layer_ranks(layer_idx),
-    )
+    return flow.placement(device_type, dist_util.get_layer_ranks(layer_idx),)
 
 
 def get_nd_sbp(sbp_list):
