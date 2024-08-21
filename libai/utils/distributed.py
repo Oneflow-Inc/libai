@@ -228,7 +228,7 @@ class _DistributeUtil(object):
         return self._device_type
 
     def set_device_type(self, device_type):
-        #assert device in ["cpu", "cuda"], f"not supported for device:{device}"
+        # assert device in ["cpu", "cuda"], f"not supported for device:{device}"
         self._device_type = device_type
 
     def get_layer_ranks(self, layer_idx):
@@ -459,7 +459,7 @@ def tton(tensor, local_only=False, ranks=None):
 
 def tensor_to_rank0(tensor, device="cuda", to_local=False):
     """Global tensor to rank0."""
-    #assert device in ["cpu", "cuda"], f"not supported for device:{device}"
+    # assert device in ["cpu", "cuda"], f"not supported for device:{device}"
     if tensor.is_global:
         # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
         placement = flow.placement(device, ranks=[0] if tensor.placement.ranks.ndim == 1 else [[0]])
