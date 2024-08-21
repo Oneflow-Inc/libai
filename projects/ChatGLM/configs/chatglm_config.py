@@ -5,10 +5,11 @@ from libai.config import LazyCall
 from projects.ChatGLM.chatglm import ChatGLMForConditionalGeneration
 from projects.ChatGLM.tokenizer import ChatGLMTokenizer
 from configs.common.train import train
-
+# from configs.train import train
 
 cfg = dict(
     # Model
+    model_type='chatglm',
     add_bias_linear=False,
     add_qkv_bias=True,
     apply_query_key_layer_scaling=True,
@@ -61,7 +62,8 @@ cfg = dict(
     output_scores=False,
     output_hidden_states=False,
     # train
-    pretrained_model_path=os.environ["CHATGLM_HF_DIR"],
+    # pretrained_model_path=os.environ["CHATGLM_HF_DIR"],
+    pretrained_model_path='/data0/hf_models/chatglm/chatglm2-6b',
     # lora_cfg
     lora_enable=False,
     lora_cfg=dict(
@@ -87,5 +89,6 @@ model = LazyCall(ChatGLMForConditionalGeneration)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(ChatGLMTokenizer)(
-    vocab_file=f"{os.environ['CHATGLM_HF_DIR']}/tokenizer.model"
+    # vocab_file=f"{os.environ['CHATGLM_HF_DIR']}/tokenizer.model"
+    vocab_file=cfg.pretrained_model_path+"/tokenizer.model"
 )

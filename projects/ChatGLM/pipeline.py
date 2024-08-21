@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-
+import oneflow_npu
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 
@@ -94,7 +94,8 @@ class TextGenerationPipeline(BasePipeline):
 
         return preprocess_params, forward_params, postprocess_params
 
-    def preprocess(self, sentence: str | list, **kwargs) -> dict:
+    # def preprocess(self, sentence: str | list, **kwargs) -> dict:
+    def preprocess(self, sentence, **kwargs) -> dict:
         #
         if type(sentence) is str:
             inputs = {
@@ -162,7 +163,9 @@ if __name__ == "__main__":
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=28,
-        model_path=os.environ["CHATGLM_HF_DIR"],
+        # model_path=os.environ["CHATGLM_HF_DIR"],
+        device_type='npu',
+        model_path='/data0/hf_models/chatglm/chatglm2-6b',
         mode="huggingface",
     )
     pipeline.model = pipeline.model.half()

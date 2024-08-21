@@ -24,7 +24,8 @@ from libai.utils import distributed as dist
 from libai.utils.logger import setup_logger
 
 IGNORE_INDEX = -100
-logger = setup_logger()
+# logger = setup_logger()
+logger = setup_logger(name=__name__)
 
 
 class ChatGLMTrainDataset(Dataset):
