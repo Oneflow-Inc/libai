@@ -96,6 +96,7 @@ class BeamSearchScorer(BeamScorer):
         do_early_stopping: Optional[bool] = False,
         num_beam_hyps_to_keep: Optional[int] = 1,
         num_beam_groups: Optional[int] = 1,
+        device: Optional[str] = "cuda",
         **kwargs,
     ):
         self.num_beams = num_beams
@@ -119,7 +120,7 @@ class BeamSearchScorer(BeamScorer):
             [False for _ in range(batch_size)],
             dtype=flow.bool,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=flow.placement(device, list(range(dist.get_world_size()))),
         )
 
         if not isinstance(num_beams, int) or num_beams <= 1:
@@ -159,6 +160,7 @@ class BeamSearchScorer(BeamScorer):
         pad_token_id: Optional[int] = None,
         eos_token_id: Optional[int] = None,
         beam_indices: Optional[flow.Tensor] = None,
+        device: Optional[str] = "cuda",
     ) -> Tuple[flow.Tensor]:
         cur_len = input_ids.shape[-1]
         batch_size = len(self._beam_hyps)
@@ -177,19 +179,19 @@ class BeamSearchScorer(BeamScorer):
             (batch_size, self.group_size),
             dtype=next_scores.dtype,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=flow.placement(device, list(range(dist.get_world_size()))),
         )
         next_beam_tokens = flow.zeros(
             (batch_size, self.group_size),
             dtype=next_tokens.dtype,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=flow.placement(device, list(range(dist.get_world_size()))),
         )
         next_beam_indices = flow.zeros(
             (batch_size, self.group_size),
             dtype=next_indices.dtype,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=flow.placement(device, list(range(dist.get_world_size()))),
         )
 
         for batch_idx, beam_hyp in enumerate(self._beam_hyps):
@@ -274,6 +276,7 @@ class BeamSearchScorer(BeamScorer):
         pad_token_id: Optional[int] = None,
         eos_token_id: Optional[int] = None,
         beam_indices: Optional[flow.Tensor] = None,
+        device: Optional[str] = "cuda",
     ):
         batch_size = len(self._beam_hyps)
         # finalize all open beam hypotheses and add to generated hypotheses
@@ -303,7 +306,7 @@ class BeamSearchScorer(BeamScorer):
             batch_size * self.num_beam_hyps_to_keep,
             dtype=flow.float32,
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
-            placement=flow.placement("cuda", list(range(dist.get_world_size()))),
+            placement=flow.placement(device, list(range(dist.get_world_size()))),
         )
 
         # retrieve best hypotheses
