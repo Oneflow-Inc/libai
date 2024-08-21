@@ -784,7 +784,7 @@ class PreTrainedTokenizer(object):
                 sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
                 placement = kwargs.get("placement")
                 if placement is None:
-                    placement = flow.placement("xpu", list(range(dist.get_world_size())))
+                    placement = flow.placement("cuda", list(range(dist.get_world_size())))
                 return_token_ids = flow.tensor(
                     token_ids, sbp=sbp, placement=placement, dtype=flow.long
                 )

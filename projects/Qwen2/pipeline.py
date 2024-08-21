@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import oneflow_xpu
+#import oneflow_xpu
 
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        device_type='xpu',
+        device_type='cuda',
         model_path='/root/models/Qwen1.5-7B-Chat',
         mode="huggingface",
     )
