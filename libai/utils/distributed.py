@@ -228,7 +228,13 @@ class _DistributeUtil(object):
         return self._device_type
 
     def set_device_type(self, device_type):
-        assert device_type in ["cpu", "cuda"], f"not supported for {device_type}"
+        assert device_type in [
+            "cpu",
+            "cuda",
+            "npu",
+            "xpu",
+            "mlu",
+        ], f"not supported for {device_type}"
         self._device_type = device_type
 
     def get_layer_ranks(self, layer_idx):
