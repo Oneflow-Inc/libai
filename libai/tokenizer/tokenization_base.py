@@ -774,7 +774,9 @@ class PreTrainedTokenizer(object):
             ids.append(self._convert_token_to_id_with_added_voc(token))
         return ids
 
-    def convert_to_tensors(self, token_ids, return_tensors=None, is_global=False, **kwargs):
+    def convert_to_tensors(
+        self, token_ids, return_tensors=None, is_global=False, device="cuda", **kwargs
+    ):
         if return_tensors is None:
             return_token_ids = token_ids
         elif return_tensors == "of":
@@ -783,7 +785,7 @@ class PreTrainedTokenizer(object):
             elif is_global:
                 sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
                 placement = kwargs.get(
-                    "placement", flow.placement("cuda", list(range(dist.get_world_size())))
+                    "placement", flow.placement(device, list(range(dist.get_world_size())))
                 )
                 return_token_ids = flow.tensor(
                     token_ids, sbp=sbp, placement=placement, dtype=flow.long
