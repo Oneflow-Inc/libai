@@ -431,7 +431,7 @@ def convert_to_distributed_default_setting(t):
         )
     else:
         dist_util = get_dist_util()
-        if dist_util.device_type != "npu":
+        if dist_util.device_type != "cuda":
             from omegaconf import DictConfig
 
             setup_dist_util(
@@ -440,7 +440,7 @@ def convert_to_distributed_default_setting(t):
                         data_parallel_size=1,
                         tensor_parallel_size=1,
                         pipeline_parallel_size=1,
-                        device_type="npu",
+                        device_type="cuda",
                     )
                 )
             )
@@ -471,7 +471,7 @@ def tton(tensor, local_only=False, ranks=None):
     return tensor.numpy()
 
 
-def tensor_to_rank0(tensor, device="npu", to_local=False):
+def tensor_to_rank0(tensor, device="cuda", to_local=False):
     """Global tensor to rank0."""
     assert device in ["cpu", "cuda", "npu"], f"not supported for device:{device}"
     if tensor.is_global:

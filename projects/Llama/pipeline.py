@@ -110,8 +110,9 @@ if __name__ == "__main__":
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path="",
-        mode="libai",
+        model_path="/home/zengqunhong/hf_models/hf_models",
+        mode="huggingface",
+        device_type='cuda',
     )
 
     text = [
