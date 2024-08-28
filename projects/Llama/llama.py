@@ -237,12 +237,16 @@ class CasualMask(nn.Module):
             placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
-        mask_cond = flow.arange(
-            self.mask.size(-1),
+        # 之前的写法NPU算子有问题，换一种写法
+        matrix = flow.ones(
+            (self.mask.size(-1), self.mask.size(-1)),
+            dtype=flow.bool,
             placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
-        self.mask.masked_fill_(mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0)
+        upper_triangular_mask = flow.tril(matrix)
+
+        self.mask.masked_fill_(upper_triangular_mask, 0)
         self.mask = self.mask.to(dtype)
 
     def forward(self, input_ids, past_length=0, attention_mask=None, input_dtype=None):
@@ -257,6 +261,7 @@ class CasualMask(nn.Module):
             casual_mask.unsqueeze(0).unsqueeze(1).expand(bsz, 1, tgt_len, tgt_len + past_length)
         )
         casual_mask = casual_mask.to_global(sbp=input_ids.sbp)
+        attention_mask = None  # fix llama infer error
         if attention_mask is not None:
             bsz, src_len = attention_mask.size()
             attention_mask = (
