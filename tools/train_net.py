@@ -14,21 +14,44 @@
 # limitations under the License.
 
 import logging
-import os
 import random
 import importlib
-import sys
 
 import numpy as np
 import oneflow as flow
 import oneflow_npu
 
 import libai.utils.distributed as dist
-
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
-from configs.loader_mapping import loader_mapping_models as mapping
+# from configs.loader_mapping import loader_mapping_models as mapping
+
+mapping = dict(
+
+    llama=dict(
+        loader_prefix="projects.Llama.utils.llama_loader",
+        huggingface_loader="LlamaLoaderHuggerFace",
+    ),
+
+    chatglm=dict(
+        loader_prefix="projects.ChatGLM.utils.chatglm_loader",
+        huggingface_loader="ChatGLMLoaderHuggerFace",
+    ),
+
+    qwen2=dict(
+        loader_prefix="projects.Qwen2.utils.qwen_loader",
+        huggingface_loader="Qwen2LoaderHuggerFace",
+    ),
+
+    aquila=dict(
+        loader_prefix="projects.Aquila.utils.aquila_loader",
+        huggingface_loader="AquilaLoaderHuggerFace",
+    )
+
+)
+
+
 
 
 def build_model(cfg):
@@ -63,18 +86,16 @@ class Trainer(DefaultTrainer):
 
         if cfg.train.train_with_fp16:
            model = model.to(flow.float16)
-        #    flow.cuda.empty_cache()
+           flow.cuda.empty_cache()
         '''for param in model.named_parameters():
             print(param[1].dtype)'''
-
+        
         return model
-
 
 def main(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
-
 
     if args.fast_dev_run:
         cfg.train.train_epoch = 0
