@@ -65,7 +65,7 @@ train.dist.pipeline_num_layers = model.cfg.hidden_layers
 - `train.dist.pipeline_num_layers` must be set consistent with the model layers. If unset, it will use the default value `1000`,
 which might trigger unexpected behavior.
 
-- For models which have been configured with pipeline parallelism(e.g., BERT, GPT-2, T5 and ViT), you can simply update the distributed config to execute pipeline parallel training on them. If you need to train your own model with pipeline parallel strategy, please refer to [Write Models](https://libai.readthedocs.io/en/latest/tutorials/basics/Write_Models.html) for more details about configuring your own model with pipeline parallelism.
+- For models which have been configured with pipeline parallelism(e.g., BERT, GPT-2, T5 and ViT), you can simply update the distributed config to execute pipeline parallel training on them. If you need to train your own model with pipeline parallel strategy, please refer to [Customize Parallelism](https://libai.readthedocs.io/en/latest/tutorials/advanced_tutorials/customize_parallel.html#write-your-own-pipeline-parallel-model) for more details about configuring your own model with pipeline parallelism.
 
 #### **Data Parallel + Tensor Parallel for 2D Parallel Training on 8 GPUs**
 
