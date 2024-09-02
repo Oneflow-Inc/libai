@@ -1,0 +1,1 @@
+bash tools/train.sh tools/train_net.py projects/ChatGLM/configs/chatglm_sft.py 1

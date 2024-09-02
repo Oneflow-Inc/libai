@@ -86,7 +86,8 @@ train.update(
         rdma_enabled=True,
         # amp=dict(enabled=True),
         amp=dict(enabled=False),
-        train_with_fp16=True,
+        # train_with_fp16=True,
+        train_with_fp16=False,
         activation_checkpoint=dict(enabled=True),
         input_placement_device='npu',
         checkpointer=dict(
