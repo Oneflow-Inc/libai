@@ -27,11 +27,6 @@ bash tools/infer.sh projects/Eval_LLM/main.py 1
 ```
 Notice: The number stands for how many gpus you want to use.
 
-If you want to eval GLM(ChatGLM), run this:
-```
-CHATGLM_HF_DIR=YOUR_MODEL_PATH bash tools/infer.sh projects/Eval_LLM/main.py 1
-```
-
 Notice: To run a model with 6B parameters, you are about to have VRAM more than 24GB. You can use tensor or pipeline parallel on multiple devices.
 
 To know more about distributed inference: https://docs.oneflow.org/en/master/parallelism/04_launch.html

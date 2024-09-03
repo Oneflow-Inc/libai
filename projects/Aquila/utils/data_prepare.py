@@ -1,4 +1,3 @@
-"""Implementation derived from https://github.com/tloen/alpaca-lora"""
 import copy
 import json
 import math
@@ -13,7 +12,7 @@ from tqdm import tqdm
 
 from libai.config import instantiate
 from libai.utils.logger import setup_logger
-from projects.Qwen2.configs.qwen_config import tokenization
+from projects.Aquila.configs.aquila_config import tokenization
 
 logger = setup_logger()
 
@@ -113,11 +112,11 @@ def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
     full_prompt_and_response = full_prompt + example["output"]
     
     prompt = tokenizer.encode(full_prompt, device="cpu")
-    prompt = flow.tensor(prompt, dtype=flow.int, device="cpu")
+    prompt = flow.tensor(prompt, dtype=flow.int64, device="cpu")
     example = tokenizer.encode(
         full_prompt_and_response, device="cpu"
     )
-    example = flow.tensor(example, dtype=flow.int, device="cpu")
+    example = flow.tensor(example, dtype=flow.int64, device="cpu")
 
     padding = max_length - example.shape[0]
     if padding > 0:

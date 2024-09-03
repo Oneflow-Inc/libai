@@ -15,7 +15,7 @@ class LLMLoaderLibai(ModelLoaderLiBai):
 
 
 def get_special_arguments(cfg):
-    with open("./projects/Eval_LLM/special_arguments.json", "r") as f:
+    with open("./projects/Eval_LLM/model_arguments.json", "r") as f:
         arguments = json.load(f)
     special_arguments = arguments[cfg.eval_config.model_type]
     return special_arguments
@@ -67,6 +67,7 @@ def main():
         tokenizer.pad_token_id = generation_config["pad_token_id"]
     if tokenizer.eos_token_id is None:
         tokenizer.eos_token_id = generation_config["eos_token_id"]
+
     model = load_func.load()
     print("Model Loaded!")
 
