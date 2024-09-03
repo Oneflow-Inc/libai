@@ -43,6 +43,7 @@ class BasePipeline(metaclass=ABCMeta):
         pipeline_num_layers=None,
         model_path=None,
         mode="libai",
+        device="cuda",
         **kwargs,
     ):
         # init cfg
@@ -60,6 +61,7 @@ class BasePipeline(metaclass=ABCMeta):
             pipeline_stage_id,
             pipeline_num_layers,
         )
+        self.device = device
         dist.setup_dist_util(self.cfg.train.dist)
         logger.info(self.cfg.train.dist)
 
@@ -104,10 +106,7 @@ class BasePipeline(metaclass=ABCMeta):
             ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
 
     def load_pretrain_weight(
-        self,
-        libai_cfg_model,
-        model_path,
-        mode="libai",
+        self, libai_cfg_model, model_path, mode="libai",
     ):
         """load pretrained model.
 
@@ -167,7 +166,9 @@ class BasePipeline(metaclass=ABCMeta):
         for key, value in model_outputs_dict.items():
             if isinstance(value, flow.Tensor) and value.is_global:
                 model_outputs_dict[key] = dist.ttol(
-                    value, ranks=[0] if value.placement.ranks.ndim == 1 else [[0]]
+                    value,
+                    device=self.device,
+                    ranks=[0] if value.placement.ranks.ndim == 1 else [[0]],
                 )
         if flow.cuda.is_available():
             dist.synchronize()
