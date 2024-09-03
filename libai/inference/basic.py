@@ -62,6 +62,8 @@ class BasePipeline(metaclass=ABCMeta):
             pipeline_num_layers,
         )
         self.device = device
+        if device:
+            self.cfg.train.dist.device_type = device
         dist.setup_dist_util(self.cfg.train.dist)
         logger.info(self.cfg.train.dist)
 
