@@ -210,7 +210,8 @@ class MultiheadAttention(nn.Module):
             past_key_value = (key, value)
 
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
+        key = key.transpose(-1, -2)
+        attention_scores = flow.matmul(query, key, alpha=self.norm_factor)
         attention_weights = attention_scores + attention_mask
 
         attention_weights = flow.softmax(attention_weights, dim=-1)
@@ -237,12 +238,14 @@ class CasualMask(nn.Module):
             placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
-        mask_cond = flow.arange(
-            self.mask.size(-1),
+        matrix = flow.ones(
+            (self.mask.size(-1), self.mask.size(-1)),
+            dtype=flow.bool,
             placement=dist.get_layer_placement(layer_idx),
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
-        self.mask.masked_fill_(mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0)
+        upper_triangular_mask = flow.tril(matrix)
+        self.mask.masked_fill_(upper_triangular_mask, 0)
         self.mask = self.mask.to(dtype)
 
     def forward(self, input_ids, past_length=0, attention_mask=None, input_dtype=None):
@@ -454,7 +457,11 @@ class LlamaModel(nn.Module):
             sbp=inv_freq.sbp,
             placement=inv_freq.placement,
         )
-
+        print("=========")
+        print("We need to print t here otherwise the emb is getting wrong values")
+        print("I guess there is a sync issue here")
+        print(t)
+        print("=========")
         freqs = flow.einsum("i,j->ij", t, inv_freq)
         emb = flow.cat((freqs, freqs), dim=-1)
         self.register_buffer("cos_cached", emb.cos().to(dtype))
