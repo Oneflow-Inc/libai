@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import click
+
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 
