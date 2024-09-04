@@ -94,7 +94,7 @@ class TextGenerationPipeline(BasePipeline):
     default="projects/Llama/configs/llama_config.py",
     help="Path to the configuration file.",
 )
-@click.option("--model_path", default="", help="Path to the model checkpoint.")
+@click.option("--model_path", default=None, help="Path to the model checkpoint.")
 @click.option(
     "--mode",
     default="libai",
