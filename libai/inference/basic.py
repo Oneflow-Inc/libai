@@ -16,6 +16,7 @@
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict
+from pathlib import Path
 
 import oneflow as flow
 
@@ -62,12 +63,20 @@ class BasePipeline(metaclass=ABCMeta):
             pipeline_num_layers,
         )
         self.device = device
-        if device:
-            self.cfg.train.dist.device_type = device
+        self.cfg.train.dist.device_type = device
         dist.setup_dist_util(self.cfg.train.dist)
         logger.info(self.cfg.train.dist)
 
         # initial and load model
+        self.model_path = model_path
+        if self.model_path is not None:
+            # If a model_path is provided in BasePipeline,
+            # we use it with priority, overwrite the pretrained_model_path in config
+            self.cfg.model.cfg.pretrained_model_path = self.model_path
+        else:
+            # If the model_path in BasePipeline is None, then use the one from the config
+            assert "pretrained_model_path" in self.cfg.model.cfg
+            self.model_path = self.cfg.model.cfg.pretrained_model_path
 
         self.model = self.load_pretrain_weight(self.cfg.model, model_path, mode=mode)
         self.model._apply(dist.convert_to_distributed_default_setting)
@@ -138,6 +147,13 @@ class BasePipeline(metaclass=ABCMeta):
     def build_tokenizer(self, cfg):
         tokenizer = None
         if try_get_key(cfg, "tokenization") is not None:
+            tokenizer_cfg = cfg.tokenization.tokenizer
+            if "pretrained_model_path" not in tokenizer_cfg:
+                # If "pretrained_model_path" does not exist in the tokenizer's config,
+                # set it to default as f"{model_path}/tokenizer.model"
+                tokenizer_cfg.pretrained_model_path = str(
+                    Path(self.model_path).joinpath("tokenizer.model")
+                )
             tokenizer = DefaultTrainer.build_tokenizer(cfg)
         return tokenizer
 

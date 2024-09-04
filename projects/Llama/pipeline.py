@@ -95,7 +95,7 @@ class TextGenerationPipeline(BasePipeline):
     default="projects/Llama/configs/llama_config.py",
     help="Path to the configuration file.",
 )
-@click.option("--model_path", default="", help="Path to the model checkpoint.")
+@click.option("--model_path", default=None, help="Path to the model checkpoint.")
 @click.option(
     "--mode",
     default="libai",
@@ -105,12 +105,6 @@ class TextGenerationPipeline(BasePipeline):
     "--device", default="cuda", help="Device to run the model on, e.g., 'cuda', 'xpu', 'npu'."
 )
 def main(config_file, model_path, mode, device):
-    if model_path:
-        print(
-            "Note: The '--model_path' option is for the model checkpoint only. "
-            "Please configure 'tokenization.tokenizer.pretrained_model_path' "
-            "directly in the config file."
-        )
     pipeline = TextGenerationPipeline(
         config_file,
         data_parallel=1,
