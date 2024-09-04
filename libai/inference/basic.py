@@ -15,8 +15,8 @@
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict
 from pathlib import Path
+from typing import Any, Dict
 
 import oneflow as flow
 
