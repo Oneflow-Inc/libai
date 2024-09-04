@@ -50,11 +50,11 @@ bash tools/infer.sh projects/Llama/pipeline.py 8
 
 - npu
 ```bash
-python projects/Llama/pipeline.py --device=npu --mode=huggingface --config_file=projects/Llama/configs/llama_config_npu.py
+python projects/Llama/pipeline.py --device=npu --mode=huggingface --model_path /your/model/path
 ```
 
 - xpu
 ```bash
-python projects/Llama/pipeline.py --device=xpu --mode=huggingface --config_file=projects/Llama/configs/llama_config_xpu.py
+python projects/Llama/pipeline.py --device=xpu --mode=huggingface --model_path /your/model/path
 ```
 
