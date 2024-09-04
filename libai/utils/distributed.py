@@ -76,16 +76,12 @@ class _DistributeUtil(object):
             try:
                 import oneflow_npu
             except ImportError:
-                raise ImportError(
-                    "'oneflow_npu' is missing. Install it to use NPU devices."
-                )
+                raise ImportError("'oneflow_npu' is missing. Install it to use NPU devices.")
         elif self._device_type == "xpu":
             try:
                 import oneflow_xpu
             except ImportError:
-                raise ImportError(
-                    "'oneflow_xpu' is missing. Install it to use NPU devices."
-                )
+                raise ImportError("'oneflow_xpu' is missing. Install it to use NPU devices.")
         elif self._device_type not in ("cuda", "npu", "xpu", "cpu"):
             raise NotImplementedError(f"Unsupported device {self._device_type}")
 
