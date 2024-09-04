@@ -49,7 +49,7 @@ cfg = dict(
     eos_token_id=2,
     pad_token_id=0,
     # train
-    #pretrained_model_path="meta-llama/Llama-2-7b-hf",
+    # pretrained_model_path="meta-llama/Llama-2-7b-hf",
     pretrained_model_path="/root/models/Llama-2-7b-chat-hf",
 )
 
@@ -59,6 +59,6 @@ model = LazyCall(LlamaForCausalLM)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(LlamaTokenizer)(
-    #pretrained_model_path="meta-llama/Llama-2-7b-hf/tokenizer.model"
+    # pretrained_model_path="meta-llama/Llama-2-7b-hf/tokenizer.model"
     pretrained_model_path="/root/models/Llama-2-7b-chat-hf/tokenizer.model"
 )

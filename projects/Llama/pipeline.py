@@ -31,7 +31,11 @@ class TextGenerationPipeline(BasePipeline):
         if mode == "huggingface":
             from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace
 
-            model_loader = LlamaLoaderHuggerFace(libai_cfg_model, libai_cfg_model.cfg, model_path,)
+            model_loader = LlamaLoaderHuggerFace(
+                libai_cfg_model,
+                libai_cfg_model.cfg,
+                model_path,
+            )
             model = model_loader.load()
             model.eval()
             return model
@@ -39,7 +43,11 @@ class TextGenerationPipeline(BasePipeline):
         elif mode == "libai":
             from projects.Llama.utils.llama_loader import LlamaLoaderLiBai
 
-            model_loader = LlamaLoaderLiBai(libai_cfg_model, libai_cfg_model.cfg, model_path,)
+            model_loader = LlamaLoaderLiBai(
+                libai_cfg_model,
+                libai_cfg_model.cfg,
+                model_path,
+            )
             model = model_loader.load()
             model.eval()
             return model
@@ -97,7 +105,9 @@ class TextGenerationPipeline(BasePipeline):
 )
 def main(config_file, model_path, mode, device):
     if model_path:
-        print("Note: The '--model_path' option is for the model checkpoint only. Please configure 'tokenization.tokenizer.pretrained_model_path' directly in the config file.")
+        print(
+            "Note: The '--model_path' option is for the model checkpoint only. Please configure 'tokenization.tokenizer.pretrained_model_path' directly in the config file."
+        )
     pipeline = TextGenerationPipeline(
         config_file,
         data_parallel=1,

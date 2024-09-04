@@ -108,7 +108,10 @@ class BasePipeline(metaclass=ABCMeta):
             ), "cfg.train.dist.pipeline_num_layers must be set when run pipeline parallel"
 
     def load_pretrain_weight(
-        self, libai_cfg_model, model_path, mode="libai",
+        self,
+        libai_cfg_model,
+        model_path,
+        mode="libai",
     ):
         """load pretrained model.
 
