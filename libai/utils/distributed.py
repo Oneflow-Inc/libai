@@ -72,6 +72,18 @@ class _DistributeUtil(object):
 
         # Add set device type
         self._device_type = try_get_key(cfg, "device_type", default="cuda")
+        if self._device_type == "npu":
+            try:
+                import oneflow_npu  # noqa: F401
+            except ImportError:
+                raise ImportError("'oneflow_npu' is missing. Install it to use NPU devices.")
+        elif self._device_type == "xpu":
+            try:
+                import oneflow_xpu  # noqa: F401
+            except ImportError:
+                raise ImportError("'oneflow_xpu' is missing. Install it to use NPU devices.")
+        elif self._device_type not in ("cuda", "npu", "xpu", "cpu"):
+            raise NotImplementedError(f"Unsupported device {self._device_type}")
 
     def _init_parallel_size(self, cfg):
 
