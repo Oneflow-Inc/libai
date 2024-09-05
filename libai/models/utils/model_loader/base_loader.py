@@ -512,6 +512,8 @@ class ModelLoaderHuggerFace(ModelLoader):
             for key in sorted(self.libai_cfg):
                 if self.origin_libai_cfg[key] == self.libai_cfg[key]:
                     continue
+                if key == "rms_norm_eps":
+                    self.libai_cfg["rms_norm_eps"] = 1e-5
                 self.changed_keys.add(key)
                 temp_key = colored(key, "yellow")
                 logger.info(
