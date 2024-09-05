@@ -87,7 +87,8 @@ class RotaryEmbedding(nn.Module):
             ** (flow.arange(0, dim, 2, dtype=flow.float32, placement=placement, sbp=sbp) / dim)
         )
         seq_idx = flow.arange(max_length, dtype=flow.float32, placement=placement, sbp=sbp)
-        idx_theta = flow.matmul(seq_idx.unsqueeze(1), theta.unsqueeze(0)).float()
+        # idx_theta = flow.matmul(seq_idx.unsqueeze(1), theta.unsqueeze(0)).float()
+        idx_theta = flow.randn(32768, 32, dtype=flow.float, placement=flow.placement(type="xpu", ranks=[0]), sbp=flow.sbp.broadcast)
         self.sin_cache = flow.sin(idx_theta)
         self.cos_cache = flow.cos(idx_theta)
         self.max_length = max_length
@@ -178,9 +179,15 @@ class CoreAttention(flow.nn.Module):
         return ans
 
     def forward(self, query_layer, key_layer, value_layer, attention_mask=None):
+        def perm_120(x):
+            x = flow.transpose(x, 0, 1)
+            return flow.transpose(x, 1, 2)
         # query_layer: [sq, b, np, hn] -[premute]-> [batch_size, head_num, seq_len, hidden_size]
+        # query_layer, key_layer, value_layer = [
+        #     k.permute(1, 2, 0, 3) for k in [query_layer, key_layer, value_layer]
+        # ]
         query_layer, key_layer, value_layer = [
-            k.permute(1, 2, 0, 3) for k in [query_layer, key_layer, value_layer]
+            perm_120(k) for k in [query_layer, key_layer, value_layer]
         ]
         if attention_mask is None and query_layer.shape[2] == key_layer.shape[2]:
             context_layer = self.scaled_dot_product_attention(
@@ -194,7 +201,11 @@ class CoreAttention(flow.nn.Module):
                 query_layer, key_layer, value_layer, attention_mask
             )
 
-        context_layer = context_layer.permute(2, 0, 1, 3)
+        def perm_201(x):
+            x = flow.transpose(x, 1, 2)
+            return flow.transpose(x, 0, 1)
+        # context_layer = context_layer.permute(2, 0, 1, 3)
+        context_layer = perm_201(context_layer)
         context_layer = context_layer.flatten(2)
         return context_layer
 
