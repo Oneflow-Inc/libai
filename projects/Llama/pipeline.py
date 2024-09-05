@@ -91,10 +91,10 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
-        # for module_name, module in self.model.named_modules():
-        #     if module_name:
-        #         hook = create_save_output_hook(module_name)
-        #         module.register_forward_hook(hook)
+        for module_name, module in self.model.named_modules():
+            if module_name:
+                hook = create_save_output_hook(module_name)
+                module.register_forward_hook(hook)
         outputs = self.model.generate(inputs["input_ids"], max_length=50, **kwargs)
         return {"return_ids": outputs}
 
