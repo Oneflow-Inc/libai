@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import oneflow_xpu
 
 from libai.inference.basic import BasePipeline
@@ -91,6 +92,7 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
+        os.makedirs("/workspace/libai/projects/Llama/outputs", exist_ok=True)
         for module_name, module in self.model.named_modules():
             if module_name:
                 hook = create_save_output_hook(module_name)
