@@ -13,14 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import click
-from typing import Union
 from pathlib import Path
+from typing import Union
 
-from libai.inference.basic import BasePipeline
-from libai.utils import distributed as dist
+import click
+
 from libai.config import try_get_key
 from libai.engine import DefaultTrainer
+from libai.inference.basic import BasePipeline
+from libai.utils import distributed as dist
 
 
 class TextGenerationPipeline(BasePipeline):

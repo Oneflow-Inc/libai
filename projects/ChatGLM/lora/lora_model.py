@@ -22,7 +22,7 @@ from collections import OrderedDict
 from dataclasses import asdict
 from enum import Enum
 from itertools import chain
-from typing import Any, List, Union, Optional
+from typing import Any, List, Optional, Union
 
 from oneflow import nn
 from tqdm import tqdm

@@ -18,7 +18,7 @@
 import math
 import warnings
 from abc import ABC
-from typing import Any, List, Optional, Union, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 import oneflow as flow
 import oneflow.nn as nn
