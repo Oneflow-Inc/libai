@@ -13,9 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import click
+from typing import Union
+from pathlib import Path
 
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
+from libai.config import try_get_key
+from libai.engine import DefaultTrainer
 
 
 class TextGenerationPipeline(BasePipeline):
@@ -81,7 +86,7 @@ class TextGenerationPipeline(BasePipeline):
             return model
 
         elif mode == "random":
-            from libai.engine import DefaultTrainer
+            #from libai.engine import DefaultTrainer
 
             return DefaultTrainer.build_model(self.cfg)
         else:
@@ -94,18 +99,33 @@ class TextGenerationPipeline(BasePipeline):
 
         return preprocess_params, forward_params, postprocess_params
 
-    def preprocess(self, sentence: str | list, **kwargs) -> dict:
+    def preprocess(self, sentence: Union[str, list], **kwargs) -> dict:
         #
         if type(sentence) is str:
             inputs = {
                 "inputs": sentence,
             }
         else:
-            inputs = self.tokenizer.encode(sentence, return_tensors="of", is_global=True)
+            inputs = self.tokenizer.encode(
+                sentence, return_tensors="of", is_global=True, device=self.device
+            )
             inputs = {
                 "input_ids": inputs,
             }
         return inputs
+
+    def build_tokenizer(self, cfg):
+        tokenizer = None
+        if try_get_key(cfg, "tokenization") is not None:
+            tokenizer_cfg = cfg.tokenization.tokenizer
+            if "vocab_file" not in tokenizer_cfg:
+                # If "vocab_file" does not exist in the tokenizer's config,
+                # set it to default as f"{model_path}/tokenizer.model"
+                tokenizer_cfg.vocab_file = str(
+                    Path(self.model_path).joinpath("tokenizer.model")
+                )
+            tokenizer = DefaultTrainer.build_tokenizer(cfg)
+        return tokenizer
 
     def forward(self, inputs, **kwargs) -> dict:
         if "input_ids" not in inputs:
@@ -143,85 +163,52 @@ class TextGenerationPipeline(BasePipeline):
         self.history = []
 
 
-if __name__ == "__main__":
-    # ----- load huggingface checkpoint -----
+@click.command()
+@click.option(
+    "--config_file",
+    default="projects/ChatGLM/configs/chatglm_config.py",
+    help="Path to the configuration file.",
+)
+@click.option("--model_path", default=None, help="Path to the model checkpoint.")
+@click.option(
+    "--mode",
+    default="libai",
+    help="Mode for the dataloader pipeline, e.g., 'libai' or 'huggingface'.",
+)
+@click.option(
+    "--device", default="cuda", help="Device to run the model on, e.g., 'cuda', 'xpu', 'npu'."
+)
+def main(config_file, model_path, mode, device):
     text = "浏览器输入www.baidu.com 并且显示网页，从计算机网络的角度说明实现的全过程"
     text2 = (
         "5600分为A、B、C三部分，如果A比C的比例是1/7:1/7:1/14，那么A比C多多少？\n"
         "选项：\n(A) 300\n(B) 992 \n(C) 1120\n(D) 552\n(E) 312 让我们先想想。一些随机推理："
     )
     texts = [
+        text, text2,
         "a dog is flying on the sky",
         "Wikipedia is a free online",
         "what is beam search?",
         "what is beam search?",
     ]
     pipeline = TextGenerationPipeline(
-        "projects/ChatGLM/configs/chatglm_config.py",
+        config_file,
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=28,
-        model_path=os.environ["CHATGLM_HF_DIR"],
-        mode="huggingface",
+        model_path=model_path,
+        mode=mode,
+        device=device,
     )
     pipeline.model = pipeline.model.half()
 
     if isinstance(texts, list):
-        output = pipeline(inputs=texts, do_sample=False, max_length=50)
+        output = pipeline(inputs=texts, do_sample=False, max_length=400)
         if dist.is_main_process():
             for text, record in zip(texts, output):
                 print(f"Q:{text}||A:{record}")
 
-    # if isinstance(text, str):
-    #     output = pipeline(inputs=text, do_sample=False, max_length=400)
-    #     if dist.is_main_process():
-    #         for record in output:
-    #             print(record["generated_text"])
-    #     pipeline.reset_conversation()
-    #     output = pipeline(inputs=text2, do_sample=False, max_length=400)
-    #     if dist.is_main_process():
-    #         for record in output:
-    #             print(record["generated_text"])
 
-    # # ----- load libai checkpoint -----
-    # pipeline = TextGenerationPipeline(
-    #     "projects/ChatGLM/configs/chatglm_config.py",
-    #     data_parallel=1,
-    #     tensor_parallel=1,
-    #     pipeline_parallel=1,
-    #     pipeline_num_layers=28,
-    #     model_path="/home/lixin/codes/libai/lora_sft_result/model_final/model",
-    #     mode="libai",
-    # )
-    # pipeline.model = pipeline.model.half()
-
-    # if isinstance(texts, list):
-    #     output = pipeline(inputs=texts, do_sample=False, max_length=50)
-    #     if dist.is_main_process():
-    #         for text, record in zip(texts, output):
-    #             print(f"Q:{text}||A:{record}")
-
-    # if isinstance(text, str):
-    #     output = pipeline(inputs=text, do_sample=False, max_length=400)
-    #     if dist.is_main_process():
-    #         for record in output:
-    #             print(record['generated_text'])
-    #     pipeline.reset_conversation()
-    #     output = pipeline(inputs=text2, do_sample=False, max_length=400)
-    #     if dist.is_main_process():
-    #         for record in output:
-    #             print(record['generated_text'])
-
-    # ----- pure huggingface predict -----
-    # from transformers import AutoModel, AutoTokenizer
-
-    # tokenizer = AutoTokenizer.from_pretrained(glm_model_path, trust_remote_code=True)
-    # model = AutoModel.from_pretrained(glm_model_path, trust_remote_code=True).half().cuda()
-    # model = model.eval()
-    # history = []
-    # for _ in range(1):
-    #     response, history = model.chat(
-    #         tokenizer, text, history=history, do_sample=False, max_length=400
-    #     )
-    #     print(response)
+if __name__ == "__main__":
+    main()
