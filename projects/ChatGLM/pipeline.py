@@ -86,7 +86,7 @@ class TextGenerationPipeline(BasePipeline):
             return model
 
         elif mode == "random":
-            #from libai.engine import DefaultTrainer
+            # from libai.engine import DefaultTrainer
 
             return DefaultTrainer.build_model(self.cfg)
         else:
@@ -121,9 +121,7 @@ class TextGenerationPipeline(BasePipeline):
             if "vocab_file" not in tokenizer_cfg:
                 # If "vocab_file" does not exist in the tokenizer's config,
                 # set it to default as f"{model_path}/tokenizer.model"
-                tokenizer_cfg.vocab_file = str(
-                    Path(self.model_path).joinpath("tokenizer.model")
-                )
+                tokenizer_cfg.vocab_file = str(Path(self.model_path).joinpath("tokenizer.model"))
             tokenizer = DefaultTrainer.build_tokenizer(cfg)
         return tokenizer
 
@@ -185,7 +183,8 @@ def main(config_file, model_path, mode, device):
         "选项：\n(A) 300\n(B) 992 \n(C) 1120\n(D) 552\n(E) 312 让我们先想想。一些随机推理："
     )
     texts = [
-        text, text2,
+        text,
+        text2,
         "a dog is flying on the sky",
         "Wikipedia is a free online",
         "what is beam search?",

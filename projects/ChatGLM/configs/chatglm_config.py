@@ -87,4 +87,3 @@ model = LazyCall(ChatGLMForConditionalGeneration)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(ChatGLMTokenizer)()
-
