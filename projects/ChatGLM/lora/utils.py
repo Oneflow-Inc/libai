@@ -22,7 +22,7 @@ import oneflow as flow
 COMMON_LAYERS_PATTERN = ["layers", "h", "block", "blocks", "layer"]
 
 
-def check_target_module_exists(config, key: str) -> Union[bool, Optional[re.Match[str]]]:
+def check_target_module_exists(config, key: str) -> Union[bool, Optional[re.Match]]:
     """A helper method to check if the passed module's key name matches
        any of the target modules in the adapter_config.
 
