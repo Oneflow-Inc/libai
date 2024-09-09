@@ -49,7 +49,7 @@ class BaseTunerLayer(ABC):
     _disable_adapters: bool = False
 
     # the currently active adapter(s)
-    _active_adapter: str | list[str] = "default"
+    _active_adapter: Union[str, List[str]] = "default"
 
     # List all merged adapters
     merged_adapters: list[str] = []
@@ -119,7 +119,7 @@ class BaseTunerLayer(ABC):
                 layer.requires_grad_(False)
             self._disable_adapters = True
 
-    def set_adapter(self, adapter_names: str | list[str]) -> None:
+    def set_adapter(self, adapter_names: Union[str, List[str]]) -> None:
         """Set the active adapter(s).
 
         Args:
