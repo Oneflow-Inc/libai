@@ -805,18 +805,14 @@ class PreTrainedTokenizer(object):
     def _convert_token_to_id(self, token):
         raise NotImplementedError
 
-    def encode(self, text, return_tensors=None, is_global=False, device="cuda", **kwargs):
+    def encode(self, text, return_tensors=None, is_global=False, **kwargs):
         if isinstance(text, str):
             tokens = self.tokenize(text)
             token_ids = self.convert_tokens_to_ids(tokens)
             if hasattr(self, "build_inputs_with_special_tokens"):
                 token_ids = self.build_inputs_with_special_tokens(token_ids)
             token_ids = self.convert_to_tensors(
-                token_ids,
-                return_tensors=return_tensors,
-                is_global=is_global,
-                device=device,
-                **kwargs,
+                token_ids, return_tensors=return_tensors, is_global=is_global, **kwargs
             )
             return token_ids
         elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], str):

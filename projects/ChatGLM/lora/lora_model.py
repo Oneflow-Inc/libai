@@ -22,7 +22,7 @@ from collections import OrderedDict
 from dataclasses import asdict
 from enum import Enum
 from itertools import chain
-from typing import Any, List, Union, Optional
+from typing import Any, List, Optional
 
 from oneflow import nn
 from tqdm import tqdm
@@ -404,7 +404,7 @@ class LoraModel(BaseTuner):
                 warnings.warn(msg)
         self._set_adapter_layers(enabled=False)
 
-    def set_adapter(self, adapter_name: Union[str, List[str]]) -> None:
+    def set_adapter(self, adapter_name: str | list[str]) -> None:
         """Set the active adapter(s).
 
         Args:
