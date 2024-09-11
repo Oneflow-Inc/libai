@@ -87,8 +87,8 @@ class RotaryEmbedding(nn.Module):
             ** (flow.arange(0, dim, 2, dtype=flow.float32, placement=placement, sbp=sbp) / dim)
         )
         seq_idx = flow.arange(max_length, dtype=flow.float32, placement=placement, sbp=sbp)
-        # idx_theta = flow.matmul(seq_idx.unsqueeze(1), theta.unsqueeze(0)).float()
-        idx_theta = flow.randn(32768, 32, dtype=flow.float, placement=flow.placement(type="xpu", ranks=[0]), sbp=flow.sbp.broadcast)
+        idx_theta = flow.matmul(seq_idx.unsqueeze(1), theta.unsqueeze(0)).float()
+        # idx_theta = flow.randn(32768, 32, dtype=flow.float, placement=flow.placement(type="xpu", ranks=[0]), sbp=flow.sbp.broadcast)
         self.sin_cache = flow.sin(idx_theta)
         self.cos_cache = flow.cos(idx_theta)
         self.max_length = max_length
