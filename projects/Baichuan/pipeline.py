@@ -18,6 +18,36 @@ import oneflow_xpu
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 
+import oneflow
+import numpy as np
+import threading
+
+global_id = 1
+lock = threading.Lock()
+
+def create_save_output_hook(module_name):
+    def save_output(module, input, output):
+        pass
+        # global global_id
+        # with lock:
+        #     if isinstance(output, tuple):
+        #         for idx, out in enumerate(output):
+        #             if isinstance(out, oneflow.Tensor):
+        #                 np_output = out.numpy()
+        #                 np.save(f'projects/Baichuan/outputs/{global_id}_{module_name}_{idx}.npy', np_output)
+        #     elif isinstance(output, dict):
+        #         for idx, out in output.items():
+        #             if isinstance(out, oneflow.Tensor):
+        #                 np_output = out.numpy()
+        #                 np.save(f'projects/Baichuan/outputs/{global_id}_{module_name}_{idx}.npy', np_output)
+        #     else:
+        #         np_output = output.numpy()
+        #         np.save(f'projects/Baichuan/outputs/{global_id}_{module_name}.npy', np_output)
+        #     # if global_id == 4:
+        #     #     breakpoint()
+        #     global_id += 1
+    return save_output
+
 
 class TextGenerationPipeline(BasePipeline):
     def load_pretrain_weight(self, libai_cfg_model, model_path, mode="huggingface"):
@@ -77,6 +107,12 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
+        import os
+        os.makedirs("/workspace/libai/projects/Baichuan/outputs", exist_ok=True)
+        for module_name, module in self.model.named_modules():
+            if module_name:
+                hook = create_save_output_hook(module_name)
+                module.register_forward_hook(hook)
         outputs = self.model.generate(inputs["input_ids"], max_length=50, **kwargs)
         return {"return_ids": outputs}
 

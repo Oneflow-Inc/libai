@@ -29,22 +29,22 @@ lock = threading.Lock()
 def create_save_output_hook(module_name):
     def save_output(module, input, output):
         pass
-        global global_id
-        with lock:
-            if isinstance(output, tuple):
-                for idx, out in enumerate(output):
-                    if isinstance(out, oneflow.Tensor):
-                        np_output = out.numpy()
-                        np.save(f'projects/ChatGLM/outputs/{global_id}_{module_name}_{idx}.npy', np_output)
-            elif isinstance(output, dict):
-                for idx, out in output.items():
-                    if isinstance(out, oneflow.Tensor):
-                        np_output = out.numpy()
-                        np.save(f'projects/ChatGLM/outputs/{global_id}_{module_name}_{idx}.npy', np_output)
-            else:
-                np_output = output.numpy()
-                np.save(f'projects/ChatGLM/outputs/{global_id}_{module_name}.npy', np_output)
-            global_id += 1
+        # global global_id
+        # with lock:
+        #     if isinstance(output, tuple):
+        #         for idx, out in enumerate(output):
+        #             if isinstance(out, oneflow.Tensor):
+        #                 np_output = out.numpy()
+        #                 np.save(f'projects/ChatGLM/outputs/{global_id}_{module_name}_{idx}.npy', np_output)
+        #     elif isinstance(output, dict):
+        #         for idx, out in output.items():
+        #             if isinstance(out, oneflow.Tensor):
+        #                 np_output = out.numpy()
+        #                 np.save(f'projects/ChatGLM/outputs/{global_id}_{module_name}_{idx}.npy', np_output)
+        #     else:
+        #         np_output = output.numpy()
+        #         np.save(f'projects/ChatGLM/outputs/{global_id}_{module_name}.npy', np_output)
+        #     global_id += 1
     return save_output
 
 

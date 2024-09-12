@@ -24,14 +24,15 @@ import numpy as np
 
 def create_save_output_hook(module_name):
     def save_output(module, input, output):
-        if isinstance(output, tuple):
-            for idx, out in enumerate(output):
-                if isinstance(out, oneflow.Tensor):
-                    np_output = out.numpy()
-                    np.save(f'/workspace/libai/projects/Llama/outputs/{module_name}_{idx}.npy', np_output)
-        else:
-            np_output = output.numpy()
-            np.save(f'/workspace/libai/projects/Llama/outputs/{module_name}.npy', np_output)
+        pass
+        # if isinstance(output, tuple):
+        #     for idx, out in enumerate(output):
+        #         if isinstance(out, oneflow.Tensor):
+        #             np_output = out.numpy()
+        #             np.save(f'/workspace/libai/projects/Llama/outputs/{module_name}_{idx}.npy', np_output)
+        # else:
+        #     np_output = output.numpy()
+        #     np.save(f'/workspace/libai/projects/Llama/outputs/{module_name}.npy', np_output)
     return save_output
 
 class TextGenerationPipeline(BasePipeline):

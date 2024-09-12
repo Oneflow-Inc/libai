@@ -243,6 +243,8 @@ class CasualMask(nn.Module):
             sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
         )
         self.mask.masked_fill_(mask_cond < (mask_cond + 1).view(self.mask.size(-1), 1), 0)
+        # breakpoint()
+        # print(self.mask)
         self.mask = self.mask.to(dtype)
 
     def forward(self, input_ids, past_length=0, attention_mask=None, input_dtype=None):
