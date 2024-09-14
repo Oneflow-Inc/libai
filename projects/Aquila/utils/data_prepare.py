@@ -12,13 +12,13 @@ from tqdm import tqdm
 
 from libai.config import instantiate
 from libai.utils.logger import setup_logger
-from projects.Aquila.configs.aquila_config import tokenization
+from projects.Aquila.configs.aquila_sft import tokenization
 
 logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("./data/libai_xpu_alpaca"),
+    destination_path: Path = Path("./alpaca_data"),
     checkpoint_dir: Path = Path("/root/models/Aquila-7B"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,

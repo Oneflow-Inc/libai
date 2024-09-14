@@ -6,9 +6,9 @@ from libai.evaluation import PPLEvaluator
 from libai.scheduler import WarmupExponentialLR
 from libai.data.build import build_nlp_train_loader, build_nlp_test_loader
 
-from configs.train import train
-from configs.graph import graph
-from configs.optim import optim
+from configs.common.train import train
+from configs.common.models.graph import graph
+from configs.common.optim import optim
 
 from projects.Aquila.aquila import AquilaForCausalLM
 from projects.Aquila.tokenizer import AquilaTokenizer
@@ -19,7 +19,7 @@ from projects.Aquila.aquila_dataset import AquilaDataset
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-dataset_path = "./data/libai_xpu_alpaca"
+dataset_path = "./alpaca_data"
 pretrained_model_path = "/root/models/Aquila-7B"
 
 # graph & optim
@@ -75,7 +75,7 @@ train.update(
         train_with_fp16=True,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
-        input_placement_device='xpu',
+        input_placement_device='cuda',
         checkpointer=dict(
             period=100,
             max_to_keep=20,
@@ -85,7 +85,7 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=cfg.hidden_layers,
-            device_type='xpu',
+            device_type='cuda',
         ),
         evaluation=dict(
             enabled=False,

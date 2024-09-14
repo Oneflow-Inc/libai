@@ -100,13 +100,13 @@ class TextGenerationPipeline(BasePipeline):
             tokenizer_cfg = cfg.tokenization.tokenizer
             if "vocab_file" not in tokenizer_cfg:
                 # If "vocab_file" does not exist in the tokenizer's config,
-                # set it to default as f"{model_path}/tokenizer.model"
+                # set it to default as f"{model_path}/vocab.json"
                 tokenizer_cfg.vocab_file = str(
                     Path(self.model_path).joinpath("vocab.json")
                 )
             if "merges_file" not in tokenizer_cfg:
                 # If "merges_file" does not exist in the tokenizer's config,
-                # set it to default as f"{model_path}/tokenizer.model"
+                # set it to default as f"{model_path}/merges.txt"
                 tokenizer_cfg.merges_file = str(
                     Path(self.model_path).joinpath("merges.txt")
                 )
