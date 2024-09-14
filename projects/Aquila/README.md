@@ -8,6 +8,12 @@
 python projects/Aquila/pipeline.py --model_path=/root/models/Aquila-7B --mode=huggingface
 ```
 
+- npu
+
+```bash
+python projects/Aquila/pipeline.py --model_path=/data0/hf_models/Aquila-7B --mode=huggingface --device=npu
+```
+
 ### 训练
 
 ```bash
