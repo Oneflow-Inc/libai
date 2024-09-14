@@ -8,8 +8,20 @@
 python projects/Aquila/pipeline.py --model_path=/root/models/Aquila-7B --mode=huggingface
 ```
 
-### 训练
--- data preparation
+- npu
+
+```bash
+python projects/Aquila/pipeline.py --model_path=/data0/hf_models/Aquila-7B --mode=huggingface --device=npu
+```
+
+- xpu
+
+```bash
+python projects/Aquila/pipeline.py --model_path=/root/models/Aquila-7B --mode=huggingface --device=xpu
+```
+
+### 训练 
+- data preparation
 ```bash
 python projects/Aquila/utils/data_prepare.py
 ```
