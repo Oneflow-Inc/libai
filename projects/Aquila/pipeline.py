@@ -134,7 +134,7 @@ def main(config_file, model_path, mode, device):
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path=model_path,  #'/root/models/Aquila-7B',
+        model_path=model_path,
         mode=mode,
         device=device,
     )

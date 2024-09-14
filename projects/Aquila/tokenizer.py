@@ -20,12 +20,10 @@ import os
 import unicodedata
 from functools import lru_cache
 from io import open
-from typing import List, Optional
+from typing import Optional
 
-import oneflow as flow
 import regex as re
 
-import libai.utils.distributed as dist
 from libai.tokenizer.tokenization_base import PreTrainedTokenizer
 
 logger = logging.getLogger(__name__)
