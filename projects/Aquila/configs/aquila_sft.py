@@ -35,8 +35,8 @@ optim.update(
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(AquilaTokenizer)(
-    vocab_file=pretrained_model_path+"/vocab.json",
-    merges_file=pretrained_model_path+"/merges.txt",
+    vocab_file=pretrained_model_path + "/vocab.json",
+    merges_file=pretrained_model_path + "/merges.txt",
 )
 
 
@@ -75,7 +75,7 @@ train.update(
         train_with_fp16=True,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
-        input_placement_device='cuda',
+        input_placement_device="cuda",
         checkpointer=dict(
             period=100,
             max_to_keep=20,
@@ -85,7 +85,7 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=cfg.hidden_layers,
-            device_type='cuda',
+            device_type="cuda",
         ),
         evaluation=dict(
             enabled=False,

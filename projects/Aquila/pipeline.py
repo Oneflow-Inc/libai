@@ -12,13 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import click
 from pathlib import Path
 
-from libai.inference.basic import BasePipeline
-from libai.utils import distributed as dist
+import click
+
 from libai.config import try_get_key
 from libai.engine import DefaultTrainer
+from libai.inference.basic import BasePipeline
+from libai.utils import distributed as dist
 
 
 class TextGenerationPipeline(BasePipeline):
@@ -72,6 +73,7 @@ class TextGenerationPipeline(BasePipeline):
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoderW
         import oneflow as flow
+
         inputs = flow.tensor(self.tokenizer.encode(inputs, add_bos=True, padding=True))
 
         inputs = {
@@ -101,15 +103,11 @@ class TextGenerationPipeline(BasePipeline):
             if "vocab_file" not in tokenizer_cfg:
                 # If "vocab_file" does not exist in the tokenizer's config,
                 # set it to default as f"{model_path}/vocab.json"
-                tokenizer_cfg.vocab_file = str(
-                    Path(self.model_path).joinpath("vocab.json")
-                )
+                tokenizer_cfg.vocab_file = str(Path(self.model_path).joinpath("vocab.json"))
             if "merges_file" not in tokenizer_cfg:
                 # If "merges_file" does not exist in the tokenizer's config,
                 # set it to default as f"{model_path}/merges.txt"
-                tokenizer_cfg.merges_file = str(
-                    Path(self.model_path).joinpath("merges.txt")
-                )
+                tokenizer_cfg.merges_file = str(Path(self.model_path).joinpath("merges.txt"))
             tokenizer = DefaultTrainer.build_tokenizer(cfg)
         return tokenizer
 
@@ -136,7 +134,7 @@ def main(config_file, model_path, mode, device):
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path=model_path, #'/root/models/Aquila-7B',
+        model_path=model_path,  #'/root/models/Aquila-7B',
         mode=mode,
         device=device,
     )
@@ -147,6 +145,7 @@ def main(config_file, model_path, mode, device):
     output = pipeline(inputs=text)
     if dist.is_main_process():
         print(output)
+
 
 if __name__ == "__main__":
     main()

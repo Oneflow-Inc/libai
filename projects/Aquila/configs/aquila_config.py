@@ -8,7 +8,7 @@ from configs.common.train import train
 
 cfg = dict(
     # Model
-    model_type='aquila',
+    model_type="aquila",
     hidden_act="silu",
     hidden_size=4096,
     initializer_range=0.02,
@@ -58,6 +58,6 @@ model = LazyCall(AquilaForCausalLM)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(AquilaTokenizer)(
-    #vocab_file=cfg.pretrained_model_path+"/vocab.json",
-    #merges_file=cfg.pretrained_model_path+"/merges.txt",
+    # vocab_file=cfg.pretrained_model_path+"/vocab.json",
+    # merges_file=cfg.pretrained_model_path+"/merges.txt",
 )
