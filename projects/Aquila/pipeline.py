@@ -18,6 +18,7 @@ from pathlib import Path
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 from libai.config import try_get_key
+from libai.engine import DefaultTrainer
 
 
 class TextGenerationPipeline(BasePipeline):
@@ -106,7 +107,7 @@ class TextGenerationPipeline(BasePipeline):
             if "merges_file" not in tokenizer_cfg:
                 # If "merges_file" does not exist in the tokenizer's config,
                 # set it to default as f"{model_path}/tokenizer.model"
-                tokenizer_cfg.vocab_file = str(
+                tokenizer_cfg.merges_file = str(
                     Path(self.model_path).joinpath("merges.txt")
                 )
             tokenizer = DefaultTrainer.build_tokenizer(cfg)
