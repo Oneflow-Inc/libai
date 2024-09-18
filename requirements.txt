@@ -7,7 +7,7 @@ wget
 hydra-core
 nltk
 numpy
-omegaconf==2.1.0
+omegaconf==2.1.2
 Pygments
 PyYAML
 jieba
@@ -27,3 +27,4 @@ black==21.4b2
 autoflake
 tensorboardX<=2.5.1
 pytest
+safetensors

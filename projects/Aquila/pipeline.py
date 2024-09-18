@@ -12,9 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from pathlib import Path
 
 import click
 
+from libai.config import try_get_key
+from libai.engine import DefaultTrainer
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 
@@ -30,9 +33,9 @@ class TextGenerationPipeline(BasePipeline):
             model_path (str): The directory path of pretrained model,
         """
         if mode == "huggingface":
-            from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace
+            from projects.Aquila.utils.aquila_loader import AquilaLoaderHuggerFace
 
-            model_loader = LlamaLoaderHuggerFace(
+            model_loader = AquilaLoaderHuggerFace(
                 libai_cfg_model,
                 libai_cfg_model.cfg,
                 model_path,
@@ -42,9 +45,9 @@ class TextGenerationPipeline(BasePipeline):
             return model
 
         elif mode == "libai":
-            from projects.Llama.utils.llama_loader import LlamaLoaderLiBai
+            from projects.Aquila.utils.aquila_loader import AquilaLoaderLiBai
 
-            model_loader = LlamaLoaderLiBai(
+            model_loader = AquilaLoaderLiBai(
                 libai_cfg_model,
                 libai_cfg_model.cfg,
                 model_path,
@@ -69,7 +72,10 @@ class TextGenerationPipeline(BasePipeline):
 
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoderW
-        inputs = self.tokenizer.tokenize(inputs, add_bos=True, padding=True, device=self.device)
+        import oneflow as flow
+
+        inputs = flow.tensor(self.tokenizer.encode(inputs, add_bos=True, padding=True))
+
         inputs = {
             "input_ids": inputs,
         }
@@ -77,22 +83,39 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
-        outputs = self.model.generate(inputs["input_ids"], max_length=50, **kwargs)
+        inputs = dist.convert_to_distributed_default_setting(inputs["input_ids"])
+        outputs = self.model.generate(inputs, max_length=50, **kwargs)
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
         return_ids = model_output_dict["return_ids"]
+
         records = [
             {"generated_text": self.tokenizer.decode(return_ids[i])}
             for i in range(return_ids.size(0))
         ]
         return records
 
+    def build_tokenizer(self, cfg):
+        tokenizer = None
+        if try_get_key(cfg, "tokenization") is not None:
+            tokenizer_cfg = cfg.tokenization.tokenizer
+            if "vocab_file" not in tokenizer_cfg:
+                # If "vocab_file" does not exist in the tokenizer's config,
+                # set it to default as f"{model_path}/vocab.json"
+                tokenizer_cfg.vocab_file = str(Path(self.model_path).joinpath("vocab.json"))
+            if "merges_file" not in tokenizer_cfg:
+                # If "merges_file" does not exist in the tokenizer's config,
+                # set it to default as f"{model_path}/merges.txt"
+                tokenizer_cfg.merges_file = str(Path(self.model_path).joinpath("merges.txt"))
+            tokenizer = DefaultTrainer.build_tokenizer(cfg)
+        return tokenizer
+
 
 @click.command()
 @click.option(
     "--config_file",
-    default="projects/Llama/configs/llama_config.py",
+    default="projects/Aquila/configs/aquila_config.py",
     help="Path to the configuration file.",
 )
 @click.option("--model_path", default=None, help="Path to the model checkpoint.")

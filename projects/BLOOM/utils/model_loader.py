@@ -43,7 +43,7 @@ class BlooMLoaderHuggerFace(ModelLoaderHuggerFace):
 
         # prefix
         has_prefix = any(s.startswith(self.base_model_prefix_1) for s in oneflow_state_dict)
-        prefix2 = "transformer." if has_prefix else ""
+        prefix2 = "transformer." if not has_prefix else ""
 
         # Convert layers.
         for key in old_keys:
@@ -61,8 +61,13 @@ class BlooMLoaderHuggerFace(ModelLoaderHuggerFace):
             cfg_dict = json.load(f)
 
         self._update_cfg("hidden_layers", cfg_dict["n_layer"])
-        self._update_cfg("hidden_size", cfg_dict["n_embed"])
-        self._update_cfg("n_head", cfg_dict["num_attention_heads"])
+
+        if "n_embed" in cfg_dict.keys():
+            self._update_cfg("hidden_size", cfg_dict["n_embed"])
+            self._update_cfg("n_head", cfg_dict["num_attention_heads"])
+        else:
+            self._update_cfg("hidden_size", cfg_dict["hidden_size"])
+            self._update_cfg("n_head", cfg_dict["n_head"])
 
         # update libai_cfg by config.json
         for k, v in cfg_dict.items():

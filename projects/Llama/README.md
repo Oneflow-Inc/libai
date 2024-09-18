@@ -45,3 +45,16 @@ python projects/Llama/utils/eval_adapter.py
 ```bash
 bash tools/infer.sh projects/Llama/pipeline.py 8
 ```
+
+## npu/xpu example
+
+- npu
+```bash
+python projects/Llama/pipeline.py --device=npu --mode=huggingface --model_path /your/model/path
+```
+
+- xpu
+```bash
+python projects/Llama/pipeline.py --device=xpu --mode=huggingface --model_path /your/model/path
+```
+

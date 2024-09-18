@@ -72,6 +72,18 @@ class _DistributeUtil(object):
 
         # Add set device type
         self._device_type = try_get_key(cfg, "device_type", default="cuda")
+        if self._device_type == "npu":
+            try:
+                import oneflow_npu  # noqa: F401
+            except ImportError:
+                raise ImportError("'oneflow_npu' is missing. Install it to use NPU devices.")
+        elif self._device_type == "xpu":
+            try:
+                import oneflow_xpu  # noqa: F401
+            except ImportError:
+                raise ImportError("'oneflow_xpu' is missing. Install it to use NPU devices.")
+        elif self._device_type not in ("cuda", "npu", "xpu", "cpu"):
+            raise NotImplementedError(f"Unsupported device {self._device_type}")
 
     def _init_parallel_size(self, cfg):
 
@@ -228,7 +240,7 @@ class _DistributeUtil(object):
         return self._device_type
 
     def set_device_type(self, device_type):
-        assert device_type in ["cpu", "cuda"], f"not supported for {device_type}"
+        # assert device in ["cpu", "cuda"], f"not supported for device:{device}"
         self._device_type = device_type
 
     def get_layer_ranks(self, layer_idx):
@@ -435,10 +447,10 @@ def convert_to_distributed_default_setting(t):
         return t.to_global(placement=flow.placement(device_type, ranks=t.placement.ranks))
 
 
-def ttol(tensor, pure_local=False, ranks=None):
+def ttol(tensor, pure_local=False, device="cuda", ranks=None):
     """Global tensor to local tensor."""
     if tensor.is_global:
-        placement = tensor.placement if not ranks else flow.placement("cuda", ranks)
+        placement = tensor.placement if not ranks else flow.placement(device, ranks)
         if pure_local:
             tensor = tensor.to_global(placement=placement).to_local()
         else:
@@ -459,7 +471,7 @@ def tton(tensor, local_only=False, ranks=None):
 
 def tensor_to_rank0(tensor, device="cuda", to_local=False):
     """Global tensor to rank0."""
-    assert device in ["cpu", "cuda"], f"not supported for device:{device}"
+    # assert device in ["cpu", "cuda"], f"not supported for device:{device}"
     if tensor.is_global:
         # Consider if it's 2d mesh, ranks should be [[0]] instead of [0]
         placement = flow.placement(device, ranks=[0] if tensor.placement.ranks.ndim == 1 else [[0]])

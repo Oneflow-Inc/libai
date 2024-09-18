@@ -1,13 +1,14 @@
 from omegaconf import DictConfig, OmegaConf
 
 from libai.config import LazyCall
-from projects.Llama.llama import LlamaForCausalLM
-from projects.Llama.tokenizer import LlamaTokenizer
+from projects.Aquila.aquila import AquilaForCausalLM
+from projects.Aquila.tokenizer import AquilaTokenizer
 from configs.common.train import train
 
 
 cfg = dict(
     # Model
+    model_type="aquila",
     hidden_act="silu",
     hidden_size=4096,
     initializer_range=0.02,
@@ -16,10 +17,10 @@ cfg = dict(
     num_attention_heads=32,
     hidden_layers=32,
     pretraining_tp=1,
-    rms_norm_eps=1e-05,
+    rms_norm_eps=1e-06,
     rope_scaling=None,
     tie_word_embeddings=False,
-    vocab_size=32000,
+    vocab_size=100008,
     use_scaled_init_for_output_weights=False,
     scale_mask_softmax_fusion=False,
     amp_enabled=True,
@@ -48,14 +49,15 @@ cfg = dict(
     eos_token_id=2,
     pad_token_id=0,
     # train
-    pretrained_model_path="meta-llama/Llama-2-7b-hf",
+    pretrained_model_path="/root/models/Aquila-7B",
 )
 
 cfg = DictConfig(cfg)
 
-model = LazyCall(LlamaForCausalLM)(cfg=cfg)
+model = LazyCall(AquilaForCausalLM)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
-tokenization.tokenizer = LazyCall(LlamaTokenizer)(
-    # pretrained_model_path="meta-llama/Llama-2-7b-hf/tokenizer.model"
+tokenization.tokenizer = LazyCall(AquilaTokenizer)(
+    # vocab_file=cfg.pretrained_model_path+"/vocab.json",
+    # merges_file=cfg.pretrained_model_path+"/merges.txt",
 )

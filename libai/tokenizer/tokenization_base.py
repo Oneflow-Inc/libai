@@ -774,7 +774,9 @@ class PreTrainedTokenizer(object):
             ids.append(self._convert_token_to_id_with_added_voc(token))
         return ids
 
-    def convert_to_tensors(self, token_ids, return_tensors=None, is_global=False, **kwargs):
+    def convert_to_tensors(
+        self, token_ids, return_tensors=None, is_global=False, device="cuda", **kwargs
+    ):
         if return_tensors is None:
             return_token_ids = token_ids
         elif return_tensors == "of":
@@ -783,7 +785,7 @@ class PreTrainedTokenizer(object):
             elif is_global:
                 sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
                 placement = kwargs.get(
-                    "placement", flow.placement("cuda", list(range(dist.get_world_size())))
+                    "placement", flow.placement(device, list(range(dist.get_world_size())))
                 )
                 return_token_ids = flow.tensor(
                     token_ids, sbp=sbp, placement=placement, dtype=flow.long
@@ -803,14 +805,18 @@ class PreTrainedTokenizer(object):
     def _convert_token_to_id(self, token):
         raise NotImplementedError
 
-    def encode(self, text, return_tensors=None, is_global=False, **kwargs):
+    def encode(self, text, return_tensors=None, is_global=False, device="cuda", **kwargs):
         if isinstance(text, str):
             tokens = self.tokenize(text)
             token_ids = self.convert_tokens_to_ids(tokens)
             if hasattr(self, "build_inputs_with_special_tokens"):
                 token_ids = self.build_inputs_with_special_tokens(token_ids)
             token_ids = self.convert_to_tensors(
-                token_ids, return_tensors=return_tensors, is_global=is_global, **kwargs
+                token_ids,
+                return_tensors=return_tensors,
+                is_global=is_global,
+                device=device,
+                **kwargs,
             )
             return token_ids
         elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], str):

@@ -21,7 +21,7 @@ import oneflow as flow
 from libai.utils import distributed as dist
 
 
-def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
+def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch, device="cuda"):
     x = list(x_dict.values())[0]
     tensor_batch = x.shape[0]
     assert tensor_batch <= batch_size
@@ -37,9 +37,9 @@ def pad_batch(x_dict, batch_size, last_batch_lack, is_last_batch):
     for key, xi in x_dict.items():
         pad_shape = (batch_size, *xi.shape[1:])
         local_xi = xi.to_global(
-            sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement("cuda")
+            sbp=flow.sbp.broadcast, placement=flow.env.all_device_placement(device)
         ).to_local()
-        padded_xi = flow.zeros(pad_shape, dtype=xi.dtype, device="cuda")
+        padded_xi = flow.zeros(pad_shape, dtype=xi.dtype, device=device)
         padded_xi[:tensor_batch, ...] = padded_xi[:tensor_batch, ...] + local_xi
         for i in range(last_batch_lack - 1):
             start_idx = tensor_micro_batch_size * (data_parallel_size - i - 1) - 1

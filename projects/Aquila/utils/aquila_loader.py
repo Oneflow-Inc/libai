@@ -20,14 +20,12 @@ import oneflow as flow
 from libai.models.utils.model_loader.base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
 
 
-class LlamaLoaderHuggerFace(ModelLoaderHuggerFace):
+class AquilaLoaderHuggerFace(ModelLoaderHuggerFace):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
 
         self.base_model_prefix_1 = "model"
         self.base_model_prefix_2 = "model"
-        if not pretrained_model_path:
-            self.pretrained_model_path = libai_cfg.pretrained_model_path
 
     def _convert_state_dict(self, flow_state_dict, cfg):
         """Convert state_dict's keys to match model.
@@ -102,9 +100,7 @@ class LlamaLoaderHuggerFace(ModelLoaderHuggerFace):
         self._update_cfg_log()
 
 
-class LlamaLoaderLiBai(ModelLoaderLiBai):
+class AquilaLoaderLiBai(ModelLoaderLiBai):
     def __init__(self, model, libai_cfg, pretrained_model_path, **kwargs):
         super().__init__(model, libai_cfg, pretrained_model_path, **kwargs)
         self.base_model_prefix_2 = "model"
-        if not pretrained_model_path:
-            self.pretrained_model_path = libai_cfg.pretrained_model_path
