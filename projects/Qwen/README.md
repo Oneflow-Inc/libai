@@ -4,13 +4,13 @@
 - cuda TODO
 
 ```bash
-python projects/Qwen/pipeline.py --model_path=/root/models/Aquila-7B --mode=huggingface
+python projects/Qwen/pipeline.py --model_path=/root/models/Qwen1.5-7B-Chat --mode=huggingface
 ```
 
 - npu TODO
 
 ```bash
-python projects/Qwen/pipeline.py --model_path=/data0/hf_models/Qwen1.5-7B-Chat --mode=huggingface --device=npu
+python projects/Qwen/pipeline.py --model_path=/data0/hf_models/qwen2/Qwen1.5-7B-Chat --mode=huggingface --device=npu
 ```
 
 - xpu
