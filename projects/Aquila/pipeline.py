@@ -105,6 +105,7 @@ if __name__ == "__main__":
         model_path='/root/models/Aquila-7B',
         mode="huggingface",
     )
+    pipeline.model = pipeline.model.half()
 
     text = [
         "Give three tips for staying healthy.",

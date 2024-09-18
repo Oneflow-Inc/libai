@@ -137,6 +137,8 @@ if __name__ == "__main__":
         model_path='/root/models/Llama-2-7b-chat-hf',
         mode="huggingface",
     )
+    pipeline.model = pipeline.model.half()
+
 
     text = [
         "Give three tips for staying healthy.",

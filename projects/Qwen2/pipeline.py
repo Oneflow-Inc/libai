@@ -139,6 +139,7 @@ if __name__ == "__main__":
         model_path='/root/models/Qwen1.5-7B-Chat',
         mode="huggingface",
     )
+    pipeline.model = pipeline.model.half()
 
     text = [
         "Give three tips for staying healthy.",

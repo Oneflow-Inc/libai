@@ -136,6 +136,7 @@ if __name__ == "__main__":
         model_path='/root/models/Baichuan2-7B-Chat',
         mode="huggingface",
     )
+    pipeline.model = pipeline.model.half()
 
     text = [
         "Give three tips for staying healthy.",
