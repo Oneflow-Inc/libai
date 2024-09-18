@@ -87,16 +87,31 @@ class TextGenerationPipeline(BasePipeline):
         return records
 
 
-if __name__ == "__main__":
-    # ----- load huggingface checkpoint -----
+@click.command()
+@click.option(
+    "--config_file",
+    default="projects/Qwen/config/qwen_config.py",
+    help="Path to the configuration file.",
+)
+@click.option("--model_path", default=None, help="Path to the model checkpoint.")
+@click.option(
+    "--mode",
+    default="libai",
+    help="Mode for the dataloader pipeline, e.g., 'libai' or 'huggingface'.",
+)
+@click.option(
+    "--device", default="cuda", help="Device to run the model on, e.g., 'cuda', 'xpu', 'npu'."
+)
+def main(config_file, model_path, mode, device):
     pipeline = TextGenerationPipeline(
-        "projects/Qwen/config/qwen_config.py",
+        config_file,
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path="/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B",
-        mode="huggingface",
+        model_path=model_path,
+        mode=mode,
+        device=device,
     )
 
     text = ["给出3点关于保持身体健康的意见。"]
@@ -104,3 +119,6 @@ if __name__ == "__main__":
     output = pipeline(inputs=text)
     if dist.is_main_process():
         print(output)
+
+if __name__ == "__main__":
+    main()
