@@ -63,7 +63,7 @@ class Qwen2LoaderHuggerFace(ModelLoaderHuggerFace):
             oneflow_state_dict.pop(query_w)
             oneflow_state_dict.pop(key_w)
             oneflow_state_dict.pop(value_w)
-            
+
             query_b = old_key_qkv_b.format(layer_idx, "q_proj")
             key_b = old_key_qkv_b.format(layer_idx, "k_proj")
             value_b = old_key_qkv_b.format(layer_idx, "v_proj")

@@ -1,21 +1,23 @@
-import os
 import json
-from tqdm import tqdm
+import os
 import random
 
 import oneflow as flow
-
+from tqdm import tqdm
 
 IGNORE_TOKEN_ID = -100
 
 data = {
-    'id': 'i6IyJda_0', 
-    'conversations': [
-        {'from': 'human', 'value': 'How to tell if a customer segment is well segmented? In 3 bullet points.'}, 
-        {'from': 'gpt', 'value': '1. Homogeneity \n2. Distinctiveness \n3. Stability'},
-        {'from': 'human', 'value': 'Thank you'}, 
-        {'from': 'gpt', 'value': 'you are welcome'}, 
-    ]
+    "id": "i6IyJda_0",
+    "conversations": [
+        {
+            "from": "human",
+            "value": "How to tell if a customer segment is well segmented? In 3 bullet points.",
+        },
+        {"from": "gpt", "value": "1. Homogeneity \n2. Distinctiveness \n3. Stability"},
+        {"from": "human", "value": "Thank you"},
+        {"from": "gpt", "value": "you are welcome"},
+    ],
 }
 
 
@@ -41,17 +43,9 @@ def qwen2_data_process(
             source = source[1:]
 
         input_id, target = [], []
-        system = (
-            [im_start]
-            + _system
-            + tokenizer(system_message).input_ids
-            + [im_end]
-            + nl_tokens
-        )
+        system = [im_start] + _system + tokenizer(system_message).input_ids + [im_end] + nl_tokens
         input_id += system
-        target += (
-            [im_start] + [IGNORE_TOKEN_ID] * (len(system) - 3) + [im_end] + nl_tokens
-        )
+        target += [im_start] + [IGNORE_TOKEN_ID] * (len(system) - 3) + [im_end] + nl_tokens
         assert len(input_id) == len(target)
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
@@ -65,10 +59,7 @@ def qwen2_data_process(
             input_id += _input_id
             if role == "<|im_start|>user":
                 _target = (
-                    [im_start]
-                    + [IGNORE_TOKEN_ID] * (len(_input_id) - 3)
-                    + [im_end]
-                    + nl_tokens
+                    [im_start] + [IGNORE_TOKEN_ID] * (len(_input_id) - 3) + [im_end] + nl_tokens
                 )
             elif role == "<|im_start|>assistant":
                 _target = (
@@ -109,21 +100,17 @@ def preprocess(input_file, targe_file, shuffle=False, tokenizer=None):
 
 
 if __name__ == "__main__":
-  
+
     from projects.mock_transformers.mock_tokenization import Qwen2Tokenizer
 
     input_file = "/data/home/xiezipeng/libai/projects/Qwen/subset.json"
     target_file = "/data/home/xiezipeng/libai/projects/Qwen"
     model_file = "/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B"
-    
+
     tokenizer = Qwen2Tokenizer.from_pretrained(model_file)
     tokenizer.model_max_length = 2048
 
-    preprocess(
-        input_file=input_file,
-        targe_file=target_file, 
-        tokenizer=tokenizer
-    )
+    preprocess(input_file=input_file, targe_file=target_file, tokenizer=tokenizer)
 
     # res = qwen2_data_process([data["conversations"]], tokenizer)
     # input_ids = res["input_ids"]
@@ -136,6 +123,6 @@ if __name__ == "__main__":
 
     # labels = labels[0]
     # labels[labels==IGNORE_TOKEN_ID] = 151643
-    
+
     # print("input text:\n",tokenizer.decode(input_ids[0].tolist()))
     # print("labels text: \n",tokenizer.decode(labels.tolist()))

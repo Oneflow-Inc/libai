@@ -22,8 +22,8 @@ from functools import lru_cache
 from io import open
 from typing import List, Optional
 
-import regex as re
 import oneflow as flow
+import regex as re
 
 import libai.utils.distributed as dist
 from libai.tokenizer.tokenization_base import PreTrainedTokenizer
@@ -36,8 +36,12 @@ VOCAB_FILES_NAMES = {
 }
 
 PRETRAINED_VOCAB_FILES_MAP = {
-    "vocab_file": {"qwen/qwen-tokenizer": "https://huggingface.co/qwen/qwen-tokenizer/resolve/main/vocab.json"},
-    "merges_file": {"qwen/qwen-tokenizer": "https://huggingface.co/qwen/qwen-tokenizer/resolve/main/merges.txt"},
+    "vocab_file": {
+        "qwen/qwen-tokenizer": "https://huggingface.co/qwen/qwen-tokenizer/resolve/main/vocab.json"
+    },
+    "merges_file": {
+        "qwen/qwen-tokenizer": "https://huggingface.co/qwen/qwen-tokenizer/resolve/main/merges.txt"
+    },
 }
 
 MAX_MODEL_INPUT_SIZES = {"qwen/qwen-tokenizer": 32768}
@@ -48,14 +52,16 @@ PRETOKENIZE_REGEX = r"""(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p
 @lru_cache()
 def bytes_to_unicode():
     bs = (
-        list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
+        list(range(ord("!"), ord("~") + 1))
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
     )
     cs = bs[:]
     n = 0
-    for b in range(2**8):
+    for b in range(2 ** 8):
         if b not in bs:
             bs.append(b)
-            cs.append(2**8 + n)
+            cs.append(2 ** 8 + n)
             n += 1
     cs = [chr(n) for n in cs]
     return dict(zip(bs, cs))
@@ -113,11 +119,11 @@ class Qwen2Tokenizer(PreTrainedTokenizer):
         self.pat = re.compile(PRETOKENIZE_REGEX)
 
         super(Qwen2Tokenizer, self).__init__(
-            bos_token=bos_token, 
-            eos_token=eos_token, 
-            unk_token=unk_token, 
+            bos_token=bos_token,
+            eos_token=eos_token,
+            unk_token=unk_token,
             pad_token=pad_token,
-            **kwargs
+            **kwargs,
         )
 
     @property

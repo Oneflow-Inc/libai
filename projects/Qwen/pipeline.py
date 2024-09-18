@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+
+import click
+
+from libai.config import try_get_key
+from libai.engine import DefaultTrainer
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 
@@ -67,7 +73,9 @@ class TextGenerationPipeline(BasePipeline):
 
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoderW
-        inputs = self.tokenizer.encode(inputs, return_tensors='of', is_global=True)
+        inputs = self.tokenizer.encode(
+            inputs, return_tensors="of", is_global=True, device=self.device
+        )
         inputs = {
             "input_ids": inputs,
         }
@@ -85,6 +93,21 @@ class TextGenerationPipeline(BasePipeline):
             for i in range(return_ids.size(0))
         ]
         return records
+
+    def build_tokenizer(self, cfg):
+        tokenizer = None
+        if try_get_key(cfg, "tokenization") is not None:
+            tokenizer_cfg = cfg.tokenization.tokenizer
+            if "vocab_file" not in tokenizer_cfg:
+                # If "vocab_file" does not exist in the tokenizer's config,
+                # set it to default as f"{model_path}/vocab.json"
+                tokenizer_cfg.vocab_file = str(Path(self.model_path).joinpath("vocab.json"))
+            if "merges_file" not in tokenizer_cfg:
+                # If "merges_file" does not exist in the tokenizer's config,
+                # set it to default as f"{model_path}/merges.txt"
+                tokenizer_cfg.merges_file = str(Path(self.model_path).joinpath("merges.txt"))
+            tokenizer = DefaultTrainer.build_tokenizer(cfg)
+        return tokenizer
 
 
 @click.command()
@@ -119,6 +142,7 @@ def main(config_file, model_path, mode, device):
     output = pipeline(inputs=text)
     if dist.is_main_process():
         print(output)
+
 
 if __name__ == "__main__":
     main()

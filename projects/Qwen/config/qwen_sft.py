@@ -1,20 +1,18 @@
 import os
+
 from omegaconf import OmegaConf
 
-from libai.config import LazyCall
-from libai.evaluation import PPLEvaluator
-from libai.scheduler import WarmupExponentialLR
-from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
-
-from configs.common.train import train
 from configs.common.models.graph import graph
 from configs.common.optim import optim
-
+from configs.common.train import train
+from libai.config import LazyCall
+from libai.data.build import build_nlp_test_loader, build_nlp_train_loader
+from libai.evaluation import PPLEvaluator
+from libai.scheduler import WarmupExponentialLR
 from projects.Qwen.config.qwen_config import cfg
-from projects.Qwen.utils.qwen_dataset import QwenDataset
-from projects.Qwen.tokenizer import Qwen2Tokenizer
 from projects.Qwen.qwen2 import Qwen2ForCausalLM
-
+from projects.Qwen.tokenizer import Qwen2Tokenizer
+from projects.Qwen.utils.qwen_dataset import QwenDataset
 
 # Hyperparameters
 weight_decay = 0.1
@@ -46,11 +44,7 @@ model = LazyCall(Qwen2ForCausalLM)(cfg=cfg)
 # datasets
 dataloader = OmegaConf.create()
 dataloader.train = LazyCall(build_nlp_train_loader)(
-    dataset=[
-        LazyCall(QwenDataset)(
-            path=dataset_path, tokenizer=tokenization.tokenizer
-        )
-    ],
+    dataset=[LazyCall(QwenDataset)(path=dataset_path, tokenizer=tokenization.tokenizer)],
 )
 
 train.update(
