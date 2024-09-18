@@ -22,11 +22,16 @@ import oneflow.mock_torch as mock
 
 with mock.enable(lazy=True):
 
-    from transformers import BertTokenizer, GPT2Tokenizer, MT5Tokenizer, T5Tokenizer, Qwen2Tokenizer  # noqa
+    from transformers import (  # noqa
+        BertTokenizer,
+        GPT2Tokenizer,
+        MT5Tokenizer,
+        Qwen2Tokenizer,
+        T5Tokenizer,
+    )
     from transformers.tokenization_utils_base import *  # noqa
     from transformers.utils import generic  # noqa
     from transformers.utils.generic import TensorType  # noqa
-
 
     # ---------------- mock TensorType ------------------
     class TensorType(ExplicitEnum):  # noqa
@@ -36,9 +41,7 @@ with mock.enable(lazy=True):
         NUMPY = "np"
         JAX = "jax"
 
-
     generic.TensorType = TensorType
-
 
     # ---------------- mock convert_to_tensors ------------------
     def flow_convert_to_tensors(self, tensor_type=None, prepend_batch_axis=False):
@@ -74,7 +77,9 @@ with mock.enable(lazy=True):
             try:
                 import oneflow  # noqa
             except ImportError as e:
-                msg = "Unable to convert output to OneFlow tensors format, OneFlow is not installed."
+                msg = (
+                    "Unable to convert output to OneFlow tensors format, OneFlow is not installed."
+                )
                 raise ImportError(msg) from e
             as_tensor = flow.tensor
             is_tensor = flow.is_tensor
@@ -100,7 +105,8 @@ with mock.enable(lazy=True):
                 if not is_tensor(value):
                     tensor = as_tensor(value)
 
-                    # Removing this for now in favor of controlling the shape with `prepend_batch_axis`
+                    # Removing this for now in favor of controlling the shape
+                    # with `prepend_batch_axis`
                     # # at-least2d
                     # if tensor.ndim > 2:
                     #     tensor = tensor.squeeze(0)
@@ -111,9 +117,9 @@ with mock.enable(lazy=True):
             except Exception as e:
                 if key == "overflowing_tokens":
                     raise ValueError(
-                        "Unable to create tensor returning overflowing tokens of different lengths. "
-                        "Please see if a fast version of this tokenizer is available to have this "
-                        "feature available."
+                        "Unable to create tensor returning overflowing tokens of different "
+                        "lengths. Please see if a fast version of this tokenizer is "
+                        "available to have this feature available."
                     ) from e
                 raise ValueError(
                     "Unable to create tensor, you should probably activate truncation and/or "
@@ -136,6 +142,5 @@ with mock.enable(lazy=True):
                     )
                 self[k] = v.to_global(sbp=sbp, placement=dist.get_layer_placement(0))
         return self
-
 
     BatchEncoding.convert_to_tensors = flow_convert_to_tensors  # noqa

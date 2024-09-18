@@ -23,6 +23,7 @@ cfg = dict(
     layernorm_epsilon=1e-05,
     multi_query_attention=True,
     multi_query_group_num=2,
+    max_position_embeddings=2048,
     num_attention_heads=32,
     num_layers=28,
     padded_vocab_size=65024,
@@ -60,7 +61,7 @@ cfg = dict(
     output_scores=False,
     output_hidden_states=False,
     # train
-    pretrained_model_path=os.environ["CHATGLM_HF_DIR"],
+    pretrained_model_path="chatglm/chatglm2-6b",
     # lora_cfg
     lora_enable=False,
     lora_cfg=dict(
@@ -85,6 +86,4 @@ cfg = DictConfig(cfg)
 model = LazyCall(ChatGLMForConditionalGeneration)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
-tokenization.tokenizer = LazyCall(ChatGLMTokenizer)(
-    vocab_file=f"{os.environ['CHATGLM_HF_DIR']}/tokenizer.model"
-)
+tokenization.tokenizer = LazyCall(ChatGLMTokenizer)()

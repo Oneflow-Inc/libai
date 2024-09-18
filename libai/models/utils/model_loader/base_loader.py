@@ -20,6 +20,7 @@ import os
 
 import omegaconf
 import oneflow as flow
+from safetensors import safe_open
 from termcolor import colored
 from safetensors import safe_open
 
@@ -384,6 +385,11 @@ class ModelLoaderHuggerFace(ModelLoader):
         Returns:
             flow.Tensor: The target tensor.
         """
+        import torch
+
+        if tensor.dtype == torch.bfloat16:
+            data = tensor.detach().half().cpu().numpy()
+            return flow.Tensor(data)
         return flow.Tensor(tensor.detach().cpu().numpy())
 
     def _convert_tensors(self, torch_state_dict):
