@@ -19,6 +19,7 @@ from typing import Tuple
 
 import oneflow as flow
 from oneflow import nn
+import numpy as np
 
 from libai.config import configurable
 from libai.inference.generator.generation_utils import Generator
@@ -42,6 +43,76 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
 
+class AddScore(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, a, b):
+        return a.float() + b.float()
+
+class AddModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, a, b):
+        return a + b
+        # c = a + b
+        # d = c.detach().numpy()
+        # if np.any(np.isnan(d)) or np.any(np.isinf(d)):
+        #     breakpoint()
+        # return c
+
+class MulModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, a, b):
+        return a * b
+
+class Prefix(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, x):
+        return x[..., : x.shape[-1] // 2]
+
+class Postfix(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, x):
+        return x[..., x.shape[-1] // 2 :]
+
+class CatModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, tensors, dim=-1):
+        return flow.cat(tensors, dim=dim)
+
+class RotateHalf(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.prefix = Prefix()
+        self.postfix = Postfix()
+        self.cat = CatModule()
+    def forward(self, x):
+        x1 = self.prefix(x)
+        x2 = self.postfix(x)
+        return self.cat((-x2, x1), dim=-1)
+
+class ApplyRotaryPosEmb(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.q_mul_cos = MulModule()
+        self.q_mul_sin = MulModule()
+        self.q_add = AddModule()
+        self.q_rotate = RotateHalf()
+        self.k_mul_cos = MulModule()
+        self.k_mul_sin = MulModule()
+        self.k_add = AddModule()
+        self.k_rotate = RotateHalf()
+    def forward(self, q, k, cos, sin, position_ids):
+        cos = cos[position_ids].unsqueeze(1)
+        sin = sin[position_ids].unsqueeze(1)
+        q_embed = self.q_add(self.q_mul_cos(q, cos), self.q_mul_sin(self.q_rotate(q), sin))
+        k_embed = self.k_add(self.k_mul_cos(k, cos), self.k_mul_sin(self.k_rotate(k), sin))
+        return q_embed, k_embed
+
 
 class RotaryEmbedding(nn.Module):
     def __init__(self, dim, max_position_embeddings=2048):
@@ -50,7 +121,7 @@ class RotaryEmbedding(nn.Module):
         self.dim = dim
         self.max_position_embeddings = max_position_embeddings
 
-    def forward(self, x, seq_len=None, cos_cached=None, sin_cached=None):
+    def forward(self, placement, seq_len=None, cos_cached=None, sin_cached=None):
         if seq_len > self.max_position_embeddings:
             raise ValueError(
                 f"The maximum supported length is {self.max_position_embeddings}, "
@@ -58,8 +129,8 @@ class RotaryEmbedding(nn.Module):
             )
 
         return (
-            cos_cached[:seq_len].to_global(placement=x.placement),
-            sin_cached[:seq_len].to_global(placement=x.placement),
+            cos_cached[:seq_len].to_global(placement=placement),
+            sin_cached[:seq_len].to_global(placement=placement),
         )
 
 
@@ -114,6 +185,43 @@ class MLP(nn.Module):
         return output
 
 
+class ViewModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, query_key_value, *args):
+        return query_key_value.view(*args)
+
+class PermModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, query_key_value, *args):
+        return query_key_value.permute(*args)
+
+class ChunkModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, query_key_value, **kwargs):
+        return flow.chunk(query_key_value, **kwargs)
+
+class MatmulModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, x, y, **kwargs):
+        return flow.matmul(x, y, **kwargs)
+
+class SoftmaxModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, w, **kwargs):
+        return flow.softmax(w, **kwargs)
+
+class TransposeModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, x, *args):
+        return x.transpose(*args)
+
+
 class MultiheadAttention(nn.Module):
     def __init__(
         self,
@@ -165,6 +273,15 @@ class MultiheadAttention(nn.Module):
             dim=rotary_dim,
             max_position_embeddings=max_position_embeddings,
         )
+        self.view_module = ViewModule()
+        self.perm = PermModule()
+        self.chunk = ChunkModule()
+        self.pos_emb = ApplyRotaryPosEmb()
+        self.matmul_qk = MatmulModule()
+        self.matmul_w = MatmulModule()
+        self.add_score = AddScore()
+        self.softmax = SoftmaxModule()
+        self.transpose = TransposeModule()
 
     def forward(
         self,
@@ -185,22 +302,22 @@ class MultiheadAttention(nn.Module):
 
         bsz, tgt_len = hidden_states.size()[:2]
 
+        # backward nan begin
         query_key_value = self.query_key_value(hidden_states)
-        query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
-        query_key_value = query_key_value.permute(
-            0, 2, 1, 3
-        )  # [bsz, num_heads, src_len, 3 * head_size]
-        query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+        query_key_value = self.view_module(query_key_value, bsz, -1, self.num_heads, 3 * self.head_size)
+        query_key_value = self.perm(query_key_value, 0, 2, 1, 3)  # [bsz, num_heads, src_len, 3 * head_size]
+        query, key, value = self.chunk(query_key_value, chunks=3, dim=-1)
 
         kv_seq_len = key.shape[-2]
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
         cos, sin = self.rotary_embed(
-            value, seq_len=kv_seq_len, cos_cached=cos_cached, sin_cached=sin_cached
+            value.placement, seq_len=kv_seq_len, cos_cached=cos_cached, sin_cached=sin_cached
         )
-        query, key = apply_rotary_pos_emb(query, key, cos, sin, position_ids)
+        query, key = self.pos_emb(query, key, cos, sin, position_ids)
 
         if past_key_value is not None:
+            breakpoint()
             past_key, past_value = past_key_value
             key = flow.cat((past_key.type_as(key), key), dim=2)
             value = flow.cat((past_value.type_as(value), value), dim=2)
@@ -210,15 +327,15 @@ class MultiheadAttention(nn.Module):
             past_key_value = (key, value)
 
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
-        attention_weights = attention_scores + attention_mask
+        attention_scores = self.matmul_qk(query, key, transpose_b=True, alpha=self.norm_factor)
+        attention_weights = self.add_score(attention_scores, attention_mask)
 
-        attention_weights = flow.softmax(attention_weights, dim=-1)
+        attention_weights = self.softmax(attention_weights, dim=-1).half()
         # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
-        context = flow.matmul(attention_weights, value)
+        context = self.matmul_w(attention_weights, value)
 
         # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
-        context = context.transpose(1, 2)
+        context = self.transpose(context, 1, 2)
         output = self.o_proj(context.flatten(2))
 
         if use_cache:
@@ -321,6 +438,8 @@ class LlamaDecoderLayer(nn.Module):
             output_layer_init_method=self.output_layer_init_method,
             layer_idx=self.layer_idx,
         )
+        self.add_attention = AddModule()
+        self.add_mlp = AddModule()
 
     def forward(
         self,
@@ -340,6 +459,7 @@ class LlamaDecoderLayer(nn.Module):
             )
 
         if past_key_value is not None:
+            breakpoint()
             if self.is_decoder:
                 assert len(past_key_value) == 4
                 self_attn_past_key_value = past_key_value[:2]
@@ -361,13 +481,13 @@ class LlamaDecoderLayer(nn.Module):
         if use_cache:
             attention_output, presents = attention_output
 
-        hidden_states = hidden_states + attention_output
+        hidden_states = self.add_attention(hidden_states, attention_output)
 
         layernorm_output = self.post_attention_layernorm(hidden_states)
 
         mlp_output = self.mlp(layernorm_output)
 
-        output = hidden_states + mlp_output
+        output = self.add_mlp(hidden_states, mlp_output)
 
         if use_cache:
             output = (output, presents)

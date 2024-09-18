@@ -32,6 +32,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 logger = logging.getLogger("libai." + __name__)
 
 
+def create_save_output_hook(module_name):
+    def save_output(module, input, output):
+        print(f"{module_name=} {len(input)=} {len(outout)=}")
+    return save_output
+
+
 def build_model(cfg):
     model_loader = LlamaLoaderHuggerFace(
         cfg,
@@ -70,6 +76,10 @@ class LlamaTrainer(DefaultTrainer):
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
+        for module_name, module in model.named_modules():
+            if module_name:
+                hook = create_save_output_hook(module_name)
+                module.register_forward_hook(hook)
         return model
 
 

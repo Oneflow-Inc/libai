@@ -28,6 +28,27 @@ from libai.utils.checkpoint import Checkpointer
 from configs.loader_mapping import loader_mapping_models as mapping
 
 
+def nan_tensors(tensors):
+    for tensor in tensors:
+        if not isinstance(tensor, flow.Tensor):
+            continue
+        array = tensor.numpy()
+        if np.any(np.isinf(array)) or np.any(np.isnan(array)):
+            return True
+    return False
+
+
+def create_forward_hook(module_name):
+    def save_output(module, input, output):
+        print(f"forward {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
+    return save_output
+
+
+def create_backward_hook(module_name):
+    def save_output(module, input, output):
+        print(f"backward {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
+    return save_output
+
 
 def build_model(cfg):
     model_arguments=mapping[cfg.cfg.model_type]
@@ -60,11 +81,15 @@ class Trainer(DefaultTrainer):
         model._apply(dist.convert_to_distributed_default_setting)
 
         if cfg.train.train_with_fp16:
-           model = model.to(flow.float16)
-           flow.cuda.empty_cache()
+            model = model.to(flow.float16)
+            flow.cuda.empty_cache()
         '''for param in model.named_parameters():
             print(param[1].dtype)'''
         
+        for module_name, module in model.named_modules():
+            if module_name:
+                module.register_forward_hook(create_forward_hook(module_name))
+                module.register_full_backward_hook(create_backward_hook(module_name))
         return model
 
 def main(args):
