@@ -114,7 +114,7 @@ class TextGenerationPipeline(BasePipeline):
 @click.command()
 @click.option(
     "--config_file",
-    default="projects/Qwen/config/qwen_config.py",
+    default="projects/Qwen/configs/qwen_config.py",
     help="Path to the configuration file.",
 )
 @click.option("--model_path", default=None, help="Path to the model checkpoint.")
