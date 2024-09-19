@@ -1,19 +1,19 @@
 
 ### 推理
 
-- cuda TODO
+- cuda PASS
 
 ```bash
 python projects/Qwen/pipeline.py --model_path=/root/models/Qwen1.5-7B-Chat --mode=huggingface
 ```
 
-- npu
+- npu PASS
 
 ```bash
 python projects/Qwen/pipeline.py --model_path=/data0/hf_models/qwen2/Qwen1.5-7B-Chat --mode=huggingface --device=npu
 ```
 
-- xpu
+- xpu PASS
 
 ```bash
 python projects/Qwen/pipeline.py --model_path=/root/models/Qwen1.5-7B-Chat --mode=huggingface --device=xpu
@@ -27,10 +27,10 @@ python projects/Qwen/pipeline.py --model_path=/root/models/Qwen1.5-7B-Chat --mod
 python projects/Qwen/utils/data_prepare.py
 ```
 
-- cuda TODO
+- cuda PASS
 
 ```bash
-export NUM_GPUS=4
+export NUM_GPUS=8
 python3 -m oneflow.distributed.launch \
     --nproc_per_node ${NUM_GPUS} \
     --nnodes 1 \
@@ -43,6 +43,7 @@ python3 -m oneflow.distributed.launch \
             train.dist.device_type="cuda" \
             train.dist.pipeline_parallel_size=${NUM_GPUS}
 ```
+A100-PCIE-40GB x 4 OOM
 
 - xpu OOM
 
