@@ -266,10 +266,11 @@ class CasualMask(nn.Module):
             )
             inverted_attention_mask = 1.0 - attention_mask
             inverted_attention_mask.masked_fill(
-                inverted_attention_mask.to(flow.bool), 
-                flow.finfo(casual_mask.dtype).min
+                inverted_attention_mask.to(flow.bool), flow.finfo(casual_mask.dtype).min
             )
-            inverted_attention_mask = inverted_attention_mask.to_global(placement=casual_mask.placement)
+            inverted_attention_mask = inverted_attention_mask.to_global(
+                placement=casual_mask.placement
+            )
             casual_mask = casual_mask + inverted_attention_mask
         if input_dtype is not None:
             casual_mask = casual_mask.to(input_dtype)

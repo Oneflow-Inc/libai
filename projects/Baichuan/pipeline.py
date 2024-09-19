@@ -123,6 +123,6 @@ def main(config_file, model_path, mode, device):
     if dist.is_main_process():
         print(output)
 
+
 if __name__ == "__main__":
     main()
-
