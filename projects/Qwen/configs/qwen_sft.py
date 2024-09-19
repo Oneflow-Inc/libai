@@ -33,8 +33,8 @@ optim.update(
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(Qwen2Tokenizer)(
-    vocab_file=pretrained_model_path+"/vocab.json",
-    merges_file=pretrained_model_path+"/merges.txt",
+    vocab_file=pretrained_model_path + "/vocab.json",
+    merges_file=pretrained_model_path + "/merges.txt",
 )
 
 

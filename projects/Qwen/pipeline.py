@@ -74,6 +74,7 @@ class TextGenerationPipeline(BasePipeline):
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoderW
         import oneflow as flow
+
         inputs = flow.tensor(self.tokenizer.encode(inputs, add_bos=True, padding=True))
 
         inputs = {

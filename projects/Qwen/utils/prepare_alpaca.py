@@ -111,12 +111,10 @@ def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
     """
     full_prompt = generate_prompt(example)
     full_prompt_and_response = full_prompt + example["output"]
-    
+
     prompt = tokenizer.encode(full_prompt, device="cpu")
     prompt = flow.tensor(prompt, dtype=flow.int, device="cpu")
-    example = tokenizer.encode(
-        full_prompt_and_response, device="cpu"
-    )
+    example = tokenizer.encode(full_prompt_and_response, device="cpu")
     example = flow.tensor(example, dtype=flow.int, device="cpu")
 
     padding = max_length - example.shape[0]
