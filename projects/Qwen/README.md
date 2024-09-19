@@ -44,7 +44,7 @@ python3 -m oneflow.distributed.launch \
             train.dist.pipeline_parallel_size=${NUM_GPUS}
 ```
 
-- xpu TODO
+- xpu OOM
 
 ```bash
 export NUM_GPUS=1
