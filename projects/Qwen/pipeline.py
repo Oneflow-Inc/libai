@@ -73,9 +73,9 @@ class TextGenerationPipeline(BasePipeline):
 
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoderW
-        inputs = self.tokenizer.encode(
-            inputs, return_tensors="of", is_global=True, device=self.device
-        )
+        import oneflow as flow
+        inputs = flow.tensor(self.tokenizer.encode(inputs, add_bos=True, padding=True))
+
         inputs = {
             "input_ids": inputs,
         }
@@ -83,7 +83,8 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
-        outputs = self.model.generate(inputs["input_ids"], max_length=100, **kwargs)
+        inputs = dist.convert_to_distributed_default_setting(inputs["input_ids"])
+        outputs = self.model.generate(inputs, max_length=50, **kwargs)
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
