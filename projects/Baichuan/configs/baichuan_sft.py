@@ -73,7 +73,7 @@ train.update(
         amp=dict(enabled=False),
         train_with_fp16=True,
         activation_checkpoint=dict(enabled=True),
-        input_placement_device='xpu',
+        input_placement_device='cuda',
         checkpointer=dict(
             period=5000,
             max_to_keep=20,
@@ -83,7 +83,7 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=cfg.hidden_layers,
-            device_type='xpu',
+            device_type='cuda',
         ),
         evaluation=dict(
             enabled=True,
