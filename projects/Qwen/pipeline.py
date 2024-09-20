@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+
+import click
+
+from libai.config import try_get_key
+from libai.engine import DefaultTrainer
 from libai.inference.basic import BasePipeline
 from libai.utils import distributed as dist
 
@@ -67,7 +73,10 @@ class TextGenerationPipeline(BasePipeline):
 
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoderW
-        inputs = self.tokenizer.encode(inputs, return_tensors='of', is_global=True)
+        import oneflow as flow
+
+        inputs = flow.tensor(self.tokenizer.encode(inputs, add_bos=True, padding=True))
+
         inputs = {
             "input_ids": inputs,
         }
@@ -75,7 +84,8 @@ class TextGenerationPipeline(BasePipeline):
         return inputs
 
     def forward(self, inputs, **kwargs) -> dict:
-        outputs = self.model.generate(inputs["input_ids"], max_length=100, **kwargs)
+        inputs = dist.convert_to_distributed_default_setting(inputs["input_ids"])
+        outputs = self.model.generate(inputs, max_length=50, **kwargs)
         return {"return_ids": outputs}
 
     def postprocess(self, model_output_dict, **kwargs) -> dict:
@@ -86,17 +96,47 @@ class TextGenerationPipeline(BasePipeline):
         ]
         return records
 
+    def build_tokenizer(self, cfg):
+        tokenizer = None
+        if try_get_key(cfg, "tokenization") is not None:
+            tokenizer_cfg = cfg.tokenization.tokenizer
+            if "vocab_file" not in tokenizer_cfg:
+                # If "vocab_file" does not exist in the tokenizer's config,
+                # set it to default as f"{model_path}/vocab.json"
+                tokenizer_cfg.vocab_file = str(Path(self.model_path).joinpath("vocab.json"))
+            if "merges_file" not in tokenizer_cfg:
+                # If "merges_file" does not exist in the tokenizer's config,
+                # set it to default as f"{model_path}/merges.txt"
+                tokenizer_cfg.merges_file = str(Path(self.model_path).joinpath("merges.txt"))
+            tokenizer = DefaultTrainer.build_tokenizer(cfg)
+        return tokenizer
 
-if __name__ == "__main__":
-    # ----- load huggingface checkpoint -----
+
+@click.command()
+@click.option(
+    "--config_file",
+    default="projects/Qwen/configs/qwen_config.py",
+    help="Path to the configuration file.",
+)
+@click.option("--model_path", default=None, help="Path to the model checkpoint.")
+@click.option(
+    "--mode",
+    default="libai",
+    help="Mode for the dataloader pipeline, e.g., 'libai' or 'huggingface'.",
+)
+@click.option(
+    "--device", default="cuda", help="Device to run the model on, e.g., 'cuda', 'xpu', 'npu'."
+)
+def main(config_file, model_path, mode, device):
     pipeline = TextGenerationPipeline(
-        "projects/Qwen/config/qwen_config.py",
+        config_file,
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
         pipeline_num_layers=32,
-        model_path="/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B",
-        mode="huggingface",
+        model_path=model_path,
+        mode=mode,
+        device=device,
     )
 
     text = ["给出3点关于保持身体健康的意见。"]
@@ -104,3 +144,7 @@ if __name__ == "__main__":
     output = pipeline(inputs=text)
     if dist.is_main_process():
         print(output)
+
+
+if __name__ == "__main__":
+    main()

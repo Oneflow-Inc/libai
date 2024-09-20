@@ -19,7 +19,6 @@ import oneflow as flow
 import oneflow.mock_torch as mock
 
 from libai.utils import distributed as dist
-import oneflow.mock_torch as mock
 
 with mock.enable(lazy=True):
     from transformers import (  # noqa
@@ -32,7 +31,6 @@ with mock.enable(lazy=True):
     from transformers.tokenization_utils_base import *  # noqa
     from transformers.utils import generic  # noqa
     from transformers.utils.generic import TensorType  # noqa
-
 
     # ---------------- mock TensorType ------------------
     class TensorType(ExplicitEnum):  # noqa
@@ -144,6 +142,5 @@ with mock.enable(lazy=True):
                     )
                 self[k] = v.to_global(sbp=sbp, placement=dist.get_layer_placement(0))
         return self
-
 
     BatchEncoding.convert_to_tensors = flow_convert_to_tensors  # noqa

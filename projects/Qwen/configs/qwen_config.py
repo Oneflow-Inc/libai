@@ -1,10 +1,9 @@
 from omegaconf import DictConfig, OmegaConf
 
+from configs.common.train import train
 from libai.config import LazyCall
 from projects.Qwen.qwen2 import Qwen2ForCausalLM
 from projects.Qwen.tokenizer import Qwen2Tokenizer
-from configs.common.train import train
-
 
 cfg = dict(
     # Model
@@ -49,7 +48,7 @@ cfg = dict(
     eos_token_id=151645,
     pad_token_id=151643,
     # train
-    pretrained_model_path="/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B",
+    pretrained_model_path="/root/models/Qwen1.5-7B-Chat",
 )
 
 cfg = DictConfig(cfg)
@@ -58,6 +57,6 @@ model = LazyCall(Qwen2ForCausalLM)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(Qwen2Tokenizer)(
-    vocab_file="/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B/vocab.json",
-    merges_file="/data/home/xiezipeng/hf_models/Qwen/Qwen1.5-7B/merges.txt",
+    # vocab_file="/root/models/Qwen1.5-7B/vocab.json",
+    # merges_file="/root/models/Qwen/Qwen1.5-7B/merges.txt",
 )
