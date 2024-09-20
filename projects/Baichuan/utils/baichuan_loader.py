@@ -15,8 +15,6 @@
 
 import json
 
-import oneflow as flow
-
 from libai.models.utils.model_loader.base_loader import ModelLoaderHuggerFace, ModelLoaderLiBai
 
 
@@ -51,7 +49,6 @@ class BaichuanLoaderHuggerFace(ModelLoaderHuggerFace):
         for layer_idx in range(cfg.get("hidden_layers")):
             w_pack = old_key_qkv.format(layer_idx, "W_pack")
 
-            # ['model.layers.0.self_attn.W_pack.weight', 'model.layers.0.self_attn.o_proj.weight', 'model.layers.0.mlp.gate_proj.weight', 'model.layers.0.mlp.down_proj.weight', 'model.layers.0.mlp.up_proj.weight', 'model.layers.0.input_layernorm.weight', 'model.layers.0.post_attention_layernorm.weight']
             qkv = oneflow_state_dict[w_pack]
             qkv = self._fix_qkv_ordering(qkv, head_size, num_attention_heads, hidden_size)
             oneflow_state_dict[new_key_qkv.format(layer_idx)] = qkv
