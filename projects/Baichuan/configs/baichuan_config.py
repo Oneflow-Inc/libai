@@ -58,5 +58,5 @@ model = LazyCall(BaichuanForCausalLM)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(BaichuanTokenizer)(
-    pretrained_model_path=cfg.pretrained_model_path + "/tokenizer.model"
+    #pretrained_model_path=cfg.pretrained_model_path + "/tokenizer.model"
 )
