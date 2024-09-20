@@ -75,11 +75,9 @@ class BaichuanTokenizer:
         if add_eos:
             tokens = [token + [self.eos_token_id] for token in tokens]
 
-        if device == "cuda":
+        if device:
             sbp = kwargs.get("sbp", dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]))
-            placement = kwargs.get("placement")
-            if placement is None:
-                placement = flow.placement(device, list(range(dist.get_world_size())))
+            placement = kwargs.get("placement", flow.placement(device, [0]))
             return_token_ids = flow.tensor(tokens, sbp=sbp, placement=placement, dtype=flow.long)
         else:
             return_token_ids = flow.tensor(tokens, dtype=flow.long)

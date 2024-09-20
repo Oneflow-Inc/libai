@@ -69,7 +69,7 @@ class TextGenerationPipeline(BasePipeline):
 
     def preprocess(self, inputs, **kwargs) -> dict:
         # tokenizer encoderW
-        inputs = self.tokenizer.tokenize(inputs, add_bos=True, padding=True)
+        inputs = self.tokenizer.tokenize(inputs, add_bos=True, padding=True, device=self.device)
         inputs = {
             "input_ids": inputs,
         }
