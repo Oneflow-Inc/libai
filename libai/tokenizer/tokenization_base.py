@@ -827,7 +827,11 @@ class PreTrainedTokenizer(object):
                     self.build_inputs_with_special_tokens(token_ids) for token_ids in token_ids_list
                 ]
             token_ids_list = self.convert_to_tensors(
-                token_ids_list, return_tensors=return_tensors, is_global=is_global, **kwargs
+                token_ids_list,
+                return_tensors=return_tensors,
+                is_global=is_global,
+                device=device,
+                **kwargs,
             )
             return token_ids_list
         elif isinstance(text, (list, tuple)) and len(text) > 0 and isinstance(text[0], int):
