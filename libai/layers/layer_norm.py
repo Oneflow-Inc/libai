@@ -128,4 +128,4 @@ class RMSLayerNorm(nn.Module):
 
     def forward(self, hidden_states):
         hidden_states = hidden_states.to_global(placement=self.weight.placement)
-        return flow._C.rms_norm(hidden_states, self.weight, self.weight.shape, self.l2norm_epsilon)
+        return flow._C.rms_norm(hidden_states, self.weight, self.weight.shape, 1e-6)
