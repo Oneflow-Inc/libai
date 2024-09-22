@@ -24,7 +24,7 @@ cfg = dict(
     scale_mask_softmax_fusion=False,
     amp_enabled=True,
     # Inference
-    fp16_inference=True,
+    fp16_inference=False,
     is_encoder_decoder=False,
     max_length=256,
     min_length=0,
