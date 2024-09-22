@@ -40,6 +40,7 @@ cfg = dict(
     use_return_dict=True,
     amp_enabled=True,
     # Inference
+    fp16_inference=False,
     is_encoder_decoder=False,
     max_length=1350,
     min_length=0,
