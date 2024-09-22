@@ -386,10 +386,17 @@ class ModelLoaderHuggerFace(ModelLoader):
         Returns:
             flow.Tensor: The target tensor.
         """
-        if self.load_fp16_model:
-            return flow.tensor(tensor.detach().cpu().numpy(), dtype=flow.float16)
+        import torch
+
+        if tensor.dtype == torch.bfloat16:
+            data = tensor.detach().half().cpu().numpy()
         else:
-            return flow.tensor(tensor.detach().cpu().numpy())
+            data = tensor.detach().cpu().numpy()
+
+        if self.load_fp16_model:
+            return flow.tensor(data, dtype=flow.float16)
+        else:
+            return flow.tensor(data)
 
     def _convert_tensors(self, torch_state_dict):
 

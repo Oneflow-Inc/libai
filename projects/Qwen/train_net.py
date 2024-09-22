@@ -21,12 +21,43 @@ import sys
 import numpy as np
 import oneflow as flow
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+import libai.utils.distributed as dist
 from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
+from projects.Qwen.utils.qwen2_loader import Qwen2LoaderHuggerFace
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
 logger = logging.getLogger("libai." + __name__)
+
+
+def build_model(cfg):
+    model_loader = Qwen2LoaderHuggerFace(
+        cfg,
+        cfg.cfg,
+        cfg.cfg.pretrained_model_path,
+    )
+    model = model_loader.load()
+    return model
+
+
+class Qwen2Trainer(DefaultTrainer):
+    @classmethod
+    def build_model(cls, cfg):
+        assert try_get_key(cfg, "model") is not None, "cfg must contain `model` namespace"
+        # Set model fp16 option because of embedding layer `white_identity` manual
+        # insert for amp training if provided.
+        if try_get_key(cfg.model, "cfg.amp_enabled") is not None:
+            cfg.model.cfg.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        # In case some model define without cfg keyword.
+        elif try_get_key(cfg.model, "amp_enabled") is not None:
+            cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
+        model = build_model(cfg.model)
+        logger = logging.getLogger(__name__)
+        logger.info("Model:\n{}".format(model))
+        model._apply(dist.convert_to_distributed_default_setting)
+        return model
 
 
 def main(args):
@@ -36,8 +67,7 @@ def main(args):
 
     seed_for_rank = cfg.train.seed + flow.env.get_rank()
     flow.manual_seed(seed_for_rank)
-    if flow.cuda.is_available():
-        flow.cuda.manual_seed(seed_for_rank)
+    flow.cuda.manual_seed(seed_for_rank)
     np.random.seed(seed_for_rank)
     random.seed(seed_for_rank)
 
@@ -63,7 +93,7 @@ def main(args):
         _ = DefaultTrainer.test(cfg, test_loader, model)
         return
 
-    trainer = DefaultTrainer(cfg)
+    trainer = Qwen2Trainer(cfg)
     return trainer.train()
 
 
