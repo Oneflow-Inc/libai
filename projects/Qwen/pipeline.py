@@ -16,6 +16,7 @@
 from pathlib import Path
 
 import click
+import torch
 
 from libai.config import try_get_key
 from libai.engine import DefaultTrainer
