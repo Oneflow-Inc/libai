@@ -26,6 +26,7 @@ from libai.layers import Linear, RMSLayerNorm, VocabEmbedding
 from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
+import numpy as np
 
 
 def rotate_half(x):
@@ -210,12 +211,16 @@ class MultiheadAttention(nn.Module):
             past_key_value = (key, value)
 
         # [bsz, num_heads, tgt_len, src_len] with [S(0), S(1)]
-        attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
+        # attention_scores = flow.matmul(query, key, transpose_b=True, alpha=self.norm_factor)
+        a = np.matmul(query.numpy(), np.swapaxes(key.numpy(), -1, -2)) * self.norm_factor
+        attention_scores = flow.tensor(a, placement=query.placement, sbp=query.sbp)
         attention_weights = attention_scores + attention_mask
 
         attention_weights = flow.softmax(attention_weights, dim=-1)
         # Context shape: [bsz, num_heads, tgt_len, head_size] with [S(0), S(1)]
-        context = flow.matmul(attention_weights, value)
+        # context = flow.matmul(attention_weights, value)
+        a = np.matmul(attention_weights.numpy(), value.numpy())
+        context = flow.tensor(a, placement=attention_weights.placement, sbp=attention_weights.sbp)
 
         # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
         context = context.transpose(1, 2)

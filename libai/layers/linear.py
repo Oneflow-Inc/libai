@@ -120,6 +120,7 @@ class Linear1D(nn.Module):
         )
 
     def forward(self, x):
+        import numpy as np
         if dist.same_sbp(self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(0)])):
             # If the last dim of weight sbp sign is S(0), then last dim of weight.t sbp
             # sign is S(1), so the last dim of x sbp sign must be B.
@@ -129,11 +130,14 @@ class Linear1D(nn.Module):
 
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
             x = x.to_global(grad_sbp=x.sbp)
-            x = flow.matmul(x, self.weight, transpose_b=True)
+            # x = flow.matmul(x, self.weight, transpose_b=True)
+            a = np.matmul(x.numpy(), np.swapaxes(self.weight.numpy(), -1, -2))
+            x = flow.tensor(a, placement=x.placement, sbp=x.sbp)
 
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.split(1)])
         ):
+            breakpoint()
             # If the last dim of weight sbp sign is S(1), then last dim of weight.t sbp
             # sign is S(0), so the last dim of x sbp sign must be S(ndim-1).
             if self.weight.sbp[-1] == flow.sbp.split(1):
@@ -150,12 +154,14 @@ class Linear1D(nn.Module):
         elif dist.same_sbp(
             self.weight.sbp, dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast])
         ):
+            breakpoint()
             # x.grad sbp must be x.sbp, otherwise backward pass cannot be performed correctly.
             x = x.to_global(grad_sbp=x.sbp)
             # NOTE(chengcheng): when input x is [S(0), B], there is no need to change sbp for x.
             # x = x.to_global(sbp=dist.get_nd_sbp([flow.sbp.split(0), flow.sbp.split(0)]))
             x = flow.matmul(x, self.weight, transpose_b=True)
         else:
+            breakpoint()
             # Not supported weight_sbp, deduce sbp and communicate with nccl automatically.
             x = flow.matmul(x, self.weight, transpose_b=True)
 

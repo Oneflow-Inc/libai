@@ -37,16 +37,19 @@ def nan_tensors(tensors):
             return True
     return False
 
+from datetime import datetime
 
 def create_forward_hook(module_name):
     def save_output(module, input, output):
-        print(f"forward {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
+        now = datetime.now().strftime("%Y/%m/%d_%H:%M:%S")
+        print(f"forward {now=} {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
     return save_output
 
 
 def create_backward_hook(module_name):
     def save_output(module, input, output):
-        print(f"backward {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
+        now = datetime.now().strftime("%Y/%m/%d, %H:%M:%S")
+        print(f"backward {now=} {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
     return save_output
 
 
