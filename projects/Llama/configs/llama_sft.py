@@ -72,7 +72,6 @@ train.update(
         rdma_enabled=False,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
-        input_placement_device="xpu",
         checkpointer=dict(
             period=5000,
             max_to_keep=20,
@@ -82,7 +81,6 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=8,
             pipeline_num_layers=cfg.hidden_layers,
-            device_type="xpu",
         ),
         evaluation=dict(
             enabled=True,

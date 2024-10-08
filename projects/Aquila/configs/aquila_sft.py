@@ -70,12 +70,12 @@ train.update(
         train_iter=1,
         log_period=1,
         warmup_ratio=1 / 3,
-        num_accumulation_steps=1,
+        num_accumulation_steps=8,
         rdma_enabled=False,
         train_with_fp16=True,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
-        input_placement_device="xpu",
+        input_placement_device="cuda",
         checkpointer=dict(
             period=100,
             max_to_keep=20,
@@ -85,7 +85,7 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=cfg.hidden_layers,
-            device_type="xpu",
+            device_type="cuda",
         ),
         evaluation=dict(
             enabled=False,
