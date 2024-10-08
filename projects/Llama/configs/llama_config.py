@@ -48,7 +48,7 @@ cfg = dict(
     eos_token_id=2,
     pad_token_id=0,
     # train
-    pretrained_model_path="meta-llama/Llama-2-7b-hf",
+    pretrained_model_path="/root/models/Llama-2-7b-chat-hf",
 )
 
 cfg = DictConfig(cfg)

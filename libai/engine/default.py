@@ -306,7 +306,7 @@ class DefaultTrainer(TrainerBase):
         dist.synchronize()
         start_time = time.time()
         logger.info("> Start building model...")
-        self.model = self.build_model(cfg)
+        self.model = self.build_model(cfg).half()
 
         dist.synchronize()
         logger.info(

@@ -19,7 +19,7 @@ from projects.Aquila.aquila_dataset import AquilaDataset
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-dataset_path = "./alpaca_data"
+dataset_path = "./data/libai_xpu_alpaca"
 pretrained_model_path = "/root/models/Aquila-7B"
 
 # graph & optim
@@ -70,12 +70,12 @@ train.update(
         train_iter=1,
         log_period=1,
         warmup_ratio=1 / 3,
-        num_accumulation_steps=8,
+        num_accumulation_steps=1,
         rdma_enabled=False,
         train_with_fp16=True,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
-        input_placement_device="cuda",
+        input_placement_device="xpu",
         checkpointer=dict(
             period=100,
             max_to_keep=20,
@@ -85,7 +85,7 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=cfg.hidden_layers,
-            device_type="cuda",
+            device_type="xpu",
         ),
         evaluation=dict(
             enabled=False,
