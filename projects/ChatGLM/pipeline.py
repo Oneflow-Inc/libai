@@ -188,7 +188,6 @@ def main(config_file, model_path, mode, device):
         "a dog is flying on the sky",
         "Wikipedia is a free online",
         "what is beam search?",
-        "what is beam search?",
     ]
     pipeline = TextGenerationPipeline(
         config_file,
