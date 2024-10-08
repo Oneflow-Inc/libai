@@ -19,8 +19,8 @@ from projects.Baichuan.baichuan import BaichuanForCausalLM
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-dataset_path = "./alpaca_data"
-pretrained_model_path = "/root/models/Llama-2-7b-chat-hf"
+dataset_path = os.environ["DATA_DIR"]
+pretrained_model_path = os.environ["MODEL_DIR"]
 
 # graph & optim
 graph["enabled"] = False
