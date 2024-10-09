@@ -68,7 +68,7 @@ train.update(
         train_iter=1,
         log_period=1,
         warmup_ratio=1 / 3,
-        num_accumulation_steps=8,
+        num_accumulation_steps=1,
         rdma_enabled=True,
         amp=dict(enabled=False),
         train_with_fp16=True,

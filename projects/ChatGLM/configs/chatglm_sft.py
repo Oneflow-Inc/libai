@@ -78,7 +78,7 @@ train.update(
         train_iter=1,
         log_period=10,
         warmup_ratio=2 / 5,
-        num_accumulation_steps=8,
+        num_accumulation_steps=1,
         rdma_enabled=True,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
