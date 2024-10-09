@@ -64,13 +64,13 @@ dataloader.test = [
 train.update(
     dict(
         output_dir="./sft_result",
-        train_micro_batch_size=4,
+        train_micro_batch_size=1,
         test_micro_batch_size=1,
-        train_epoch=5,
+        train_epoch=1,
         train_iter=1,
         log_period=1,
         warmup_ratio=1 / 3,
-        num_accumulation_steps=8,
+        num_accumulation_steps=1,
         rdma_enabled=False,
         train_with_fp16=True,
         amp=dict(enabled=True),

@@ -40,13 +40,15 @@ def nan_tensors(tensors):
 
 def create_forward_hook(module_name):
     def save_output(module, input, output):
-        print(f"forward {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
+        # print(f"forward {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
+        pass
     return save_output
 
 
 def create_backward_hook(module_name):
     def save_output(module, input, output):
-        print(f"backward {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
+        # print(f"backward {module_name=} input_nan={nan_tensors(input)} output_nan={nan_tensors(output)}")
+        pass
     return save_output
 
 
