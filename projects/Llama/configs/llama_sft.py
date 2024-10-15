@@ -66,7 +66,7 @@ train.update(
         test_micro_batch_size=1,
         train_epoch=3,
         train_iter=1,
-        log_period=10,
+        log_period=1,
         warmup_ratio=1 / 3,
         num_accumulation_steps=1,
         rdma_enabled=False,
