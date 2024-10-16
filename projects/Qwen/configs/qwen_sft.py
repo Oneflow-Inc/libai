@@ -61,7 +61,7 @@ dataloader.test = [
 
 train.update(
     dict(
-        output_dir="./sft_result",
+        output_dir="./sft_result/qwen",
         train_micro_batch_size=1,
         test_micro_batch_size=1,
         train_epoch=1,
@@ -79,7 +79,7 @@ train.update(
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=8,
+            pipeline_parallel_size=1,
             pipeline_num_layers=cfg.hidden_layers,
         ),
         evaluation=dict(

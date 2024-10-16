@@ -53,7 +53,7 @@ class Qwen2Trainer(DefaultTrainer):
         # In case some model define without cfg keyword.
         elif try_get_key(cfg.model, "amp_enabled") is not None:
             cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
-        model = build_model(cfg.model)
+        model = build_model(cfg.model).half()
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
@@ -67,7 +67,6 @@ def main(args):
 
     seed_for_rank = cfg.train.seed + flow.env.get_rank()
     flow.manual_seed(seed_for_rank)
-    flow.cuda.manual_seed(seed_for_rank)
     np.random.seed(seed_for_rank)
     random.seed(seed_for_rank)
 
