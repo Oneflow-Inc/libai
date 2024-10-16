@@ -19,7 +19,7 @@ from projects.Llama.llama import LlamaForCausalLM
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-dataset_path = "./data/libai_xpu_alpaca"
+dataset_path = "./data/llama"
 pretrained_model_path = "/root/models/Llama-2-7b-chat-hf"
 
 # graph & optim
@@ -61,7 +61,7 @@ dataloader.test = [
 
 train.update(
     dict(
-        output_dir="./sft_result",
+        output_dir="./sft_result/llama",
         train_micro_batch_size=4,
         test_micro_batch_size=1,
         train_epoch=3,

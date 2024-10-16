@@ -18,7 +18,7 @@ from projects.Baichuan.baichuan import BaichuanForCausalLM
 
 # Hyperparameters
 weight_decay = 0.1
-learning_rate = 5e-5
+learning_rate = 1e-5
 dataset_path = os.environ["DATA_DIR"]
 pretrained_model_path = os.environ["MODEL_DIR"]
 
@@ -61,7 +61,7 @@ dataloader.test = [
 
 train.update(
     dict(
-        output_dir="./sft_result",
+        output_dir="./sft_result/baichuan",
         train_micro_batch_size=1,
         test_micro_batch_size=1,
         train_epoch=3,
