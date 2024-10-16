@@ -19,7 +19,7 @@ from projects.Qwen2.qwen_dataset import QwenDataset
 # Hyperparameters
 weight_decay = 0.1
 learning_rate = 5e-5
-dataset_path = "./data/libai_xpu_alpaca"
+dataset_path = "./data/qwen"
 pretrained_model_path = "/root/models/Qwen1.5-7B-Chat"
 
 # graph & optim
@@ -63,7 +63,7 @@ dataloader.test = [
 
 train.update(
     dict(
-        output_dir="./sft_result",
+        output_dir="./sft_result/qwen",
         train_micro_batch_size=1,
         test_micro_batch_size=1,
         train_epoch=1,
