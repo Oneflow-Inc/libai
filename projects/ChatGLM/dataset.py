@@ -21,10 +21,8 @@ from oneflow.utils.data import Dataset
 
 from libai.data.structures import DistTensorData, Instance
 from libai.utils import distributed as dist
-from libai.utils.logger import setup_logger
 
 IGNORE_INDEX = -100
-logger = setup_logger()
 
 
 class ChatGLMTrainDataset(Dataset):
@@ -40,7 +38,6 @@ class ChatGLMTrainDataset(Dataset):
             self.max_len = max_length
 
         example = self._preprocess(0)
-        self.log_dataset_example(example)
 
     def _preprocess(self, idx):
         # inputs with format `<bos> X Y <eos>` labels with format `<ignore> ... <ignore> Y <eos>`
@@ -71,23 +68,6 @@ class ChatGLMTrainDataset(Dataset):
 
         return {"input_ids": input_ids, "labels": labels}
 
-    def log_dataset_example(self, example: Dict[str, List[int]]) -> None:
-        if dist.is_main_process():
-            logger.info("input_ids:\n{}".format(example["input_ids"]))
-            logger.info(
-                "inputs:\n{}".format(
-                    self.tokenizer.decode(example["input_ids"], skip_special_tokens=False)
-                )
-            )
-            logger.info("label_ids:\n{}".format(example["labels"]))
-            logger.info(
-                "labels:\n{}".format(
-                    self.tokenizer.decode(
-                        list(filter(lambda x: x != IGNORE_INDEX, example["labels"])),
-                        skip_special_tokens=False,
-                    )
-                )
-            )
 
     def __len__(self):
         return len(self.data["prompt"])

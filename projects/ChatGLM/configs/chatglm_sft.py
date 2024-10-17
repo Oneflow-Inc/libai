@@ -17,7 +17,7 @@ from projects.ChatGLM.chatglm import ChatGLMForConditionalGeneration
 
 # Hyperparameters
 weight_decay = 0.1
-learning_rate = 1e-6
+learning_rate = 1e-7
 max_source_len = 128
 max_target_len = 128
 max_length = 256
@@ -25,7 +25,7 @@ dataset_path = os.environ["DATA_DIR"]
 pretrained_model_path = os.environ["CHATGLM_HF_DIR"]
 
 # graph & optim
-graph["enabled"] = True
+graph["enabled"] = False
 
 optim.update(
     dict(
@@ -89,7 +89,7 @@ train.update(
         dist=dict(
             data_parallel_size=1,
             tensor_parallel_size=1,
-            pipeline_parallel_size=4,
+            pipeline_parallel_size=1,
             pipeline_num_layers=cfg.num_layers,
         ),
         evaluation=dict(
