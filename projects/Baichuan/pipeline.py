@@ -117,7 +117,7 @@ def main(config_file, model_path, mode, device):
     )
 
     text = [
-        "Give three tips for staying healthy.",
+        "Wikipedia is a free online",
     ]
     output = pipeline(inputs=text)
     if dist.is_main_process():
