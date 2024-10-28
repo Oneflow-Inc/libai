@@ -113,7 +113,6 @@ class Checkpointer(object):
             # If directory existing, remove it for saving
             if self.path_manager.exists(save_file):
                 self.path_manager.mkdirs(save_file)
-
             flow.save(data[save_name], save_file, global_dst_rank=0)
 
         if basename != "model_best":
