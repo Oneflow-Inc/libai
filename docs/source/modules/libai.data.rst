@@ -34,6 +34,7 @@ libai.data.samplers module
     :members:
         CyclicSampler,
         SingleRoundSampler,
+        RASampler,
 
 libai.data.build module
 ---------------------------------
