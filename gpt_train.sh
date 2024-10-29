@@ -16,4 +16,5 @@ python3 -m oneflow.distributed.launch \
 	    model.cfg.embedding_dropout_prob=0.0 \
             model.cfg.attention_dropout_prob=0.0 \
 	    train.train_iter=10 \
+	    train.log_period=1 \
             model.cfg.bias_gelu_fusion=False
