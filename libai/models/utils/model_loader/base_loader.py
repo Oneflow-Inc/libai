@@ -24,7 +24,7 @@ from safetensors import safe_open
 from termcolor import colored
 
 import libai.utils.distributed as dist
-from libai.config import LazyCall
+from libai.config import LazyCall, try_get_key
 from libai.models.build import build_model
 
 logger = logging.getLogger(__name__)
@@ -374,6 +374,8 @@ class ModelLoaderHuggerFace(ModelLoader):
         self.base_model_prefix_2 = None  # prefix in LiBai
         self.origin_libai_cfg = copy.deepcopy(self.libai_cfg)
         self.changed_keys = set()  # Store the changed configuration
+        self.load_fp16_model = try_get_key(self.origin_libai_cfg, "fp16_inference", default=False)
+        self.load_fp16_model = bool(self.load_fp16_model)
 
     def _convert_tensor(self, tensor):
         """Convert PyTorch tensor to OneFlow tensor.
@@ -388,8 +390,13 @@ class ModelLoaderHuggerFace(ModelLoader):
 
         if tensor.dtype == torch.bfloat16:
             data = tensor.detach().half().cpu().numpy()
-            return flow.Tensor(data)
-        return flow.Tensor(tensor.detach().cpu().numpy())
+        else:
+            data = tensor.detach().cpu().numpy()
+
+        if self.load_fp16_model:
+            return flow.tensor(data, dtype=flow.float16)
+        else:
+            return flow.tensor(data)
 
     def _convert_tensors(self, torch_state_dict):
 
@@ -615,6 +622,10 @@ class ModelLoaderHuggerFace(ModelLoader):
             self.model = build_model(self.model)
         else:
             self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
+        
+        # If fp16 is specified, convert the model to half-precision before loading weights
+        if self.load_fp16_model:
+            self.model = self.model.half()
 
         # State_dict to global
         logger.info("transfering state_dict local to global...")

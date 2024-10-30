@@ -82,6 +82,9 @@ class BasePipeline(metaclass=ABCMeta):
         self.model._apply(dist.convert_to_distributed_default_setting)
         self.model = self.model.eval()
 
+        # Release unused memory from the device cache after loading the model
+        flow.cuda.empty_cache()
+
         # initial tokenizer
         if dist.is_main_process():
             self.tokenizer = self.build_tokenizer(self.cfg)
