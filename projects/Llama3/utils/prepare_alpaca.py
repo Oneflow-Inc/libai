@@ -13,14 +13,14 @@ from tqdm import tqdm
 
 from libai.config import instantiate
 from libai.utils.logger import setup_logger
-from projects.Llama.configs.llama_config import tokenization
+from projects.Llama3.configs.llama_config import tokenization
 
 logger = setup_logger()
 
 
 def prepare(
     destination_path: Path = Path("alpaca_data"),
-    checkpoint_dir: Path = Path("meta-llama/Llama-2-7b-hf"),
+    checkpoint_dir: Path = Path("~/data/hf_models/meta-llama/Meta-Llama-3-8B"),
     test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora

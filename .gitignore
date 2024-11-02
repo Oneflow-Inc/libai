@@ -1,3 +1,7 @@
+# data file
+alpaca_data/
+libai/version.py
+sft_result
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
