@@ -18,9 +18,9 @@ logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("./data/libai_xpu_alpaca"),
+    destination_path: Path = Path("./data/baichuan"),
     checkpoint_dir: Path = Path("/root/models/Baichuan2-7B-Chat"),
-    test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
+    test_split_fraction: float = 0.60,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
     data_file_name: str = "alpaca_data_cleaned_archive.json",
@@ -38,7 +38,7 @@ def prepare(
             max_seq_length = config["max_position_embeddings"]
 
     destination_path.mkdir(parents=True, exist_ok=True)
-    data_file_path = destination_path / data_file_name
+    data_file_path = Path(data_file_name)
     logger.info("Loading data file...")
     download_if_missing(data_file_path, data_file_url)
     with open(data_file_path, "r", encoding="utf-8") as file:
@@ -118,7 +118,7 @@ def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
 
     padding = max_length - example.shape[0]
     if padding > 0:
-        example = flow.cat((example, flow.zeros(padding, dtype=flow.long) - 1))
+        example = flow.cat((example.to_local(), flow.zeros(padding, dtype=flow.long) - 1))
     elif padding < 0:
         example = example[:max_length]
     labels = copy.deepcopy(example)
@@ -129,10 +129,16 @@ def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
     labels[~label_mask] = -1
     example = example[:-1]
     labels = labels[1:]
+    if example_mask.is_global:
+        example_mask = example_mask.to_local()
     example_mask = flow.where(
         example_mask, flow.tensor(0, dtype=flow.float), flow.tensor(-float("inf"))
     )
     example_mask = example_mask[:-1]
+    if example.is_global:
+        example = example.to_local()
+    if labels.is_global:
+        labels = labels.to_local()
     return {
         "input_ids": example,
         "labels": labels,

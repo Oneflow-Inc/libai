@@ -57,6 +57,6 @@ model = LazyCall(Qwen2ForCausalLM)(cfg=cfg)
 tokenization = OmegaConf.create()
 tokenization.make_vocab_size_divisible_by = 1
 tokenization.tokenizer = LazyCall(Qwen2Tokenizer)(
-    # vocab_file="/root/models/Qwen1.5-7B/vocab.json",
-    # merges_file="/root/models/Qwen/Qwen1.5-7B/merges.txt",
+    vocab_file="/root/models/Qwen1.5-7B-Chat/vocab.json",
+    merges_file="/root/models/Qwen1.5-7B-Chat/merges.txt",
 )

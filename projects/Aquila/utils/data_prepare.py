@@ -18,9 +18,9 @@ logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("./alpaca_data"),
+    destination_path: Path = Path("./data/aquila"),
     checkpoint_dir: Path = Path("/root/models/Aquila-7B"),
-    test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
+    test_split_fraction: float = 0.60,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
     data_file_name: str = "alpaca_data_cleaned_archive.json",

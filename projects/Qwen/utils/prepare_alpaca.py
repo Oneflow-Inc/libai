@@ -19,9 +19,9 @@ logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("./data/libai_xpu_alpaca"),
+    destination_path: Path = Path("./data/qwen"),
     checkpoint_dir: Path = Path("/root/models/Qwen1.5-7B-Chat"),
-    test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
+    test_split_fraction: float = 0.60,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
     data_file_name: str = "alpaca_data_cleaned_archive.json",
@@ -113,9 +113,9 @@ def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
     full_prompt_and_response = full_prompt + example["output"]
 
     prompt = tokenizer.encode(full_prompt, device="cpu")
-    prompt = flow.tensor(prompt, dtype=flow.int, device="cpu")
+    prompt = flow.tensor(prompt, dtype=flow.int64, device="cpu")
     example = tokenizer.encode(full_prompt_and_response, device="cpu")
-    example = flow.tensor(example, dtype=flow.int, device="cpu")
+    example = flow.tensor(example, dtype=flow.int64, device="cpu")
 
     padding = max_length - example.shape[0]
     if padding > 0:

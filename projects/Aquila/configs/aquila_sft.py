@@ -64,18 +64,18 @@ dataloader.test = [
 train.update(
     dict(
         output_dir="./sft_result/aquila",
-        train_micro_batch_size=4,
+        train_micro_batch_size=1,
         test_micro_batch_size=1,
-        train_epoch=5,
+        train_epoch=1,
         train_iter=1,
         log_period=1,
         warmup_ratio=1 / 3,
-        num_accumulation_steps=1,
+        num_accumulation_steps=8,
         rdma_enabled=False,
         train_with_fp16=True,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
-        input_placement_device="cuda",
+        input_placement_device="xpu",
         checkpointer=dict(
             period=100,
             max_to_keep=20,
@@ -85,7 +85,7 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=cfg.hidden_layers,
-            device_type="cuda",
+            device_type="xpu",
         ),
         evaluation=dict(
             enabled=False,

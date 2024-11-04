@@ -19,9 +19,9 @@ logger = setup_logger()
 
 
 def prepare(
-    destination_path: Path = Path("alpaca_data"),
-    checkpoint_dir: Path = Path("meta-llama/Llama-2-7b-hf"),
-    test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
+    destination_path: Path = Path(os.environ["DATA_DIR"]),
+    checkpoint_dir: Path = Path("/root/models/Llama-2-7b-chat-hf"),
+    test_split_fraction: float = 0.60,  # to get exactly 2000 test samples,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
     data_file_name: str = "alpaca_data_cleaned_archive.json",
@@ -119,7 +119,7 @@ def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
 
     padding = max_length - example.shape[0]
     if padding > 0:
-        example = flow.cat((example, flow.zeros(padding, dtype=flow.long) - 1))
+        example = flow.cat((example.to_local(), flow.zeros(padding, dtype=flow.long) - 1))
     elif padding < 0:
         example = example[:max_length]
     labels = copy.deepcopy(example)
@@ -130,10 +130,16 @@ def prepare_sample(example: dict, tokenizer, max_length: int) -> dict:
     labels[~label_mask] = -1
     example = example[:-1]
     labels = labels[1:]
+    if example_mask.is_global:
+        example_mask = example_mask.to_local()
     example_mask = flow.where(
         example_mask, flow.tensor(0, dtype=flow.float), flow.tensor(-float("inf"))
     )
     example_mask = example_mask[:-1]
+    if example.is_global:
+        example = example.to_local()
+    if labels.is_global:
+        labels = labels.to_local()
     return {
         "input_ids": example,
         "labels": labels,

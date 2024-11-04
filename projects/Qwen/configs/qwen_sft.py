@@ -16,7 +16,7 @@ from projects.Qwen.qwen_dataset import QwenDataset
 
 # Hyperparameters
 weight_decay = 0.1
-learning_rate = 5e-5
+learning_rate = 1e-5
 dataset_path = os.environ["DATA_DIR"]
 pretrained_model_path = os.environ["MODEL_DIR"]
 
@@ -68,10 +68,11 @@ train.update(
         train_iter=1,
         log_period=1,
         warmup_ratio=1 / 3,
-        num_accumulation_steps=1,
+        num_accumulation_steps=8,
         rdma_enabled=False,
         amp=dict(enabled=True),
         activation_checkpoint=dict(enabled=True),
+        input_placement_device="xpu",
         checkpointer=dict(
             period=5000,
             max_to_keep=20,
@@ -81,6 +82,7 @@ train.update(
             tensor_parallel_size=1,
             pipeline_parallel_size=1,
             pipeline_num_layers=cfg.hidden_layers,
+            device_type="xpu",
         ),
         evaluation=dict(
             enabled=False,

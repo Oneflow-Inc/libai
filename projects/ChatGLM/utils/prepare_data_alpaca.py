@@ -16,7 +16,7 @@ logger = setup_logger()
 
 def prepare(
     destination_path: Path = Path(os.environ["DATA_DIR"]),
-    test_split_fraction: float = 0.03865,  # to get exactly 2000 test samples,
+    test_split_fraction: float = 0.60,  # to get exactly 2000 test samples,
     seed: int = 42,
     data_file_name: str = "alpaca_data_cleaned_archive.json",
     data_file_url: str = "https://raw.githubusercontent.com/tloen/alpaca-lora/main/alpaca_data_cleaned_archive.json",  # noqa
