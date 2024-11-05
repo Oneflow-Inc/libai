@@ -58,6 +58,7 @@ class MultiheadAttention(nn.Module):
         hidden_size,
         num_attention_heads,
         is_cross_attention=False,
+        use_qkv_fusion=False,
         attention_dropout_prob=0.0,
         output_dropout_prob=0.0,
         init_method=nn.init.xavier_normal_,
@@ -91,6 +92,7 @@ class MultiheadAttention(nn.Module):
             self.norm_factor /= self.coeff
 
         self.is_cross_attention = is_cross_attention
+        self.use_qkv_fusion = use_qkv_fusion
         self.scale_mask_softmax_fusion = scale_mask_softmax_fusion
         self.bias_dropout_fusion = bias_dropout_fusion
 
@@ -115,13 +117,36 @@ class MultiheadAttention(nn.Module):
                 layer_idx=layer_idx,
             )
         else:
-            self.query_key_value = Linear(
-                self.hidden_size,
-                self.hidden_size * 3,
-                parallel="col",
-                init_method=init_method,
-                layer_idx=layer_idx,
-            )
+            if self.use_qkv_fusion:
+                self.query_key_value = Linear(
+                    self.hidden_size,
+                    self.hidden_size * 3,
+                    parallel="col",
+                    init_method=init_method,
+                    layer_idx=layer_idx,
+                )
+            else:
+                self.query_projection = Linear(
+                    self.hidden_size,
+                    self.hidden_size,
+                    parallel="col",
+                    init_method=init_method,
+                    layer_idx=layer_idx,
+                )
+                self.key_projection = Linear(
+                    self.hidden_size,
+                    self.hidden_size,
+                    parallel="col",
+                    init_method=init_method,
+                    layer_idx=layer_idx,
+                )
+                self.value_projection = Linear(
+                    self.hidden_size,
+                    self.hidden_size,
+                    parallel="col",
+                    init_method=init_method,
+                    layer_idx=layer_idx,
+                )
 
         self.dense = Linear(
             self.hidden_size,
@@ -192,12 +217,24 @@ class MultiheadAttention(nn.Module):
             # when in the inference phase of an incremental decoder,
             # hidden_states is the last-added state,
             # the full key and value could be obtained by concatenating with past_key_value.
-            query_key_value = self.query_key_value(hidden_states)
-            query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
-            query_key_value = query_key_value.permute(
-                0, 2, 1, 3
-            )  # [bsz, num_heads, src_len, 3 * head_size]
-            query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+            if self.use_qkv_fusion:
+                query_key_value = self.query_key_value(hidden_states)
+                query_key_value = query_key_value.view(bsz, -1, self.num_heads, 3 * self.head_size)
+                query_key_value = query_key_value.permute(
+                    0, 2, 1, 3
+                )  # [bsz, num_heads, src_len, 3 * head_size]
+                query, key, value = flow.chunk(query_key_value, chunks=3, dim=-1)
+            else:
+                query = self.query_projection(hidden_states)
+                query = query.view(bsz, -1, self.num_heads, self.head_size)
+                query = query.permute(0, 2, 1, 3) # [bsz, num_heads, src_len, head_size]
+                key = self.key_projection(hidden_states)
+                key = key.view(bsz, -1, self.num_heads, self.head_size)
+                key = key.permute(0, 2, 1, 3) # [bsz, num_heads, src_len, head_size]
+                value = self.value_projection(hidden_states)
+                value = value.view(bsz, -1, self.num_heads, self.head_size)
+                value = value.permute(0, 2, 1, 3) # [bsz, num_heads, src_len, head_size]
+
             if past_key_value is not None:
                 past_key, past_value = past_key_value
                 key = flow.cat((past_key.type_as(key), key), dim=2)
