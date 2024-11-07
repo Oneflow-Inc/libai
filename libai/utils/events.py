@@ -238,7 +238,7 @@ class CommonMetricPrinter(EventWriter):
 
         # NOTE: max_mem is parsed by grep in "dev/parse_results.sh"
         self.logger.info(
-            " {eta}{iter}  {sample}  {losses}  {time}{data_time} {tpt} lr: {lr}  {memory}".format(
+            " {eta}{iter}  {sample}  {losses}  {time}{data_time} {tpt} {tokens_speed} lr: {lr}  {memory}".format(
                 eta=f"eta: {eta_string}  " if eta_string else "",
                 iter=f"iteration: {iteration}/{self._max_iter}",
                 sample=f"consumed_samples: {consumed_samples}",
@@ -254,6 +254,9 @@ class CommonMetricPrinter(EventWriter):
                 if data_time is not None
                 else "",
                 tpt="total_throughput: {:.2f} samples/s".format(self._batch_size / iter_time)
+                if iter_time is not None
+                else "",
+                tokens_speed="tokens_throughput: {:.4f} tokens/s".format(self._batch_size * int(os.getenv("MAX_POSITION_EMBEDDINGS", 2048)) / iter_time)
                 if iter_time is not None
                 else "",
                 lr=lr,
