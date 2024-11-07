@@ -26,8 +26,6 @@ from libai.config import LazyConfig, default_argument_parser, try_get_key
 from libai.engine import DefaultTrainer, default_setup
 from libai.utils.checkpoint import Checkpointer
 from projects.Llama.utils.llama_loader import LlamaLoaderHuggerFace
-from libai.utils.events import JSONWriter, TensorboardXWriter
-from projects.Llama3.utils.llama_metric_printer import LlamaMetricPrinter
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
@@ -60,35 +58,6 @@ class LlamaTrainer(DefaultTrainer):
         logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
         return model
-
-    def build_writers(self):
-        """
-        Build a list of writers to be used. By default it contains
-        writers that write metrics to the screen,
-        a json file, and a tensorboard event file respectively.
-        If you'd like a different list of writers, you can overwrite it in
-        your trainer.
-
-        Returns:
-            list[EventWriter]: a list of :class:`EventWriter` objects.
-
-        It is now implemented by:
-
-        .. code-block:: python
-
-            return [
-                MT5MetricPrinter(self.global_batch_size, self.max_iter),
-                JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
-                TensorboardXWriter(self.cfg.train.output_dir),
-            ]
-        """
-        # Assume the default print/log frequency.
-        return [
-            # It may not always print what you want to see, since it prints "common" metrics only.
-            LlamaMetricPrinter(self.global_batch_size, self.max_iter, self.cfg.train.log_period),
-            JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
-            TensorboardXWriter(self.cfg.train.output_dir),
-        ]
 
 
 def main(args):

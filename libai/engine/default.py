@@ -472,7 +472,7 @@ class DefaultTrainer(TrainerBase):
         # Assume the default print/log frequency.
         return [
             # It may not always print what you want to see, since it prints "common" metrics only.
-            CommonMetricPrinter(self.global_batch_size, self.max_iter),
+            CommonMetricPrinter(self.global_batch_size, self.max_iter, self.cfg.train.log_period),
             JSONWriter(os.path.join(self.cfg.train.output_dir, "metrics.json")),
             TensorboardXWriter(self.cfg.train.output_dir),
         ]

@@ -515,9 +515,28 @@ class SFTLoss(nn.Module):
         self.lm_loss = CrossEntropyLoss()
 
     def forward(self, logits, lm_labels):
+        lm_labels = lm_labels.to_global(placement=logits.placement)
         lm_loss = self.lm_loss(logits, lm_labels)
         lm_loss = lm_loss.mean()
-        return {"lm_loss": lm_loss}
+
+        if self.training:
+            # token throughput
+            done_tokens = (
+                flow.zeros(
+                    1,
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=lm_labels.placement,
+                )
+                + logits.shape[0] * logits.shape[1]
+            )
+            return {
+                "lm_loss": lm_loss,
+                "done_tokens": done_tokens,
+            }
+        else:
+            return {
+                "lm_loss": lm_loss,
+            }
 
 
 class Qwen2ForCausalLM(nn.Module, Generator):

@@ -785,6 +785,51 @@ class ChatGLMModel(ChatGLMPreTrainedModel):
         )
 
 
+class CrossEntropyLoss(nn.Module):
+    def forward(self, logits: flow.Tensor, target: flow.Tensor):
+        assert logits.ndim == 3
+        assert target.ndim == 2
+        assert logits.shape[0:2] == target.shape
+
+        target = target.to_global(placement=logits.placement)
+        target = target * (target >= 0)
+
+        lm_loss = flow._C.cross_entropy(
+            logits.view(-1, logits.shape[-1]), target.view(-1), ignore_index=0
+        )
+        return lm_loss
+
+
+class SFTLoss(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.lm_loss = CrossEntropyLoss()
+
+    def forward(self, logits, lm_labels):
+        lm_labels = lm_labels.to_global(placement=logits.placement)
+        lm_loss = self.lm_loss(logits, lm_labels)
+        lm_loss = lm_loss.mean()
+
+        if self.training:
+            # token throughput
+            done_tokens = (
+                flow.zeros(
+                    1,
+                    sbp=dist.get_nd_sbp([flow.sbp.broadcast, flow.sbp.broadcast]),
+                    placement=lm_labels.placement,
+                )
+                + logits.shape[0] * logits.shape[1]
+            )
+            return {
+                "lm_loss": lm_loss,
+                "done_tokens": done_tokens,
+            }
+        else:
+            return {
+                "lm_loss": lm_loss,
+            }
+
+
 class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
     def __init__(self, cfg):
         super().__init__()
@@ -792,7 +837,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel, Generator):
         self.max_sequence_length = cfg.max_length
         self.transformer = ChatGLMModel(cfg)
         self.cfg = cfg
-        self.loss_fct = nn.CrossEntropyLoss()
+        self.loss_fct = SFTLoss()
 
     def _update_model_kwargs_for_generation(
         self,

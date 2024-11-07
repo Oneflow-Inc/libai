@@ -184,7 +184,7 @@ class CommonMetricPrinter(EventWriter):
     To print something in more customized ways, please implement a similar printer by yourself.
     """
 
-    def __init__(self, batch_size, max_iter):
+    def __init__(self, batch_size, max_iter, log_period):
         """
         Args:
             max_iter (int): the maximum number of iterations to train.
@@ -194,6 +194,7 @@ class CommonMetricPrinter(EventWriter):
         self._batch_size = batch_size
         self._max_iter = max_iter
         self._last_write = None
+        self._log_period = log_period
 
     def write(self):
         storage = get_event_storage()
@@ -236,9 +237,15 @@ class CommonMetricPrinter(EventWriter):
 
         max_mem_mb = None
 
+        try:
+            done_tokens = storage.history("done_tokens").avg(self._log_period)
+            token_time = storage.history("time").avg(self._log_period)
+        except KeyError:
+            done_tokens = None
+
         # NOTE: max_mem is parsed by grep in "dev/parse_results.sh"
         self.logger.info(
-            " {eta}{iter}  {sample}  {losses}  {time}{data_time} {tpt} lr: {lr}  {memory}".format(
+            " {eta}{iter}  {sample}  {losses}  {time}{data_time} {tpt} lr: {lr}  {memory}  {tokens_speed}".format(
                 eta=f"eta: {eta_string}  " if eta_string else "",
                 iter=f"iteration: {iteration}/{self._max_iter}",
                 sample=f"consumed_samples: {consumed_samples}",
@@ -258,6 +265,9 @@ class CommonMetricPrinter(EventWriter):
                 else "",
                 lr=lr,
                 memory="max_mem: {:.0f}M".format(max_mem_mb) if max_mem_mb is not None else "",
+                tokens_speed="tokens_throughput: {:.4f} tokens/s".format(done_tokens / token_time)
+                if done_tokens is not None
+                else "",
             )
         )
 
