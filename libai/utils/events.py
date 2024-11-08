@@ -256,7 +256,7 @@ class CommonMetricPrinter(EventWriter):
                 tpt="total_throughput: {:.2f} samples/s".format(self._batch_size / iter_time)
                 if iter_time is not None
                 else "",
-                tokens_speed="tokens_throughput: {:.4f} tokens/s".format(self._batch_size * int(os.getenv("MAX_POSITION_EMBEDDINGS", 2048)) / iter_time)
+                tokens_speed="tokens_throughput: {:.4f} tokens/s".format(self._batch_size * int(os.getenv("MAX_SEQ_LENGTH", 512)) / iter_time)
                 if iter_time is not None
                 else "",
                 lr=lr,
