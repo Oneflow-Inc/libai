@@ -36,7 +36,7 @@ class ParallelCrossEntropyLoss(nn.Module):
         assert target.ndim == 2
         assert logits.shape[0:2] == target.shape
 
-        target = target.to(flow.int32) # NOTE:npu nll target only support int32 for now
+        # target = target.to(flow.int32) # NOTE:npu nll target only support int32 for now
         target = target.to_global(placement=logits.placement)
         lm_loss = flow._C.cross_entropy(
             logits.view(-1, logits.shape[-1]),

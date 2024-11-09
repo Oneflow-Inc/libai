@@ -72,8 +72,8 @@ class GraphBase(nn.Graph):
             self.set_pipeline_stage_id()
 
         self.config.allow_fuse_add_to_output(False)
-        self.config.allow_fuse_model_update_ops(True)
-        self.config.allow_fuse_cast_scale(True)
+        self.config.allow_fuse_model_update_ops(False)
+        self.config.allow_fuse_cast_scale(False)
 
         # Enable cuda stream for computation and communication as the same stream.
         # This will reduce memory when using model parallelism.
