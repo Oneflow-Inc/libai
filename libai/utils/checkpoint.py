@@ -105,6 +105,7 @@ class Checkpointer(object):
         if not self.path_manager.exists(save_dir):
             self.path_manager.mkdirs(save_dir)
         self.logger.info("Saving checkpoint to {}".format(save_dir))
+        import pdb; pdb.set_trace()
 
         for save_name in data:
             if save_name == "iteration":
@@ -373,6 +374,7 @@ class PeriodicCheckpointer:
                         else:
                             self.path_manager.rm(file_to_delete)
 
+        return
         if self.max_iter is not None:
             if iteration >= self.max_iter - 1:
                 self.checkpointer.save(f"{self.file_prefix}_final", **additional_state)
