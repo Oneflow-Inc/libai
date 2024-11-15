@@ -105,7 +105,6 @@ class Checkpointer(object):
         if not self.path_manager.exists(save_dir):
             self.path_manager.mkdirs(save_dir)
         self.logger.info("Saving checkpoint to {}".format(save_dir))
-        import pdb; pdb.set_trace()
 
         for save_name in data:
             if save_name == "iteration":

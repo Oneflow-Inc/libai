@@ -14,6 +14,7 @@ python3 -m oneflow.distributed.launch \
     --master_port 12345 \
         tools/train_net.py --config-file=configs/gpt2_pretrain.py \
             graph.enabled=False \
+	    optim.fused=True \
             train.input_placement_device="npu" \
             train.dist.device_type="npu" \
             train.amp.enabled=False \

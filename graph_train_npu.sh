@@ -6,6 +6,7 @@ NUM_DEVICES=$(( DP * TP * PP ))
 #export ASCEND_SLOG_PRINT_TO_STDOUT=1
 #export ASCEND_GLOBAL_LOG_LEVEL=0
 #export ONEFLOW_DEBUG=1
+export ONEFLOW_ENABLE_MULTI_TENSOR_MODEL_UPDATE=1
 python3 -m oneflow.distributed.launch \
     --nproc_per_node $NUM_DEVICES \
     --nnodes 1 \
@@ -14,6 +15,7 @@ python3 -m oneflow.distributed.launch \
     --master_port 12345 \
         tools/train_net.py --config-file=configs/gpt2_pretrain.py \
             graph.enabled=True \
+	    optim.fused=True \
             train.input_placement_device="npu" \
             train.dist.device_type="npu" \
             train.amp.enabled=False \
