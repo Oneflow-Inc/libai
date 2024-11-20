@@ -138,7 +138,7 @@ if __name__ == "__main__":
             "isort==5.10.1",
             "black==21.4b2 ",
             "autoflake",
-            "tensorboardX<=2.5.1",
+            "tensorboardX==2.6",
             "pytest",
             "safetensors",
         ],
