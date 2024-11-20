@@ -29,7 +29,7 @@ class DistTensorData:
     placement_idx: int = 0
 
     # Tensor-like methods
-    def to_global(self, sbp=None, placement=None, device_type="cuda"):
+    def to_global(self, sbp=None, placement=None, device_type="cuda", check_meta=True, sync_data=True):
         if sbp is not None:
             self.sbp = sbp
         else:
@@ -47,7 +47,7 @@ class DistTensorData:
             self.sbp = dist.get_nd_sbp(sbp_list)
 
         if placement is not None:
-            self.tensor = self.tensor.to_global(sbp=self.sbp, placement=placement)
+            self.tensor = self.tensor.to_global(sbp=self.sbp, placement=placement, check_meta=check_meta, sync_data=sync_data)
         else:
             # Convert local tensor to global tensor with default setting,
             # if the placement parameter is not provided.
@@ -62,10 +62,11 @@ class DistTensorData:
             # by the fist device group, in case that each device group containg
             # some random augmentations to the tensors without setting the same global seed.
             main_placement = dist.get_layer_placement(0, device_type)
-            self.tensor = self.tensor.to_global(sbp=self.sbp, placement=main_placement)
+            self.tensor = self.tensor.to_global(sbp=self.sbp, placement=main_placement, check_meta=check_meta, sync_data=sync_data)
             if self.placement_idx != 0:
                 self.tensor = self.tensor.to_global(
-                    placement=dist.get_layer_placement(self.placement_idx, device_type)
+                    placement=dist.get_layer_placement(self.placement_idx, device_type),
+                    check_meta=check_meta, sync_data=sync_data
                 )
 
     @staticmethod
