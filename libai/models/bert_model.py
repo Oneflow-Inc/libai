@@ -288,6 +288,7 @@ class BertModel(nn.Module):
         apply_query_key_layer_scaling=True,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
+        multihead_attn_fusion=False,
     ):
         super().__init__()
         init_method = init_method_normal(initializer_range)
@@ -307,6 +308,7 @@ class BertModel(nn.Module):
         # Mask generation
         self.extended_attn_mask = BertExtendedAttnMask()
 
+        self.multihead_attn_fusion = multihead_attn_fusion
         # Encoders
         self.encoders = nn.ModuleList(
             [
@@ -326,6 +328,7 @@ class BertModel(nn.Module):
                     apply_residual_post_layernorm=apply_residual_post_layernorm,
                     attn_mask_type=AttnMaskType.padding,  # bert mask type
                     layer_idx=i,
+                    multihead_attn_fusion=multihead_attn_fusion,
                 )
                 for i in range(hidden_layers)
             ]
@@ -355,6 +358,7 @@ class BertModel(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
             "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
+            "multihead_attn_fusion": cfg.multihead_attn_fusion,
         }
 
     def forward(self, input_ids, attention_mask, tokentype_ids=None):
@@ -375,9 +379,17 @@ class BertModel(nn.Module):
         embedding_output = self.embeddings(input_ids, tokentype_ids)
 
         hidden_states = embedding_output
+
+        if self.multihead_attn_fusion:
+            hidden_states = hidden_states.transpose(0, 1)  # [seq, bs, dim]
+
         for layer in self.encoders:
             hidden_states = layer(hidden_states, extended_attention_mask)
         encoder_output = self.final_layernorm(hidden_states)
+
+        if self.multihead_attn_fusion:
+            encoder_output = encoder_output.transpose(0, 1)
+
         pooled_output = self.pooler(encoder_output) if self.pooler is not None else None
         return encoder_output, pooled_output
 

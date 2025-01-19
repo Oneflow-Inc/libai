@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import oneflow as flow
 from oneflow import nn
 from oneflow.nn import init
@@ -135,6 +136,7 @@ class GPTModel(nn.Module):
         apply_query_key_layer_scaling=False,
         apply_residual_post_layernorm=False,
         amp_enabled=False,
+        multihead_attn_fusion=False,
     ):
         super().__init__()
         init_method = init_method_normal(sigma=initializer_range)
@@ -167,6 +169,7 @@ class GPTModel(nn.Module):
             scale_mask_softmax_fusion=scale_mask_softmax_fusion,
             apply_query_key_layer_scaling=apply_query_key_layer_scaling,
             apply_residual_post_layernorm=apply_residual_post_layernorm,
+            multihead_attn_fusion=multihead_attn_fusion,
         )
 
         self.lm_head = LMLogits(vocab_size, bias=False)
@@ -192,6 +195,7 @@ class GPTModel(nn.Module):
             "apply_query_key_layer_scaling": cfg.apply_query_key_layer_scaling,
             "apply_residual_post_layernorm": cfg.apply_residual_post_layernorm,
             "amp_enabled": cfg.amp_enabled,
+            "multihead_attn_fusion": cfg.multihead_attn_fusion,
         }
 
     def forward(self, input_ids):
@@ -272,9 +276,12 @@ class Transformer(nn.Module):
         scale_mask_softmax_fusion=False,
         apply_query_key_layer_scaling=False,
         apply_residual_post_layernorm=False,
+        multihead_attn_fusion=False,
     ):
         super().__init__()
         self.hidden_layers = hidden_layers
+
+        self.multihead_attn_fusion = multihead_attn_fusion
 
         def build_layer(layer_number):
             return TransformerLayer(
@@ -293,6 +300,7 @@ class Transformer(nn.Module):
                 apply_residual_post_layernorm=apply_residual_post_layernorm,
                 attn_mask_type=AttnMaskType.causal,
                 layer_idx=layer_number,
+                multihead_attn_fusion=multihead_attn_fusion,
             )
 
         self.layers = nn.ModuleList([build_layer(i) for i in range(self.hidden_layers)])
@@ -301,10 +309,16 @@ class Transformer(nn.Module):
     def forward(self, hidden_states, attention_mask):
         # hidden_states shape: (batch_size, seq_length, hidden_size)
         # sbp: [S(0), B]
+        if self.multihead_attn_fusion:
+            hidden_states = hidden_states.transpose(0, 1)  # [seq, bs, dim]
+
         for i, layer in enumerate(self.layers):
             hidden_states = layer(hidden_states, attention_mask)
 
         output = self.layernorm_f(hidden_states)
+
+        if self.multihead_attn_fusion:
+            output = output.transpose(0, 1)
 
         return output
 

@@ -74,7 +74,8 @@ class TransformerLayer(nn.Module):
         apply_residual_post_layernorm=False,
         attn_mask_type=AttnMaskType.padding,
         *,
-        layer_idx=0
+        layer_idx=0,
+        multihead_attn_fusion=False
     ):
         super().__init__()
         self.hidden_size = hidden_size
@@ -98,6 +99,8 @@ class TransformerLayer(nn.Module):
         if output_layer_init_method is None:
             output_layer_init_method = init_method
         self.output_layer_init_method = output_layer_init_method
+
+        self.multihead_attn_fusion = multihead_attn_fusion is True and is_decoder is False
 
         self.drop_path = DropPath(drop_path_prob) if drop_path_prob > 0.0 else nn.Identity()
 
@@ -245,4 +248,5 @@ class TransformerLayer(nn.Module):
             apply_query_key_layer_scaling=self.apply_query_key_layer_scaling,
             attn_mask_type=self.attn_mask_type,
             layer_idx=self.layer_idx,
+            multihead_attn_fusion=self.multihead_attn_fusion,
         )
