@@ -38,9 +38,7 @@ class T5Dataset(flow.utils.data.Dataset):
             All values are padded to this length. Defaults to 512.
         max_seq_length_dec (int, optional): Maximum length of the sequence passing into decoder.
             All values are padded to this length. Defaults to 128.
-        mask_lm_prob (float, optional): Probability to mask tokens. Defaults to 0.15.
-        max_preds_per_seq (int, optional): Maximum number of masked tokens in each sentence.
-            Defaults to None.
+        masked_lm_prob (float, optional): Probability to mask tokens. Defaults to 0.15.
         short_seq_prob (float, optional):
             Probability of producing a short sequence. Defaults to 0.0.
         seed (int, optional):

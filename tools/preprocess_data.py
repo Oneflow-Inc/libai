@@ -97,7 +97,7 @@ class Encoder(object):  # split sentence, tokenize
             if (
                 len(doc_ids) > 0 and self.args.append_eod
             ):  # append eod token when at the enc of document
-                doc_ids[-1].append(Encoder.tokenizer.eod)
+                doc_ids[-1].append(Encoder.tokenizer.eod_token_id)
             ids[key] = doc_ids
         return ids, len(json_line)
 

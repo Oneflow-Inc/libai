@@ -218,7 +218,7 @@ class MultiheadAttention(nn.Module):
                 )
             else:
                 position_bias = self.compute_bias(
-                    real_seq_length, key_length, placement=attention_mask.placement
+                    real_seq_length, key_length, placement=attention_scores.placement
                 )
 
             if past_key_value is not None:
@@ -228,13 +228,14 @@ class MultiheadAttention(nn.Module):
             if use_cache:
                 attention_mask = attention_mask.expand_as(attention_scores)
 
+            attention_dropout_prob = self.attention_dropout_prob if self.training  else 0.0
             attention_weights = flow._C.fused_bias_add_scale_mask_softmax_dropout(
                 attention_scores,
                 position_bias,
                 attention_mask,
                 fill_value=-10000.0,
                 scale=1,
-                p=self.attention_dropout_prob,
+                p=attention_dropout_prob,
             )[0]
         else:
             attention_scores = attention_scores + position_bias
