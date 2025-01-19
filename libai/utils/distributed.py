@@ -86,7 +86,6 @@ class _DistributeUtil(object):
             raise NotImplementedError(f"Unsupported device {self._device_type}")
 
     def _init_parallel_size(self, cfg):
-
         # tensor parallel size
         self._tensor_parallel_size = min(cfg.tensor_parallel_size, self.world_size)
         assert self.world_size % self._tensor_parallel_size == 0, (
@@ -328,6 +327,7 @@ def get_layer_placement(layer_idx, device_type=None):
     device_type = dist_util.device_type if device_type is None else device_type
     if not flow.cuda.is_available() and device_type == "cuda":
         device_type = "cpu"
+    device_type = "cpu"
     return flow.placement(
         device_type,
         dist_util.get_layer_ranks(layer_idx),
@@ -414,6 +414,8 @@ def get_world_size():
 
 
 def get_num_nodes():
+    # Note that this is just for dry run compile
+    return 1
     return flow.env.get_node_size()
 
 
