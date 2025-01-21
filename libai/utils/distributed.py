@@ -443,6 +443,20 @@ def convert_to_distributed_default_setting(t):
         )
     else:
         dist_util = get_dist_util()
+        if dist_util.device_type != "npu":
+            from omegaconf import DictConfig
+
+            setup_dist_util(
+                DictConfig(
+                    dict(
+                        data_parallel_size=1,
+                        tensor_parallel_size=1,
+                        pipeline_parallel_size=1,
+                        device_type="npu",
+                    )
+                )
+            )
+            dist_util = get_dist_util()
         device_type = dist_util.device_type
         return t.to_global(placement=flow.placement(device_type, ranks=t.placement.ranks))
 
@@ -450,7 +464,7 @@ def convert_to_distributed_default_setting(t):
 def ttol(tensor, pure_local=False, device="cuda", ranks=None):
     """Global tensor to local tensor."""
     if tensor.is_global:
-        placement = tensor.placement if not ranks else flow.placement(device, ranks)
+        placement = tensor.placement if not ranks else flow.placement(tensor.placement.type, ranks)
         if pure_local:
             tensor = tensor.to_global(placement=placement).to_local()
         else:

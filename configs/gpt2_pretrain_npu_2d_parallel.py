@@ -24,8 +24,8 @@ dataloader.test[0].dataset.indexed_dataset.data_prefix = data_prefix
 from libai.models.utils import GraphBase
 graph = dict(
     # options for graph or eager mode
-    enabled=False,
-    debug=3,  # debug mode for graph
+    enabled=True,
+    debug=0,  # debug mode for graph
     # =========== optimization settings on Graph mode, default:True ===========
     allow_fuse_add_to_output=False,
     allow_fuse_model_update_ops=False, # try to fuse cast + scale + l1_l2_regularize_gradient + model_update to one op to improve performance.
@@ -80,11 +80,8 @@ cfg = dict(
 cfg = DictConfig(cfg)
 model = LazyCall(GPTForPreTraining)(cfg=cfg)
 
-# GPT-2 model config
-model.cfg.embedding_dropout_prob = 0.1
-model.cfg.attention_dropout_prob = 0.1
-
-train.input_placement_device = "cpu"
+model.cfg.embedding_dropout_prob = 0
+model.cfg.attention_dropout_prob = 0
 
 # 参数量1.1B
 # model.cfg.num_attention_heads = 25
@@ -123,8 +120,13 @@ model.cfg.max_seq_length = 1024
 # model.cfg.max_seq_length = 1024
 
 
+# train.input_placement_device = "cpu"
+train.input_placement_device = "npu"
 
 train.dist.pipeline_num_layers = model.cfg.hidden_layers
+# 2D parallelism(4gpus >>>> 2groups data parallel + 2 groups tensor parallel)
+train.dist.data_parallel_size=2
+train.dist.tensor_parallel_size=2
 
 for ds in dataloader.train.dataset:
     ds.max_seq_length = model.cfg.max_seq_length
