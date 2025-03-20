@@ -373,6 +373,7 @@ class PeriodicCheckpointer:
                         else:
                             self.path_manager.rm(file_to_delete)
 
+        return
         if self.max_iter is not None:
             if iteration >= self.max_iter - 1:
                 self.checkpointer.save(f"{self.file_prefix}_final", **additional_state)

@@ -244,7 +244,9 @@ class GPTEmbedding(nn.Module):
         bsz, seq_length = input_ids.size()
 
         position_ids = self.position_ids[:, past_length : past_length + seq_length]
-        position_ids = position_ids.expand_as(input_ids).to_global(sbp=input_ids.sbp)
+        position_ids = position_ids.expand_as(input_ids).to_global(
+            sbp=input_ids.sbp, placement=input_ids.placement
+        )
 
         token_embeds = self.token_embeddings(input_ids)
         position_embeds = self.position_embeddings(position_ids)

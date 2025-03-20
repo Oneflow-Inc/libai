@@ -16,9 +16,9 @@ dataloader.test[0].dataset.data_prefix = data_prefix
 dataloader.test[0].dataset.indexed_dataset.data_prefix = data_prefix
 
 # Bert-large model config
-model.cfg.num_attention_heads = 16
-model.cfg.hidden_size = 768
-model.cfg.hidden_layers = 8
+# model.cfg.num_attention_heads = 16
+# model.cfg.hidden_size = 768
+# model.cfg.hidden_layers = 8
 
 train.input_placement_device = "cpu"
 

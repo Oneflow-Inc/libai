@@ -4,7 +4,7 @@ env:
   ONEFLOW_SRC: oneflow-src
 on:
   pull_request:
-    types: [review_requested]
+    types: [opened, review_requested, ready_for_review, synchronize, unlocked]
     branches:
       - "*"
   workflow_dispatch:

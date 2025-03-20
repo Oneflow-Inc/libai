@@ -39,12 +39,14 @@ class GraphBase(nn.Graph):
         is_train=True,
         auto_parallel_conf=None,
         global_mode=None,
+        device="cuda",
     ):
         super().__init__()
 
         self.model = model
         self.is_train = is_train
         self.global_mode = global_mode
+        self.device = device
 
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
@@ -69,7 +71,7 @@ class GraphBase(nn.Graph):
 
             self.set_pipeline_stage_id()
 
-        self.config.allow_fuse_add_to_output(True)
+        self.config.allow_fuse_add_to_output(False)
         self.config.allow_fuse_model_update_ops(True)
         self.config.allow_fuse_cast_scale(True)
 
@@ -104,7 +106,7 @@ class GraphBase(nn.Graph):
         if self.is_train:
             placement_sbp_dict = (
                 dict(
-                    placement=flow.env.all_device_placement("cuda"),
+                    placement=flow.env.all_device_placement(self.device),
                     sbp=flow.sbp.split(0),
                 )
                 if self.global_mode.enabled

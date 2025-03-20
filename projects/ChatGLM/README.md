@@ -47,3 +47,12 @@ python projects/ChatGLM/pipeline.py
 
 ### ChatGLM Lora Inference
 - set `projects/ChatGLM/configs/chatglm_config.py`, lora_enable=True, same step with no lora.
+
+### npu/xpu/cuda example
+```python
+python projects/ChatGLM/pipeline.py --model_path=/data0/hf_models/chatglm/chatglm2-6b --mode=huggingface --device=npu
+
+python projects/ChatGLM/pipeline.py --model_path=/root/models/chatglm2-6b/ --mode=huggingface --device=xpu
+
+python projects/ChatGLM/pipeline.py --model_path=/root/models/chatglm2-6b/ --mode=huggingface --device=cuda
+```

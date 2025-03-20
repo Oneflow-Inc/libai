@@ -21,7 +21,6 @@ import oneflow.mock_torch as mock
 from libai.utils import distributed as dist
 
 with mock.enable(lazy=True):
-
     from transformers import (  # noqa
         BertTokenizer,
         GPT2Tokenizer,
@@ -77,6 +76,7 @@ with mock.enable(lazy=True):
             try:
                 import oneflow  # noqa
             except ImportError as e:
+
                 msg = (
                     "Unable to convert output to OneFlow tensors format, OneFlow is not installed."
                 )

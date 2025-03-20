@@ -120,7 +120,7 @@ if __name__ == "__main__":
             "hydra-core",
             "nltk",
             "numpy",
-            "omegaconf==2.1.0",
+            "omegaconf==2.1.2",
             "Pygments",
             "PyYAML",
             "jieba",
