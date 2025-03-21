@@ -2,13 +2,25 @@ from omegaconf import DictConfig
 from libai.config import LazyCall
 from libai.models import GPTModel, GPTForPreTraining
 
+# small
+# hidden_layers=6,
+# vocab_size=30522,
+# hidden_size=384,
+# ffn_hidden_size=384 * 4,
+# num_attention_heads=16,
 
+# large(1B)
+# hidden_layers=40,
+# vocab_size=30522,
+# hidden_size=1600,
+# ffn_hidden_size=1280 * 4,
+# num_attention_heads=25,
 cfg = dict(
-    hidden_layers=40,
+    hidden_layers=6,
     vocab_size=30522,
-    hidden_size=1600,
-    ffn_hidden_size=1280 * 4,
-    num_attention_heads=25,
+    hidden_size=384,
+    ffn_hidden_size=384 * 4,
+    num_attention_heads=16,
     max_seq_length=1024,
     embedding_dropout_prob=0,
     attention_dropout_prob=0,

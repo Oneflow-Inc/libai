@@ -7,9 +7,9 @@ from configs.common.data.gpt_dataset import dataloader, tokenization
 
 from configs.common.models.graph import graph
 
-vocab_file = "projects/libai-parallel-case/gpt2/vocab.json"
-merge_files = "projects/libai-parallel-case/gpt2/merges.txt"
-data_prefix = "/home/xiezipeng/workspace/libai/projects/libai-parallel-case/dataset/loss_compara_content_sentence"
+vocab_file = "./data_test/gpt_data/gpt2-vocab.json"
+merge_files = "./data_test/gpt_data/gpt2-merges.txt"
+data_prefix = "./data_test/gpt_data/loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
