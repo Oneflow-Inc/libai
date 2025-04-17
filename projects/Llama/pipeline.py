@@ -106,12 +106,21 @@ class TextGenerationPipeline(BasePipeline):
     "--device", default="cuda", help="Device to run the model on, e.g., 'cuda', 'xpu', 'npu'."
 )
 def main(config_file, model_path, mode, device):
+    if model_path is not None:
+        import os
+        import json
+        model_config_file = os.path.join(model_path, "config.json")
+        with open(model_config_file, mode="r", encoding="utf-8") as f:
+            cfg_dict = json.load(f)
+            pipeline_num_layers = cfg_dict["num_hidden_layers"]
+    else:
+        pipeline_num_layers = 32
     pipeline = TextGenerationPipeline(
         config_file,
         data_parallel=1,
         tensor_parallel=1,
         pipeline_parallel=1,
-        pipeline_num_layers=32,
+        pipeline_num_layers=pipeline_num_layers,
         model_path=model_path,
         mode=mode,
         device=device,

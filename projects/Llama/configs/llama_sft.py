@@ -1,4 +1,5 @@
 import os
+import json
 from omegaconf import OmegaConf
 
 from libai.config import LazyCall
@@ -20,7 +21,13 @@ from projects.Llama.llama import LlamaForCausalLM
 weight_decay = 0.1
 learning_rate = 5e-5
 dataset_path = "alpaca_data"
-pretrained_model_path = "meta-llama/Llama-2-7b-hf"
+pretrained_model_path = "meta-llama/Llama-2-13b-hf"
+cfg["pretrained_model_path"] = pretrained_model_path
+with open(os.path.join(pretrained_model_path, "config.json"), "r", encoding="utf-8") as f:
+    json_config = json.load(f)
+json_cfg = OmegaConf.create(json_config)
+cfg = OmegaConf.merge(cfg, json_cfg)
+cfg["hidden_layers"] = json_config["num_hidden_layers"]
 
 # graph & optim
 graph["enabled"] = False
@@ -83,7 +90,7 @@ train.update(
             pipeline_num_layers=cfg.hidden_layers,
         ),
         evaluation=dict(
-            enabled=True,
+            enabled=False,
             evaluator=LazyCall(PPLEvaluator)(),
             eval_period=1000,
             eval_iter=1e5,

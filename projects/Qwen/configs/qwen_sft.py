@@ -18,7 +18,7 @@ from projects.Qwen.qwen_dataset import QwenDataset
 weight_decay = 0.1
 learning_rate = 5e-5
 dataset_path = "./alpaca_data"
-pretrained_model_path = "/root/models/Qwen1.5-7B-Chat"
+pretrained_model_path = "Qwen/Qwen2-7B"
 
 # graph & optim
 graph["enabled"] = False

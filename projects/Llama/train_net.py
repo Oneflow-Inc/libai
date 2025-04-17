@@ -67,7 +67,7 @@ def main(args):
 
     seed_for_rank = cfg.train.seed + flow.env.get_rank()
     flow.manual_seed(seed_for_rank)
-    flow.cuda.manual_seed(seed_for_rank)
+    #flow.cuda.manual_seed(seed_for_rank)
     np.random.seed(seed_for_rank)
     random.seed(seed_for_rank)
 

@@ -2,12 +2,16 @@ DP=${1:-1}
 TP=${2:-1}
 PP=${3:-1}
 NUM_DEVICES=$(( DP * TP * PP ))
-export ASCEND_RT_VISIBLE_DEVICES=4,5,6,7
+#export ASCEND_RT_VISIBLE_DEVICES=4,5,6,7
 #export ASCEND_RT_VISIBLE_DEVICES=4,5,6,7
 #export ASCEND_SLOG_PRINT_TO_STDOUT=1
 #export ASCEND_GLOBAL_LOG_LEVEL=3
 #export ONEFLOW_DEBUG=1
 export ONEFLOW_ENABLE_MULTI_TENSOR_MODEL_UPDATE=0
+#export GLOG_log_dir=./logs
+#export GLOG_v=5
+#export GLOG_logtostderr=1
+export ONEFLOW_NPU_COMM_SYNC=1
 python3 -m oneflow.distributed.launch \
     --nproc_per_node $NUM_DEVICES \
     --nnodes 1 \
