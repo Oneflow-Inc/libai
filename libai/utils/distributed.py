@@ -158,6 +158,21 @@ class _DistributeUtil(object):
             for i in range(0, self.world_size, num_devices_per_stage)
         ]
 
+        if cfg.pipeline_num_layers % self._pipeline_parallel_size == 0:
+            num_layers_per_stage = cfg.pipeline_num_layers // self._pipeline_parallel_size
+            self._layer_stage_ids = [i // num_layers_per_stage for i in range(cfg.pipeline_num_layers)]
+
+            if cfg.pipeline_parallel_size > 1:
+                cfg.auto_pipeline_stage_id = self._layer_stage_ids
+
+                if try_get_key(cfg, "custom_pipeline_stage_id") is not None:
+                    self._layer_stage_ids = cfg.custom_pipeline_stage_id
+
+                cfg.actual_pipeline_stage_id = self._layer_stage_ids
+
+            self._layer_ranks = [stages_devices[stage_id] for stage_id in self._layer_stage_ids]
+            return
+
         # change pipeline_num_layers to make the middle stages contain more layers
         if (
             self._pipeline_parallel_size >= 4
