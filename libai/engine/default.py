@@ -280,10 +280,12 @@ class DefaultTrainer(TrainerBase):
             cfg.train.amp = dict(enabled=False)
             cfg.train.activation_checkpoint = dict(enabled=True)
 
-        if cfg.graph["auto_parallel"]["enabled"] == True and dist.get_world_size() == 8 and (cfg.train.dist["data_parallel_size"] != 8):
-            cfg.train.dist["data_parallel_size"] = 8
-            cfg.train.dist["tensor_parallel_size"] = 1 
-            cfg.train.dist["pipeline_parallel_size"] = 1
+        if cfg.graph["auto_parallel"]["enabled"] == True and dist.get_world_size() == 8: # and (cfg.train.dist["data_parallel_size"] != 8):
+            # cfg.train.dist["data_parallel_size"] = 8
+            # cfg.train.dist["tensor_parallel_size"] = 1 
+            # cfg.train.dist["pipeline_parallel_size"] = 1
+            print("auto parallel is enabled")
+            print(cfg.train.dist)
             cfg.graph["auto_parallel"]["enabled"] = True
             cfg.train.zero_optimization = dict(
                 enabled=False,
