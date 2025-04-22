@@ -21,8 +21,9 @@ from projects.Llama.llama import LlamaForCausalLM
 weight_decay = 0.1
 learning_rate = 5e-5
 dataset_path = "alpaca_data"
-pretrained_model_path = "meta-llama/Llama-2-13b-hf"
+pretrained_model_path = os.environ.get("PRETRAINED_MODEL_PATH", "")
 cfg["pretrained_model_path"] = pretrained_model_path
+print("pretrained_model_path=", pretrained_model_path)
 with open(os.path.join(pretrained_model_path, "config.json"), "r", encoding="utf-8") as f:
     json_config = json.load(f)
 json_cfg = OmegaConf.create(json_config)
@@ -30,7 +31,7 @@ cfg = OmegaConf.merge(cfg, json_cfg)
 cfg["hidden_layers"] = json_config["num_hidden_layers"]
 
 # graph & optim
-graph["enabled"] = False
+graph["enabled"] = True
 optim.update(
     dict(
         lr=learning_rate,
