@@ -16,7 +16,7 @@ from libai.models import GPTModel, GPTForPreTraining
 # ffn_hidden_size=1280 * 4,
 # num_attention_heads=25,
 cfg = dict(
-    hidden_layers=48,
+    hidden_layers=40,
     vocab_size=30522,
     hidden_size=1600,
     ffn_hidden_size=1600 * 4,
