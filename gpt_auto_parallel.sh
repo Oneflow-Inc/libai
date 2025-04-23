@@ -20,12 +20,13 @@ export ONEFLOW_ENABLE_MULTI_TENSOR_MODEL_UPDATE=0
 #export GLOG_logtostderr=1
 bash tools/train.sh tools/train_net.py \
     projects/libai-parallel-case/configs/gpt2_pretrain_auto_parallel.py $NUM_DEVICES \
-    train.train_iter=200 \
     train.log_period=1 \
     graph.enabled=True \
     optim.fused=True \
     train.dist.device_type="npu" \
     train.input_placement_device="npu" \
+    train.train_micro_batch_size=2 \
+    train.train_iter=10 \
     train.amp.enabled=False \
     model.cfg.scale_mask_softmax_fusion=False \
     model.cfg.embedding_dropout_prob=0.0 \
