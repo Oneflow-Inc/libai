@@ -36,9 +36,12 @@ except Exception:
 
 def write_version_file():
     version_path = os.path.join(cwd, "libai", "version.py")
-    with open(version_path, "w") as f:
-        f.write(f"__version__ = '{version}'\n")
-        f.write(f"git_version = {repr(sha)}\n")
+    try:
+        with open(version_path, "w") as f:
+            f.write(f"__version__ = '{version}'\n")
+            f.write(f"git_version = {repr(sha)}\n")
+    except (PermissionError, OSError) as e:
+        print(f"Warning: Could not write {version_path}: {e}. Skipping version file generation.")
 
 
 if sys.version_info < (3,):
