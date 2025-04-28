@@ -17,7 +17,6 @@
 import math
 from typing import Tuple
 
-import torch
 import oneflow as flow
 from oneflow import nn
 
