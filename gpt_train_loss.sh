@@ -1,6 +1,7 @@
-DP=${1:-1}
-TP=${2:-1}
-PP=${3:-1}
+DEVICE_TYPE=${1:-npu}
+DP=${2:-1}
+TP=${3:-1}
+PP=${4:-1}
 NUM_DEVICES=$(( DP * TP * PP ))
 #export ASCEND_RT_VISIBLE_DEVICES=4,5,6,7
 #export ASCEND_RT_VISIBLE_DEVICES=4,5,6,7
@@ -21,8 +22,8 @@ python3 -m oneflow.distributed.launch \
         tools/train_net.py --config-file=configs/gpt2_pretrain.py \
             graph.enabled=True \
 	    optim.fused=True \
-            train.input_placement_device="npu" \
-            train.dist.device_type="npu" \
+            train.input_placement_device="${DEVICE_TYPE}" \
+            train.dist.device_type="${DEVICE_TYPE}" \
             train.amp.enabled=False \
 	    train.evaluation.enabled=False \
 	    train.log_period=1 \
@@ -33,7 +34,7 @@ python3 -m oneflow.distributed.launch \
 	    model.cfg.embedding_dropout_prob=0.0 \
             model.cfg.attention_dropout_prob=0.0 \
 	    train.train_micro_batch_size=2 \
-	    train.train_iter=10 \
+	    train.train_iter=10000 \
             model.cfg.bias_gelu_fusion=False
         #tools/train_net.py --config-file=configs/gpt2_pretrain.py \
         #tools/train_net.py --config-file=projects/libai-parallel-case/configs/gpt2_pretrain_data_parallel.py \
