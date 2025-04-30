@@ -32,7 +32,7 @@ python3 -m oneflow.distributed.launch \
             model.cfg.scale_mask_softmax_fusion=False \
 	    model.cfg.embedding_dropout_prob=0.0 \
             model.cfg.attention_dropout_prob=0.0 \
-	    train.train_micro_batch_size=2 \
+	    train.train_micro_batch_size=4 \
 	    train.train_iter=10 \
             model.cfg.bias_gelu_fusion=False
         #tools/train_net.py --config-file=configs/gpt2_pretrain.py \
