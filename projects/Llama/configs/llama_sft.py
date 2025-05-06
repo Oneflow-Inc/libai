@@ -85,9 +85,9 @@ train.update(
             max_to_keep=20,
         ),
         dist=dict(
-            data_parallel_size=1,
-            tensor_parallel_size=1,
-            pipeline_parallel_size=8,
+            data_parallel_size=2,
+            tensor_parallel_size=2,
+            pipeline_parallel_size=2,
             pipeline_num_layers=cfg.hidden_layers,
         ),
         evaluation=dict(
