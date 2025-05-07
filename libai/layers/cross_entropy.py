@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import os
 import oneflow as flow
 from oneflow import nn
 
@@ -22,6 +22,9 @@ class ParallelCrossEntropyLoss(nn.Module):
     """This criterion acts like :class:`~flow.nn.CrossEntropyLoss` except it will
     execute distributed cross entropy loss computation cross different GPUs.
     """
+    def __init__(self):
+        super().__init__()
+        self.use_nll_loss = os.environ.get('USE_NLL_LOSS', '0').lower() in ('1', 'true', 'yes')
 
     def forward(self, logits: flow.Tensor, target: flow.Tensor):
         """Function for the distributed cross entropy.
@@ -36,7 +39,7 @@ class ParallelCrossEntropyLoss(nn.Module):
         assert target.ndim == 2
         assert logits.shape[0:2] == target.shape
 
-        if 0:
+        if not self.use_nll_loss:
             target = target.to_global(placement=logits.placement)
 
             # Change -1 in target to 0 because sparse_softmax_cross_entropy don't accept -1
