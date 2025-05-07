@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import logging
 
 import oneflow as flow
@@ -92,7 +93,12 @@ class GraphBase(nn.Graph):
                 self.config.set_auto_parallel_wait_time(1.65e4)
                 self.config.enable_auto_parallel_trunk_algo(True)
                 self.config.enable_auto_parallel_sbp_collector(False)
-                self.config.enable_auto_memory("Disable")
+                auto_memory_mode  = os.environ.get('AUTO_MEMORY_MODE', "Disable")
+                print(auto_memory_mode)
+                self.config.enable_auto_memory(auto_memory_mode)
+                #self.config.enable_auto_memory("HeavyMemoryDown")
+                #self.config.enable_auto_memory("ModerateMemoryDown")
+                #self.config.enable_auto_memory("Disable")
             except RuntimeWarning:
                 import warnings
 
