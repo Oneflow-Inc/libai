@@ -94,7 +94,6 @@ class GraphBase(nn.Graph):
                 self.config.enable_auto_parallel_trunk_algo(True)
                 self.config.enable_auto_parallel_sbp_collector(False)
                 auto_memory_mode  = os.environ.get('AUTO_MEMORY_MODE', "Disable")
-                print(auto_memory_mode)
                 self.config.enable_auto_memory(auto_memory_mode)
                 #self.config.enable_auto_memory("HeavyMemoryDown")
                 #self.config.enable_auto_memory("ModerateMemoryDown")
