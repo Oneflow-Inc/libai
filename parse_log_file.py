@@ -1,4 +1,5 @@
 import re
+import csv
 import json
 import argparse
 from pathlib import Path
@@ -65,8 +66,10 @@ def main():
                         help='Directory containing log files (default: ./log)')
     parser.add_argument('--pattern', type=str, default='*.log',
                         help='Glob pattern for log files (default: *.log)')
-    parser.add_argument('--output', type=str, default='training_results.json',
-                        help='Output JSON file (default: training_results.json)')
+    parser.add_argument('--output', type=str, default='training_results.csv',
+                        help='Output csv file (default: training_results.csv)')
+    # parser.add_argument('--output', type=str, default='training_results.json',
+    #                     help='Output JSON file (default: training_results.json)')
 
     args = parser.parse_args()
 
@@ -78,8 +81,15 @@ def main():
         result = parse_log_file(log_file)
         results.append(result)
 
-    with open(args.output, 'w') as f:
-        f.write(',\n'.join(json.dumps(item, separators=(',', ': ')) for item in results))
+    # with open(args.output, 'w') as f:
+    #     f.write(',\n'.join(json.dumps(item, separators=(',', ': ')) for item in results))
+    with open(args.output, 'w', newline='') as csvfile:
+        fieldnames = ['filename', 'duration', 'latency', 'throughput', 'losses']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for result in results:
+            result['losses'] = json.dumps(result['losses'])
+            writer.writerow(result)
 
 
 if __name__ == '__main__':
