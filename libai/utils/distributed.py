@@ -81,8 +81,13 @@ class _DistributeUtil(object):
             try:
                 import oneflow_xpu  # noqa: F401
             except ImportError:
-                raise ImportError("'oneflow_xpu' is missing. Install it to use NPU devices.")
-        elif self._device_type not in ("cuda", "npu", "xpu", "cpu"):
+                raise ImportError("'oneflow_xpu' is missing. Install it to use XPU devices.")
+        elif self._device_type == "mlu":
+            try:
+                import oneflow_mlu  # noqa: F401
+            except ImportError:
+                raise ImportError("'oneflow_mlu' is missing. Install it to use MLU devices.")
+        elif self._device_type not in ("cuda", "npu", "xpu", "mlu", "cpu"):
             raise NotImplementedError(f"Unsupported device {self._device_type}")
 
     def _init_parallel_size(self, cfg):
@@ -458,6 +463,25 @@ def convert_to_distributed_default_setting(t):
         )
     else:
         dist_util = get_dist_util()
+        default_device_type = "cpu"
+        if flow._oneflow_internal.flags.with_mlu():
+            default_device_type = "mlu"
+        if flow._oneflow_internal.flags.with_npu():
+            default_device_type = "npu"
+
+        if dist_util.device_type != default_device_type:
+            from omegaconf import DictConfig
+            setup_dist_util(
+                DictConfig(
+                    dict(
+                        data_parallel_size=1,
+                        tensor_parallel_size=1,
+                        pipeline_parallel_size=1,
+                        device_type=default_device_type,
+                    )
+                )
+            )
+            dist_util = get_dist_util()
         device_type = dist_util.device_type
         return t.to_global(placement=flow.placement(device_type, ranks=t.placement.ranks))
 
