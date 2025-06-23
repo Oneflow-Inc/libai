@@ -536,79 +536,68 @@ class ModelLoaderHuggerFace(ModelLoader):
                         "red",
                     )
                 )
-
-    def load(self):
-        """Load model.
-
-        # For example:
-
-        # .. code-block:: python
-
-            >>> import libai
-            >>> from configs.common.models.bert import cfg
-            >>> from libai.models.utils import BertLoaderHuggerFace
-
+    def load(self, load_weights=True):
+        """Load model and optionally load pretrained weights.
+        Args:
+            load_weights (bool): Whether to load pretrained weights. 
+        Example:
             >>> loader = BertLoaderHuggerFace(
                     libai.models.BertModel,
                     cfg,
                     'path/bert-base-chinese'
                 )
-            >>> bert = loader.load()
-
+            >>> model = loader.load(load_weights=False)
         """
         use_safetensors = False
         if dist.is_main_process():
             if os.path.isdir(self.pretrained_model_path):
-                # state_dict file pytorch
-                model_files = [
-                    os.path.join(self.pretrained_model_path, file)
-                    for file in os.listdir(self.pretrained_model_path)
-                    if file.endswith(".bin")
-                ]
+                # config file
+                config_path = os.path.join(self.pretrained_model_path, CONFIG_NAME)
+                if os.path.isfile(config_path):
+                    self._load_config_from_json(config_path)
+                else:
+                    import warnings
+                    warnings.warn(
+                        f"Error no file named {CONFIG_NAME} found in directory {self.pretrained_model_path}",
+                        RuntimeWarning,
+                    )
 
-                if len(model_files) == 0:
-                    use_safetensors = True
+                if load_weights:
+                    # load model weights (.bin or .safetensors)
                     model_files = [
                         os.path.join(self.pretrained_model_path, file)
                         for file in os.listdir(self.pretrained_model_path)
-                        if file.endswith(".safetensors")
+                        if file.endswith(".bin")
                     ]
+                    if not model_files:
+                        use_safetensors = True
+                        model_files = [
+                            os.path.join(self.pretrained_model_path, file)
+                            for file in os.listdir(self.pretrained_model_path)
+                            if file.endswith(".safetensors")
+                        ]
+                    if not model_files:
+                        raise EnvironmentError(
+                            f"Error: no file named endswith '.bin' or '.safetensors' "
+                            f"found in directory {self.pretrained_model_path}."
+                        )
 
-                if len(model_files) == 0:
-                    raise EnvironmentError(
-                        f"Error: no file named endswith '.bin' or '.safetensors' "
-                        f"found in directory {self.pretrained_model_path}."
-                    )
-
-                # config file
-                if os.path.isfile(os.path.join(self.pretrained_model_path, CONFIG_NAME)):
-                    config_file = os.path.join(self.pretrained_model_path, CONFIG_NAME)
-
-                    # Load config and update config.
-                    self._load_config_from_json(config_file)
+                    logger.info("loading torch model...")
+                    torch_state_dict = self._load_torch_state_dict(model_files, use_safetensors)
+                    torch_state_dict = self._fix_key(torch_state_dict)
+                    logger.info("transfering torch model into oneflow model...")
+                    flow_state_dict = self._convert_tensors(torch_state_dict)
+                    flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
                 else:
-                    import warnings
-
-                    warnings.warn(
-                        f"Error no file named {CONFIG_NAME} found in directory"
-                        f"{self.pretrained_model_path}",
-                        RuntimeWarning,
-                    )
+                    flow_state_dict = None
             else:
                 raise EnvironmentError(f"{self.pretrained_model_path} is not a directory.")
-
-            logger.info("loading torch model...")
-            torch_state_dict = self._load_torch_state_dict(model_files, use_safetensors)
-            torch_state_dict = self._fix_key(torch_state_dict)
-            logger.info("transfering torch model into oneflow model...")
-            flow_state_dict = self._convert_tensors(torch_state_dict)
-            flow_state_dict = self._convert_state_dict(torch_state_dict, self.libai_cfg)
         else:
             flow_state_dict = None
 
         self.libai_cfg = dist.broadcast_py_object(self.libai_cfg, src=0)
 
-        # Instance model
+        # Build model
         logger.info("building LiBai model...")
         if isinstance(self.model, omegaconf.dictconfig.DictConfig):
             self.model.cfg = self.libai_cfg
@@ -616,26 +605,27 @@ class ModelLoaderHuggerFace(ModelLoader):
         else:
             self.model = build_model(LazyCall(self.model)(cfg=self.libai_cfg))
 
-        # State_dict to global
-        logger.info("transfering state_dict local to global...")
-        flow_state_dict = self._state_dict_to_global(flow_state_dict, mode="pytorch")
+        if load_weights:
+            logger.info("transfering state_dict local to global...")
+            flow_state_dict = self._state_dict_to_global(flow_state_dict, mode="pytorch")
 
-        logger.info("loading model weights into LiBai...")
-        # Load
-        (
-            model,
-            missing_keys,
-            unexpected_keys,
-            mismatched_keys,
-            error_msgs,
-        ) = self._load_pretrained_model(self.model, flow_state_dict, self.pretrained_model_path)
+            logger.info("loading model weights into LiBai...")
+            (
+                model,
+                missing_keys,
+                unexpected_keys,
+                mismatched_keys,
+                error_msgs,
+            ) = self._load_pretrained_model(self.model, flow_state_dict, self.pretrained_model_path)
 
-        if self.output_loading_info:
-            loading_info = {
-                "missing_keys": missing_keys,
-                "unexpected_keys": unexpected_keys,
-                "mismatched_keys": mismatched_keys,
-                "error_msgs": error_msgs,
-            }
-            return model, loading_info
-        return model
+            if self.output_loading_info:
+                loading_info = {
+                    "missing_keys": missing_keys,
+                    "unexpected_keys": unexpected_keys,
+                    "mismatched_keys": mismatched_keys,
+                    "error_msgs": error_msgs,
+                }
+                return model, loading_info
+            return model
+
+        return self.model

@@ -12,12 +12,6 @@ MODEL_SIZE=${5:-7b}
 
 # 是否启用自动并行（1 = 是，0 = 否）
 AUTO_PARALLEL=${6:-1}
-if [ "$AUTO_PARALLEL" -eq 1 ]; then
-    cat log/llama_${MODEL_SIZE}_ap.log | sed 's/\x1b\[[0-9;]*m//g'
-else
-    cat log/llama_${MODEL_SIZE}_pp.log | sed 's/\x1b\[[0-9;]*m//g'
-fi
-
 export PRETRAINED_MODEL_PATH=meta-llama/Llama-2-${MODEL_SIZE}-hf
 
 if [ "$AUTO_PARALLEL" -eq 1 ]; then
@@ -46,5 +40,6 @@ python3 -m oneflow.distributed.launch \
         train.train_micro_batch_size=$BATCH_SIZE \
 	train.train_epoch=0 \
 	train.train_iter=10 \
+	load_weights=False \
 	train.log_period=1
     #tools/train_net.py \

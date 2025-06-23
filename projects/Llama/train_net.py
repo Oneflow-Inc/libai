@@ -33,13 +33,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 logger = logging.getLogger("libai." + __name__)
 
 
-def build_model(cfg):
+def build_model(cfg, load_weights=True):
     model_loader = LlamaLoaderHuggerFace(
         cfg,
         cfg.cfg,
         cfg.cfg.pretrained_model_path,
     )
-    model = model_loader.load()
+    model = model_loader.load(load_weights=load_weights)
     return model
 
 
@@ -54,7 +54,7 @@ class LlamaTrainer(DefaultTrainer):
         # In case some model define without cfg keyword.
         elif try_get_key(cfg.model, "amp_enabled") is not None:
             cfg.model.amp_enabled = cfg.train.amp.enabled and cfg.graph.enabled
-        model = build_model(cfg.model)
+        model = build_model(cfg.model, load_weights=cfg.load_weights)
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
