@@ -1,17 +1,17 @@
 #!/bin/bash
 
-DP=${1:-1}
+DP=${1:-4}
 TP=${2:-1}
-PP=${3:-1}
+PP=${3:-2}
 NUM_DEVICES=$(( DP * TP * PP ))
 
-BATCH_SIZE=${4:-8}
+BATCH_SIZE=${4:-4}
 
 # 模型规模（如 7b, 13b）
 MODEL_SIZE=${5:-7b}
 
 # 是否启用自动并行（1 = 是，0 = 否）
-AUTO_PARALLEL=${6:-1}
+AUTO_PARALLEL=${6:-0}
 export PRETRAINED_MODEL_PATH=meta-llama/Llama-2-${MODEL_SIZE}-hf
 
 if [ "$AUTO_PARALLEL" -eq 1 ]; then
@@ -29,10 +29,10 @@ python3 -m oneflow.distributed.launch \
     --master_port 18245 \
     projects/Llama/train_net.py \
         --config-file=${CONFIG_FILE} \
-        graph.enabled=True \
+        graph.enabled=False \
         train.input_placement_device="npu" \
         train.dist.device_type="npu" \
-        train.amp.enabled=False \
+        train.amp.enabled=True \
 	train.num_accumulation_steps=1 \
         train.dist.data_parallel_size=$DP \
         train.dist.tensor_parallel_size=$TP \
@@ -40,6 +40,6 @@ python3 -m oneflow.distributed.launch \
         train.train_micro_batch_size=$BATCH_SIZE \
 	train.train_epoch=0 \
 	train.train_iter=10 \
-	load_weights=False \
+	load_weights=True \
 	train.log_period=1
     #tools/train_net.py \

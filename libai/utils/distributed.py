@@ -463,25 +463,6 @@ def convert_to_distributed_default_setting(t):
         )
     else:
         dist_util = get_dist_util()
-        default_device_type = "cpu"
-        if flow._oneflow_internal.flags.with_mlu():
-            default_device_type = "mlu"
-        if flow._oneflow_internal.flags.with_npu():
-            default_device_type = "npu"
-
-        if dist_util.device_type != default_device_type:
-            from omegaconf import DictConfig
-            setup_dist_util(
-                DictConfig(
-                    dict(
-                        data_parallel_size=1,
-                        tensor_parallel_size=1,
-                        pipeline_parallel_size=1,
-                        device_type=default_device_type,
-                    )
-                )
-            )
-            dist_util = get_dist_util()
         device_type = dist_util.device_type
         return t.to_global(placement=flow.placement(device_type, ranks=t.placement.ranks))
 
