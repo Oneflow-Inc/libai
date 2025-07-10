@@ -58,6 +58,9 @@ class LlamaTrainer(DefaultTrainer):
         logger = logging.getLogger(__name__)
         logger.info("Model:\n{}".format(model))
         model._apply(dist.convert_to_distributed_default_setting)
+        param = model.model.embed_tokens.weight
+        new_param = param.to_global(sbp=(flow.sbp.broadcast, flow.sbp.broadcast))
+        model.model.embed_tokens.weight = flow.nn.Parameter(new_param)
         return model
 
 

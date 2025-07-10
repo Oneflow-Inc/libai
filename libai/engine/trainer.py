@@ -336,7 +336,7 @@ class GraphTrainer(TrainerBase):
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
-        loss_dict = self.graph(**data)
+        loss_dict, p = self.graph(**data)
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step
         for key, value in loss_dict.items():

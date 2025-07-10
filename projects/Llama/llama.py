@@ -473,6 +473,7 @@ class LlamaModel(nn.Module):
             presents = []
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
         hidden_states = self.embed_tokens(input_ids)
+        emb = hidden_states
 
         for layer, past_key_value in zip(self.layers, past_key_values):
             hidden_states = layer(
@@ -492,7 +493,7 @@ class LlamaModel(nn.Module):
         if use_cache:
             set_cache(presents)
 
-        return hidden_states
+        return hidden_states, {"input_ids":input_ids, "emb_weight":self.embed_tokens.weight, "hidden_states":hidden_states, "embedding":emb}
 
 
 class CrossEntropyLoss(nn.Module):
@@ -613,7 +614,7 @@ class LlamaForCausalLM(nn.Module, Generator):
             input_dtype=self.lm_head.weight.dtype,
         )
 
-        output = self.model(
+        output, p = self.model(
             input_ids,
             attention_mask=mask,
             past_key_values=self.past_key_values,
@@ -625,9 +626,9 @@ class LlamaForCausalLM(nn.Module, Generator):
 
         if labels is not None:
             lm_loss = self.loss_func(logits, labels)
-            return lm_loss
+            return lm_loss, p
         else:
-            return {"logits": logits}
+            return {"logits": logits}, p
 
     def set_cache(self, past_key_values):
         self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]

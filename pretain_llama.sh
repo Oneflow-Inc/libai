@@ -1,8 +1,8 @@
 #!/bin/bash
 
 DP=${1:-4}
-TP=${2:-1}
-PP=${3:-2}
+TP=${2:-2}
+PP=${3:-1}
 NUM_DEVICES=$(( DP * TP * PP ))
 
 BATCH_SIZE=${4:-8}
