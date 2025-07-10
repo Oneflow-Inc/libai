@@ -35,7 +35,8 @@ def build_graph(cfg, model, optimizer=None, lr_scheduler=None, is_train=False):
         graph.model = model
         graph.optimizer = optimizer
         graph.lr_scheduler = lr_scheduler
-        graph.fp16 = try_get_key(cfg, "train.amp.enabled", default=False)
+        graph.amp_enabled = try_get_key(cfg, "train.amp.enabled", default=False)
+        graph.amp_dtype = try_get_key(cfg, "train.amp.dtype", default="bf16")
         graph.activation_checkpoint = try_get_key(
             cfg, "train.activation_checkpoint.enabled", default=False
         )
