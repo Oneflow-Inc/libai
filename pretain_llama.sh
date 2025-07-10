@@ -5,7 +5,7 @@ TP=${2:-1}
 PP=${3:-2}
 NUM_DEVICES=$(( DP * TP * PP ))
 
-BATCH_SIZE=${4:-4}
+BATCH_SIZE=${4:-8}
 
 # 模型规模（如 7b, 13b）
 MODEL_SIZE=${5:-7b}
@@ -17,7 +17,7 @@ export PRETRAINED_MODEL_PATH=meta-llama/Llama-2-${MODEL_SIZE}-hf
 if [ "$AUTO_PARALLEL" -eq 1 ]; then
     CONFIG_FILE=projects/Llama/configs/llama_sft_ap.py
 else
-    CONFIG_FILE=projects/Llama/configs/llama_sft.py
+    CONFIG_FILE=projects/Llama/configs/llama_pretrain.py
 fi
 
 #export ONEFLOW_NPU_COMM_SYNC=1
@@ -29,7 +29,7 @@ python3 -m oneflow.distributed.launch \
     --master_port 18245 \
     projects/Llama/train_net.py \
         --config-file=${CONFIG_FILE} \
-        graph.enabled=False \
+        graph.enabled=True \
         train.input_placement_device="npu" \
         train.dist.device_type="npu" \
         train.amp.enabled=True \
@@ -43,3 +43,4 @@ python3 -m oneflow.distributed.launch \
 	load_weights=True \
 	train.log_period=1
     #tools/train_net.py \
+	#--eval-only \
