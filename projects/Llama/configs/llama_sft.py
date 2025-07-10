@@ -78,7 +78,10 @@ train.update(
         warmup_ratio=1 / 3,
         num_accumulation_steps=8,
         rdma_enabled=False,
-        amp=dict(enabled=True),
+        amp=dict(
+            enabled=True,
+            dtype="bfloat16",
+        ),
         activation_checkpoint=dict(enabled=True),
         checkpointer=dict(
             period=5000,
