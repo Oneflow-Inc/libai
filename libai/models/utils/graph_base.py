@@ -32,7 +32,8 @@ class GraphBase(nn.Graph):
         model: nn.Module,
         optimizer: flow.optim.Optimizer = None,
         lr_scheduler: flow.optim.lr_scheduler = None,
-        fp16=False,
+        amp_enabled=False,
+        amp_dtype="bf16",
         activation_checkpoint=False,
         grad_acc_steps=1,
         zero_optim=False,
@@ -51,15 +52,18 @@ class GraphBase(nn.Graph):
 
         if is_train:
             self.add_optimizer(optimizer, lr_sch=lr_scheduler)
-            if fp16:
-                self.config.enable_amp(True)
-                grad_scaler = flow.amp.GradScaler(
-                    init_scale=65536.0 * dist.get_data_parallel_size(),
-                    growth_factor=2.0,
-                    backoff_factor=0.5,
-                    growth_interval=2000,
-                )
-                self.set_grad_scaler(grad_scaler)
+            if amp_enabled:
+                if amp_dtype.lower() in ["fp16", "float16"]:
+                    self.config.enable_amp(True)
+                    grad_scaler = flow.amp.GradScaler(
+                        init_scale=65536.0 * dist.get_data_parallel_size(),
+                        growth_factor=2.0,
+                        backoff_factor=0.5,
+                        growth_interval=2000,
+                    )
+                    self.set_grad_scaler(grad_scaler)
+                else:
+                    self.config.enable_amp(True, dtype=flow.bfloat16)
 
             if grad_acc_steps > 1:
                 self.config.set_gradient_accumulation_steps(grad_acc_steps)
