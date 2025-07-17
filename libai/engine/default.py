@@ -507,7 +507,7 @@ class DefaultTrainer(TrainerBase):
         self._trainer.iter = self.iter
         self._trainer.run_step(self.get_batch, self.cfg.train.input_placement_device)
 
-    @classmethod
+    #@classmethod
     def get_batch(
         cls,
         data: Instance,
@@ -531,8 +531,44 @@ class DefaultTrainer(TrainerBase):
             data.get("images").tensor = images
             data.get("labels").tensor = labels
 
+        def load_and_convert_npy_series(prefix, tensor):
+            import numpy as np
+            npy_path = "/data/home/xiexuan/git-repos/dump_data"
+            rank = flow.env.get_rank()
+            bsz = tensor.shape[0]
+            from_ = cls.iter * bsz
+            #print("load_and_convert_npy_series", rank, bsz, cls.iter, from_)
+
+            if prefix == "input_ids":
+                prefix = "tokens"
+
+            arrays = []
+            for i in range(from_, from_ + bsz):
+                filename = f"{prefix}_npu{rank}_{i}.npy"
+                file_path = os.path.join(npy_path, filename)
+                if not os.path.exists(file_path):
+                    raise FileNotFoundError(f"File not found: {file_path}")
+                arrays.append(np.load(file_path))
+        
+            merged_array = np.concatenate(arrays, axis=0)
+        
+            result_tensor = flow.tensor(
+                merged_array,
+                dtype=tensor.dtype,
+                device=tensor.device
+            )
+        
+            if result_tensor.shape != tensor.shape:
+                raise ValueError(f"Shape mismatch and reshape failed: {e}")
+        
+            # print("rank:", rank, result_tensor)
+            # print(tensor)
+            return result_tensor
+
         ret_dict = {}
         for key, value in data.get_fields().items():
+            new_tensor = load_and_convert_npy_series(key, value.tensor)
+            value.tensor = new_tensor
             value.to_global(device_type=input_placement_device)
             ret_dict[key] = value.tensor
         return ret_dict

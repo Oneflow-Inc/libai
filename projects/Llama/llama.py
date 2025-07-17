@@ -27,7 +27,19 @@ from libai.layers import Linear, RMSLayerNorm, VocabEmbedding
 from libai.layers.attention import AttnMaskType
 from libai.models.utils import init_method_normal, scaled_init_method_normal
 from libai.utils import distributed as dist
-
+import numpy as np
+def TensorSave(tensor, prefix, path = "./dump_data"):
+    if tensor is None:
+        print(prefix, "is None")
+        return
+    rank = flow.env.get_rank()
+    full_path = os.path.join(path, f"{prefix}_rank{rank}.npy")
+    if tensor.dtype == flow.bfloat16:
+        tensor = tensor.to(flow.float32).cpu()
+        np.save(full_path, tensor.numpy())
+    else:
+        tensor = tensor.cpu()
+        np.save(full_path, tensor.numpy())
 
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
@@ -221,11 +233,12 @@ class MultiheadAttention(nn.Module):
         # Change shape: [bsz, num_heads, tgt_len, head_size] -> [bsz, tgt_len, num_heads, head_size]
         context = context.transpose(1, 2)
         output = self.o_proj(context.flatten(2))
+        o_proj = output
 
         if use_cache:
             output = (output, past_key_value)
 
-        return output
+        return output, {"attention_scores":attention_scores, "attention_weights":attention_weights, "attention_mask":attention_mask}
 
 
 class CasualMask(nn.Module):
@@ -349,8 +362,10 @@ class LlamaDecoderLayer(nn.Module):
         else:
             self_attn_past_key_value = None
 
+        input_layernorm_input = hidden_states
         layernorm_output = self.input_layernorm(hidden_states)
-        attention_output = self.self_attn(
+        input_layernorm_output = layernorm_output
+        attention_output, p = self.self_attn(
             layernorm_output,
             attention_mask=attention_mask,
             past_key_value=self_attn_past_key_value,
@@ -364,15 +379,18 @@ class LlamaDecoderLayer(nn.Module):
 
         hidden_states = hidden_states + attention_output
 
-        layernorm_output = self.post_attention_layernorm(hidden_states)
+        post_layernorm_output = self.post_attention_layernorm(hidden_states)
 
-        mlp_output = self.mlp(layernorm_output)
+        # output = hidden_states # OK
+        mlp_output = self.mlp(post_layernorm_output)
+        #output = hidden_states # OK
 
-        output = hidden_states + mlp_output
+        # output = mlp_output # KO
+        output = hidden_states + mlp_output # KO
 
         if use_cache:
             output = (output, presents)
-        return output
+        return output, p | {"input_layernorm_weight":self.input_layernorm.weight, "input_layernorm_input":input_layernorm_input, "input_layernorm_output":input_layernorm_output, "attention_output":attention_output}
 
     def build_attention(self):
         return MultiheadAttention(
@@ -426,7 +444,8 @@ class LlamaModel(nn.Module):
                     attn_mask_type=AttnMaskType.causal,
                     layer_idx=i,
                 )
-                for i in range(hidden_layers)
+                for i in range(8)
+                #for i in range(hidden_layers)
             ]
         )
         self.norm = RMSLayerNorm(hidden_size, eps=rms_norm_eps, layer_idx=-1)
@@ -473,10 +492,10 @@ class LlamaModel(nn.Module):
             presents = []
         input_ids = input_ids.to_global(placement=dist.get_layer_placement(0))
         hidden_states = self.embed_tokens(input_ids)
-        emb = hidden_states
 
+        i = 0
         for layer, past_key_value in zip(self.layers, past_key_values):
-            hidden_states = layer(
+            hidden_states, ret = layer(
                 hidden_states=hidden_states,
                 attention_mask=attention_mask,
                 past_key_value=past_key_value,
@@ -484,6 +503,9 @@ class LlamaModel(nn.Module):
                 sin_cached=self.sin_cached,
                 use_cache=False,
             )
+            if i == 0:
+                q = ret
+            i += 1
             if use_cache:
                 hidden_states, present = hidden_states
                 presents.append(present)
@@ -493,7 +515,7 @@ class LlamaModel(nn.Module):
         if use_cache:
             set_cache(presents)
 
-        return hidden_states, {"input_ids":input_ids, "emb_weight":self.embed_tokens.weight, "hidden_states":hidden_states, "embedding":emb}
+        return hidden_states, q 
 
 
 class CrossEntropyLoss(nn.Module):
@@ -626,9 +648,9 @@ class LlamaForCausalLM(nn.Module, Generator):
 
         if labels is not None:
             lm_loss = self.loss_func(logits, labels)
-            return lm_loss, p
+            return lm_loss, p | {"mask":mask}
         else:
-            return {"logits": logits}, p
+            return {"logits": logits}, p | {"mask":mask}
 
     def set_cache(self, past_key_values):
         self.past_length = 0 if past_key_values is None else past_key_values[0][0].shape[2]

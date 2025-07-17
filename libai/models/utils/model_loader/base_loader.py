@@ -584,6 +584,46 @@ class ModelLoaderHuggerFace(ModelLoader):
 
                     logger.info("loading torch model...")
                     torch_state_dict = self._load_torch_state_dict(model_files, use_safetensors)
+                    import torch
+                    target = torch.tensor([
+                        0.00720215,  0.01092529, -0.02282715,  0.00628662,  0.00318909,
+                       -0.0144043,   0.0177002, -0.01330566, -0.00014019, -0.01019287
+                    ])
+                    # target = torch.tensor([
+                    #     0.02966309, 0.01361084, 0.00196838, 0.012146,   0.01300049,
+                    #     0.00970459, 0.00915527, 0.00787354, 0.01599121, 0.02148438]
+                    # ])
+                    def find_subsequence_in_flattened(tensor, target_subseq, tolerance=1e-6):
+                        x_flat = tensor.flatten()
+                        n = x_flat.shape[0]
+                        m = target_subseq.shape[0]
+
+                        if n < m:
+                            return None
+
+                        windows = x_flat.unfold(0, m, 1)
+                        diffs = torch.abs(windows - target_subseq)
+                        mask = (diffs < tolerance).all(dim=1)
+                        matching_indices = torch.where(mask)[0]
+                        return matching_indices if len(matching_indices) > 0 else None
+                    #def find_close_values(tensor, target_value, tolerance=1e-7):
+                    #    mask = torch.abs(tensor - target_value) < tolerance
+                    #    indices = torch.where(mask)
+                    #    values = tensor[indices]
+                    #    return values, indices
+                    ## target = 0.00720215
+                    #target = -0.02282715
+                    for k, v in torch_state_dict.items():
+                        if k != "model.layers.31.mlp.down_proj.weight":
+                            continue
+                        print(v.shape, v.flatten()[2096352:2096362], v.flatten()[2096362:2096372])
+                        index = find_subsequence_in_flattened(v, target)
+
+                        if index is not None:
+                            print(f"找到匹配的子数组，起始索引：{index}")
+                            print(k, v)
+                        else:
+                            print("没有找到匹配的子数组", k)
                     torch_state_dict = self._fix_key(torch_state_dict)
                     logger.info("transfering torch model into oneflow model...")
                     flow_state_dict = self._convert_tensors(torch_state_dict)

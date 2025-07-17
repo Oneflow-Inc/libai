@@ -5,7 +5,7 @@ TP=${2:-2}
 PP=${3:-1}
 NUM_DEVICES=$(( DP * TP * PP ))
 
-BATCH_SIZE=${4:-8}
+BATCH_SIZE=${4:-1}
 
 # 模型规模（如 7b, 13b）
 MODEL_SIZE=${5:-7b}
