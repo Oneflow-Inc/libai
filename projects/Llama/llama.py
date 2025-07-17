@@ -444,8 +444,7 @@ class LlamaModel(nn.Module):
                     attn_mask_type=AttnMaskType.causal,
                     layer_idx=i,
                 )
-                for i in range(8)
-                #for i in range(hidden_layers)
+                for i in range(hidden_layers)
             ]
         )
         self.norm = RMSLayerNorm(hidden_size, eps=rms_norm_eps, layer_idx=-1)
