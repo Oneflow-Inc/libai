@@ -17,7 +17,6 @@
 import oneflow as flow
 from oneflow import nn
 
-
 class ParallelCrossEntropyLoss(nn.Module):
     """This criterion acts like :class:`~flow.nn.CrossEntropyLoss` except it will
     execute distributed cross entropy loss computation cross different GPUs.
@@ -37,12 +36,12 @@ class ParallelCrossEntropyLoss(nn.Module):
         assert logits.shape[0:2] == target.shape
 
         target = target.to_global(placement=logits.placement)
-
-        # Change -1 in target to 0 because sparse_softmax_cross_entropy don't accept -1
-        target = target * (target >= 0)
-
-        lm_loss = flow._C.sparse_softmax_cross_entropy(
+        lm_loss = flow._C.cross_entropy(
             logits.view(-1, logits.shape[-1]),
             target.view(-1),
+            None,
+            -100,
+            "mean",
+            0.0
         )
         return lm_loss

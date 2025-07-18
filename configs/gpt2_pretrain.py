@@ -7,9 +7,9 @@ from .common.data.gpt_dataset import dataloader, tokenization
 
 from .common.models.graph import graph
 
-vocab_file = "./data_test/gpt_data/gpt2-vocab.json"
-merge_files = "./data_test/gpt_data/gpt2-merges.txt"
-data_prefix = "./data_test/gpt_data/loss_compara_content_sentence"
+vocab_file = "./gpt2/gpt2-vocab.json"
+merge_files = "./gpt2/gpt2-merges.txt"
+data_prefix = "./gpt2/loss_compara_content_sentence"
 
 tokenization.tokenizer.vocab_file = vocab_file
 tokenization.tokenizer.merges_file = merge_files
@@ -21,10 +21,10 @@ dataloader.test[0].dataset.indexed_dataset.data_prefix = data_prefix
 # GPT-2 model config
 model.cfg.embedding_dropout_prob = 0.1
 model.cfg.attention_dropout_prob = 0.1
-model.cfg.num_attention_heads = 16
-model.cfg.hidden_size = 384
-model.cfg.ffn_hidden_size = 1536
-model.cfg.hidden_layers = 6
+model.cfg.num_attention_heads = 25
+model.cfg.hidden_size = 1600
+model.cfg.ffn_hidden_size = 1600 * 4
+model.cfg.hidden_layers = 40
 model.cfg.max_seq_length = 1024
 
 train.input_placement_device = "cpu"
@@ -36,9 +36,9 @@ for ds in dataloader.train.dataset:
 
 optim.lr = 1.5e-4
 
-train.train_micro_batch_size = 4
+train.train_micro_batch_size = 1
 train.amp.enabled = True
 
 train.evaluation.evaluator = LazyCall(PPLEvaluator)()
 
-train.output_dir = "./output/gpt2_output"
+train.output_dir = "./output"
