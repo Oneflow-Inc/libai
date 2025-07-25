@@ -27,20 +27,7 @@ from libai.utils.events import EventStorage, get_event_storage
 # References:
 # https://github.com/facebookresearch/detectron2/blob/main/detectron2/engine/train_loop.py
 # --------------------------------------------------------
-import os
-import numpy as np
-def TensorSave(tensor, prefix, path = "./dump_data"):
-    if tensor is None:
-        print(prefix, "is None")
-        return
-    rank = flow.env.get_rank()
-    full_path = os.path.join(path, f"{prefix}_rank{rank}.npy")
-    if tensor.dtype == flow.bfloat16:
-        tensor = tensor.to(flow.float32).cpu()
-        np.save(full_path, tensor.numpy())
-    else:
-        tensor = tensor.cpu()
-        np.save(full_path, tensor.numpy())
+
 
 class HookBase:
     """
@@ -349,13 +336,10 @@ class GraphTrainer(TrainerBase):
         data_time = time.perf_counter() - start
 
         # If you want to do something with the losses, you can wrap the model.
-        loss_dict, p = self.graph(**data)
+        loss_dict = self.graph(**data)
         # Add this because when set up gradient accumulations, graph will return
         # an unpacked n-d tensor whose size is accumulation step
-        for key, value in p.items():
-            TensorSave(value, key)
         for key, value in loss_dict.items():
-            TensorSave(value, key)
             if "loss" in key:
                 loss_dict[key] = value.mean()
             else:
@@ -363,4 +347,3 @@ class GraphTrainer(TrainerBase):
                 loss_dict[key] = value.sum()
 
         self.write_metrics(loss_dict, data_time)
-        exit()
